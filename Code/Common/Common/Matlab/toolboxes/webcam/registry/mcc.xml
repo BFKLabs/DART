@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--Copyright 2013 The MathWorks, Inc. -->
+<MCCData>
+    <dependency>
+        <file path="matlab/webcam/webcamlist.m"> <!-- path relative to matlabroot/toolbox -->
+            <data name="*"/>
+        </file>
+        <file path="matlab/webcam/webcam.m"> <!-- path relative to matlabroot/toolbox -->
+            <data name="*"/>
+        </file>        
+    </dependency>
+</MCCData>

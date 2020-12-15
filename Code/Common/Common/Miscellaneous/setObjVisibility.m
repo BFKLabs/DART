@@ -1,0 +1,14 @@
+function varargout = setObjVisibility(hObj,state)
+
+if ishandle(hObj)
+    if isa(state,'logical') || isnumeric(state)
+        eStr = {'off','on'};
+        set(hObj,'visible',eStr{1+state})
+    elseif ischar(state)
+        set(hObj,'visible',state);
+    end
+end
+
+if nargout == 1
+    varargout{1} = hObj;
+end

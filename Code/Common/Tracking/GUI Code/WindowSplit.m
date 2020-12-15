@@ -1,0 +1,1664 @@
+function varargout = WindowSplit(varargin)
+% Last Modified by GUIDE v2.5 25-Nov-2017 12:43:16
+
+% Begin initialization code - DO NOT EDIT
+gui_Singleton = 1;
+gui_State = struct('gui_Name',       mfilename, ...
+                   'gui_Singleton',  gui_Singleton, ...
+                   'gui_OpeningFcn', @WindowSplit_OpeningFcn, ...
+                   'gui_OutputFcn',  @WindowSplit_OutputFcn, ...
+                   'gui_LayoutFcn',  [] , ...
+                   'gui_Callback',   []);
+if nargin && ischar(varargin{1})
+    gui_State.gui_Callback = str2func(varargin{1});
+end
+
+if nargout
+    [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
+else
+    gui_mainfcn(gui_State, varargin{:});
+end
+% End initialization code - DO NOT EDIT
+
+% --- Executes just before WindowSplit is made visible.
+function WindowSplit_OpeningFcn(hObject, eventdata, handles, varargin)
+
+% Choose default command line output for WindowSplit
+handles.output = hObject;
+
+% global variables
+global isChange useAuto mainProgDir isCalib frmSz frmSz0 isUpdating
+[isChange,isUpdating,useAuto] = deal(false);
+
+% sets the input variables
+hGUI = varargin{1};
+
+% loads the background parameter struct from the program parameter file
+A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+bgP = A.bgP;
+
+% sets the data structs into the GUI
+hFig = hGUI.figFlyTrack;
+iMov = getappdata(hFig,'iMov');
+iData = getappdata(hFig,'iData');
+
+% sets the frame size (if calibrating for the RT-Tracking)
+if isCalib
+    objIMAQ = getappdata(hFig,'objIMAQ');
+    if isa(objIMAQ,'cell')
+        frmSz0 = size(objIMAQ{1});
+    else
+        vRes = get(getappdata(hFig,'objIMAQ'),'VideoResolution');
+        frmSz0 = vRes([2 1]);
+    end
+    
+    % sets the final frame rotation 
+    if (iMov.rot90)
+        frmSz = frmSz0([2 1]);
+    else
+        frmSz = frmSz0; 
+    end
+    
+    % sets the image acquisition object into the GUI
+    setappdata(hObject,'objIMAQ',objIMAQ);
+end
+
+% sets the important arrays/functions handles into the GUI 
+setappdata(hObject,'hGUI',hGUI)
+setappdata(hObject,'resetMovQuest',@resetMovQuest)
+
+% updates the GUI font-sizes
+setGUIFontSize(handles)
+hProp0 = disableAllTrackingPanels(hGUI,1);
+
+% sets the background parameter struct (if not set)
+if ~isfield(iMov,'bgP')
+    iMov.bgP = bgP;
+elseif isempty(iMov.bgP)
+    iMov.bgP = bgP;
+elseif ~isfield(iMov.bgP,'svmFcn') || ~isfield(iMov.bgP,'AvgTol')
+    iMov.bgP = bgP;
+end
+
+% sets the sub-region data struct
+setappdata(hObject,'iMov',iMov)
+
+% initialises the sub-movie dimensions
+if iMov.isSet
+    % if the binary mask field (for the 2D circle automatic placement) has 
+    % not been set in iMov, then set the field and mark a change
+    if ~isfield(iMov,'autoP'); iMov.autoP = []; end    
+    
+    % if the movie has already been set, then set the window properties and
+    % disable the set button
+    setOutlineProp(handles,'inactive',iMov.posG)
+    setObjEnable(handles.buttonSet,'on')
+    
+    % initialises the outline marker box
+    axes(hGUI.imgAxes)      
+    
+    % sets the fields based on the 
+    [setRegions,is2Dset] = deal(true,is2DCheck(iMov));
+    if is2Dset
+        % sets the 1/2-D automatic detection menu item enabled properties
+%         setObjEnable(handles.menu1D,'off');
+        setObjEnable(handles.menu2D,'on');                
+        
+        if ~isempty(iMov.autoP)
+            % auto-detect regions have been set, so enable/check menu items
+            set(setObjEnable(handles.menuShowRegion,'on'),'checked','on');
+
+            % plots the circle regions on the main GUI axes
+            setRegions = false;
+            plotRegionOutlines(handles,iMov)
+        end    
+    else
+        % sets the 1/2-D automatic detection menu item enabled properties
+%         setObjEnable(handles.menu1D,'on');
+        setObjEnable(handles.menu2D,'off');         
+    end
+    
+    % auto-detect regions not set, so disable menu items
+    if setRegions
+        setObjEnable(handles.menuUseAuto,'off');
+        setObjEnable(handles.menuShowRegion,'off');
+
+        % draw the sub-region division figures
+        setupSubRegions(handles,iMov,true);                     
+    end
+    
+    % sets the GUI to the top
+    uistack(handles.figWinSplit,'top')  
+    
+    % enables/sets the show inner region checkbox
+    if (iMov.nRow*iMov.nCol) > 1
+        set(handles.checkShowInner,'value',1)
+    else
+        setObjEnable(handles.checkShowInner,'off')
+    end    
+    
+    % updates the regional fly count checkbox value
+    set(handles.checkDiffFly,'value',iMov.dTube)
+    checkDiffFly_Callback(handles.checkDiffFly, '1', handles)
+else
+    % otherwise, disable all the buttons and the menu item
+    setOutlineProp(handles,'off')    
+    setObjEnable(handles.checkShowInner,'off')
+    setObjEnable(handles.menuAutoPlace,'off')
+    setObjEnable(handles.checkDiffFly,'off')
+end
+
+% sets the button properties and sub-movie data struct
+setObjEnable(handles.buttonUpdate,'off')
+setappdata(hObject,'iData',iData)
+setappdata(hObject,'hProp0',hProp0)
+setappdata(hObject,'hDiff',[])
+
+% initialises the sub-movie properties
+setSubMovieProp(handles,iMov)
+initOutlineProp(handles);
+centreFigPosition(hObject);
+
+% Update handles structure
+guidata(hObject, handles);
+
+% UIWAIT makes WindowSplit wait for user response (see UIRESUME)
+uiwait(handles.figWinSplit);
+
+% --- Outputs from this function are returned to the command line.
+function varargout = WindowSplit_OutputFcn(hObject, eventdata, handles) 
+
+% global variables
+global iMov isChange
+
+% Get default command line output from handles structure
+varargout{1} = iMov;
+varargout{2} = isChange;
+
+%-------------------------------------------------------------------------%
+%                         MENU CALLBACK FUNCTIONS                         %
+%-------------------------------------------------------------------------%
+
+% --------------------------------- %
+% --- 1D AUTOMATIC DISPLACEMENT --- %
+% --------------------------------- %
+
+% -------------------------------------------------------------------------
+function menuDetArena1D_Callback(hObject, eventdata, handles)
+
+% global variables
+global isChange useAuto
+
+% retrieves the data structs
+hGUI = getappdata(handles.figWinSplit,'hGUI');
+
+% retrieves the current sub-region dimensions
+iMov0 = setSubRegionDim(getappdata(handles.figWinSplit,'iMov'),hGUI);
+
+% makes the GUI invisible (for the duration of the calculations)
+set(handles.figWinSplit,'visible','off'); pause(0.05)
+
+% removes any previous markers and updates from the main GUI axes
+axes(hGUI.imgAxes)
+deleteSubRegions(handles)
+
+% optimises the tube regions
+try
+%     [iMov,ok] = optTubeRegionsTest(handles,iMov0);
+    [iMov,ok] = optTubeRegions(handles,iMov0);
+    if (ok)
+        % if the calculations were successful, then update
+        [isChange,useAuto,iMov.isOpt] = deal(true);
+        setappdata(handles.figWinSplit,'iMov',iMov)
+
+        % updates the global position coordinates and tube count
+        set(handles.editTubes,'string',num2str(iMov.nTube))
+        setOuterDimensions(handles,iMov)        
+
+        % global variables
+        setObjEnable(handles.buttonUpdate,'on')    
+    else
+        % otherwise, revert back to the original sub-region data struct
+        iMov = iMov0;
+    end
+
+    % otherwise, redraw the sub-region division figures    
+    setupSubRegions(handles,iMov,true)    
+catch Err
+    % deletes the waitbar figure
+    h = findall(0,'type','figure');
+    delete(h(strcmp(get(h,'tag'),'waitbar')));
+    
+    % output error message
+    if (strcmp(Err.identifier,'MATLAB:license:checkouterror'))
+        eStr = 'Matlab license error! Maximum number of license users has been reached';
+    else
+        eStr = sprintf(['1D automatic region detection failed. Ensure ',...
+                    'the following is correct:\n\n',...
+                    ' * Number of specified tube regions is correct\n',...
+                    ' * Number of row/columns have been specified correctly\n',...
+                    ' * The outside region encompasses the entire experimental assay\n',...
+                    '\nRetry the optimisation, or if errors persist, set regions manually.']);        
+    end
+    
+    % outputs the error to screen
+    waitfor(errordlg(eStr,'1D Region Detection Error','modal'))
+    
+    % redraws the original sub-region division figures  
+    setupSubRegions(handles,iMov0,true)
+end
+    
+% makes the Window Splitting GUI visible again
+set(handles.figWinSplit,'visible','on'); pause(0.05)
+uistack(handles.figWinSplit,'top')   
+
+% --------------------------------- %
+% --- 2D AUTOMATIC DISPLACEMENT --- %
+% --------------------------------- %
+
+% -------------------------------------------------------------------------
+function menuDetCircle_Callback(hObject, eventdata, handles)
+
+% retrieves the automatic detection algorithm objects
+[iMov,hGUI,I] = initAutoDetect(handles);
+if (isempty(iMov)); return; end
+
+% keep looping until either the user is satified or cancels
+[cont,isUpdate,hQ] = deal(true,false,0.25);
+while (cont)
+    % run the automatic region detection algorithm if the user cancels,
+    % then exit the function
+    [iMovNw,R,X,Y,ok] = detImageCircles(double(I),iMov,hQ);
+    if (ok)     
+        % runs the circle parameter GUI        
+        [iMovNw,hQ,uChoice] = CircPara(handles,iMovNw,X,Y,R,hQ); 
+        switch (uChoice)
+            case ('Cont') % user is continuing, so exit loop with update
+                [cont,isUpdate] = deal(false,true);
+            case ('Cancel') % user cancelled, so exit loop with no update
+                cont = false;
+        end
+    else
+        % the user cancelled, so exit the loop
+        cont = false;
+    end
+end
+
+% performs the post automatic detection updates
+postAutoDetectUpdate(handles,hGUI,iMov,iMovNw,isUpdate);
+
+% -------------------------------------------------------------------------
+function menuDetGeneral_Callback(hObject, eventdata, handles)
+
+% global variables
+global isCalib
+
+% retrieves the tracking data struct
+iData = getappdata(handles.figWinSplit,'iData');
+
+% retrieves the automatic detection algorithm objects
+[iMov,hGUI,I0] = initAutoDetect(handles);
+if (isempty(iMov)); return; end
+
+% memory allocation
+I = zeros([size(I0),2]);
+I(:,:,1) = I0;
+
+% calculates the 
+if (isCalib)
+    objIMAQ = getappdata(handles.figWinSplit,'objIMAQ');
+    I(:,:,2) = getsnapshot(objIMAQ);
+else
+    I(:,:,2) = getDispImage(iData,iMov,min(iData.nFrm,100),false,hGUI);
+end
+
+% otherwise, run the general region detection algorithm
+iMovNw = detGenRegions(iMov,max(I,[],3),abs(diff(I,[],3)));
+isUpdate = ~isempty(iMovNw);
+
+% performs the post automatic detection updates
+postAutoDetectUpdate(handles,hGUI,iMov,iMovNw,isUpdate);
+
+% -------------------------------------------------------------------------
+function menuUseAuto_Callback(hObject, eventdata, handles)
+
+% global variables
+global useAuto isChange
+isChange = true;
+
+% retrieves the main GUI handle data struct
+hGUI = getappdata(handles.figWinSplit,'hGUI');
+iMov = getappdata(handles.figWinSplit,'iMov');
+
+% initialises the setup/removal functions
+axes(hGUI.imgAxes)
+
+% performs the action based on the menu item checked status 
+if (strcmp(get(hObject,'checked'),'off'))
+    % sets the check status to on. enables the show region menu item
+    useAuto = false;
+    set(hObject,'checked','on')
+    setObjEnable(handles.menuShowRegion,'on')
+    setObjEnable(handles.buttonUpdate,'on')
+    
+    % removes the sub-regions
+    deleteSubRegions(handles)
+else
+    % sets the check status to off
+    useAuto = true;
+    set(hObject,'checked','off')    
+    setObjEnable(handles.buttonUpdate,'off')
+    
+    % disables the show region menu item and removes the regions
+    set(setObjEnable(handles.menuShowRegion,'off'),'checked','on')
+    menuShowRegion_Callback(handles.menuShowRegion, [], handles)
+    
+    % resets the sub-regions on the main GUI axes    
+    setupSubRegions(handles,iMov,true);    
+end    
+
+% makes the Window Splitting GUI visible again
+uistack(handles.figWinSplit,'top')  
+
+% -------------------------------------------------------------------------
+function menuShowRegion_Callback(hObject, eventdata, handles)
+
+% performs the action based on the menu item checked status 
+if (strcmp(get(hObject,'checked'),'off'))
+    % toggles the menu item to being checked and adds circle regions
+    set(hObject,'checked','on')    
+else
+    % toggles the menu item to being unchecked and removes circle regions
+    set(hObject,'checked','off')    
+end
+
+% plots the region outlines
+plotRegionOutlines(handles)
+
+%-------------------------------------------------------------------------%
+%                        FIGURE CALLBACK FUNCTIONS                        %
+%-------------------------------------------------------------------------%
+
+% --------------------------------------------- %
+% --- SUB-MOVIE DIMENSIONS OBJECT FUNCTIONS --- %
+% --------------------------------------------- %
+
+% --- executes on the callback of editRows
+function editRows_Callback(hObject, eventdata, handles)
+
+% retrieves the sub-movie struct and the main gui handles
+ok = false(1,2);
+iMov = getappdata(handles.figWinSplit,'iMov');
+
+% check to see if the new value is valid
+nwVal = str2double(get(hObject,'string'));
+if chkEditValue(nwVal,[1 20],1)
+    % if it is, then update the data struct
+    if ~isequal(iMov.nRow,nwVal)
+        if resetMovQuest(handles)            
+            % updates the data struct
+            [iMov.nRow,iMov.isSet,iMov.nTubeR] = deal(nwVal,false,[]);
+            setappdata(handles.figWinSplit,'iMov',iMov)    
+            
+            % if the other parameters are set, then enable the set button
+            setObjEnable(handles.buttonUpdate,'off')
+            if isempty(iMov.nCol) || isempty(iMov.nTube)
+                ok(:) = false;
+            else 
+                ok = [true,iMov.nRow*iMov.nCol>1];
+            end
+        else
+            % otherwise, reset to the last valid value
+            set(hObject,'string',num2str(iMov.nRow));              
+        end
+    end
+    
+elseif ~isempty(iMov.nRow)
+    % otherwise, reset to the last valid value if there is one
+    set(hObject,'string',num2str(iMov.nRow));   
+    
+else
+    % otherwise, reset to an empty edtibox
+    set(hObject,'string','');
+    
+end
+
+% sets the set button properties
+setObjEnable(handles.buttonSet,ok(1))
+setObjEnable(handles.checkDiffFly,ok(2))
+    
+% --- executes on the callback of editCols
+function editCols_Callback(hObject, eventdata, handles)
+
+% retrieves the sub-movie struct and the main gui handles
+ok = false(1,2);
+iMov = getappdata(handles.figWinSplit,'iMov');
+
+% check to see if the new value is valid
+nwVal = str2double(get(hObject,'string'));
+if chkEditValue(nwVal,[1 20],1)
+    % if it is, then update the data struct
+    if ~isequal(iMov.nCol,nwVal)
+        if resetMovQuest(handles)
+            % updates the data struct
+            [iMov.nCol,iMov.isSet,iMov.nTubeR] = deal(nwVal,false,[]);
+            setappdata(handles.figWinSplit,'iMov',iMov)     
+            
+            % if the other parameters are set, then enable the set button
+            setObjEnable(handles.buttonUpdate,'off')
+            if isempty(iMov.nRow) || isempty(iMov.nTube)
+                ok(:) = false;
+            else 
+                ok = [true,iMov.nRow*iMov.nCol > 1];
+            end
+        else
+            % otherwise, reset to the last valid value
+            set(hObject,'string',num2str(iMov.nCol));              
+        end        
+    end
+    
+elseif ~isempty(iMov.nRow)
+    % otherwise, reset to the last valid value if there is one
+    set(hObject,'string',num2str(iMov.nRow));   
+    
+else
+    % otherwise, reset to an empty edtibox
+    set(hObject,'string','');     
+end
+
+% sets the set button properties
+setObjEnable(handles.buttonSet,ok(1))
+setObjEnable(handles.checkDiffFly,ok(2))
+
+% --- executes on the callback of editTubes
+function editTubes_Callback(hObject, eventdata, handles)
+
+% retrieves the sub-movie struct and the main gui handles
+ok = false(1,2);
+iMov = getappdata(handles.figWinSplit,'iMov');
+
+% check to see if the new value is valid
+nwVal = str2double(get(hObject,'string'));
+if chkEditValue(nwVal,[1 50],1)
+    % if it is, then update the data struct
+    if ~isequal(iMov.nTube,nwVal)
+        if resetMovQuest(handles)
+            % updates the data struct
+            [iMov.nTube,iMov.isSet] = deal(nwVal,false);
+            setappdata(handles.figWinSplit,'iMov',iMov)       
+            
+            % if the other parameters are set, then enable the set button
+            setObjEnable(handles.buttonUpdate,'off')
+            if isempty(iMov.nCol) || isempty(iMov.nRow)
+                ok(:) = false;
+            else 
+                ok = [true,iMov.nRow*iMov.nCol > 1];
+            end
+        else
+            % otherwise, reset to the last valid value
+            set(hObject,'string',num2str(iMov.nTube));              
+        end              
+    end
+    
+elseif ~isempty(iMov.nTube)
+    % otherwise, reset to the last valid value
+    set(hObject,'string',num2str(iMov.nTube));      
+    
+else
+    % otherwise, reset to the last valid value
+    set(hObject,'string','');        
+end
+
+% sets the set button properties
+setObjEnable(handles.buttonSet,ok(1))
+setObjEnable(handles.checkDiffFly,ok(2))
+
+% --- Executes on button press in checkDiffFly.
+function checkDiffFly_Callback(hObject, eventdata, handles)
+
+% initialisations
+iMov = getappdata(handles.figWinSplit,'iMov');
+iMov.dTube = get(hObject,'value');
+
+% only updating if not initialising
+if ~isa(eventdata,'char')
+    % determines if the user want to perform the update
+    if resetMovQuest(handles)
+        % updates the regional fly count flag
+        setObjEnable(handles.buttonUpdate,'off')
+        setappdata(handles.figWinSplit,'iMov',iMov)        
+    else
+        % otherwise, exit the function
+        set(hObject,'value',~iMov.dTube);
+        return
+    end
+end
+
+% sets the enabled properties of the fly count editbox
+hText = findall(handles.panelMovieDim,'style','text');
+hEdit = findall(handles.panelMovieDim,'style','edit');
+setObjEnable(hText,~iMov.dTube)
+setObjEnable(hEdit,~iMov.dTube)
+
+% opens/closes the fly count GUI based on the checkbox value
+if iMov.dTube
+    % opens the fly count GUI
+    DiffFlyCount(handles.figWinSplit)
+else
+    % deletes the fly count GUI
+    delete(findall(0,'type','figure','tag','figDiffCount')); 
+end
+
+% --- Executes on button press in checkShowInner.
+function checkShowInner_Callback(hObject, eventdata, handles)
+
+% initialisations
+hGUI = getappdata(handles.figWinSplit,'hGUI');
+isShow = get(hObject,'value');
+
+% sets the object properties
+setObjEnable(handles.buttonUpdate,isShow);
+setObjVisibility(findobj(hGUI.imgAxes,'tag','hNum'),isShow);
+setObjVisibility(findobj(hGUI.imgAxes,'UserData','hTube'),isShow);
+
+hInner = findobj(hGUI.imgAxes,'tag','hInner');
+setObjVisibility(hInner,isShow);
+
+if (isShow)
+    setObjVisibility(findall(hInner,'tag','bottom line'),'off');
+end
+
+% --- callback function for key-strokes in the editboxes
+function keyPressFunc(hObject, eventdata, handles)
+
+% disables the set button
+setObjEnable(handles.buttonSet,'off')
+
+% -------------------------------------- %
+% --- MISCELLANEOUS BUTTON FUNCTIONS --- %
+% -------------------------------------- %
+
+% --- Executes on button press in buttonSet.
+function buttonSet_Callback(hObject, eventdata, handles)
+
+% global variables
+global useAuto
+
+% retrieves the main GUI and sub-image region data structs
+useAuto = false;
+hGUI = getappdata(handles.figWinSplit,'hGUI');
+iMov = getappdata(handles.figWinSplit,'iMov');
+
+% sets the ok flags
+nApp = iMov.nRow*iMov.nCol;
+[iMov.ok,iMov.isSet,iMov.iR] = deal(true(nApp,1),true,[]);
+
+% deletes the automatically detected circular regions (if any present)
+hOut = findall(hGUI.imgAxes,'tag','hOut');
+if (~isempty(hOut)); delete(hOut); end
+
+% sets up the sub-regions
+iMov = setupSubRegions(handles,iMov);
+
+% determines if the new array is 2-dimensional
+is2D = is2DCheck(iMov);
+
+% determines the rough aspect ratio of the sub-regions. if they are roughly
+% 2D, then enable the automatic placement menu item
+setObjEnable(handles.menuAutoPlace,'on')
+% setObjEnable(handles.menu1D,~is2D && (nApp>1));
+setObjEnable(handles.menu2D,is2D);         
+
+% sets the sub-GUI as the top window
+uistack(handles.figWinSplit,'top')
+
+% sets the outer dimensions
+setOuterDimensions(handles,iMov)
+
+% enables/sets the show inner region checkbox
+if (iMov.nRow*iMov.nCol) > 1
+    set(setObjEnable(handles.checkShowInner,'on'),'value',1)
+end
+
+% enable the update button, but disable the use automatic region and show
+% region menu items
+set(setObjEnable(handles.menuUseAuto,'off'),'checked','off');
+set(setObjEnable(handles.menuShowRegion,'off'),'checked','off');
+setObjEnable(handles.buttonUpdate,'on');
+setOutlineProp(handles,'inactive',iMov.posG)
+
+% updates the data struct into the GUI
+setappdata(handles.figWinSplit,'iMov',iMov);
+
+% --- Executes on button press in buttonUpdate.
+function buttonUpdate_Callback(hObject, eventdata, handles)
+
+% global variables
+global isChange useAuto
+
+% retrieves the main gui handles and sub-movie data struct
+hGUI = getappdata(handles.figWinSplit,'hGUI');
+iMov = getappdata(handles.figWinSplit,'iMov');
+
+% removes the x-correlation parameter struct (if it exists)
+iMov.Ibg = [];
+if (isfield(iMov,'xcP')); iMov = rmfield(iMov,'xcP'); end
+
+% if using the automatic detection, disable the button and exit
+if (strcmp(get(handles.menuUseAuto,'checked'),'on') || useAuto)
+    setappdata(handles.figWinSplit,'iMov',iMov)
+    setObjEnable(hObject,'off'); return
+end
+
+% gets the width/height values
+W = str2double(get(handles.editWidth,'string'));
+H = str2double(get(handles.editHeight,'string'));
+L = str2double(get(handles.editLeft,'string'));
+T = str2double(get(handles.editTop,'string'));
+iMov.posG = getOuterRegionCoords(L,T,W,H);
+
+% sets the final sub-region dimensions into the data struct
+iMov = setSubRegionDim(iMov,hGUI);
+if (~isa(eventdata,'char'))
+    [iMov.autoP,isChange] = deal([],true);    
+    setObjEnable(hObject,'off');
+end
+
+% resets the sub-movie data struct
+setappdata(handles.figWinSplit,'iMov',iMov)
+
+% --- Executes on button press in buttonClose.
+function buttonClose_Callback(hObject, eventdata, handles)
+
+% global variables
+global iMov isChange
+
+% if there is an update specified, then prompt the user to update
+if strcmp(get(handles.buttonUpdate,'enable'),'on')
+    % prompts the user if they wish to update the struct
+    uChoice = questdlg('Do you wish to update the specified sub-region?',...
+            'Update Sub-Regions?','Yes','No','Cancel','Yes');
+    switch uChoice
+        case ('Yes') % case is the user wants to update movie struct
+            if (strcmp(get(handles.menuUseAuto,'checked'),'off'))
+                buttonUpdate_Callback(handles.buttonUpdate, 1, handles)
+            end
+        case ('No') % case is the user does not want to update
+            isChange = false;
+        otherwise % case is the user cancelled
+            return            
+    end
+end
+
+% loads the movie struct
+iMov = getappdata(handles.figWinSplit,'iMov');
+hGUI = getappdata(handles.figWinSplit,'hGUI');
+hProp0 = getappdata(handles.figWinSplit,'hProp0');
+
+% removes the sub-regions and the fly region count GUI
+deleteSubRegions(handles)
+delete(findall(0,'type','figure','tag','figDiffCount'))
+
+% removes all the circle regions from the main GUI (if they exist)
+hOut = findall(hGUI.imgAxes,'tag','hOut');
+if ~isempty(hOut); delete(hOut); end
+
+% closes the window
+resetHandleSnapshot(hProp0)
+delete(handles.figWinSplit)
+
+%-------------------------------------------------------------------------%
+%                       SUB-REGION OUTLINE FUNCTIONS                      %
+%-------------------------------------------------------------------------%
+
+% --- sets up the sub-regions 
+function iMov = setupSubRegions(handles,iMov,isSet)
+
+% sets the setup flag
+if (nargin < 3); isSet = false; end
+
+% removes any previous sub-regions
+deleteSubRegions(handles)
+
+% determines if the regions have been set
+if (~isSet)
+    % if not, then prompt the user to set them up
+    iMov.posG = setupMainFrameRect(handles);
+    iMov = initSubPlotStruct(handles,iMov);
+    
+    % resets the sub-movie data struct
+    setappdata(handles.figWinSplit,'iMov',iMov)
+else
+    % otherwise, setup the outer frame from the previous values
+    setupMainFrameRect(handles,iMov);
+    
+    % calculates the outside region coordinates if they haven't been set
+    if (~isfield(iMov,'posO'))
+        iMov.posO = resetOutsidePos(iMov);
+    end
+end
+
+% removes any previous markers and updates
+iMov = createSubRegions(handles,iMov,isSet);
+
+% --- creates the subplot regions and line objects
+function iMov = createSubRegions(handles,iMov,isSet)
+
+% global variables
+global xGap yGap xVL pX pY pH pW
+
+% ------------------------------------------- %
+% --- INITIALISATIONS & MEMORY ALLOCATION --- %
+% ------------------------------------------- %
+
+% initialisations
+[xGap,yGap] = deal(5,5);
+xVL = zeros(iMov.nCol-1,2);
+[pX,pY,pH,pW] = deal(zeros(iMov.nCol*iMov.nRow,1));
+
+% retrieves the GUI objects
+hGUI = getappdata(handles.figWinSplit,'hGUI');
+hAx = hGUI.imgAxes;
+axis(hAx); hold(hAx,'on')
+
+% sets the region position vectors
+[rPosS,nApp] = deal(iMov.pos,length(iMov.pos));
+
+% ------------------------------ %
+% --- VERTICAL LINE CREATION --- %
+% ------------------------------ %
+
+% memory allocation
+hVL = cell(1,iMov.nCol-1);
+yVL = iMov.posG(2) + [0 iMov.posG(4)];
+
+% only set up the vertical lines if there is more than one column
+for i = 2:iMov.nCol    
+    % sets the x-location of the lines
+    if (~isempty(iMov.pos))
+        % sets the indices of the groups to the left of the line
+        iLf = iMov.nCol*(0:(iMov.nRow-1)) + (i-1);
+        
+        % sets the locations of the lower top/upper bottom indices
+        xR = max(cellfun(@(x)(sum(x([1 3]))),iMov.pos(iLf)));
+        xL = min(cellfun(@(x)(x(1)),iMov.pos(iLf+1)));  
+        
+        % sets the horizontal location of the vertical separator
+        xVL = 0.5*(xR+xL)*[1 1];          
+    else
+        xVL = iMov.posO{i}(1)*[1 1];
+    end
+
+    % creates the line object and sets the flags
+    hVL{i-1} = imline(hAx,xVL,yVL);
+    set(hVL{i-1},'tag','hVert');
+    set(findobj(hVL{i-1},'tag','bottom line'),'visible','off','UserData',i-1);
+    set(findobj(hVL{i-1},'tag','end point 1'),'hittest','off');
+    set(findobj(hVL{i-1},'tag','end point 2'),'hittest','off');
+
+    % updates the 
+    api = iptgetapi(hVL{i-1});
+    api.setColor('r')
+    api.addNewPositionCallback(@vertCallback); 
+
+    % sets the position constraint function
+    fcn = makeConstrainToRectFcn('imline',getVertXLim(iMov,i),yVL);
+    api.setPositionConstraintFcn(fcn);           
+end
+
+% -------------------------------- %
+% --- HORIZONTAL LINE CREATION --- %
+% -------------------------------- %    
+
+% only set up the horizontal lines if there is more than one row
+for j = 1:iMov.nCol
+    % sets the x-location of the lines
+    xHL = iMov.posO{j}(1) + [0 iMov.posO{j}(3)];        
+    
+    % creates the line objects
+    for i = 2:iMov.nRow
+        % sets the y-location of the line
+        if (~isempty(iMov.pos))
+            [iLo,iHi] = deal((i-2)*iMov.nCol+j,(i-1)*iMov.nCol+j);
+            yHL = 0.5*(sum(iMov.pos{iLo}([2 4])) + sum(iMov.pos{iHi}(2)))*[1 1];
+        else
+            k = (i-1)*iMov.nCol + j;
+            yHL = iMov.posO{k}(2)*[1 1];
+        end
+        
+        % creates the line object and sets the properties
+        hHL = imline(hAx,xHL,yHL);
+        set(hHL,'tag','hHorz','UserData',[i,j]);
+        set(findobj(hHL,'tag','bottom line'),'visible','off'); 
+        set(findobj(hHL,'tag','end point 1'),'hittest','off');
+        set(findobj(hHL,'tag','end point 2'),'hittest','off');        
+        
+        % updates the 
+        api = iptgetapi(hHL);
+        api.setColor('r')
+        api.addNewPositionCallback(@horzCallback); 
+        
+        % sets the position constraint function
+        fcn = makeConstrainToRectFcn('imline',xHL,getHorzYLim(iMov,i,j));
+        api.setPositionConstraintFcn(fcn);             
+        
+        % sets the left-coordinate into the corresponding vertical line
+        if (j > 1)
+            uD = [get(hVL{j-1},'UserData');{api,1,i,j}];
+            set(hVL{j-1},'UserData',uD);
+        end
+        
+        % sets the right-coordinate into the corresponding vertical line
+        if (j < iMov.nCol)
+            uD = [get(hVL{j},'UserData');{api,2,i,j}];
+            set(hVL{j},'UserData',uD);            
+        end
+    end
+end
+
+% ----------------------------------- %
+% --- TUBE REGION OBJECT CREATION --- %
+% ----------------------------------- %
+
+% case is for movable inner objects (different colours)
+if (mod(iMov.nCol,2) == 1)
+    col = 'gmyc';    
+else
+    col = 'gmy';    
+end
+
+% sets the inner rectangle objects for all apparatus
+for i = 1:nApp
+    %
+    iCol = mod(i-1,iMov.nCol) + 1;
+    iRow = floor((i-1)/iMov.nCol) + 1;
+    
+    % sets the sub-region limits
+    xLimS = getRegionXLim(iMov,hAx,iCol);
+    yLimS = getRegionYLim(iMov,hAx,iRow,iCol);
+%     xLimS = iMov.posO{i}(1) + [0 iMov.posO{i}(3)];
+%     yLimS = iMov.posO{i}(2) + [0 iMov.posO{i}(4)];
+
+    % adds the ROI fill objects (if already set)
+    if (isSet)
+        [ix,iy] = deal([1 1 2 2],[1 2 2 1]);
+        hFill = fill(xLimS(ix),yLimS(iy),'r','facealpha',0,'tag',...
+                     'hFillROI','linestyle','none','parent',hAx);
+                 
+        % if the region is rejected, then set the facecolour to red
+        if (~iMov.ok(i))
+            set(hFill,'facealpha',0.2)
+        end
+    end       
+    
+    % retrieves the new fly count index
+    nTubeNw = getAppFlyCount(iMov,i);
+    
+    % sets the proportional height/width values
+    pX(i) = (iMov.pos{i}(1)-iMov.posO{i}(1))/iMov.posO{i}(3);
+    pY(i) = (iMov.pos{i}(2)-iMov.posO{i}(2))/iMov.posO{i}(4);
+    pW(i) = iMov.pos{i}(3)/iMov.posO{i}(3);
+    pH(i) = iMov.pos{i}(4)/iMov.posO{i}(4);
+    
+    % creates the new rectangle object
+    hROI = imrect(hAx,iMov.pos{i});
+    indCol = mod(i-1,length(col))+1;    
+    
+    % disables the bottom line of the imrect object
+    set(hROI,'tag','hInner','UserData',i);
+    set(findobj(hROI,'tag','bottom line'),'visible','off');
+
+    % if moveable, then set the position callback function
+    api = iptgetapi(hROI);
+    api.setColor(col(indCol));
+    api.addNewPositionCallback(@roiCallback);   
+    
+    % sets the constraint region for the inner regions
+    fcn = makeConstrainToRectFcn('imrect',xLimS,yLimS);
+    api.setPositionConstraintFcn(fcn); 
+    
+    % creates the individual tube markers
+    xTubeS = repmat(rPosS{i}(1)+[0 rPosS{i}(3)],nTubeNw-1,1)';
+    yTubeS = rPosS{i}(2) + (rPosS{i}(4)/nTubeNw)*(1:(nTubeNw-1));
+    plot(hAx,xTubeS,repmat(yTubeS,2,1),[col(indCol),'--'],'tag',...
+                    sprintf('hTubeEdge%i',i),'UserData','hTube');     
+end
+
+% turns the axis hold off
+hold(hAx,'off')
+
+% --- removes the sub-regions
+function deleteSubRegions(handles)
+
+% retrieves the GUI objects
+hGUI = getappdata(handles.figWinSplit,'hGUI');
+hAx = hGUI.imgAxes;
+
+% removes all the division marker objects
+delete(findobj(hAx,'tag','hOuter'));
+delete(findobj(hAx,'tag','hVert'));
+delete(findobj(hAx,'tag','hHorz'));
+delete(findobj(hAx,'tag','hNum'));
+delete(findobj(hAx,'tag','hInner'));
+delete(findobj(hAx,'tag','hFillROI'));
+
+% deletes all the tube-markers
+delete(findobj(hAx,'UserData','hTube'));
+
+% --- sets up the main sub-window frame --- %
+function [rPos,hROI] = setupMainFrameRect(handles,iMov)
+
+% retrieves the GUI objects
+hGUI = getappdata(handles.figWinSplit,'hGUI');
+axes(hGUI.imgAxes)
+
+% ------------------------------------ %
+% --- OUTER RECTANGLE OBJECT SETUP --- %
+% ------------------------------------ %
+
+% updates the position of the outside rectangle 
+if (nargin == 1)
+    hROI = imrect;    
+else
+    hROI = imrect(gca,iMov.posG);
+end
+
+% disables the bottom line of the imrect object
+set(hROI,'tag','hOuter')
+set(findobj(hROI,'tag','bottom line'),'visible','off');
+
+% if moveable, then set the position callback function
+api = iptgetapi(hROI);
+api.setColor('r');
+rPos = api.getPosition();
+
+% force the imrect object to be fixed
+setResizable(hROI,false);
+set(findobj(hROI),'hittest','off')
+
+% sets the constraint function for the rectangle object
+fcn = makeConstrainToRectFcn('imrect',rPos(1)+[0 rPos(3)],...
+                                      rPos(2)+[0 rPos(4)]);
+api.setPositionConstraintFcn(fcn); 
+
+% --------------------------------- %
+% --- OBJECT CALLBACK FUNCTIONS --- %
+% --------------------------------- %
+
+% --- the callback function for moving the vertical seperator
+function vertCallback(lPos)
+
+% global variables
+global isUpdating
+isUpdating = true;
+
+% retrieves the sub-region data struct
+iMov = getappdata(findall(0,'tag','figWinSplit'),'iMov');
+hWS = guidata(findall(0,'tag','figWinSplit'));
+hGUIH = guidata(findall(0,'tag','figFlyTrack'));
+
+% retrieves the object handle and the index of the line
+hVL = get(gco,'parent');
+iVL = get(findall(hVL,'tag','bottom line'),'UserData');
+
+% updates the attached horizontal line properties
+uD = get(hVL,'UserData');
+for i = 1:size(uD)
+    % updates the position of the attached line
+    lPos0 = uD{i,1}.getPosition;
+    lPos0(uD{i,2},1) = lPos(1,1);
+    uD{i,1}.setPosition(lPos0);
+    
+    % sets the position constraint function    
+    yLimNw = getHorzYLimNw(iMov,hGUIH.imgAxes,uD{i,3},uD{i,4});
+    fcn = makeConstrainToRectFcn('imline',lPos0(:,1),yLimNw);
+    uD{i,1}.setPositionConstraintFcn(fcn);      
+end
+
+% updates the position of the inner regions
+updateInnerRegions(iMov,hGUIH.imgAxes,iVL,true)
+setObjEnable(hWS.buttonUpdate,'on')
+
+% resets the flag
+isUpdating = false;
+
+% --- the callback function for moving the horizontal seperator
+function horzCallback(lPos)
+
+% global variables
+global isUpdating
+if (isUpdating)
+    % if already updating, then exit the function
+    return
+else
+    % otherwise, flag that updating is occuring
+    isUpdating = true;
+end
+
+% retr
+iVL = get(get(gco,'parent'),'UserData');
+
+% retrieves the sub-region data struct
+iMov = getappdata(findall(0,'tag','figWinSplit'),'iMov');
+hGUIH = guidata(findall(0,'tag','figFlyTrack'));
+hWS = guidata(findall(0,'tag','figWinSplit'));
+
+% updates the position of the inner regions
+updateInnerRegions(iMov,hGUIH.imgAxes,iVL,false)
+setObjEnable(hWS.buttonUpdate,'on')
+
+% resets the flag to false
+isUpdating = false;
+
+% --- the callback function for moving the inner tube regions
+function roiCallback(rPos)
+
+% global variables
+global iAppInner isUpdating pX pY pW pH
+
+% global variables
+hWS = guidata(findall(0,'tag','figWinSplit'));
+
+% sets the apparatus index
+iApp = get(get(gco,'Parent'),'UserData');
+if ((iscell(iApp)) || (length(iApp) ~= 1)); 
+    iApp = iAppInner; 
+end
+
+% retrieves the sub-region data struct
+iMov = getappdata(hWS.figWinSplit,'iMov');
+nTube = getAppFlyCount(iMov,iApp);
+
+% resets the locations of the flies
+hTube = findobj(gca,'tag',sprintf('hTubeEdge%i',iApp));
+dY = diff(rPos(2)+[0 rPos(4)])/nTube;
+
+% sets the x/y locations of the tube sub-regions
+xTubeS = repmat(rPos(1)+[0 rPos(3)],nTube-1,1)';
+yTubeS = repmat(rPos(2)+(1:(nTube-1))*dY,2,1);
+
+% sets the x/y locations of the inner regions
+for i = 1:length(hTube)
+    set(hTube(i),'xData',xTubeS(:,i),'yData',yTubeS(:,i));
+end
+
+% if not updating, then reset the proportional dimensions
+if (~isUpdating)
+    % retrieves the sub-region data struct
+    iMov = getappdata(findall(0,'tag','figWinSplit'),'iMov');
+    hGUIH = guidata(findall(0,'tag','figFlyTrack'));
+    
+    % sets the row/column indices
+    iRow = floor((iApp-1)/iMov.nCol) + 1;
+    iCol = mod((iApp-1),iMov.nCol) + 1;
+    
+    % retrieves the x/y limits of the region
+    xLim = getRegionXLim(iMov,hGUIH.imgAxes,iCol);
+    yLim = getRegionYLim(iMov,hGUIH.imgAxes,iRow,iCol);
+    
+    % recalculates the proportional dimensions
+    [W,H] = deal(diff(xLim),diff(yLim));
+    [pX(iApp),pY(iApp)] = deal((rPos(1)-xLim(1))/W,(rPos(2)-yLim(1))/H);
+    [pW(iApp),pH(iApp)] = deal(rPos(3)/W,rPos(4)/H);    
+    
+    % enables the update button
+    setObjEnable(hWS.buttonUpdate,'on')
+end
+
+% --- updates the position of the inner regions (if the vertical/horizontal
+%     line objects are being moved)
+function updateInnerRegions(iMov,hAx,iL,isVert)
+
+% global variables
+global pH pW pX pY iAppInner
+
+% updates the inner region based on the line being moved
+if (isVert)
+    % case is moving a vertical line    
+    for j = 1:2
+        % sets the indices of the inner regions being affected        
+        xLim = getRegionXLim(iMov,hAx,iL+(j-1));
+        iApp = (1:iMov.nCol:length(iMov.pos)) + (iL + (j-2));
+        
+        % updates the position of the regions and their constraint regions
+        for i = 1:iMov.nRow
+            % retrieves the handle of the inner object
+            iAppInner = iApp(i);
+            hInner = findall(hAx,'tag','hInner','UserData',iApp(i));
+            
+            % retrieves the height limits of the 
+            yLim = getRegionYLim(iMov,hAx,i,iL+(j-1));
+            
+            % retrieves the in
+            api = iptgetapi(hInner);
+            inPos = api.getPosition();
+            
+            % sets the new inner region position            
+            inPos(1) = xLim(1) + pX(iApp(i))*diff(xLim);              
+            inPos(3) = pW(iApp(i))*diff(xLim);
+                                    
+            % sets the constraint region for the inner regions
+            api.setPosition(inPos);
+            fcn = makeConstrainToRectFcn('imrect',xLim,yLim);
+            api.setPositionConstraintFcn(fcn);             
+        end
+    end
+else
+    % case is moving a horizontal line   
+    for j = 1:2
+        % retrieves the height limits of the 
+        iApp = (iL(1)+(j-3))*iMov.nCol + iL(2);
+        yLim = getRegionYLim(iMov,hAx,iL(1)+(j-2),iL(2));
+        xLim = getRegionXLim(iMov,hAx,iL(2));
+        
+        % retrieves the handle of the inner object
+        iAppInner = iApp;
+        hInner = findall(hAx,'tag','hInner','UserData',iApp);   
+        
+        % retrieves the in
+        api = iptgetapi(hInner);
+        inPos = api.getPosition();
+
+        % sets the new inner region position            
+        inPos(2) = yLim(1) + pY(iApp)*diff(yLim);              
+        inPos(4) = pH(iApp)*diff(yLim);
+
+        % sets the constraint region for the inner regions
+        api.setPosition(inPos);
+        fcn = makeConstrainToRectFcn('imrect',xLim,yLim);
+        api.setPositionConstraintFcn(fcn);         
+    end
+end
+
+% ------------------------------------- %
+% --- REGION/OBJECT LIMIT FUNCTIONS --- %
+% ------------------------------------- %
+
+% --- retrieves the horizontal seperator line limits (original)
+function yLim = getHorzYLim(iMov,iRow,iCol,varargin)
+
+% global variables
+global yGap
+
+% memory allocation
+yLim = zeros(1,2);
+yGapNw = 3*(nargin == 3)*yGap;
+
+% sets the lower limit
+if (iRow == 2)
+    yLim(1) = iMov.posG(2) + yGapNw;
+else
+    iL = (iRow-2)*iMov.nCol + iCol;    
+    yLim(1) = iMov.pos{iL}(2) + yGapNw;
+end
+
+% sets the upper limit
+if (iRow == iMov.nRow)
+    yLim(2) = sum(iMov.posG([2 4])) - yGapNw;
+else
+    iU = iRow*iMov.nCol + iCol;
+    yLim(2) = iMov.pos{iU}(2) - yGapNw;
+end
+
+% --- retrieves the horizontal seperator line limits (callback function)
+function yLim = getHorzYLimNw(iMov,hAx,iRow,iCol)
+
+% global variables
+global yGap
+
+% memory allocation
+[yLim,yGapNw] = deal(zeros(1,2),3*yGap);
+
+% sets the lower limit
+if (iRow == 2)
+    yLim(1) = iMov.posG(2) + yGapNw;
+else
+    apiLo = iptgetapi(findall(hAx,'tag','hHorz','UserData',[iRow-1,iCol]));
+    lPos = apiLo.getPosition();
+    yLim(1) = lPos(1,2) + yGapNw;    
+end
+
+% sets the upper limit
+if (iRow == iMov.nRow)
+    yLim(2) = sum(iMov.posG([2 4])) - yGapNw;
+else
+    apiHi = iptgetapi(findall(hAx,'tag','hHorz','UserData',[iRow+1,iCol]));
+    lPos = apiHi.getPosition();
+    yLim(2) = lPos(1,2) - yGapNw;
+end
+
+% --- retrieves the vertical seperator line limits (original)
+function xLim = getVertXLim(iMov,iCol,varargin)
+
+% global variables
+global xGap
+
+% memory allocation and other initialisations
+xLim = zeros(1,2);
+xGapNw = 3*(nargin == 2)*xGap;
+
+% sets the lower limit
+if (iCol == 2)
+    xLim(1) = iMov.posG(1) + xGapNw;
+else
+    xLim(1) = iMov.posO{iCol-1}(1) + xGapNw;
+end
+
+% sets the upper limit
+if (iCol == iMov.nCol)
+    xLim(2) = sum(iMov.posG([1 3])) - xGapNw;
+else
+    xLim(2) = iMov.posO{iCol+1}(1) - xGapNw;
+end
+
+% --- returns the x-limits of the sub-region
+function xLim = getRegionXLim(iMov,hAx,iCol)
+
+% memory allocation
+xLim = zeros(1,2);
+
+% gets the lower limit based on the row count
+if (iCol == 1)
+    % sets the lower limit to be the bottom
+    xLim(1) = iMov.posG(1);
+else
+    % retrieves the position of the lower line region
+    api = iptgetapi(get(findall(hAx,'tag','bottom line','UserData',iCol-1),'parent'));
+    lPosL = api.getPosition();
+    
+    % sets the lower limit
+    xLim(1) = lPosL(1,1);
+end
+
+% gets the upper limit based on the row count
+if (iCol == iMov.nCol)
+    % sets the upper limit to be the top
+    xLim(2) = sum(iMov.posG([1 3]));
+else
+    % retrieves the position of the upper line region
+    api = iptgetapi(get(findall(hAx,'tag','bottom line','UserData',iCol),'parent'));
+    lPosR = api.getPosition();
+    
+    % sets the upper limit
+    xLim(2) = lPosR(1,1);    
+end
+
+% --- returns the y-limits of the sub-region
+function yLim = getRegionYLim(iMov,hAx,iRow,iCol)
+
+% memory allocation
+yLim = zeros(1,2);
+
+% gets the lower limit based on the row count
+if (iRow == 1)
+    % sets the lower limit to be the bottom
+    yLim(1) = iMov.posG(2);
+else
+    % retrieves the position of the lower line region
+    api = iptgetapi(findall(hAx,'tag','hHorz','UserData',[iRow,iCol]));
+    lPosLo = api.getPosition();
+    
+    % sets the lower limit
+    yLim(1) = lPosLo(1,2);
+end
+
+% gets the upper limit based on the row count
+if (iRow == iMov.nRow)
+    % sets the upper limit to be the top
+    yLim(2) = sum(iMov.posG([2 4]));
+else
+    % retrieves the position of the upper line region
+    api = iptgetapi(findall(hAx,'tag','hHorz','UserData',[iRow+1,iCol]));
+    lPosHi = api.getPosition();
+    
+    % sets the upper limit
+    yLim(2) = lPosHi(1,2);    
+end
+
+% ------------------------------- %
+% --- MISCELLANEOUS FUNCTIONS --- %
+% ------------------------------- %
+
+% --- initialisation of the subplot data struct
+function iMov = initSubPlotStruct(handles,iMov)
+
+% retrieves the main GUI handle struct
+hGUI = getappdata(handles.figWinSplit,'hGUI');
+
+% retrieves the axis limits
+hAx = hGUI.imgAxes;
+[xLim,yLim] = deal(get(hAx,'xlim'),get(hAx,'ylim'));
+
+% sets the subplot variables (based on the inputs)
+[nRow,nCol,pG,del] = deal(iMov.nRow,iMov.nCol,iMov.posG,5);
+[L,B,W,H] = deal(pG(1),pG(2),pG(3)/nCol,pG(4)/nRow);
+
+% sets the window label font sizes and linewidths
+fSize = 20 + 6*(~ispc);
+
+% for each row/column initialise the subplot structs
+[iMov.posO,iMov.pos] = deal(cell(1,nRow*nCol));
+for i = 1:nRow
+    for j = 1:nCol
+        % sets the parameter struct index/position
+        k = (i-1)*nCol + j;
+        iMov.posO{k} = [(L+(j-1)*W) (B+(i-1)*H) W H];
+        
+        % creates the text marker object
+        hText = text(0,0,num2str(k),'fontweight','bold','fontsize',fSize,...
+                         'tag','hNum','color','r','parent',hAx);   
+                     
+        hEx = get(hText,'Extent');                     
+        set(hText,'position',[L+(j-0.5)*W-(hEx(3)/2) B+(i-0.5)*H 0])
+        
+        % sets the left/right locations of the sub-window
+        PosNw(1) = min(xLim(2),max(xLim(1),L+((j-1)*W+del)));
+        PosNw(2) = min(yLim(2),max(yLim(1),B+((i-1)*H+del)));                                               
+        PosNw(3) = (W-2*del) + min(0,xLim(2)-(PosNw(1)+(W-2*del)));
+        PosNw(4) = (H-2*del) + min(0,yLim(2)-(PosNw(2)+(H-2*del)));      
+
+        % updates the sub-image position vectos
+        iMov.pos{k} = PosNw;        
+    end
+end
+
+% --- resets the outside dimensions of the sub-regions
+function posO = resetOutsidePos(iMov)
+
+% array indexing
+[pR,pG] = deal(iMov.pos,iMov.posG);
+[nRow,nCol,nApp] = deal(iMov.nRow,iMov.nCol,length(iMov.iR));
+
+% memory allocation
+[pX,pY,posO] = deal(zeros(nCol+1,1),zeros(nRow+1,1),cell(1,nApp));
+
+% sets the start/end x/y locations
+[pX(1),pX(end)] = deal(pG(1),sum(pG([1 3])));
+[pY(1),pY(end)] = deal(pG(2),sum(pG([2 4])));
+
+% sets the locations
+for i = 2:nCol
+    % sets the indices of the left/right sub-regions 
+    iL = ((1:iMov.nCol:nApp)-1) + (i-1);
+    xR = max(cellfun(@(x)(sum(x([1 3]))),pR(iL)));
+    xL = min(cellfun(@(x)(x(1)),pR(iL+1)));
+    
+    % calculates the mid point of the extremum
+    pX(i) = 0.5*(xR + xL);    
+end
+
+% sets the locations
+for i = 2:nRow
+    % sets the indices of the left/right sub-regions 
+    iU = (i-2)*nCol + (1:nCol);
+    yU = max(cellfun(@(x)(sum(x([2 4]))),pR(iU)));
+    yB = min(cellfun(@(x)(x(2)),pR(iU+nCol)));
+    
+    % calculates the mid point of the extremum
+    pY(i) = 0.5*(yU + yB);    
+end
+
+% sets the final outside coordinates
+for i = 1:nRow
+    for j = 1:nCol
+        k = (i-1)*nCol + j;
+        posO{k} = [pX(j),pY(i),diff(pX(j+(0:1))),diff(pY(i+(0:1)))];
+    end
+end  
+
+%-------------------------------------------------------------------------%
+%                             OTHER FUNCTIONS                             %
+%-------------------------------------------------------------------------%
+
+% ---------------------------------------- %
+% --- OBJECT PROPERTY UPDATE FUNCTIONS --- %
+% ---------------------------------------- %
+
+% --- initialises the properties of the sub-window position editboxes --- %
+function initOutlineProp(handles)
+
+% sets the object strings
+wStr = {'Left','Top','Width','Height'};
+wStrP = {'Rows','Cols','Tubes'};
+
+% sets the callback functions for all of the outline position editboxes
+for i = 1:length(wStr)
+    hObj = eval(sprintf('handles.edit%s',wStr{i}));    
+    bFunc = @(hObj,e)WindowSplit('editOutDimCallback',hObj,[],guidata(hObj));  
+    set(hObj,'Callback',bFunc)
+end
+
+% sets the callback functions for all row, column and tube count editboxes
+for i = 1:length(wStrP)
+    hObj = eval(sprintf('handles.edit%s',wStrP{i}));    
+    bFunc = @(hObj,e)WindowSplit('keyPressFunc',hObj,[],guidata(hObj));  
+    set(hObj,'KeyPressFcn',bFunc)
+end
+
+% --- sets the properties of the sub-window position editboxes --- %
+function setOutlineProp(handles,state,pPos)
+
+% sets the panel object handle
+hPanel = handles.panelOutlineDim;
+
+% sets the object properties for all the types
+for i = 1:4
+    % retrieves the edit/text box based on the userdata number
+    hEdit = findobj(hPanel,'UserData',i,'style','edit');
+    hText = findobj(hPanel,'UserData',i,'style','text');
+    
+    % sets the enabled states of the objects
+    setObjEnable(hEdit,state);
+    setObjEnable(hText,state);    
+    
+    % updates the edit box value (if provided)
+    if (strcmp(state,'on') || strcmp(state,'inactive'))
+        set(hEdit,'string',num2str(roundP(pPos(i),0.1)))
+    end
+end
+
+% --- sets the sub-movie property editbox fields --- %
+function setSubMovieProp(handles,iMov)
+
+% sets the row, column and tube count editbox fields
+set(handles.editRows,'string',num2str(iMov.nRow))
+set(handles.editCols,'string',num2str(iMov.nCol))
+set(handles.editTubes,'string',num2str(abs(iMov.nTube)))
+
+% --- sets the dimensions of the outer region
+function setOuterDimensions(handles,iMov)
+
+% sets the details of the outer dimensions in the editboxes
+set(handles.editLeft,'string',num2str(roundP(iMov.posG(1),0.1)));
+set(handles.editTop,'string',num2str(roundP(iMov.posG(2),0.1)));
+set(handles.editWidth,'string',num2str(roundP(iMov.posG(3),0.1)));
+set(handles.editHeight,'string',num2str(roundP(iMov.posG(4),0.1))); 
+
+% --------------------------------- %
+% --- REGION PLOTTING FUNCTIONS --- %
+% --------------------------------- %
+
+% --- plots the circle regions on the main GUI to enable visualisation
+function plotRegionOutlines(handles,iMov)
+
+% retrieves the sub-region and main GUI handles data struct
+hGUI = getappdata(handles.figWinSplit,'hGUI');
+if (nargin == 1); iMov = getappdata(handles.figWinSplit,'iMov'); end
+
+% sets the circle visibility based on the checked status
+hOut = findall(hGUI.imgAxes,'tag','hOut');
+if (strcmp(get(handles.menuShowRegion,'checked'),'on'))
+    % menu item is checked, so makes the regions visible
+    if (isempty(hOut))        
+        % creates the outlines based on the type
+        switch (iMov.autoP.Type)
+            case ('Circle')            
+                createCircleOutlines(hGUI.imgAxes,iMov);
+            case ('General')
+                createGeneralOutlines(hGUI.imgAxes,iMov);
+        end              
+    else
+        % otherwise, make the circles visible
+        set(hOut,'visible','on')
+    end
+else
+    % otherwise, make the circular regions invisible
+    set(hOut,'visible','off')
+end
+
+% --- creates the circle outlines
+function createCircleOutlines(hAx,iMov)
+
+% circles missing, so add them in
+hold(hAx,'on');
+
+% sets the X/Y coordinates of the circle centres
+[X,Y,phi] = deal(iMov.autoP.X,iMov.autoP.Y,linspace(0,2*pi,101));
+
+% loops through all the sub-regions plotting the circles   
+for i = 1:size(X,1)
+    for j = 1:size(X,2)
+        % calculates the new coordinates and plots the circle
+        xP = X(i,j)+iMov.autoP.R*cos(phi);
+        yP = Y(i,j)+iMov.autoP.R*sin(phi);
+        fill(xP,yP,'r','tag','hOuter','UserData',[i j],...
+                   'facealpha',0.25,'LineWidth',1)
+    end
+end  
+
+% --- creates the circle outlines
+function createGeneralOutlines(hAx,iMov)
+
+% circles missing, so add them in
+hold(hAx,'on');
+
+% memory allocation
+[Xc,Yc] = deal(iMov.autoP.XC,iMov.autoP.YC);
+
+% loops through all the sub-regions plotting the circles   
+for i = 1:size(Xc,1)
+    for j = 1:size(Xc,2)
+        % calculates the new coordinates and plots the circle
+        fill(Xc{i,j},Yc{i,j},'r','tag','hOuter','UserData',[i j],...
+                   'facealpha',0.25,'LineWidth',1)
+    end
+end 
+
+% ------------------------------- %
+% --- MISCELLANEOUS FUNCTIONS --- %
+% ------------------------------- %
+
+% --- if the sub-regions are set, and the user alters the dimension
+%     editboxes, then prompt them if they wish to continue. if so, then
+%     reset all of the properties pertaining to the current sub-region set
+function isReset = resetMovQuest(handles)
+
+% if the sub-regions are not set, then exit with a true value
+iMov = getappdata(handles.figWinSplit,'iMov');
+if (~iMov.isSet); isReset = true; return; end
+
+% prompts the user if they wish to continue
+uChoice = questdlg({'This action will overwrite the current sub-region selection';...
+                    'Do you wish to continue?'},'Overwrite Current Sub-Regions?',...
+                    'Yes','No','Yes');
+if (~strcmp(uChoice,'Yes'))
+    % if the user selected no, then exit the function
+    isReset = false; return
+end
+
+% retrieves the main GUI handle data struct
+[hGUI,isReset] = deal(getappdata(handles.figWinSplit,'hGUI'),true);
+
+% disables the relevant objects
+setObjEnable(handles.menuAutoPlace,'off')
+setObjEnable(handles.buttonUpdate,'off')
+
+% removes any circle objects (if present)
+if is2DCheck(iMov,1)
+    hOut = findall(hGUI.imgAxes,'tag','hOut');
+    if ~isempty(hOut); delete(hOut); end
+else
+    deleteSubRegions(handles)         
+end
+
+% --- initialises the automatic detection algorithm values
+function [iMov,hGUI,I] = initAutoDetect(handles)
+
+% prompts the user that the smart region placement only works for circular
+% regions (this may change in the future...)
+uChoice = questdlg({'Note that the automatically detected regions are fixed.';...
+                 'Do you still wish to continue?'},'Automatic Circle Detection',...
+                 'Yes','No','Yes');
+if (~strcmp(uChoice,'Yes'))
+    [iMov,hGUI,I] = deal([]);
+    return    
+end        
+
+% retrieves the original sub-region data struct
+iMov0 = getappdata(handles.figWinSplit,'iMov');
+
+% retrieves the main image axes image
+hGUI = getappdata(handles.figWinSplit,'hGUI');
+I = get(findobj(get(hGUI.imgAxes,'children'),'type','image'),'cdata');
+
+% determines if the sub-region data struct has been set
+if (isempty(iMov0.iR))
+    % if the sub-regions not set, then determine them from the main axes
+    buttonUpdate_Callback(handles.buttonUpdate, '1', handles)
+
+    % retrieves the sub-region data struct and 
+    iMov = getappdata(handles.figWinSplit,'iMov');
+    if isfield(iMov,'autoP'); iMov = rmfield(iMov,'autoP'); end
+    setappdata(handles.figWinSplit,'iMov',iMov0);
+else
+    % otherwise set the original to be the test data struct
+    iMov = iMov0; clear iMov0
+end
+    
+% makes the GUI invisible (for the duration of the calculations)
+set(handles.figWinSplit,'visible','off'); pause(0.05)
+
+% removes any previous markers and updates from the main GUI axes
+axes(hGUI.imgAxes)
+deleteSubRegions(handles)
+
+% --- updates the figure/axis properties after automatic detection
+function postAutoDetectUpdate(handles,hGUI,iMov0,iMovNw,isUpdate)
+
+% global variables
+global isChange
+
+% determines if the user decided to update or not
+if (isUpdate)
+    % if the user updated the solution, then update the data struct
+    isChange = true;
+    setappdata(handles.figWinSplit,'iMov',iMovNw);
+    
+    % updates the global position coordinates
+    setOutlineProp(handles,'inactive',iMovNw.posG)
+
+    % updates the menu properties
+    set(setObjEnable(handles.menuUseAuto,'on'),'checked','on')
+    set(setObjEnable(handles.menuShowRegion,'on'),'checked','off')
+    
+    % shows the regions on the main GUI
+    menuShowRegion_Callback(handles.menuShowRegion, [], handles)
+    
+    % global variables
+    setObjEnable(handles.buttonUpdate,'on')
+else
+    % updates the menu properties
+    set(setObjEnable(handles.menuUseAuto),'checked','off')
+    set(setObjEnable(handles.menuShowRegion),'checked','on')    
+    
+    % shows the tube regions
+    menuShowRegion_Callback(handles.menuShowRegion, [], handles)
+    
+    % resets the sub-regions on the main GUI axes
+    axes(hGUI.imgAxes)
+    setupSubRegions(handles,iMov0,true);    
+end
+
+% makes the Window Splitting GUI visible again
+set(handles.figWinSplit,'visible','on'); pause(0.05)
+uistack(handles.figWinSplit,'top')  

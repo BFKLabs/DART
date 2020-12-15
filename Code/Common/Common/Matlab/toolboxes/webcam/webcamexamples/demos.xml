@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--    -->
+<!-- Copyright 2014 The MathWorks, Inc. -->
+<demos>
+    <name>MATLAB Support Package for USB Webcams</name>
+    <type>matlab</type>
+    <icon>HelpIcon.DEMOS</icon>
+    <description isCdata="no">
+        <p>MATLAB&#174; provides support to connect to USB Video Class compliant webcams. With this capability, you can connect to webcams and bring live images into MATLAB.</p>
+    </description>
+    <website>
+        <a href="http://www.mathworks.com/">Product page at mathworks.com&#032;</a>
+        <a href="http://www.mathworks.com/"><img src="html/demo_arrow.png" border="none" alt="arrow" align="middle"></img></a>
+    </website> 
+    <demosection>
+        <label>Tutorials</label>
+        <demoitem>
+            <label>Acquiring a Single Image in a Loop</label>
+            <type>M-file</type>
+            <source>webcam_gettingstarted</source>
+            <file>html/webcam_gettingstarted.html</file>
+        </demoitem>
+        <demoitem>
+            <label>Logging Video to Disk</label>
+            <type>M-file</type>
+            <source>webcam_recordingvideo</source>
+            <file>html/webcam_recordingvideo.html</file>
+        </demoitem>
+    </demosection>   
+</demos>
+
+<!-- LocalWords:  webcam USB video image acquisition UVC
+-->
