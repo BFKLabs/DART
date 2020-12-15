@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--Copyright 2013 The MathWorks, Inc. -->
+<!--Image Acquisition Toolbox Support Package Repository -->
+<RTTPackageRepository>
+  <SupportPackage 
+      name="OS Generic Video Interface" 
+      fullname="Image Acquisition Toolbox Support Package for OS Generic Video Interface" 
+      version="14.1.0" 
+      platform="PCWIN,PCWIN64,GLNXA64,MACI64"
+      baseproduct="Image Acquisition Toolbox"
+      visible="1"
+      enable="1" 
+      url="http://www.mathworks.com" 
+      downloadurl="" 
+      licenseurl=""
+      folder="genericvideo"
+      postinstallcmd="matlab:imaqreset;"
+      preuninstallcmd="matlab:imaqreset;">
+    <Path name="$(INSTALLDIR)/genericvideo"></Path>
+    <Path name="$(INSTALLDIR)/genericvideo/adaptor/$(ARCH)"></Path>
+  </SupportPackage>
+</RTTPackageRepository>

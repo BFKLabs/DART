@@ -1,0 +1,197 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Acquiring a Single Image in a Loop</title><meta name="generator" content="MATLAB 8.3"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2014-02-17"><meta name="DC.source" content="webcam_gettingstarted.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><style>
+.open_example { 
+    padding:0px 0px 1px 0px;
+    margin:20px;
+    font-size:0.9em;
+    border:1px solid #aeaeae;
+    display:block;
+    float:right;
+    border-radius:5px; -moz-border-radius:5px; -webkit-border-radius:5px;
+    background: #ffffff; /* Old browsers */
+    background: -moz-linear-gradient(top, #FFFFFF 0%, #E6E6E6 100%); /* FF3.6+ */	
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#FFFFFF), color-stop(100%,#E6E6E6)); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top, #FFFFFF 0%,#E6E6E6 100%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top,  #ffffff 0%,#e6e6e6 100%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(top,  #ffffff 0%,#e6e6e6 100%); /* IE10+ */
+    background: linear-gradient(top,  #ffffff 0%,#e6e6e6 100%); /* W3C */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#FFFFFF', endColorstr='#E6E6E6',GradientType=0 ); /* IE6-9 */
+}
+
+.open_example:hover {
+    background: #f3f3f3; /* Old browsers */
+    background: -moz-linear-gradient(top, #f3f3f3 0%, #d7d7d7 100%); /* FF3.6+ */    
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#f3f3f3), color-stop(100%,#d7d7d7)); /* Chrome,Safari4+ */
+    background: -webkit-linear-gradient(top, #f3f3f3 0%,#d7d7d7 100%); /* Chrome10+,Safari5.1+ */
+    background: -o-linear-gradient(top,  #f3f3f3 0%,#d7d7d7 100%); /* Opera 11.10+ */
+    background: -ms-linear-gradient(top,  #f3f3f3 0%,#d7d7d7 100%); /* IE10+ */
+    background: linear-gradient(top,  #f3f3f3 0%,#d7d7d7 100%); /* W3C */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f3f3f3', endColorstr='#d7d7d7',GradientType=0 ); /* IE6-9 */
+} 
+
+.open_example a { 
+    padding:6px 10px; 
+    line-height:130%;
+    text-decoration:none;
+    float:left;
+}
+      </style><div class="open_example"><a href="matlab:edit webcam_gettingstarted">Open this Example</a></div><div class="content"><h1>Acquiring a Single Image in a Loop</h1><!--introduction--><p>This example shows how to use the <tt>snapshot</tt> function to acquire live images from USB Webcams.</p><p>MATLAB&reg; Support Package for USB Webcams provides ability to bring live images from any USB Video Class (UVC) compliant Webcam into MATLAB&reg;.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Identifying Available Webcams</a></li><li><a href="#2">Set up Connection to Webcam</a></li><li><a href="#3">Preview Video Stream</a></li><li><a href="#4">Acquire a Frame</a></li><li><a href="#5">Acquiring Multiple Frames</a></li><li><a href="#6">Clean up</a></li></ul></div><h2>Identifying Available Webcams<a name="1"></a></h2><p>The <tt>webcamlist</tt> function provides a cell array of webcams on the current system that MATLAB&reg; can access.</p><pre class="codeinput">camList = webcamlist
+</pre><pre class="codeoutput">
+camList = 
+
+    'Logitech HD Webcam C310'
+
+</pre><h2>Set up Connection to Webcam<a name="2"></a></h2><p>A Webcam object represents the connection between MATLAB&reg; and the USB webcam. To create a connection to the webcam, use the <tt>webcam</tt> function and indicate what camera to be connected with. You can specify the camera either by name or index as returned by <tt>webcamlist</tt>. This example uses the "Logitech HD Webcam C310" camera. Once the connection is established, you can access specific property values by using the dot(.) notation.</p><pre class="codeinput"><span class="comment">% Connect to the webcam.</span>
+cam = webcam(1)
+</pre><pre class="codeoutput">
+cam = 
+
+  webcam with properties:
+
+                     Name: 'Logitech HD Webcam C310'
+               Resolution: '640x480'
+     AvailableResolutions: {1x19 cell}
+                 Exposure: -6
+               Brightness: 128
+                     Gain: 32
+               Saturation: 32
+             WhiteBalance: 0
+             ExposureMode: 'auto'
+                Sharpness: 24
+                 Contrast: 32
+    BacklightCompensation: 1
+
+</pre><h2>Preview Video Stream<a name="3"></a></h2><p>To open a Video Preview window, use the <tt>preview</tt> function. The Video Preview window displays the live video stream from the device.</p><pre class="codeinput">preview(cam);
+</pre><img vspace="5" hspace="5" src="webcam_gettingstarted_01.png" alt=""> <h2>Acquire a Frame<a name="4"></a></h2><p>To acquire a single frame, use the <tt>snapshot</tt> function.</p><pre class="codeinput">img = snapshot(cam);
+
+<span class="comment">% Display the frame in a figure window.</span>
+image(img);
+</pre><img vspace="5" hspace="5" src="webcam_gettingstarted_02.png" alt=""> <h2>Acquiring Multiple Frames<a name="5"></a></h2><p>A common task is to repeatedly acquire a single image, process it, and then store the result. To do this, <tt>snapshot</tt> should be called in a loop.</p><pre class="codeinput"><span class="keyword">for</span> idx = 1:5
+    img = snapshot(cam);
+    image(img);
+<span class="keyword">end</span>
+</pre><img vspace="5" hspace="5" src="webcam_gettingstarted_03.png" alt=""> <h2>Clean up<a name="6"></a></h2><p>Once the connection is no longer needed, clear the associated variable.</p><pre class="codeinput">clear <span class="string">cam</span>
+</pre><p class="footer">Copyright 2014 The MathWorks, Inc.<br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2014a</a><br><br>
+		  MATLAB and Simulink are registered trademarks of The MathWorks, Inc.  Please see <a href="http://www.mathworks.com/trademarks">www.mathworks.com/trademarks</a> for a list of other trademarks owned by The MathWorks, Inc.  Other product or brand names are trademarks or registered trademarks of their respective owners.
+      </p></div><!--
+##### SOURCE BEGIN #####
+%% Acquiring a Single Image in a Loop
+% This example shows how to use the |snapshot| function to acquire live
+% images from USB Webcams.
+%
+% MATLAB(R) Support Package for USB Webcams provides ability to bring live
+% images from any USB Video Class (UVC) compliant Webcam into MATLAB(R). 
+
+% Copyright 2014 The MathWorks, Inc.
+
+%% Identifying Available Webcams
+% The |webcamlist| function provides a cell array of webcams on the current
+% system that MATLAB(R) can access.
+camList = webcamlist
+
+%% Set up Connection to Webcam
+% A Webcam object represents the connection between MATLAB(R) and the USB
+% webcam. To create a connection to the webcam, use the |webcam| function
+% and indicate what camera to be connected with. You can specify the camera
+% either by name or index as returned by |webcamlist|. This example uses
+% the "Logitech HD Webcam C310" camera. Once the connection is established,
+% you can access specific property values by using the dot(.) notation. 
+
+% Connect to the webcam.
+cam = webcam(1)
+
+%% Preview Video Stream
+% To open a Video Preview window, use the |preview| function. The Video 
+% Preview window displays the live video stream from the device. 
+preview(cam);
+
+%% Acquire a Frame
+% To acquire a single frame, use the |snapshot| function.
+img = snapshot(cam);
+
+% Display the frame in a figure window.
+image(img);
+
+%% Acquiring Multiple Frames
+% A common task is to repeatedly acquire a single image, process it, and
+% then store the result. To do this, |snapshot| should be called in a loop. 
+
+for idx = 1:5
+    img = snapshot(cam);
+    image(img);
+end
+
+%% Clean up
+% Once the connection is no longer needed, clear the associated variable.
+
+clear cam
+
+##### SOURCE END #####
+--></body></html>

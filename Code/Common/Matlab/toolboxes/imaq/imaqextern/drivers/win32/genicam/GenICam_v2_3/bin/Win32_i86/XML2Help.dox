@@ -1,0 +1,30 @@
+GENERATE_LATEX   = NO
+GENERATE_MAN     = NO
+GENERATE_RTF     = NO
+CASE_SENSE_NAMES = NO
+JAVADOC_AUTOBRIEF = YES
+GENERATE_HTMLHELP = YES
+GENERATE_CHI     = YES
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION			= YES
+EXPAND_ONLY_PREDEF 		= YES
+EXPAND_AS_DEFINED      = WIN32
+HIDE_UNDOC_MEMBERS      = YES
+PREDEFINED			   = interface=struct \
+						 DOXYGEN_IGNORE \
+						 GENAPI_DECL=
+OUTPUT_DIRECTORY 	    = .\
+INPUT                  = $(GENICAM_ROOT_V2_3)/library/CPP/Include/genapi/IBase.h \
+						 $(GENICAM_ROOT_V2_3)/library/CPP/Include/genapi/IBoolean.h \
+						 $(GENICAM_ROOT_V2_3)/library/CPP/Include/genapi/ICategory.h \
+						 $(GENICAM_ROOT_V2_3)/library/CPP/Include/genapi/ICommand.h \
+						 $(GENICAM_ROOT_V2_3)/library/CPP/Include/genapi/IEnumEntry.h \
+						 $(GENICAM_ROOT_V2_3)/library/CPP/Include/genapi/IEnumeration.h \
+						 $(GENICAM_ROOT_V2_3)/library/CPP/Include/genapi/IEnumerationT.h \
+						 $(GENICAM_ROOT_V2_3)/library/CPP/Include/genapi/IFloat.h \
+						 $(GENICAM_ROOT_V2_3)/library/CPP/Include/genapi/IInteger.h \
+						 $(GENICAM_ROOT_V2_3)/library/CPP/Include/genapi/IPort.h \
+						 $(GENICAM_ROOT_V2_3)/library/CPP/Include/genapi/IRegister.h \
+						 $(GENICAM_ROOT_V2_3)/library/CPP/Include/genapi/IString.h \
+						 $(GENICAM_ROOT_V2_3)/library/CPP/Include/genapi/IValue.h \
+						 $(GENICAM_ROOT_V2_3)/library/CPP/Include/genapi/GenApiDLL.h \						 

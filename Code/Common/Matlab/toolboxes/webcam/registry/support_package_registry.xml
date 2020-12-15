@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--Copyright 2013-2015 The MathWorks, Inc. -->
+<!--MATLAB Webcam Support Package Repository -->
+<RTTPackageRepository>
+  <SupportPackage 
+      name="USB Webcams" 
+      fullname="MATLAB Support Package for USB Webcams" 
+      version="14.1.3" 
+      platform="PCWIN,PCWIN64,MACI64,GLNXA64"
+      baseproduct="MATLAB"
+      visible="1"
+      enable="1" 
+      url="http://www.mathworks.com" 
+      downloadurl="" 
+      licenseurl=""
+      demoxml="webcamexamples/demos.xml"
+      folder="webcam"> 
+    <Path name="$(INSTALLDIR)/webcam"></Path>
+    <Path name="$(INSTALLDIR)/webcam/private/$(ARCH)"></Path>
+    <Path name="$(INSTALLDIR)/webcam/webcamexamples"></Path>
+  </SupportPackage>
+</RTTPackageRepository>
