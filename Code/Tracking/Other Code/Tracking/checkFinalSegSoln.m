@@ -166,6 +166,14 @@ global wOfs
 if (isfield(iMov,'xcP'))
     % case is the svm tracking algorithm 
     dTol = 4*sqrt(1+is2D)*detApproxSize(iMov.xcP)/FPS;
+    
+elseif isfield(iMov,'szObj')
+    if is2D
+        dTol = 4*iMov.szObj(1)/FPS;
+    else
+        dTol = 4*sqrt(2)*sqrt(prod(iMov.szObj))/FPS;
+    end
+    
 else
     % case is the direct detection tracking algorithm
     if isColGroup(iMov)

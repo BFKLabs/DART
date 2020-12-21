@@ -207,7 +207,6 @@ classdef SingleTrackFull < SingleTrack
                     end
                     
             end
-                
             
             % retrieves the positional data from the previous phase
             if iPhase == 1

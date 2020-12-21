@@ -305,7 +305,7 @@ function resetFigSize(h,fPos)
 
 % sets the overall width/height of the figure
 [W0,H0,dY,dX] = deal(fPos(3),fPos(4),10,10);
-dPos = {[70,2*dX],[85,70]};
+dPos = {[80,2*dX],[85,70]};
 
 % updates the image panel dimensions
 pPos = [dX,dY,(W0-2*dX),(H0-2*dY)];
@@ -356,7 +356,7 @@ set(handles.menuDiagCheck,'enable',mStr)
 % creates the new apparatus markers
 for i = 1:length(iMov.iR)
     % creates the new menu item
-    hMenuNw = uimenu(hMenu,'Label',sprintf('Apparatus %i Location',i)); 
+    hMenuNw = uimenu(hMenu,'Label',sprintf('Region %i Location',i)); 
     
     % sets the menu item callback function
     bFunc = @(hMenuNw,e)FlySolnView('menuSelectUpdate',hMenuNw,[],handles);                       
@@ -417,16 +417,19 @@ end
 switch (iApp)
     case (0) % case is the average velocity             
         yLimT = [1 nApp] + 0.5*[-1 1];
-        ylabel(hAx,'Apparatus','fontweight','bold','fontsize',lblSize)        
+        ylabel(hAx,'Region Index','fontweight','bold','fontsize',lblSize)      
+        
     otherwise % case is the positional traces
         yLimT = [1 nFly] + 0.5*[-1 1];
-        ylabel(hAx,'Fly Index','fontweight','bold','fontsize',lblSize)
+        ylabel(hAx,'Sub-Region Index','fontweight','bold',...
+                   'fontsize',lblSize)
 end
 
 % sets the limits based on the 
 if (nFly > nApp)
     yTick = 1:nFly;
     yStr = cellfun(@(x)(sprintf('%i',x)),num2cell(1:nFly)','un',0);    
+    
 else
     yTick = 1:nApp;   
     yStr = cellfun(@(x)(sprintf('%i',x)),num2cell(1:nApp)','un',0);
@@ -600,7 +603,7 @@ switch (iApp)
         % sets the y-axis limits and strings
         yTick = 1:nApp;
         yStr = cellfun(@(x)(sprintf('%i',x)),num2cell(yTick)','un',0);
-        ylabel(hAx,'Apparatus','fontweight','bold','fontsize',lblSize)        
+        ylabel(hAx,'Region Index','fontweight','bold','fontsize',lblSize)        
         
         % calculates the fly velocities (over all apparatus)
         Vplt = cellfun(@(x)(calcPopVel(T,x)),pData.fPos,'un',0);     
@@ -627,7 +630,7 @@ switch (iApp)
         
         % sets the object visibility
         set(findobj(hAx,'tag','hLinePop'),'visible','off')                                        
-        set(get(hAx,'Title'),'string',sprintf('Apparatus %i Location',iApp))
+        set(get(hAx,'Title'),'string',sprintf('Region %i Location',iApp))
         set(hLine,'visible',vStr{1+vType(1)})
         if (is2D)
             set(findobj(hAx,'tag','hLineInd2'),'visible',vStr{1+vType(2)}); 
@@ -636,7 +639,8 @@ switch (iApp)
         % sets the y-axis limits and strings
         yTick = 1:nFly;
         yStr = cellfun(@(x)(sprintf('%i',x)),num2cell(yTick)','un',0);
-        ylabel(hAx,'Fly Index','fontweight','bold','fontsize',lblSize)                        
+        ylabel(hAx,'Sub-Region Index','fontweight','bold',...
+                   'fontsize',lblSize)                        
         fPosNw = pData.fPos{iApp};
         
         % calculates the x-coordinates

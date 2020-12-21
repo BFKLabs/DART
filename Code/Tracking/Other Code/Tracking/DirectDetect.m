@@ -11,9 +11,10 @@ classdef DirectDetect < handle
         
         % boolean/scalar flags
         wOfs = 1;      
-        hasProg = false;
-        calcBG = false;   
+        hasProg = false;        
         calcOK = true;
+        calcRes = true;
+        calcInit
         
         % dimensioning veriables
         nApp
@@ -24,6 +25,7 @@ classdef DirectDetect < handle
         hG
         y0
         szObj
+        vPh
         
         % permanent calculated values
         IBG
@@ -36,6 +38,7 @@ classdef DirectDetect < handle
         iStatus               
         
         % temporary object fields
+        ImgMd
         ImdBG
         iImgBG
         ImdRL
@@ -100,23 +103,38 @@ classdef DirectDetect < handle
         % ---------------------------- %         
         
         % --- runs the main detection algorithm 
-        function runDetectionAlgo(obj,prData)
+        function runDetectionAlgo(obj,prData,calcInit)
            
             % default input arguments
             if ~exist('prData','var'); prData = []; end
+            if ~exist('calcInit','var'); calcInit = false; end
             
             % field updates and other initialisations
             obj.prData = prData;
+            obj.calcInit = calcInit;
             obj.nImg = length(obj.Img);                                
             
             % initialises the solver fields
             obj.initObjectFields();
             
-            % calculates the median filtered background estimate
-            obj.calcLocalImageMedian();
+%             % calculates the median filtered background estimate
+%             obj.calcLocalImageMedian();
             
             % calculates the initial fly location estimates
-            obj.calcFlyLocEstimate();
+            if obj.calcInit || isempty(obj.iMov.IbgT)
+                % calculates the object positions directly if:
+                %  - these are initial (bg) object calculations, or
+                %  - no total background image has been set
+                obj.calcInitObjPos();
+                
+            else
+                % otherwise, calculate the 
+                obj.calcFullObjPos();
+            end
+            
+            % calculates the global coordinates & performs housekeeping
+            obj.calcGlobalCoords();
+            obj.performHouseKeepingOperations();         
             
         end                
         
@@ -128,9 +146,11 @@ classdef DirectDetect < handle
             obj.calcOK = true;            
             
             % permanent field memory allocation
-            obj.pMax = cell(obj.nApp,obj.nImg);
-            obj.fPos = cell(obj.nApp,obj.nImg);            
-            obj.iStatus = ~obj.iMov.flyok*3;
+            if obj.calcRes
+                obj.pMax = cell(obj.nApp,obj.nImg);
+                obj.fPos = cell(obj.nApp,obj.nImg);            
+                obj.iStatus = ~obj.iMov.flyok*3;
+            end
             
             % temporary field memory allocation
             obj.IL = cell(obj.nImg,1);
@@ -147,15 +167,12 @@ classdef DirectDetect < handle
             
         end
         
-        % ---------------------------- %
-        % --- MAIN SOLVER FUNCTION --- %
-        % ---------------------------- %        
+        % ----------------------------- %
+        % --- MAIN SOLVER FUNCTIONS --- %
+        % ----------------------------- %        
         
-        % --- runs the main calculation estimation function
-        function calcFlyLocEstimate(obj)
-            
-            % calculates the likely points for the moving objects             
-            obj.calcResidualLikelyPoints();
+        % --- runs the initial position estimation function
+        function calcInitObjPos(obj)            
             
             % calculates the likely points for the static objects           
             obj.calcStaticLikelyPoints();
@@ -164,15 +181,55 @@ classdef DirectDetect < handle
             obj.calcFramePointGroupings();
             
             % calculates the background image estimate            
-            obj.estimateBG();
-            
-            % calculates the global coordinates
-            obj.calcGlobalCoords();
-            
-            % closes the progressbar (if opened within the function)
-            obj.performHouseKeepingOperations()
+            obj.estimateBG();            
             
         end        
+        
+        % --- runs the initial position estimation function
+        function calcFullObjPos(obj)
+            
+            % calculates the median filtered images
+            obj.updateProgBar(1,'Subtracting Image Baseline...',0);
+            obj.ImgMd = removeImageMedianBL(obj.Img,false); 
+            obj.updateProgBar(1,'Image Baseline Subtraction Complete',1);
+            
+            % calculates the object locations over all regions/frames
+            for i = 1:obj.nApp
+                % updates the progressbar
+                wStr = sprintf(...
+                        'Object Detection (Region %i of %i)',i,obj.nApp);
+                if obj.updateProgBar(2,wStr,0.5*(1+i/(1+obj.nApp)))
+                    % if the user cancelled, then exit
+                    obj.calcOK = false;
+                    return
+                end
+                
+                % calculates the region residual images 
+                [iR,iC] = deal(obj.iMov.iR{i},obj.iMov.iC{i});
+                ILnw = cellfun(@(x)(x(iR,iC)),obj.ImgMd,'un',0);
+                IRLnw = cellfun(@(x)(x-obj.iMov.IbgT{i}),ILnw,'un',0);
+                
+                % calculates the region position offset
+                pOfs = [zeros(length(obj.y0{i}),1),obj.y0{i}];
+                
+                % calculates the likely coordinates of the object over all
+                % the frames in the stack
+                for j = 1:obj.nImg
+                    IRLnwT = cellfun(@(x)...
+                            (IRLnw{j}(x,:)),obj.iMov.iRT{i},'un',0);
+                    fPosNw = pOfs + cell2mat(...
+                            cellfun(@(x)(getMaxCoord(x)),IRLnwT,'un',0));
+                        
+                    % removes any rejected regions
+                    fPosNw(~obj.iMov.flyok(:,i),:) = NaN;
+                    obj.fPos{i,j} = fPosNw;
+                end
+            end
+        
+            % updates the progressbar
+            obj.updateProgBar(2,'Object Detection Complete',1);
+            
+        end
         
         % --- calculates the global coords from the sub-region reference
         function calcGlobalCoords(obj)
@@ -202,12 +259,14 @@ classdef DirectDetect < handle
                     obj.fPosG{iApp,iFrm} = obj.fPos{iApp,iFrm} + pOfs;
                     
                     % sets the other potential marker locations
-                    for iT = 1:obj.nTube(iApp)
-                        if obj.iMov.flyok(iT,iApp)
-                            pMaxT = obj.pMax{iApp,iFrm}{iT};
-                            obj.pMaxG{iApp,iFrm}{iT} = pMaxT + ...
+                    if obj.calcInit
+                        for iT = 1:obj.nTube(iApp)
+                            if obj.iMov.flyok(iT,iApp)
+                                pMaxT = obj.pMax{iApp,iFrm}{iT};
+                                obj.pMaxG{iApp,iFrm}{iT} = pMaxT + ...
                                     repmat([xOfs,yOfs+obj.y0{iApp}(iT)],...
                                     size(pMaxT,1),1);
+                            end
                         end
                     end
                 end
@@ -224,11 +283,11 @@ classdef DirectDetect < handle
         %     assumed the image stack has a reasonably stable background)
         function calcResidualLikelyPoints(obj)
             
-            % function only works if there: 
+            % function only works if: 
             %  - there is more than one image
-            %  - if this is not the initial estimate
             %  - the user has not cancelled
-            if (obj.nImg == 1) || ~obj.calcOK
+            %  - the residual analysis is actually required
+            if (obj.nImg == 1) || ~obj.calcOK || ~obj.calcRes
                 return
             end            
             
@@ -282,7 +341,7 @@ classdef DirectDetect < handle
             pMax0 = repmat({cell(nT,1)},1,obj.nImg);
             
             % local image/median filtered background images
-            Imd_BG = obj.ImdBG(iR,iC);
+            Imd_BG = obj.ImdBG{1}(iR,iC);
             ImgL = cellfun(@(x)(x(iR,iC)),obj.Img,'un',0);
             
             % for each sub-region
@@ -290,7 +349,7 @@ classdef DirectDetect < handle
                 % sets the sub-images and median background estimate
                 % residual image masks (for all images in the stack)
                 ImgT = cellfun(@(x)(x(iRT{iT},:)),ImgL,'un',0);
-                ImdTR = cellfun(@(x)(max(0,obj.medianShiftImg(...
+                ImdTR = cellfun(@(x)(max(0,medianShiftImg(...
                                     Imd_BG(iRT{iT},:)-x))),ImgT,'un',0);
                     
 
@@ -299,7 +358,7 @@ classdef DirectDetect < handle
                 for i = 1:obj.nImg
                     for j = (i+1):obj.nImg
                         % calculates the residuals between the 2 images
-                        IappR0 = obj.medianShiftImg(ImgT{j}-ImgT{i});
+                        IappR0 = medianShiftImg(ImgT{j}-ImgT{i});
 
                         % calculates the positive residual ratio image
                         IappR{i,j} = max(0,IappR0);
@@ -412,7 +471,7 @@ classdef DirectDetect < handle
             
         end
       
-        % --- 
+        % --- groups the static points by their relative likeness
         function pB = groupLikelyPoints(obj,IRcombF,Bmap)
             
             % initialisations
@@ -481,6 +540,10 @@ classdef DirectDetect < handle
             obj.updateProgBarMain(3,'Calculating Filtered Residual Images');
             obj.updateProgBarSub('Frame',0)
             
+            % calculates the 
+            [obj.ImgMd,obj.ImdBG] = ...
+                            removeImageMedianBL(obj.Img,obj.vPh==1);
+            
             % calculates the residual images
             for iImg = 1:obj.nImg
                 % updates the progressbar sub-field                
@@ -516,7 +579,7 @@ classdef DirectDetect < handle
                 end
                 
                 % calculations only necessary if there are static objects
-                isStatic = (obj.iStatus(:,iApp) == 0) & fok(:,iApp);
+                isStatic = obj.iStatus(:,iApp) == 0 & fok(:,iApp);
                 if any(isStatic)                
                     for iImg = 1:obj.nImg 
                         obj.pMax{iApp,iImg} = ...
@@ -681,11 +744,12 @@ classdef DirectDetect < handle
         end        
      
         % --- aligns all the stationary points over all frames
-        function alignStaticObjects(obj,iApp)               
+        function alignStaticObjects(obj,iApp)
             
             % retrieves the potential            
             if size(obj.pMax,2) == 1
                 pMaxApp = obj.pMax{iApp,1}(:);
+                
             else
                 pMaxTmp = cellfun(@(x)(x(:)),obj.pMax(iApp,:),'un',0);
                 pMaxApp = cell2cell(pMaxTmp,0);
@@ -700,6 +764,7 @@ classdef DirectDetect < handle
                 % if the generic binary mask has not been created, then set
                 % this up
                 obj.optObjectShape(pMaxApp,iApp);
+                
             elseif isnan(obj.szObj)
                 % if not set, then calculate the approximate fly size 
                 [~,objBB] = getGroupIndex(obj.Bopt,'BoundingBox');
@@ -819,7 +884,7 @@ classdef DirectDetect < handle
                     % if the user cancelled, then exit
                     return
                 else                                                
-                    % otherwise, calculate the groupings                    
+                    % otherwise, calculate the groupings  
                     obj.calcRegionPointGroupings(iApp); 
                 end 
                 
@@ -897,10 +962,21 @@ classdef DirectDetect < handle
             
             % initialistions
             p_Max = obj.pMax(iApp,:);
-            dN = (size(obj.Bopt,1)-1)/2;
+            
             nTubeR = obj.nTube(iApp);        
             fok = obj.iMov.flyok(:,iApp);
-            Ngrp = cellfun(@(x)(size(x,1)),p_Max{1});                 
+            Ngrp = cellfun(@(x)(size(x,1)),p_Max{1});        
+            
+            %
+            if isempty(obj.Bopt)
+                pMaxTmp = cellfun(@(x)(x(:)),obj.pMax(iApp,:),'un',0);
+                pMaxApp = cell2cell(pMaxTmp,0);                
+                
+                obj.optObjectShape(pMaxApp,iApp)
+            end
+            
+            % sets the sub-image size offset
+            dN = (size(obj.Bopt,1)-1)/2;
             
             % retrieves the sub-image stacks            
             Isub0 = obj.getAllSubImages(...
@@ -913,10 +989,6 @@ classdef DirectDetect < handle
             
             % condenses sub-images for static objects into a single frame
             Isub = num2cell(cell2cell(Isub,0),2);
-%             for iT = find((obj.iStatus(:,iApp) == 0) & fok)'
-%                 Isub(indG{iT}) = cellfun(@(x)({nanmean(cell2mat(...
-%                    reshape(x,[1,1,length(x)])),3)}),Isub(indG{iT}),'un',0);   
-%             end
             
             % ----------------------------- %
             % ---- METRIC CALCULATIONS ---- %
@@ -1139,55 +1211,6 @@ classdef DirectDetect < handle
         
         % --- optimises the shape function to the average image
         function optObjectShape(obj,pMaxApp,iApp)
-            
-            % --- optimises parameters for the general 2D gaussian equation
-            function [Iopt,pOptF] = opt2DGaussian(Isub,pLim,pOpt0)
-                
-                % --- optimisation function for fitting the gabor function
-                function [F,ITg] = optFunc(p,IT,X,Y)
-                    
-                    % calculates the new objective function
-                    try
-                        [Y0,A,k1,k2] = deal(p(1),p(2),p(3),p(4));
-                        ITg = Y0 - A*exp(-k1*X.^2 + -k2*Y.^2);
-                        
-                        % calculates the objective function
-                        F = ITg - IT;
-                    catch
-                        %
-                        [F,ITg] = deal(1e10*ones(size(IT)),NaN(size(IT)));
-                    end
-                    
-                end
-                
-                % optimisation solver option struct
-                opt = optimset('display','none','tolX',1e-6,'TolFun',1e-6);
-                
-                % calculates the weighted mean image
-                pW = pLim/min(pLim);
-                X = cellfun(@(p,x)(p*x),num2cell(pW(:)),Isub(:),'un',0);
-                I = nansum(cell2mat(reshape(X,[1,1,length(X)])),3)/sum(pW);
-                
-                % estimates the median/amplitude
-                if isempty(pOpt0)
-                    I(isnan(I)) = nanmedian(I(:));
-                    Ymd = median(I(:));
-                    Yamp = max(I(:)) - min(I(:));
-                    pOpt0 =  [   Ymd,  Yamp,  0.1, 0.1];
-                end
-                
-                % sets up the x/y coordinate values
-                D = floor(size(I,1)/2);
-                [X,Y] = meshgrid(-D:D);
-                
-                % parameters
-                pLB = [-255.0,-255.0,  0.0, 0.0];
-                pUB = [ 255.0, 255.0,  1.0, 1.0];
-                
-                % runs the optimiation can returns the optimal template
-                pOptF = lsqnonlin(@optFunc,pOpt0,pLB,pUB,opt,I,X,Y);
-                [~,Iopt] = optFunc(pOptF,I,X,Y);
-            end            
            
             % parameters
             dimgSz = 5;
@@ -1304,7 +1327,7 @@ classdef DirectDetect < handle
             
             % calculates the metrics for each group
             pMin = min(cellfun(@(x)(min(...
-                                cellfun(@(y)(min(y(:))),x))),Isub(:)));
+                                cellfun(@(y)(min(y(:))),x))),Isub(:)));                            
             for i = 1:numel(Isub)
                 Isub{i} = cellfun(@(x)(x/pMin),Isub{i},'un',0);
             end
@@ -1529,29 +1552,115 @@ classdef DirectDetect < handle
         % --- calculates the background images for each region
         function estimateBG(obj)
             
-            % exit if not calculating the background
-            if ~(obj.calcBG && obj.calcOK)
-                return
+            % parameters            
+            rTol = 0.25;
+            [I,IR] = deal(cell(obj.nApp,1));
+            
+            % sets the 
+            if isnan(obj.szObj)
+                dX = 5;
+            else
+                dX = floor(obj.szObj(1)/2);
             end
             
-            % memory allocation
-            [obj.IBG,obj.pBG] = deal(cell(obj.nApp,1));
-            
             % updates the progressbar fields
-            obj.updateProgBarMain(6,'Calculating Background Image Estimate');
-            obj.updateProgBarSub('Region',0)
+            obj.updateProgBarMain(6,'Estimating Background Image');
+            obj.updateProgBarSub('Region',0)            
             
-            % calculates the background image estimate for each region
-            for iApp = 1:obj.nApp
-                % updates the progress bar sub-field
-                obj.updateProgBarSub('Region',iApp,obj.nApp)
-                if ~obj.calcOK
-                    % if the user cancelled, then exit
-                    return
-                else                
-                    % calculates the background estimate for the region                
-                    obj.estimateRegionBG(iApp);
+            %            
+            for iApp = 1:obj.nApp                
+                % field retrieval
+                iR = obj.iMov.iR{iApp};
+                iC = obj.iMov.iC{iApp};
+
+                % retrieves the images for the current region
+                if obj.vPh == 1  
+                    I{iApp} = cellfun(@(x)(x(iR,iC)),obj.Img,'un',0);                     
+                else
+                    I{iApp} = cellfun(@(x)(x(iR,iC)),obj.ImgMd,'un',0); 
                 end
+            end
+            
+            % exit if not calculating the background
+            if obj.vPh == 1            
+                % memory allocation
+                [obj.IBG,obj.pBG] = deal(cell(obj.nApp,1));
+
+                % calculates the background image estimate for each region
+                for iApp = 1:obj.nApp
+                    % updates the progress bar sub-field
+                    obj.updateProgBarSub('Region',iApp,obj.nApp)
+                    if ~obj.calcOK
+                        % if the user cancelled, then exit
+                        return
+                    else                
+                        % calculates the background estimate for the region                
+                        obj.estimateRegionBG(iApp);
+                        
+                        % calculates the residuals for all frames
+                        IR{iApp} = cellfun(@(x)(obj.zeroImgEdges...
+                                    (obj.IBG{iApp}-x,dX)),I{iApp},'un',0);
+                    end
+                end
+            else
+                % for non low-variance phases, estimate what the background
+                % image should be from the median image estimate
+                
+                %
+                for iApp = 1:obj.nApp                
+                    % field retrieval
+                    iR = obj.iMov.iR{iApp};
+                    iC = obj.iMov.iC{iApp};
+                    iRT = obj.iMov.iRT{iApp};
+                    IbgT0 = obj.iMov.IbgT{iApp};                    
+                    
+                    % determines if any sub-regions have not been set
+                    x0 = cellfun(@(x)(IbgT0(x(1),1)),iRT);
+                    isSet = isnan(x0(:)');
+                
+                    % calculates the bg for each of the missing sub-regions
+                    for iT = find(isSet)
+                        %
+                        pOfs = [1,iRT{iT}(1)]-1;
+                        
+                        % retrieves 
+                        IL0 = cellfun(@(x)(x(iRT{iT},:)),I{iApp},'un',0);
+                        IBG0 = cellfun(@(x)(-x(iR(iRT{iT}),iC)),obj.ImdBG,'un',0);
+                        fP = cellfun(@(x)(x(iT,:)-pOfs),obj.fPos(iApp,:),'un',0);
+                        
+                        %
+                        IBGtmp = cellfun(@(I,Ibg,fP)(obj.setBGImage(...
+                                    I,Ibg,fP,0.95)),IL0,IBG0,fP,'un',0);
+                        IBGnw = calcImageStackFcn(IBGtmp);
+                        obj.iMov.IbgT{iApp}(iRT{iT},:) = IBGnw;
+                        
+                    end
+                    
+                    % calculates the residual values at the points
+                    % calculated from the object detection
+                    IR{iApp} = cellfun(@(x,y)(obj.zeroImgEdges...
+                              (x-obj.iMov.IbgT{iApp},dX)),I{iApp},'un',0);
+                end
+            end
+            
+            % determines if any of the sub-regions are empty
+            for iApp = 1:obj.nApp
+                % retrieves the residual values at the location points
+                rPts = cell2mat(cellfun(@(x,fp)...
+                            (obj.getPointResiduals(x,roundP(fp))),...
+                            IR{iApp},obj.fPos(iApp,:),'un',0));
+                rPts(~obj.iMov.flyok(:,iApp),:) = 0;
+
+                % determines if any of the points are outliers. if so, then
+                % the region is probably empty
+                rPtsMx = nanmax(rPts,[],2);
+                isEmpt = rPtsMx/nanmedian(rPtsMx) < rTol;
+                
+                if any(isEmpt(:))
+                    a = 1;
+                end
+                
+                obj.iStatus(isEmpt,iApp) = 3;                
             end
             
             % updates the progressbar fields
@@ -1560,49 +1669,7 @@ classdef DirectDetect < handle
         end
         
         % --- calculates the background image estimate for sub-region iApp
-        function estimateRegionBG(obj,iApp)
-            
-            % --- sets the background image (the images with the locations
-            %     of the objects being removed)
-            function [IappBG,BMax,isOK] = ...
-                                setBGImage(obj,Iapp,fPosT,Imd_BG)
-                
-                % parameters
-                hQ = 0.25;
-                
-                % initialisations
-                sz = size(Iapp);
-                isOK = ~isnan(fPosT(:,1));    
-                Qopt = obj.Iopt.^hQ;
-                
-                % memory allocation      
-                Qw = zeros(sz);
-                del = (size(Qopt,1)-1)/2;                
-                
-                % sets up the points
-                Imd_BGnw = Imd_BG + (median(Iapp(:))-median(Imd_BG(:)));
-                BMax = setGroup(cellfun(@(x)(...
-                    sub2ind(sz,x(2),x(1))),num2cell(fPosT(isOK,:),2)),sz);
-                
-                % sets up the binary image for object removal
-                for i = find(isOK(:))'
-                    % sets the row/column indices
-                    iCP = (fPosT(i,1)-del):(fPosT(i,1)+del);
-                    iRP = (fPosT(i,2)-del):(fPosT(i,2)+del);
-                    
-                    % determines which row/column indices are valid
-                    jj = (iCP > 0) & (iCP <= sz(2));
-                    ii = (iRP > 0) & (iRP <= sz(1));
-                    
-                    % determines the binary location that overlaps the fly
-                    Qw(iRP(ii),iCP(jj)) = ...
-                                    max(Qopt(ii,jj),Qw(iRP(ii),iCP(jj)));
-                end
-                
-                % removes the object locations from the image
-                IappBG = Qw.*Imd_BGnw + (1-Qw).*Iapp;
-                
-            end
+        function estimateRegionBG(obj,iApp)            
             
             % parameters
             nDil = 1;
@@ -1610,7 +1677,7 @@ classdef DirectDetect < handle
             % initialisations
             [IappBG,BMaxT] = deal(cell(obj.nImg,1));
             [iR,iC] = deal(obj.iMov.iR{iApp},obj.iMov.iC{iApp});
-            Imd_BG = obj.ImdBG(iR,iC);
+            Imd_BG = obj.ImdBG{1}(iR,iC);
             
             % converts all potential locations (for the current sub-region)
             % into a single array
@@ -1622,12 +1689,12 @@ classdef DirectDetect < handle
             % sets the images for the background estimate
             isOK = cell(obj.nImg,1);
             for iImg = 1:obj.nImg
-                [IappBG{iImg},BMaxT{iImg},isOK{iImg}] = setBGImage(obj,...
-                                Iapp{iImg},roundP(fPosT{iImg}),Imd_BG);
+                [IappBG{iImg},BMaxT{iImg},isOK{iImg}] = ...
+                    obj.setBGImage(Iapp{iImg},Imd_BG,roundP(fPosT{iImg}));
             end
             
             % calculates mean of the pixels across all frames
-            IBGnw = nanmean(cell2mat(reshape(IappBG,[1,1,obj.nImg])),3);
+            IBGnw = calcImageStackFcn(IappBG);
             
             % for any missing regions, use the median background estimate
             Bstat = isnan(IBGnw);
@@ -1708,6 +1775,7 @@ classdef DirectDetect < handle
            
             % sets the final image into the class object
             obj.ImdBG = ImdBG0;
+            
         end
         
         % --- calculates the residual images
@@ -1726,7 +1794,7 @@ classdef DirectDetect < handle
             N = 2*obj.iPara.Nh + 1;
             
             % calculates the median residual image
-            Imd = imfilter(obj.Img{iImg},obj.hG) - obj.ImdBG;
+            Imd = -obj.ImgMd{iImg};
             
             % calculates the x, y and x/y filtered residual images
             Ir = cell(nGrp,1);
@@ -1752,6 +1820,47 @@ classdef DirectDetect < handle
             Zpr = imfilter(prod(I,3),obj.hG);
             
         end
+
+        % --- sets the background image (the images with the locations
+        %     of the objects being removed)
+        function [IGBnw,BMax,isOK] = setBGImage(obj,I,IBG0,fP,hQ)
+
+            % parameters
+            if ~exist('hQ','var'); hQ = 0.25; end
+
+            % initialisations
+            sz = size(I);
+            isOK = ~isnan(fP(:,1));    
+            Qopt = obj.Iopt.^hQ;
+
+            % memory allocation      
+            Qw = zeros(sz);
+            del = (size(Qopt,1)-1)/2;                
+
+            % sets up the points
+            Imd_BGnw = IBG0 + (median(I(:))-median(IBG0(:)));
+            BMax = setGroup(cellfun(@(x)(...
+                sub2ind(sz,x(2),x(1))),num2cell(fP(isOK,:),2)),sz);
+
+            % sets up the binary image for object removal
+            for i = find(isOK(:))'
+                % sets the row/column indices
+                iCP = (fP(i,1)-del):(fP(i,1)+del);
+                iRP = (fP(i,2)-del):(fP(i,2)+del);
+
+                % determines which row/column indices are valid
+                jj = (iCP > 0) & (iCP <= sz(2));
+                ii = (iRP > 0) & (iRP <= sz(1));
+
+                % determines the binary location that overlaps the fly
+                Qw(iRP(ii),iCP(jj)) = ...
+                                max(Qopt(ii,jj),Qw(iRP(ii),iCP(jj)));
+            end
+
+            % removes the object locations from the image
+            IGBnw = Qw.*Imd_BGnw + (1-Qw).*I;
+
+        end        
         
         % -------------------------- %
         % --- PLOTTING FUNCTIONS --- %
@@ -1897,7 +2006,7 @@ classdef DirectDetect < handle
             
             % updates the 
             nGrp = 5;
-            pW = iGrp/(nGrp+obj.calcBG);
+            pW = iGrp/(nGrp+1);
             
             % updates the progressbar
             if obj.updateProgBar(1,wStr,pW)
@@ -1907,7 +2016,7 @@ classdef DirectDetect < handle
         end
         
         % --- updates the sub-field of the progressbar
-        function updateProgBarSub(obj,sTypeStr,i,N)            
+        function updateProgBarSub(obj,sTypeStr,i,N)
             
             % sets the progressbar string            
             if nargin == 2
@@ -2103,18 +2212,35 @@ classdef DirectDetect < handle
         end
         
         % --- 
-        function pMx = calcMaxCoord(Img)            
+        function pMx = calcMaxCoord(Img)
             
             pMx = zeros(1,2);
             [pMx(2),pMx(1)] = ind2sub(size(Img),argMax(Img(:)));
             
         end
         
+        %
+        function I = zeroImgEdges(I,dX)
+            
+            [I(:,1:dX),I(:,(end-(dX-1)):end)] = deal(0);
+            
+        end
+        
         % --- 
-        function ImdS = medianShiftImg(I)
-
-            ImdS = I - nanmedian(I(:));
-
-        end                    
+        function Ip = getPointResiduals(I,fP)
+            
+            %            
+            Ip = zeros(size(fP,1),1);
+            [sz,isOK] = deal(size(I),~isnan(fP(:,1)));
+            
+            % sets the point residual values for the feasible points
+            try
+            Ip(isOK) = I(sub2ind(sz,fP(isOK,2),fP(isOK,1)));
+            catch
+                a = 1;
+            end
+            
+            
+        end
     end
 end

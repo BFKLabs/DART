@@ -779,6 +779,7 @@ classdef CalcBG < handle
 
             % initialisations
             [h,iPhase,cLim] = deal([],ipara.cPhase,[]);
+            vPhase = obj.iMov.vPhase(iPhase);
             
             % retrieves the data structs/function handles from the main GUI     
             dispImage = getappdata(hgui.figFlyTrack,'dispImage');            
@@ -819,8 +820,8 @@ classdef CalcBG < handle
             switch get(get(hgui.panelImageType,'SelectedObject'),'tag')
                 case ('radioNormal') % case is the normal image frame                
 
-                    % sets the composite images from the local
-                    if any(imov.vPhase(ipara.cPhase) == [3 4])
+                    % sets the composite images from the local images
+                    if any(vPhase == [3 4])
                         Inw = getDispImage(idata,imov,...
                                     simgs(iPhase).iFrm(ipara.cFrm),false);  
                                 
@@ -850,26 +851,38 @@ classdef CalcBG < handle
 
                         % sets the final viewing image
                         Inw = obj.Ibg{iPhase};
-                    else
-                        % creates the composite image base (if not present)
+                    elseif vPhase == 1
+                        % creates composite image from the phase bg images                       
                         Inw = createCompositeImage(...
                                 obj.ImgFrm{iPhase},imov,imov.Ibg{iPhase}); 
+                            
+                    else
+                        % creates composite image from the total bg images
+                        Ib = zeros(size(obj.ImgFrm{1}));
+                        Inw = createCompositeImage(Ib,imov,imov.IbgT);
                     end                         
 
                 case ('radioRes') % case is the fly residual
 
                     % calculates the shifted image
-                    ILs = cell(1,length(IL));
-                    for i = 1:length(IL)
-                        % calculates the optimal local shift
-                        ILsT = optLocalShift(...
-                                imov,IL{i},imov.Ibg{iPhase}{i},i);
+                    if vPhase == 1
+                        ILs = cell(1,length(IL));
+                        for i = 1:length(IL)
+                            % calculates the optimal local shift
+                            ILsT = optLocalShift(...
+                                    imov,IL{i},imov.Ibg{iPhase}{i},i);
 
-                        % sets the final image
-                        ILs{i} = imov.Ibg{iPhase}{i};
-                        for j = 1:length(imov.iRT{i})
-                            ILs{i}(imov.iRT{i}{j},:) = ILsT{j};
+                            % sets the final image
+                            ILs{i} = imov.Ibg{iPhase}{i};
+                            for j = 1:length(imov.iRT{i})
+                                ILs{i}(imov.iRT{i}{j},:) = ILsT{j};
+                            end
                         end
+                        
+                    else
+                        % case is a non low-variance phase
+                        ILs = removeImageMedianBL(IL,0);
+                        
                     end
 
                     % sets the background image based on the detection type
@@ -882,12 +895,18 @@ classdef CalcBG < handle
 
                         % sets the final viewing image            
                         Itot = createCompositeImage(zeros(frmSz),imov,ILs);
-                        Inw = (obj.Ibg{iPhase} - Itot).*(Itot > 0);            
-                    else        
-                        % creates the composite image from the residuals
+                        Inw = (obj.Ibg{iPhase} - Itot).*(Itot > 0); 
+                        
+                    elseif vPhase == 1
+                        % creates the composite from the phase bg image
                         ILs = reshape(ILs,size(imov.Ibg{iPhase}));        
                         IRL = cellfun(@(x,y)(x-y),imov.Ibg{iPhase},ILs,'un',0);
-                        Inw = createCompositeImage(zeros(frmSz),imov,IRL);           
+                        Inw = createCompositeImage(zeros(frmSz),imov,IRL);   
+                                                
+                    else
+                        % creates the composite from the total bg image 
+                        IRL = cellfun(@(x,y)(x-y),ILs,obj.iMov.IbgT,'un',0);
+                        Inw = createCompositeImage(zeros(frmSz),imov,IRL); 
                     end           
                                      
             end
@@ -1043,21 +1062,22 @@ classdef CalcBG < handle
                 % sets the radio button enabled properties (if valid or not)
                 if ~isempty(obj.fPos)
                     % boolean flags
-                    isLoPhase = vP==1;    
+                    isLoVar = vP == 1;
+                    hasBG = isLoVar || ~isempty(obj.iMov.IbgT);    
 
-                    % sets the enabled properties of the radio buttons                    
-                    setObjEnable(hgui.radioBackEst,isLoPhase)
-                    setObjEnable(hgui.radioRes,isLoPhase)                               
+                    % sets the enabled properties of the radio buttons                                        
+                    setObjEnable(hgui.radioRes,hasBG)  
+                    setObjEnable(hgui.radioBackEst,isLoVar)
 
-                    % if the raw image is not selected, and the current phase is
-                    % invalid, then update the image to the raw image
-                    if ((vP == 2) && (get(hgui.radioBackEst,'value') || ...
-                                      get(hgui.radioRes,'value')))
+                    % resets the radio buttons if the phase
+                    if ~isLoVar && get(hgui.radioBackEst,'value')
+                        % can't have a low-variance phase showing bg
                         set(hgui.radioNormal,'value',1);
                         obj.updateMainImage()      
 
                     elseif ((any(vP == [3,4])) && ...
                                       ~get(hgui.radioNormal,'value'))
+                        % can't have invalid phase show bg or residuals
                         set(hgui.radioNormal,'value',1);
                         obj.updateMainImage()
                     end
@@ -1070,10 +1090,10 @@ classdef CalcBG < handle
             end
 
             % sets the button properties based on the current index frame
-            setObjEnable(eval(sprintf('hgui.frmFirst%s',Type)),cX~=1)           
-            setObjEnable(eval(sprintf('hgui.frmPrev%s',Type)),cX~=1)
-            setObjEnable(eval(sprintf('hgui.frmNext%s',Type)),cX~=nX)
-            setObjEnable(eval(sprintf('hgui.frmLast%s',Type)),cX~=nX)      
+            setObjEnable(eval(sprintf('hgui.frmFirst%s',Type)),cX>1)           
+            setObjEnable(eval(sprintf('hgui.frmPrev%s',Type)),cX>1)
+            setObjEnable(eval(sprintf('hgui.frmNext%s',Type)),cX<nX)
+            setObjEnable(eval(sprintf('hgui.frmLast%s',Type)),cX<nX)      
         
         end
         
@@ -1640,8 +1660,8 @@ classdef CalcBG < handle
                 % case is tracking a single object                
                 
                 % creates the waitbar figure
-                wStr = {'Overall Progress','Reading Frame Stack',...
-                        'Reading Frames'};                
+                wStr = {'Overall Progress','Image Baseline Subtraction',...
+                        'Tracking Moving Objects'};                
                 h = ProgBar(wStr,'Single Background Image Estimation'); 
                 
                 % calculates the initial location estimates

@@ -407,8 +407,12 @@ hPanelNew = uipanel('Parent',hPanel,'BorderType','none','Clipping','on',...
 % Draw table in scroll pane
 jScrollPane = javaObjectEDT('javax.swing.JScrollPane',jTab);
 jScrollPane.setRowHeaderView(rTable);
-jScrollPane.setCorner(jScrollPane.UPPER_LEFT_CORNER,rTable.getTableHeader()); 
+jScrollPane.setCorner(jScrollPane.UPPER_LEFT_CORNER,rTable.getTableHeader());
+
+%
+wStr = warning('off','all');
 [~, hContainer] = javacomponent(jScrollPane, [], hPanelNew);
+warning(wStr);
 
 % determines the overall maximum table width
 tFont = jTab.getTableHeader.getFont();
