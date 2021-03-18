@@ -50,6 +50,8 @@ if ~ok
     return        
 end
 
+% THIS IS AN UPDATE TO TEST THE EXPLORER TREE
+
 % global variables
 global impDate tDay hDay scrSz H0T HWT W0T HWL mainProgDir
 impDate = [2013 12 3 0 0 0];  % important date - Dec 2, 2013. First added
