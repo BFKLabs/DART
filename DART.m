@@ -52,7 +52,7 @@ end
 
 % THIS IS AN UPDATE TO TEST THE EXPLORER TREE
 % THIS IS YET ANOTHER TEST FOR THE EXPLORER TREE
-% ABC
+% ABCDEF
 
 % global variables
 global impDate tDay hDay scrSz H0T HWT W0T HWL mainProgDir
