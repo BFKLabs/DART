@@ -36,6 +36,9 @@ function DART_OpeningFcn(hObject, eventdata, handles, varargin)
 handles.output = hObject;
 setappdata(hObject,'isTest',~isempty(varargin))
 
+% THIS IS A TEST CHANGE
+% THIS TESTS THE HOT-FIX BRANCH
+
 % initialises the program paths and GUI objects
 tic;
 set(0,'units','pixels')
