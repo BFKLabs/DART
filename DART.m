@@ -42,6 +42,8 @@ set(0,'units','pixels')
 setappdata(hObject,'hTrack',[])
 setappdata(hObject,'isInit',true)
 
+% THIS is A HOT-FIX TEST
+
 % initialises the GUI objects
 [ok,h] = initGUIObjects(handles);
 if ~ok
