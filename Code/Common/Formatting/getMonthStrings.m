@@ -1,0 +1,6 @@
+% --- retrieves the month name strings  --- %
+function mthStr = getMonthStrings()
+
+mthStr = [{'January'},{'February'},{'March'},{'April'},...
+          {'May'},{'June'},{'July'},{'August'},...
+          {'September'},{'October'},{'November'},{'December'}]';
