@@ -154,11 +154,11 @@ classdef StimObj < handle
         % --- timer real-time tracking function
         function serialStopRT(obj)
         
-        % retrieves the real-time tracking data struct
-        rtD = getappdata(obj.hGUI,'rtD');
-        
-        % sets the entries for the stimuli finish array
-        obj.sFin(obj.iDev,:) = [1,rtD.T(rtD.ind)];            
+            % retrieves the real-time tracking data struct
+            rtD = getappdata(obj.hGUI,'rtD');
+
+            % sets the entries for the stimuli finish array
+            obj.sFin(obj.iDev,:) = [1,rtD.T(rtD.ind)];            
             
         end     
 
@@ -329,11 +329,11 @@ classdef StimObj < handle
         % --- stops all the devices by writting zeros to all channels
         function stopAllDevices(obj)
             
-        % for each device set the amplitude to zero and update the channels
-        for iDevD = 1:obj.nDev
-            obj.yAmp{iDevD}(:) = 0;
-            obj.setChannelStrings(iDevD,find(obj.hasStim{iDevD}));            
-        end
+            % for each device set the amplitude to zero and update the channels
+            for iDevD = 1:obj.nDev
+                obj.yAmp{iDevD}(:) = 0;
+                obj.setChannelStrings(iDevD,find(obj.hasStim{iDevD}));            
+            end
             
         end
         

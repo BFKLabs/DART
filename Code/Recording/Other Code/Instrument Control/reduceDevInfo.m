@@ -1,6 +1,6 @@
 % --- reduces down the device information data struct to only include those
 %     fields that were selected by the user
-function objDACInfo = reduceDevInfo(objDACInfo0,isTest)
+function [objDACInfo,objDACInfo0] = reduceDevInfo(objDACInfo0,isTest)
 
 % global variables
 global mainProgDir
@@ -40,7 +40,10 @@ if ~isTest
             else
                 sType = 0;
             end
+            
+            % sets the control flag ID numbers
             set(objDACInfo.Control{isS(i)},'UserData',sType)
+            set(objDACInfo0.Control{isS(i)},'UserData',sType)
 
             % opens the device
             if strcmp(get(objDACInfo.Control{isS(i)},'status'),'closed')

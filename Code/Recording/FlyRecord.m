@@ -150,12 +150,15 @@ h = ProgressLoadbar('Initialising Recording GUI...');
 % sets the data structs into the GUI
 setappdata(hObject,'exptType',exptType)
 setappdata(hObject,'objIMAQ',objIMAQ);
-setappdata(hObject,'objDACInfo0',objDACInfo0);
-setappdata(hObject,'objDACInfo',reduceDevInfo(objDACInfo0,isTest));
 setappdata(hObject,'iStim',iStim);
 setappdata(hObject,'sTrain',[]);
 setappdata(hObject,'iMov',[]);
 setappdata(hObject,'isRot',false);
+
+% reduces the device information
+[objDACInfo,objDACInfo0] = reduceDevInfo(objDACInfo0,isTest);
+setappdata(hObject,'objDACInfo0',objDACInfo0);
+setappdata(hObject,'objDACInfo',objDACInfo);
 
 % runs the external packages
 runExternPackage(handles,'RTTrack');
@@ -279,17 +282,18 @@ else
     setappdata(hFig,'iMov',[]);
     setappdata(hFig,'iStim',iStim);
     setappdata(hFig,'exptType',exptType)
-    setappdata(hFig,'objDACInfo',objDACInfo0);
-    setappdata(hObject,'objDACInfo',reduceDevInfo(objDACInfo0,isTest));
+    
+    % reduces the device information
+    [objDACInfo,objDACInfo0] = reduceDevInfo(objDACInfo0,isTest);
+    setappdata(hFig,'objDACInfo0',objDACInfo0);
+    setappdata(hFig,'objDACInfo',objDACInfo);    
     
     % resets the real-time tracking parameters
     rtObj = getappdata(hFig,'rtObj');
     if ~isempty(rtObj)
-        rtObj.initTrackPara();
+%         rtObj.initTrackPara();
+%         rtObj.initVideoTimer(handles)  
     end
-    
-    % initialises the video timer object
-    initVideoTimer(handles)    
 end    
 
 % ------------------------------------------ %
@@ -444,22 +448,29 @@ VideoPara(handles)
 function menuTestRecord_Callback(hObject, eventdata, handles)
 
 % retrieves the parameter data struct
+hToggle = handles.toggleVideoPreview;
 iProg = getappdata(handles.figFlyRecord,'iProg');
 objIMAQ = getappdata(handles.figFlyRecord,'objIMAQ');
 
 % prompts the user for the movie parameters
 vPara = TestMovie(objIMAQ,iProg); 
-if (~isempty(vPara))
-    % retrieves the video recording object
-    pause(0.05);    
+if ~isempty(vPara)    
+    % turns off the video preview (if on)    
+    if get(hToggle,'Value')
+        set(hToggle,'Value',0);
+        toggleVideoPreview_Callback(hToggle, '1', handles)
+    end
         
+    % retrieves the video recording object
+    setObjEnable(handles.toggleVideoPreview,'off')
+    pause(0.05);        
+    
     % sets up and runs the test video recording
-    exObj = RunExptObj(handles.figFlyRecord,'Test',vPara);    
+    exObj = RunExptObj(handles.figFlyRecord,'Test',vPara);     
     
     % initialises the time start
     [tStart,Tp] = deal(tic,3); 
-    wStr = 'Waiting For Test Video Recording To Start';
-    wFunc = getappdata(exObj.hProg,'updateBar'); pause(0.05);
+    wStr = 'Waiting For Test Video Recording To Start';   
 
     % pauses the program until the wait-period has passed
     while (1)
@@ -469,9 +480,10 @@ if (~isempty(vPara))
         else
             % updates the waitbar figure
             tRem = Tp - tNew;
-            if (wFunc(1,sprintf('%s (%i Seconds Remains)',...
-                            wStr,ceil(tRem)),1-tRem/Tp,exObj.hProg))
+            if exObj.hProg.Update(1,sprintf('%s (%i Seconds Remains)',...
+                                            wStr,ceil(tRem)),1-tRem/Tp)
                 % if the user cancelled, then exit
+                setObjEnable(handles.toggleVideoPreview,'on')
                 return
             else
                 % pause to ensure camera has initialised properly
@@ -801,186 +813,6 @@ end
 hold(hAx,'off');
 
 % ------------------------------- %
-% --- VIDEO PREVIEW FUNCTIONS --- %
-% ------------------------------- %
-
-% --- starts the video preview
-function startVideoPreview(handles, eventdata)
-
-% global variables
-global isRot
-
-% finish me!
-isRecordGUI = true;
-
-% object handles
-hFig = handles.figFlyRecord;
-hAx = handles.axesPreview;
-
-% retrieves the parameter struct
-iMov = getappdata(hFig,'iMov');
-isRot = getappdata(hFig,'isRot');
-isTest = getappdata(hFig,'isTest');
-objIMAQ = getappdata(hFig,'objIMAQ');
-
-% resets the start/stop preview button enabled properties
-set(handles.toggleVideoPreview,'string','Stop Video Preview');
-setObjEnable(handles.toggleStartTracking,'off')
-
-% % enables the real-time tracking menu item (if it exists)
-% if isfield(handles,'menuRTTrack')
-%     if strcmp(get(handles.menuRTTrack,'visible'),'on')
-%         setObjEnable(handles.menuRTTrack,'off')
-%         setObjEnable(handles.toggleStartTracking,'off')    
-%     end
-% end
-
-% initialises the ui context menu for the video axis (if not set)
-if isRecordGUI
-    if isempty(get(handles.panelVidPreview,'UIContextMenu'))
-        set(0,'CurrentFigure',hFig)
-        c = uicontextmenu();    
-        set(handles.panelVidPreview,'UIContextMenu',c);
-        uimenu(c,'Label','Display Gridlines','tag','menuShowGrid',...
-                 'Callback',@showGridLines,'checked','off');
-    end
-end
-
-% starts the video preview
-if isTest
-    % retrieves the video timer object
-    vidTimer = getappdata(hFig,'vidTimer');
-    
-    % adds the fly markers, and starts the tracking
-    tic; 
-    if strcmp(get(vidTimer,'Running'),'off')
-        start(vidTimer); pause(0.01)    
-    end
-else   
-    % resets the image axis      
-    vRes = get(objIMAQ,'VideoResolution');    
-    if isRot
-        hImage = image(0.81*ones(vRes),'Parent',hAx);           
-        [xL,yL] = deal([1 vRes(1)]+0.5,[1 vRes(2)]+0.5);        
-    else
-        hImage = image(0.81*ones(vRes([2 1])),'Parent',hAx);        
-        [xL,yL] = deal([1 vRes(2)]+0.5,[1 vRes(1)]+0.5);
-    end        
-       
-    % sets the image object    
-    setappdata(hImage,'UpdatePreviewWindowFcn',@mypreview_fcn);
-    set(hAx,'xtick',[],'ytick',[],'xticklabel',[],'yticklabel',[],...
-            'xLim',xL,'yLim',yL) 
-    pause(0.05);
-    axis(hAx,'image');    
-    pause(0.05);    
-    
-    try
-        % starts the video preview        
-        preview(objIMAQ,hImage)                    
-    catch
-        % an error occured while starting the preview, so close the loadbar 
-        % and output an error function. exit the function after
-        eStr = [{'Error! Unable to start the camera preview.'};...
-                {'Suggest changing the camera USB-Port and restart Matlab'}];
-        waitfor(errordlg(eStr,'Video Preview Initialisation Error','modal'))
-        return
-    end
-end    
-
-% --- stops the video preview
-function stopVideoPreview(handles)
-
-% global variables
-global runTrack
-
-% finish me!
-isRecordGUI = true;
-
-% object handles
-hFig = handles.figFlyRecord;
-hAx = handles.axesPreview;
-
-% retrieves the parameter struct
-isTest = getappdata(hFig,'isTest');
-isRot = getappdata(hFig,'isRot');
-objIMAQ = getappdata(hFig,'objIMAQ');
-iMov = getappdata(hFig,'iMov');
-iStim = getappdata(hFig,'iStim');
-exptType = getappdata(hFig,'exptType');
-
-% resets the start/stop preview button enabled properties
-% setObjEnable(handles.menuFile,'on')
-% setObjEnable(handles.menuAdaptors,'on')
-set(handles.panelVidPreview,'UIContextMenu',[]);
-set(handles.toggleVideoPreview,'string','Start Video Preview');
-
-% % enables the real-time tracking menu item (if it exists)
-% if isfield(handles,'menuRTTrack')
-%     setObjEnable(handles.menuRTTrack,'on')
-% end
-
-% retrieves the show menu panel item
-hMenu = findall(hFig,'tag','menuShowGrid');
-if strcmp(get(hMenu,'checked'),'on'); showGridLines(hMenu,'1'); end
-if ~isempty(hMenu); delete(hMenu); end
-
-% stops the video preview
-if isTest
-    % retrieves the video timer object
-    vidTimer = getappdata(hFig,'vidTimer');
-    stop(vidTimer); pause(0.01)        
-    
-    % clears the preview axis
-    cla(hAx)
-    axis(hAx,'off')
-else
-    % stops the video preview
-    stoppreview(objIMAQ)
-    
-    % resets the preview axes image to black
-    vRes = get(objIMAQ,'VideoResolution');
-    if isRot
-        Img = zeros(vRes);
-    else
-        Img = zeros(vRes([2 1]));
-    end
-    
-    set(findobj(hAx,'Type','Image'),'cData',Img);
-end
-
-% sets the experimental protocol menu item enabled properties
-switch exptType 
-    case ('RecordStim') % case is recording + stimulus                        
-        % updates the experiment menu items
-        if ~isempty(iMov)
-            % if running the real-time tracking, then stop it
-            if runTrack               
-                hTrack = handles.toggleStartTracking;
-                toggleStartTracking_Callback(hTrack,[],handles)
-            end         
-        end
-end
-
-% enables the real-time tracking (if background image is set)
-if ~isempty(iMov)
-    if ~isempty(iMov.Ibg)
-        setObjEnable(handles.toggleStartTracking,'on')
-    end
-end
-
-function mypreview_fcn(obj, event, himage)
-
-% global variables
-global isRot
-
-if isRot
-    set(himage, 'cdata', event.Data');
-else
-    set(himage, 'cdata', event.Data);
-end
-
-% ------------------------------- %
 % --- MISCELLANEOUS FUNCTIONS --- %
 % ------------------------------- %
 
@@ -1020,207 +852,3 @@ end
 axis off
 colormap(hAx,gray)
 caxis([0 255])
-
-% --- sets the parameter limits/flags based on the parameter type
-function [nwLim,isInt] = getParaLim(pStr,subPara,pStrSub)
-
-% sets the integer flag/parameter limits based on the parameter type
-switch (pStr)    
-    case ('pCount') % case is the pulse count
-        [isInt,nwLim] = deal(1,[1 500000]);        
-    case ('pDur') % case is the pulse duration
-        [isInt,nwLim] = deal(0,[0.001 10000.00]);        
-    case ('pAmp') % case is the pulse amplitude
-        [isInt,nwLim] = deal(0,[0 1]);
-    case ('iDelay') % case is the initial delay
-        [isInt,nwLim] = deal(0,[0.0 10000.00]);                
-    case ('pDelay') % case is the pulse delay
-        [isInt,nwLim] = deal(0,[0.00 10000.00]);        
-    case ('sDelay') % case is the stimulus delay
-        [isInt,nwLim] = deal(0,[0.00 10000.00]);        
-end
-
-% sets the lower/upper limits for the range parameters
-if (nargin > 1)
-    switch (pStrSub)            
-        case ('pMin') % case is the min range value
-            nwLim(2) = subPara.pMax;
-        case ('pMax') % case is the max range value
-            nwLim(1) = subPara.pMin;
-    end
-end    
-    
-% --- compares the current DAC objects (in objDACInfo) to that
-%     given in the stimulus struct, iStim
-function [iStim, isUpdate] = compareDACProps(handles,iStim)
-
-% loads the DAC object handles and initialises the updae flag
-objDACInfo = getappdata(handles.figFlyRecord,'objDACInfo');
-[isUpdate,eStr] = deal(true,[]);
-
-% check to see if the loaded and playlist items match
-if iStim.nDACObj == 0
-    setappdata(handles.figFlyRecord,'objDACInfo',[]);
-    return
-elseif isempty(objDACInfo)
-    % deletes any existing serial objects
-    hh = instrfind;
-    if ~isempty(hh); delete(hh); end
-    
-    % devices are required, but no DAC devices have been set
-    isUpdate = true;
-    [~,objDACInfo] = AdaptorInfo(handles.figFlyRecord,iStim);
-    if isempty(objDACInfo)
-        % if the user canceled, then set the flag to false
-        isUpdate = false;
-    else
-        % sets the DAC channel IDs and string names
-        iStim = setChannelID(objDACInfo,iStim);
-        iStim.strDAC = getDACNames(iStim,objDACInfo);
-        
-        % otherwise, updates the DAC data struct
-        setappdata(handles.figFlyRecord,'objDACInfo',objDACInfo);
-    end    
-    
-    return
-else
-    % initialises the error string
-    dacChannel = objDACInfo.nChannel;
-    if length(dacChannel) ~= iStim.nDACObj
-        % if the loaded objects do not match then set the error string
-        eStr1 = 'Number of Loaded DAC Objects Does Not Match PlayList File.';   
-        eStr2 = sprintf('Number Of Playlist DAC Objects = %i',iStim.nDACObj);
-        eStr3 = sprintf('Number Of Loaded DAC Objects = %i',length(dacChannel));    
-
-        % sets the total error string
-        eStr = sprintf('%s\n\n%s\n%s\n',eStr1,eStr2,eStr3);
-    elseif any(dacChannel(1:iStim.nDACObj) < iStim.nChannel)
-        % if the number of channels do not match then set the error string    
-        eStr1 = 'Number of DAC Channels Does Not Match PlayList File.';
-        eStr2 = '';
-    
-        % sets the channel disparities for each of the objects
-        for i = 1:iStim.nDACObj
-            if (iStim.nChannel(i) ~= dacChannel(i)) 
-                eStr2 = sprintf(['%s\nPlaylist DAC #%i Channel Count ',...
-                                        '= %i\n'],eStr2,i,iStim.nChannel(i));
-                eStr2 = sprintf(['%sLoaded DAC #%i Channel Count ',...
-                                        '= %i\n'],eStr2,i,dacChannel(i));                                
-            end
-        end
-
-        % sets the total error string
-        eStr = sprintf('%s\n%s',eStr1,eStr2);
-    end
-end
-    
-% if there was a discrepancy between the loaded and current DAC
-% objects, then reset the DAC devices
-if ~isempty(eStr)
-    % sets the error strings for the number of loaded DAC objects
-    eStrB = 'Do you wish to reset the DAC device properties?';
-    uChoice = questdlg(sprintf('%s\n%s',eStr,eStrB),'Reset DAC Devices?',...
-                    'Yes','No','Yes');
-    
-    % prompts the user if they want to reset the DAC objects
-    if (strcmp(uChoice,'Yes'))       
-        if (iStim.nDACObj == 0)
-            % otherwise, disable the panel
-            setappdata(handles.figFlyRecord,'objDACInfo',[]);
-        else        
-            % prompts the user for the new DAC objects
-            [~,objDACInfo] = AdaptorInfo(handles.figFlyRecord,iStim);
-            if (isempty(objDACInfo))
-                % if the user canceled, then set the flag to false
-                isUpdate = false;
-                return
-            else
-                % sets the DAC channel IDs and string names
-                iStim = setChannelID(objDACInfo,iStim);
-                iStim.strDAC = getDACNames(iStim,objDACInfo); 
-                
-                % otherwise, updates the DAC data struct
-                setappdata(handles.figFlyRecord,'objDACInfo',objDACInfo);
-            end
-        end           
-    else
-        % if the user canceled, then set the flag to false
-        isUpdate = false;        
-    end
-end
-
-% --- checks the fixed timing elements of the fixed protocol 
-function iExpt = checkExptTiming(iExpt)
-
-% retrieves the temporary data struct
-Temp = iExpt.Temp;
-if (isempty(Temp))
-    % if the temporary struct is empty, then exit
-    return
-else
-    % otherwise, read the current time
-    cTime = clock;
-end
-
-% determines the fixed time elements
-isFixTime = find(~cellfun(@isempty,field2cell(Temp,'Tfix')));
-
-% if there are fixed time elements within the experimental protocol, then
-% prompt the user if they want to shift the time to the next feasible
-if (~isempty(isFixTime))
-    % provides a warning to the user
-    wStr = [{'The experimental protocol file contains fixed timed stimuli.'};...
-            {'The fixed time events have been moved to the next feasible day.'}];
-    waitfor(warndlg(wStr,'Fixed Timed Stimuli Warning','modal'))
-    
-    % loops through all the fixed timed elements setting the next feasible
-    % day
-    for i = reshape(isFixTime,1,length(isFixTime))
-        % sets the fixed time elements and determines the time at which the
-        % first 
-        TfixNw = Temp(i).Tfix;
-        Tstim0 = datevec(combineString(TfixNw(1,:)),'mmmm-dd-HH-MM-AM');
-        
-        %
-        while (1)
-            % calculates the time difference between the initial stimulus
-            % time and the current time
-            [~,dT,~] = calcTimeDifference(Tstim0,cTime);            
-            if (dT < 0)
-                % if the time difference is negative, then add a day to the
-                % time
-                Tstim0 = datevec(addtodate(datenum(Tstim0),1,'day'));                
-            else
-                % otherwise, exit the loop
-                break
-            end            
-        end
-        
-        % sets the new day/month strings
-        nwStr = splitString(datestr(Tstim0,'mmmm dd'));
-        [TfixNw(:,1),TfixNw(:,2)] = deal(nwStr(1),nwStr(2));
-        
-        % updates the fixed time element array
-        Temp(i).Tfix = TfixNw;
-    end
-end
-
-% resets the temporary data struct into the data struct
-iExpt.Temp = Temp;
-
-% --- back formats the experimental data struct
-function iExpt = backFormatExptStruct(iExpt)
-
-% determines if the experimental data struct has the old frame format
-if (isfield(iExpt.Video,'Lmax'))
-    % if so, then convert the frame count to the duration
-    tVec = sec2vec(floor(iExpt.Video.Lmax/iExpt.Video.FPS));
-    if (sum(tVec) == 0)
-        iExpt.Video.Dmax = [1 0 0];    
-    else
-        iExpt.Video.Dmax = tVec(2:end);    
-    end
-    
-    % removes the frame count fields
-    iExpt.Video = rmfield(iExpt.Video,{'Lmax','nFix'});
-end

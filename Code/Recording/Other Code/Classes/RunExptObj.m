@@ -249,50 +249,50 @@ classdef RunExptObj < handle
         % --- initialises the camera properties
         function initCameraProperties(obj)
 
-        % sets the image acquisition object handle
-        obj.objIMAQ = getappdata(obj.hMain,'objIMAQ');
+            % sets the image acquisition object handle
+            obj.objIMAQ = getappdata(obj.hMain,'objIMAQ');
 
-        % if the camera is running, then stop it
-        if isrunning(obj.objIMAQ)
-            stop(obj.objIMAQ)
-        end            
-        
-        % sets the rotation flag and recording logging mode
-        obj.isRot = getappdata(obj.hMain,'isRot');            
-        if obj.isRot
-            [obj.objIMAQ.LoggingMode,obj.isMemLog] = deal('memory',1);
-        else
-            [obj.objIMAQ.LoggingMode,obj.isMemLog] = deal('disk',0);
-        end            
+            % if the camera is running, then stop it
+            if isrunning(obj.objIMAQ)
+                stop(obj.objIMAQ)
+            end            
 
-        % sets the camera frame rate
-        srcObj = getselectedsource(obj.objIMAQ);
-        [fRate,~,iSel] = detCameraFrameRate(srcObj,[]);
-        obj.FPS = fRate(iSel);        
+            % sets the rotation flag and recording logging mode
+            obj.isRot = getappdata(obj.hMain,'isRot');            
+            if obj.isRot
+                [obj.objIMAQ.LoggingMode,obj.isMemLog] = deal('memory',1);
+            else
+                [obj.objIMAQ.LoggingMode,obj.isMemLog] = deal('disk',0);
+            end            
 
-        % initialises the real-time batch processing (if required)
-        if (obj.isRTB)
-            initRTBatchProcess()             
-        end         
+            % sets the camera frame rate
+            srcObj = getselectedsource(obj.objIMAQ);
+            [fRate,~,iSel] = detCameraFrameRate(srcObj,[]);
+            obj.FPS = fRate(iSel);        
 
-        % retrieves the resolution of the recording image
-        vRes = get(obj.objIMAQ,'VideoResolution');
-        if (obj.isRot)
-            % case is the image is rotated
-            Img0 = zeros(vRes);
-        else
-            % case is the image is not rotated
-            Img0 = zeros(vRes([2 1]));
-        end
+            % initialises the real-time batch processing (if required)
+            if obj.isRTB
+                initRTBatchProcess()             
+            end         
 
-        % sets the current access to be the main gui axes handle
-        obj.hAx = findobj(obj.hMain,'type','axes');
-        set(obj.hMain,'CurrentAxes',obj.hAx);        
-        
-        % sets the empty images into the recording axes
-        set(findobj(obj.hAx,'Type','Image'),'cData',Img0);
-        setupVideoRecord(obj);
-        setappdata(obj.hAx,'hImage',[]);                    
+            % retrieves the resolution of the recording image
+            vRes = get(obj.objIMAQ,'VideoResolution');
+            if obj.isRot
+                % case is the image is rotated
+                Img0 = zeros(vRes);
+            else
+                % case is the image is not rotated
+                Img0 = zeros(vRes([2 1]));
+            end
+
+            % sets the current access to be the main gui axes handle
+            obj.hAx = findobj(obj.hMain,'type','axes');
+            set(obj.hMain,'CurrentAxes',obj.hAx);        
+
+            % sets the empty images into the recording axes
+            set(findobj(obj.hAx,'Type','Image'),'cData',Img0);
+            setupVideoRecord(obj);
+            setappdata(obj.hAx,'hImage',[]);                    
         
         end
         
@@ -302,198 +302,199 @@ classdef RunExptObj < handle
         
         % --- initialises the experiment object
         function startExptObj(obj)
-                        
-        if ~obj.isOK
-            % if there was an error during the setup phase, then make 
-            % the experiment setup GUI visible again
-            setObjVisibility(obj.hExptF,'on')
-        else
-            % otherwise, start the experiment timer
-            start(obj.hTimerCDown)
-        end   
+
+            if ~obj.isOK
+                % if there was an error during the setup phase, then make 
+                % the experiment setup GUI visible again
+                setObjVisibility(obj.hExptF,'on')
+            else
+                % otherwise, start the experiment timer
+                start(obj.hTimerCDown)
+            end   
             
         end  
         
         % --- performs the house-keeping rountines after the fly experiment
         function finishExptObj(obj)
 
-        % determines if the experiment has already stopped
-        if obj.isStopped
-            % if so, then exit the function
-            return
-        else
-            % otherwise, flag that the experiment is finished
-            obj.isStopped = true;
-        end
+            % determines if the experiment has already stopped
+            if obj.isStopped
+                % if so, then exit the function
+                return
+            else
+                % otherwise, flag that the experiment is finished
+                obj.isStopped = true;
+            end
 
-        % retrieves the image/data acquisition objects
-        aFunc = getappdata(obj.hExptF,'afterExptFunc');
-        if ishandle(obj.hProg) 
-            set(obj.hProg,'WindowStyle','normal'); 
-        end
+            % retrieves the image/data acquisition objects
+            aFunc = getappdata(obj.hExptF,'afterExptFunc');
+            if ishandle(obj.hProg) 
+                set(obj.hProg,'WindowStyle','normal'); 
+            end
 
-        % deletes the timer objects
-        if ~obj.isUserStop
-            wState = warning('off','all');   
-            stop(obj.hTimerExpt); 
-            warning(wState);
-        end
+            % deletes the timer objects
+            if ~obj.isUserStop
+                wState = warning('off','all');   
+                stop(obj.hTimerExpt); 
+                warning(wState);
+            end
 
-        % deletes the timer objects
-        wState = warning('off','all');
-        delete(obj.hTimerCDown);     
-        delete(obj.hTimerExpt);
-        warning(wState);
-
-        % resets the preview axes image to black
-        vRes = get(obj.objIMAQ,'VideoResolution');
-        if obj.isRot
-            Img0 = zeros(vRes);    
-        else
-            Img0 = zeros(vRes([2 1]));
-        end
-        set(findobj(obj.hAx,'Type','Image'),'cData',Img0);
-
-        % determines if the real-time tracking expt is being run
-        if obj.isRT
-            % if so, ensure the markers are invisible
-            hCheck = findobj(obj.hMain,'tag','checkShowMarkers');
-            set(setObjEnable(hCheck,'off'),'value',0)   
-            hMark = getappdata(obj.hMain,'hMark');
-            for i = 1:length(hMark)
-                cellfun(@(x)(setObjVisibility(x,'off')),hMark{i})
-            end 
-
-            % deletes the tracking GUI
-            if ~isempty(obj.hTrack); delete(obj.hTrack); end       
-        end      
-        
-        % if the experiment did not start, then delete the sub-GUI and exit
-        if ~obj.isStart
-            % attempts to close any logfile (if one exists)
+            % deletes the timer objects
             wState = warning('off','all');
-            try; close(getLogFile(obj.objIMAQ)); end
+            delete(obj.hTimerCDown);     
+            delete(obj.hTimerExpt);
             warning(wState);
 
-            % deletes the video output directory
-            vDir = fullfile(obj.iExpt.Info.OutDir,obj.iExpt.Info.Title);
-            deleteAllFiles(vDir,'*.*',1)
-
-            % deletes the solution output directory (if it exists)
-            if ~isempty(obj.iExpt.Info.OutSoln)
-                sDir = fullfile(obj.iExpt.Info.OutSoln,...
-                                obj.iExpt.Info.Title);
-                deleteAllFiles(sDir,'*.*',1)
+            % resets the preview axes image to black
+            vRes = get(obj.objIMAQ,'VideoResolution');
+            if obj.isRot
+                Img0 = zeros(vRes);    
+            else
+                Img0 = zeros(vRes([2 1]));
             end
+            set(findobj(obj.hAx,'Type','Image'),'cData',Img0);
 
-            % makes the experimental info GUI visible again and sets focus
-            setObjVisibility(obj.hExptF,'on')
-            figure(obj.hExptF)    
+            % determines if the real-time tracking expt is being run
+            if obj.isRT
+                % if so, ensure the markers are invisible
+                hCheck = findobj(obj.hMain,'tag','checkShowMarkers');
+                set(setObjEnable(hCheck,'off'),'value',0)   
+                hMark = getappdata(obj.hMain,'hMark');
+                for i = 1:length(hMark)
+                    cellfun(@(x)(setObjVisibility(x,'off')),hMark{i})
+                end 
 
-            % deletes the experimental GUI
-            delete(obj.hProg)
-            aFunc(obj.hExptF)
-            return
-        else
-%             % check to see that the devices have all been turned 
-%             % off correctly
-%             obj.forceStopDevices()   
-            
-            % determines if the disk logger object still exists
-            if obj.objIMAQ.TriggersExecuted == 1
-                % if so, then close and delete the movie   
-                logFile = getLogFile(obj.objIMAQ);
-                fName = get(logFile,'FileName');
+                % deletes the tracking GUI
+                if ~isempty(obj.hTrack); delete(obj.hTrack); end       
+            end      
 
-                % closes the log file and deletes it
+            % if the experiment didn't start then delete the sub-GUI & exit
+            if ~obj.isStart
+                % attempts to close any logfile (if one exists)
                 wState = warning('off','all');
-                close(logFile);        
-                delete(fName)  
-                warning(wState)
-            end
-        end
+                try; close(getLogFile(obj.objIMAQ)); end
+                warning(wState);
 
-        % determines if the experiment was stopped by the user
-        if obj.isUserStop
-            % determines if there were any experiment timers
-            hTimerExptOld = timerfindall('tag','hTimerExpt');
-            if ~isempty(hTimerExptOld)
-                deleteTimerObjects(hTimerExptOld); 
-            end                    
-            
-            % if so, then prompt to store the experimental data
-            uChoice = questdlg(['Do you want to keep data from the ',...
-                     'partial experimental?'],'Store Experimental Data',...
-                     'Yes','No','Yes');    
-            isStore = strcmp(uChoice,'Yes');
-        else
-            % otherwise, store the experimental data automatically
-            isStore = true;
-        end
+                % deletes the video output directory
+                vDir = fullfile(obj.iExpt.Info.OutDir,obj.iExpt.Info.Title);
+                deleteAllFiles(vDir,'*.*',1)
 
-        % closes the experimental information
-        if isStore
-            wStr = sprintf('Saving Experiment Summary (100%s)','%');
-            pFunc = getappdata(obj.hProg,'pFunc');
-            pFunc(1,wStr,1,obj.hProg);
-            pause(0.05);
-
-            % saves the summary file to disk
-            obj.saveSummaryFile()
-        else
-            % deletes the video output directory
-            pause(1)
-            vDir = fullfile(obj.iExpt.Info.OutDir,obj.iExpt.Info.Title);
-            deleteAllFiles(vDir,'*.*',1)
-        end
-
-        % closes the experiment progress GUI
-        try; delete(obj.hProg); end                 
-        
-        % if there are any stimuli devices, then ensure they are stopped
-        if ~isempty(obj.sTrain.Ex)
-            if obj.hasDAC
-                obj.resetDACDevice()    
-            end                                                   
-
-            % stops any of the serial devices
-            isS = cellfun(@(x)(isa(x,'StimObj')),obj.objDev);
-            for i = find(isS(:)')
-                obj.objDev{i}.stopAllDevices();
-            end                    
-        end             
-        
-        % either closes the experiment run function, or continue onto the 
-        % next individual experiment (if there are still experiments to run)
-        if obj.isUserStop
-            % if the user stopped the experiment then perform the 
-            % house-keeping exercises
-
-            % makes the experimental info GUI visible again and sets focus
-            setObjVisibility(obj.hExptF,'on')
-            figure(obj.hExptF)
-
-            % clears the camera callback functions
-            [obj.objIMAQ.StopFcn,obj.objIMAQ.StartFcn] = deal([]);
-            [obj.objIMAQ.TriggerFcn,obj.objIMAQ.TimerFcn] = deal([]);
-            setappdata(obj.hMain,'objIMAQ',obj.objIMAQ)    
-            setappdata(obj.hMain,'iExpt',obj.iExpt0)    
-
-            % if running a RT-tracking experiment (and outputting the solution file
-            % directly) then combine the final solution files
-            if obj.isRT && ~isempty(obj.iExpt.Info.OutSoln)
-                if obj.isUserStop
+                % deletes the solution output directory (if it exists)
+                if ~isempty(obj.iExpt.Info.OutSoln)
                     sDir = fullfile(obj.iExpt.Info.OutSoln,...
                                     obj.iExpt.Info.Title);
                     deleteAllFiles(sDir,'*.*',1)
-                else
-                    combineRTSolnFiles(obj.iExpt)
+                end
+
+                % makes the info GUI visible again and sets focus
+                setObjVisibility(obj.hExptF,'on')
+                figure(obj.hExptF)    
+
+                % deletes the experimental GUI
+                delete(obj.hProg)
+                aFunc(obj.hExptF)
+                return
+            else
+    %             % check to see that the devices have all been turned 
+    %             % off correctly
+    %             obj.forceStopDevices()   
+
+                % determines if the disk logger object still exists
+                if obj.objIMAQ.TriggersExecuted == 1
+                    % if so, then close and delete the movie   
+                    logFile = getLogFile(obj.objIMAQ);
+                    fName = get(logFile,'FileName');
+
+                    % closes the log file and deletes it
+                    wState = warning('off','all');
+                    close(logFile);        
+                    delete(fName)  
+                    warning(wState)
                 end
             end
-        end          
-        
-        % runs the after experiment function
-        aFunc(obj.hExptF)           
+
+            % determines if the experiment was stopped by the user
+            if obj.isUserStop
+                % determines if there were any experiment timers
+                hTimerExptOld = timerfindall('tag','hTimerExpt');
+                if ~isempty(hTimerExptOld)
+                    deleteTimerObjects(hTimerExptOld); 
+                end                    
+
+                % if so, then prompt to store the experimental data
+                uChoice = questdlg(['Do you want to keep data from the ',...
+                         'partial experimental?'],'Store Experimental Data',...
+                         'Yes','No','Yes');    
+                isStore = strcmp(uChoice,'Yes');
+            else
+                % otherwise, store the experimental data automatically
+                isStore = true;
+            end
+
+            % closes the experimental information
+            if isStore
+                wStr = sprintf('Saving Experiment Summary (100%s)','%');
+                pFunc = getappdata(obj.hProg,'pFunc');
+                pFunc(1,wStr,1,obj.hProg);
+                pause(0.05);
+
+                % saves the summary file to disk
+                obj.saveSummaryFile()
+            else
+                % deletes the video output directory
+                pause(1)
+                vDir = fullfile(obj.iExpt.Info.OutDir,obj.iExpt.Info.Title);
+                deleteAllFiles(vDir,'*.*',1)
+            end
+
+            % closes the experiment progress GUI
+            try; delete(obj.hProg); end                 
+
+            % if there are any stimuli devices then ensure they are stopped
+            if ~isempty(obj.sTrain.Ex)
+                if obj.hasDAC
+                    obj.resetDACDevice()    
+                end                                                   
+
+                % stops any of the serial devices
+                isS = cellfun(@(x)(isa(x,'StimObj')),obj.objDev);
+                for i = find(isS(:)')
+                    obj.objDev{i}.stopAllDevices();
+                end                    
+            end             
+
+            % either closes the experiment run function, or continue onto 
+            % the next individual experiment (if there are still 
+            % experiments to run)
+            if obj.isUserStop
+                % if the user stopped the experiment then perform the 
+                % house-keeping exercises
+
+                % makes the info GUI visible again and sets focus
+                setObjVisibility(obj.hExptF,'on')
+                figure(obj.hExptF)
+
+                % clears the camera callback functions
+                [obj.objIMAQ.StopFcn,obj.objIMAQ.StartFcn] = deal([]);
+                [obj.objIMAQ.TriggerFcn,obj.objIMAQ.TimerFcn] = deal([]);
+                setappdata(obj.hMain,'objIMAQ',obj.objIMAQ)    
+                setappdata(obj.hMain,'iExpt',obj.iExpt0)    
+
+                % if running a RT-tracking experiment (and outputting the 
+                % solution file directly) then combine the final files
+                if obj.isRT && ~isempty(obj.iExpt.Info.OutSoln)
+                    if obj.isUserStop
+                        sDir = fullfile(obj.iExpt.Info.OutSoln,...
+                                        obj.iExpt.Info.Title);
+                        deleteAllFiles(sDir,'*.*',1)
+                    else
+                        combineRTSolnFiles(obj.iExpt)
+                    end
+                end
+            end          
+
+            % runs the after experiment function
+            aFunc(obj.hExptF)           
             
         end                 
             

@@ -706,7 +706,7 @@ classdef CalcBG < handle
             % initialisations
             frmSz = getCurrentImageDim(hgui);
             [h,iPhase,cLim] = deal([],ipara.cPhase,[]);
-            vPhase = obj.iMov.vPhase(iPhase);
+            [iok,vPhase] = deal(imov.ok,imov.vPhase(iPhase));
             
             % retrieves the data structs/function handles from the main GUI     
             dispImage = getappdata(hgui.figFlyTrack,'dispImage');            
@@ -832,10 +832,13 @@ classdef CalcBG < handle
                         Inw = (obj.Ibg{iPhase} - Itot).*(Itot > 0); 
                         
                     elseif vPhase == 1
+                        % reshapes the local image array
+                        ILs = reshape(ILs,size(imov.Ibg{iPhase}));
+                        
                         % creates the composite from the phase bg image
-                        ILs = reshape(ILs,size(imov.Ibg{iPhase}));        
-                        IRL = cellfun(@(x,y)...
-                                        (x-y),imov.Ibg{iPhase},ILs,'un',0);
+                        IRL = cell(size(ILs));
+                        IRL(iok) = cellfun(@(x,y)...
+                              (x-y),imov.Ibg{iPhase}(iok),ILs(iok),'un',0);
                         Inw = createCompositeImage(zeros(frmSz),imov,IRL);   
                                                 
                     else

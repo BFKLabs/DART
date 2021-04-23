@@ -24,8 +24,7 @@ classdef VideoPreview < handle
             
             % sets the main object handles
             obj.hFig = hFig;
-            obj.hGUI = guidata(hFig);
-            obj.objIMAQ = getappdata(hFig,'objIMAQ');
+            obj.hGUI = guidata(hFig);            
             
             % sets the boolean flags
             obj.isOn = false;
@@ -53,6 +52,7 @@ classdef VideoPreview < handle
             % resets the running flag
             obj.isOn = true;   
             obj.iMov = getappdata(obj.hFig,'iMov'); 
+            obj.objIMAQ = getappdata(obj.hFig,'objIMAQ');
             
             % sets the rotation flag
             obj.isRot = (abs(obj.iMov.rotPhi) > 45) && obj.iMov.useRot;
@@ -123,6 +123,7 @@ classdef VideoPreview < handle
 
             % resets the running flag
             obj.isOn = true;            
+            obj.objIMAQ = getappdata(obj.hFig,'objIMAQ');
             
             % updates the video status
             set(obj.hGUI.editVideoStatus,'string','Initialising...',...

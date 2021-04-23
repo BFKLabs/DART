@@ -104,6 +104,7 @@ classdef SingleTrackFull < TrackFull & SingleTrack
             end
 
             % if there are no high variance phases, then exit the function
+            iPh = obj.iMov.iPhase;
             ii = find(obj.iMov.vPhase == 3);
             if isempty(ii)
                 return
@@ -115,8 +116,18 @@ classdef SingleTrackFull < TrackFull & SingleTrack
             % determines the interpolation (non-NaN) frames
             i0 = find(obj.iMov.ok,1,'first');
             j0 = find(obj.iMov.flyok(:,i0),1,'first');
-            intFrm = ~isnan(obj.pData.fPos{i0}{j0}(:,1));
-            Tint = T(intFrm);
+            intFrm = ~isnan(obj.pData.fPos{i0}{j0}(:,1));                    
+            
+            % determines if there are any valid groups for interpolation
+            % (first frame > 1 and last frame < nFrm)
+            isOK = (iPh(ii,1) > 1) & (iPh(ii,2) < obj.iData.nFrm);
+            if ~any(isOK)
+                % if not, then exit the function
+                return
+            else
+                % otherwise, set the interpolation time and feasible phases
+                [Tint,ii] = deal(T(intFrm),ii(isOK));
+            end
             
             % sets the frame indices for the hi-variance phases
             iFrm = cellfun(@(x)((x(1):x(2))'),...

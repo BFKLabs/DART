@@ -9,14 +9,13 @@ classdef VideoPhase < handle
         
         % parameters        
         nBin = 256;
-        histTol = 0.300;
-        ccTol = 0.100;
         pTileHi = 75;
         pTolHi = 240;
         nFrmHiMax = 10;
-        nImgR = 5;
+        nImgR = 10;
         nFrmMin = 20;
-        pTol = 15;
+        pTol = 10;
+        pHistTol = 0.95;
         
         % calculated object class fields
         NGrp
@@ -82,15 +81,16 @@ classdef VideoPhase < handle
                 iPhaseF = [[1;iPhaseTot(:,2)],[iPhaseTot(:,1);nFrmTot]];
             end
             
+            % determines the initial phase status flags
+            %  =1 - low-variance phase (use background subtraction)
+            %  =2 - medium-variance phase (use direct detection)
+            %  =3 - high/infeasible phase (use interpolation/reject)
+            vPhaseF = obj.detInitPhaseStatus(iPhaseF);           
+            
             % ------------------------------- %
             % ---- VIDEO PHASE REDUCTION ---- %
             % ------------------------------- %
-            
-            % determines the frame count of each phase and determine the
-            % classification of the phases based on this
-            dFrm = diff(iPhaseF,[],2) + 1;
-            vPhaseF = 1 + (dFrm < obj.nFrmMin);            
-            
+                                 
             % reduces the concident phases with medium/high fluctuations
             for vP = 2:3
                 if any(vPhaseF == vP)
@@ -115,26 +115,7 @@ classdef VideoPhase < handle
                         end
                     end
                 end
-            end
-            
-            % for each of the medium phases, determine if these phases are
-            % actually high fluctuation phases
-            for i = find(vPhaseF == 2)'
-                dFrm = diff(iPhaseF(i,:)) + 1;
-                if dFrm <= obj.nFrmHiMax
-                    % reads all the frames within the phase
-                    iFrmT = iPhaseF(i,1):iPhaseF(i,2);
-                    ImgL = obj.readImgStack(iFrmT,false);    
-                    ImgLmd = cellfun(@(x)(prctile(x(:),obj.pTileHi)),ImgL);
-                                
-                    % if any frames are over the hi-variance phase
-                    % tolerances within the group, then re-assign the video
-                    % phase classification to hi-variance
-                    if any(ImgLmd(:) > obj.pTolHi)                    
-                        vPhaseF(i) = 3;
-                    end
-                end
-            end            
+            end                      
             
             % --------------------------------- %
             % ---- HOUSE-KEEPING EXERCISES ---- %
@@ -144,6 +125,25 @@ classdef VideoPhase < handle
             [obj.iPhase,obj.vPhase] = deal(iPhaseF,vPhaseF);
             
         end
+        
+        % --- determines the initial phase status flags
+        function vPhaseF = detInitPhaseStatus(obj,iPhaseF)
+            
+            % determines the frame count of each phase and determine the
+            % classification of the phases based on this
+            dFrm = diff(iPhaseF,[],2) + 1;
+            vPhaseF = 1 + (dFrm < obj.nFrmMin);  
+            
+            % retrieves the first frame from each phase
+            ImgV = num2cell(obj.readImgStack(iPhaseF(:,1),false),1);
+            
+            % calculates the proportional histogram bin values
+            xiV = linspace(0,255,11);
+            pHistV = cell2mat(cellfun(@(y)(max(cell2mat(cellfun(@(x)...
+                                (histcounts(x(:),xiV)/numel(x)),...
+                                y(:),'un',0)),[],1)),ImgV,'un',0)');
+            vPhaseF(max(pHistV,[],2) > obj.pHistTol) = 3;
+        end        
         
         % --- determines the frame boundaries between phases
         function iPhaseNw = detPhaseBoundaries(obj,iPhase0)
@@ -284,6 +284,7 @@ classdef VideoPhase < handle
             [Img,sImg] = deal(cell(nPhase,1));            
             
             % sets the frame indices
+            [obj.iMov.vPhase,obj.iMov.iPhase] = deal(obj.vPhase,obj.iPhase);
             iFrm = getPhaseFrameIndices(obj.iMov,obj.nImgR,obj.iPhase);                
             
             % reads the frames for each 
@@ -326,8 +327,11 @@ classdef VideoPhase < handle
             
             % calculates the mean row/column pixel values, and removes
             % the median values from the result
+            Img = Img - nanmean(Img(:));
+%             Img = Img - nanmedian(Img(:));
             Itmp = [nanmean(Img,2);nanmean(Img,1)'];
-            ImgMn = roundP(Itmp-nanmedian(Itmp));            
+            ImgMn = roundP(Itmp);
+%             ImgMn = roundP(Itmp-nanmedian(Itmp));            
             
         end        
         

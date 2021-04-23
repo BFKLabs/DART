@@ -270,7 +270,7 @@ classdef TrackFull < Track
             nFrm = length(iFrmG);
             
             % retrieves all values
-            for iApp = 1:obj.nApp
+            for iApp = find(obj.iMov.ok(:)')
                 % calculates the offset
                 pOfs = repmat([dX(iApp),0],nFrm,1);                                
                 for iFly = 1:obj.sObj.getSubRegionCount(iApp)

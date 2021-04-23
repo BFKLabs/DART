@@ -217,8 +217,12 @@ classdef ProgBar < handle
             [nObj,mlt] = deal(length(obj.hObj),1-2*(sLvl > 0));
 
             % resets the figure/panel heights
-            resetObjPos(obj.hPanel,'height',mlt*obj.dY*nLvl,1)
-            resetObjPos(obj.hFig,'height',mlt*obj.dY*nLvl,1)    
+            try
+                resetObjPos(obj.hPanel,'height',mlt*obj.dY*nLvl,1)
+                resetObjPos(obj.hFig,'height',mlt*obj.dY*nLvl,1)   
+            catch
+                return
+            end
 
             % determines the number of rows in the new waitbar figure
             hPos = get(obj.hPanel,'Position');
@@ -232,8 +236,12 @@ classdef ProgBar < handle
                 hObjNw = cellfun(@eval,A,'un',0);    
 
                 % sets the properties based on the new values
-                resetObjPos(hObjNw(1:2),'bottom',mlt*obj.dY*nLvl,1)
-                cellfun(@(x)(setObjVisibility(x,i <= hRow)),hObjNw)  
+                try
+                    resetObjPos(hObjNw(1:2),'bottom',mlt*obj.dY*nLvl,1)
+                    cellfun(@(x)(setObjVisibility(x,i <= hRow)),hObjNw) 
+                catch
+                    return
+                end
             end
 
             % makes the waitbar figure visible again

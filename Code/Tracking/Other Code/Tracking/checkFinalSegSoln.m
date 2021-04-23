@@ -13,6 +13,11 @@ if isempty(wOfs); wOfs = 1; end
 wStr = 'Final Segmentation Check';
 [nApp,ok] = deal(length(pData.fPos),true);
 
+% if there are no valid phases, then exit
+if all(iMov.vPhase == 3)
+    return
+end
+
 % loops through all the frames/sub-regions determining if there is an issue
 for i = 1:nApp
     % updates the waitbar figure
@@ -28,7 +33,7 @@ for i = 1:nApp
     % only check if the apparatus is not rejected
     if iMov.ok(i)
         nTube = getSRCountMax(iMov);
-        for j = 16:nTube
+        for j = 1:nTube
             % updates the waitbar figure
             if ~isempty(h)
                 wStrNw = sprintf('%s (Sub-Region %i of %i)',wStr,j,nTube);
@@ -44,10 +49,10 @@ for i = 1:nApp
                 % calculates inter-frame distance travelled by the object
                 if iMov.Status{i}(j) == 1
                     [pData,ok] = ...
-                            frameDistCheck(handles,iData,pData,iMov,i,j,h);
+                        frameDistCheck(handles,iData,pData,iMov,i,j,h);
                 else
                     [pData,ok] = ...
-                            framePosCheck(obj,handles,iData,pData,iMov,i,j,h);                    
+                        framePosCheck(obj,handles,iData,pData,iMov,i,j,h);                    
                 end
                         
                 % if the user cancelled, then exit

@@ -532,7 +532,7 @@ classdef SingleTrackBP < handle
                 % expands the waitbar figure by 1 level
                 obj.isOutput = true;
                 if trkObjF.nLvl == (5 + obj.isMultiBatch)
-                    obj.hProg.collapeProgBar(1); 
+                    obj.hProg.collapseProgBar(1); 
                 end
                 
             elseif any(obj.pData.nCount > 0)
@@ -583,7 +583,12 @@ classdef SingleTrackBP < handle
             % determines if the background estimate needs to be calculated
             if obj.isCalcBG
                 % detects the new video phases
-                obj.detectVideoPhases();                    
+                obj.detectVideoPhases();  
+                if ~obj.calcOK
+                    % if the user cancelled, then exit
+                    sFlag = 1;
+                    return
+                end
                 
                 % initialises the initial tracking object
                 if strContains(obj.iMov.bgP.algoType,'single')
@@ -654,7 +659,6 @@ classdef SingleTrackBP < handle
 
             % creates the video phase class object
             phObj = VideoPhase(obj.iData,obj.iMov);
-            phObj.setSolverPara('nImgR',obj.iMov.bgP.pPhase.nImgR);
 
             % runs the phase detection solver
             iLvl = dLvl + 1;
@@ -666,8 +670,11 @@ classdef SingleTrackBP < handle
             obj.iMov.vPhase = phObj.vPhase;            
             
             % expands the waitbar figure again
-            obj.hProg.Update(iLvl,'Phase Detection Complete!',1);
-            obj.hProg.expandProgBar(dLvl);
+            if obj.hProg.Update(iLvl,'Phase Detection Complete!',1)
+                obj.calcOK = false;
+            else
+                obj.hProg.expandProgBar(dLvl);
+            end
 
         end        
         
@@ -990,10 +997,18 @@ classdef SingleTrackBP < handle
                             % determines
                             i0 = find(obj.iMov.ok,1,'first');
                             j0 = find(obj.iMov.ok(:,i0),1,'first');
+                            
+                            % determines the non-NaN frames (removes any
+                            % high-variance/infeasible phases)
+                            iPh = obj.iMov.iPhase;
                             isSegT = ~isnan(B.pData.fPos{i0}{j0}(:,1));
+                            for i = find(obj.iMov.vPhase(:) == 3)
+                                isSegT(iPh(i,1):iPh(i,2)) = true;
+                            end
                             
                             if all(isSegT)
-                                % if all phases are segmented,                                
+                                % if all phases are segmented, then use the
+                                % next video for analysis
                                 cont = false;
                                 nFileNw = nFileNw + 1;   
                                 

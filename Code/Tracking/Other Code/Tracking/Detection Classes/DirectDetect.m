@@ -67,7 +67,7 @@ classdef DirectDetect < handle
         rTol0 = 0.5;
         gpTol = 90;
         pTolR = 0.35;
-        zTol = [0.5,0.4];
+        mxTol = 0.5;
         dTol = 5;
         wSz = 8;
         pTol = 0.4;
@@ -98,7 +98,7 @@ classdef DirectDetect < handle
             
             % sets the tube-region offsets
             obj.y0 = cell(obj.nApp,1);
-            for iApp = 1:obj.nApp
+            for iApp = find(obj.iMov.ok(:)')
                 obj.y0{iApp} = cellfun(@(x)(x(1)-1),obj.iMov.iRT{iApp});
             end
             
@@ -234,7 +234,7 @@ classdef DirectDetect < handle
                 (NaN(x,2)),obj.nTube(:),'un',0),1,obj.nImg);
             
             % calculates the object locations over all regions/frames
-            for i = 1:obj.nApp
+            for i = find(obj.iMov.ok(:)')
                 % updates the progressbar
                 wStr = sprintf(...
                     'Object Detection (Region %i of %i)',i,obj.nApp);
@@ -430,7 +430,7 @@ classdef DirectDetect < handle
                 obj.nTube,'un',0),1,nFrm);
             
             % converts the coordinates from the sub-region to global coords
-            for iApp = 1:obj.nApp
+            for iApp = find(obj.iMov.ok(:)')
                 % calculates the x/y offset of the sub-region
                 xOfs = obj.iMov.iC{iApp}(1)-1;
                 yOfs = obj.iMov.iR{iApp}(1)-1;
@@ -520,7 +520,7 @@ classdef DirectDetect < handle
             obj.setProgBarSubN(obj.nApp);
             
             % calculates the likely points for each sub-region
-            for iApp = 1:obj.nApp
+            for iApp = find(obj.iMov.ok(:)')
                 % updates the progressbar sub-field
                 obj.updateProgBarSub('Region',iApp);
                 if ~obj.calcOK
@@ -579,117 +579,94 @@ classdef DirectDetect < handle
         % --- retrieves the tube regions binaries
         function pMaxF = calcSubRegionLikelyPoints(obj,I)
             
-            % sets up the combined images
-            [Zmn,Zpr] = obj.setupCombResImages(I);
-            sz = size(Zmn);
-            
-            % determines the values of the overall minimum mask points
-            [yPmn,xPmn] = find(imregionalmax(Zmn));
-            Ymn = Zmn(sub2ind(sz,yPmn,xPmn));
-            [~,iSmn] = sort(Ymn,'descend');
-            [xPmn,yPmn] = deal(xPmn(iSmn),yPmn(iSmn));
-            
-            % determines the values of the overall product mask points
-            [yPpr,xPpr] = find(imregionalmax(Zpr));
-            Ypr = Zpr(sub2ind(sz,yPpr,xPpr));
-            [~,iSpr] = sort(Ypr,'descend');
-            [xPpr,yPpr] = deal(xPpr(iSpr),yPpr(iSpr));
-            
-            % calculates the distance between the mask maxima points
-            D = pdist2([xPmn(:),yPmn(:)],[xPpr(:),yPpr(:)]);
-            if length(xPmn) > length(xPpr)
-                [D,Yc] = deal(D',Ymn(iSmn));
+            % distance tolerance
+            sz = size(I{1});
+            if ~isfield(obj.iMov,'szObj')
+                Dtol = 5;
             else
-                Yc = Ypr(iSpr);
-            end
+                Dtol = min(obj.iMov.szObj/2);
+            end            
             
-            % memory allocation
-            N = min(length(xPmn),length(xPpr));
-            iMatch = NaN(N,1);
-            
-            % determines closest matching point between the maxima types
-            for i = 1:N
-                % determines if there are any close points to the max
-                iNw = find(argMin(D) == i);
-                if ~isempty(iNw)
-                    if length(iNw) > 1
-                        imx = argMax(Yc(iNw)./D(i,iNw)');
-                        iNw = iNw(imx);
-                    end
+            % calculates the distances between the regional maxima from
+            % each of the metric images
+            for i = 1:length(I)
+                % calculates the regional maxima for the current frame
+                iP = find(imregionalmax(I{i}));
+                [yP,xP] = ind2sub(sz,iP); 
+                pMxNw = [xP,yP];
+                
+                % calculates the distances between points relative to first
+                if i == 1
+                    % memory allocation
+                    [iMxT,IMxT] = deal(NaN(length(xP),length(I)));                    
+                    pMxT = NaN([length(xP),2,length(I)]);
                     
-                    % updates the match index and distance array
-                    iMatch(i) = iNw;
-                    D(:,iNw) = deal(NaN);
+                    % sets the maxima image values/coordinates
+                    iMxT(:,i) = 1:length(xP);
+                    IMxT(:,i) = I{i}(iP);
+                    pMxT(:,:,i) = pMxNw;
+                else
+                    % determines the distance from the current/first image
+                    % maxima and determines which are within tolerance
+                    D = pdist2(pMxT(:,:,1),pMxNw); 
+                    [Dmn,imn] = min(D,[],2);
+                    ii = Dmn <= Dtol;
+                    
+                    % sets the feasible index/image values
+                    iMxT(ii,i) = imn(ii);
+                    IMxT(ii,i) = I{i}(iP(iMxT(ii,i)));
+                    pMxT(ii,:,i) = pMxNw(iMxT(ii,i),:);
                 end
             end
             
-            % sets the matching peak minimum/product maxima
-            ii = ~isnan(iMatch);
-            if length(xPmn) > length(xPpr)
-                Pmn = [xPmn(iMatch(ii)),yPmn(iMatch(ii))];
-                Ppr = [xPpr(ii),yPpr(ii)];
-            else
-                Pmn = [xPmn(ii),yPmn(ii)];
-                Ppr = [xPpr(iMatch(ii)),yPpr(iMatch(ii))];
-            end
-            
-            % sets the max values at the peak maxima locations
-            Ymn = Zmn(sub2ind(sz,Pmn(:,2),Pmn(:,1)));
-            Ypr = Zpr(sub2ind(sz,Ppr(:,2),Ppr(:,1)));
+            % calculates the mean coordinate/peak values
+            pMx = roundP(nanmean(pMxT,3));
+            [IMx,iS] = sort(nanmean(IMxT,2),'descend');
+            pMx = pMx(iS,:);
             
             % removes any non-significant points
-            ii = (Ymn/max(Ymn) > obj.pTolR) | (Ypr/max(Ypr) > obj.pTolR);
-            [Pmn,Ppr,Ymn,Ypr] = deal(Pmn(ii,:),Ppr(ii,:),Ymn(ii),Ypr(ii));
-            if size(Pmn,1) == 1
-                % sets the position vectors
-                pMaxF = [roundP(mean([Pmn(:,1),Ppr(:,1)],2),1),...
-                    roundP(mean([Pmn(:,2),Ppr(:,2)],2),1)];
+            ii = IMx/max(IMx) > obj.pTolR;
+            [pMx,IMx] = deal(pMx(ii,:),IMx(ii));
+            if size(pMx,1) == 1
+                % if there is a unique solution then exit
+                pMaxF = pMx;
                 return
             end
             
             % determines if any maxima are close to each other
-            dTolSz = min(sz/2);
-            [Dmn,Dpr] = deal(pdist2(Pmn,Pmn),pdist2(Ppr,Ppr));
-            Dmn(logical(eye(size(Dmn)))) = dTolSz+1;
-            Dpr(logical(eye(size(Dpr)))) = dTolSz+1;
-            [yy,xx] = find((Dmn<=dTolSz)|(Dpr<=dTolSz));
+            dTolSz = 2*Dtol;
+            DMx = pdist2(pMx,pMx);
+            DMx(logical(eye(size(DMx)))) = dTolSz+1;
+            [yy,xx] = find(DMx<=dTolSz);
             
-            % determines if the
+            % determines if the close points are actually connected groups
             if ~isempty(xx)
                 % determines the indices of points that are close
-                imn = sub2ind(sz,Pmn(:,2),Pmn(:,1));
-                ipr = sub2ind(sz,Ppr(:,2),Ppr(:,1));
+                iMx = sub2ind(sz,pMx(:,2),pMx(:,1));
+                Imean = calcImageStackFcn(I,'mean');
                 
                 % determines the search indices
                 [ii,jj] = obj.getSearchIndices(yy,xx);
                 for i = 1:length(ii)
                     kk = [ii(i),jj(i)];
-                    if ~any(isnan(Pmn(kk,1)))
+                    if ~any(isnan(pMx(kk,1)))
                         % calculates max non-connecting tolerance values
-                        mnTol = obj.getBinThreshold(Zmn,imn(kk));
-                        prTol = obj.getBinThreshold(Zpr,ipr(kk));
+                        mxThresh = obj.getBinThreshold(Imean,iMx(kk));
                         
                         % if the ratio of the non-connecting tolerances to
                         % the max value is high, then the groups are
                         % probably connected
-                        if all([mnTol/max(Ymn(kk)),...
-                                prTol/max(Ypr(kk))] > obj.zTol)
+                        if mxThresh/max(IMx(kk)) > obj.mxTol
                             % if oonnected then average the point locations
-                            Pmn(kk(1),:) = mean(Pmn(kk,:),1);
-                            Ppr(kk(1),:) = mean(Ppr(kk,:),1);
-                            [Pmn(kk(2),:),Ppr(kk(2),:)] = deal(NaN);
+                            pMx(kk(1),:) = mean(pMx(kk,:),1);
+                            pMx(kk(2),:) = NaN;
                         end
                     end
                 end
             end
             
             % removes any combined points
-            ii = ~isnan(Pmn(:,1));
-            [Pmn,Ppr] = deal(Pmn(ii,:),Ppr(ii,:));
-            
-            % sets the position vectors
-            pMaxF = [roundP(mean([Pmn(:,1),Ppr(:,1)],2),1),...
-                roundP(mean([Pmn(:,2),Ppr(:,2)],2),1)];
+            pMaxF = pMx(~isnan(pMx(:,1)),:);
             
         end
         
@@ -830,7 +807,7 @@ classdef DirectDetect < handle
             end
             
             % loops through each region calculating the likely blobs
-            for iApp = 1:obj.nApp
+            for iApp = find(obj.iMov.ok(:)')
                 % retrieves the images for the current region
                 yOfs = num2cell(obj.y0{iApp});
                 Iapp = obj.getRegionImageStack(obj.ImdR,iApp);
@@ -869,6 +846,19 @@ classdef DirectDetect < handle
         % --- determines the likely static sub-region blobs for the region
         function detLikelyStaticBlobs(obj,Iapp,iGrp,fPos0,iApp)
             
+            function Imap = createLabelMap(iGrp,sz)
+                
+                % memory allocation              
+                Imap = zeros(sz);
+                iGrp = iGrp(~cellfun(@isempty,iGrp));                
+                
+                % sets the map values for each non-empty blob
+                for j = 1:length(iGrp)
+                    Imap(iGrp{j}) = j;
+                end
+                
+            end
+            
             % initialisations
             sz = size(Iapp{1});
             nFly = length(fPos0{1});
@@ -877,7 +867,8 @@ classdef DirectDetect < handle
             fok = obj.iMov.flyok(:,iApp);
             
             % sets up the blob binary masks for each frame
-            Brmv = cellfun(@(x)(setGroup(x,sz)),iGrp,'un',0);
+            Bmap = cellfun(@(x)(createLabelMap(x,sz)),iGrp,'un',0);
+            Brmv = cellfun(@(x)(x>0),Bmap,'un',0);
             
             % calculates the mean image/blob binary mask over all frames
             IappT = calcImageStackFcn(Iapp);
@@ -918,11 +909,17 @@ classdef DirectDetect < handle
                 % initialisations
                 isInit = true;
                 iOK = find(isOK);
-                
-                % retrieves the sub-regions
                 fPosR = [fPosX(isOK),fPosY(isOK)];
+                xi = num2cell(Bmap{1}(sub2ind(sz,fPosR(:,2),fPosR(:,1))));
+                
+                % retrieves the sub-regions                                
                 IsubR = obj.getSubImage(IappR,fPosR,del,0);
-                IsubMx = cellfun(@(x)(x(del+1,del+1)),IsubR);
+                ImapR = obj.getSubImage(Bmap{1},fPosR,del,0);
+                
+                % only retrieve the sub-image corresponding to the maxima
+                % point (removes other points)
+                IsubR = cellfun(@(x,y,z)(x.*(y==z)),IsubR,ImapR,xi,'un',0);
+                IsubMx = cellfun(@(x)(x(del+1,del+1)),IsubR); 
                 
                 % sets up the sub-region to global index array
                 indG = [indG0(isOK,1),(1:size(fPosR,1))'];
@@ -935,6 +932,7 @@ classdef DirectDetect < handle
                     % calculates the new optimal grouping
                     [iBest,indC0] = obj.detLikelyStaticBlobsSR...
                         (IsubR,IsubMx,indSR,iBestPr);
+                    
                     if isInit
                         % flag that the loop is no longer initialising
                         isInit = false;
@@ -1174,7 +1172,7 @@ classdef DirectDetect < handle
                 Imin = Isub{i}(del+1,del+1);
                 
                 % determines if there are any other points in the frame
-                fPO = obj.detPointsInFrame(fP,indG{1},i);
+                fPO = obj.detPointsInFrame(Isub{i});
                 
                 % calculates the contour levels
                 [Pc{i},cLvl{i}] = ...
@@ -1221,7 +1219,7 @@ classdef DirectDetect < handle
                 [obj.IBG,obj.pBG] = deal(cell(1,obj.nApp));
                 
                 % calculates the average image stack across all frames
-                for iApp = 1:obj.nApp
+                for iApp = find(obj.iMov.ok(:)')
                     % updates the progressbar
                     obj.updateProgBarSub('Region',iApp)
                     if ~obj.calcOK
@@ -1250,7 +1248,7 @@ classdef DirectDetect < handle
             % clears up any missing
             if obj.vPh == 2
                 % calculates the average image stack across all frames
-                for iApp = 1:obj.nApp
+                for iApp = find(obj.iMov.ok(:)')
                     % sets
                     IappF = obj.getRegionImageStack(obj.ImgMd,iApp);
                     for iImg = 1:obj.nImg
@@ -1325,7 +1323,7 @@ classdef DirectDetect < handle
             
             % converts the position array so that the positions are now
             % grouped by sub-region
-            for iApp = 1:obj.nApp
+            for iApp = find(obj.iMov.ok(:)')
                 % updates the progressbar
                 obj.updateProgBarSub('Region',iApp)
                 if ~obj.calcOK
@@ -1367,7 +1365,7 @@ classdef DirectDetect < handle
                 1:length(Imean),'un',0)),1);
             
             % sets the values into the overall array
-            for iApp = 1:obj.nApp
+            for iApp = find(obj.iMov.ok(:)')
                 iNw = 1:obj.nTube(iApp);
                 Zxc(iNw,iApp) = ZxcT(iNw+iOfs);
                 iOfs = iOfs+obj.nTube(iApp);
@@ -1459,9 +1457,9 @@ classdef DirectDetect < handle
                 
             end
             
-            % dimensioning
-            nGrp = 3;
+            % dimensioning            
             iM = obj.iMov;
+            nGrp = 1 + 2*is2DCheck(iM);
             Nr = mean(cellfun(@(x)(mean(cellfun(@length,x))),iM.iRT));
             N = 2*min(floor(Nr),obj.iPara.Nh) + 1;
             
@@ -1472,8 +1470,10 @@ classdef DirectDetect < handle
             % calculates the x, y and x/y filtered residual images
             Ir = cell(nGrp,1);
             Ir{1} = max(0,calcFilteredImage(Imd,[N,1]) - Imd).*Bmd;
-            Ir{2} = max(0,calcFilteredImage(Imd,[1,N]) - Imd).*Bmd;
-            Ir{3} = max(0,calcFilteredImage(Imd,N*[1,1]) - Imd).*Bmd;
+            if nGrp == 3
+                Ir{2} = max(0,calcFilteredImage(Imd,[1,N]) - Imd).*Bmd;
+                Ir{3} = max(0,calcFilteredImage(Imd,N*[1,1]) - Imd).*Bmd;
+            end
             
             % sets the median residual
             obj.ImdR{iImg} = Imd;
@@ -1568,7 +1568,7 @@ classdef DirectDetect < handle
                 %
                 h = zeros(obj.nApp,1);
                 
-                for iApp = 1:obj.nApp
+                for iApp = find(obj.iMov.ok(:)')
                     %
                     if isFull
                         ILshow = obj.IBG{iApp} - ILp{iApp};
@@ -1585,7 +1585,7 @@ classdef DirectDetect < handle
             
             % plots the most likely positions
             hold on;
-            for iApp = 1:obj.nApp
+            for iApp = find(obj.iMov.ok(:)')
                 % retrieves the marker points
                 if isFull
                     j = 1;
@@ -1623,7 +1623,7 @@ classdef DirectDetect < handle
             
             % creates the image/location plots for each sub-region
             figure;
-            for iApp = 1:obj.nApp
+            for iApp = find(obj.iMov.ok(:)')
                 % plots the graph
                 plotGraph('image',ILp{iApp},subplot(nR,nC,iApp));
                 hold on;
@@ -1837,11 +1837,16 @@ classdef DirectDetect < handle
                             % if the best solution is mixed across metrics,
                             % then determine the metric with the lower
                             % metric value as being the group to reject
-                            jmx = argMin(min(Zt(imx,:),[],2));
+                            sZt = any(sign(Zt(imx,:))>0,2);
+                            if sum(sZt) == 1
+                                jmx = find(sZt > 0);
+                            else
+                                jmx = argMax(sum(normcdf(Zt(imx,:)),2));
+                            end
                             
                             % sets the confounding index and updates
                             % the optimal index
-                            indC(iFly) = indSR{iFly}(imx(imx~=jmx));
+                            indC(iFly) = indSR{iFly}(imx(imx~=imx(jmx)));
                             imx = imx(jmx);
                         end
                         
@@ -1896,24 +1901,17 @@ classdef DirectDetect < handle
         end
         
         % --- determines the coordinates of other blobs in the sub-image
-        function fPO = detPointsInFrame(fP,indG,iBlob)
+        function fPO = detPointsInFrame(Isub)                       
             
-            % determines the indices of the other blobs
-            iOther = (fP(:,1) >= indG{2}(1)) & ...
-                (fP(:,1) <= indG{2}(end)) & ...
-                (fP(:,2) >= indG{1}(1)) & ...
-                (fP(:,2) <= indG{1}(end));
-            iOther(iBlob) = false;
+            % determines the minima within the sub-image
+            B = isnan(Isub);
+            Isub(B) = 0;
+            [yP,xP] = find(imregionalmin(Isub).*(~B));
             
-            % determines if there are any points within the sub-image
-            if any(iOther)
-                % if so, then convert the points to local coordinates
-                pOfs = [indG{2}(1),indG{1}(1)] - 1;
-                fPO = [(fP(iOther,1)+pOfs(1)),(fP(iOther,2)+pOfs(2))];
-            else
-                % otherwise, return an empty array
-                fPO = [];
-            end
+            % removes the centre point and returns the other values
+            WH = [1,1]*(size(Isub,1)-1)/2;
+            ii = ~setGroup(argMin(pdist2(WH,[xP,yP])),[length(xP),1]);
+            fPO = [xP(ii),yP(ii)];
             
         end
         

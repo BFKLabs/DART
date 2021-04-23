@@ -95,7 +95,7 @@ function trigCamera(objIMAQ,event,exObj)
 exObj.isTrigger = true;
 
 % updates the video counter
-if (strcmp(exObj.vidType,'Expt'))      
+if strcmp(exObj.vidType,'Expt')
     feval(getappdata(exObj.hProg,'tFunc'),[1 2],...
                      num2str(exObj.nCountV),exObj.hProg);
 end
@@ -112,7 +112,11 @@ end
 
 try
     % retrieves the waitbar strings
-    wStr = getappdata(exObj.hProg,'wStr');
+    if isprop(exObj.hProg,'wStr')
+        wStr = exObj.hProg.wStr;
+    else
+        wStr = getappdata(exObj.hProg,'wStr');
+    end
 catch
     % if user stopped the video prematurely, then stop recording
     [exObj.userStop,exObj.isUserStop] = deal(true);
@@ -129,17 +133,19 @@ ppWait = floor(100*pWait);
 try
     switch exObj.vidType
         case ('Test') % case is for a test recording   
-            wFunc = getappdata(exObj.hProg,'updateBar');
             [ind,wStrT] = deal(1,wStr{1});
             wStrNw = sprintf('%s (%i%s Complete)',wStrT,ppWait,'%');
+            isCancel = exObj.hProg.Update(ind,wStrNw,pWait);
+            
         case ('Expt') % case is for an experiment recording
             wFunc = getappdata(exObj.hProg,'pFunc');
             [ind,wStrT] = deal(2,wStr{2});
-            wStrNw = sprintf('%s (%i%s Complete)',wStrT,ppWait,'%');
+            wStrNw = sprintf('%s (%i%s Complete)',wStrT,ppWait,'%');            
+            isCancel = wFunc(ind,wStrNw,pWait,exObj.hProg);
     end
 
     % updates the waitbar progress fields
-    if wFunc(ind,wStrNw,pWait,exObj.hProg)
+    if isCancel
         % if user stopped the video prematurely, then stop recording
         exObj.userStop = true;
         stop(exObj.objIMAQ);    
@@ -171,7 +177,7 @@ end
 % reads in the new frame (if logging to memory)
 if exObj.isMemLog  
     % wait for the new frame to be available
-    while (exObj.objIMAQ.FramesAvailable == 0)
+    while exObj.objIMAQ.FramesAvailable == 0
         java.lang.Thread.sleep(1);
     end
 
@@ -193,7 +199,7 @@ if exObj.isMemLog
             
             % updates the frame count
             iFrm(i) = logFile.FrameCount;
-            if ((iFrm(i) == 1) && (exObj.nCountV > 0))
+            if (iFrm(i) == 1) && (exObj.nCountV > 0)
                 % for the first frame on any video except the first, then
                 % calculates the total time offset
                 exObj.tOfsT = toc - tFrm(i);
@@ -225,7 +231,7 @@ else
 end
 
 % if the video exceeds duration, then stop the recording
-if (exObj.tStampV{exObj.nCountV}(iFrm) >= VV.Tf(exObj.nCountV))
+if exObj.tStampV{exObj.nCountV}(iFrm) >= VV.Tf(exObj.nCountV)
     exObj.tStampV{exObj.nCountV} = exObj.tStampV{exObj.nCountV}(1:iFrm);
     isStop = true;
 end
@@ -254,9 +260,9 @@ else
 end
 
 % determines if the frame required updating
-if (any(mod(iFrm,2) == 0))
+if any(mod(iFrm,2) == 0)
     % frame rate is an even number
-    if (exObj.isRT && isExpt)
+    if exObj.isRT && isExpt
         % update twice a second (for RT-tracking expt)
         frmUpdate = any(mod(iFrm,FPS/2) == 1);
     else
@@ -278,7 +284,7 @@ if frmUpdate
     
     % checks to see if a real-time tracking experiment is being run. if so,
     % then update the real-time tracking stats GUI and stats   
-    if (isExpt && exObj.isRT)
+    if isExpt && exObj.isRT
         % updates the image axes and tracking GUI
         try
             rtPos = getappdata(exObj.hProg,'rtPos');
@@ -290,7 +296,7 @@ if frmUpdate
     else    
         % retrieves the current preview 
         hImage = getappdata(exObj.hAx,'hImage');
-        if (isempty(hImage))
+        if isempty(hImage)
             % if there is no image, then create a new image object
             imagesc(ImgNw,'Parent',exObj.hAx);
             set(exObj.hAx,'xtick',[],'xticklabel',[],...
@@ -337,13 +343,14 @@ finishRecord([],[],exObj)
 % --- callback function for finishing data logging --- %
 function finishRecord(objIMAQ,event,exObj)
 
-% if this is not the first iteration and is a sleep deprivation
-% experiments, 
+% determines if there was an error which caused the experiment to end
 if ~exObj.isError
-    % if there is no trigger then exit
+    % if there was no error, then determine if the camera was triggered
     if ~exObj.isTrigger
+        % if there is no trigger then exit
         return
     else
+        % otherwise, flag that there is a video to save
         exObj.isSaving = true;
     end
     
@@ -351,10 +358,9 @@ if ~exObj.isError
     switch exObj.vidType
         case ('Test') % case is the test output
             try
-                wFunc = getappdata(exObj.hProg,'updateBar');
-                exObj.userStop = ...
-                       wFunc(1,'Outputing Video To File...',1,exObj.hProg);
-            catch ME                
+                exObj.userStop = exObj.hProg.Update...
+                                    (1,'Outputing Video To File...',1);
+            catch               
                 exObj.userStop = true;
             end
             
@@ -367,8 +373,7 @@ if ~exObj.isError
                 if get(getappdata(exObj.hProg,'hBut'),'value')
                     exObj.userStop = true;
                 end                
-            catch ME
-                assignin('base','ME',ME)
+            catch
                 exObj.userStop = true;
             end
     end
@@ -397,9 +402,9 @@ warning(wState)
 if exObj.userStop && exObj.isStart
     uChoice = questdlg('Do you want to save the partial recording?',...
                        'Save Partial Recording?','Yes','No','Yes');
-    if (~strcmp(uChoice,'Yes'))
+    if ~strcmp(uChoice,'Yes')
         % if not, then delete the recording   
-        if (exist(fFile,'file'))
+        if exist(fFile,'file')
             pause(0.05)
             delete(fFile)        
         end
@@ -411,7 +416,11 @@ else
     % clears the logfile
     if strcmp(exObj.vidType,'Test') && ~exObj.isError
         try
-            close(exObj.hProg)
+            if isa(exObj.hProg,'ProgBar')
+                exObj.hProg.closeProgBar();
+            else
+                close(exObj.hProg)
+            end
         end
     end
     
@@ -502,7 +511,12 @@ if strcmp(exObj.vidType,'Expt')
 else
     % resets the preview axes image to black
     vRes = get(exObj.objIMAQ,'VideoResolution');
-    set(findobj(exObj.hAx,'Type','Image'),'cData',zeros(vRes([2 1])));
+    Img0 = zeros(vRes([2 1]));
+    set(findobj(exObj.hAx,'Type','Image'),'cData',Img0);
+    
+    % enables the video preview toggle    
+    hMainH = guidata(exObj.hMain);
+    setObjEnable(hMainH.toggleVideoPreview,'on')
 end
             
 %-------------------------------------------------------------------------%
@@ -516,9 +530,9 @@ function objIMAQ = setupCameraProps(objIMAQ,vPara)
 srcObj = getselectedsource(objIMAQ);
 
 % sets the camera frame rate
-if (isfield(propinfo(srcObj),'FrameRate'))    
+if isfield(propinfo(srcObj),'FrameRate')   
     [~,fRateS,~,cFPS] = detCameraFrameRate(srcObj,vPara.FPS);
-    if (length(fRateS) > 1)
+    if length(fRateS) > 1
         set(srcObj,'FrameRate',cFPS);
     end
 end
@@ -558,7 +572,7 @@ else
 end
     
 % sets the other video parameters
-if (strcmp(objIMAQ.LoggingMode,'memory'))
+if strcmp(objIMAQ.LoggingMode,'memory')
     objIMAQ.UserData = logFile;
     open(logFile); 
 else
@@ -573,13 +587,14 @@ function vidPara = setVideoParameters(Info,VV)
 
 % sets the new output file directory
 nwDir = fullfile(Info.OutDir,Info.Title);
-if (exist(nwDir,'dir') == 0)
+if exist(nwDir,'dir') == 0
     % if the new directory does not exist, then create it
     mkdir(nwDir)
 end
 
 % allocates memory for the video parameter struct
-sStr = struct('Dir',nwDir,'Name',[],'Tf',[],'Ts',[],'FPS',VV.FPS,'vCompress',[]);
+sStr = struct('Dir',nwDir,'Name',[],'Tf',[],'Ts',[],...
+              'FPS',VV.FPS,'vCompress',[]);
 vidPara = repmat(sStr,VV.nCount,1);
 
 % updates the fields for each of the videos
@@ -610,12 +625,12 @@ setappdata(exObj.hMain,'rtD',rtD)
 
 % retrieves the tracking GUI handle
 hTrack = getappdata(exObj.hMain,'hTrack');
-if (~isempty(hTrack))
+if ~isempty(hTrack)
     % retrieves the update function handle
     feval(getappdata(hTrack,'rFunc'),guidata(hTrack),2-isInit);
 end
 
 % creates a new experiment data struct (if required)
-if (~isempty(iExpt.Info.OutSoln))                
+if ~isempty(iExpt.Info.OutSoln)                
     setappdata(exObj.hProg,'rtPos',setupRTExptStruct(iMov)); 
 end     

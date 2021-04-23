@@ -5,7 +5,7 @@ function Icomp = createCompositeImage(ImgBase,iMov,Isub,varargin)
 Icomp = ImgBase;
 
 % sets the sub-images for all apparatus
-for i = 1:length(iMov.iR)
+for i = find(iMov.ok(:)')
     if (nargin == 3)
         Icomp(iMov.iR{i},iMov.iC{i}) = Isub{i};
     else

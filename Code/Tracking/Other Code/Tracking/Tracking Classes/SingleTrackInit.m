@@ -43,8 +43,8 @@ classdef SingleTrackInit < SingleTrack
             
             % other initialisations
             wStr0 = obj.hProg.wStr;  
-            nPhase = length(obj.iMov.vPhase);           
-            
+            nPhase = length(obj.iMov.vPhase);          
+                        
             % initialises the tracking objects
             obj.initTrackingObjects('InitEstimate');      
             
@@ -160,30 +160,36 @@ classdef SingleTrackInit < SingleTrack
                         
             % calculates the overall quality of the flies (prompting the
             % user to exclude any empty/anomalous regions)
-            if ~obj.isBatch
+            if ~obj.isBatch && ~all(obj.iMov.vPhase == 3)
                 obj.calcOverallQuality()
             end
             
             % sets the status flags for each phase (full and overall)
-            obj.iMov.StatusF = cellfun(@(x)(x.iStatus),obj.fObj,'un',0);  
+            obj.iMov.StatusF = cellfun(@(x)(x.iStatus),obj.fObj,'un',0);
             
             % determines which regions are potentially empty 
             ii = ~cellfun(@isempty,obj.iMov.StatusF);
-            Status0 = cell2mat(reshape(obj.iMov.StatusF(ii),[1,1,sum(ii)]));                      
-            Status1 = min(Status0,[],3);
-            noFly = any(Status0==3,3);
-            
-            % updates the status flag  
-            Status1(Status1 == 0) = 2;
-            if obj.isBatch                
-                Status1(noFly & obj.iMov.flyok) = 2;
-                Status1(noFly & ~obj.iMov.flyok) = 3;
+            if any(ii)
+                szDim = [1,1,sum(ii)];
+                Status0 = cell2mat(reshape(obj.iMov.StatusF(ii),szDim));
+                Status1 = min(Status0,[],3);
+                noFly = any(Status0==3,3);
+
+                % updates the status flag  
+                Status1(Status1 == 0) = 2;
+                if obj.isBatch                
+                    Status1(noFly & obj.iMov.flyok) = 2;
+                    Status1(noFly & ~obj.iMov.flyok) = 3;
+                else
+                    Status1(noFly) = 3;  
+                end
+
+                % resets the status flags for the video
+                obj.iMov.Status = num2cell(Status1,1);   
             else
-                Status1(noFly) = 3;  
+                obj.iMov.Status = arrayfun(@(x)...
+                            (zeros(x,1)),getSRCountVec(obj.iMov)','un',0);                
             end
-                
-            % resets the status flags for the video
-            obj.iMov.Status = num2cell(Status1,1);          
             
             % updates the progress bar
             obj.hProg.Update(1+obj.wOfsL,'Initial Estimate Complete!',1);                                                
@@ -239,17 +245,19 @@ classdef SingleTrackInit < SingleTrack
                 % reads the initial images            
                 Img = cell(nPh,1);
                 for i = 1:nPh
-                    % updates the progressbar 
-                    wStr = sprintf(...
-                        'Reading Phase Images (Phase %i of %i)',i,nPh);
-                    if obj.hProg.Update(1+obj.wOfsL,wStr,i/(1+nPh))
-                        % if the user cancelled, then exit the function
-                        obj.calcOK = false;
-                        return
-                    end
+                    if obj.iMov.vPhase(i) < 3
+                        % updates the progressbar 
+                        wStr = sprintf(...
+                            'Reading Phase Images (Phase %i of %i)',i,nPh);
+                        if obj.hProg.Update(1+obj.wOfsL,wStr,i/(1+nPh))
+                            % if the user cancelled, then exit the function
+                            obj.calcOK = false;
+                            return
+                        end
 
-                    % reads the image stack for phase frame indices
-                    Img{i} = obj.getImageStack(iFrm{i});                  
+                        % reads the image stack for phase frame indices
+                        Img{i} = obj.getImageStack(iFrm{i});    
+                    end
                 end
             end
             
@@ -319,8 +327,13 @@ classdef SingleTrackInit < SingleTrack
             
             % sets the phase/frame index array
             nImgS = cumsum(cellfun(@length,Img));
-            indF = cellfun(@(x)((x(1):x(2))'),...
+            if sum(nImgS) == 0
+                rFlag = -2;
+                return
+            else
+                indF = cellfun(@(x)((x(1):x(2))'),...
                         num2cell([[1;nImgS(1:end-1)+1],nImgS],2),'un',0);
+            end
             
             % updates the overall progress 
             wStr = 'Image Baseline Subtraction';

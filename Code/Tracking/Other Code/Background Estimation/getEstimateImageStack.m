@@ -19,14 +19,14 @@ end
 
 % creates the video phase class object
 phObj = VideoPhase(iData,iMov);
-phObj.setSolverPara('nImgR',iMov.bgP.pPhase.nImgR);
 
 % runs the phase detection solver
 h.Update(1+iOfs,'Determining Video Phases...',1/nStep);
 phObj.runPhaseDetect();
 
 % updates the sub-image data struct with the phase information
-[iMov.iPhase,iMov.vPhase] = deal(phObj.iPhase,phObj.vPhase);
+[phObj.iMov.iPhase,phObj.iMov.vPhase] = deal(phObj.iPhase,phObj.vPhase);
+iMov = phObj.iMov;
 
 % reads the frames from the images
 if outImgStack

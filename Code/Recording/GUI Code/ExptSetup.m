@@ -652,6 +652,18 @@ if ~isempty(getappdata(hMain,'objDACInfo'))
     setappdata(hMain,'iExpt',iExpt)
 end
 
+% re-enables the video preview button
+hToggle = findall(hMain,'tag','toggleVideoPreview');
+setObjEnable(hToggle,'off')
+if get(hToggle,'Value')
+    % retrieves the toggle button callback function
+    toggleFcn = getappdata(hMain,'toggleVideoPreview');
+    
+    % unchecks the box and runs the callback function
+    set(hToggle,'Value',0)
+    toggleFcn(hToggle,'1',guidata(hMain))
+end
+
 % makes the experimental info GUI invisible
 setObjVisibility(hFig,'off')
 if ~isempty(hMain); figure(hMain); end
@@ -666,7 +678,10 @@ function afterExptFunc(hFig)
 
 % retrieves the timer object
 handles = guidata(hFig);
-exObj = getappdata(hFig,'exObj');
+hMainH = guidata(getappdata(hFig,'hMain'));
+
+% re-enables the video preview button
+setObjEnable(hMainH.toggleVideoPreview,'on')
 
 % deletes the experiment object struct
 % setObjVisibility(exObj.hMain,'off')
@@ -6064,6 +6079,8 @@ if isempty(hSigSel); return; end
     
 % determines all the stimuli blocks that are not the selected block
 sigBlkP = getAllProtocolSigBlocks(hFig);
+if isempty(sigBlkP); return; end
+
 ii = ~cellfun(@(x)(isequal(hSigSel,x)),sigBlkP);
 if any(ii)
     % if there are any such blocks, then reset their hit-test state

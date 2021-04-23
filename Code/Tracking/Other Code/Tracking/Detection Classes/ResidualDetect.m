@@ -76,7 +76,7 @@ classdef ResidualDetect < handle
             obj.initObjectFields()
             
             % segments the object locations for each region
-            for iApp = 1:obj.nApp
+            for iApp = find(obj.iMov.ok(:)')
                 % updates the progress bar
                 wStr = sprintf(['Residual Calculations ',...
                                 '(Region %i of %i)'],iApp,obj.nApp);
@@ -146,6 +146,9 @@ classdef ResidualDetect < handle
             if isempty(obj.prData)
                 % no previous data, so use empty values
                 fPr = cell(obj.nTube(iApp),1);
+            elseif ~isfield(obj.prData,'fPosPr')
+                % no previous data, so use empty values
+                fPr = cell(obj.nTube(iApp),1);                
             else
                 % otherwise, use the previous values
                 fPr = obj.prData.fPosPr{iApp}(:);
@@ -155,7 +158,7 @@ classdef ResidualDetect < handle
             % frame/sub-region   
             fPos0 = cellfun(@(x,p,f0,fok)...
                     (obj.segSubRegions(x,p,f0,fok,dTol)),...
-                    num2cell(IResL,2),pTol,fPr,num2cell(fok),'un',0);                
+                    num2cell(IResL,2),pTol,fPr,num2cell(fok),'un',0);               
             
             % checks the stationary flies have not moved appreciable
             for i = find(obj.iMov.Status{iApp}' == 2)
@@ -283,7 +286,7 @@ classdef ResidualDetect < handle
                 h = zeros(obj.nApp,1);
                 
                 % creates the figure displaying each region separately
-                for iApp = 1:obj.nApp
+                for iApp = find(obj.iMov.ok(:)')
                     h(iApp) = subplot(nR,nC,iApp);
                     plotGraph('image',ILp{iApp},h(iApp)); 
                     hold on
@@ -291,7 +294,7 @@ classdef ResidualDetect < handle
             end
 
             % plots the most likely positions     
-            for iApp = 1:obj.nApp
+            for iApp = find(obj.iMov.ok(:)')
                 % retrieves the marker points
                 if isFull
                     j = 1;
@@ -350,7 +353,7 @@ classdef ResidualDetect < handle
                                                 obj.nTube,'un',0),1,nFrm);                                            
             
             % converts the coordinates from the sub-region to global coords
-            for iApp = 1:obj.nApp
+            for iApp = find(obj.iMov.ok(:)')
                 % calculates the x/y offset of the sub-region
                 xOfs = obj.iMov.iC{iApp}(1)-1;
                 yOfs = obj.iMov.iR{iApp}(1)-1;
