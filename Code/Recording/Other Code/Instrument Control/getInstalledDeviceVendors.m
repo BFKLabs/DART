@@ -5,6 +5,10 @@ try
     % determines the currently detected vendors
     dVendor = daq.getVendors;    
 catch
+    % clears the screen of the error message
+    pause(0.05); 
+    clc
+    
     % if there is an error, then exit
     [dStr,varargout{1}] = deal([],[]);
     return    

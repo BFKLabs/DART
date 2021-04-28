@@ -413,7 +413,7 @@ setObjEnable(h.menuReset,'off')
 % ---------------------------------- %
 
 % sets the table information fields
-cStr = cellfun(@(x)(sprintf('Column #%i',x)),xiC,'un',0);
+cStr = cellfun(@(x)(sprintf('Column #%i',x)),xiC(:),'un',0);
 if ~isMultiTrack; cStr = [cStr;{'Max Count'}]; end
 
 rStr = cellfun(@(x)(sprintf('Row #%i',x)),xiR,'un',0);

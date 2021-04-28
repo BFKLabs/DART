@@ -89,7 +89,7 @@ if updateDev
 end
 
 % ensure that the stimuli train order matches the device order
-reduceDevInfo(hMain,devTypeL,nChL)
+reduceDevInfoReload(hMain,devTypeL,nChL)
 
 % --- prompts the user of the configuration requirements and whether they
 %     wish to continue with resets the device configuration
@@ -133,10 +133,11 @@ switch devType
 end
 
 % --- reduces down the fields of the device information object
-function reduceDevInfo(hMain,devTypeL,nChL)
+function reduceDevInfoReload(hMain,devTypeL,nChL)
 
 % initialisations
 objD = getappdata(hMain,'objDACInfo0');
+isTest = getappdata(hMain,'isTest');
 nDev0 = length(objD.sRate);
 [devTypeD,nChD] = deal(objD.sType(:),objD.nChannel(1:nDev0));
 nChD(isnan(nChD)) = 0;
@@ -168,36 +169,8 @@ for i = 1:length(devTypeL)
     end
 end
 
-% re-orders the device object array to match the loaded device details
-pFld = fieldnames(objD);
-for i = 1:length(pFld)
-    % sets the field string
-    pStr = sprintf('objD.%s',pFld{i});
-    
-    % re-orders the field based on the type
-    switch pFld{i}
-        case 'ObjectConstructorName'
-            % case is 2D array field
-            eval(sprintf('%s = %s(iDev,:);',pStr,pStr));        
-            
-        case 'vSelDAC'
-            % case is the device selection index array
-            eval(sprintf('%s = 1:length(iDev);',pStr));
-            
-        case 'vStrDAC'
-            % case is the device selection index array
-            Y = eval(pStr);
-            ii = num2cell(1:length(Y))';
-            Ynw = cellfun(@(x,y)(sprintf('%i%s',x,y(2:end))),...
-                                            ii(iDev),Y(iDev),'un',0);
-            eval(sprintf('%s = Ynw;',pStr));            
-            
-        otherwise
-            % case is 1D array field
-            eval(sprintf('%s = %s(iDev);',pStr,pStr));
-            
-    end
-end
+% reduces down the information even further
+objD = reduceDevInfo(objD,isTest,iDev);
 
 % updates the device data object 
 setappdata(hMain,'objDACInfo',objD)

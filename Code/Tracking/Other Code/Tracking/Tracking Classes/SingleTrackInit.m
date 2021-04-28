@@ -590,15 +590,7 @@ classdef SingleTrackInit < SingleTrack
             % --- BACKGROUND IMAGE ESTIMATE CALCULATIONS --- %
 
             % memory allocation            
-            Ibg0 = cell(nFrm,1);
-%             
-            
-            if isfield(obj.iMov,'szObj')
-                nPts = ceil(pi*prod(obj.iMov.szObj/2));
-            else
-                R = (size(IsubF{1},1)-1)/2;
-                nPts = floor(pi*R^2);             
-            end
+            Ibg0 = cell(nFrm,1);                        
             
             % calculates the average image for all the object locations
             if isempty(obj.prData0)
@@ -610,6 +602,13 @@ classdef SingleTrackInit < SingleTrack
                 % case is the background is being re-used
                 IsubNw = calcImageStackFcn(IsubF);
             end
+            
+            if isfield(obj.iMov,'szObj')
+                nPts = ceil(pi*prod(obj.iMov.szObj/2));
+            else
+                B = IsubNw > 0.05*max(IsubNw(:));
+                nPts = sum(B(:));             
+            end            
             
             % sets the background temporary image for each frame
             for i = 1:nFrm

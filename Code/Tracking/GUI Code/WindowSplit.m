@@ -806,8 +806,15 @@ else
     end
 end
 
+% initialises the in-use flags (if not already initialises elsewhere)
+nMax = max(iMov.nTubeR(:));
+if ~isfield(iMov,'isUse')
+    iMov.isUse = arrayfun(@(n)(true(nMax,1)),iMov.nTubeR,'un',0);
+elseif isempty(iMov.isUse)    
+    iMov.isUse = arrayfun(@(n)(true(nMax,1)),iMov.nTubeR,'un',0);
+end
+
 % removes any previous markers and updates
-iMov.isUse = arrayfun(@(n)(true(n,1)),iMov.nTubeR,'un',0);
 iMov = createSubRegions(handles,iMov,isSet);
 
 % --- creates the subplot regions and line objects

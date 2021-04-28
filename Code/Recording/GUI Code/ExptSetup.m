@@ -2212,12 +2212,6 @@ hListEx = findobj(hFig,'tag',sprintf('listStimTrainEx%s',dType));
 % retrieves the current stimuli train information
 sTrainC = getStimTrainInfo(handles);
 
-% updates the experiment stimuli parameters
-if ~updateExptParaFields(hFig,sTrainC,dType)
-    % if there was an error, then exit the function
-    return
-end
-
 % determines if the stimuli train name is unique
 sTrainP = eval(sprintf('sTrain.%s',dType));
 if isempty(sTrainP)
@@ -4782,7 +4776,7 @@ if addOffset; xS = xS + rPos(1); end
 hold(hAx,'on');
 
 % creates the new signal object
-if sParaS.nCount < 50
+if detIfUsePatch(hAx,xS,yS)
     % if there are not too many cycle counts, then use a patch
     hSigObj = patch(hAx,xS([1:end,1]),yS([1:end,1]),chCol{iCh},...
                     'linewidth',1,'FaceAlpha',0.2,'EdgeColor',chCol{iCh});
@@ -4847,9 +4841,6 @@ if nargin < 2
     resetLimits = true;
 end
 
-% parameters
-nPtsMin = 50;
-
 % object handle/data field retrieval
 hAx = get(hFig,'CurrentAxes');
 iExpt = getappdata(hFig,'iExpt');
@@ -4887,16 +4878,12 @@ for i = 1:length(iChObj)
     xS = xyData{iChNw}(:,1)+(rPos(1)+dX(i));
     yS = xyData{iChNw}(:,2); 
     
-    if length(xS) > nPtsMin
-        hSigObj(i) = plot(hAx,xS([1:end,1]),yS([1:end,1]));
-        set(hSigObj(i),'Color',chCol{j});
-    else
+    if detIfUsePatch(hAx,xS,yS)
         hSigObj(i) = patch(hAx,xS,yS,chCol{j},'FaceAlpha',0.2,...
-                           'EdgeColor',chCol{j},'LineWidth',1);
-                       
-%     % if there are not too many cycle counts, then use a patch
-%     hSigObj = patch(hAx,xS([1:end,1]),yS([1:end,1]),chCol{iCh},...
-%         'linewidth',1,'FaceAlpha',0.2,'EdgeColor',chCol{iCh});                       
+                           'EdgeColor',chCol{j},'LineWidth',1);        
+    else
+        hSigObj(i) = plot(hAx,xS([1:end,1]),yS([1:end,1]));
+        set(hSigObj(i),'Color',chCol{j});                      
     end
 end
 
@@ -5635,20 +5622,26 @@ tMltDur = getTimeMultiplier('s',iExpt.Timing.TexpU);
 % retrieves the signal parameter struct
 tOfs = getExptTimeOffset(hFig);
 
-% determines if the stimuli offset is ok
-tDurBlk = calcMaxStimTrainDur(sTrainS);
-tMltBlk = getTimeMultiplier(sTrainS.tDurU,'s');
-if tDurBlk > vec2sec(getPopupDurValues(hPanelP))*tMltBlk
-    % if the stimuli train duration is less than the repetition duration
-    % then output an error to screen
-    [~,~,Ts] = calcTimeDifference(sec2vec(tDurBlk),[0,0,0,0]);
-    eStr = sprintf(['The stimuli repetition offset must be at least ',... 
-                    '(%s:%s:%s:%s)'],Ts{1},Ts{2},Ts{3},Ts{4});
-                
-    % output the error to screen
-    waitfor(msgbox(eStr,'Invalid Stimuli Offset Duration','modal'))
-    ok = 0;
-    return
+% determines if the stimuli train block duration is less than stimuli block
+% duration (only if there are repetitions of the stimuli block)
+nCount = eval(sprintf('sPara.%s.nCount',sType(1)));
+if nCount > 1
+    % calcuates the stimuli train block duration
+    tDurBlk = calcMaxStimTrainDur(sTrainS);
+    
+    % determines if the stimuli offset is ok
+    if tDurBlk > vec2sec(getPopupDurValues(hPanelP))
+        % if the stimuli train duration is less than the repetition 
+        % duration then output an error to screen
+        [~,~,Ts] = calcTimeDifference(sec2vec(tDurBlk),[0,0,0,0]);
+        eStr = sprintf(['The stimuli repetition offset must be at ',... 
+                        'least (%s:%s:%s:%s)'],Ts{1},Ts{2},Ts{3},Ts{4});
+
+        % output the error to screen
+        waitfor(msgbox(eStr,'Invalid Stimuli Offset Duration','modal'))
+        ok = 0;
+        return
+    end    
 end
 
 % % initialisations
@@ -6853,12 +6846,14 @@ iProto = getProtocolIndex(hFig);
 uData = get(sBlk,'UserData');
 sigBlk = getappdata(hFig,'sigBlk');
 sParaEx = getappdata(hFig,'sParaEx');
+sTrainF = getappdata(hFig,'sTrain');
 iExpt = getappdata(hFig,'iExpt');
 
 % retrieves the important fields from the user data array
 % iCh = uData{indFcn('iCh')};
+iBlkF = uData{indFcn('iBlk')};
 hSigObj = uData{indFcn('hSigObj')};
-sTrain = uData{indFcn('sPara')};
+sTrainS = uData{indFcn('sPara')};
 sType = uData{indFcn('sType')};
 
 % calculates the offset time multiplier
@@ -6867,11 +6862,11 @@ tMltOfs = getTimeMultiplier(iExpt.Timing.TexpU,sParaS.tOfsU);
 % updates the position of the signal block
 rPos = sBlk.getPosition();
 rPos(1) = sParaS.tOfs*tMltOfs;
-rPos(3) = calcExptStimDuration(hFig,sTrain,sParaEx);
+rPos(3) = calcExptStimDuration(hFig,sTrainS,sParaEx);
 sBlk.setPosition(rPos);
 
 % retrieves the full experiment signal
-xyData = setupFullExptSignal(hFig,sTrain);
+xyData = setupFullExptSignal(hFig,sTrainS);
 iChObj = ~cellfun(@isempty,xyData);
 cellfun(@(h,x,pdx)(set(h,'xData',x(:,1)+(rPos(1)+pdx),'yData',x(:,2))),...
        num2cell(hSigObj),xyData(iChObj),num2cell(uData{indFcn('pDX')}))
@@ -6880,13 +6875,16 @@ cellfun(@(h,x,pdx)(set(h,'xData',x(:,1)+(rPos(1)+pdx),'yData',x(:,2))),...
 uData{indFcn('sParaEx')} = sParaS;
 set(sBlk,'UserData',uData);
 
+% updates the experiment protocol stimuli train parameter field (for the
+% current stimuli block)
+sTrainF.Ex.sParaEx(iBlkF) = sParaS;
+setappdata(hFig,'sTrain',sTrainF);
+
 % updates the signal block within the storage array (only do this if the
 % stimuli trains are not being updated as this is done outside function
-if nargin < 2
-    iBlk = cellfun(@(x)(isequal(sBlk,x)),sigBlk{iProto});
-    sigBlk{iProto}{iBlk} = sBlk;
-    setappdata(hFig,'sigBlk',sigBlk)
-end
+iBlkS = cellfun(@(x)(isequal(sBlk,x)),sigBlk{iProto});
+sigBlk{iProto}{iBlkS} = sBlk;
+setappdata(hFig,'sigBlk',sigBlk)
 
 % --- updates the parameter for the currently selected stimuli object
 function updateStimObjPara(hFig,sParaS)
@@ -8309,3 +8307,20 @@ if (resetFields)
     set(handles.textFrmCount,'string','NaN')
     set(handles.textVidCount,'string','NaN')
 end
+
+% --- determines if a patch is required to represent a signal block
+function usePatch = detIfUsePatch(hAx,xS,yS)
+
+% retrieves the axis limits/position
+axPos = get(hAx,'Position');
+dtLim = diff(get(hAx,'xlim'))/axPos(3);
+
+% determines if any of the groups (where the signal is non-zeros) is 
+% greater than the threshold time limit
+iGrp = getGroupIndex(yS>yS(end));
+if isempty(iGrp)
+    usePatch = true;
+else
+    usePatch = any(cellfun(@(x)(any(diff(xS(x)) > dtLim)),iGrp));
+end
+

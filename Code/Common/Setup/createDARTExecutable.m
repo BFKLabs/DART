@@ -128,13 +128,16 @@ codeDir = codeDir(isOK);
 
 % sets up the main file, analysis function directory and other important
 % file directories add string
-fStr = [codeDir;{'DART.fig';'Para Files'}];
+fStr = [codeDir;{'DART.fig';'Para Files';'Code Exe'}];
 addStr = sprintf('-v ''%s'' -a ''%s''',fullfile(progDir,'DART.m'),fcnDir);
 for i = 1:length(fStr)
     switch fStr{i}
         case {'DART.fig','Para Files'}
             addFiles = fullfile(progDir,fStr{i});
             addStr = sprintf('%s -a ''%s''',addStr,addFiles);
+        case {'Code Exe'}
+            addDir = fullfile(progDir,fStr{i});
+            addStr = sprintf('%s -a ''%s\\*''',addStr,addDir);            
         otherwise
             addStr = sprintf('%s -a ''%s\\*''',addStr,fStr{i});
     end

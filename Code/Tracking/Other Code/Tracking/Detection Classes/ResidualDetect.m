@@ -161,7 +161,8 @@ classdef ResidualDetect < handle
                     num2cell(IResL,2),pTol,fPr,num2cell(fok),'un',0);               
             
             % checks the stationary flies have not moved appreciable
-            for i = find(obj.iMov.Status{iApp}' == 2)
+            indF = 1:getSRCount(obj.iMov,iApp);
+            for i = find(obj.iMov.Status{iApp}(indF)' == 2)
                 % calculates the distance travelled over the frame stack
                 % (relative to the original coordinates)
                 if ~isempty(obj.prData)

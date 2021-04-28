@@ -1,6 +1,6 @@
 % --- reduces down the device information data struct to only include those
 %     fields that were selected by the user
-function [objDACInfo,objDACInfo0] = reduceDevInfo(objDACInfo0,isTest)
+function [objDACInfo,objDACInfo0] = reduceDevInfo(objDACInfo0,isTest,vSel)
 
 % global variables
 global mainProgDir
@@ -14,11 +14,17 @@ if isempty(objDACInfo)
     return    
 end
 
+% sets the selection indices (if not provided)
+if ~exist('vSel','var')
+    vSel = objDACInfo.vSelDAC;
+end
+
 % reduces the sub-fields
-vSel = objDACInfo.vSelDAC;
 objDACInfo.vStrDAC = objDACInfo.vStrDAC(vSel);
 objDACInfo.nChannel = objDACInfo.nChannel(vSel);
-objDACInfo.sRate = objDACInfo.sRate(vSel);    
+objDACInfo.sRate = objDACInfo.sRate(vSel); 
+objDACInfo.dType = objDACInfo.dType(vSel); 
+objDACInfo.sType = objDACInfo.sType(vSel); 
 
 if ~isTest   
     % reduces the device object properties
@@ -41,7 +47,7 @@ if ~isTest
                 sType = 0;
             end
             
-            % sets the control flag ID numbers
+            % resets user data (serial device ID flags)
             set(objDACInfo.Control{isS(i)},'UserData',sType)
             set(objDACInfo0.Control{isS(i)},'UserData',sType)
 

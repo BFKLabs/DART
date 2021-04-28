@@ -56,7 +56,6 @@ end
 % if there is the 3rd flag, then readjust the GUI
 if DAConly
     % initialisations and setting of the input arguments   
-    eStr = {'off','on'};
     [isSet,dY,Htext] = deal(true,5,18);
     Hpanel0 = cell2mat(retObjDimPos({handles.panelUSBRequire},4));
     HpO = cell2mat(retObjDimPos({handles.panelOuter},4));
@@ -667,11 +666,11 @@ if isempty(IMAQonly)
     IMAQonly = isempty(getappdata(hFig,'vSelDAC'));
 end
 
-% determines if the correct device selection has been made
-if ~isempty(vSel) && ~isTest
-    objDACInfo.dType = objDACInfo.dType(vSel);
-    objDACInfo.sType = objDACInfo.sType(vSel);
-end
+% % determines if the correct device selection has been made
+% if ~isempty(vSel) && ~isTest
+%     objDACInfo.dType = objDACInfo.dType(vSel);
+%     objDACInfo.sType = objDACInfo.sType(vSel);
+% end
 
 % ----------------------------------------------- %
 % --- IMAGE ACQUISITION OBJECT INITIALISATION --- %
@@ -896,7 +895,8 @@ A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
 if (verLessThan('matlab','9.2'))
     dStr = {'mcc','nidaq'};
 else
-    [dStr,dInfo] = getInstalledDeviceVendors(1);
+    % retrieves the installation information
+    [dStr,dInfo] = getInstalledDeviceVendors(1);    
 end
 
 % memory allocation

@@ -1514,8 +1514,9 @@ classdef CalcBG < handle
             
             % sets the marker visibility for all apparatus
             for i = 1:length(obj.hMark)
+                indFly = 1:getSRCount(obj.iMov,i);
                 cellfun(@(x,isOn)(setObjVisibility(x,isOn)),...
-                                obj.hMark{i},num2cell(isOK & fok(:,i)))
+                        obj.hMark{i},num2cell(isOK & fok(indFly,i)))
             end
         
         end

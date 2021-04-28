@@ -307,7 +307,7 @@ classdef StimObj < handle
                 try 
                     % sets the input string based on the device type 
                     if hasDev
-                        sTypeD = get(obj.hS{iDevD},'UserData'); 
+                        sTypeD = get(obj.hS{iDevD},'UserData');
                     else
                         sTypeD = 3;
                     end

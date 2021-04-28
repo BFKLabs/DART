@@ -188,7 +188,7 @@ if ~isempty(sData); snTot.sData = sData; end
 % retrieves the waitbar figure properties
 if ~isempty(hh)
     [h,wOfs] = deal(hh,1);
-    if ishandle(h.hFig)
+    if isa(h,'ProgBar')
         % if the waitbar is valid, then retrieve the level strings
         wStr = h.wStr;
     else

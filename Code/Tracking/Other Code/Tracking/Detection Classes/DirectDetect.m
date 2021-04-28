@@ -788,6 +788,26 @@ classdef DirectDetect < handle
         % --- LIKELY STATIC BLOB DETECTION CALCULATIONS --- %
         % ------------------------------------------------- %
         
+        function fPos0 = convertLikelyPosCoord(obj,iApp)
+            
+            % initialisations
+            fPos0 = obj.pMax(iApp,:);
+            yOfs = num2cell(obj.y0{iApp});
+            
+            % converts the coordinates for all sub-regions to region coords
+            for i = 1:length(fPos0)
+                % determines the sub-regions with valid objects detected
+                isOK = ~cellfun(@isempty,fPos0{i});
+                
+                % converts the valid regions from sub-region to region
+                % coordinates (sets NaN values for the invalid regions)
+                fPos0{i}(isOK) = cellfun(@(x,y)(roundP(x+repmat([0,y],...
+                          size(x,1),1))),fPos0{i}(isOK),yOfs(isOK),'un',0);
+                fPos0{i}(~isOK) = {NaN(1,2)};
+            end
+            
+        end
+        
         % --- calculates the most likely point groupings
         function calcFramePointGroupings(obj)
             
@@ -808,15 +828,11 @@ classdef DirectDetect < handle
             
             % loops through each region calculating the likely blobs
             for iApp = find(obj.iMov.ok(:)')
-                % retrieves the images for the current region
-                yOfs = num2cell(obj.y0{iApp});
+                % retrieves the images for the current region                
                 Iapp = obj.getRegionImageStack(obj.ImdR,iApp);
                 
-                % converts the likely coordinates to region coordinate
-                pMax0 = obj.pMax(iApp,:);
-                fPos0 = cellfun(@(z)(cellfun(@(x,y)...
-                    (x+repmat([0,y],size(x,1),1)),z,...
-                    yOfs,'un',0)),pMax0,'un',0);
+                % converts the likely coordinates to region coordinate                
+                fPos0 = obj.convertLikelyPosCoord(iApp);
                 
                 % retrieves the indices of all potential blobs over all the
                 % frames in the image stack
@@ -978,7 +994,8 @@ classdef DirectDetect < handle
             for iImg = 1:obj.nImg
                 % determines the linear indices of the blobs on this frame
                 fP = obj.fPos{iApp,iImg}(fok,:);
-                iPos = sub2ind(sz,fP(:,2),fP(:,1));
+                isOK = ~isnan(fP(:,1));
+                iPos = sub2ind(sz,fP(isOK,2),fP(isOK,1));
                 
                 % determines blobs that overlap with the likely solution
                 [~,Btmp] = detGroupOverlap(Brmv{iImg},setGroup(iPos,sz));
@@ -1157,7 +1174,7 @@ classdef DirectDetect < handle
             
             % removes the infeasible points
             isOK = ~isnan(fP(:,1));
-            fP = fP(isOK,:);
+            fP = roundP(fP(isOK,:));
             
             % memory allocation
             nBlob = size(fP,1);
@@ -1596,7 +1613,8 @@ classdef DirectDetect < handle
                 end
                 
                 % plots the markers
-                isMove = iStatusF(:,iApp) == 1;
+                indF = 1:getSRCount(obj.iMov,iApp);
+                isMove = iStatusF(indF,iApp) == 1;
                 plot(h(j),fPosP(isMove,1),fPosP(isMove,2),'go');
                 plot(h(j),fPosP(~isMove,1),fPosP(~isMove,2),'ro');
             end
@@ -1903,14 +1921,17 @@ classdef DirectDetect < handle
         % --- determines the coordinates of other blobs in the sub-image
         function fPO = detPointsInFrame(Isub)                       
             
+            % distance tolerance
+            Dtol = 0.01 + sqrt(10);
+            
             % determines the minima within the sub-image
             B = isnan(Isub);
             Isub(B) = 0;
             [yP,xP] = find(imregionalmin(Isub).*(~B));
             
             % removes the centre point and returns the other values
-            WH = [1,1]*(size(Isub,1)-1)/2;
-            ii = ~setGroup(argMin(pdist2(WH,[xP,yP])),[length(xP),1]);
+            D = pdist2([1,1]*(size(Isub,1)-1)/2,[xP,yP]);
+            ii = ~setGroup(find(D(:)<=Dtol),[length(xP),1]);
             fPO = [xP(ii),yP(ii)];
             
         end
@@ -1955,11 +1976,6 @@ classdef DirectDetect < handle
                 linspace(Imin,cLvl,nLvl),fPO,0);
             
         end
-        
-        
-        
-        
-        
         
         % --- determines the threshold pixel intensity
         function pTol = getBinThreshold(Z,ind)
