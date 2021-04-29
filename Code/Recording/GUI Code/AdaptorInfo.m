@@ -896,7 +896,13 @@ if (verLessThan('matlab','9.2'))
     dStr = {'mcc','nidaq'};
 else
     % retrieves the installation information
-    [dStr,dInfo] = getInstalledDeviceVendors(1);    
+    [dStr,dInfo] = getInstalledDeviceVendors(1); 
+    
+    % clears the screen (executable only)
+    if isdeployed
+        pause(0.05);
+        clc
+    end
 end
 
 % memory allocation

@@ -1918,10 +1918,8 @@ iChC = iChC(iChC ~= iCh);
 if isempty(iChCopy)
     % if the user cancelled, then exit the function
     return
-end
-
-%
-if isWC
+    
+elseif isWC
     % case is copying within a channel
     
     % determines the time limits of the entire signal
@@ -1929,14 +1927,14 @@ if isWC
     dtLim = diff(tLimBlk);
     tOfs = sParaC.tOfs;
     
-    %
+    % copies the signal block information
     for i = 1:length(sBlk)
         % retrieves the signal block userdata
         uData = get(sBlk{i},'UserData');  
         sPara = uData{indFcn('sPara')};
         rPos0 = sBlk{i}.getPosition();
         
-        for j = 1:sParaC.nCount            
+        for j = 1:sParaC.nCount
             % updates the signal parameter struct in the user data field
             sPara.tOfs = rPos0(1) + j*(dtLim + tOfs);
             uData{indFcn('sPara')} = sPara;
@@ -1950,7 +1948,8 @@ if isWC
 else
     % case is copying between channels
     
-    for j = 1:length(iChCopy)        
+    % copies the signal block information
+    for j = 1:length(iChCopy)
         % deletes the signal blocks within the channel
         deleteChannelSignalBlocks(hFig,iProto,iChCopy(j));
         
@@ -2494,7 +2493,9 @@ set(hObject,'max',1);
 if strcmp(dType,'Ex')
     % toggles the experiment object selection properties
     sBlk0 = getSignalBlock(hFig);
-    toggleExptObjSelection(hFig,sBlk0{iSel},false);
+    if isvalid(sBlk0{iSel})
+        toggleExptObjSelection(hFig,sBlk0{iSel},false);
+    end
     
 else
     % updates the stimuli train for the current train
@@ -4532,7 +4533,6 @@ hTimer = timer('ExecutionMode','fixedRate','BusyMode','drop',...
 function setExptInfoFields(handles,devType)
 
 % initialisations
-eStr = {'off','on'};
 sdTypes = {'Opto','Motor'};
 hasStim = any(cellfun(@(x)(any(strcmp(sdTypes,x))),devType));
 
@@ -4867,15 +4867,13 @@ hold(hAx,'on');
 
 % creates the new signal object
 for i = 1:length(iChObj)
-    %
+    % sets the actual channel index
     iChNw = iChObj(i);
     j = (nChTot+1) - iChNw;
-    sP = sPara.blkInfo(end-(i-1)).sPara;
-    tMlt = getTimeMultiplier(iExpt.Timing.TexpU(1),sP.tDurU);
     
-    % appends on the start location of the group  
-    dX(i) = sP.tOfs*tMlt;
-    xS = xyData{iChNw}(:,1)+(rPos(1)+dX(i));
+    % appends on the start location of the group
+    dX(i) = xyData{iChNw}(1,1);
+    xS = xyData{iChNw}(:,1)+rPos(1);
     yS = xyData{iChNw}(:,2); 
     
     if detIfUsePatch(hAx,xS,yS)
@@ -5153,11 +5151,13 @@ blkInfo = sTrain.blkInfo;
 % memory allocation
 [nCh,nBlk] = deal(length(sTrain.chName),length(blkInfo));
 [xyData,xyData0] = deal(cell(nCh,1));
+tUnitsS = lower(tUnits(1));
 
 % retrieves and separates the stimuli signal coordinates by channel
 for i = 1:nBlk    
     % calculates the signal time multiplier
-    tMlt = getTimeMultiplier(lower(tUnits(1)),blkInfo(i).sPara.tDurU);
+    tMltDur = getTimeMultiplier(tUnitsS,blkInfo(i).sPara.tDurU);
+    tMltOfs = getTimeMultiplier(tUnitsS,blkInfo(i).sPara.tOfsU);
     
     % retrieves the signal from the current stimuli block
     iCh = find(strcmp(sTrain.chName,blkInfo(i).chName) & ...
@@ -5166,7 +5166,8 @@ for i = 1:nBlk
                 hAx,blkInfo(i).sPara,iCh,blkInfo(i).sType,0);
     
     % stores the signal values for the given channel
-    xyData0{iCh} = [xyData0{iCh};[tMlt*xS(:),yS(:)]];
+    tOfs = tMltOfs*blkInfo(i).sPara.tOfs;
+    xyData0{iCh} = [xyData0{iCh};[tMltDur*xS(:)+tOfs,yS(:)]];
 end
 
 % repeats the signals for the necessary counta
@@ -6868,7 +6869,7 @@ sBlk.setPosition(rPos);
 % retrieves the full experiment signal
 xyData = setupFullExptSignal(hFig,sTrainS);
 iChObj = ~cellfun(@isempty,xyData);
-cellfun(@(h,x,pdx)(set(h,'xData',x(:,1)+(rPos(1)+pdx),'yData',x(:,2))),...
+cellfun(@(h,x,pdx)(set(h,'xData',(x(:,1)-x(1))+(rPos(1)+pdx),'yData',x(:,2))),...
        num2cell(hSigObj),xyData(iChObj),num2cell(uData{indFcn('pDX')}))
 
 % updates the userdata for the selected object
@@ -8323,4 +8324,3 @@ if isempty(iGrp)
 else
     usePatch = any(cellfun(@(x)(any(diff(xS(x)) > dtLim)),iGrp));
 end
-

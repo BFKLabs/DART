@@ -111,33 +111,25 @@ warnStr = '-w disable:all_warnings';
        
 % retrieves the names of all the folders within the Code directory
 codeDir = findDirAll(fullfile(progDir,'Code'));
-if isHG1
-    % removes the R2017a video drivers folder
-    wvDir = fullfile('WinVideo','R2017a');
-    isOK = cellfun(@(x)(~strContains(x,wvDir)),codeDir);            
-else
-    % removes all toolbox strings and R2014a video drivers folder
-    isOK = cellfun(@(x)(~strContains(x,'toolboxes')),codeDir) & ...
-           cellfun(@(x)(~strContains(x,fullfile('WinVideo','R2014a'))),codeDir) & ...
-           cellfun(@(x)(~strContains(x,'\Git\')),codeDir) & ...
-           cellfun(@(x)(~strContains(x,'\External Apps\')),codeDir);
-end
+
+% removes all toolbox strings and R2014a video drivers folder
+winVidDir = fullfile('WinVideo','R2014a');
+isOK = cellfun(@(x)(~strContains(x,winVidDir)),codeDir) & ...
+       cellfun(@(x)(~strContains(x,'\Git')),codeDir) & ...
+       cellfun(@(x)(~strContains(x,'\External Apps')),codeDir);
 
 % removes the non-valid directories
 codeDir = codeDir(isOK);
 
 % sets up the main file, analysis function directory and other important
 % file directories add string
-fStr = [codeDir;{'DART.fig';'Para Files';'Code Exe'}];
+fStr = [codeDir;{'DART.fig';'Para Files'}];
 addStr = sprintf('-v ''%s'' -a ''%s''',fullfile(progDir,'DART.m'),fcnDir);
 for i = 1:length(fStr)
     switch fStr{i}
         case {'DART.fig','Para Files'}
             addFiles = fullfile(progDir,fStr{i});
-            addStr = sprintf('%s -a ''%s''',addStr,addFiles);
-        case {'Code Exe'}
-            addDir = fullfile(progDir,fStr{i});
-            addStr = sprintf('%s -a ''%s\\*''',addStr,addDir);            
+            addStr = sprintf('%s -a ''%s''',addStr,addFiles);           
         otherwise
             addStr = sprintf('%s -a ''%s\\*''',addStr,fStr{i});
     end

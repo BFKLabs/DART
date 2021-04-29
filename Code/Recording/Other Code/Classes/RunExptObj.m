@@ -451,17 +451,19 @@ classdef RunExptObj < handle
             try; delete(obj.hProg); end                 
 
             % if there are any stimuli devices then ensure they are stopped
-            if ~isempty(obj.sTrain.Ex)
-                if obj.hasDAC
-                    obj.resetDACDevice()    
-                end                                                   
+            if ~isempty(obj.sTrain)
+                if ~isempty(obj.sTrain.Ex)
+                    if obj.hasDAC
+                        obj.resetDACDevice()    
+                    end                                                   
 
-                % stops any of the serial devices
-                isS = cellfun(@(x)(isa(x,'StimObj')),obj.objDev);
-                for i = find(isS(:)')
-                    obj.objDev{i}.stopAllDevices();
-                end                    
-            end             
+                    % stops any of the serial devices
+                    isS = cellfun(@(x)(isa(x,'StimObj')),obj.objDev);
+                    for i = find(isS(:)')
+                        obj.objDev{i}.stopAllDevices();
+                    end                    
+                end      
+            end
 
             % either closes the experiment run function, or continue onto 
             % the next individual experiment (if there are still 
