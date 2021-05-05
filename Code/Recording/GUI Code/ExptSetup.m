@@ -615,10 +615,18 @@ function menuRunExpt_Callback(hObject, eventdata, handles)
 % retrieves the fly record GUI handles
 hFig = handles.figExptSetup;
 hMain = getappdata(hFig,'hMain');
+objIMAQ = getappdata(hFig,'objIMAQ');
 timerObj = getappdata(hFig,'timerObj');
 
 % stops the experiment start-time timer
 stop(timerObj)
+
+% checks the video resolution is feasible (exit if not)
+iExpt = getappdata(hFig,'iExpt');
+if ~checkVideoResolution(objIMAQ,iExpt.Video)
+    start(timerObj)
+    return
+end
 
 % determines if the stimuli protocol has been set (record-stim expts only)
 if ~isempty(getappdata(hMain,'objDACInfo'))
@@ -653,16 +661,20 @@ if ~isempty(getappdata(hMain,'objDACInfo'))
 end
 
 % re-enables the video preview button
-hToggle = findall(hMain,'tag','toggleVideoPreview');
-setObjEnable(hToggle,'off')
-if get(hToggle,'Value')
+hMainH = guidata(hMain);
+if get(hMainH.toggleVideoPreview,'Value')
     % retrieves the toggle button callback function
     toggleFcn = getappdata(hMain,'toggleVideoPreview');
     
     % unchecks the box and runs the callback function
-    set(hToggle,'Value',0)
-    toggleFcn(hToggle,'1',guidata(hMain))
+    set(hMainH.toggleVideoPreview,'Value',0)
+    toggleFcn(hMainH.toggleVideoPreview,'1',guidata(hMain))
 end
+
+% disables the relevant objects
+setObjEnable(hMainH.toggleVideoPreview,'off')
+setObjEnable(hMainH.menuAdaptors,'off')
+setObjEnable(hMainH.menuCalibrate,'off')
 
 % makes the experimental info GUI invisible
 setObjVisibility(hFig,'off')
@@ -680,8 +692,16 @@ function afterExptFunc(hFig)
 handles = guidata(hFig);
 hMainH = guidata(getappdata(hFig,'hMain'));
 
+% turns off the camera (if still running)
+objIMAQ = getappdata(hFig,'objIMAQ');
+if strcmp(get(objIMAQ,'Running'),'on')
+    stop(objIMAQ);
+end
+
 % re-enables the video preview button
 setObjEnable(hMainH.toggleVideoPreview,'on')
+setObjEnable(hMainH.menuAdaptors,'on')
+setObjEnable(hMainH.menuCalibrate,'on')
 
 % deletes the experiment object struct
 % setObjVisibility(exObj.hMain,'off')

@@ -46,7 +46,7 @@ else
         switch (get(objIMAQ,'Name'))
             case ('USB 2861 Device') % TECHview camera
                 % retrieves the current camera resolution
-                vRes = get(objIMAQ,'VideoResolution');            
+                vRes = getVideoResolution(objIMAQ);           
                 switch (vRes(1))
                     case (176)
                         fRate = 29;

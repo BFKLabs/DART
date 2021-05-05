@@ -260,7 +260,9 @@ else
 end
 
 % determines if the frame required updating
-if any(mod(iFrm,2) == 0)
+if exObj.userStop || isStop || exObj.isError
+    frmUpdate = false;
+elseif any(mod(iFrm,2) == 0)
     % frame rate is an even number
     if exObj.isRT && isExpt
         % update twice a second (for RT-tracking expt)
@@ -298,7 +300,7 @@ if frmUpdate
         hImage = getappdata(exObj.hAx,'hImage');
         if isempty(hImage)
             % if there is no image, then create a new image object
-            imagesc(ImgNw,'Parent',exObj.hAx);
+            image(ImgNw,'Parent',exObj.hAx);
             set(exObj.hAx,'xtick',[],'xticklabel',[],...
                           'ytick',[],'yticklabel',[])   
             axis(exObj.hAx,'image');
@@ -509,8 +511,11 @@ if strcmp(exObj.vidType,'Expt')
         exObj.isSaving = false;        
     end
 else
+    % pauses a bit for things to update...
+    pause(1);
+    
     % resets the preview axes image to black
-    vRes = get(exObj.objIMAQ,'VideoResolution');
+    vRes = getVideoResolution(exObj.objIMAQ);
     Img0 = zeros(vRes([2 1]));
     set(findobj(exObj.hAx,'Type','Image'),'cData',Img0);
     

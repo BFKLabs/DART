@@ -657,8 +657,10 @@ classdef DirectDetect < handle
                         % the max value is high, then the groups are
                         % probably connected
                         if mxThresh/max(IMx(kk)) > obj.mxTol
-                            % if oonnected then average the point locations
-                            pMx(kk(1),:) = mean(pMx(kk,:),1);
+                            % if oonnected then use the point with the
+                            % higher pixel value
+                            iMx = argMax(IMx(kk));
+                            pMx(kk(1),:) = pMx(kk(iMx),:);
                             pMx(kk(2),:) = NaN;
                         end
                     end
@@ -672,6 +674,11 @@ classdef DirectDetect < handle
         
         % --- aligns all the stationary points over all frames
         function alignStaticObjects(obj,iApp)
+            
+            % if there is only one image then exit
+            if obj.nImg == 1
+                return
+            end
             
             % retrieves the potential
             if size(obj.pMax,2) == 1
@@ -792,7 +799,7 @@ classdef DirectDetect < handle
             
             % initialisations
             fPos0 = obj.pMax(iApp,:);
-            yOfs = num2cell(obj.y0{iApp});
+            yOfs = num2cell(obj.y0{iApp});              
             
             % converts the coordinates for all sub-regions to region coords
             for i = 1:length(fPos0)
@@ -828,8 +835,8 @@ classdef DirectDetect < handle
             
             % loops through each region calculating the likely blobs
             for iApp = find(obj.iMov.ok(:)')
-                % retrieves the images for the current region                
-                Iapp = obj.getRegionImageStack(obj.ImdR,iApp);
+                % retrieves the median filtered image
+                Iapp = obj.getRegionImageStack(obj.ImdR,iApp);                                
                 
                 % converts the likely coordinates to region coordinate                
                 fPos0 = obj.convertLikelyPosCoord(iApp);
@@ -840,16 +847,15 @@ classdef DirectDetect < handle
                 if isempty(iGrp)
                     % if the user cancelled, then exit
                     return
-                end
+                end     
                 
                 % sets the region image stack based on the phase type
                 if obj.vPh == 1
                     % case is a low-variance phase
                     IappF = obj.getRegionImageStack(obj.Img,iApp);
                 else
-                    % case is another type of phase
                     IappF = Iapp;
-                end
+                end                
                 
                 % determines the likely static blobs for each subregion
                 obj.detLikelyStaticBlobs(IappF,iGrp,fPos0,iApp);
@@ -888,7 +894,7 @@ classdef DirectDetect < handle
             
             % calculates the mean image/blob binary mask over all frames
             IappT = calcImageStackFcn(Iapp);
-            BrmvT = calcImageStackFcn(Brmv) == 1;
+            BrmvT = bwmorph(calcImageStackFcn(Brmv) == 1,'dilate');
             IBG0 = obj.setupBGImage(IappT,BrmvT);
             IappR = IBG0 - IappT;
             
@@ -1016,7 +1022,8 @@ classdef DirectDetect < handle
                 % memory allocation
                 Isub = repmat({NaN(2*dN+1)},nPts,1);
                 
-                % retrieves the valid sub-image pixels surrounding the max points
+                % retrieves the valid sub-image pixels surrounding 
+                % the max points
                 for k = 1:nPts
                     % sets the row/column indices
                     iC = pMax(k,1) + (-dN:dN);
@@ -1156,7 +1163,7 @@ classdef DirectDetect < handle
                         iGrp = [];
                         return
                     end
-                end
+                end                            
                 
                 % otherwise, detect the blob objects from the frame
                 iGrp{i} = obj.detObjectBlobs(Iapp{i},fPos0{i});
@@ -1170,7 +1177,10 @@ classdef DirectDetect < handle
             % converts the cell array to a numerical array
             sz = size(I);
             fP = cell2mat(fPos0);
-            del = obj.getSubImageDim();
+            del = obj.getSubImageDim();            
+            
+            % resets the likely points to the maxima
+            fP = obj.resetLikelyPos(I,fP,max(obj.szObj/2));           
             
             % removes the infeasible points
             isOK = ~isnan(fP(:,1));
@@ -1184,7 +1194,7 @@ classdef DirectDetect < handle
             
             % sets up the binary image for object removal
             for i = 1:nBlob
-                % sets the row/column indices
+                % sets the sub-image and local/global indices
                 [Isub(i),indL,indG] = obj.getSubImage(I,fP(i,:),del,1);
                 Imin = Isub{i}(del+1,del+1);
                 
@@ -2203,5 +2213,42 @@ classdef DirectDetect < handle
             
         end        
         
+        % --- resets the position of the likely points so that they map to
+        %     the maxima from the raw image, I
+        function fP = resetLikelyPos(I,fP,dTolC)
+
+            % determines the minima from the raw image
+            Icomp = 1 - normImg(I);
+            iMx = find(imregionalmax(Icomp)); 
+            [yMx,xMx] = ind2sub(size(I),iMx);
+
+            % calculates the distance between the points and the minima
+            DMx = pdist2(fP,[xMx,yMx]);
+
+            %
+            for i = 1:size(fP,1)
+                ii = find(DMx(i,:) < dTolC);
+                if isempty(ii)
+                    % no close matches so remove the coordinate
+                    fP(i,:) = NaN;
+                else
+                    % otherwise, if there are ambiguous points then 
+                    % calcula
+                    if length(ii) > 1
+                        DMxP = DMx(i,ii)';
+                        if any(DMxP == 0)
+                            ii = ii(DMxP == 0);
+                        else                
+                            ZMxP = Icomp(iMx(ii))./(1+(DMxP/dTolC));
+                            ii = ii(argMax(ZMxP));
+                        end
+                    end
+
+                    % updates the coordinates
+                    fP(i,:) = [xMx(ii),yMx(ii)];
+                end
+            end        
+        
+        end
     end
 end

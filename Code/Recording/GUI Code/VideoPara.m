@@ -312,7 +312,12 @@ srcInfo = combineDataStruct(propinfo(sObj));
 fType = field2cell(srcInfo,'Type');
 fConstraint = field2cell(srcInfo,'Constraint');
 fReadOnly = field2cell(srcInfo,'ReadOnly');
-                                                                                
+                    
+% COMMENT ME OUT!
+% allPropFlds = setupPropInfoArray(srcInfo);
+% save('VideoProp.mat','allPropFlds')
+% get(objIMAQ)  
+
 % determines which of parameters are manual/auto or numeric parameters
 isEnum = strcmp(fType,'string') & strcmp(fConstraint,'enum') & ...
             ~strcmp(fReadOnly,'always'); 
@@ -627,3 +632,18 @@ end
 
 % increases the popup max width
 pWidMx = pWidMx + dpWid;
+
+% --- returns the full video properties array
+function allPropFlds = setupPropInfoArray(srcInfo)
+
+% memory allocation
+[nPara,fStr] = deal(length(srcInfo),fieldnames(srcInfo));
+allPropFlds = cell(nPara,length(fStr));
+
+% sets the property fields
+for i = 1:length(fStr)
+    allPropFlds(:,i) = field2cell(srcInfo,fStr{i});
+end
+
+% sets the title fields 
+allPropFlds = [fStr(:)';allPropFlds];

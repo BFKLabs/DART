@@ -18,10 +18,9 @@ if ~exist('h','var')
 end
 
 % creates the video phase class object
-phObj = VideoPhase(iData,iMov);
+phObj = VideoPhase(iData,iMov,h,1+iOfs);
 
 % runs the phase detection solver
-h.Update(1+iOfs,'Determining Video Phases...',1/nStep);
 phObj.runPhaseDetect();
 
 % updates the sub-image data struct with the phase information

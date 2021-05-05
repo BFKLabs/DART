@@ -1,5 +1,5 @@
 function varargout = FlyRecord(varargin)
-% Last Modified by GUIDE v2.5 15-Apr-2021 13:22:55
+% Last Modified by GUIDE v2.5 30-Apr-2021 10:07:14
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -173,7 +173,11 @@ setappdata(hObject,'iExpt',iExpt);
 
 % initialises the GUI properties
 handles = setRecordGUIProps(handles,'InitGUI',exptType);
+resetVideoPreviewDim(handles)
     
+% sets the function handles into the GUI
+setappdata(hObject,'resetVideoPreviewDim',@resetVideoPreviewDim);
+
 % ------------------------------------- %
 % --- FINAL HOUSE-KEEPING EXERCISES --- %
 % ------------------------------------- %
@@ -404,24 +408,24 @@ if strcmp(selection,'Yes')
             delete(hh)
         end
     end
-
-    % retrieves the stimulus train sub-GUI figure handle
-    hStimFig = findobj(0,'tag','figShowTrain');
-    if (~isempty(hStimFig))
+    
+    % retrieves the video ROI sub-GUI figure handle
+    hVideoROI = findobj(0,'tag','figVideoROI');
+    if ~isempty(hVideoROI)
         % if the sub-GUI is open, then delete it
-        delete(hStimFig)
+        delete(hVideoROI)        
     end
 
     % retrieves the video parameter sub-GUI figure handle
     hVidPara = findall(0,'tag','figVideoPara');
-    if (~isempty(hVidPara))
+    if ~isempty(hVidPara)
         % if the sub-GUI is open, then delete it
         delete(hVidPara)
     end
 
     % deletes the imageseg and exits the program        
     delete(handles.figFlyRecord)                
-    if (isempty(hDART))            
+    if isempty(hDART)            
         % removes the loaded directories from the directory path
         wState = warning('off','all');
         updateSubDirectories(fullfile(mainProgDir,'GUI Code'),'remove') 
@@ -466,16 +470,21 @@ if ~isempty(vPara)
     pause(0.05);        
     
     % sets up and runs the test video recording
-    exObj = RunExptObj(handles.figFlyRecord,'Test',vPara);     
+    exObj = RunExptObj(handles.figFlyRecord,'Test',vPara); 
+    if ~exObj.isOK
+        % if there was an issue in setting up the recording object, then
+        % exit the function
+        return
+    end
     
     % initialises the time start
     [tStart,Tp] = deal(tic,3); 
     wStr = 'Waiting For Test Video Recording To Start';   
 
     % pauses the program until the wait-period has passed
-    while (1)
+    while 1
         tNew = toc(tStart);
-        if (tNew > Tp)
+        if tNew > Tp
             break
         else
             % updates the waitbar figure
@@ -496,6 +505,12 @@ if ~isempty(vPara)
     exObj.isStart = true;
     trigger(exObj.objIMAQ)     
 end
+
+% -------------------------------------------------------------------------
+function menuVidROI_Callback(hObject, eventdata, handles)
+
+% runs the video ROI setting GUI
+VideoROI(handles.figFlyRecord)
 
 % ----------------------------- %
 % --- EXPERIMENT MENU ITEMS --- %
@@ -609,6 +624,43 @@ end
 %-------------------------------------------------------------------------%
 %                             OTHER FUNCTIONS                             %
 %-------------------------------------------------------------------------%
+
+% --- resets the gui dimensions based on the video ROI
+function resetVideoPreviewDim(handles,rPos)
+
+% retrieves the video object
+isReset = exist('rPos','var');
+objIMAQ = getappdata(handles.figFlyRecord,'objIMAQ');
+
+% determines if the new roi position has been provided
+if isReset
+    % if so, then reset the dimensions of the preview
+    set(objIMAQ,'ROIPosition',rPos); 
+    set(handles.axesPreview,'xlim',[0,rPos(3)],'ylim',[0,rPos(4)])
+    
+    % if the camera preview is off, then reset the axes image
+    prObj = getappdata(handles.figFlyRecord,'prObj');
+    if ~prObj.isOn
+        % retrieves the image resolution
+        hImage = findall(handles.axesPreview,'type','Image');
+        set(hImage,'CData',uint8(zeros(rPos([4,3]))));
+    end
+else
+    % otherwise, retrieve the current roi position    
+    rPos = get(objIMAQ,'ROIPosition');
+end
+
+% calculates the change in the GUI height
+pAR = rPos(4)/rPos(3);
+pPos = get(handles.panelImg,'Position');
+dH = roundP(pAR*pPos(3) - pPos(4));
+
+% resets the dimensions of the GUI
+resetObjPos(handles.figFlyRecord,'Height',dH,1);
+resetObjPos(handles.figFlyRecord,'Bottom',-dH,1);
+resetObjPos(handles.panelVidPreview,'Height',dH,1);
+resetObjPos(handles.panelImg,'Height',dH,1);
+resetObjPos(handles.axesPreview,'Height',dH,1);
 
 % ---------------------------------------------- %
 % --- OBJECT/STRUCT INITIALISATION FUNCTIONS --- %
@@ -837,8 +889,8 @@ set(hAx,'color',0.9*[1 1 1],'fontweight','bold','fontsize',axSize)
 if ~isempty(objIMAQ)
     % if so, initialises the axis image object
     if isstruct(objIMAQ)
-        vRes = get(objIMAQ,'VideoResolution');
-        imagesc(ones(vRes([2 1]))); 
+        vRes = getVideoResolution(objIMAQ);
+        image(zeros(vRes([2 1])),hAx); 
     end
 
     % enables the start preview button

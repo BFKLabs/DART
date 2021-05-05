@@ -248,6 +248,12 @@ waitfor(msgbox(mStr,'DART Update Successful','modal'))
 buttonExitButton_Callback([], [], handles)
 
 % -------------------------------------------------------------------------
+function menuExeUpdate_Callback(hObject, eventdata, handles)
+
+% runs the executable update GUI
+ExeUpdate(handles.figDART)
+
+% -------------------------------------------------------------------------
 function menuOutputProg_Callback(hObject, eventdata, handles)
 
 % global variables
@@ -1069,7 +1075,10 @@ end
 % sets the GUI properties based on whether the program is deployed or not
 if isdeployed
     % if the program is deployed, then disable the program update menu item
-    setObjEnable(handles.menuProgCode,'off')
+    setObjEnable(handles.menuUpdateProg,'off')
+    setObjEnable(handles.menuOutputProg,'off')
+    setObjEnable(handles.menuDeployExe,'off')
+    setObjEnable(handles.menuSetupProg,'off')
     setObjEnable(handles.menuConfigSerial,'on')
     
 else
@@ -1161,12 +1170,6 @@ global mainProgDir
 % resaves the log-file
 [Time,File] = deal(clock,[fName,fExtn]);
 save(fullfile(mainProgDir,'Para Files','Update Log.mat'),'File','Time')
-
-% --- converts the date string to the acceptable format
-function dStrNw = convertDate(dStr)
-
-% removes any dots in the date strings
-dStrNw = strrep(dStr,'.','');
 
 % --- wrapper function for determining if a string has a pattern. this is
 %     necessary because there are 2 different ways of determining this

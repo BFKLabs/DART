@@ -52,7 +52,7 @@ if isCalib
     if isa(objIMAQ,'cell')
         frmSz0 = size(objIMAQ{1});
     else
-        vRes = get(getappdata(hFig,'objIMAQ'),'VideoResolution');
+        vRes = getVideoResolution(getappdata(hFig,'objIMAQ'));
         frmSz0 = vRes([2 1]);
     end
     

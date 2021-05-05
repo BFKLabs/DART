@@ -94,7 +94,7 @@ switch (typeStr)
         else
             % retrieves the video resolution
             objIMAQ = getappdata(handles.figFlyTrack,'objIMAQ');
-            vRes = get(objIMAQ,'VideoResolution');
+            vRes = getVideoResolution(objIMAQ);
             vStr = sprintf('%i %s %i',vRes(2),char(215),vRes(2));
             
             % determines the video framerate

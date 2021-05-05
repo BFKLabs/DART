@@ -15,6 +15,9 @@ classdef VideoPreview < handle
         isRecord
         isRot      
         isOn
+        
+        % other parameters
+        tPause = 1;
     end
     
     % class methods
@@ -48,18 +51,21 @@ classdef VideoPreview < handle
         
         % --- starts the video preview
         function startTrackPreview(obj)
-            
+                        
             % resets the running flag
             obj.isOn = true;   
             obj.iMov = getappdata(obj.hFig,'iMov'); 
             obj.objIMAQ = getappdata(obj.hFig,'objIMAQ');
             
+            % other initialisations
+            initStr = 'Initialising...';
+            hEditS = obj.hGUI.editVideoStatus;
+            
             % sets the rotation flag
             obj.isRot = (abs(obj.iMov.rotPhi) > 45) && obj.iMov.useRot;
             
             % updates the video status
-            set(obj.hGUI.editVideoStatus,'string','Initialising...',...
-                                        'BackgroundColor',[0.93,0.69,0.13])                                    
+            set(hEditS,'string',initStr,'BackgroundColor',[0.93,0.69,0.13])                                    
             
             % initialises the preview image          
             set(obj.hGUI.checkShowTube,'Value',0)
@@ -72,9 +78,10 @@ classdef VideoPreview < handle
                 end      
                 
                 % updates the video status
-                pause(2);
-                set(obj.hGUI.editVideoStatus,'string','Running',...
-                                             'BackgroundColor','g')                
+                pause(obj.tPause)
+                if obj.isOn
+                    set(hEditS,'string','Running','BackgroundColor','g')
+                end
             else
                 % updates the video status
                 set(obj.hGUI.editVideoStatus,'string','Stopped',...
@@ -84,7 +91,7 @@ classdef VideoPreview < handle
         end
         
         % --- stops the video preview
-        function stopTrackPreview(obj)
+        function stopTrackPreview(obj)                  
             
             % resets the running flag
             obj.isOn = false;
@@ -138,9 +145,11 @@ classdef VideoPreview < handle
                 setObjEnable(obj.hGUI.checkShowGrid,'on')
                 
                 % updates the video status
-                pause(2);
-                set(obj.hGUI.editVideoStatus,'string','Running',...
-                                             'BackgroundColor','g')                
+                pause(obj.tPause);
+                if obj.isOn
+                    set(obj.hGUI.editVideoStatus,'string','Running',...
+                                                 'BackgroundColor','g')
+                end
             else
                 % updates the video status
                 set(obj.hGUI.editVideoStatus,'string','Stopped',...
@@ -156,8 +165,8 @@ classdef VideoPreview < handle
             obj.isOn = false;            
             
             % initialisations
-            tStr = 'Start Video Preview';    
-            vRes = get(obj.objIMAQ,'VideoResolution');            
+            tStr = 'Start Video Preview'; 
+            vRes = getVideoResolution(obj.objIMAQ);         
 
             % retrieves the show menu panel item
             hMenu = findall(obj.hFig,'tag','menuShowGrid');
@@ -230,14 +239,14 @@ classdef VideoPreview < handle
             axis(obj.hAx,'off');
             pause(0.05);
 
-            % resets the image axis      
-            vRes = get(obj.objIMAQ,'VideoResolution');    
+            % resets the image axis     
+            vRes = getVideoResolution(obj.objIMAQ);
             if obj.isRot
-                obj.hImage = image(0.81*ones(vRes),'Parent',obj.hAx);           
-                [xL,yL] = deal([1 vRes(1)]+0.5,[1 vRes(2)]+0.5);        
+                obj.hImage = image(zeros(vRes),'Parent',obj.hAx);           
+                [xL,yL] = deal([1 vRes(2)]+0.5,[1 vRes(1)]+0.5);        
             else
-                obj.hImage = image(0.81*ones(flip(vRes)),'Parent',obj.hAx);        
-                [xL,yL] = deal([1 vRes(2)]+0.5,[1 vRes(1)]+0.5);
+                obj.hImage = image(zeros(flip(vRes)),'Parent',obj.hAx);        
+                [xL,yL] = deal([1 vRes(1)]+0.5,[1 vRes(2)]+0.5);
             end        
 
             % sets the image object    
