@@ -6,6 +6,6 @@ function nSubV = getSRCountVec(iMov)
 if numel(nSub) ~= nApp
     nSubV = nSub*ones(nApp,1);
 else
-    nSubV = arr2vec(nSub);    
+    nSubV = arr2vec(nSub');    
 end
 

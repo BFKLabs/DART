@@ -1,19 +1,16 @@
 % --- tracks a single fly for a given sub-region 
-function [fPosF,IRmx,iGrpF] = segSingleSubRegion(IRT,fPosPr0,dTol)
+function [fPosF,IRmx,iGrpF] = segSingleSubRegion(IRT,fPosPr0,dTol,Nsz)
+
+% 
+if ~exist('Nsz','var'); Nsz = 100; end
 
 % parameters
-Nsz = 50;
 ndTol = 3;
 prTol = 1.25;
-nFrmPr = 10;
-k = log(0.1)/(nFrmPr-2);
-
-% calculation of the 
-Qw0 = exp(k*(flip(1:(nFrmPr-1))-1))';
-Qw = repmat(Qw0/sum(Qw0),1,2);
+nFrmPr = 5;
 
 % memory allocation
-[nFrm,szL] = deal(length(IRT),size(IRT{1}));
+[nFrm,szL,hZ] = deal(length(IRT),size(IRT{1}),3/2);
 [fPosF,iGrpF,IRmx] = deal(NaN(nFrm,2),cell(nFrm,1),NaN(nFrm,1));
 
 % thresholds the image for each frame
@@ -30,7 +27,7 @@ for iFrm = 1:nFrm
     % retrieves the previous frame coordinate array and from this
     % extrapolates the blobs location
     fPosPr = getPrevFramePos(fPosPr0,fPosF,iFrm,nFrmPr);    
-    fPosEx = extrapBlobPos(fPosPr,Qw);
+    fPosEx = extrapBlobPos(fPosPr);    
     
     % determines the location of the blob on the current frame  
     if isempty(iGrp{iFrm})
@@ -48,28 +45,30 @@ for iFrm = 1:nFrm
         if isnan(fPosEx(1))
             % if there is no valid extrapolation estimate, then use the
             % blob group with the highest residual
-            imn = argMax(IRT{iFrm}(iGrpFrm));
+            imx = argMax(IRT{iFrm}(iGrpFrm));
             
             % updates the data for the current frame
-            fPosF(iFrm,:) = fP(imn,:);
-            iGrpF{iFrm} = iGrpFrm(imn);
+            fPosF(iFrm,:) = fP(imx,:);
+            iGrpF{iFrm} = iGrpFrm(imx);
             IRmx(iFrm) = IRT{iFrm}(iGrpF{iFrm});
             
         else
             % otherwise, calculate the distance between the extrapolated
             % coordinates and the blobs on the current frame
-            DpEx = pdist2(fPosEx,fP);
-            [Dmn,imn] = min(DpEx);
+            DpEx = pdist2(fPosEx,fP)';
+            Z = ((IRT{iFrm}(iGrpFrm)/pTolT{iFrm}).^hZ)./(1+(DpEx/dTol)).^2;            
+            [~,imx] = max(Z);
 
             % updates the blob indices/residual value for the frame
-            iGrpF{iFrm} = iGrpFrm(imn);
+            iGrpF{iFrm} = iGrpFrm(imx);
             IRmx(iFrm) = IRT{iFrm}(iGrpF{iFrm});
 
             % updates the blob location for the frame
+            Dmn = DpEx(imx);
             if Dmn < dTol
                 % if the closest blob is within tolerance, then update the
                 % information for the frame
-                fPosF(iFrm,:) = fP(imn,:);
+                fPosF(iFrm,:) = fP(imx,:);
             else
                 % if the blob has moved significantly (i.e., a "jump") then
                 % determine if the object residual is signficant to warrant
@@ -77,7 +76,7 @@ for iFrm = 1:nFrm
                 if (IRmx(iFrm)/pTolT{iFrm} > prTol) && (Dmn/dTol <= ndTol)
                     % if the residual is high enough (and the distance is
                     % not too extreme) then accept the jump in location
-                    fPosF(iFrm,:) = fP(imn,:);
+                    fPosF(iFrm,:) = fP(imx,:);
                 else
                     % otherwise, use the previous frame coordinates
                     fPosF(iFrm,:) = fPosPr(end,:);
@@ -87,19 +86,39 @@ for iFrm = 1:nFrm
     end
 end
 
-a = 1;
-
 % --- extrapolates the blob position from the previous points
-function fPosNw = extrapBlobPos(fPosPr,Qw)
+function fPosNw = extrapBlobPos(fPosPr)
 
 if size(fPosPr,1) <= 1
     % if there are insufficient previous points then return NaNs
     fPosNw = NaN(1,2);
 else
-    % otherwise, estimate the velocity from the previous points and use
-    % this to extrapolate the position of the blob
-    dPos = diff(fPosPr,[],1);
-    fPosNw = fPosPr(end,:) + sum(dPos.*Qw(1:size(dPos,1),:),1);
+    % otherwise, return the extrapolated values
+    nP = min(size(fPosPr,1),5);    
+    fPosPr = fPosPr((end-(nP-1)):end,:);
+    fPosNw = [extrapSignal(fPosPr(:,1)),extrapSignal(fPosPr(:,2))];
+end
+
+% --- extrapolates the signal
+function xExt = extrapSignal(x)
+
+% determines the range of the signal values
+isN = isnan(x);
+if all(isN)
+    % if all the values are NaN's then return a NaN value
+    xExt = NaN;
+    
+elseif range(x) == 0
+    % if the range is zero, return the first value
+    xExt = x(1);
+else
+    % otherwise, set up the extrapolation filter
+    x = x(~isN);
+    a = arburg(x,length(x)-1);
+    [~, zf] = filter(-[0 a(2:end)], 1, x);
+
+    % calculates the extrapolated signal value
+    xExt = filter([0 0], -a, 0, zf);
 end
 
 % --- retrieves the previous frame positions 
@@ -112,14 +131,14 @@ nFrm = max(nFrm,size(fPosPr0,1));
 [xi1,xi2] = deal(iFrm:size(fPosPr0,1),max(1,iFrm-nFrm):iFrm-1);
 fPosPr = [fPosPr0(xi1,:);fPosF(xi2,:)];
 
-% --- 
+% --- retrieves the n-th sorted value from the array, I
 function p = getNthSortedValue(I,N)
 
 if isempty(I)
     p = 0;
 else                        
-    Is = sort(I,'descend');
-    p = Is(min(length(I),N));
+    Is = sort(I(:),'descend');
+    p = Is(min(numel(I),N));
 end
 
 % --- retrieves the points from the current frame (reduces any points that

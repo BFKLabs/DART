@@ -67,7 +67,7 @@ classdef SingleTrackFull < TrackFull & SingleTrack
             
             % updates the global variables
             global wOfs
-            wOfs = obj.wOfs1;
+            wOfs = obj.wOfs1 - 1;
            
             % runs the final segmentation check function
             [obj.pData,obj.iMov,obj.calcOK] = checkFinalSegSoln(obj);

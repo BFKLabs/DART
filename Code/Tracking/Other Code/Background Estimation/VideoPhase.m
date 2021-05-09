@@ -8,6 +8,7 @@ classdef VideoPhase < handle
         iPhase
         vPhase
         iLvl
+        ImnF
         
         % parameters
         nImgR = 10;
@@ -190,7 +191,7 @@ classdef VideoPhase < handle
                 iGrpNw = iGrp(i,1):iGrp(i,2);
                 iFrmG = find(obj.Zmu(1,iGrpNw)) + (iGrp(i,1)-1);
 
-                % determines if the frame range is too low for tracking
+                % determines if the frame range is too low for tracking                
                 ZrngNw = full(obj.Zrng(:,iFrmG));
                 if any(ZrngNw(:) < pTolRng)
                     % pixel range is too low, so set as untrackable
@@ -231,14 +232,23 @@ classdef VideoPhase < handle
             [~,iS] = sort(indG0);
             indG = indG(iS);
 
-            % sets the final frame indices for each phase
-            iPhaseF = zeros(length(indG),2);
+            % sets the final frame limits for each phase            
+            [vPhaseF,nGrp] = deal(vPhaseF(indG0(iS)),length(indG));
+            [iPhaseF,obj.ImnF] = deal(zeros(nGrp,2),cell(nGrp,1));
             for i = 1:length(indG)
-                iPhaseF(i,:) = [iGrp(indG{i}(1),1),iGrp(indG{i}(end),2)];
+                % sets the phase frame limits 
+                iPhaseF(i,:) = [iGrp(indG{i}(1),1),iGrp(indG{i}(end),2)];                
+                if vPhaseF(i) == 1
+                    % if a low-variance phase, then calculate the average
+                    % mean pixel intensity over all frames
+                    iGrpNw = iPhaseF(i,1):iPhaseF(i,2);
+                    iFrmG = find(obj.Zmu(1,iGrpNw)) + (iPhaseF(i,1)-1);
+                    obj.ImnF{i} = nanmean(full(obj.Zmu(:,iFrmG)),2);
+                end
             end
 
             % final field updates
-            [obj.iPhase,obj.vPhase] = deal(iPhaseF,vPhaseF(indG0(iS)));
+            [obj.iPhase,obj.vPhase] = deal(iPhaseF,vPhaseF);
 
         end
         

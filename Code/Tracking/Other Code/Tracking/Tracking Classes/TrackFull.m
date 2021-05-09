@@ -130,7 +130,7 @@ classdef TrackFull < Track
             
             % other flag initialisation
             nStack = length(obj.sProg.iFrmR);
-            nCountNw = obj.pData.nCount(iPhase);
+            nCountNw = max(0,obj.pData.nCount(iPhase));
             vPh = obj.iMov.vPhase(iPhase);
             bOfs = obj.isBatch + obj.isMultiBatch;
             
@@ -215,7 +215,7 @@ classdef TrackFull < Track
             % ------------------------------ %            
             
             % loops through each image stacks segmenting fly locations
-            for i = (obj.pData.nCount(iPhase)+1):nStack
+            for i = max(1,(obj.pData.nCount(iPhase)+1)):nStack
                 % updates the progressbar (if one is available)
                 if ~isempty(obj.hProg)
                     wStrNw = sprintf('%s (Stack %i of %i)',...

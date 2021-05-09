@@ -213,14 +213,14 @@ classdef SingleTrackInit < SingleTrack
                     % calculates the normalised threshold estimates
                     pBGmn = nanmean(pBG{iApp}(:));
                     pBGsd = nanstd(pBG{iApp}(:));
-                    ZBG = (pBG{iApp}-pBGmn)/pBGsd;
                     
                     % calculates the weighting array
-                    P = normcdf(ZBG,pBGmn,pBGsd);
+                    P = normcdf(pBG{iApp},pBGmn,pBGsd);
                     Qw = (1-2*abs(P-0.5)); 
                     QwT = Qw./(repmat(nansum(Qw,2),1,size(Qw,2)));
                     
-                    % calculates the final threshold values
+                    % calculates the final threshold values (if all NaN's
+                    % then set the threshold to be NaN as well)
                     obj.iMov.pBG{iApp} = nansum(QwT.*pBG{iApp},2);
                     obj.iMov.pBG{iApp}(all(isnan(QwT),2)) = NaN;
                 end

@@ -24,6 +24,7 @@ phObj = VideoPhase(iData,iMov,h,1+iOfs);
 phObj.runPhaseDetect();
 
 % updates the sub-image data struct with the phase information
+phObj.iMov.ImnF = phObj.ImnF;
 [phObj.iMov.iPhase,phObj.iMov.vPhase] = deal(phObj.iPhase,phObj.vPhase);
 iMov = phObj.iMov;
 

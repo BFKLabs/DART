@@ -172,28 +172,13 @@ classdef SingleTrackBP < handle
                     obj.updateBPFile(obj.bData(iDir)); 
                 end
 
-                % batch processes the current directory
-                try
-                    if ~obj.batchProcessDir(iDir)
-                        % if there was an error or the user cancelled, then 
-                        % exit the batch processing loop
-                        obj.calcOK = false;
-                        break
-                    end
-                    
-                catch wErrNw
-                    % if there was an error with the calculations then 
-                    % display and exit
-                    tStr = 'Batch Processing Error';
-                    eStr = {['Error! There was an issue with the ',...
-                             'tracking process.'];['Read the error ',...
-                             'message associated with this issue.']};
-                    waitfor(errordlg(eStr,tStr,'modal'))  
-
-                    % exits the function
-                    [obj.calcOK,obj.wErr] = deal(false,wErrNw);
+                % batch processes the current directory                
+                if ~obj.batchProcessDir(iDir)
+                    % if there was an error or the user cancelled, then 
+                    % exit the batch processing loop
+                    obj.calcOK = false;
                     break
-                end                
+                end                         
             end
             
             % updates and closes the waitbar figure
@@ -320,6 +305,9 @@ classdef SingleTrackBP < handle
             % intialisation
             isInit = true;            
             obj.isOutput = true;
+            eStr = {['Error! There was an issue with ',...
+                     'the tracking process.'];['Read the error ',...
+                     'message associated with this issue.']};            
             
             % loops through all the movies (starting at iFile0)
             i = obj.iFile0;
@@ -402,7 +390,21 @@ classdef SingleTrackBP < handle
                         
                         % starts full video tracking (if video is valid)
                         if obj.bData(iDir).movOK(i) ~= 0
-                            trkOK = obj.segObjLocations(prData);                                                                                
+                            try
+                                % tracks the video
+                                trkOK = obj.segObjLocations(prData);
+                                
+                            catch wErrNw
+                                % if there was an error with the 
+                                % calculations then display and exit
+                                tStr = 'Batch Processing Error';
+                                waitfor(errordlg(eStr,tStr,'modal'))                                  
+                                
+                                % exits the function
+                                [trkOK,obj.isOutput] = deal(false,true);
+                                [obj.calcOK,obj.wErr] = deal(false,wErrNw);                                
+                            end                                   
+                                                                                                                                        
                             if ~trkOK
                                 % outputs the final data to file (if reqd)
                                 if obj.isOutput
@@ -658,16 +660,17 @@ classdef SingleTrackBP < handle
             obj.hProg.collapseProgBar(dLvl);
 
             % creates the video phase class object
-            phObj = VideoPhase(obj.iData,obj.iMov);
-
-            % runs the phase detection solver
             iLvl = dLvl + 1;
-            obj.hProg.Update(iLvl,'Determining Video Phases...',1/2);
+            phObj = VideoPhase(obj.iData,obj.iMov,obj.hProg,iLvl);
+
+            % runs the phase detection solver            
+            obj.hProg.Update(iLvl,'Determining Video Phases...',0);
             phObj.runPhaseDetect();
 
             % updates the sub-image data struct with the phase information
             obj.iMov.iPhase = phObj.iPhase;
-            obj.iMov.vPhase = phObj.vPhase;            
+            obj.iMov.vPhase = phObj.vPhase;      
+            obj.iMov.ImnF = phObj.ImnF;
             
             % expands the waitbar figure again
             if obj.hProg.Update(iLvl,'Phase Detection Complete!',1)
@@ -1430,10 +1433,15 @@ classdef SingleTrackBP < handle
             % have been set correctly. if not, then update the statuses to 
             % reflect the previous
             for j = 1:length(StatusNw)
+                % determines 
+                [iCol,~,iRow] = getRegionIndices(obj.iMov,j);
+                ii0 = (StatusNw{j} ~= 3) & (StatusPr{j} == 3);
+                ii0(~obj.iMov.isUse{iRow,iCol}) = false;                               
+                
                 % determines the tubes which in the new video have been
                 % classified as feasible, but have been classified as 
-                % rejected in the previous
-                ii = find((StatusNw{j} ~= 3) & (StatusPr{j} == 3));
+                % rejected in the previous                
+                ii = find(ii0);
                 for k = 1:length(ii)
                     % resets the tube status/rejection flags 
                     obj.iMov.Status{j}(ii(k)) = 3;
@@ -1469,7 +1477,9 @@ classdef SingleTrackBP < handle
                 % classified as rejected, but were actually moving in the 
                 % previous video. in the new video, these objects are most 
                 % likely stationary (instead of rejected)
-                ii = find((StatusNw{j} == 3) & (StatusPr{j} == 1));
+                ii0 = (StatusNw{j} == 3) & (StatusPr{j} == 1);
+                ii0(~obj.iMov.isUse{iRow,iCol}) = false; 
+                ii = find(ii0);
                 for k = 1:length(ii)
                     % resets the tube status/rejection flags 
                     obj.iMov.Status{j}(ii(k)) = 2;

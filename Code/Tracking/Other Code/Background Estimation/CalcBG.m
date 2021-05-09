@@ -753,14 +753,11 @@ classdef CalcBG < handle
                                     simgs(iPhase).iFrm(ipara.cFrm),false);  
                                 
                     else
-%                         % calculates the image offset
-%                         Imd = cellfun(@(x)(median(...
-%                                         (x))),obj.BgrpT);
-%                         ILmd = cellfun(@(x)(median(...
-%                                 x(bwmorph(true(size(x)),'remove')))),IL');
-%                         dI = calcWeightedMean(ILmd - double(Imd));
-%                         obj.ImgFrm{iPhase} = obj.ImgFrm{iPhase} + dI;
-
+                        % equalises the image (if low-variance phase)
+                        if vPhase == 1
+                            IL = obj.equaliseImg(IL,iPhase);
+                        end
+                        
                         % creates the composition image
                         Inw = createCompositeImage(...
                                         obj.ImgFrm{iPhase},imov,IL);    
@@ -792,23 +789,13 @@ classdef CalcBG < handle
 
                 case ('radioRes') % case is the fly residual
 
-                    % calculates the shifted image
+                    % sets the image stack
                     if vPhase == 1
-                        ILs = IL;
-%                         for i = 1:length(IL)
-%                             % calculates the optimal local shift
-%                             ILsT = optLocalShift(...
-%                                     imov,IL{i},imov.Ibg{iPhase}{i},i);
-% 
-%                             % sets the final image
-%                             ILs{i} = imov.Ibg{iPhase}{i};
-%                             for j = 1:length(imov.iRT{i})
-%                                 ILs{i}(imov.iRT{i}{j},:) = ILsT{j};
-%                             end
-%                         end
+                        % case is the low-variance phase
+                        ILs = obj.equaliseImg(IL,iPhase);
                         
                     else
-                        %
+                        % case is the other phase types
                         N = 50;
                         ILex = cellfun(@(x)(expandImg(x,N)),IL,'un',0);
                         
@@ -1091,7 +1078,35 @@ classdef CalcBG < handle
                 setObjVisibility(hGitP,~openBG)
             end
             
-        end                                       
+        end                                              
+        
+        % --- equalises the image to the background image
+        function IL = equaliseImg(obj,IL,iPhase)
+            
+            % initialisations
+            pTolEq = 5;
+            [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);
+            
+            % determines which images are outside of tolerance
+            ILmn = cellfun(@(x)(nanmean(x(:))),IL(:));
+            if isfield(obj.iMov,'ImnF')
+                ImnF = obj.iMov.ImnF{iPhase};
+            elseif isfield(obj.iMov,'Ibg')
+                ImnF = cellfun(@(x)(nanmean(x(:))),obj.iMov.Ibg{iPhase}');
+            else
+                return
+            end                        
+            
+            % equalises the histograms (if required)
+            isOK = abs(ImnF - ILmn) < pTolEq;
+            if any(~isOK)
+                for i = find(~isOK(:)')
+                    Iref = uint8(obj.ImgFrm{iPhase}(iR{i},iC{i}));
+                    IL{i} = double(imhistmatch(uint8(IL{i}),Iref));
+                end
+            end
+            
+        end
         
         % --------------------------------- %
         % ---- MENU CALLBACK FUNCTIONS ---- %
@@ -1277,7 +1292,7 @@ classdef CalcBG < handle
                 if length(simgs) > 1
                     % sets 1st frame for each phase as the background image
                     imgfrm = cellfun(@(x)...
-                                    (x{roundP(length(x)/2)}),Img,'un',0);
+                            (calcImageStackFcn(x,'median')),Img,'un',0);
                     obj.ImgFrm = imgfrm; 
                 else
                     obj.ImgFrm = Img{1}(1);

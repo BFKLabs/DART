@@ -32,7 +32,7 @@ for i = 1:nApp
     
     % only check if the apparatus is not rejected
     if iMov.ok(i)
-        nTube = getSRCountMax(iMov);
+        nTube = getSRCount(iMov,i);
         for j = 1:nTube
             % updates the waitbar figure
             if ~isempty(h)
@@ -266,7 +266,8 @@ global wOfs
 
 % sets the tube row indices and the position offset
 T = iData.Tv(roundP(1:iMov.sRate:length(iData.Tv)));
-[iR,iRT,iC] = deal(iMov.iR{iApp},iMov.iRT{iApp}{iTube},iMov.iC{iApp});
+[iR,iC,iRT] = deal(iMov.iR{iApp},iMov.iC{iApp},iMov.iRT{iApp}{iTube});
+iRL = iR(iRT);
 FPS = nanmedian(1./diff(T));
 
 % calculates the distance tolerance dependent on the tracking algorithm
@@ -302,23 +303,22 @@ if (length(T) > length(X)); T = T(1:length(X)); end
 
 % retrieves the exclusion binary
 % [isOK,iFrm0] = deal(true(length(T),1),-1);
-[isOK,iFrm0] = deal(~isnan(X),-1);
-sz = [length(iRT),length(iMov.iC{iApp})];
+[isOK,iFrm0,nFrm] = deal(~isnan(X),-1,length(T));
+sz = [length(iRL),length(iMov.iC{iApp})];
+hG = fspecial('gaussian',5,2);
 Bw = usimage(double(getExclusionBin(iMov,sz,iApp,iTube)),sz);
 
 % calculates the position offset
 i0 = find(~isnan(X),1,'first');
 pOfs = repmat(pData.fPos{iApp}{iTube}(i0,:)-[X(i0),Y(i0)],length(T),1);
 
+% calculates the next-frame position estimates
+[Xest,Yest] = deal(setupExtrapSig(X),setupExtrapSig(Y));
+
 % keep looping while there are anomalous frames
 while cont
     % calculates the estimated x-positions of the object
-    dD = abs(X-calcPosEstimate(T,X));    
-    
-    % calculates the estimated y-positions of the object (2D only)
-    if (is2D)        
-        dD = max([dD,abs(Y-calcPosEstimate(T,Y))],[],2); 
-    end
+    dD = sqrt((X-Xest).^2 + (Y-Yest).^2);        
     
     % determines the first point where the discrepancy is outside tolerance
     iFrm = find((dD.*isOK) > dTol,1,'first');    
@@ -333,51 +333,62 @@ while cont
     else
         % updates the waitbar figure
         if ~isempty(h)
-            pW = iFrm/length(T);           
-            wStrNw = sprintf('%s (%i%% Complete)',wStr,floor(100*pW));
-            if h.Update(wOfs+3,wStrNw,pW)
+            wStrNw = sprintf('%s (Frame %i of %i)',wStr,iFrm,nFrm);
+            if h.Update(wOfs+3,wStrNw,iFrm/nFrm)
                 % if the user cancelled, then exit the function
                 ok = false; 
                 return
             end
         end              
         
-        % retrieves the global images for the surrounding frames        
-        [jFrm,iFrm0] = deal(iFrm+(0:2)',iFrm); 
-        jFrm = jFrm((jFrm>1)&(jFrm<=length(X)));        
-        Img = cellfun(@(x)(double(getDispImage(iData,iMov,x,false,...
-                            handles))),num2cell(jFrm),'un',0);  
-        ImgL = cellfun(@(x)(x(iR(iRT),iC)),Img,'un',0);
-                        
-        % sets the background image
-        updatePos = true;
-        iPhase = find(iMov.iPhase(:,1)<=iFrm,1,'last');
-        switch iMov.vPhase(iPhase)
-            case (1)
-                % sets the background image
-                IbgL = iMov.Ibg{iPhase}{iApp}(iRT,:);   
+        % 
+        iPhase = find(iMov.iPhase(:,1)<=iFrm,1,'last');  
+        if any(iMov.vPhase(iPhase) == [1,2])        
+            % retrieves the global images for the surrounding frames   
+            jFrm = iFrm + [-1,0];
+            Img = arrayfun(@(x)(getDispImage...
+                                (iData,iMov,x,0,handles)),jFrm,'un',0);            
+            ImgL = cellfun(@(x)(double(x(iRL,iC))),Img,'un',0);
 
-                % sets the local image for the tube region    
-                fPosL = [X(iFrm-1),Y(iFrm-1)];
-                try
-                Dp = sqrt(createPointDistMask(fPosL,size(IbgL)));
-                catch
-                    a = 1;
-                end
-                IRL = cellfun(@(x)(Bw.*(IbgL-x)./(Dp+1)),ImgL,'un',0);
-                
-            otherwise 
-                updatePos = false;
-        end
-        
-        % recalculates the object locations
-        if updatePos
-            for i = 1:length(jFrm)
-                % sets the search x/y position offset
-                Pmx = calcMaxValueLocation(IRL{i});        
-                X(jFrm(i)) = Pmx(1);
-                Y(jFrm(i)) = Pmx(2);
-            end         
+            % sets the    
+            switch iMov.vPhase(iPhase)
+                case 1
+                    % calculates the residual image
+                    IbgL = iMov.Ibg{iPhase}{iApp}(iRT,:);   
+                    ImgR0 = cellfun(@(x)(imfilter(IbgL-x,hG)),ImgL,'un',0);
+                    pR = iMov.pBG{iApp}(iTube);
+
+                case 2
+                    % uses the normalised images
+                    pR = NaN;
+                    ImgR0 = cellfun(@(x)(imfilter...
+                                (1-normImg(x),hG)),ImgL,'un',0);
+            end
+
+            % determines if the next frame needs to be fixed         
+            fixNext = compFrameRes(ImgR0,[X(jFrm),Y(jFrm)],pR);
+            [ImgR,iFrmU] = deal(ImgR0{1+fixNext},jFrm(1+fixNext));
+            isOK(iFrm) = false;
+            
+            % calculates the 
+            if fixNext
+                pEst = [Xest(iFrmU),Yest(iFrmU)];
+            else
+                pEst = [extrapSignalRev(X,iFrmU),extrapSignalRev(Y,iFrmU)];
+            end
+            
+            % calculates the distance between the maxima & estimated points 
+            iPmx = find(imregionalmax(ImgR).*Bw);
+            [yPmx,xPmx] = ind2sub(sz,iPmx);
+            Dest = pdist2(pEst,[xPmx,yPmx])';
+
+            % determines the maxima which is most likely to be the closest 
+            % to the estimated coordinates
+            iMx = argMax(dTol*(ImgR(iPmx).^2)./(1+Dest));
+            [X(iFrmU),Y(iFrmU)] = deal(xPmx(iMx),yPmx(iMx));
+
+            % recalculates the estimated values
+            [Xest,Yest] = deal(setupExtrapSig(X),setupExtrapSig(Y));
         end
     end
 end
@@ -389,22 +400,80 @@ h.Update(wOfs+3,sprintf('%s (100%% Complete)',wStr),1);
 pData.fPosL{iApp}{iTube} = [X,Y];
 pData.fPos{iApp}{iTube} = pData.fPosL{iApp}{iTube} + pOfs;
 
-% --- calculates the estimate of the positions
-function XC = calcPosEstimate(T,X)
+% --- extrapolates the signal
+function xExt = extrapSignalRev(x,iFrm)
 
-% turns off the warnings
-wState = warning('off','all');
+% sets the interpolation array
+nP = min(5,length(x)-(iFrm+1));
+xP = flip(x((iFrm+1):(iFrm+nP)));
 
-% calculates the gradients
-T = reshape(T,size(X));
-[Th,dT] = deal(0.5*(T(1:end-1)+T(2:end)),T(2:end)-T(1:end-1));
-dpp = pchip(T,gradient(X,T));
+%
+if range(xP) == 0
+    % if the range of the array is zero
+    xExt = xP(1);
+else
+    % sets up the filter
+    a = arburg(xP,length(xP)-1);
 
-% calculates the derivatives
-[f1,f2,f3] = deal(ppval(dpp,T(1:end-1)),ppval(dpp,Th),ppval(dpp,T(2:end)));
+    % calculates the extrapolated signal value
+    [~, zf] = filter(-[0 a(2:end)], 1, xP);
+    xExt = filter([0 0], -a, 0, zf);
+end
 
-% calculates the estimated positions
-XC = [X(1);(X(1:end-1) + (dT/6).*(f1 + 4*f2 + f3))];
+% --- 
+function fixNext = compFrameRes(ImgR,pFrm,pR)
 
-% turns on the warnings again
-warning(wState);
+%
+prTol = 0.5;
+
+%
+iP = sub2ind(size(ImgR{1}),pFrm(:,2),pFrm(:,1));
+ImgRP = max(0,cellfun(@(I,x)(I(x)-median(I(:))),ImgR(:),num2cell(iP(:))));
+
+%
+if isnan(pR)
+    %
+    fixNext = ImgRP(1)/ImgRP(2) > prTol;
+else
+    %
+    isOK = ImgRP > pR;
+    switch sum(isOK)
+        case 0
+            fixNext = ImgRP(1)/ImgRP(2) > prTol;
+            
+        case 1
+            fixNext = isOK(1);
+            
+        case 2
+            fixNext = true;
+    end
+end
+
+% 
+function y = setupExtrapSig(x,nPts)
+
+% number of points for which to extrapolate
+if ~exist('nPts','var'); nPts = 3; end
+
+% memory allocation
+nFrm = length(x);
+y = zeros(nFrm,1);
+
+% fill in the known part of the time series
+ii = 1:nPts;
+y(ii) = x(ii);
+
+% filter calculation
+a = arburg(x,nPts);
+
+% Run the initial timeseries through the filter to get the filter state
+for i = 1:(length(x)-nPts)       
+    % Now use the filter as an IIR to extrapolate
+    xNw = x(ii+(i-1));
+    if range(xNw) == 0
+        y(i+nPts) = xNw(1);
+    else
+        [~, zf] = filter(-[0 a(2:end)], 1, xNw);  
+        y(i+nPts) = filter([0 0], -a, 0, zf); 
+    end
+end

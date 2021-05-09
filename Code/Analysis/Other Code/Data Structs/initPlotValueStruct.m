@@ -8,7 +8,7 @@ tMinTol = 59;
 nApp = length(snTot(1).appPara.flyok);
 
 % sets the input argument values (if special)
-if (~ischar(varargin{1}))
+if ~ischar(varargin{1})
     Yr0 = varargin{1};
     varargin = varargin(2:end);
 else
@@ -20,27 +20,27 @@ plotD = struct();
 
 % if the number of input arguments is correct, then loop through each of
 % the arguments updating the fields with the field values, fVal
-if (mod(length(varargin),2) == 0)
+if mod(length(varargin),2) == 0
     for i = 1:length(varargin)/2
         % sets the new field/value from the inputs
-        [fStr,fVal] = deal(varargin{(i-1)*2+1},varargin{2*i});        
-        eval(sprintf('plotD.%s = fVal;',fStr));
+        [fStr,fVal] = deal(varargin{(i-1)*2+1},varargin{2*i});
+        plotD = setStructField(plotD,fStr,fVal);
     end
 end
 
 % if there are no dependent variables, then exit
-if (isempty(pData.oP.yVar)); return; end
+if isempty(pData.oP.yVar); return; end
 
 % allocates memory for metric raw data (if there are any)
 isRaw = logical(field2cell(pData.oP.yVar,'isRaw',1));
-if (any(isRaw))
+if any(isRaw)
     % initialisations
     [nDay,nFly,nExp] = deal(1,1,1+(length(snTot)-1)*pData.oP.sepExp);
     
     % sets the day
     for i = 1:length(snTot)
         % calculates the number of days the experiment
-        if (pData.oP.sepDay)
+        if pData.oP.sepDay
             % retrieves the experiment start time
             T0 = snTot(i).iExpt.Timing.T0;
             T0(4) = mod(T0(4) - cP.Tgrp0,24);
@@ -63,7 +63,7 @@ if (any(isRaw))
     % creates the raw arrays for     
     for i = reshape(find(isRaw),1,sum(isRaw))
         % sets the new array based on the parameter type
-        if (any(pData.oP.yVar(i).Type([3 5])))
+        if any(pData.oP.yVar(i).Type([3 5]))
             % case is an individual metric
             Anw = cell(nDay,nFly,nExp);
         else
@@ -72,10 +72,10 @@ if (any(isRaw))
         end
         
         % sets the default values (if any)
-        if (~isempty(Yr0)); Anw(:) = {Yr0}; end
+        if ~isempty(Yr0); Anw(:) = {Yr0}; end
            
         % stores the values into the array
-        eval(sprintf('plotD.%s = Anw;',pData.oP.yVar(i).Var));
+        plotD = setStructField(plotD,pData.oP.yVar(i).Var,Anw);
     end
 end
 

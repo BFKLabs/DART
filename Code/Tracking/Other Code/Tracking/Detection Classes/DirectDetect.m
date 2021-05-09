@@ -255,19 +255,26 @@ classdef DirectDetect < handle
                     obj.iMov.iRT{i},'un',0)),IRLnw,'un',0),0);                
 
                 % sets the previous stack location data
-                if isempty(obj.prData)
+                if ~isprop(obj,'prData')
+                    % no previous data, so use empty values
+                    fPr = cell(obj.nTube(i),1);                
+                elseif isempty(obj.prData)
                     % no previous data, so use empty values
                     fPr = cell(obj.nTube(i),1);
+                elseif ~isfield(obj.prData,'fPosPr')
+                    % no previous data, so use empty values
+                    fPr = cell(obj.nTube(i),1);                    
                 else
                     % otherwise, use the previous values
                     fPr = obj.prData.fPosPr{i}(:);
                 end                
                 
                 % calculates the coordinates for each sub-region/frame
+                Nsz = ceil((pi/2)*prod(obj.szObj/2));
                 for j = 1:obj.nTube(i)
                     if obj.iMov.flyok(j,i)
                         [fPosNw,IRLmx] = segSingleSubRegion...
-                                            (IRLnwT(j,:),fPr{j},dTolT);                        
+                                        (IRLnwT(j,:),fPr{j},dTolT,Nsz);                        
                         if all(IRLmx < pTolMax) && ~isempty(obj.prData)
                             % if the residual is extremely low, then use
                             % the coordinates from the previous phase
@@ -314,9 +321,6 @@ classdef DirectDetect < handle
                 end
             end
             
-%             % calculates the background image estimate
-%             obj.estimateBGAll();
-            
             % updates the progressbar
             obj.updateProgBar(2,'Object Detection Complete',1);
             
@@ -325,7 +329,8 @@ classdef DirectDetect < handle
         % --- calculates the sub-region image residual
         function IR = calcSubRegionRes(obj,I,iApp)
             
-            IR = imfilter(I-obj.iMov.IbgT{iApp},obj.hG);
+            B = obj.iMov.IbgT{iApp} > 0;
+            IR = B.*imfilter(I-obj.iMov.IbgT{iApp},obj.hG);
             IR(isnan(IR)) = 0;
             
         end
@@ -659,8 +664,8 @@ classdef DirectDetect < handle
                         if mxThresh/max(IMx(kk)) > obj.mxTol
                             % if oonnected then use the point with the
                             % higher pixel value
-                            iMx = argMax(IMx(kk));
-                            pMx(kk(1),:) = pMx(kk(iMx),:);
+                            jMx = argMax(IMx(kk));
+                            pMx(kk(1),:) = pMx(kk(jMx),:);
                             pMx(kk(2),:) = NaN;
                         end
                     end
@@ -695,7 +700,12 @@ classdef DirectDetect < handle
             
             % determines the object's size for distance purposes
             if isnan(obj.szObj)
-                obj.optObjectShape(pMaxApp,iApp);
+                try
+                    obj.optObjectShape(pMaxApp,iApp);
+                catch
+                    % FIGURE OUT THIS ERROR?!
+                    obj.szObj = 10*[1,1];
+                end
             end
             
             % calculates the distance tolerance
@@ -852,7 +862,8 @@ classdef DirectDetect < handle
                 % sets the region image stack based on the phase type
                 if obj.vPh == 1
                     % case is a low-variance phase
-                    IappF = obj.getRegionImageStack(obj.Img,iApp);
+                    IappF0 = obj.getRegionImageStack(obj.Img,iApp);
+                    IappF = obj.equaliseImageStack(IappF0,iApp);
                 else
                     IappF = Iapp;
                 end                
@@ -1139,6 +1150,30 @@ classdef DirectDetect < handle
             
         end
         
+        % --- equalises the image stack to 
+        function IappF = equaliseImageStack(obj,IappF,iApp)
+            
+            % parameters
+            pTolEq = 5;
+            
+            % determines which images are within tolerance of the average
+            % pixel intensity of the sub-region
+            Iavg = obj.iMov.ImnF{obj.iPh}(iApp);
+            isOK = abs(cellfun(@(x)(nanmean(x(:))),IappF)-Iavg) < pTolEq;
+            
+            % if any are not within tolerance, then equalise the images
+            if any(~isOK)
+                % calculates the reference image 
+                Iref = uint8(calcImageStackFcn(IappF(isOK),'mean'));
+                
+                % matches the histograms of the images
+                for i = find(~isOK(:)')
+                    IappF{i} = double(imhistmatch(uint8(IappF{i}),Iref));
+                end
+            end
+            
+        end
+        
         % --------------------------------------- %
         % --- STATIC BLOB DETECTION FUNCTIONS --- %
         % --------------------------------------- %
@@ -1180,7 +1215,7 @@ classdef DirectDetect < handle
             del = obj.getSubImageDim();            
             
             % resets the likely points to the maxima
-            fP = obj.resetLikelyPos(I,fP,max(obj.szObj/2));           
+            fP = obj.resetLikelyPos(I,fP,max(obj.szObj));           
             
             % removes the infeasible points
             isOK = ~isnan(fP(:,1));
@@ -1199,7 +1234,7 @@ classdef DirectDetect < handle
                 Imin = Isub{i}(del+1,del+1);
                 
                 % determines if there are any other points in the frame
-                fPO = obj.detPointsInFrame(Isub{i});
+                fPO = obj.detPointsInFrame(Isub{i},del/2);
                 
                 % calculates the contour levels
                 [Pc{i},cLvl{i}] = ...
@@ -1255,8 +1290,10 @@ classdef DirectDetect < handle
                     end
                     
                     % removes binary image of the image blobs
-                    [IappF,IappF0] = deal(...
-                        obj.getRegionImageStack(obj.Img,iApp));
+                    IappF0 = obj.getRegionImageStack(obj.Img,iApp);
+                    [IappF,IappF0] = deal...
+                                (obj.equaliseImageStack(IappF0,iApp));
+                    
                     for iImg = 1:obj.nImg
                         IappF{iImg}(obj.BrmvBG{iApp}{iImg}) = NaN;
                     end
@@ -1450,18 +1487,22 @@ classdef DirectDetect < handle
                 
                 % optimises the 2D gaussian image from the mean image
                 pLim = cellfun(@(I)(min(I(:))),Isub0);
-                [Iopt0,pOptNw] = opt2DGaussian(Isub0,pLim,pOpt0);
-                IoptNw = (1-normImg(Iopt0)).*(Iopt0<0);
-                
-                % determines if the optimal binary intersects the edge
-                BoptNw = bwmorph(IoptNw > pTol0,'majority');
-                Bedge = bwmorph(true(size(BoptNw)),'remove');
-                if mean(BoptNw(Bedge)) > pEdgeTol
-                    % if so, then increment the image size
-                    imgSz = imgSz + dimgSz;
-                else
-                    % otherwise, exit the loop
-                    break
+                [Iopt0,pOptNw] = opt2DGaussian(Isub0,pLim,pOpt0);                
+                if isempty(Iopt0)
+                    % if there was an issue, then increment the image size
+                    imgSz = imgSz + dimgSz;                    
+                else                                
+                    % determines if the optimal binary intersects the edge
+                    IoptNw = (1-normImg(Iopt0)).*(Iopt0<0);
+                    BoptNw = bwmorph(IoptNw > pTol0,'majority');
+                    Bedge = bwmorph(true(size(BoptNw)),'remove');
+                    if mean(BoptNw(Bedge)) > pEdgeTol
+                        % if so, then increment the image size
+                        imgSz = imgSz + dimgSz;
+                    else
+                        % otherwise, exit the loop
+                        break
+                    end
                 end
             end
             
@@ -1632,6 +1673,10 @@ classdef DirectDetect < handle
         end
         
         function plotFrameLikelyPos(obj,iImg)
+            
+            if length(obj.Img) ~= obj.nImg
+                obj.nImg = length(obj.Img);
+            end
             
             % determine if the plot frame index is valid
             if iImg > obj.nImg
@@ -1929,10 +1974,10 @@ classdef DirectDetect < handle
         end
         
         % --- determines the coordinates of other blobs in the sub-image
-        function fPO = detPointsInFrame(Isub)                       
+        function fPO = detPointsInFrame(Isub,dTol)                       
             
             % distance tolerance
-            Dtol = 0.01 + sqrt(10);
+            Dtol = 0.01 + dTol;
             
             % determines the minima within the sub-image
             B = isnan(Isub);

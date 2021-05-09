@@ -7,6 +7,7 @@ classdef ResidualDetect < handle
         iMov
         hProg
         Img
+        ImgLT
         prData
         iPara
         
@@ -36,6 +37,7 @@ classdef ResidualDetect < handle
         % temporary object fields
         IR      
         y0        
+        pTolPh = 5;
     end
     
     % class methods
@@ -87,7 +89,7 @@ classdef ResidualDetect < handle
                 end
                 
                 % segments the region
-                obj.segmentRegions(iApp);                       
+                obj.segmentRegions(iApp);                   
             end
             
             % updates the progressbar
@@ -105,8 +107,7 @@ classdef ResidualDetect < handle
             % initialisations
             imov = obj.iMov;
             iRT = imov.iRT{iApp};
-            hG = fspecial('gaussian',3,1);
-            [iR,iC] = deal(imov.iR{iApp},imov.iC{iApp});            
+            hG = fspecial('gaussian',3,1);           
             y0L = [zeros(obj.nTube(iApp),1),obj.y0{iApp}(:)];
             
             % retrieves the global row/column indices
@@ -128,20 +129,17 @@ classdef ResidualDetect < handle
             
             % converts the residual tolerances to a cell array
             pTol(~fok) = NaN;
-            pTol = num2cell(pTol);            
-            
-            % retrieves the exclusion binary mask
-            Bw = getExclusionBin(obj.iMov,[length(iR),length(iC)],iApp);
-            
-            % calculates the residual images for            
-            ImgBG = imov.Ibg{obj.iPh}{iApp}.*Bw;            
-            ImgL = cellfun(@(I)(I(iR,iC).*Bw),obj.Img,'un',0);
+            pTol = num2cell(pTol);                       
+                        
+            % sets up the region image stack
+            [ImgL,ImgBG] = obj.setupRegionImageStack(iApp);            
             
             % calculates the residual images 
-            IRes = cellfun(@(x)(imfilter(ImgBG-x,hG)),ImgL,'un',0);
+            IRes = cellfun(@(x)...
+                    (obj.calcRegionResImage(ImgBG,x,hG)),ImgL,'un',0);
             IResL = cell2cell(cellfun(@(x)(...
-                       cellfun(@(ir)(x(ir,:)),iRT,'un',0)),IRes,'un',0),0);                                 
-                   
+                    cellfun(@(ir)(x(ir,:)),iRT,'un',0)),IRes,'un',0),0);                                                   
+                
             % sets the previous stack location data
             if isempty(obj.prData)
                 % no previous data, so use empty values
@@ -156,8 +154,9 @@ classdef ResidualDetect < handle
                    
             % calculates the positions of the objects for each
             % frame/sub-region   
+            Nsz = ceil((pi/2)*prod(obj.iMov.szObj/2));
             fPos0 = cellfun(@(x,p,f0,fok)...
-                    (obj.segSubRegions(x,p,f0,fok,dTol)),...
+                    (obj.segSubRegions(x,p,f0,fok,dTol,Nsz)),...
                     num2cell(IResL,2),pTol,fPr,num2cell(fok),'un',0);               
             
             % checks the stationary flies have not moved appreciable
@@ -196,17 +195,47 @@ classdef ResidualDetect < handle
                 obj.NszB(iApp,:) = num2cell(phiObj.NszB,1);
             end            
             
-            % sets the sub-region/region coorindates
-            try
+            % sets the sub-region/region coordindates
             obj.fPosL(iApp,:) = cellfun(@(x)(...
                     cell2mat(x)),num2cell(cell2cell(fPos0),1),'un',0);
             obj.fPos(iApp,:) = cellfun(@(x)(...
                     x+y0L),obj.fPosL(iApp,:),'un',0);
-            catch
-                a = 1;
-            end
            
         end                           
+        
+        % --- sets up the image stack for the region index, iApp
+        function [ImgL,ImgBG] = setupRegionImageStack(obj,iApp)
+            
+            % sets the region row/column indices
+            [iR,iC] = deal(obj.iMov.iR{iApp},obj.iMov.iC{iApp});             
+            
+            % calculates the background/local images from the stack    
+            ImgBG = obj.iMov.Ibg{obj.iPh}{iApp};                        
+            ImgL = cellfun(@(I)(I(iR,iC)),obj.Img,'un',0);              
+            
+            % determines 
+            if isfield(obj.iMov,'ImnF')
+                Iref = obj.iMov.ImnF{obj.iPh}(iApp);
+            else
+                Iref = nanmean(obj.iMov.Ibg{obj.iPh}{iApp}(:));
+            end
+            
+            % determines if mean of any of the frame images are outside the
+            % tolerance, pTolPh (=5)
+            isOK = abs(cellfun(@(x)(nanmean(x(:))),ImgL)-Iref) < obj.pTolPh;  
+            if any(~isOK)
+                % if so, then reset the 
+                Iref = uint8(ImgBG);
+                for i = find(~isOK(:)')
+                    ImgL{i} = double(imhistmatch(uint8(ImgL{i}),Iref));
+                end
+            end
+            
+            % removes the rejected regions from the sub-images
+            Bw = getExclusionBin(obj.iMov,[length(iR),length(iC)],iApp);
+            [ImgBG,ImgL] = deal(ImgBG.*Bw,cellfun(@(I)(I.*Bw),ImgL,'un',0));
+            
+        end        
         
         % --------------------------------- %
         % --- CLASS FIELD I/O FUNCTIONS --- %
@@ -327,6 +356,10 @@ classdef ResidualDetect < handle
             obj.fPos = cell(obj.nApp,obj.nImg);
             obj.fPosG = cell(obj.nApp,obj.nImg); 
             
+            % sets the local images
+            obj.ImgLT = cellfun(@(iR,iC)(cellfun(@(I)(I(iR,iC)),...
+                        obj.Img,'un',0)),obj.iMov.iR,obj.iMov.iC,'un',0);
+            
             % orientation angle memory allocation
             if obj.iMov.calcPhi
                 obj.Phi = cell(obj.nApp,obj.nImg);
@@ -383,7 +416,7 @@ classdef ResidualDetect < handle
     methods(Static)
         
         % --- calculates the locations of the objects for each sub-region
-        function fPos = segSubRegions(IRL,pTol,fPr,fok,dTol)
+        function fPos = segSubRegions(IRL,pTol,fPr,fok,dTol,Nsz)
             
             % initialisations
             nFrm = length(IRL);
@@ -395,9 +428,14 @@ classdef ResidualDetect < handle
                 return
             end
             
-            % calculates the new positions from the sub-image stack
+            % sets up the residual image stack 
             IRL = cellfun(@(x)(x-nanmedian(x(:))),IRL,'un',0);
-            [fPosNw,IRmx] = segSingleSubRegion(IRL,fPr,dTol);
+            for i = 1:length(IRL)
+                IRL{i}(isnan(IRL{i})) = 0;
+            end
+            
+            % calculates the new positions from the sub-image stack  
+            [fPosNw,IRmx] = segSingleSubRegion(IRL,fPr,dTol,Nsz);
             
             % determines which frames have a residual value above tolerance
             isOK = IRmx >= pTol;
@@ -435,6 +473,14 @@ classdef ResidualDetect < handle
                     end
                 end
             end                    
+        end        
+        
+        function IRes = calcRegionResImage(ImgBG,I,hG)
+
+
+            IRes = imfilter(ImgBG-I,hG);
+            IRes(I>median(I(:))) = NaN;
+
         end        
         
     end

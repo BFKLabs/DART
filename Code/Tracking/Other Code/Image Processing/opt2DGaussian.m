@@ -5,14 +5,19 @@ function [Iopt,pOptF] = opt2DGaussian(Isub,pLim,pOpt0)
 opt = optimset('display','none','tolX',1e-6,'TolFun',1e-6);
 
 % calculates the weighted mean image
-pW = pLim/min(pLim);
-X0 = cellfun(@(p,x)(p*x),num2cell(pW(:)),Isub(:),'un',0);
-I0 = min(0,calcImageStackFcn(X0,'median'));
+% pW = pLim/min(pLim);
+% X0 = cellfun(@(p,x)(p*x),num2cell(pW(:)),Isub(:),'un',0);
+I0 = min(0,calcImageStackFcn(Isub,'mean'));
 
 % determines the largest contour surrounding the frame centre-point
 Pc = splitContourLevels(I0,20);
-Bw = poly2bin(Pc{end},size(I0));
-I = I0.*Bw;
+if isempty(Pc)
+    [Iopt,pOptF] = deal([]);
+    return
+else
+    Bw = poly2bin(Pc{end},size(I0));
+    I = I0.*Bw;
+end
 
 % estimates the median/amplitude
 if isempty(pOpt0)
@@ -27,8 +32,8 @@ D = floor(size(I,1)/2);
 [X,Y] = meshgrid(-D:D);
 
 % parameters
-pLB = [-255.0,-255.0,  0.0, 0.0];
-pUB = [ 255.0, 255.0,  5.0, 5.0];
+pLB = [-255.0,-255.0,   0.0,  0.0];
+pUB = [ 255.0, 255.0,  25.0, 25.0];
 
 % runs the optimiation can returns the optimal template
 pOptF = lsqnonlin(@optFunc,pOpt0,pLB,pUB,opt,I,X,Y,1-normImg(I));
