@@ -283,6 +283,9 @@ iData.fData.dir = fDir;
 % updates the program data struct
 setappdata(hFig,'iData',iData);
 
+% resizes the gui
+resizeFlyTrackGUI(hFig)
+
 % updates the GUI properties (if not batch processing)
 if ~isBatch
     % determines if there is an executable for loading the image stacks    
@@ -323,6 +326,3 @@ else
     % sets the GUI properties after loading the image
     setTrackGUIProps(handles,'PostImageLoadBatch')
 end
-
-% resizes the gui
-resizeFlyTrackGUI(hFig)

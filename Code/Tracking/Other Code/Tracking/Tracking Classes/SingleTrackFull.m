@@ -103,15 +103,16 @@ classdef SingleTrackFull < TrackFull & SingleTrack
 
             end
 
-            % if there are no high variance phases, then exit the function
-            iPh = obj.iMov.iPhase;
-            ii = find(obj.iMov.vPhase == 3);
-            if isempty(ii)
+            % if there are no high variance phases, then exit the function            
+            ii = obj.iMov.vPhase == 3;
+            if ~any(ii)
                 return
             end
             
             % initialisations
             T = obj.pData.T;
+            iPh = obj.iMov.iPhase;
+            iGrp = getGroupIndex(ii);
             
             % determines the interpolation (non-NaN) frames
             i0 = find(obj.iMov.ok,1,'first');
@@ -120,18 +121,18 @@ classdef SingleTrackFull < TrackFull & SingleTrack
             
             % determines if there are any valid groups for interpolation
             % (first frame > 1 and last frame < nFrm)
-            isOK = (iPh(ii,1) > 1) & (iPh(ii,2) < obj.iData.nFrm);
+            isOK = cellfun(@(x)((iPh(x(1),1)>1) && ...
+                                    (iPh(x(end),2)<obj.iData.nFrm)),iGrp);
             if ~any(isOK)
                 % if not, then exit the function
                 return
             else
                 % otherwise, set the interpolation time and feasible phases
-                [Tint,ii] = deal(T(intFrm),ii(isOK));
+                [Tint,iGrp] = deal(T(intFrm),iGrp(isOK));
             end
             
             % sets the frame indices for the hi-variance phases
-            iFrm = cellfun(@(x)((x(1):x(2))'),...
-                                num2cell(obj.iMov.iPhase(ii,:),2),'un',0);
+            iFrm = cellfun(@(x)(iPh(x(1),1):iPh(x(end),2)),iGrp,'un',0);
             
             % re-segments the high-variance phases
             for iApp = 1:obj.nApp
@@ -146,7 +147,7 @@ classdef SingleTrackFull < TrackFull & SingleTrack
                         [pXL,pYL] = setupInterpObj(Tint,fPosL);                          
                         
                         % interpolates the missing coordinates
-                        for i = 1:length(ii)
+                        for i = 1:length(iFrm)
                             % sets the phase time
                             Tph = T(iFrm{i});
                             

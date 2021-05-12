@@ -361,10 +361,12 @@ switch (typeStr)
         end                           
 
     case ('PreFlyDetect') % case is after detecting the fly locations 
-%         % turns off the tube regions
-%         set(handles.checkShowTube,'value',0)
-%         checkShowTube_Callback(handles.checkShowTube, 1, handles)
-%         pause(0.01)        
+        % turns off the tube regions
+        if get(handles.checkShowMark,'Value')
+            set(handles.checkShowMark,'value',0)
+            checkShowMark_Callback(handles.checkShowMark, 1, handles)
+            pause(0.01)        
+        end
         
         % enables the tube region outline markers                            
         if strcmp(get(handles.menuViewProgress,'checked'),'on')
@@ -1201,7 +1203,8 @@ resetObjPos(handles.panelAxProp,'bottom',frmPos(4)+expPos(4)+dY1,1)
 hEdit = findall(handles.panelTrackPara,'style','edit');
 for i = 1:length(hEdit)
     hObj = hEdit(i);
-    cbFcn = @(hObj,eventdata)FlyTrack('editAlterAnalysisPara',hObj,eventdata,handles);
+    cbFcn = @(hObj,eventdata)FlyTrack...
+                        ('editAlterAnalysisPara',hObj,eventdata,handles);
     set(hObj,'Callback',cbFcn);
 end
 

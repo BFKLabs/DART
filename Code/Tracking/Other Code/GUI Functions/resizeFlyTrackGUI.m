@@ -24,3 +24,4 @@ manualResizeFlyTrackGUI(hFig,'width',dX+pPos(1)+pWid);
 
 % centres the figure position
 resetFigPosition(hFig);
+pause(0.05);

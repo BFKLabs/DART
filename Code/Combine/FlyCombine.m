@@ -975,7 +975,7 @@ initPosPlotMarkers(handles,T,setupPlotValues(iMov,Px,'X',1))
 
 % sets the x-axis time labels and y-axis limits
 hold on
-[xTick,yLim] = deal(get(hAx,'xtick'),[0,getSRCountMax(iMov)]);
+[xTick,yLim] = deal(get(hAx,'xtick'),[0,length(iMov.iR)]);
 plot(repmat(xTick,2,1),repmat(yLim',1,length(xTick))+0.5,'k--')
 hold off
 

@@ -390,19 +390,16 @@ classdef SingleTrackBP < handle
                         
                         % starts full video tracking (if video is valid)
                         if obj.bData(iDir).movOK(i) ~= 0
-                            try
-                                % tracks the video
-                                trkOK = obj.segObjLocations(prData);
-                                
-                            catch wErrNw
+                            % tracks the video
+                            trkOK = obj.segObjLocations(prData);
+                            if ~isempty(obj.wErr)                                
                                 % if there was an error with the 
                                 % calculations then display and exit
                                 tStr = 'Batch Processing Error';
-                                waitfor(errordlg(eStr,tStr,'modal'))                                  
+                                waitfor(errordlg(eStr,tStr,'modal'))
                                 
-                                % exits the function
-                                [trkOK,obj.isOutput] = deal(false,true);
-                                [obj.calcOK,obj.wErr] = deal(false,wErrNw);                                
+                                % flag the batch processing should stop
+                                ok = false;
                             end                                   
                                                                                                                                         
                             if ~trkOK
@@ -523,13 +520,25 @@ classdef SingleTrackBP < handle
             trkObjF.setClassField('isBatch',true);   
             trkObjF.setClassField('isMultiBatch',obj.isMultiBatch);  
             trkObjF.setClassField('prData',prData); 
-            
-            % sets the tracking object fields
-            trkObjF.segEntireVideo(obj.hGUI,obj.iMov,obj.pData0);
+                        
+            try
+                % segments the entire video
+                trkObjF.segEntireVideo(obj.hGUI,obj.iMov,obj.pData0);
+                ok = trkObjF.calcOK;
+                
+            catch wErrNw
+                % closes the progressbar (if open)
+                obj.hProg.closeProgBar()
+
+                % exits the function
+                [obj.calcOK,ok] = deal(false);
+                [obj.isOutput,obj.wErr] = deal(true,wErrNw);
+            end
+                
+            % updates the tracking data
             [obj.iMov,obj.pData] = deal(trkObjF.iMov,trkObjF.pData);           
             
-            % retrieves the status flag from the tracking object
-            ok = trkObjF.calcOK;
+            % retrieves the status flag from the tracking object            
             if ok
                 % expands the waitbar figure by 1 level
                 obj.isOutput = true;
@@ -537,7 +546,7 @@ classdef SingleTrackBP < handle
                     obj.hProg.collapseProgBar(1); 
                 end
                 
-            elseif any(obj.pData.nCount > 0)
+            elseif any(obj.pData.nCount > 0) && isempty(obj.wErr)
                 % prompt user if they wish to save current progress
                 uChoice = questdlg(['Do you wish to save the current ',...
                            'tracking progress to to file?'],...
@@ -1432,7 +1441,7 @@ classdef SingleTrackBP < handle
             % loops through all the apparatus checking if the tube statuses
             % have been set correctly. if not, then update the statuses to 
             % reflect the previous
-            for j = 1:length(StatusNw)
+            for j = 1:find(obj.iMov.ok(:)')
                 % determines 
                 [iCol,~,iRow] = getRegionIndices(obj.iMov,j);
                 ii0 = (StatusNw{j} ~= 3) & (StatusPr{j} == 3);
@@ -1478,7 +1487,7 @@ classdef SingleTrackBP < handle
                 % previous video. in the new video, these objects are most 
                 % likely stationary (instead of rejected)
                 ii0 = (StatusNw{j} == 3) & (StatusPr{j} == 1);
-                ii0(~obj.iMov.isUse{iRow,iCol}) = false; 
+                ii0(~obj.iMov.isUse{iRow,iCol}) = false;
                 ii = find(ii0);
                 for k = 1:length(ii)
                     % resets the tube status/rejection flags 

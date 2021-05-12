@@ -451,12 +451,34 @@ if ~isempty(iMov)
             snTot.AxR = snTot.AxR(ok0); 
         end
         
-        % resets the sub-region data struct        
+        % if there are any 
+        if any(~ok0)
+            for i = find(~ok0(:)')
+                [iCol,~,iRow] = getRegionIndices(iMov,i);
+                iMov.nTubeR(iRow,iCol) = NaN;
+            end
+        end
+        
+        % sets the region index fields
+        if isfield(iMov,'indR')
+            % if the field exists, then reduce it
+            iMov.indR = iMov.indR(ok0);
+        else
+            % otherwise, initialise the field
+            iMov.indR = find(ok0);
+        end
+        
+        % resets the sub-region data struct         
         [iMov.ok,iMov.flyok] = deal(iMov.ok(ok0),iMov.flyok(:,ok0));
         [iMov.iR,iMov.iC] = deal(iMov.iR(ok0),iMov.iC(ok0));
         [iMov.iRT,iMov.iCT] = deal(iMov.iRT(ok0),iMov.iCT(ok0));
         [iMov.xTube,iMov.yTube] = deal(iMov.xTube(ok0),iMov.yTube(ok0));
         [iMov.pos,iMov.Status] = deal(iMov.pos(ok0),iMov.Status(ok0));
+        
+        % resets the background image arrays       
+        for i = 1:length(iMov.Ibg)
+            iMov.Ibg{i} = iMov.Ibg{i}(ok0);
+        end
     end
 end
 

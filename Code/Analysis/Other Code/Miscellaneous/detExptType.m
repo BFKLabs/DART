@@ -115,8 +115,9 @@ function devKey = getDevTypeKey(stimP)
 devType = {'Motor','Opto'};
 devKey = false(1,length(devType));
 
-%
-devStim = fieldnames(stimP);
-for iDev = 1:length(devKey)
-    devKey(iDev) = any(strContains(devStim,devType{iDev}));
+if ~isempty(stimP)
+    devStim = fieldnames(stimP);
+    for iDev = 1:length(devKey)
+        devKey(iDev) = any(strContains(devStim,devType{iDev}));
+    end
 end

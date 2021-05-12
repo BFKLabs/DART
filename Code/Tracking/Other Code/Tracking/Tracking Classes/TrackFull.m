@@ -247,8 +247,7 @@ classdef TrackFull < Track
                 prDataPh = obj.updateTrackingSoln(iPhase,i,nStack);
                 
                 % updates the solution tracking GUI  
-                obj.updateTrackingGUI(i);
-                                       
+                obj.updateTrackingGUI(i);                           
             end           
         end        
         
@@ -323,11 +322,19 @@ classdef TrackFull < Track
 
                 % sets the new frame
                 if ~exist('iStack','var')
-                    nwFrm = obj.sProg.iFrmR{end}(end);
+                    if isempty(obj.sProg)
+                        nwFrm = obj.iData.nFrm;
+                    else
+                        nwFrm = obj.sProg.iFrmR{end}(end);
+                    end
                 elseif iStack == 0
                     nwFrm = 1;
                 else
-                    nwFrm = obj.sProg.iFrmR{iStack}(end);
+                    if isempty(obj.sProg)
+                        nwFrm = obj.iData.nFrm;
+                    else
+                        nwFrm = obj.sProg.iFrmR{iStack}(end);
+                    end
                 end
                 
                 % updates the main axes with the new image                

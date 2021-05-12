@@ -188,6 +188,11 @@ hG = fspecial('gaussian',3,1);
 [is2D,isOK] = deal(is2DCheck(iMov),true(length(X),1));
 h0 = getMedBLSize(iMov);
 
+% if all values are NaN's, then exit
+if all(isnan(X))
+    return
+end
+
 % determines the distance tolerances
 if isfield(iMov,'szObj')
     if is2D
@@ -453,18 +458,22 @@ end
 function y = setupExtrapSig(x,nPts)
 
 % number of points for which to extrapolate
-if ~exist('nPts','var'); nPts = 3; end
+if ~exist('nPts','var'); nPts = 4; end
 
 % memory allocation
+if range(x) == 0
+    y = x; 
+    return    
+end
+    
+% memory allocation
 nFrm = length(x);
-y = zeros(nFrm,1);
+y = NaN(nFrm,1);
+isN = isnan(x);
 
 % fill in the known part of the time series
 ii = 1:nPts;
 y(ii) = x(ii);
-
-% filter calculation
-a = arburg(x,nPts);
 
 % Run the initial timeseries through the filter to get the filter state
 for i = 1:(length(x)-nPts)       
@@ -472,8 +481,22 @@ for i = 1:(length(x)-nPts)
     xNw = x(ii+(i-1));
     if range(xNw) == 0
         y(i+nPts) = xNw(1);
-    else
-        [~, zf] = filter(-[0 a(2:end)], 1, xNw);  
-        y(i+nPts) = filter([0 0], -a, 0, zf); 
+    else       
+        jj = ~isN(ii+(i-1));
+        switch sum(jj)
+            case 0
+                
+            case 1
+                y(i+nPts) = xNw(end);
+                
+            otherwise                
+                a = arburg(xNw(jj),sum(jj)-1);            
+                if any(isnan(a))
+                    y(i+nPts) = mean(xNw(jj));
+                else
+                    [~, zf] = filter(-[0 a(2:end)], 1, xNw(jj));  
+                    y(i+nPts) = filter([0 0], -a, 0, zf);
+                end
+        end
     end
 end

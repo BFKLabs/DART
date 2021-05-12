@@ -727,6 +727,11 @@ function menuOpenSoln_Callback(hObject, eventdata, handles)
 % global variables
 global isBatch
 
+% if accessing this function via the menu item, then reset the bp flag
+if isa(eventdata,'matlab.ui.eventdata.ActionData')
+    isBatch = false;
+end
+
 % retrieves the image data/mesh structs
 [iData0,iData] = deal(getappdata(handles.figFlyTrack,'iData'));
 hProp0 = getHandleSnapshot(handles); 
@@ -2363,14 +2368,37 @@ if isCalib
         updateAllPlotMarkers(handles,iMov,true)
     end
 else
-    dispImage(handles)
+    % initialisations
+    isOn = get(hObject,'Value');
+    hMark = getappdata(handles.figFlyTrack,'hMark');
+                  
+    try
+        % attempts to update the marker visibility
+        cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOn)),x)),hMark)
+    catch
+        % if there was an error, recreate the markers and set their
+        % visibility
+        initMarkerPlots(handles);
+        cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOn)),x)),hMark)
+    end
 end
     
 % --- Executes on button press in checkShowAngle.
 function checkShowAngle_Callback(hObject, eventdata, handles)
 
-% updates the display image
-dispImage(handles)
+% initialisations
+isOn = get(hObject,'Value');
+hDir = getappdata(handles.figFlyTrack,'hDir');
+
+try
+    % attempts to update the marker visibility
+    cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOn)),x)),hDir)
+catch
+    % if there was an error, recreate the markers and set their
+    % visibility
+    initMarkerPlots(handles);
+    cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOn)),x)),hDir)
+end
 
 % --- Executes on button press in buttonDetectBackground.
 function buttonDetectBackground_Callback(hObject, eventdata, handles)
@@ -2812,12 +2840,15 @@ deleteAllMarkers(handles)
 
 % sets the visibilty flag
 if nargin == 1
-    % show the new markers
-    vStr = 'on'; 
+    isOn = true;
 else
-    % don't show the new markers
-    vStr = 'off';    
+    isOn = varargin{1}; 
 end
+
+% retrieves the checkbox markers
+isOnT = get(handles.checkShowTube,'Value') && isOn;
+isOnM = get(handles.checkShowMark,'Value') && isOn;
+isOnD = get(handles.checkShowAngle,'Value') && isOn;
 
 % resets the markers
 hold(hAx,'on')
@@ -2863,7 +2894,7 @@ for i = 1:nApp
             % creates the tube region patch
             hTube{i}{j} = fill(xTube,yTube,pCol,'tag',hTStr,...
                             'FaceAlpha',fAlpha,'EdgeColor',edgeCol,...
-                            'EdgeAlpha',1,'Visible',vStr,'Parent',hAx,...
+                            'EdgeAlpha',1,'Visible','off','Parent',hAx,...
                             'UserData',[i,j]); 
         end
         
@@ -2884,12 +2915,17 @@ for i = 1:nApp
         
         % creates the fly positional/orientation markers
         hMark{i}{j} = plot(NaN,NaN,'Color',pCol,'Marker',pMark,...
-                           'tag',hMStr,'MarkerSize',mSz,'Parent',hAx,...
-                           'LineWidth',lWid,'UserData',[i,j]);
+                           'MarkerSize',mSz,'Parent',hAx,'Visible','off',...
+                           'LineWidth',lWid,'UserData',[i,j],'tag',hMStr);
         hDir{i}{j} = patch(NaN,NaN,pCol,'tag',hDStr,'Parent',hAx,...
-                           'UserData',[10,0.33],'Visible',vStr);
+                           'UserData',[10,0.33],'Visible','off');
     end
 end
+
+% sets the object marker visibilities
+cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOnT)),x)),hTube)
+cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOnM)),x)),hMark)
+cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOnD)),x)),hDir)
 
 % turns the hold on the axis off
 hold(hAx,'off')
@@ -3888,9 +3924,9 @@ for i = 1:length(wStr)
         
         % sets the callback function and userdata strings
         if ishandle(hObj)
-            cFunc = sprintf('%sCallback',wStr{i});
-            bFunc = @(hObj,e)FlyTrack(cFunc,hObj,[],guidata(hObj));
-            set(hObj,'Callback',bFunc,'UserData',uStr{j})
+            cbFcnStr = sprintf('%sCallback',wStr{i});
+            cbFcn = {str2func(cbFcnStr),handles};
+            set(hObj,'Callback',cbFcn,'UserData',uStr{j})
         end
     end
 end

@@ -806,7 +806,7 @@ save(pFile,'-struct','A');
 setObjEnable(hObject,'off')
 
 % updates the checkbox values
-hChk = {hGUIH.checkShowTube,hGUIH.checkShowMark,hGUIH.checkShowAngle};
+hChk = {hGUIH.checkShowMark};
 for i = 1:length(hChk)
     set(hChk{i},'value',strcmp(get(hChk{i},'enable'),'on'))
 end
