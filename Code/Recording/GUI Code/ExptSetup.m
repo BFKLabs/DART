@@ -527,12 +527,14 @@ iProg = getappdata(hFig,'iProg');
 sTrain = storeExptTrainPara(hFig);
 
 % determines if any stimuli trains have been saved
-if all(cellfun(@isempty,getStructFields(sTrain)))
-    % if not, then output an error message to screen and exit
-    eStr = ['At least one stimuli protocol train must be saved ',...
-            'before attempting to save an experimental protocol file.'];
-    waitfor(msgbox(eStr,'Protocol Output Error','modal'))
-    return
+if ~strcmp(getappdata(hFig,'devType'),'RecordOnly')
+    if all(cellfun(@isempty,getStructFields(sTrain)))
+        % if not, then output an error message to screen and exit
+        eStr = ['At least one stimuli protocol train must be saved ',...
+                'before attempting to save an experimental protocol file.'];
+        waitfor(msgbox(eStr,'Protocol Output Error','modal'))
+        return
+    end
 end
 
 % retrieves the default directory
@@ -563,6 +565,12 @@ if (fIndex ~= 0)
     fFile = fullfile(fDir,fName);
     save(fFile,'iExpt','sTrain','chInfo','iStim');        
 end
+
+% -------------------------------------------------------------------------
+function menuDiskSpace_Callback(hObject, eventdata, handles)
+
+% runs the disk space gui
+DiskSpace()
 
 % -------------------------------------------------------------------------
 function menuExit_Callback(hObject, eventdata, handles)
@@ -628,6 +636,20 @@ if ~checkVideoResolution(objIMAQ,iExpt.Video)
     return
 end
 
+% determines if there is feasible space to store the experiment's videos
+mStr = calcVideoTiming(handles);
+if ~isempty(mStr)
+    % if not, then prompt the user if they wish to continue
+    mStr = sprintf(['%sDo you still wish to continue with ',...
+                    'the experiment?'],mStr);
+    uChoice = questdlg(mStr,'Low Space Warning!','Yes','No','Yes');
+    if ~strcmp(uChoice,'Yes')
+        % if not, then exit the experiment
+        start(timerObj)
+        return
+    end
+end
+
 % determines if the stimuli protocol has been set (record-stim expts only)
 if ~isempty(getappdata(hMain,'objDACInfo'))
     % if this is a record-stim expt, then determine if the experimental
@@ -691,11 +713,45 @@ function afterExptFunc(hFig)
 % retrieves the timer object
 handles = guidata(hFig);
 hMainH = guidata(getappdata(hFig,'hMain'));
-
+    
 % turns off the camera (if still running)
 objIMAQ = getappdata(hFig,'objIMAQ');
 if strcmp(get(objIMAQ,'Running'),'on')
     stop(objIMAQ);
+end
+
+% converts the videos (if required)
+exObj = getappdata(hFig,'exObj');
+if exObj.isConvert
+    %
+    Info = exObj.iExpt.Info;
+    vidDir = fullfile(Info.OutDir,Info.Title);
+    vCompress0 = exObj.iExpt.Video.vCompress;
+    
+    % determines if the output video directory exists
+    if exist(vidDir,'dir')
+        % if so, then determine if there are any .avi files present
+        vidData = dir(fullfile(vidDir,'*.avi'));
+        if ~isempty(vidData)        
+            % if so, then prompt the user if they wish to convert the
+            % uncompressed files to the original file format
+            qStr = sprintf(['Due to the camera resolution, the ',...
+                            'videos for this experiment were recorded ',...
+                            'with an uncompressed format.\n\nWould ',...
+                            'you like to convert the videos to "%s" ',...
+                            'format?'],vCompress0);            
+            uChoice = questdlg(qStr,'Convert Uncompressed Videos?',...
+                               'Yes','No','Yes');
+            if strcmp(uChoice,'Yes')
+                % retrieves the full path of the videos to convert
+                vidFile = cellfun(@(x)(fullfile(vidDir,x)),...
+                                       field2cell(vidData,'name'),'un',0);
+                
+                % converts the video files
+                convertVideoFormat(vidFile,vCompress0);
+            end
+        end
+    end    
 end
 
 % re-enables the video preview button
@@ -771,87 +827,6 @@ end
 % updates the signal type into the gui
 setappdata(hFig,'sType',sObj.sName)
 
-% % -------------------------------------------------------------------------
-% function menuLoadSignal_Callback(hObject, eventdata, handles)
-% 
-% % initialisations 
-% hFig = handles.figExptSetup;  
-% iProg = getappdata(hFig,'iProg');
-% 
-% % retrieves the default directory
-% % if isempty(iProg)
-%     dDir = pwd;
-% % else
-% %     dDir = iProg.DirPlay;
-% % end
-% 
-% % prompts the user for the output file name/directory
-% fMode = {'*.csg','Custom Signal File (*.csg)'};
-% [fName,fDir,fIndex] = uigetfile(fMode,'Load Custom Signal File',dDir);
-% if fIndex == 0
-%     % if the user cancelled, then exit the function
-%     return
-% end
-% 
-% % imports the signal object from the data file
-% sObj = importdata(fullfile(fDir,fName),'-mat');
-% if addCustomSignalTab(handles,sObj,true)
-%     % updates the alter parameter menu item properties
-%     updateAlterParaEnable(handles)
-% end
-% 
-% % -------------------------------------------------------------------------
-% function menuAlterPara_Callback(hObject, eventdata, handles)
-% 
-% % updates the signal type into the GUI
-% hFig = handles.figExptSetup;
-% sType = getappdata(hFig,'sType');
-% pType = getProtoTypeStr(getappdata(hFig,'pType'));
-% pStr = sprintf('sPara%s',pType);
-% 
-% % retrieves the signal parameter field
-% sPara = getappdata(hFig,pStr);
-% sP = getStructField(sPara,sType);
-% 
-% % runs the custom signal parameter update GUI
-% [sP.sObj,isChange] = CustomSignal(sP.sObj);
-% if isChange
-%     % if there was a change then update the parameter struct
-%     setappdata(hFig,pStr,setStructField(sPara,sType,sP))
-%     
-%     % check/update any signals that have this signal type here...
-%     hTabG = getappdata(hFig,sprintf('hTabGrp%s',pType));
-%     hEdit = findall(get(hTabG,'SelectedTab'),'UserData','sAmp0');
-%     editSingleStimPara(hEdit,'1',handles,pType);
-% end
-
-% % --- updates the alter parameter menu item enabled properties
-% function updateAlterParaEnable(handles)
-% 
-% % determines if the custom signal menu item is visible
-% if strcmp(get(handles.menuCustomSignal,'Visible'),'on')
-%     % if so, then determine the currently selected protocol type
-%     hFig = handles.figExptSetup;
-%     pType = getProtoTypeStr(getappdata(hFig,'pType'));
-%     
-%     % determines the update flag based on the current panel
-%     switch pType
-%         case {'S','L'}
-%             % only enable if the currently selected signal tab is custom
-%             hTabG = getappdata(hFig,sprintf('hTabGrp%s',pType));
-%             sType = get(get(hTabG,'SelectedTab'),'Title');
-%             sPara = getappdata(hFig,sprintf('sPara%s',pType'));            
-%             canAlter = isfield(getStructField(sPara,sType),'sObj');            
-%             
-%         otherwise
-%             % case is the other tabs so disable the menu item
-%             canAlter = false;
-%     end
-%        
-%     % updates the menu item
-%     setObjEnable(handles.menuAlterPara,canAlter)
-% end
-
 %-------------------------------------------------------------------------%
 %                        TOOLBAR CALLBACK FUNCTIONS                       %
 %-------------------------------------------------------------------------%
@@ -898,10 +873,7 @@ dDir = iExpt.Info.OutDir;
 
 % prompts the user for the new default directory
 dirName = uigetdir(dDir,'Set The Default Path');
-if (dirName == 0)
-    % if the user cancelled, then escape
-    return
-else
+if dirName
     % otherwise, update the directory string names
     iExpt.Info.OutDir = dirName;
     setappdata(hFig,'iExpt',iExpt);
@@ -911,6 +883,9 @@ else
                            'tooltipstring',dirName)
     set(handles.editOutDir,'tooltipstring',dirName)    
     editExptTitle_Callback(handles.editExptTitle, '1', handles)
+    
+    % updates the video timing
+    calcVideoTiming(handles);
 end
 
 % --- Executes on updating editExptTitle.
@@ -1073,6 +1048,9 @@ iExpt = getappdata(hFig,'iExpt');
 iExpt.Video.vCompress = pStr{iSel};
 setappdata(hFig,'iExpt',iExpt);
 
+% updates the calculation video timing
+calcVideoTiming(handles);
+
 % --- Executes on selection change in panelRecordType.
 function panelRecordType_SelectionChangeFcn(hObject, eventdata, handles)
 
@@ -1097,7 +1075,7 @@ setappdata(handles.figExptSetup,'iExpt',iExpt)
 % end
         
 % sets the fixed duration panel properties
-calcVideoTiming(handles)    
+calcVideoTiming(handles);  
 
 % --- Executes on button press in buttonOptPlace.
 function buttonOptPlace_Callback(hObject, eventdata, handles)
@@ -3171,9 +3149,10 @@ end
 function initObjProps(handles,devType,nCh,isInit)
 
 % global variables
-global chCol nProto figPos0 nParaMax
+global chCol nProto figPos0 nParaMax initObj
 
 % retrieves the current figure position
+initObj = true;
 hFig = handles.figExptSetup;
 hMain = getappdata(hFig,'hMain');
 
@@ -3748,6 +3727,7 @@ setExptInfoFields(handles,devType)
 % runs the feasibility check
 editExptTitle_Callback(handles.editExptTitle, '1', handles)
 updateFeasFlag(handles,'checkVidFeas',true)
+initObj = false;
 
 % deletes the progressbar
 delete(h)
@@ -4705,11 +4685,11 @@ isUpdate = isUpdate0;
 
 % sets up the video compression popup menu
 hPopup = handles.popupVideoCompression;
-setupVideoCompressionPopup(hPopup)
-ii = strcmp(iExpt.Video.vCompress,getappdata(hPopup,'pStr'));
+setupVideoCompressionPopup(objIMAQ,hPopup)
+ii = strcmp(getappdata(hPopup,'pStr'),iExpt.Video.vCompress);
 
 % sets the popup menu value
-if (isempty(ii))
+if ~any(ii)
     set(hPopup,'value',1);
 else
     set(hPopup,'value',find(ii));
@@ -7515,7 +7495,7 @@ if strcmp(Type,'Ex')
 
     % updates the minimum duration fields
     updateMinDurFields(handles)
-    calcVideoTiming(handles) 
+    calcVideoTiming(handles);
 
 else 
     % resets the signal block time limits (if required)
@@ -8324,7 +8304,7 @@ end
 updateFeasFlag(handles,'checkStimFeas',isCheck)
 
 % sets NaN values for all the info fields (if resetting fields)
-if (resetFields)   
+if resetFields
     set(handles.textFrmCount,'string','NaN')
     set(handles.textVidCount,'string','NaN')
 end

@@ -182,8 +182,18 @@ else
     if isInit
         % resets all the image/data acquisition objects
         if ~isTest
-            try; imaqreset; pause(0.1); end
-            try; daqreset; pause(0.1); end
+            % image acquisition object reset
+%            try
+%                imaqreset; 
+%                imaqmex('feature','-limitPhysicalMemoryUsage',false);
+%                pause(0.1); 
+%            end
+                   
+            % data acquisition object reset
+            try
+                daqreset; 
+                pause(0.1); 
+            end
         end
         
         % sets the exit button string
@@ -738,8 +748,9 @@ if ~DAConly
         
         % ensure that the video object writes avi objects to disk
         try
-            set(objIMAQ,'LoggingMode','memory','ReturnedColorSpace','grayscale');
-            set(objIMAQ,'Name',imaqInfoDev{vIndIMAQ(vSelIMAQ,1)}(vIndIMAQ(vSelIMAQ,2)).DeviceName);
+            set(objIMAQ,'ReturnedColorSpace','grayscale');
+            set(objIMAQ,'Name',imaqInfoDev{vIndIMAQ(vSelIMAQ,1)}...
+					  (vIndIMAQ(vSelIMAQ,2)).DeviceName);
         end
         triggerconfig(objIMAQ,'manual')
         

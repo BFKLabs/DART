@@ -137,8 +137,9 @@ vExtn = vidProf{iSel}.FileExtensions{1};
 vCompressM = vidProf{iSel}.VideoCompressionMethod;
 
 % prompts the user for the solution file directory
-[fName,fDir,fIndex] = uiputfile({['*',vExtn],sprintf('%s (*%s)',vCompressM,vExtn)},...
-                        'Select The Video Solution Files',iProg.DirMov);
+tStr = 'Select The Video Solution Files';
+fMode = {['*',vExtn],sprintf('%s (*%s)',vCompressM,vExtn)};
+[fName,fDir,fIndex] = uiputfile(fMode,tStr,iProg.DirMov);
 if (fIndex == 0)
     % if the user cancelled, then exit
     return
@@ -197,5 +198,5 @@ set(handles.popupFrmRate,'string',fRate,'value',iSel)
 if length(fRateNum) == 1; setObjEnable(handles.popupFrmRate,'off'); end
 
 % sets up the video compression popup box
-setupVideoCompressionPopup(handles.popupVideoCompression,1)
+setupVideoCompressionPopup(objIMAQ,handles.popupVideoCompression,1)
 popupFrmRate_Callback(handles.popupFrmRate, [], handles)

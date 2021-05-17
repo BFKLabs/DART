@@ -1088,6 +1088,7 @@ else
         % if so, enable deployment of the executable
         setObjEnable(handles.menuDeployExe,'on')    
         setObjEnable(handles.menuConfigSerial,'on')
+        setObjEnable(handles.menuExeUpdate,exist('ExeUpdate.exe','file')>0)
         
     else
         % otherwise, if not a test, then disable the fly record button

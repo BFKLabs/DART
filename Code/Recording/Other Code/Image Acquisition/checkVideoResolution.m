@@ -1,5 +1,5 @@
 % --- check if the video resolution is valid for the compression type
-function ok = checkVideoResolution(objIMAQ,vPara)
+function ok = checkVideoResolution(objIMAQ,vPara,varargin)
 
 % retrieves the video resolution
 vRes = getVideoResolution(objIMAQ);
@@ -61,29 +61,32 @@ switch vExtn
         
         % determines if there is an error message
         ok = isempty(eStr);
-        if ~ok
+        if ~ok && (nargin == 2)
             % if so, then output it to screen
             waitfor(errordlg(eStr,'Video Resolution Error','modal'))
         end
         
     otherwise % case is other video compression types
         
-        % sets the minimum/maximum video resolutions
-        vResMax = [2000,1500];
-        if any(vRes > vResMax)
-            % the video resolution is too high, so prompt the user if they
-            % want to continue recording
-            tStr = 'High Video Resolution Warning';
-            wStr = sprintf(['The video recording resolution (%i x %i) ',...
-                        'is quite high which could potentially ',...
-                        'lead to memory leak errors.\n\nAre you sure ',...
-                        'you still wish to continue recording?'],...
-                        vRes(1),vRes(2));
-            ok = strcmp(questdlg(wStr,tStr,'Yes','No','Yes'),'Yes');
-            
-        else
-            % otherwise, flag that the video resolution is feasible
-            ok = true;
-        end        
+        % flag that the resolution is feasible
+        ok = true;
+        
+%         % sets the minimum/maximum video resolutions
+%         vResMax = [2000,1500];
+%         if any(vRes > vResMax)
+%             % the video resolution is too high, so prompt the user if they
+%             % want to continue recording
+%             tStr = 'High Video Resolution Warning';
+%             wStr = sprintf(['The video recording resolution (%i x %i) ',...
+%                         'is quite high which could potentially ',...
+%                         'lead to memory leak errors.\n\nAre you sure ',...
+%                         'you still wish to continue recording?'],...
+%                         vRes(1),vRes(2));
+%             ok = strcmp(questdlg(wStr,tStr,'Yes','No','Yes'),'Yes');
+%             
+%         else
+%             % otherwise, flag that the video resolution is feasible
+%             ok = true;
+%         end        
         
 end

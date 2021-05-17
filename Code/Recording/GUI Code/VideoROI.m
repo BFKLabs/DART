@@ -291,8 +291,9 @@ set(hAx,'Position',[dX*[1,1],pPos(3:4)-2*dX])
 resetObjPos(hFig,'Width',sum(pPos([1,3]))+dX)
 
 % resets the axis limits
-set(hAx,'xlim',get(hAx,'xlim')+2*[-1,1],...
-        'ylim',get(hAx,'ylim')+2*pAR*[-1,1])
+del = 3;
+set(hAx,'xlim',get(hAx,'xlim')+del*[-1,1],...
+        'ylim',get(hAx,'ylim')+del*pAR*[-1,1])
 
 % ------------------------------- %
 % --- HOUSE-KEEPING EXERCISES --- %

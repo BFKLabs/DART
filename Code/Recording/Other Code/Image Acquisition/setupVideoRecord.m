@@ -22,7 +22,7 @@ switch exObj.vidType
         if exObj.isMemLog; exObj.tOfsT = 0; end                       
                 
         % sets up the video log file
-        exObj.objIMAQ = setupLogVideo(exObj.objIMAQ,exObj.vPara);
+        setupLogVideo(exObj,exObj.vPara);
         
         % sets the image acquisition callback functions        
         exObj.objIMAQ.TimerFcn = {@timerFunc,exObj};
@@ -63,8 +63,7 @@ switch exObj.vidType
         % sets the video parameters
         exObj.vParaVV = VV;
         exObj.vPara = setVideoParameters(exObj.iExpt.Info,VV);
-        exObj.objIMAQ = setupLogVideo(exObj.objIMAQ,...
-                                      exObj.vPara(exObj.nCountV));        
+        setupLogVideo(exObj,exObj.vPara(exObj.nCountV));        
                         
         % sets the image acquisition callback functions        
         exObj.objIMAQ.TimerFcn = {@timerFunc,exObj};
@@ -486,8 +485,9 @@ if strcmp(exObj.vidType,'Expt')
         end
                              
         % resets the imaq log file and video camera properties
-        exObj.objIMAQ = setupLogVideo(exObj.objIMAQ,vPara(exObj.nCountV));
-        exObj.objIMAQ = setupCameraProps(exObj.objIMAQ,vPara(exObj.nCountV));
+        vParaNw = vPara(exObj.nCountV);
+        setupLogVideo(exObj,vPara(exObj.nCountV));
+        exObj.objIMAQ = setupCameraProps(exObj.objIMAQ,vParaNw);
         
         % flushes the frame data already from the IMAQ object
         flushdata(exObj.objIMAQ)
@@ -546,7 +546,7 @@ end
 objIMAQ.FramesPerTrigger = inf;
 
 % --- initialises the log video for recording --- %
-function objIMAQ = setupLogVideo(objIMAQ,vPara)
+function setupLogVideo(exObj,vPara)
 
 % vPara Convention
 %
@@ -558,18 +558,20 @@ function objIMAQ = setupLogVideo(objIMAQ,vPara)
 % turns off all the warnings (a warning will appear because we are using
 % the DIVX codec)
 wState = warning('off','all');
+vCompressF = checkVideoCompression(exObj.objIMAQ,vPara.vCompress);
+exObj.isConvert = ~strcmp(vPara.vCompress,vCompressF);
 
 % flushes any frame data already in the IMAQ object
-flushdata(objIMAQ)
+flushdata(exObj.objIMAQ)
 
 % sets the log-file name
 logName = fullfile(vPara.Dir,vPara.Name);
 
 % sets the video FPS and colormap
-logFile = VideoWriter(logName,vPara.vCompress); 
+logFile = VideoWriter(logName,vCompressF); 
 if isempty(vPara.FPS)
     % sets the camera frame rate
-    srcObj = getselectedsource(objIMAQ);
+    srcObj = getselectedsource(exObj.objIMAQ);
     [fRate,~,iSel] = detCameraFrameRate(srcObj,[]);
     logFile.FrameRate = fRate(iSel);            
 else
@@ -577,15 +579,40 @@ else
 end
     
 % sets the other video parameters
-if strcmp(objIMAQ.LoggingMode,'memory')
-    objIMAQ.UserData = logFile;
+if strcmp(exObj.objIMAQ.LoggingMode,'memory')
+    exObj.objIMAQ.UserData = logFile;
     open(logFile); 
 else
-    objIMAQ.DiskLogger = logFile;
+    exObj.objIMAQ.DiskLogger = logFile;
 end
 
 % turns on all the warnings again
 warning(wState)
+
+% --- checks the video compression against the video resolution. if the
+%     video resolution is too high, then use Grayscale AVI compression
+function vCompress = checkVideoCompression(objIMAQ,vCompress)
+
+% determines if the video type is compressed (not grayscale/uncompressed)
+isCompressed = ~strcmp(vCompress,'Grayscale AVI') || ...
+               ~strcmp(vCompress,'Uncompressed AVI');
+
+% if the video resolutio is high, and the video compression is not
+% grayscale avi, then reset the video compression
+if isLargeVideoRes(objIMAQ) && isCompressed
+    fprintf(['Warning! Video resolution is too high to use "%s" ',...
+             'compression.\n => Using uncompressed video format\n'],...
+             vCompress);
+         
+    % uses the uncompressed video type (based on the camera type)
+    if get(objIMAQ,'NumberOfBands') == 1
+        % case is monochrome camera
+        vCompress = 'Grayscale AVI'; 
+    else
+        % case is truecolor camera
+        vCompress = 'Uncompressed AVI'; 
+    end
+end
 
 % --- sets the video parameter structs
 function vidPara = setVideoParameters(Info,VV)

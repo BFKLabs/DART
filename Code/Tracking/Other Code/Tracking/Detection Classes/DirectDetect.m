@@ -1349,7 +1349,7 @@ classdef DirectDetect < handle
 
                     % calculates an estimate of the threshold
                     pBGnw = cellfun(@(I,B)...
-                         (obj.getNthSortedValue(I(B),nFlyS)),IappRL,BrmvL);
+                            (getNthSortedValue(I(B),nFlyS)),IappRL,BrmvL);
                     pBG(i) = nanmedian(pBGnw);
                 end
             end
@@ -2237,18 +2237,7 @@ classdef DirectDetect < handle
                 end
             end
             
-        end
-        
-        function p = getNthSortedValue(I,N)
-            
-            if isempty(I)
-                p = 0;
-            else                        
-                Is = sort(I,'descend');
-                p = Is(min(length(I),N));
-            end
-            
-        end
+        end        
         
         % --- converts the index value to a coordinate array
         function fP = ind2subC(sz,ind)

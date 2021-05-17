@@ -131,16 +131,6 @@ nFrm = max(nFrm,size(fPosPr0,1));
 [xi1,xi2] = deal(iFrm:size(fPosPr0,1),max(1,iFrm-nFrm):iFrm-1);
 fPosPr = [fPosPr0(xi1,:);fPosF(xi2,:)];
 
-% --- retrieves the n-th sorted value from the array, I
-function p = getNthSortedValue(I,N)
-
-if isempty(I)
-    p = 0;
-else                        
-    Is = sort(I(:),'descend');
-    p = Is(min(numel(I),N));
-end
-
 % --- retrieves the points from the current frame (reduces any points that
 %     are close to others on the frame)
 function [iGrp,fP] = getFramePoints(IR,iGrp,szL,dTol)

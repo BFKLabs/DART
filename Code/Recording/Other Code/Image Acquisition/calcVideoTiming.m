@@ -1,15 +1,17 @@
 % --- calculates the video recording timing --- %
-function calcVideoTiming(handles,varargin)
+function mStr = calcVideoTiming(handles,varargin)
 
 % sets the wait period after a stimuli event
-global stimWait
+global stimWait initObj
 stimWait = 15;
 
 % retrieves the required data structs
+mStr = [];
 hFig = handles.figExptSetup;
 iExpt = getappdata(hFig,'iExpt');
 sTrain = getappdata(hFig,'sTrain');
-[isCheck,VV] = deal(true,iExpt.Video);
+objIMAQ = getappdata(hFig,'objIMAQ');
+[isCheck,VV,szFrm] = deal(true,iExpt.Video,getVideoResolution(objIMAQ));
 
 % 
 if isempty(sTrain)
@@ -24,8 +26,9 @@ rTypeTag = get(hRadio,'tag');
 rType = rTypeTag(6:end);
 
 % if the number of frames
-[tExp,tVid] = deal(vec2sec(iExpt.Timing.Texp),vec2sec([0,iExpt.Video.Dmax]));
-if ((tExp < tVid) && strcmp(iExpt.Info.Type,'RecordOnly'))
+tExp = vec2sec(iExpt.Timing.Texp);
+tVid = vec2sec([0,iExpt.Video.Dmax]);
+if (tExp < tVid) && strcmp(iExpt.Info.Type,'RecordOnly')
     [VV.nCount,VV.Ts,VV.Tf] = deal(1,1,nFrameTot);
     iExpt.Video = VV;
     setappdata(hFig,'iExpt',iExpt);
@@ -33,19 +36,21 @@ if ((tExp < tVid) && strcmp(iExpt.Info.Type,'RecordOnly'))
 end
 
 % sets the recording type (if not provided)
-if (nargin == 1)    
+if nargin == 1 
     sTag = get(get(handles.panelRecordType,'SelectedObject'),'tag');
     rType = sTag(6:end);
 end        
 
 % calculates video recording start/stop times given the recording type
-switch (rType)
-    case ('BtwnStim') % case is recording between the stimuli
+switch rType
+    case 'BtwnStim' % case is recording between the stimuli
         iExpt = calcBtwnStimTimes(iExpt);
-    case ('OnStim') % case is recording on the stimuli
+        
+    case 'OnStim' % case is recording on the stimuli
         iExpt = calcOnStimTimes(iExpt);
-    case ('FixedDur') % case is recording fixed duration
-        if (isempty(varargin))
+        
+    case 'FixedDur' % case is recording fixed duration
+        if isempty(varargin)
             % case is calculating the fixed duration times
             iExpt = calcFixedDurTimes(iExpt);
         else
@@ -64,20 +69,49 @@ end
 
 % calculates the total number of video frames
 VV = iExpt.Video;
-nFrmTot = ceil(sum(VV.Tf - VV.Ts)*VV.FPS);
 
 % sets and updates the video frame count
 set(handles.textRecordDur,'string',num2str(ceil(max(VV.Tf-VV.Ts)*VV.FPS)))     
 
 % sets the video feasbility check box
-if (isfield(handles,'checkVidFeas'))
+if isfield(handles,'checkVidFeas')
     set(handles.checkVidFeas,'value',isCheck)
 end
 % feval(getappdata(hFig,'setSaveRunEnable'),handles)
 
+% initialisations
+txtCol = 'kr';
+b2gb = 1/(1024^3);
+nFrmTot = sum(ceil((VV.Tf-VV.Ts)*VV.FPS));
+fSizeTot = b2gb*estTotalVideoSize(nFrmTot,szFrm,VV.vCompress);
+
+% determines the currently selected volume (from the video file output)
+volInfo = getDiskVolumeInfo();
+iVol = strcmp(volInfo(:,1),iExpt.Info.OutDir(1:2));
+isWarn = fSizeTot > volInfo{iVol,3};
+
 % sets the total video/frame count strings
-set(handles.textFrmCount,'string',num2str(roundP(nFrmTot)));
+set(handles.textFrmCount,'string',sprintf('%.2fGB',fSizeTot),...
+                         'foregroundcolor',txtCol(1+isWarn));
 set(handles.textVidCount,'string',num2str(VV.nCount));
+
+% determines if the estimated required disk space exceeds the free space
+if isWarn && ~initObj
+    % if so, then output a message to screen
+    mStr = sprintf(['Warning! The estimated total disk space required ',...
+                    'for the experiment exceeds the free space:\n\n',...
+                    ' * Estimated Required Space = %.2fGB\n',...
+                    ' * Free Space on %s = %.2fGB\n\n'],fSizeTot,...
+                    volInfo{iVol,1},volInfo{iVol,3});
+       
+    % outputs the message to screen (if not outputting to screen)
+    if nargout == 0
+        mStr = sprintf(['%sEither select another drive for video ',...
+                       'file output, select another video compression ',...
+                       'type, or reduce the experiment duration.'],mStr);        
+        waitfor(msgbox(mStr,'Disk Space Warning','modal'))   
+    end
+end
 
 % updates the stimulus data struct
 setappdata(hFig,'iExpt',iExpt);

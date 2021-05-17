@@ -412,17 +412,21 @@ function xExt = extrapSignalRev(x,iFrm)
 nP = min(5,length(x)-(iFrm+1));
 xP = flip(x((iFrm+1):(iFrm+nP)));
 
-%
+% calculates the extrapolated coordinates
 if range(xP) == 0
     % if the range of the array is zero
     xExt = xP(1);
 else
     % sets up the filter
-    a = arburg(xP,length(xP)-1);
-
-    % calculates the extrapolated signal value
-    [~, zf] = filter(-[0 a(2:end)], 1, xP);
-    xExt = filter([0 0], -a, 0, zf);
+    a = arburg(xP,length(xP)-1);    
+    if any(isnan(a))
+        % if there are any NaN coefficients, then return the mean locations
+        xExt = nanmean(xP);
+    else
+        % otherwise, calculate the extrapolated signal value
+        [~, zf] = filter(-[0 a(2:end)], 1, xP);
+        xExt = filter([0 0], -a, 0, zf);
+    end
 end
 
 % --- 

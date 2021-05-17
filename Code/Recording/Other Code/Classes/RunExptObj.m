@@ -64,7 +64,8 @@ classdef RunExptObj < handle
         isRot
         isSaving
         isTrigger
-        isUserStop                 
+        isUserStop
+        isConvert
         userStop   
         hasStim
     end
@@ -254,9 +255,6 @@ classdef RunExptObj < handle
         
         % --- initialises the camera properties
         function initCameraProperties(obj)                                
-
-            % retrieves the maximum video resolution
-            vResMax = getMaxVideoResolution();
             
             % if the camera is running, then stop it
             if isrunning(obj.objIMAQ)
@@ -265,10 +263,11 @@ classdef RunExptObj < handle
 
             % sets the rotation flag and recording logging mode            
             obj.isRot = getappdata(obj.hMain,'isRot');            
-            if obj.isRot || any(getVideoResolution(obj.objIMAQ) > vResMax)
-                [obj.objIMAQ.LoggingMode,obj.isMemLog] = deal('memory',1);
+            if obj.isRot
+                [obj.objIMAQ.LoggingMode,obj.isMemLog] = deal('memory',1);                
             else
-                [obj.objIMAQ.LoggingMode,obj.isMemLog] = deal('disk',0);
+                [obj.objIMAQ.LoggingMode,obj.isMemLog] = deal('disk',0); 
+                imaqmex('feature','-limitPhysicalMemoryUsage',false)
             end            
 
             % sets the camera frame rate

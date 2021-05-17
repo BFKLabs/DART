@@ -115,6 +115,15 @@ classdef ResidualDetect < handle
             fok = obj.iMov.flyok(1:nTubeR,iApp);
             dTol = max(obj.iMov.szObj);
             
+            % sets up the region image stack
+            [ImgL,ImgBG] = obj.setupRegionImageStack(iApp);            
+            
+            % calculates the residual images 
+            IRes = cellfun(@(x)...
+                    (obj.calcRegionResImage(ImgBG,x,hG)),ImgL,'un',0);
+            IResL = cell2cell(cellfun(@(x)(...
+                    cellfun(@(ir)(x(ir,:)),iRT,'un',0)),IRes,'un',0),0);               
+            
             % sets the residual tolerances
             if ~isfield(imov,'pBG')
                 pTol = 10*ones(length(iRT),1);
@@ -127,18 +136,23 @@ classdef ResidualDetect < handle
                 pTol = nanmedian(pTolAll(:))*ones(length(iRT),1);               
             end
             
+            % determines if any accepted sub-regions have a NaN tolerance
+            isN = find(fok(:) & isnan(pTol(:)));
+            if ~isempty(isN)
+                % sets the approximate object size
+                Nsz = ceil(pi*prod(imov.szObj/2)/2);
+                
+            	% recalculates the threshold tolerance
+                for i = isN'
+                    pTolNw = cellfun(@(x)...
+                                (getNthSortedValue(x,Nsz)),IResL(i,:));
+                    [obj.iMov.pBG{iApp}(i),pTol(i)] = deal(median(pTolNw));
+                end
+            end
+            
             % converts the residual tolerances to a cell array
             pTol(~fok) = NaN;
-            pTol = num2cell(pTol);                       
-                        
-            % sets up the region image stack
-            [ImgL,ImgBG] = obj.setupRegionImageStack(iApp);            
-            
-            % calculates the residual images 
-            IRes = cellfun(@(x)...
-                    (obj.calcRegionResImage(ImgBG,x,hG)),ImgL,'un',0);
-            IResL = cell2cell(cellfun(@(x)(...
-                    cellfun(@(ir)(x(ir,:)),iRT,'un',0)),IRes,'un',0),0);                                                   
+            pTol = num2cell(pTol);                                                                                                   
                 
             % sets the previous stack location data
             if isempty(obj.prData)

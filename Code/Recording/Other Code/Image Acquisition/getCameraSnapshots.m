@@ -1,19 +1,15 @@
 % --- retrieves the set number of frames from the camera
-function Img = getCameraSnapshots(iMov,iData,objIMAQ,frmPara,h)
+function Img = getCameraSnapshots(iMov,iData,objIMAQ,frmPara)
 
 % parameters & memory allocation
 [Img,ImgMn] = deal([]);
-closeProgBar = false;
-
-% creates the video phase class object
-phObj = VideoPhase(iData,iMov);
 
 % sets up the waitbar figure
-if ~exist('h','var')
-    closeProgBar = true;
-    wStr0 = {'Reading Image Frames','Current Frame Wait'};
-    h = ProgBar(wStr0,'Reading Video Frames');
-end
+wStr0 = {'Reading Image Frames','Current Frame Wait'};
+h = ProgBar(wStr0,'Reading Video Frames');
+
+% creates the video phase class object
+phObj = VideoPhase(iData,iMov,h,1);
 
 % reads the required frames from the camera
 while 1 
@@ -69,8 +65,8 @@ end
 % ensures the array is a column array
 Img = Img(:);
 
-% closes the waitbar figure (if required)
-if closeProgBar; h.closeProgBar(); end
+% closes the waitbar figure
+h.closeProgBar();
 
 % --- pauses for the next frame (updates the waitbar figure)
 function ok = pauseForFrame(h,frmPara)

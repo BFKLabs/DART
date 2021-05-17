@@ -81,25 +81,27 @@ objIMAQ = getappdata(handles.figVideoPara,'objIMAQ');
 srcObj = getappdata(handles.figVideoPara,'srcObj');
 srcInfo = get(hObject,'UserData');
 
-% % stops the video object
-% if (isrunning(objIMAQ))
-%     stop(objIMAQ); pause(0.2);
-% end
-
-% retrieves the new input value
+% retrieves the previous/new values
+prVal = get(srcObj,srcInfo.Name);
 nwVal = str2double(get(hObject,'string'));
 
 % check to see if the new value is valid
-if (chkEditValue(nwVal,srcInfo.ConstraintValue,1))
-    % if so, then update the camera parameters
-    set(srcObj,srcInfo.Name,nwVal)
-    setappdata(handles.figVideoPara,'srcObj',srcObj);
-    
-    % enables the reset button
-    setObjEnable(handles.buttonReset,'on')
+if chkEditValue(nwVal,srcInfo.ConstraintValue,1)
+    try
+        % if so, then update the camera parameters
+        set(srcObj,srcInfo.Name,nwVal)
+        setappdata(handles.figVideoPara,'srcObj',srcObj);
+        
+        % enables the reset button
+        setObjEnable(handles.buttonReset,'on')
+    catch
+        % outputs the error message and resets the to its previous values
+        outputUpdateErrorMsg(objIMAQ,srcInfo)               
+        set(hObject,'string',num2str(prVal))
+    end    
 else
     % otherwise, reset to the previous value
-    set(hObject,'string',num2str(get(srcObj,srcInfo.Name)))
+    set(hObject,'string',num2str(prVal))
 end
 
 % --- runs on editing one of the enumeration parameters
@@ -110,15 +112,19 @@ objIMAQ = getappdata(handles.figVideoPara,'objIMAQ');
 srcObj = getappdata(handles.figVideoPara,'srcObj');
 srcInfo = get(hObject,'UserData');
 
-% % stops the video object
-% if (isrunning(objIMAQ))
-%     stop(objIMAQ); pause(0.2);
-% end
-
-% updates the relevant field in the source object
+% retrieves the current property value
 lStr = get(hObject,'String');
-set(srcObj,srcInfo.Name,lStr{get(hObject,'value')})
-setappdata(handles.figVideoPara,'srcObj',srcObj);
+prVal = get(srcObj,srcInfo.Name);
+
+try
+    % updates the relevant field in the source object
+    set(srcObj,srcInfo.Name,lStr{get(hObject,'value')})
+    setappdata(handles.figVideoPara,'srcObj',srcObj);
+catch 
+    % outputs the error message and resets the to its original values
+    outputUpdateErrorMsg(objIMAQ,srcInfo)       
+    set(hObject,'Value',find(strcmp(lStr,prVal)))
+end
 
 % enables the reset button
 setObjEnable(handles.buttonReset,'on')
@@ -527,7 +533,7 @@ for i = 1:nRow
             set(h,'Position',editPosF);                  
 
             % updates the editbox callback function
-            bFunc = @(h,e)VideoPara('editCallback',h,[],handles);
+            bFunc = {@editCallback,handles};
             set(h,'Callback',bFunc);            
         end
     end
@@ -539,7 +545,12 @@ pWidMx = pWidMx + dpWid;
 % -- sets the enumeration parameter panel --- %
 function [tWidMx,pWidMx] = ...
                     initENumPanel(handles,srcInfoENum,srcObj,pGap,isNum)
-
+                
+% removes any enumeration parameters which only have 1 choice
+cVal = field2cell(srcInfoENum,'ConstraintValue'); 
+isMulti = cellfun(@length,cVal) > 1;
+srcInfoENum = srcInfoENum(isMulti);
+                
 % determines the number of parameters to setup
 nPara = length(srcInfoENum);
 hFig = handles.figVideoPara;
@@ -625,7 +636,7 @@ for i = 1:nRow
         set(h,'Position',popPosF)
               
         % updates the editbox callback function
-        bFunc = @(h,e)VideoPara('popupCallback',h,[],handles);                  
+        bFunc = {@popupCallback,handles};                  
         set(h,'Callback',bFunc);              
     end
 end
@@ -647,3 +658,21 @@ end
 
 % sets the title fields 
 allPropFlds = [fStr(:)';allPropFlds];
+
+% --- outputs the update error message
+function outputUpdateErrorMsg(objIMAQ,srcInfo)
+
+% if the update failed, then determine if the camera is previewing
+if strcmp(get(objIMAQ,'Previewing'),'on')
+    % if so, then prompt the user to turn off the camera
+    eStr = sprintf(['The "%s" property can only be altered ',...
+                    'when not previewing. Turn off ',...
+                    'the video preview and try again.'],srcInfo.Name);
+    waitfor(msgbox(eStr,'Video Property Update Error','modal'))
+else
+    % otherwise, a critical error has occured with the camera
+    eStr = sprintf(['The "%s" property could not be ',...
+                    'correctly. Please ensure the camera is ',...
+                    'operating correctly and try again.'],srcInfo.Name);
+    waitfor(errordlg(eStr,'Video Property Update Error','modal'))        
+end

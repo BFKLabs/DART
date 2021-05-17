@@ -477,7 +477,9 @@ if ~isempty(iMov)
         
         % resets the background image arrays       
         for i = 1:length(iMov.Ibg)
-            iMov.Ibg{i} = iMov.Ibg{i}(ok0);
+            if iMov.vPhase(i) == 1
+                iMov.Ibg{i} = iMov.Ibg{i}(ok0);
+            end
         end
     end
 end
