@@ -1,5 +1,4 @@
 function varargout = TestMovie(varargin)
-% Last Modified by GUIDE v2.5 01-Feb-2014 17:42:05
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;

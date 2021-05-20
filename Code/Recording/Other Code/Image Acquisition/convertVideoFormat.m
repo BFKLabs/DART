@@ -1,11 +1,12 @@
 % --- converts the video file, vFile, to the compression type, vComp
-function convertVideoFormat(vFile,vComp)
+function isOK = convertVideoFormat(vFile,vComp)
 
 % initialisations
 if ~iscell(vFile); vFile = {vFile}; end
 
 % memory allocation
 nFile = length(vFile);
+isOK = false(nFile,1);
 wStr0 = {'','Converting Current Video'};
 h = ProgBar(wStr0((1+(nFile==1)):end),'Video Conversion');
 
@@ -18,7 +19,10 @@ for iFile = 1:nFile
     end        
     
     % converts the current video file
-    if ~convertCurrentVideo(vFile{iFile},vComp,h)
+    if convertCurrentVideo(vFile{iFile},vComp,h)
+        % if the conversion completed successfully, then update the flag
+        isOK(iFile) = true;
+    else
         % if the video conversion failed, then exit the loop
         break
     end    
@@ -62,6 +66,7 @@ else
                 wStrNw = sprintf('%s (Frame %i of %i)',wStr0,iFrm,nFrm);
                 if h.Update(length(h.wStr),wStrNw,iFrm/(nFrm+1))
                     % if the user cancelled close & delete the video object
+                    ok = false;
                     closeVideoObjects(mObj,mObjW);
                     delete(vFileOut);
 

@@ -945,6 +945,13 @@ try; close(h); end
 % ------------------------ %
 
 % -------------------------------------------------------------------------
+function menuConvertVideo_Callback(hObject, eventdata, handles)
+
+% runs the video conversion GUI
+iData = getappdata(handles.figFlyTrack,'iData');
+ConvertVideo(iData.ProgDef);
+
+% -------------------------------------------------------------------------
 function menuProgPara_Callback(hObject, eventdata, handles)
 
 % runs the program default GUI

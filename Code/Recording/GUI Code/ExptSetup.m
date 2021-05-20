@@ -722,38 +722,8 @@ end
 
 % converts the videos (if required)
 exObj = getappdata(hFig,'exObj');
-if exObj.isConvert
-    %
-    Info = exObj.iExpt.Info;
-    vidDir = fullfile(Info.OutDir,Info.Title);
-    vCompress0 = exObj.iExpt.Video.vCompress;
+exObj.convertExptVideos();
     
-    % determines if the output video directory exists
-    if exist(vidDir,'dir')
-        % if so, then determine if there are any .avi files present
-        vidData = dir(fullfile(vidDir,'*.avi'));
-        if ~isempty(vidData)        
-            % if so, then prompt the user if they wish to convert the
-            % uncompressed files to the original file format
-            qStr = sprintf(['Due to the camera resolution, the ',...
-                            'videos for this experiment were recorded ',...
-                            'with an uncompressed format.\n\nWould ',...
-                            'you like to convert the videos to "%s" ',...
-                            'format?'],vCompress0);            
-            uChoice = questdlg(qStr,'Convert Uncompressed Videos?',...
-                               'Yes','No','Yes');
-            if strcmp(uChoice,'Yes')
-                % retrieves the full path of the videos to convert
-                vidFile = cellfun(@(x)(fullfile(vidDir,x)),...
-                                       field2cell(vidData,'name'),'un',0);
-                
-                % converts the video files
-                convertVideoFormat(vidFile,vCompress0);
-            end
-        end
-    end    
-end
-
 % re-enables the video preview button
 setObjEnable(hMainH.toggleVideoPreview,'on')
 setObjEnable(hMainH.menuAdaptors,'on')

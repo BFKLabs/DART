@@ -47,6 +47,11 @@ classdef RunExptObj < handle
         vPara
         vParaVV
         
+        % large-video handling fields
+        vComp0
+        vCompStr
+        isConvert
+        
         % boolean flags
         hasDAC
         iEvent
@@ -65,7 +70,6 @@ classdef RunExptObj < handle
         isSaving
         isTrigger
         isUserStop
-        isConvert
         userStop   
         hasStim
     end
@@ -81,9 +85,9 @@ classdef RunExptObj < handle
             % sets the other minor object fields
             obj.vidType = vidType;
             [obj.iEvent,obj.isOK] = deal(1);
-            [obj.indOfs,obj.indFrmNw] = deal(0);       
-            [obj.isUserStop,obj.isStart] = deal(false);
-            [obj.isError,obj.isStopped,obj.hasDAC] = deal(false);             
+            [obj.indOfs,obj.indFrmNw] = deal(0);                   
+            [obj.isError,obj.isStopped,obj.hasDAC] = deal(false);   
+            [obj.isUserStop,obj.isStart,obj.isConvert] = deal(false);
             
             % sets the image acquisition object handle
             obj.objIMAQ = getappdata(obj.hMain,'objIMAQ');                
@@ -104,7 +108,8 @@ classdef RunExptObj < handle
                     
                     % sets the other fields
                     [obj.iExpt,obj.iExpt0] = deal(iExpt0);    
-                    [obj.isRT,obj.isRTB] = deal(isRTExpt,isRTBatch);
+                    [obj.isRT,obj.isRTB] = deal(isRTExpt,isRTBatch); 
+                    obj.vCompStr = 'obj.iExpt.Video.vCompress';
                     
                     % initialises the experiment object
                     obj.initExptObjFields();   
@@ -113,7 +118,8 @@ classdef RunExptObj < handle
                     % sets the input variables and other important fields
                     [obj.vPara,obj.vParaVV] = deal(varargin{1});
                     [obj.isRT,obj.isRTB] = deal(false);
-                    obj.iExpt = getappdata(obj.hMain,'iExpt');
+                    obj.iExpt = getappdata(obj.hMain,'iExpt');                       
+                    obj.vCompStr = 'obj.vPara.vCompress';                                      
                     
                     % checks the video resolution is correct
                     obj.isOK = checkVideoResolution(obj.objIMAQ,obj.vPara);
@@ -254,13 +260,16 @@ classdef RunExptObj < handle
         end
         
         % --- initialises the camera properties
-        function initCameraProperties(obj)                                
+        function initCameraProperties(obj)
             
             % if the camera is running, then stop it
             if isrunning(obj.objIMAQ)
                 stop(obj.objIMAQ)
             end            
-
+            
+            % checks the video compression
+            obj.checkVideoCompression();              
+            
             % sets the rotation flag and recording logging mode            
             obj.isRot = getappdata(obj.hMain,'isRot');            
             if obj.isRot
@@ -300,6 +309,81 @@ classdef RunExptObj < handle
             setappdata(obj.hAx,'hImage',[]);                    
         
         end
+        
+        % --- converts the recorded videos from uncompressed format to the
+        %     original video compression format
+        function convertExptVideos(obj)
+
+            % converts the experiment video files from the uncompressed
+            % format to the original video compression format
+            if obj.isConvert
+                % sets the output video directory
+                switch obj.vidType
+                    case 'Test'
+                        vidDir = obj.vPara.Dir;
+                        
+                    case 'Expt'
+                        Info = obj.iExpt.Info;
+                        vidDir = fullfile(Info.OutDir,Info.Title);
+                end
+
+                % determines if the output video directory exists
+                if exist(vidDir,'dir')
+                    % if so, determine if there are any .avi files present
+                    vidData = dir(fullfile(vidDir,'*.avi'));
+                    if ~isempty(vidData)        
+                        % retrieves the full path of the videos to convert
+                        vidFile = cellfun(@(x)(fullfile(vidDir,x)),...
+                                       field2cell(vidData,'name'),'un',0);
+
+                        % converts the video files
+                        convertVideoFormat(vidFile,obj.vComp0);
+                    end
+                end    
+            end
+
+        end        
+        
+        % --- checks the video compression against the video resolution. if 
+        %     the video resolution is too high then use uncompressed format
+        function checkVideoCompression(obj)
+
+            % retrieves the initial 
+            obj.vComp0 = eval(obj.vCompStr);
+            
+            % determines if the video type has compression
+            isCompressed = ~strcmp(obj.vComp0,'Grayscale AVI') || ...
+                           ~strcmp(obj.vComp0,'Uncompressed AVI');
+
+            % if the video resolutio is high, and the video compression is 
+            % not grayscale avi, then reset the video compression
+            if isLargeVideoRes(obj.objIMAQ) && isCompressed
+                % uses the uncompressed video type based on camera type
+                if get(obj.objIMAQ,'NumberOfBands') == 1
+                    % case is monochrome camera
+                    vCompNw = 'Grayscale AVI'; 
+                else
+                    % case is truecolor camera
+                    vCompNw = 'Uncompressed AVI'; 
+                end
+                
+                % updates the video compression field
+                eval(sprintf('%s = ''%s'';',obj.vCompStr,vCompNw));
+                
+                % prompt the user if they wish to compress the videos after
+                % the recordings have finished
+                qStr = sprintf(['Due to the camera resolution, the ',...
+                                'videos will be recorded with an ',...
+                                'uncompressed format.',...
+                                '\n\nWould you like to convert the ',...
+                                'videos to "%s" format after the ',...
+                                'recordings have finished?'],obj.vComp0);            
+                uChoice = questdlg(qStr,'Convert Uncompressed Videos?',...
+                                   'Yes','No','Yes');     
+                obj.isConvert = strcmp(uChoice,'Yes');
+            end     
+            
+        end        
         
         % ----------------------------------------------- %        
         % ----    EXPERIMENT START/STOP FUNCTIONS    ---- %

@@ -226,7 +226,7 @@ if exObj.isMemLog
 else    
     % registers the time stamp for the frame (off-setting by the time tOfs)
     exObj.tVid = toc(exObj.tExpt);
-    [exObj.tStampV{exObj.nCountV}(iFrm),exObj.tNew] = deal(exObj.tVid+tOfs);          
+    [exObj.tStampV{exObj.nCountV}(iFrm),exObj.tNew] = deal(exObj.tVid+tOfs);
 end
 
 % if the video exceeds duration, then stop the recording
@@ -514,6 +514,9 @@ else
     % pauses a bit for things to update...
     pause(1);
     
+    % converts the recordings (if required)
+    exObj.convertExptVideos();
+    
     % resets the preview axes image to black
     vRes = getVideoResolution(exObj.objIMAQ);
     Img0 = zeros(vRes([2 1]));
@@ -558,8 +561,8 @@ function setupLogVideo(exObj,vPara)
 % turns off all the warnings (a warning will appear because we are using
 % the DIVX codec)
 wState = warning('off','all');
-vCompressF = checkVideoCompression(exObj.objIMAQ,vPara.vCompress);
-exObj.isConvert = ~strcmp(vPara.vCompress,vCompressF);
+% vCompressF = checkVideoCompression(exObj.objIMAQ,vPara.vCompress);
+% exObj.isConvert = ~strcmp(vPara.vCompress,vCompressF);
 
 % flushes any frame data already in the IMAQ object
 flushdata(exObj.objIMAQ)
@@ -568,7 +571,7 @@ flushdata(exObj.objIMAQ)
 logName = fullfile(vPara.Dir,vPara.Name);
 
 % sets the video FPS and colormap
-logFile = VideoWriter(logName,vCompressF); 
+logFile = VideoWriter(logName,vPara.vCompress); 
 if isempty(vPara.FPS)
     % sets the camera frame rate
     srcObj = getselectedsource(exObj.objIMAQ);
@@ -588,31 +591,6 @@ end
 
 % turns on all the warnings again
 warning(wState)
-
-% --- checks the video compression against the video resolution. if the
-%     video resolution is too high, then use Grayscale AVI compression
-function vCompress = checkVideoCompression(objIMAQ,vCompress)
-
-% determines if the video type is compressed (not grayscale/uncompressed)
-isCompressed = ~strcmp(vCompress,'Grayscale AVI') || ...
-               ~strcmp(vCompress,'Uncompressed AVI');
-
-% if the video resolutio is high, and the video compression is not
-% grayscale avi, then reset the video compression
-if isLargeVideoRes(objIMAQ) && isCompressed
-    fprintf(['Warning! Video resolution is too high to use "%s" ',...
-             'compression.\n => Using uncompressed video format\n'],...
-             vCompress);
-         
-    % uses the uncompressed video type (based on the camera type)
-    if get(objIMAQ,'NumberOfBands') == 1
-        % case is monochrome camera
-        vCompress = 'Grayscale AVI'; 
-    else
-        % case is truecolor camera
-        vCompress = 'Uncompressed AVI'; 
-    end
-end
 
 % --- sets the video parameter structs
 function vidPara = setVideoParameters(Info,VV)

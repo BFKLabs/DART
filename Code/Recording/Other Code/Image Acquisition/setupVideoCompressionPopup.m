@@ -1,5 +1,5 @@
 % --- sets up the video compression popup box --- %
-function setupVideoCompressionPopup(objIMAQ,hPopup,varargin)
+function setupVideoCompressionPopup(vObj,hPopup,varargin)
 
 % retrieves the video profiles names/file extensions
 vidProf = num2cell(VideoWriter.getProfiles());
@@ -8,16 +8,26 @@ uStr = cellfun(@(x)(x.FileExtensions{1}),vidProf,'un',0)';
 
 % sets the feasible compression types (ignore indexed AVI)
 ii = ~cellfun(@(x)(strcmp(x,'Indexed AVI')),pStr);
-if objIMAQ.NumberOfBands == 1
-    % removes the uncompressed AVI compression type
-    ii = ii & ~cellfun(@(x)(strcmp(x,'Uncompressed AVI')),pStr);
+if isa(vObj,'VideoReader')
+    if vObj.BitsPerPixel == 24
+        % removes the uncompressed AVI compression type
+        ii = ii & ~cellfun(@(x)(strcmp(x,'Uncompressed AVI')),pStr);        
+    else
+        % removes the grayscale AVI compression type
+        ii = ii & ~cellfun(@(x)(strcmp(x,'Grayscale AVI')),pStr);        
+    end
 else
-    % removes the grayscale AVI compression type
-    ii = ii & ~cellfun(@(x)(strcmp(x,'Grayscale AVI')),pStr);
+    if vObj.NumberOfBands == 1
+        % removes the uncompressed AVI compression type
+        ii = ii & ~cellfun(@(x)(strcmp(x,'Uncompressed AVI')),pStr);
+    else
+        % removes the grayscale AVI compression type
+        ii = ii & ~cellfun(@(x)(strcmp(x,'Grayscale AVI')),pStr);
+    end
 end
 
 % removes the .mp4 video compression (if resolution is not feasible)
-if ~checkVideoResolution(objIMAQ,struct('vExtn','.mp4'),1)
+if ~checkVideoResolution(vObj,struct('vExtn','.mp4'),1)
     ii = ii & ~strcmp(uStr,'.mp4');
 end
 

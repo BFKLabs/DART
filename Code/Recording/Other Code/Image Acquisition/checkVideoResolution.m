@@ -1,8 +1,8 @@
 % --- check if the video resolution is valid for the compression type
-function ok = checkVideoResolution(objIMAQ,vPara,varargin)
+function ok = checkVideoResolution(vObj,vPara,varargin)
 
 % retrieves the video resolution
-vRes = getVideoResolution(objIMAQ);
+vRes = getVideoResolution(vObj);
 
 % sets the video extension string based on the video data struct format
 if isfield(vPara,'vExtn')

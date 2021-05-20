@@ -13,3 +13,6 @@ if vRes(1) > Wmax(1)
     HmaxF = floor(interp1(Wmax,Hmax,vRes(1),'linear','extrap'));
     isLargeRes = vRes(2) > HmaxF;
 end
+
+% REMOVE ME!
+isLargeRes = true;
