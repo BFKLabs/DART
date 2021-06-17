@@ -1,10 +1,14 @@
 % --- sets the combined solution file data struct --- %
-function [snTot,iMov] = combineSolnFiles(sName)
+function [snTot,iMov,eStr] = combineSolnFiles(sName,isReduce)
 
 % global variables
 global hh hDay
 
+% sets the default input arguments
+if ~exist('isReduce','var'); isReduce = false; end
+
 % parameters and initialisations
+eStr = [];
 updateSumm = false;
 wState = warning('off','all');
 
@@ -21,20 +25,44 @@ if exist(smFile,'file')
     smData = load(smFile);
     h = ProgressLoadbar('Determining Valid Solution Files...');
     
+    % determines the solution files which contain the base file name
+    baseName = smData.iExpt.Info.BaseName;
+    hasBN = cellfun(@(x)(strContains(x,baseName)),sName);
+    
     % retrieves the index of the first file
-    i0 = getVideoFileIndex(sName{1})-1;
-    if isnan(i0)
+    if any(hasBN)
+        % if the files do have the base file name, then use the first
+        % feasible solution file to determine the file index 
+        xi = cellfun(@(x)(getVideoFileIndex(x)),sName(hasBN));
+        xi = xi(~isnan(xi));
+        
+    elseif length(sName) == 1
+        % if there is only one video, then only use this video
+        xi = 1;
+        
+    else
+        % case is there are no validly name video solution files
+        xi = [];  
+    end
+    
+    if isempty(xi)
+        % case is there are no validly name video solution files
+        eStr = sprintf(['The selected video solution files are ',...
+                      'not named correctly. Ensure that the video ',...
+                      'solution files have the following name ',...
+                      'convention\n * "%s ####.soln'],baseName);
+
         % if there is an issue, then exit
         [snTot,iMov] = deal([]);
         return      
-    end
+    end    
         
     % retrieves the stimuli protocol/experiment information
     [stimP,sTrainEx] = getExptStimInfo(smFile);     
     
     % if the summary file exists, then load it and set the time fields 
     [iExpt,nFile] = deal(smData.iExpt,length(sName));
-    [xi,Tp,T0] = deal(i0+(1:nFile)',smData.iExpt.Timing.Tp,NaN(nFile,1));
+    [Tp,T0] = deal(smData.iExpt.Timing.Tp,NaN(nFile,1));
     
     % determines if any of the videos are all NaNs
     allNaN = cellfun(@(x)(all(isnan(x))),smData.tStampV(xi));
@@ -112,13 +140,13 @@ if exist(smFile,'file')
     dT = T0(2:end) - Tf(1:(end-1)); 
     
     % checks to see if the time difference between videos is not too large
-    ii = dT > 6*iExpt.Timing.Tp;
+    ii = (dT > 6*iExpt.Timing.Tp) & (dT < 60*iExpt.Timing.Tp);
     if any(ii)
         % if there are such videos, then reset their time-stamps
         jj = find(ii) + 1;
         for i = 1:length(jj)
             j = jj(i);
-            T = tStampV{j}-tStampV{j}(1)+(iExpt.Timing.Tp+tStampV{j-1}(end));
+            T = tStampV{j}-tStampV{j}(1)+iExpt.Timing.Tp+tStampV{j-1}(end);
             tStampV{j} = T;
         end
     end
@@ -143,9 +171,9 @@ if exist(smFile,'file')
     % determines the start-time of the experiment
     T0 = datevec(addtodate(datenum...
                         (iExpt.Timing.T0),floor(tStampV{1}(1)),'second'));
-    if i0 ~= 0
+    if xi(1) ~= 0
         [iExpt.Timing.T0,tOfs] = deal(T0,tStampV{1}(1));
-        tStampV = cellfun(@(x)(x-tOfs),tStampV,'un',0);
+%         tStampV = cellfun(@(x)(x-tOfs),tStampV,'un',0);
     end  
     
     % sets the experiment flag (if not set)
@@ -155,6 +183,7 @@ if exist(smFile,'file')
         else
             iExpt.Info.Type = 'RecordOnly';         
         end
+        
     elseif strcmp(iExpt.Info.Type,'RecordOnly') && ~isempty(tStampS)
         % case is the experiment originally set as a record experiment, but 
         % has had the stimuli time stamps added in through SyncSummary
@@ -173,13 +202,13 @@ end
 % memory allocation
 nFile = min(length(sName),length(tStampV));
 isOK = true(nFile,1);
-sgP = struct('T0',T0,'sRate',[],'fRate',[]);
+sgP = struct('sRate',[],'fRate',[],'sFac',[]);
 snTot = orderfields(struct('T',[],'Px',[],'Py',[],'Phi',[],'AxR',[],...
                            'stimP',stimP,'sTrainEx',sTrainEx,...
                            'isDay',[],'sgP',sgP,'iExpt',iExpt,...
                            'pMapPx',[],'pMapPy',[],...
                            'pMapPhi',[],'pMapAxR',[],...
-                           'appPara',[],'iMov',[],'Type',1));           
+                           'iMov',[],'Type',1));           
            
 % sub-struct memory allocation           
 [snTot.T,Px,Py] = deal(cell(nFile,1)); 
@@ -212,6 +241,7 @@ for i = 1:nFile
     % updates the waitbar figure
     wStrNw = sprintf('%s (%i of %i)',wStr{1+wOfs},i,nFile);
     if h.Update(1+wOfs,wStrNw,0.5*(i/nFile))
+        % the user cancelled, then exit the function
         [snTot,iMov] = deal([]);
         return        
     end        
@@ -250,8 +280,11 @@ for i = 1:nFile
             sgP = struct('sRate',a.iMov.sRate,'fRate',a.exP.FPS,...
                          'sFac',a.exP.sFac);
             [snTot.Px,snTot.Py] = deal(cell(nApp,1));            
-            [snTot.sgP,iMov,snTot.iMov] = deal(sgP,a.iMov,a.iMov);             
-            if (i0 ~= 0); tStampS = tStampS - tOfs; end                   
+            [snTot.sgP,iMov,snTot.iMov] = deal(sgP,a.iMov,a.iMov);  
+            
+            if (xi(1) ~= 0) && isempty(tStampS)
+                tStampS = tStampS - tOfs; 
+            end                   
             
             % retrieves the orientation flag
             if isfield(A.pData,'calcPhi')
@@ -264,14 +297,16 @@ for i = 1:nFile
             % determines if the orientation angles have been calculated            
             if calcPhi
                 % allocates memory for the orientation angles
-                [snTot.Phi,PhiF] = deal(cell(nApp,1),cell(nFile,1));
-                [snTot.AxR,AxRF] = deal(cell(nApp,1),cell(nFile,1));
+                [PhiF,AxRF] = deal(cell(nFile,1));
+                [snTot.Phi,snTot.AxR] = deal(cell(nApp,1));                
             else
                 % if the orientation angles are not calculated, then remove
                 % the field from the data struct
-                try
-                    snTot = rmfield(snTot,{'Phi','pMapPhi'});
-                    snTot = rmfield(snTot,{'AxR','pMapAxR'});                
+                rFld = {'Phi','pMapPhi','AxR','pMapAxR'};
+                for j = 1:length(rFld)
+                    if isfield(snTot,rFld{j})
+                        snTot = rmfield(snTot,rFld{j});
+                    end
                 end
             end
         end    
@@ -369,6 +404,7 @@ if ~isempty(T0)
         % updates the waitbar figure
         wStrNw = sprintf('%s (%i of %i)','Setting Time Vectors',i,nFile);
         if h.Update(1+wOfs,wStrNw,0.5*(1+(i/nFile)))
+            % the user cancelled, so exit the function
             [snTot,iMov] = deal([]);
             return        
         end
@@ -382,16 +418,18 @@ if ~isempty(T0)
         end
     end
 end
-    
-% initialises the fly feasibility boolean flags (if not set)
-if ~isfield(iMov,'flyok')
-    iMov.flyok = true(getSRCountMax(iMov),nApp);
-end
 
 % checks to see which of the solution files were feasible
 if all(~isOK)
-    % all were infeasible
-    snTot = []; 
+    % case is none of the video solution files are feasible
+    h.closeProgBar();
+    eStr = sprintf(['All selected video solution files are either ',...
+                    'corrupt, or have not been fully tracked. Check ',...
+                    'that these videos have been tracked properly ',...
+                    'before attempting to combine this experiment.']);
+    
+    % exits the function with empty data structs
+    [snTot,iMov] = deal([]); 
     return
     
 elseif any(~isOK)
@@ -401,23 +439,11 @@ elseif any(~isOK)
     if calcPhi; [PhiF,AxRF] = deal(PhiF(isOK),AxRF(isOK)); end
 end
 
-% sets the apparatus/individual fly boolean flags
-[snTot.appPara.ok,snTot.appPara.flyok] = deal(iMov.ok,iMov.flyok);
-[snTot.sName,snTot.appPara.aInd] = deal(sName,(1:length(iMov.ok))');
+% back-formats the region data struct
+iMov = backFormatRegionDataStruct(iMov);
 
-% sets the sub-region selection type
-if ~isfield(iMov,'autoP')
-    % no sub-region field, so set an empty type
-    snTot.appPara.Type = [];
-    
-elseif isempty(iMov.autoP)
-    % if the field exists, but is empty, then set an empty type
-    snTot.appPara.Type = [];
-    
-else
-    % otherwise, set the sub-region type
-    snTot.appPara.Type = iMov.autoP.Type;
-end
+% sets the apparatus/individual fly boolean flags
+snTot.sName = sName;
 
 % resets the x/y locations into a cell array
 for i = 1:nApp
@@ -427,13 +453,27 @@ for i = 1:nApp
     
     % sets the orientation angles (if calculated)
     if calcPhi
-        snTot.Phi{i} = cell2mat(cellfun(@(x)(x{i}),PhiF,'un',0));        
+        snTot.Phi{i} = cell2mat(cellfun(@(x)(x{i}),PhiF,'un',0));
         snTot.AxR{i} = cell2mat(cellfun(@(x)(x{i}),AxRF,'un',0));
     end
 end
 
+% determines if the total number of frames exceeds the total frame count
+nFrmTotal = sum(cellfun(@length,snTot.T));
+if size(snTot.Px{1},1) > nFrmTotal
+    % if so, then reduce the x/y-coordinates
+    snTot.Px = cellfun(@(x)(x(1:nFrmTotal,:)),snTot.Px,'un',0);
+    snTot.Py = cellfun(@(x)(x(1:nFrmTotal,:)),snTot.Py,'un',0);
+    
+    % reduces the orientation angles (if calculated)
+    if calcPhi
+        snTot.Phi = cellfun(@(x)(x(1:nFrmTotal,:)),snTot.Phi,'un',0);
+        snTot.AxR = cellfun(@(x)(x(1:nFrmTotal,:)),snTot.AxR,'un',0);
+    end    
+end
+
 % removes the rejected apparatus from the analysis fields
-if ~isempty(iMov)
+if ~isempty(iMov) && isReduce
     if isfield(iMov,'ok')        
         % retrieves the acceptance/rejection flags
         ok0 = iMov.ok;
@@ -441,9 +481,6 @@ if ~isempty(iMov)
         % resets the solution data struct
         snTot.Px = snTot.Px(ok0);
         snTot.Py = snTot.Py(ok0);         
-        snTot.appPara.flyok = snTot.appPara.flyok(:,ok0);
-        snTot.appPara.ok = snTot.appPara.ok(ok0);
-        snTot.appPara.aInd = snTot.appPara.aInd(ok0);
         
         % resets the orientation angles (if calculated)
         if calcPhi
@@ -469,18 +506,26 @@ if ~isempty(iMov)
         end
         
         % resets the sub-region data struct         
-        [iMov.ok,iMov.flyok] = deal(iMov.ok(ok0),iMov.flyok(:,ok0));
+        iMov.ok = iMov.ok(ok0);
         [iMov.iR,iMov.iC] = deal(iMov.iR(ok0),iMov.iC(ok0));
         [iMov.iRT,iMov.iCT] = deal(iMov.iRT(ok0),iMov.iCT(ok0));
         [iMov.xTube,iMov.yTube] = deal(iMov.xTube(ok0),iMov.yTube(ok0));
         [iMov.pos,iMov.Status] = deal(iMov.pos(ok0),iMov.Status(ok0));
+        iMov.pInfo.gName = iMov.pInfo.gName(ok0);
+        
+        %
+        if iscell(iMov.flyok)
+            iMov.flyok = iMov.flyok(ok0);
+        else
+            iMov.flyok = iMov.flyok(:,ok0);
+        end
         
         % resets the background image arrays       
         for i = 1:length(iMov.Ibg)
             if iMov.vPhase(i) == 1
                 iMov.Ibg{i} = iMov.Ibg{i}(ok0);
             end
-        end
+        end        
     end
 end
 
@@ -497,3 +542,39 @@ end
 
 % reverts the warnings back to the original state
 warning(wState);
+
+% --- back-formats the region data struct
+function [iMov,isChange] = backFormatRegionDataStruct(iMov)
+
+% initialisations
+addFld = {'flyok','is2D','pInfo'};
+rmvFld = {'pStats','tempSet','dTube','isUse'};
+isChange = {false(length(addFld),1),false(length(rmvFld),1)};
+
+% determines if there are any missing fields that need to be added
+for i = 1:length(addFld)
+    if ~isfield(iMov,addFld{i})
+        switch addFld{i}
+            case 'flyok'
+                iMov.flyok = true(getSRCountMax(iMov),nApp);
+            case 'is2D'
+                iMov.is2D = is2DCheck(iMov);
+            case 'pInfo'
+                iMov.pInfo = getRegionDataStructs(iMov);
+        end
+        
+        % updates the change flag to true
+        isChange{1}(i) = true;
+    end
+end
+
+% determines if there are any obsolete fields that need to be removed
+for i = 1:length(rmvFld)
+    if isfield(iMov,rmvFld{i})
+        % removes the fields
+        iMov = rmfield(iMov,rmvFld{i});
+        
+        % updates the change flag to true
+        isChange{2}(i) = true;        
+    end
+end

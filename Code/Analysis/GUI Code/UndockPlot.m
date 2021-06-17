@@ -312,14 +312,10 @@ for i = find(iReg)
     end
 
     % determines if there are any annotations
-    if (isHG1)
-        hGG = findall(get(handles.panelPlot,'parent'),'type','hggroup');    
-    else
-        hGG = findall(get(handles.panelPlot,'parent'),'type','annotation');    
-    end
+    hGG = findall(get(handles.panelPlot,'parent'),'type','annotation');    
     
     % determines if there are any annotations        
-    if (~isempty(hGG))
+    if ~isempty(hGG)
         isReplot = true;
     else
         rpFcn = {'Stimuli Response','Pre & Post'};
@@ -329,7 +325,7 @@ for i = find(iReg)
     end    
     
     % determines if the axis is reset or not
-    if (isReplot)        
+    if isReplot        
         % clears the plot axis
         initAxesObject(hGUI); 
 
@@ -344,7 +340,7 @@ for i = find(iReg)
         % ensures the figure is still invisible
         setObjVisibility(hObject,'off');     
     else
-% resets the plot axis based on the number of subplots
+        % resets the plot axis based on the number of subplots
         [hAx,hLg,m,n] = resetPlotFontResize(hP,pDataNw);
 
         % resets the plot axis based on the number of subplots 

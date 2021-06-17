@@ -5,7 +5,7 @@ function plotD = initPlotValueStruct(snTot,pData,cP,varargin)
 tMinTol = 59;
 
 % sets the number of input arguments (if already set)
-nApp = length(snTot(1).appPara.flyok);
+nApp = length(snTot(1).iMov.ok);
 
 % sets the input argument values (if special)
 if ~ischar(varargin{1})
@@ -57,7 +57,8 @@ if any(isRaw)
         end
         
         % sets the number of flies in the experiment
-        nFly = max(nFly,max(cellfun(@length,snTot(i).appPara.flyok)));
+%         nFly = max(nFly,size(snTot(i).iMov.flyok,1));
+        nFly = max(nFly,max(cellfun(@length,snTot(i).iMov.flyok)));
     end
         
     % creates the raw arrays for     

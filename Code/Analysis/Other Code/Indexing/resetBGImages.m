@@ -2,21 +2,22 @@
 function iMov = resetBGImages(iMov)
 
 % retrieves the background images
-if (iscell(iMov.Ibg{1}))
-    i0 = find(cellfun(@(x)(~isempty(x{1})),iMov.Ibg),1,'first');
-    [Ibg,bgCell] = deal(iMov.Ibg{i0},true);
+if iscell(iMov.Ibg{1})
+    Ibg0 = iMov.Ibg(~cellfun(@isempty,iMov.Ibg));
+    i0 = find(cellfun(@(x)(~isempty(x{1})),Ibg0),1,'first');
+    [Ibg,bgCell] = deal(Ibg0{i0},true);
 else
     [Ibg,bgCell] = deal(iMov.Ibg,false);
 end
 
-if (iscell(iMov.iR{1}))
+if iscell(iMov.iR{1})
     [iR,iC] = deal(cell2cell(iMov.iR),cell2cell(iMov.iC));
 else
     [iR,iC] = deal(iMov.iR,iMov.iC);
 end
 
 % determines if the background image array matches the sub-region counts
-if (length(Ibg) ~= length(iR))
+if length(Ibg) ~= length(iR)
     % if not, attempt to match the regions by their sizes
     szBG = cell2mat(cellfun(@size,Ibg(:),'un',0));        
     [nR,nC] = deal(cellfun(@length,iR),cellfun(@length,iC));

@@ -20,7 +20,7 @@ end
 set(hAx{1},'yScale','linear');
 
 % parameters
-[yOfsL,y0] = deal((0.005+0.015*(~isHG1)),min(get(hAx{1},'ylim')));
+[yOfsL,y0] = deal(0.02,min(get(hAx{1},'ylim')));
 
 % memory allocations
 [nGrp,tRotR,Wmax] = deal(length(Tbin),tRot*pi/180,0.99);

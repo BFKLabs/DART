@@ -85,7 +85,7 @@ global R RnwTol Rmax
 
 % check to see if the new value is valid
 nwVal = str2double(get(hObject,'string'));
-if (chkEditValue(nwVal,[RnwTol Rmax],1))
+if chkEditValue(nwVal,[RnwTol Rmax],1)
     % if it is, then update the data struct
     R = nwVal;    
     plotCircleRegions(handles)
@@ -123,7 +123,7 @@ global uChoice iMov
 
 % retrieves the main GUI axes handle data struct
 hGUI = getappdata(handles.figCircPara,'hGUI');
-hGUIM = getappdata(hGUI.figWinSplit,'hGUI');
+hGUIM = getappdata(hGUI.output,'hGUI');
 
 % retrieves the main GUI handles data struct
 hOut = findall(hGUIM.imgAxes,'tag','hOuter');
@@ -146,7 +146,7 @@ iMov = getappdata(handles.figCircPara,'iMov');
 hGUI = getappdata(handles.figCircPara,'hGUI');
 
 % retrieves the main GUI axes image
-hGUIM = getappdata(hGUI.figWinSplit,'hGUI');
+hGUIM = getappdata(hGUI.output,'hGUI');
 I = get(findobj(get(hGUIM.imgAxes,'children'),'type','image'),'cdata');
 
 % other initalisations
@@ -162,7 +162,7 @@ iMov.autoP.B = cell(nApp,1);
 
 % determines the lower bound of the offset distance between the arenas
 [dX,dY] = deal(diff(X,[],2),diff(Y,[],1));
-if (isempty(dX))
+if isempty(dX)
     Dmin = min(dY(:));
 elseif (isempty(dY))
     Dmin = min(dX(:));
@@ -171,29 +171,28 @@ else
 end
 
 % sets the maximum possible radius
-if (isempty(Dmin))
+if isempty(Dmin)
     Rmax = R;
 else
     Rmax = min(floor(Dmin/2)+1,R);
 end
 
 % loops through each of the apparatus determining the new indices
-for i = 1:nApp   
-    % retrieves the global row/column index
-    [iCol,iFlyR0,iRow] = getRegionIndices(iMov,i);
-    iFlyR = iFlyR0(iMov.isUse{iRow,iCol});        
-    
+[nRow,nCol] = size(X);
+for i = 1:nCol
     % sets the x/y coordinates of the apparatus
-    [xApp,yApp] = deal(X(iFlyR,iCol),Y(iFlyR,iCol));
+    [xApp,yApp] = deal(X(:,i),Y(:,i));
     
     % sets the new row/column indices for the current apparatus
     iMov.iR{i} = roundP(max(1,min(yApp)-Rmax):min(sz(1),max(yApp)+Rmax));
     iMov.iC{i} = roundP(max(1,min(xApp)-Rmax):min(sz(2),max(xApp)+Rmax));    
     iMov.iCT{i} = 1:length(iMov.iC{i});
+    iMov.iRT{i} = cell(size(X,1),1);
     
     % resets the location of the apparatus region
     iMov.pos{i} = [iMov.iC{i}(1),iMov.iR{i}(1),...
-                   diff(iMov.iC{i}([1 end])),diff(iMov.iR{i}([1 end]))];
+                   diff(iMov.iC{i}([1 end])),...
+                   diff(iMov.iR{i}([1 end]))];
     iMov.xTube{i} = [0 iMov.pos{i}(3)];
        
     % sets the sub-image binary mask
@@ -201,9 +200,8 @@ for i = 1:nApp
     [XB,YB] = meshgrid(1:size(iMov.autoP.B{i},2),1:size(iMov.autoP.B{i},1));    
     
     % loops through all of the tube regions setting the new values
-    for j = 1:getSRCount(iMov,i)
+    for j = 1:nRow
         % sets the new row indices and y-coordinates for each tube
-        k = iFlyR(j);
         iMov.iRT{i}{j} = roundP((yApp(j)+(-Rmax:Rmax))-(iMov.iR{i}(1)-1));
 
         % ensures the row indices within the image frame
@@ -214,8 +212,8 @@ for i = 1:nApp
         iMov.yTube{i}(j,:) = iMov.iRT{i}{j}([1 end]) - 1;
         
         % sets the new search binary mask
-        iMov.autoP.B{i} = iMov.autoP.B{i} | (sqrt((XB - X(k,iCol) + ...
-                    (iMov.iC{i}(1)-1)).^2 + (YB - Y(k,iCol) + ...
+        iMov.autoP.B{i} = iMov.autoP.B{i} | (sqrt((XB - X(j,i) + ...
+                    (iMov.iC{i}(1)-1)).^2 + (YB - Y(j,i) + ...
                     (iMov.iR{i}(1)-1)).^2) < R);
     end        
 end
@@ -239,7 +237,7 @@ global uChoice iMov
 
 % retrieves the main GUI axes handle data struct
 hGUI = getappdata(handles.figCircPara,'hGUI');
-hGUIM = getappdata(hGUI.figWinSplit,'hGUI');
+hGUIM = getappdata(hGUI.output,'hGUI');
 
 % retrieves the main GUI handles data struct
 hOut = findall(hGUIM.imgAxes,'tag','hOuter');
@@ -266,12 +264,19 @@ iMov = getappdata(handles.figCircPara,'iMov');
 hGUI = getappdata(handles.figCircPara,'hGUI');
 
 % retrieves the main GUI handles data struct
-hGUIM = getappdata(hGUI.figWinSplit,'hGUI');
+hGUIM = getappdata(hGUI.output,'hGUI');
 hAx = hGUIM.imgAxes;
 
 % other initialisations
 nApp = length(iMov.iR);
 phi = linspace(0,2*pi,101);
+
+% sets the group colour array (based on the format)
+if isfield(iMov,'pInfo')
+    tCol = getAllGroupColours(length(iMov.pInfo.gName));
+else
+    tCol = getAllGroupColours(1);
+end
 
 % retrieves the circle 
 hOut = findall(hAx,'tag','hOuter');
@@ -280,24 +285,31 @@ createMark = isempty(hOut);
 % sets the hold on the main GUI image axes 
 hold(hAx,'on');
 
-% loops through all the sub-regions plotting the circles   
-for i = 1:nApp
+% loops through all the sub-regions plotting the circles
+for iCol = 1:nApp
+    % sets the row indices
+    if isfield(iMov,'pInfo')
+        iGrp = iMov.pInfo.iGrp(:,iCol);
+        iRow = find(iGrp' > 0);
+    else
+        iRow = 1:iMov.nTubeR(iCol);
+        iGrp = ones(length(iRow),1);
+    end
+    
     % retrieves the global row/column index
-    [iCol,iFlyR0,iRow] = getRegionIndices(iMov,i);
-    iFlyR = iFlyR0(iMov.isUse{iRow,iCol});
-
-    for j = iFlyR(:)'
+    for j = iRow
         % calculates the new coordinates and plots the circle
         [xP,yP] = deal(X(j,iCol)+R*cos(phi),Y(j,iCol)+R*sin(phi));
         
         % creates/updates the marker coordinates
         if createMark
-            % outline marker needs to be created            
-            fill(xP,yP,'r','tag','hOuter','UserData',[j iCol],...
+            % outline marker needs to be created 
+            pCol = tCol(iGrp(j)+1,:);
+            fill(xP,yP,pCol,'tag','hOuter','UserData',[iCol,j],...
                        'facealpha',0.25,'LineWidth',1.5,'Parent',hAx)  
         else
             % otherwise, coordinates of outline
-            hP = findobj(hOut,'UserData',[j iCol]);
+            hP = findobj(hOut,'UserData',[iCol,j]);
             set(hP,'xData',xP,'yData',yP)            
         end
     end

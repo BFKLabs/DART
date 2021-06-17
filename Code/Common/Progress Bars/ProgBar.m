@@ -133,7 +133,7 @@ classdef ProgBar < handle
 
                 % fixes a small bug in the new release where the box line 
                 % on the upper limit is missing for the last waitbar axes
-                if ~verLessThan('matlab','8.4') && (i == 1)
+                if i == 1
                     % retrieves the axes limits
                     xL = get(obj.hObj(j).wAxes,'xlim');
                     yL = get(obj.hObj(j).wAxes,'ylim');

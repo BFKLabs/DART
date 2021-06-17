@@ -58,7 +58,12 @@ classdef SingleTrack < Track
                         sInd = obj.iMov.vPhase(:);
                     end
                                         
-            end                  
+            end     
+            
+            %
+            if isfield(obj.iMov,'pInfo')
+                obj.iMov.flyok(obj.iMov.pInfo.iGrp == 0) = false;
+            end
             
             % memory allocation            
             obj.fObj = cell(length(sInd),1);
@@ -114,7 +119,7 @@ classdef SingleTrack < Track
                 % sets the phase index (if not provided)
                 if ~exist('iFrm','var')                
                     iStack = obj.pData.nCount(fObjPr.iPh);
-                    iFrm = obj.sProg.iFrmR{iStack}(end);                
+                    iFrm = obj.sProg.iFrmR{iStack}(end);
                 end            
 
                 % sets the previous frame points (for the full search only)               

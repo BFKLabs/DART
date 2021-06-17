@@ -24,29 +24,39 @@ import javax.swing.table.TableCellRenderer;
 public class CondCheckTable extends JTable {
 
     private static int cType;    
+    private static Object[][] bgCol;
+    private static ConditionalStringRenderer crD;
+    private static ConditionalCheckBoxRenderer crC;
+    private static ListSelectionModel lsm;
+    private static TableCellRenderer cr;
     private static Font tFont = new Font("Segoe UI", Font.PLAIN, 12);
     
-	public CondCheckTable(DefaultTableModel model, int type) {
+	public CondCheckTable(DefaultTableModel model, int type, Object[][] _bgCol) {
         // table construction
         super();
         cType = type;
         setModel(model);               
                 
         // other initialisations
-        ConditionalStringRenderer crD = new ConditionalStringRenderer();
-        ConditionalCheckBoxRenderer crC = new ConditionalCheckBoxRenderer(); 
-        ListSelectionModel lsm = this.getSelectionModel();                 
+        crD = new ConditionalStringRenderer();
+        crC = new ConditionalCheckBoxRenderer(); 
+        lsm = this.getSelectionModel();  
+        
+        if (cType == 1) {
+            crC.SetBGColour(_bgCol);
+            cr = crC;
+            
+        } else {
+            crC.SetBGColour(_bgCol);
+            cr = crD;
+        }
                 
-        // retrieves the height dimensions of the cells    
+        // retrieves the height dimensions of the cells          
         int nCols = this.getColumnCount();
         
         //Sets the cell renderer for each column        
-        for (int iCol = 0; iCol < nCols; iCol = iCol + 1) {   
-            if (cType == 1) {
-                getColumnModel().getColumn(iCol).setCellRenderer(crC);
-            } else {
-                getColumnModel().getColumn(iCol).setCellRenderer(crD);
-            }
+        for (int iCol = 0; iCol < nCols; iCol = iCol + 1) { 
+            getColumnModel().getColumn(iCol).setCellRenderer(cr);
         }           
         
         // sets the selection mode        
@@ -63,6 +73,31 @@ public class CondCheckTable extends JTable {
         getTableHeader().setReorderingAllowed(false);        
         getTableHeader().setDefaultRenderer(new ConditionalHeaderRenderer());
         setFillsViewportHeight(true);
+    }
+    
+    public void SetBGColour(Object[][] _bgCol) {
+        
+        if (cType == 1) {
+            crC.SetBGColour(_bgCol);
+        } else {
+            crD.SetBGColour(_bgCol);
+        }
+        
+    }
+    
+    public void SetBGColourCell(int row, int col, Object _bgCol) {
+        
+        if (cType == 1) {
+            crC.SetBGColourCell(row, col, _bgCol);
+        } else {
+            crD.SetBGColourCell(row, col, _bgCol);
+        }
+        
+    }    
+    
+    public CondCheckTable(DefaultTableModel model, int type) {
+        
+        this(model, type, null);
     }
     
     @Override
@@ -87,30 +122,55 @@ public class CondCheckTable extends JTable {
     
     public static class ConditionalStringRenderer extends DefaultTableCellRenderer implements TableCellRenderer {    
         
+        private static Object[][] bgCol;
+        
         public ConditionalStringRenderer() {                                       
             super();                             
         }            
         
         @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) 
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int col) 
         {   
             // initialisation
-            JComponent cell = (JComponent) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);                        
+            JComponent cell = (JComponent) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);                        
             if (value == null) {
                 cell.setBackground(Color.GRAY);
                 cell.setOpaque(true);
             } else {
                 setHorizontalAlignment(JLabel.CENTER);
                 cell.setForeground(Color.BLACK);
-                cell.setBackground(Color.WHITE);
+                cell.setBackground(GetBGColourCell(row, col));
             }                                                            
             return cell;
+        }    
+        
+        public void SetBGColour(Object[][] _bgCol) {
+            
+            bgCol = _bgCol;
+            
+        }
+        
+        public void SetBGColourCell(int row, int col, Object _bgCol) {
+            
+            bgCol[row][col] = _bgCol;
+            
+        }   
+        
+        public Color GetBGColourCell(int row, int col) {
+            
+            if (bgCol == null) {
+                return Color.WHITE;
+            } else {
+                return (Color) bgCol[row][col];
+            }
+            
         }        
     }
     
     public static class ConditionalCheckBoxRenderer extends JPanel implements TableCellRenderer {
 
         private JCheckBox cb;
+        private static Object[][] bgCol;
 
         public ConditionalCheckBoxRenderer() {                                       
             setLayout(new GridBagLayout());    
@@ -119,11 +179,11 @@ public class CondCheckTable extends JTable {
             cb.setOpaque(false);
             cb.setContentAreaFilled(true);            
             add(cb);
-        }         
+        }              
 
         @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {                                                
-            setOpaque(isSelected);
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int col) {                                                
+            //setOpaque(isSelected);
             if (value == null) {
                 cb.setVisible(false);
                 cb.setContentAreaFilled(true);
@@ -134,17 +194,41 @@ public class CondCheckTable extends JTable {
                 cb.setVisible(true);
                 cb.setSelected((boolean)value);     
                 cb.setMargin(new Insets(-1, 0, -1, 0));
+                setOpaque(true);
 
                 if (isSelected) {
-                    setForeground(table.getSelectionForeground());
-                    setBackground(Color.WHITE);
+                    setForeground(table.getSelectionForeground());                   
+                    setBackground(GetBGColourCell(row, col));
+                    
                 } else {
                     setForeground(table.getForeground());
-                    setBackground(Color.WHITE);
+                    setBackground(GetBGColourCell(row, col));
                 }                     
             }                                                            
             return this;
         }
+        
+        public void SetBGColour(Object[][] _bgCol) {
+            
+            bgCol = _bgCol;
+            
+        }
+        
+        public void SetBGColourCell(int row, int col, Object _bgCol) {
+            
+            bgCol[row][col] = _bgCol;
+            
+        }   
+        
+        public Color GetBGColourCell(int row, int col) {
+            
+            if (bgCol == null) {
+                return Color.WHITE;
+            } else {
+                return (Color) bgCol[row][col];
+            }
+            
+        }        
     }                  
     
     public class ConditionalHeaderRenderer extends JLabel implements TableCellRenderer {

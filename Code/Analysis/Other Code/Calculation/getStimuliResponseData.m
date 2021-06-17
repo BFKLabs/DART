@@ -27,7 +27,7 @@ else
 end
 
 % intialisations
-nApp = length(snTot.appPara.flyok);
+nApp = length(snTot.iMov.flyok);
 [nGrp,T0] = deal(60/nBin,[0 snTot.iExpt(1).Timing.T0(4:end)]);
 xiG = num2cell(1:nGrp)';
 
@@ -47,7 +47,7 @@ if isempty(Ts)
 else
     % array dimensioning and memory allocation
     [Ttot,Ts] = deal(cell2mat(snTot.T),num2cell(sort(Ts)));
-    flyok = snTot.appPara.flyok;    
+    flyok = snTot.iMov.flyok;    
 end                             
 
 % determines the indices, within the total time array, that the stimuli

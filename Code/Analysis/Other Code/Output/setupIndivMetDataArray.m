@@ -20,7 +20,7 @@ mIndG = find(Type(:,3));
 
 % retrieves the fly acceptance/rejection flags
 snTot = getappdata(handles.figDataOutput,'snTot');
-flyok = cellfun(@(x)(x.appPara.flyok),num2cell(snTot),'un',0)';
+flyok = arrayfun(@(x)(groupAcceptFlags(x)),snTot(:),'un',0)';
 for i = 1:length(flyok); flyok{i} = flyok{i}(appOut); end
 
 % sets the output type
@@ -58,7 +58,8 @@ end
 mStrB = reshape(iData.fName(mIndG(iOrder)),1,length(iOrder));
 
 % sets the main grouping titles
-mStrT = {'Group Name','Fly Number','Local Index','Experiment','Bin Group','Sub-Group'};
+mStrT = {'Group Name','Fly Number','Local Index',...
+         'Experiment','Bin Group','Sub-Group'};
 mStrT = mStrT(indGrpT);
 
 % sets the day separation header string

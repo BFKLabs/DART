@@ -3,8 +3,8 @@ function varargout = updatePlotFigure(hGUISub,pDataNw,varargin)
 
 % global variables
 global isDocked
-[varargout{1},isHG2] = deal([],~verLessThan('matlab','8.4'));
-switch (length(varargin))
+varargout{1} = [];
+switch length(varargin)
     case (0)
         [iPlot,isShowGUIs,isOutput] = deal([],true,false);
     otherwise
@@ -12,16 +12,11 @@ switch (length(varargin))
 end
 
 % retrieves the Analysis GUI handles and the current plot
-if (isfield(hGUISub,'figFlyAnalysis'))
+if isfield(hGUISub,'figFlyAnalysis')
     hGUI = hGUISub;
 else
     hGUI = getappdata(hGUISub,'hGUI');    
 end
-
-% % creates the load bar (for HG2 graphics only)
-% if ((isShowGUIs) && (isHG2))
-%     hL = ProgressLoadbar('Initialising Analysis GUI...');
-% end
 
 % retrieves the subplot data struct
 plotD = getappdata(hGUI.figFlyAnalysis,'plotD');

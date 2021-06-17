@@ -16,19 +16,17 @@ else
 end
 
 % initialisations
-[hTab,eStr] = deal(get(hTabG,'Children'),{'off','on'});
-if (~iscell(hTab)); hTab = num2cell(hTab); end
+hTab = get(hTabG,'Children');
+if ~iscell(hTab); hTab = num2cell(hTab); end
 
-if (isHG1)
-    jTabG = getappdata(handle(hTabG),'JTabbedPane');            
-else
-    jTabG = getappdata(hTabG,'UserData');       
-    if (isempty(jTabG))
-        jH = findjobj(hTabG);
-        jTabG = jH(cellfun(@(x)(isa(x,['javahandle_withcallbacks.',...
-                    'com.mathworks.mwswing.MJTabbedPane'])),num2cell(jH)));
-        setappdata(hTabG,'UserData',jTabG)
-    end
+% retrieves the table java object
+jTabG = getappdata(hTabG,'UserData');       
+if isempty(jTabG)
+    % if it doesn't exist, then retrieve it
+    jH = findjobj(hTabG);
+    jTabG = jH(cellfun(@(x)(isa(x,['javahandle_withcallbacks.',...
+                'com.mathworks.mwswing.MJTabbedPane'])),num2cell(jH)));
+    setappdata(hTabG,'UserData',jTabG)
 end
 
 % checks all of the tabs in the tab group

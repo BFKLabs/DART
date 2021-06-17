@@ -13,6 +13,7 @@ classdef ResidualDetect < handle
         
         % boolean/other scalar flags
         is2D
+	iFrm
         calcInit
         wOfs = 0;      
         calcOK = true;   

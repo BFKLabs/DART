@@ -491,15 +491,15 @@ if setMovie
     end
     
     % sets the video type/descriptors
-    mType = '*.avi;*.AVI;*.mj2;*.mp4;*.mov';
-    mStr = 'Movie Files (*.avi, *.AVI, *.mj2, *.mp4, *.mov';
+    mType = '*.avi;*.AVI;*.mj2;*.mp4;*.mkv;*.mov';
+    mStr = 'Movie Files (*.avi, *.AVI, *.mj2, *.mp4, *.mkv, *.mov';
     
-    % if using windows version 10, then add in .mov videos
-    [~, winVer] = system('ver');
-    if ~strContains(winVer,'Version 10')
-        mType = sprintf('%s;*.mov',mType);
-        mStr = sprintf('%s, *.mov',mStr);
-    end
+%     % if using windows version 10, then add in .mov videos
+%     [~, winVer] = system('ver');
+%     if ~strContains(winVer,'Version 10')
+%         mType = sprintf('%s;*.mov',mType);
+%         mStr = sprintf('%s, *.mov',mStr);
+%     end
     
     % user is manually selecting file to open
     [fName,fDir,fIndex] = uigetfile(...
@@ -1186,7 +1186,8 @@ if ~isCalib
 end 
 
 % runs the split window sub-GUI
-WindowSplit(handles,hProp0);
+% WindowSplit(handles,hProp0);
+RegionConfig(handles,hProp0);
 
 % --- runs the post window split function
 function postWindowSplit(handles,iMov,hProp0,isChange)
@@ -2278,8 +2279,7 @@ for i = 1:length(hTube)
                 end
                 
                 % retrieves the global row/column indices
-                [iCol,iFlyR0,iRow] = getRegionIndices(iMov,i);
-                iFlyR = iFlyR0(iMov.isUse{iRow,iCol});                
+                [iCol,iFlyR,~] = getRegionIndices(iMov,i);             
                 
             otherwise % case is manual region setting
                 
@@ -2304,18 +2304,21 @@ for i = 1:length(hTube)
                 else
                     y = (iMov.yTube{i}([1 end]) + yOfs);
                 end
+                
+                % sets the fly indices
+                iFlyR = 1:length(hTube{i});
         end        
 
-        for j = 1:length(hTube{i})
+        for j = iFlyR(:)'
             % retrieves the marker properties            
             [pCol,fAlpha,edgeCol] = getMarkerProps(iMov,i,j);              
 
             % sets the tube region patch based on the detection type 
             switch Type
                 case {'GeneralR','Circle'}
-                    k = iFlyR(j);
-                    xTube = iMov.autoP.X0(k,iCol) + iMov.autoP.XC - xOfs;
-                    yTube = iMov.autoP.Y0(k,iCol) + iMov.autoP.YC - yOfs;                                       
+                    % case is the circle/repeating general patterns
+                    xTube = iMov.autoP.X0(j,iCol) + iMov.autoP.XC - xOfs;
+                    yTube = iMov.autoP.Y0(j,iCol) + iMov.autoP.YC - yOfs;                                       
                 
                 otherwise
                     % case is for the other detection types
@@ -2861,8 +2864,19 @@ isOnD = get(handles.checkShowAngle,'Value') && isOn;
 hold(hAx,'on')
 for i = 1:nApp
     % sets the x/y offset
-    [xOfs,yOfs] = deal((iMov.iC{i}(1)-1),(iMov.iR{i}(1)-1));    
-    for j = 1:length(hMark{i})
+    [xOfs,yOfs] = deal((iMov.iC{i}(1)-1),(iMov.iR{i}(1)-1));  
+    
+    switch Type
+        case {'GeneralR','Circle'}
+            % sets the row/column indices
+            [iCol,iFlyR,~] = getRegionIndices(iMov,i);  
+            
+        otherwise
+            iFlyR = 1:length(hMark{i});
+            
+    end
+    
+    for j = iFlyR(:)'
         % sets the tag strings and the offsets                
         [hTStr,hMStr] = deal('hTube','hMark');
         hDStr = sprintf('hDir%i',i);
@@ -2872,17 +2886,12 @@ for i = 1:nApp
         
         % sets the x/y coordinates of the tube regions (either for single
         % tracking, or multi-tracking for the first iteration)
-        if (isMultiTrack && (j == 1)) || ~isMultiTrack
+        if (j == 1) || ~isMultiTrack
             switch Type
                 case {'GeneralR','Circle'}
-                    % sets the row/column indices
-                    [iCol,iFlyR0,iRow] = getRegionIndices(iMov,i);
-                    iFlyR = iFlyR0(iMov.isUse{iRow,iCol});        
-
-                    % sets the outline coordinates   
-                    k = iFlyR(j);
-                    xTube = iMov.autoP.X0(k,iCol) + iMov.autoP.XC;
-                    yTube = iMov.autoP.Y0(k,iCol) + iMov.autoP.YC;
+                    % sets the outline coordinates
+                    xTube = iMov.autoP.X0(j,iCol) + iMov.autoP.XC;
+                    yTube = iMov.autoP.Y0(j,iCol) + iMov.autoP.YC;
 
                 otherwise
                     % otherwise set the region based on storage type
@@ -2912,7 +2921,7 @@ for i = 1:nApp
             if j > length(pColF)
                 % if there is sufficient colours, then reset the array
                 nMark = length(hMark{i});
-                pColF = num2cell(distinguishable_colors(nMark,'k'),2);
+                pColF = num2cell(distinguishable_colors(nMark,'w'),2);
                 setappdata(handles.figFlyTrack,'pColF',pColF)
             end        
             
@@ -3800,7 +3809,7 @@ end
 
 % Sub-Movie Data Struct
 iMov = struct('pos',[1 1 1 1],'posG',[],'Ibg',[],'ddD',[],...
-              'nRow',[],'nCol',[],'dTube',false,'isUse',[],...                            
+              'nRow',[],'nCol',[],...                            
               'nTube',[],'nTubeR',[],'nFly',[],'nFlyR',[],...              
               'iR',[],'iC',[],'iRT',[],'iCT',[],'xTube',[],'yTube',[],...
               'sgP',[],'Status',[],'tempName',[],'autoP',[],'bgP',[],...
@@ -4033,6 +4042,10 @@ end
 % calculate the minimum distances between the lines and the mouse position
 [xD,yD] = deal(get(axObj,'xData'),get(axObj,'yData'));
 D = cellfun(@(x,y)(calcMinPointDist(x,y,mPos(1,1:2))),xD,yD);
+if all(isnan(D))
+    % no valid values, so exit
+    return
+end
 
 % if the line object with the minimum distance from the point is less than
 % tolerance, then show the marker

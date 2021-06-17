@@ -277,8 +277,10 @@ classdef TrackFull < Track
                     obj.pData.fPos{iApp}{iFly}(iFrmG,:) = pOfs + ...
                         obj.getTrackFieldValues(fObjP.fPos,iApp,iFly);
                     if isprop(fObjP,'fPosL')
-                        obj.pData.fPosL{iApp}{iFly}(iFrmG,:) = ...
+                        if ~isempty(fObjP.fPosL)
+                            obj.pData.fPosL{iApp}{iFly}(iFrmG,:) = ...
                             obj.getTrackFieldValues(fObjP.fPosL,iApp,iFly);
+                        end
                     end
                     
                     % sets the orientation angle (if required)

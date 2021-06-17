@@ -155,6 +155,9 @@ iData.isLoad = false;
 if ~isempty(sStr)
     % loads the summary data file 
     A = checkSummFileTimeStamps(iData,sStr);
+    if (iVid > length(A.tStampV)) && (length(A.tStampV) == 1)
+        iVid = 1;
+    end    
     
     % sets the final time vector
     Tv = A.tStampV{iVid};

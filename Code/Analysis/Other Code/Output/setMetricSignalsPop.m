@@ -9,8 +9,13 @@ nApp = length(iData.appName);
 % loops through each of the specified indices calculating the metrics
 for i = 1:sum(pType)
     % sets the independent variable vector
-    X = eval(sprintf('plotD(1).%s',yVar(i).xDep{1}));
-    if (isnumeric(X)); X = roundP(X); end
+%     X = eval(sprintf('plotD(1).%s',yVar(i).xDep{1}));
+    X = arrayfun(@(x)(getStructField(x,yVar(i).xDep{1})),plotD,'un',0); 
+    for j = 1:length(X)
+        if isnumeric(X{j})    
+            X{j} = roundP(X{j});
+        end
+    end
     
     % initialisations
     YY = dataGroupSplit(X,field2cell(plotD,pStr{i}));               
@@ -39,17 +44,18 @@ Ygrp = cell(1,nApp);
 for k = 1:nApp
     if (iscell(Y{k}))
         Ytmp = cell2cell(cellfun(@(x)(num2cell(x,1)),Y{k},'un',0));        
-        Ygrp{k} = [X,cell2cell(cellfun(@(x)(cell2mat(x(:)')),num2cell(Ytmp,1),'un',0),0)];
+        Ygrp{k} = [X{k},cell2cell(cellfun(@(x)...
+                    (cell2mat(x(:)')),num2cell(Ytmp,1),'un',0),0)];
     else
         % ensures the arrays are cell arrays
-        if (~iscell(X)); X = num2cell(X); end
-        if (~iscell(Y{k})); Y{k} = num2cell(Y{k}); end
+        if ~iscell(X{k}); X{k} = num2cell(X{k}); end
+        if ~iscell(Y{k}); Y{k} = num2cell(Y{k}); end
         
         % appends the array together
-        if (size(Y{k},1) == length(X))
-            Ygrp{k} = [X(:),Y{k}];
+        if (size(Y{k},1) == length(X{k}))
+            Ygrp{k} = [X{k}(:),Y{k}];
         else
-            Ygrp{k} = [X(:),Y{k}(:)];
+            Ygrp{k} = [X{k}(:),Y{k}(:)];
         end
     end        
 end

@@ -26,7 +26,7 @@ end
 
 % memory allocation
 Tgrp0 = cP.Tgrp0;
-nApp = length(snTot.appPara.ok);
+nApp = length(snTot.iMov.ok);
 indReact = cell(1,nApp);
 
 % sets the signal parameter struct (assumes that all signals are the same
@@ -55,7 +55,7 @@ if isempty(Ts)
 else
     % array dimensioning and memory allocation
     [Ttot,Ts] = deal(cell2mat(snTot.T),sort(Ts));
-    flyok = snTot.appPara.flyok;    
+    flyok = snTot.iMov.flyok;    
 end        
 
 % determines the indices of the stimuli events within the total

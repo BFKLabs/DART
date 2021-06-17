@@ -628,10 +628,11 @@ set(hFig,'Units','Pixels')
 function updateViewMenu(handles,hMenu,vType)
 
 % if the menu item is already checked, then exit the function
-if (strcmp(get(hMenu,'checked'),'on')); return; end
+if strcmp(get(hMenu,'checked'),'on'); return; end
 
 % otherwise, remove any existing checks and turns the current one
-set(findobj(get(handles.menuPlotData,'children'),'checked','on'),'checked','off')
+hMenuPr = findobj(get(handles.menuPlotData,'children'),'checked','on');
+set(hMenuPr,'checked','off')
 set(hMenu,'checked','on')
 
 % sets the view type to the specified
@@ -647,7 +648,7 @@ function updatePlotObjects(handles,pData)
 global is2D
 
 % retrieves the fly position data (if not provided)
-if (nargin == 1)
+if nargin == 1
     pData = getappdata(handles.figFlySolnView,'pData');
 end
 
@@ -712,8 +713,18 @@ switch iApp
             set(hYLbl,'string','Region Index')
         end
         
+        % retrieves the data values based on the region struct format
+        if isfield(iMov,'pInfo')
+            % case is the new format solution file
+            nApp = iMov.pInfo.nGrp;
+            fPos = groupPosValues(iMov,pData.fPos);
+        else
+            % case is the old format solution file
+            fPos = pData.fPos;
+        end
+        
         % calculates the fly velocities (over all apparatus)
-        Vplt = cellfun(@(x)(calcPopVel(T,x)),pData.fPos,'un',0);     
+        Vplt = cellfun(@(x)(calcPopVel(T,x)),fPos,'un',0);     
         Vmax = ceil(max(cellfun(@max,Vplt)));
         VpltN = cellfun(@(x)(x/Vmax),Vplt,'un',0);                
         
@@ -836,6 +847,30 @@ if nargin == 2
     setappdata(handles.figFlySolnView,'pData',pData);
 end
 
+% --- groups the position values (2D expt only)
+function fPos = groupPosValues(iMov,fPos0)
+
+% initialisations
+iGrp = iMov.pInfo.iGrp;
+fPos = cell(1,iMov.pInfo.nGrp);
+
+% groups the position values based on the experiment type
+for i = 1:iMov.pInfo.nGrp
+    % determines the region row/column indices
+    [iRowG,iColG] = find(iGrp==i);
+    
+    % case is a 2D expt setup
+    if iMov.is2D        
+        fPos{i} = arrayfun(@(ir,ic)(fPos0{ic}{ir}),iRowG,iColG,'un',0)';        
+    else
+        iRegG = (iRowG-1)*iMov.pInfo.nCol + iColG;
+        nFly = iMov.pInfo.nFly(iRowG,iColG);
+        
+        fPos{i} = cell2cell(arrayfun(@(i,n)...
+                                    (fPos0{i}(1:n)),iRegG,nFly,'un',0),0);
+    end
+end
+
 % --- update function for the position data menu item selection
 function menuSelectUpdate(hObject, eventdata, handles)
 
@@ -848,7 +883,7 @@ if isempty(hMenu)
     % if there is no menu item selected, then set the current menu
     isUpdate = true;
     set(hObject,'checked','on')
-elseif (hMenu ~= hObject)
+elseif hMenu ~= hObject
     % turns off the check for the previous menu, and set the current menu
     set(hMenu,'checked','off')
     set(hObject,'checked','on')

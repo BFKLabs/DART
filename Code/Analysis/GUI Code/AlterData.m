@@ -31,18 +31,13 @@ hGUI = varargin{1};
 Type = varargin{2};
 
 % retrieves the currently selected row/column indices
-if (isHG1)
-    hTab = hGUI.tableDataSheet;
-    jTab = getappdata(hTab,'jTable');
-else
-    iData = getappdata(hGUI.figDataOutput,'iData');
-    hTab = findall(iData.tData.hTab{iData.cTab},'type','uitable');
-    jTab = getJavaTable(hTab);
-end
+iData = getappdata(hGUI.figDataOutput,'iData');
+hTab = findall(iData.tData.hTab{iData.cTab},'type','uitable');
+jTab = getJavaTable(hTab);
     
 % retrieves the currently selected cell(s) row/column indices
 [iRow0,iCol0] = deal(jTab.getSelectedRows,jTab.getSelectedColumns);
-if (isempty(iRow0) || (isempty(iCol0)))
+if isempty(iRow0) || isempty(iCol0)
     % if no cell is selected, then output a message to screen
     mStr = 'No worksheet cell has been selected. Retry by selecting at least one cell.';
     waitfor(msgbox(mStr,'No Worksheet Cells Selected','modal'))

@@ -24,8 +24,8 @@ end
 function FlyAnalysis_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % global variables
-global mainProgDir isDocked initDock regSz updateFlag canSelect
-[isDocked,initDock,canSelect] = deal(true);
+global mainProgDir isDocked initDock regSz updateFlag canSelect isAnalysis
+[isDocked,initDock,canSelect,isAnalysis] = deal(true);
 updateFlag = 2; pause(0.1); 
 
 % Choose default command line output for FlyAnalysis
@@ -50,7 +50,7 @@ setappdata(hObject,'gPara',gPara)
 % ----------------------------------------------------------- %
 
 % sets the DART object handles (if provided) and the program directory
-switch (length(varargin))   
+switch length(varargin)
     case (0) % case is running full program from command line
         [hDART,ProgDefNew,mainProgDir] = deal([],[],pwd);           
         
@@ -132,7 +132,8 @@ global hh
 hh = [];
 
 % loads the data structs from the GUI
-iData = getappdata(handles.figFlyAnalysis,'iData');
+hFig = handles.figFlyAnalysis;
+iData = getappdata(hFig,'iData');
 dDir = iData.ProgDef.DirSoln; n = length(dDir);
 
 % prompts the user for the solution file directory
@@ -181,8 +182,13 @@ tempSolnDataIO(handles,'store')
 
 % sets the files and combines the solution files
 sName = cellfun(@(x)(fullfile(fDir,x)),fName,'un',0);
-[snTot,iMov] = combineSolnFiles(sName);
+[snTot,iMov,eStr] = combineSolnFiles(sName,1);
 if isempty(snTot)
+    % if there was an error, then output this to screen
+    if ~isempty(eStr)
+        waitfor(msgbox(eStr,'Video Solution File Error','modal'))
+    end    
+    
     % if the user cancelled, then exit the function
     tempSolnDataIO(handles,'reload') 
     return
@@ -192,14 +198,17 @@ else
     tempSolnDataIO(handles,'remove')     
     
     % initialises the apparatus parameter struct
-    snTot.appPara = initAppStruct(snTot,iMov);
     sName = getFinalDirString(fDir);
-    if (~iscell(sName)); sName = {sName}; end
+    if ~iscell(sName); sName = {sName}; end
     
-    % sets the solution file struct into the GUI
-    snTot = reduceCombSolnFiles(snTot);
-    setappdata(handles.figFlyAnalysis,'snTot',snTot)
-    setappdata(handles.figFlyAnalysis,'sName',sName)
+    % reduces the combined solution files
+    snTot.iMov = iMov;
+    snTot = reduceExptSolnFiles(snTot);
+    
+    % sets the solution file struct into the GUI    
+    setappdata(hFig,'snTot',snTot)
+    setappdata(hFig,'sName',sName)
+    setappdata(hFig,'iMov',iMov)
 end
 
 % removes the default directory component from the solution file path
@@ -209,7 +218,7 @@ if ~isempty(A)
 end
 
 % sets the data fields
-setappdata(handles.figFlyAnalysis,'sNameFull',{fDir})
+setappdata(hFig,'sNameFull',{fDir})
 setSolnInfo(handles,'Experiment')
 resetGUIObjects(handles,snTot)
        
@@ -237,7 +246,7 @@ else
     if iscell(fName)
         % loads the combined solution file
         sNameF = cellfun(@(x)(fullfile(fDir,x)),fName,'un',0);
-        [snTot,sName,ok] = loadMultiCombSolnFiles(TempDir,sNameF);
+        [snTot,sName,ok] = loadMultiExptSolnFiles(TempDir,sNameF);
         if ~ok
             % if the user cancelled, then exit the function
             tempSolnDataIO(handles,'reload')
@@ -258,7 +267,7 @@ else
     else
         % otherwise, only one file is to be loaded
         sNameF = fullfile(fDir,fName);
-        [snTot,ok] = loadCombSolnFiles(iData.ProgDef.TempFile,sNameF);
+        [snTot,ok] = loadExptSolnFiles(iData.ProgDef.TempFile,sNameF,0);
         if ~ok
             % if the user cancelled, then exit the function
             tempSolnDataIO(handles,'reload')            
@@ -285,7 +294,7 @@ end
 
 % reduces down the combined experiment solution files
 for i = 1:length(snTot)
-    snTot(i) = reduceCombSolnFiles(snTot(i));
+    snTot(i) = reduceExptSolnFiles(snTot(i));
 end
 
 % ensures the solution file names are stored as a cell array
@@ -322,7 +331,7 @@ end
 tempSolnDataIO(handles,'store')
 
 % loads the combined solution file
-[snTot,sName,ok] = loadMultiCombSolnFiles(iData.ProgDef.TempFile,mName);
+[snTot,sName,ok] = loadMultiExptSolnFiles(iData.ProgDef.TempFile,mName);
 if ~ok
     % if the user cancelled, then exit the function
     tempSolnDataIO(handles,'reload') 
@@ -332,7 +341,12 @@ else
     sNameNw = cellfun(@(x)(getFileName(x)),sName,'un',0);
     
     % deletes the temporary solution data
-    tempSolnDataIO(handles,'remove')      
+    tempSolnDataIO(handles,'remove')   
+    
+    % reduces down the combined experiment solution files
+    for i = 1:length(snTot)
+        snTot(i) = reduceExptSolnFiles(snTot(i));
+    end
     
     % sets the solution file struct into the GUI
     setappdata(handles.figFlyAnalysis,'snTot',snTot)    
@@ -514,7 +528,7 @@ function menuSaveData_Callback(hObject, eventdata, handles)
 
 % deletes the data output figure (if it is open)
 hOut = findall(0,'tag','figDataOutput');
-if (~isempty(hOut)); delete(hOut); pause(0.05); end
+if ~isempty(hOut); delete(hOut); pause(0.05); end
 
 % runs the output data sub-GUI
 DataOutput(handles.figFlyAnalysis)
@@ -996,11 +1010,7 @@ if isSet
         
         % determines if there are any annotations
         hPanelP = handles.panelPlot;
-        if isHG1
-            hGG = findall(get(hPanelP,'parent'),'type','hggroup');    
-        else
-            hGG = findall(get(hPanelP,'parent'),'type','annotation');    
-        end        
+        hGG = findall(get(hPanelP,'parent'),'type','annotation');     
         
         % determines if there are any annotations        
         if ~isempty(hGG)
@@ -1953,13 +1963,8 @@ else
 end
 
 % removes any annotations
-if (verLessThan('matlab','8.4'))
-    hGG = findall(h,'type','hggroup');
-else
-    hGG = findall(h,'type','annotation');
-end
-
-if (~isempty(hGG)); delete(hGG); end
+hGG = findall(h,'type','annotation');
+if ~isempty(hGG); delete(hGG); end
     
 % --- initialises the object properties within the GUI 
 function initGUIObjects(handles,iData)
@@ -2214,35 +2219,6 @@ sNameTT = getToolTipStrings(handles,ind);
 set(handles.textSolnDirL,'string',' File: ')
 set(handles.textSolnDir,'string',sName,'ToolTipString',sNameTT)
 
-% --- initialises the apparatus data 
-function appPara = initAppStruct(snTot,iMov)
-
-% determines the number of apparatus
-appPara = struct('ok',[],'Name',[],'flyok',[]);
-
-% if the data has been read from the combined solution file, then
-% set the dimensions on the cell dimensions
-nApp = length(snTot.Px);
-nFly = max(cellfun(@(x)(size(x,2)),snTot.Px));        
-
-% sets the data struct fields
-appPara.ok = true(nApp,1);
-appPara.Name = cellfun(@(x)(sprintf('Region #%i',x)),...
-                        num2cell(1:nApp)','un',0);
-
-% sets the individual fly feasibility                    
-if (isempty(iMov))           
-    if (isempty(snTot))
-        appPara.flyok = true(nFly,nApp);                                    
-    elseif (isfield(snTot.appPara,'flyok'))
-        appPara.flyok = snTot.appPara.flyok;
-    else
-        appPara.flyok = true(nFly,nApp);                    
-    end
-else
-    appPara.flyok = iMov.flyok;
-end
-
 % --- resets the GUI objects with the new solution file struct, snTot 
 function resetGUIObjects(handles,varargin)
 
@@ -2251,7 +2227,7 @@ global updateFlag
 updateFlag = 0;
 
 % retrieves the solution struct and solution directory/file names
-if (nargin == 1)
+if nargin == 1
     snTot = getappdata(handles.figFlyAnalysis,'snTot');    
 else
     snTot = varargin{1};
@@ -2307,7 +2283,7 @@ resetExptListStrings(handles,snTot)
 function resetExptListStrings(handles,snTot)
 
 % retrieves the solution struct (if not provided)
-if (nargin == 1)
+if nargin == 1
     snTot = getappdata(handles.figFlyAnalysis,'snTot');
 end
 
@@ -2340,16 +2316,15 @@ else
     setObjVisibility(handles.toggleExptSel,'off'); 
     pause(0.05);        
     
-    % determines if the solution file is for a multi-experiment solution file
-    isMulti = length(snTot) > 1;
-    if (isMulti)
+    % determines if the solution file is for a multi-expt solution file
+    if length(snTot) > 1
         % sets the table strings and makes the popup menu active
         set(setObjEnable(hPopup,'on'),'string',sName)
         setSolnInfo(handles,'Experiment')
     else
         % sets the table strings but makes the popup menu inactive
         set(setObjEnable(hPopup,'inactive'),'string',sName,'value',1)
-        if (~iscell(sName0)); sName0 = {sName0}; end
+        if ~iscell(sName0); sName0 = {sName0}; end
         setSolnInfo(handles,'Experiment',sName0{eInd},snTot(eInd)) 
     end
 end
@@ -2365,7 +2340,7 @@ hFig = handles.figFlyAnalysis;
 [eInd,~,pInd] = getSelectedIndices(handles);
 
 % enables the experiment information panel
-if (nargin == 1); snTot = getappdata(hFig,'snTot'); end
+if nargin == 1; snTot = getappdata(hFig,'snTot'); end
 
 % sets the fly/sub-region count
 if isfield(snTot(eInd),'iMov')
@@ -2621,7 +2596,7 @@ for i = 1:length(fName)
     pData{i} = cell(length(p),N);
     
     % sets the parameter data structs for all the function handles
-    for j = 1:length(p)        
+    for j = 1:length(p)
         for k = 1:N
             if (nargin == 2)
                 if (strcmp(fName{i},'Multi'))

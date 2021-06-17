@@ -5,7 +5,13 @@ if isempty(hObj)
 end
 
 if iscell(hObj)
-    isOK = cellfun(@isvalid,hObj);
+    hObj = hObj(~cellfun(@isempty,hObj));
+    if isempty(hObj)
+        isOK = false;
+    else
+        isOK = cellfun(@isvalid,hObj);
+    end
+    
     if all(isOK)
         if isa(state,'logical') || isnumeric(state)
             eStr = {'off','on'};
@@ -16,7 +22,14 @@ if iscell(hObj)
     end    
     
 else
-    if all(isvalid(hObj))
+    hObj = hObj(~arrayfun(@isempty,hObj));
+    if isempty(hObj)
+        isOK = false;
+    else
+        isOK = isvalid(hObj);
+    end
+    
+    if all(isOK)
         if isa(state,'logical') || isnumeric(state)
             eStr = {'off','on'};
             set(hObj,'visible',eStr{1+(state>0)})

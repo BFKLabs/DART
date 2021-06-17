@@ -109,12 +109,15 @@ end
 % labels strings
 for k = 1:size(hAx,2)
     hAxT = reshape(hAx(:,k),dim(2),dim(1))';
-    [Wnw,Hnw] = deal((1-(dx+dz))/dim(2),(1-dy)/dim(1));
+    [Wnw,Hnw] = deal((1-(dx+dz))/dim(2),(1-dy)/dim(1));            
     for i = 1:dim(1)
         for j = 1:dim(2)
             if (~isempty(hAxT{i,j}))
+                axUnits = get(hAxT{i,j},'Units');
+                set(hAxT{i,j},'Units','Normalized');
+                
                 Pnw = [dx+(j-1)*Wnw,dy+(dim(1)-i)*Hnw,Wnw,Hnw];
-                set(hAxT{i,j},'OuterPosition',Pnw)
+                set(hAxT{i,j},'OuterPosition',Pnw,'Units',axUnits)
             end
         end
     end

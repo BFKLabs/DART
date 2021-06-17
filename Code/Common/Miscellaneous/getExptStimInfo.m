@@ -36,8 +36,10 @@ else
     % retrieves the stimuli information based on the stimuli setup type
     if isfield(sData,'sTrain')
         % case is the new stimuli train setup is being used
-        sTrainEx = sData.sTrain.Ex;
-        stimP = getStimInfo(sTrainEx);
+        if ~isempty(sData.sTrain)
+            sTrainEx = sData.sTrain.Ex;
+            stimP = getStimInfo(sTrainEx);
+        end
         
     else
         % case is the old stimuli train setup is being used
@@ -187,16 +189,20 @@ stimPS = appendStimField(stimPS,chName,'iStim',iStim*ones(length(tS0),1));
 if isfield(snTot,'Ts')
     % case is the start/finish times have already been calculated (old
     % format solution files)
-    [Ts,Tf] = deal(snTot.Ts{1},snTot.Tf{1}); 
+    [Ts,Tf] = deal(cell2mat(snTot.Ts(:)),cell2mat(snTot.Tf(:))); 
     
 elseif isfield(snTot,'tStampS')
     % otherwise, use the start/finish times from the expt
-    [Ts,Tf] = deal(snTot.tStampS{1},snTot.tStampS{1}+tLim(2));
-    
+    Ts = cell2mat(snTot.tStampS(:));
+    Tf = Ts + tLim(2);    
 else
     % case is no information has been provided so calculated directly
     [Ts,Tf] = deal(tLim(1)+tS0,tLim(2)+tS0);
 end
+
+% reduces down the stimuli times to those that are feasible
+iSF = find(diff([Ts;-1])<0,1,'first');
+[Ts,Tf] = deal(Ts(1:iSF),Tf(1:iSF));
 
 % otherwise, use the start/finish times from the expt
 stimPS = appendStimField(stimPS,chName,'Ts',Ts);

@@ -16,7 +16,7 @@ classdef SingleTrackInit < SingleTrack
         % quality metric boltzmann curve parameters
         hQ = 5;
         kQ = 4;
-        Qtol = 50;
+        Qtol = 10;
         
     end
     
@@ -141,26 +141,34 @@ classdef SingleTrackInit < SingleTrack
                 end
             end
             
-            % calculates the final total background images
-            IbgT0 = cell2cell(cellfun(@(x)(x.iMov.IbgT),obj.fObj,'un',0));
+            % sets the feasible phases (low and high variance only)
+            okPh = obj.iMov.vPhase < 3;
+            
+            % calculates the final total background images            
+            fObjBG = obj.fObj(obj.iMov.vPhase < 3);
+            IbgT0 = cell2cell...
+                        (cellfun(@(x)(x.iMov.IbgT),fObjBG(okPh),'un',0));
             IbgTF = cellfun(@(x)(...
                         calcImageStackFcn(x)),num2cell(IbgT0,1),'un',0);                                
                 
             % retrieves the object sizes (for each phase)
-            szObj = cellfun(@(x)(x.szObj),obj.fObj,'un',0);
+            szObj = cellfun(@(x)(x.szObj),obj.fObj(okPh),'un',0);
             szObj = cell2mat(szObj(~cellfun(@(x)(isnan(x(1))),szObj)));
                     
             % sets the background images into the sub-region data struct            
             obj.iMov.IbgT = IbgTF;
             obj.iMov.szObj = ceil(median(szObj,1));
-            obj.iMov.Ibg = cellfun(@(x)(x.IBG),obj.fObj,'un',0);
+            
+            % sets the final background images
+            obj.iMov.Ibg = cell(length(obj.fObj),1);
+            obj.iMov.Ibg(okPh) = cellfun(@(x)(x.IBG),obj.fObj(okPh),'un',0);
             
             % calculates the residual detection tolerances
             obj.setupResidualTolerances();
                         
             % calculates the overall quality of the flies (prompting the
             % user to exclude any empty/anomalous regions)
-            if ~obj.isBatch && ~all(obj.iMov.vPhase == 3)
+            if ~obj.isBatch && any(okPh)
                 obj.calcOverallQuality()
             end
             

@@ -1,6 +1,6 @@
 function hTabG = createTabPanelGroup(hParent,varargin)
 
-if ((isHG1) || (nargin == 2))
+if nargin == 2
     hTabG = createTabGroup();
     set(hTabG,'Parent',hParent,'Units','pixels');     
 else

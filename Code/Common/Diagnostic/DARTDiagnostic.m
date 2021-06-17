@@ -289,15 +289,12 @@ else
                'Image Acquisition Toolbox';...
                'Image Processing Toolbox';...
                'Optimization Toolbox';...
-               'Statistics Toolbox';...
+               'Statistics and Machine Learning Toolbox';...
                'Curve Fitting Toolbox'};
-    if (~verLessThan('matlab','8.4'))
-        toolStr{5} = 'Statistics and Machine Learning Toolbox';
-    end                         
 
     % determines if the driver is detected or not       
     for i = 1:length(toolStr)
-        if (any(strcmp(toolVer,toolStr{i})) || isdeployed)
+        if any(strcmp(toolVer,toolStr{i})) || isdeployed
             % driver is detected for the adaptor type
             tStr{4} = [tStr{4};{sprintf('* %s - Detected',toolStr{i})}];  
             tCol{4} = [tCol{4};{'g'}];   

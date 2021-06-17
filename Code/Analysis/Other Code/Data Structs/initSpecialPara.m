@@ -5,20 +5,21 @@ function pS = initSpecialPara(snTot,pData,varargin)
 pS = setParaFields(3);
 
 % sets the subplot parameter fields
-if (pData.hasTime)
+if pData.hasTime
     pS(1) = setParaFields([],'Time',snTot);
 end   
 
 % sets the subplot parameter fields
-if (pData.hasSP)
+if pData.hasSP
     % sets the subplot count/subplot names
-    [nCount,spName] = deal(length(snTot.appPara.ok),snTot.appPara.Name);        
+    [nCount,spName] = deal(length(snTot.iMov.ok),snTot.iMov.pInfo.gName);        
     
     % creates the data struct
-    pS(2) = setParaFields([],'Subplot',nCount,spName,pData.canComb,pData.hasRC);    
+    pS(2) = setParaFields([],'Subplot',...
+                                nCount,spName,pData.canComb,pData.hasRC);    
 end    
 
 % sets the stimuli response parameter fields
-if (pData.hasSR)
+if pData.hasSR
     pS(3) = setParaFields([],'Stim',pData,varargin{1},varargin{2});    
 end

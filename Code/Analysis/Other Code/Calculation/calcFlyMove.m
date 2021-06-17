@@ -4,11 +4,11 @@ function [isMove,Vtot,Vmove,Dmove] = calcFlyMove(snTot,T,indRow,iApp,vAct)
 
 % array indexing
 nFrm = length(T);
-fok = snTot.appPara.flyok(iApp);
+fok = arr2vec(snTot.iMov.flyok(iApp));
 
 % retrieves the x/y values of the flies for the current experiment and
 % calculates the new time vector (wrt to the start time)
-if (~isempty(snTot.Px))
+if ~isempty(snTot.Px)
     % X-values are present (2D tracking)
     X = cellfun(@(x,y)(x(indRow,y)),snTot.Px(iApp),fok,'un',0);
 else
@@ -16,7 +16,7 @@ else
     X = cellfun(@(x)(zeros(nFrm,sum(x))),fok,'un',0);
 end
 
-if (~isempty(snTot.Py))
+if ~isempty(snTot.Py)
     % Y-values are present (2D tracking)
     Y = cellfun(@(x,y)(x(indRow,y)),snTot.Py(iApp),fok,'un',0);
 else

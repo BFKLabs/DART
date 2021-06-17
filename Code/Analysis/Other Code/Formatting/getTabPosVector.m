@@ -5,5 +5,5 @@ function tabPosD = getTabPosVector(hPanel,dPos)
 pPos = get(hPanel,'Position');
 
 % sets the tab position vector
-tabPosD = [[3 5]+(~isHG1)*[6 5],pPos(3:4)-([10 8]+10*(~isHG1))];
+tabPosD = [[9 10],pPos(3:4)-([10 8]+10)];
 if nargin == 2; tabPosD = tabPosD - dPos; end

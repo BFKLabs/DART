@@ -1,24 +1,27 @@
 function [Imap,pMn] = setupManualMarkMap(obj)
 
-% sets the image size (based on whether the image is being rotated or not)
-if obj.iMov.useRot && ((obj.iMov.rotPhi) > 45)
-    % case is the image is being rotated
-    sz = flip(obj.iData.sz);
-else
-    % case is the image is not being rotated
-    sz = obj.iData.sz;
-end
+% % sets the image size (based on whether the image is being rotated or not)
+% if obj.iMov.useRot && ((obj.iMov.rotPhi) > 45)
+%     % case is the image is being rotated
+%     sz = flip(obj.iData.sz);
+% else
+%     % case is the image is not being rotated
+%     sz = obj.iData.sz;
+% end
 
 % memory allocation
 zTol = 0.5;
 dTol = 10;
 pMn = cell(max(obj.nTube),obj.nApp);
-[Bw,Imap] = deal(false(sz),zeros(sz));
 hG = fspecial('gaussian',5,2);
 
 % retrieves the image from the main gui
 hImg = findobj(obj.hGUI.imgAxes,'Type','image');
 I = imfilter(double(get(hImg,'CData')),hG);
+
+% other memory allocations
+sz = size(I);
+[Bw,Imap] = deal(false(sz),zeros(sz));
 
 % sets up the full image binary mask
 for i = 1:obj.nApp

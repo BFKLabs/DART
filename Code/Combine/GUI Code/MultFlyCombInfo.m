@@ -1,5 +1,5 @@
 function varargout = MultFlyCombInfo(varargin)
-% Last Modified by GUIDE v2.5 01-Oct-2016 11:16:49
+% Last Modified by GUIDE v2.5 06-Jul-2021 20:03:24
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -41,7 +41,7 @@ setappdata(hObject,'hGUIInfo',[]);
 % makes the info GUI invisible (if it exists)
 hGUIInfoM = getappdata(hGUI.figFlyCombine,'hGUIInfo');
 if ~isempty(hGUIInfoM)
-    setObjVisibility(hGUIInfoM,'off')
+    setObjVisibility(hGUIInfoM.hFig,'off')
 end
 
 % makes the main and current GUIs invisible
@@ -71,7 +71,7 @@ setappdata(hObject,'iPara',initParaStruct);
 setappdata(hObject,'iSolnAll',iSolnAll);
 setappdata(hObject,'iSolnAdd',iSolnAdd);
 setappdata(hObject,'appOut',[]);
-setappdata(hObject,'snTot',[])
+setappdata(hObject,'snTot',[]);
 
 % UIWAIT makes MultFlyCombInfo wait for user response (see UIRESUME)
 % uiwait(handles.figMultCombInfo);
@@ -109,7 +109,7 @@ if ~isa(eventdata,'struct')
         if ~iscell(fFile)
             fFile = {fFile};
         else
-            fFile = reshape(fFile,length(fFile),1);
+            fFile = fFile(:);
         end
     end
 else
@@ -122,12 +122,12 @@ iSolnAll = getappdata(handles.figMultCombInfo,'iSolnAll');
 i0 = length(iSolnAll.iExpt);
 
 % determines the indices of the files to add
-if (isempty(iSolnAll.fDir))
+if isempty(iSolnAll.fDir)
     % sets the indices to add to be all the items
     iAdd = (1:length(fFile))';
 else
     % sets the old file names and determines the unique items to add
-    if (isMulti)
+    if isMulti
         % case is from opening a multi-experiment solution file
         fNameOld = iSolnAll.fName;
     else
@@ -138,14 +138,14 @@ else
                     
     % if there are no new unique filenames, then exit the function
     iAdd = find(cellfun(@(x)(~any(strcmp(x,fNameOld))),fFile));
-    if (isempty(iAdd))
+    if isempty(iAdd)
         return
     end
 end
 
 % sets the file directories/names to be added
 nAdd = length(iAdd);
-if (isMulti)
+if isMulti
     % case is a multi-experiment solution file
     fDir = repmat({eventdata.mFile},nAdd,1);
     fNameNw = reshape(eventdata.fFile(iAdd),nAdd,1);
@@ -174,8 +174,9 @@ setappdata(handles.figMultCombInfo,'snTot',snTot)
 
 % loads the data from all the unique experimental files
 [a,b] = deal(cell(nAdd,1),zeros(nAdd,1));
+iSolnAll.nApp = [iSolnAll.nApp;b];
+iSolnAll.appName = [iSolnAll.appName;a];
 [iSolnAll.iExpt,iSolnAll.T] = deal([iSolnAll.iExpt;a],[iSolnAll.T;a]);
-[iSolnAll.appName,iSolnAll.nApp] = deal([iSolnAll.appName;a],[iSolnAll.nApp;b]);
 
 % loads each of the solution files
 for i = 1:nAdd
@@ -191,13 +192,13 @@ for i = 1:nAdd
     j = i + i0;               
     if isMulti
         % sets the acceptance flag array
-        okNw = snTotNw{i}.appPara.ok;
+        okNw = snTotNw{i}.iMov.ok;
         
         % case is a multi-experiment solution file
         iSolnAll.T{j} = snTotNw{i}.T;
         iSolnAll.iExpt{j} = snTotNw{i}.iExpt; 
         iSolnAll.nApp(j) = sum(okNw);
-        iSolnAll.appName{j} = snTotNw{i}.appPara.Name(okNw);
+        iSolnAll.appName{j} = snTotNw{i}.iMov.pInfo.gName(okNw);
         
     else
         % case is a the experiment solution files
@@ -207,11 +208,34 @@ for i = 1:nAdd
         A = untar(nwFile,iProg.TempFile);
         isData = cellfun(@(x)(strContains(x,'Data.mat')),A);
 
-        % sets the data struct fields
-        aa = load(A{isData},'-mat','iExpt','T','appPara');
+        % loads the information component of the experimental solution file
+        aa = load(A{isData},'-mat');
+        
+        % sets the data struct fields        
         [iSolnAll.T{j},iSolnAll.iExpt{j}] = deal(aa.T,aa.iExpt);
-        iSolnAll.nApp(j) = sum(aa.appPara.ok);
-        iSolnAll.appName{j} = aa.appPara.Name(aa.appPara.ok);
+        
+        % sets the region name/counts based on the format type
+        if isfield(aa,'cID')
+            % case is the new format files
+            iSolnAll.nApp(j) = length(aa.cID);     
+            
+            % sets the group name indices (dependent on expt type)
+            if aa.iMov.is2D
+                % case is a 2D expt
+                indG = cellfun(@(x)(x(1,end)),aa.cID);
+            else
+                % case is a 1D expt
+                nC = aa.iMov.pInfo.nCol;
+                indG = cellfun(@(x)((x(1,1)-1)*nC+x(1,2)),aa.cID);
+            end
+            
+            % sets the group names
+            iSolnAll.appName{j} = aa.iMov.pInfo.gName(indG);
+        else
+            % case is the old format files
+            iSolnAll.nApp(j) = sum(aa.appPara.ok);
+            iSolnAll.appName{j} = aa.appPara.Name(aa.appPara.ok);            
+        end
         
         % deletes the files and clears the file data
         cellfun(@delete,A)
@@ -223,7 +247,8 @@ end
 setappdata(handles.figMultCombInfo,'iSolnAll',iSolnAll);
 
 % resets the GUI object properties (if initialising)
-if (nAdd == length(iSolnAll.iExpt))
+setObjEnable(handles.menuClearAll,'on')
+if length(iSolnAll.iExpt) == nAdd
     resetSolnProps(handles,iSolnAll,~isa(eventdata,'struct'))
 else
     % updates the information fields
@@ -231,7 +256,7 @@ else
 end
 
 % post solution file selection operations
-if (isMulti)
+if isMulti
     % if opening a multi-experiment solution file, then add the new files
     set(handles.listSolnAll,'value',i0+(1:nAdd)')
     buttonSolnAdd_Callback(handles.buttonSolnAdd, '1', handles)     
@@ -267,7 +292,7 @@ else
 end
 
 % loads the multi-experiment solution file
-[snTot,fFile,ok] = loadMultiCombSolnFiles(iProg.TempFile,mFile);
+[snTot,fFile,ok] = loadMultiExptSolnFiles(iProg.TempFile,mFile);
 if ~ok
     % if the user cancelled, then exit the function
     return
@@ -290,7 +315,7 @@ iProg = getappdata(handles.figMultCombInfo,'iProg');
 [mName, mDir, fIndex] = uiputfile(...
     {'*.msol','Multi-Experimental Solution Files (*.msol)'},...
     'Saving Multi-Experimental Solution File',iProg.DirComb);
-if (fIndex == 0)
+if fIndex == 0
     % if the user cancelled, then exit the function
     return
 else
@@ -337,23 +362,20 @@ for i = 1:nFile
     indApp = ii(jj);
     
     % determines if the solution data has already been loaded
-    if (iSolnAdd.isMulti(i))    
+    if iSolnAdd.isMulti(i)
         % if so, retrieve the solution data struct
         snTot = snTotM{iSolnAdd.Order(i)};
-        ok = snTot.appPara.ok;            
+        ok = snTot.iMov.ok;
         
         % reduces the arrays to remove any missing arrays
-        if (~isempty(snTot.Px)); snTot.Px = snTot.Px(ok); end
-        if (~isempty(snTot.Py)); snTot.Py = snTot.Py(ok); end
-        snTot.appPara.Name = snTot.appPara.Name(ok);
-        
-        fok0 = combineNumericCells(snTot.appPara.flyok(ok)');
-        fok0(isnan(fok0)) = 0;        
-        snTot.appPara.flyok = logical(fok0);        
+        snTot.iMov.pInfo.gName = snTot.iMov.pInfo.gName(ok);
+        if ~isempty(snTot.Px); snTot.Px = snTot.Px(ok); end
+        if ~isempty(snTot.Py); snTot.Py = snTot.Py(ok); end        
     else
         % creates the new cell array for the new variable
-        [snTot,ok] = loadCombSolnFiles(tmpDir,sFile{i},handles,i,indApp,h);        
-        if (~ok)
+        [snTot,ok] = loadExptSolnFiles...
+                                (tmpDir,sFile{i},0,handles,i,indApp,h);
+        if ~ok
             % if the user cancelled, then exit the function
             cellfun(@delete,tarFiles(1:(i-1)))
             return
@@ -361,21 +383,25 @@ for i = 1:nFile
     end
 
     % reduces down the data sets into combined solution files
-    kk = num2cell(find(~cellfun(@isempty,appOut)));
-    indNw = cellfun(@(x)(find(x == iSolnAdd.indOut{i})),kk,'un',0);
+    kk = find(~cellfun(@isempty,appOut));
+    indNw = arrayfun(@(x)(find(x == iSolnAdd.indOut{i})),kk,'un',0);
     
     % sets the final apparatus names
     appName = appOut(1:length(indNw));
    
+%     % updates the region data struct
+%     snTot = updateRegionInfo(snTot);
+%     snTot = reshapeExptSolnFile(snTot);
+    
     % removes any extraneous fields    
-    snTot = reduceCombSolnFiles(snTot,indNw,appName);
-    if (isfield(snTot,'sName'))
+    snTot = reduceExptSolnFiles(snTot,indNw,appName);
+    if isfield(snTot,'sName')        
         snTot = rmfield(snTot,'sName');
     end
         
     % outputs the single combined solution file
     tarFiles{i} = fullfile(iProg.TempFile,[fName{i},'.ssol']);
-    if (~saveCombSolnFile(iProg.TempFile,tarFiles{i},snTot,[],h))
+    if ~saveExptSolnFile(iProg.TempFile,tarFiles{i},snTot,[],h)
         % otherwise, delete the solution files and exits 
         cellfun(@delete,tarFiles(1:(i-1)))
         return
@@ -394,13 +420,39 @@ cellfun(@delete,tarFiles)
 h.closeProgBar()
 
 % -------------------------------------------------------------------------
+function menuClearAll_Callback(hObject, eventdata, handles)
+
+% prompt the user if they want to clear all the data
+qStr = 'Are you sure you want to clear all the loaded data?';
+uChoice = questdlg(qStr,'Clear All Data?','Yes','No','Yes');
+if ~strcmp(uChoice,'Yes')
+    % if the user rejected clearing all, then exit the function
+    return
+end
+
+% object retrieval
+hFig = handles.figMultCombInfo;
+
+% resets the all/added data structs
+[iSolnAll,iSolnAdd] = initDataStruct(handles);
+setappdata(hFig,'iSolnAll',iSolnAll)
+setappdata(hFig,'iSolnAdd',iSolnAdd)
+setappdata(hObject,'snTot',[]);
+
+% runs the solution reset
+buttonSolnReset_Callback(handles.buttonSolnReset, '1', handles)
+
+% disables the add button
+setObjEnable(hObject,'off')
+setObjEnable(handles.buttonSolnAdd,'off')
+
+% -------------------------------------------------------------------------
 function menuExit_Callback(hObject, eventdata, handles)
 
 % prompts the user if they wish to close the main gui
-uChoice = questdlg(['Close ' get(handles.figMultCombInfo,'Name') '?'],...
-    ['Close ' get(handles.figMultCombInfo,'Name') '...'],...
-    'Yes','No','Yes');
-if (~strcmp(uChoice,'Yes'))
+qStr = 'Are you sure you want to close the GUI?';
+uChoice = questdlg(qStr,'Close GUI?','Yes','No','Yes');
+if ~strcmp(uChoice,'Yes')
     return
 end
 
@@ -414,7 +466,7 @@ setObjVisibility(hGUI.figFlyCombine,'on');
 % makes the info GUI visible (if it exists)
 hGUIInfoM = getappdata(hGUI.figFlyCombine,'hGUIInfo');
 if ~isempty(hGUIInfoM)
-    setObjVisibility(hGUIInfoM,'on')
+    setObjVisibility(hGUIInfoM.hFig,'on')
 end
 
 %-------------------------------------------------------------------------%
@@ -430,7 +482,7 @@ function listSolnAll_Callback(hObject, eventdata, handles)
 
 % retrieves the maximum value of the other listbox
 yMax = get(hObject,'max');
-if (yMax == 2)
+if yMax == 2
     % updates the listbox properties
     set(handles.listSolnAdded,'max',2,'value',[])
     
@@ -541,7 +593,7 @@ iSolnAdd = getappdata(handles.figMultCombInfo,'iSolnAdd');
 
 % resets the array to only include those not already added
 indNw = indNw(~iSolnAll.isAdded(indNw));
-if (iSolnAll.isAdded(indNw))
+if iSolnAll.isAdded(indNw)
     % if there are no unique solutions to add, then exit the function
     return
 end
@@ -590,7 +642,7 @@ iSolnAdd.isMulti = [iSolnAdd.isMulti;iSolnAll.isMulti(indNw)];
 iSolnAdd.Order = [iSolnAdd.Order;indNw];
 
 % sets the output apparatus index arrays
-Anw = cellfun(@(x)(zeros(x,1)),num2cell(nAppNw),'un',0);
+Anw = arrayfun(@(x)(zeros(x,1)),nAppNw,'un',0);
 iSolnAdd.indOut = [iSolnAdd.indOut;Anw];
 setappdata(handles.figMultCombInfo,'iSolnAdd',iSolnAdd);
 
@@ -749,15 +801,19 @@ pause(0.01);
 function buttonSolnReset_Callback(hObject, eventdata, handles)
 
 % resets the data structs and GUI object properties
+iSolnAdd = getappdata(handles.figMultCombInfo,'iSolnAdd');
 iSolnAll = getappdata(handles.figMultCombInfo,'iSolnAll');
 
 % resets the data structs
-[~,iSolnAdd] = initDataStruct(handles,1);
-iSolnAll.isAdded(:) = false;
+if ischar(eventdata)
+    % resets the added struct and flushes all the added regions
+    [~,iSolnAdd] = initDataStruct(handles,1);
+    iSolnAll.isAdded(:) = false;
 
-% resets the selection to the all loaded listbox
-set(handles.listSolnAll,'value',1)
-listSolnAll_Callback(handles.listSolnAll, [], handles)
+    % resets the selection to the all loaded listbox
+    set(handles.listSolnAll,'value',1)
+    listSolnAll_Callback(handles.listSolnAll, [], handles)
+end
 
 % disables the up/down buttons
 setObjEnable(hObject,'off')
@@ -910,12 +966,9 @@ appOut = appOut(1:max(ind,nAppMx));
 setappdata(handles.figMultCombInfo,'appOut',appOut);
 set(hObject,'Data',appOut)
 
-% resets the table header 
-setTableHeader(hObject)
-
 % if the listbox is selected, then update the link table data
 indSel = get(handles.listSolnAdded,'value');
-if (~isempty(indSel))
+if ~isempty(indSel)
     updateLinkTable(handles,indSel)
     setAddList(handles)
 end
@@ -929,19 +982,15 @@ appOut = getappdata(handles.figMultCombInfo,'appOut');
 indSoln = get(handles.listSolnAdded,'value');
 
 % determines if the update is required
-if (isHG1)
-    isUpdate = ~isa(eventdata,'char') && isfield(eventdata,'Indices');
-else
-    isUpdate = ~isa(eventdata,'char') && ...
-                isa(eventdata,'matlab.ui.eventdata.CellEditData');
-end
+isUpdate = ~isa(eventdata,'char') && ...
+            isa(eventdata,'matlab.ui.eventdata.CellEditData');
 
 % retrieves the selected apparatus/solution indices
-if (isUpdate)
+if isUpdate
     % determines the selected index
     indApp = eventdata.Indices(1);
     indNw = find(cellfun(@(x)(strcmp(x,eventdata.EditData)),appOut));
-    if (isempty(indNw))
+    if isempty(indNw)
         % no selection, so set as 0
         iSolnAdd.indOut{indSoln}(indApp) = 0;
     else
@@ -1166,7 +1215,7 @@ else
     % determines the which apparatus have been set correctly and from this
     % sets the list string colours
     isSet = allNameSet(handles);
-    lCol = cellfun(@(x)(col(x+1)),num2cell(isSet),'un',0);
+    lCol = arrayfun(@(x)(col(x+1)),isSet,'un',0);
 end
 
 % sets the HTML colour string for the listbox
@@ -1227,7 +1276,7 @@ else
     
     % sets the cross-link field data
     fldName = [{' '};appOut(~cellfun(@isempty,appOut))]';
-    fldData = cellfun(@(x)(fldName{x+1}),num2cell(indOut),'un',0);
+    fldData = arrayfun(@(x)(fldName{x+1}),indOut,'un',0);
     
     % updates the table
     setObjEnable(handles.textAppLink,'on')
@@ -1380,7 +1429,7 @@ function updateSolnPlot(handles)
 global fColLo xLimTot yLimTot greyCol
 
 % sets the font size (based on the OS type)
-if (ismac)
+if ismac
     fSize = 11;
 else
     fSize = 9;
@@ -1405,8 +1454,8 @@ cla(hAxSoln)
 cla(hAxDN)
 
 % resets the figure position/dimensions based on the solution count
-if (iSolnAdd.nCount == 0)
-    % collapses the figure to remove the
+if iSolnAdd.nCount == 0
+    % case is there are no files so collapse the figure to original
     pPos1 = get(handles.panelSolnOuter,'Position');
     pPos2 = get(handles.panelImgAxis,'Position');
     
@@ -1454,8 +1503,7 @@ else
     TfnwS = vec2sec(Tfnw);
     [~,imx] = max(TfnwS);
     nDay = ceil(ceil(convertTime(TfnwS(imx),'sec','days')));
-    xtickLbl = cellfun(@(x)(sprintf('Day %i',x-1)),...
-                                num2cell(1:nDay),'un',0);
+    xtickLbl = arrayfun(@(x)(sprintf('Day %i',x-1)),1:nDay,'un',0);
     
     % sets the axis properties
     axis(hAxDN,'on'); hold(hAxDN,'on')
@@ -1777,25 +1825,7 @@ else
         return
     else
         % otherwise, determine if all the indices have been set
-        isSet = any(cellfun(@(x)(any(x == iSolnAdd.indOut{ind})),num2cell(1:sum(appSet))));
+        indS = 1:sum(appSet);
+        isSet = any(arrayfun(@(x)(any(x == iSolnAdd.indOut{ind})),indS));
     end
 end
-
-% --- reshapes the solution struct to include the indices, indApp --- %
-function snTot = resetAppIndices(snTot,appOut,indApp)
-
-% resets the x-location data 
-snTot.pMapPx.xMin = snTot.pMapPx.xMin(indApp);
-snTot.pMapPx.xMax = snTot.pMapPx.xMax(indApp);
-
-% resets the y-location data (if set)
-if (~isempty(snTot.Py))
-    snTot.Py = snTot.Py(indApp);
-    snTot.pMapPy.xMin = snTot.pMapPy.xMin(indApp);
-    snTot.pMapPy.xMax = snTot.pMapPy.xMax(indApp);
-end
-
-% resets the apparatus parameters
-snTot.appPara.ok = snTot.appPara.ok(indApp);
-snTot.appPara.Name = appOut(1:length(indApp));
-snTot.appPara.flyok = snTot.appPara.flyok(:,indApp);

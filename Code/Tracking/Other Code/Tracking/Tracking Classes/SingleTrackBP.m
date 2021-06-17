@@ -1445,7 +1445,13 @@ classdef SingleTrackBP < handle
                 % determines 
                 [iCol,~,iRow] = getRegionIndices(obj.iMov,j);
                 ii0 = (StatusNw{j} ~= 3) & (StatusPr{j} == 3);
-                ii0(~obj.iMov.isUse{iRow,iCol}) = false;                               
+                
+                if obj.iMov.is2D
+                    a = 1;
+                else
+                    nFly = obj.iMov.pInfo.nFly(iRow,iCol);
+                    ii0((nFly+1):end) = false;
+                end
                 
                 % determines the tubes which in the new video have been
                 % classified as feasible, but have been classified as 
@@ -1487,7 +1493,12 @@ classdef SingleTrackBP < handle
                 % previous video. in the new video, these objects are most 
                 % likely stationary (instead of rejected)
                 ii0 = (StatusNw{j} == 3) & (StatusPr{j} == 1);
-                ii0(~obj.iMov.isUse{iRow,iCol}) = false;
+                if obj.iMov.is2D
+                    a = 1;
+                else
+                    ii0((nFly+1):end) = false;
+                end
+                
                 ii = find(ii0);
                 for k = 1:length(ii)
                     % resets the tube status/rejection flags 

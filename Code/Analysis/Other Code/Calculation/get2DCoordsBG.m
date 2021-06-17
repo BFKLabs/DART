@@ -1,5 +1,77 @@
 % --- scales the position values back to pixel values for a given apparatus
-function [dPx,dPy,Rad,pC,indR,indC] = get2DCoordsBG(snTot,iApp,indFrm)
+function [dPx,dPy,Rad] = get2DCoordsBG(snTot,iApp,indFrm)
+
+% runs the function depending on the soluton file format
+if isfield(snTot,'cID')
+    % case is the new file format
+    [dPx,dPy,Rad] = get2DCoordsBGNew(snTot,iApp);
+else
+    % case is the old file format
+    [dPx,dPy,Rad] = get2DCoordsBGOld(snTot,iApp);
+end
+
+% reduces the arrays for the specified number of frames (if procided)
+if exist('indFrm','var')
+    ii = ~cellfun(@isempty,dPx);
+    dPx(ii) = cellfun(@(x)(x(indFrm,:)),dPx(ii),'un',0);
+    dPy(ii) = cellfun(@(x)(x(indFrm,:)),dPy(ii),'un',0);
+end
+
+% sets the cell arrays as numerical arrays (if only one sub-region)
+nApp = max(1,length(iApp));
+if nApp == 1
+    [dPx,dPy,Rad] = deal(dPx{iApp(1)},dPy{iApp(1)},Rad{iApp(1)});
+end
+
+% ---------------------------- %
+% --- NEW FUNCTION VERSION --- %
+% ---------------------------- %
+
+% --- runs the new version of the function
+function [dPx,dPy,Rad] = get2DCoordsBGNew(snTot,iApp)
+
+% field retrieval
+[cID,iMov] = deal(snTot.cID,snTot.iMov);
+[X0,Y0] = deal(iMov.autoP.X0,iMov.autoP.Y0);
+[sFac,hasApp,fok] = deal(snTot.sgP.sFac,~isempty(iApp),iMov.flyok);
+
+% memory allocation
+nApp = max(1,length(snTot.Px));
+[dPx,dPy,Rad] = deal(cell(nApp,1));
+
+% retrieves the x/y coordinates and other important quantities
+if hasApp  
+    [Px,Py] = deal(snTot.Px,snTot.Py);        
+else
+    [Px,Py,iApp] = deal(snTot.Px,snTot.Py,1);
+end
+
+% reduces down the x/y-coordinates
+i0 = find(~cellfun(@isempty,Px),1,'first');
+[szG,nFrm] = deal(size(X0),size(Px{i0},1)); 
+
+% calculates the relative x/y-coordinates
+for i = iApp(:)'
+    % retrieves the indices of the grid locations
+    indG = sub2ind(szG,cID{i}(fok{i},1),cID{i}(fok{i},2));
+    
+    % calculates the x/y coordinates (wrt the circle centres)
+    dPx{i} = Px{i}(:,fok{i})/sFac - repmat(arr2vec(X0(indG))',nFrm,1);
+    dPy{i} = Py{i}(:,fok{i})/sFac - repmat(arr2vec(Y0(indG))',nFrm,1);
+    Rad{i} = (iMov.autoP.R-1)*ones(sum(fok{i}),1);
+end
+
+% ---------------------------- %
+% --- OLD FUNCTION VERSION --- %
+% ---------------------------- %
+
+% --- runs the old version of the function
+function [dPx,dPy,Rad] = get2DCoordsBGOld(snTot,iApp)
+
+% memory allocation and parameters
+nApp = max(1,length(iApp));
+[sFac,hasApp] = deal(snTot.sgP.sFac,~isempty(iApp));
+[dPx,dPy,Rad,pC,indR,indC] = deal(cell(nApp,1));
 
 % sets the solution file type
 if ~isfield(snTot,'Type')
@@ -16,16 +88,11 @@ end
 snTot.iMov = resetBGImages(snTot.iMov);
 
 % retrieves the x/y coordinates and other important quantities
-[sFac,hasApp] = deal(snTot.sgP.sFac,~isempty(iApp));
-if (hasApp)    
+if hasApp    
     [Px,Py,iMov] = deal(snTot.Px(iApp),snTot.Py(iApp),snTot.iMov);        
 else
     [Px,Py,iMov,iApp] = deal(snTot.Px,snTot.Py,snTot.iMov,1);
 end
-
-% memory allocation and parameters
-nApp = length(iApp);
-[dPx,dPy,Rad,pC,indR,indC] = deal(cell(nApp,1));
 
 % determines the non-rejected fly tubes
 if size(Px{1},2) == size(iMov.flyok,1)
@@ -59,18 +126,14 @@ xEnd = cellfun(@(x)(x(1)+[0,x(3)]),iMov.pos(:),'un',0);
 switch Type
     case 0
         % sets the row index arrays
-        if (iscell(iMov.iR{1}))
+        if iscell(iMov.iR{1})
             iR = cell2cell(iMov.iR);       
         else
             iR = iMov.iR;    
         end    
 
         % for the old solution file version, offset the y-position
-        Y0 = Y0 - min(cellfun(@(x)(x(1)-1),iR)); 
-        
-    case 2
-        % case is version 2 algorithm tracking type
-        indReg = setRegionIndexMap(iMov,X0);        
+        Y0 = Y0 - min(cellfun(@(x)(x(1)-1),iR));            
 end
 
 % determines the indices of the circles wrt the regions
@@ -105,18 +168,6 @@ for i = 1:nApp
     Rad{i} = RadNw(indR{i});
 end
 
-%
-if nargin == 3
-    dPx = cellfun(@(x)(x(indFrm,:)),dPx,'un',0);
-    dPy = cellfun(@(x)(x(indFrm,:)),dPy,'un',0);
-end
-
-% sets the cell arrays as numerical arrays (if only one sub-region)
-if nApp == 1
-    [dPx,dPy,Rad] = deal(dPx{1},dPy{1},Rad{1});
-    [pC,indR,indC] = deal(pC{1},indR{1},indC{1});
-end
-
 % --- determines the likely sub-region indices based on the outline coords
 function indR = detLikelyRegionIndex(xMn,yMn,pCF)
 
@@ -126,39 +177,4 @@ if isempty(indR)
     % if there is no match, then determine the sub-region which is closest
     pCFmn = cell2mat(cellfun(@(x)(mean(x,1)),pCF,'un',0));
     indR = argMin(pdist2(pCFmn,[xMn,yMn]));
-end
-
-% --- sets up the region index map array 
-function indR = setRegionIndexMap(iMov,X0)
-
-% retrieves the circle parameters
-indR = NaN(size(X0));
-
-% sets the use flags
-nTubeR = getSRCount(iMov);
-if isfield('iMov','isUse')
-    isUse = iMov.isUse;
-else
-    isUse = arrayfun(@(n)(true(n,1)),nTubeR,'un',0);
-end
-
-% determines the max sub-region count over all the rows
-nSRMx = max(nTubeR,[],2);
-
-% sets the region indices
-[nR,nC] = size(isUse);
-for iR = 1:nR
-    for iC = 1:nC
-        % sets the over all global index and the row offset
-        iG = (iR-1)*nC + iC;
-        if iR == 1
-            iOfsR = 0;
-        else
-            iOfsR = sum(nSRMx(1:(iR-1)));
-        end
-        
-        % updates the row indices
-        iRnw = iOfsR + (1:length(isUse{iR,iC}));
-        indR(iRnw,iC) = iG*isUse{iR,iC};
-    end
 end

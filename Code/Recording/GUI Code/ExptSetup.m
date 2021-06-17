@@ -6939,13 +6939,6 @@ if nargin == 1
     chName = chName(end:-1:1);
 end
 
-% --- retrieves the java object handle from a tab group
-function jTab = getTabGroupJavaObj(hTabGrp)
-
-%
-jTab0 = findjobj(hTabGrp);
-jTab = jTab0(arrayfun(@(x)(strContains(class(x),'MJTabbedPane')),jTab0));
-
 % --- retrieves the time duration strings (up to a value of vMax)
 function dStr = getTimeDurationString(vMax,v0)
 

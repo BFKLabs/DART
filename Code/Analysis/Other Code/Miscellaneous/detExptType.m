@@ -48,7 +48,7 @@ else
            all(cellfun(@isempty,field2cell(snTot,'Py')));
 end
       
-if (is1D)
+if is1D
     % if 1D, all 2D experiments are removed
     isFeas(fType(:,4) == 3) = false;    
 else

@@ -1,12 +1,13 @@
 % --- 
-function plotD = setRawDataValues(plotD,snTot,Y,indD,pStr,iExpt,iApp,Type,mlt)
+function plotD = setRawDataValues...
+                            (plotD,snTot,Y,indD,pStr,iExpt,iApp,Type,mlt)
 
 % initialisations
-if (~exist('mlt','var')); mlt = 1; end
-fok = snTot.appPara.flyok{iApp};
+if ~exist('mlt','var'); mlt = 1; end
+fok = snTot.iMov.flyok{iApp};
 
 % sets up the raw data array
-switch (Type)
+switch Type
     case (1) % case is pre-day separated data
         Yr = setupRawDataArray(Y,indD);
     case (2) % case is post-day separated data
@@ -21,13 +22,14 @@ switch (Type)
         isE = cellfun(@isempty,A);
         
         A(isE) = cellfun(@(x)(NaN(1,size(x,2))),A(isE),'un',0);
-        Yr = cell2cell(cellfun(@(z)(cellfun(@(y)(combineNumericCells(y)),...
-                num2cell(cellfun(@(x)(x(:,z)),A,'un',0),2),'un',0)),xi,'un',0),0);
+        Yr = cell2cell(cellfun(@(z)(cellfun(@(y)...
+                    (combineNumericCells(y)),num2cell(cellfun...
+                    (@(x)(x(:,z)),A,'un',0),2),'un',0)),xi,'un',0),0);
 end
 
 % sets the values into the raw data array
 Yr = cellfun(@(x)(mlt*x),Yr,'un',0);
-if (size(eval(sprintf('plotD.%s',pStr)),3) > 1)
+if size(eval(sprintf('plotD.%s',pStr)),3) > 1
     [xiR,xiC] = deal(1:size(Yr,1),1:size(Yr,2));
     eval(sprintf('plotD.%s(xiR,xiC,iExpt) = Yr;',pStr));
 else

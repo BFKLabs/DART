@@ -58,6 +58,7 @@ set(handles.editBinaryDil,'string',num2str(nDil))
 
 % updates the main tracking GUI axes
 updateMainAxes(handles)
+uistack(hGUI,'top');
 centreFigPosition(hObject);
 
 % removes the close request function
@@ -170,28 +171,42 @@ BC = expandBinaryMask(handles);
 hOut = findall(hAx,'tag','hOuter');
 createMark = isempty(hOut);
 
+% sets the group colour array (based on the format)
+if isfield(iMov,'pInfo')
+    tCol = getAllGroupColours(length(iMov.pInfo.gName));
+else
+    tCol = getAllGroupColours(1);
+end
+
 % sets the hold on the main GUI image axes 
 hold(hAx,'on');
 
 % loops through all the sub-regions plotting the circles   
-for i = 1:iMov.nRow*iMov.nCol
+for iCol = 1:iMov.nCol
+    % sets the row indices
+    if isfield(iMov,'pInfo')
+        iGrp = iMov.pInfo.iGrp(:,iCol);
+        iRow = find(iGrp' > 0);
+    else
+        iRow = 1:iMov.nTubeR(iCol);
+        iGrp = ones(length(iRow),1);
+    end    
+    
     % retrieves the global row/column index
-    [iCol,iFlyR0,iRow] = getRegionIndices(iMov,i);
-    iFlyR = iFlyR0(iMov.isUse{iRow,iCol});
-
-    for j = iFlyR(:)'
+    for j = iRow
         % calculates the new coordinates and plots the circle
         [xP,yP] = deal(x0(j,iCol)+xC,y0(j,iCol)+yC);
         
         % creates/updates the marker coordinates
         if createMark
             % outline marker needs to be created
-            fill(xP,yP,'r','tag','hOuter','UserData',[j iCol],...
+            pCol = tCol(iGrp(j)+1,:);
+            fill(xP,yP,pCol,'tag','hOuter','UserData',[iCol,j],...
                    'facealpha',0.25,'LineWidth',1.5,'Parent',hAx) 
                
         else
             % otherwise, coordinates of outline
-            hP = findobj(hOut,'UserData',[j iCol]);
+            hP = findobj(hOut,'UserData',[iCol,j]);
             set(hP,'xData',xP,'yData',yP)
         end               
     end

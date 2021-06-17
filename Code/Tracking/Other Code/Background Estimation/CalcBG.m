@@ -134,6 +134,12 @@ classdef CalcBG < handle
             % initialisations
             hgui = obj.hGUI;
             
+            % removes the menu check
+            hh = guidata(obj.hFig);
+            if strcmp(get(hh.menuFlyAccRej,'Checked'),'on')            
+                obj.menuFlyAccRej(hh.menuFlyAccRej, [])
+            end
+            
             % makes the main tracking gui invisible
             setObjVisibility(obj.hFig,'off'); pause(0.05);
             
@@ -315,6 +321,11 @@ classdef CalcBG < handle
                         obj.uList = [obj.uList;uListNw];
                         obj.updateManualTrackTable();
                         obj.addManualMarker(uListNw);
+                        
+                        % enables the manual correction control buttons
+                        setObjEnable(obj.hGUI.buttonAddManual,1)
+                        setObjEnable(obj.hGUI.buttonRemoveManual,0)
+                        setObjEnable(obj.hGUI.buttonUpdateManual,1)
                         
                         % disables everything else
                         obj.manualButtonClick(hObject, 'alt') 
@@ -554,7 +565,7 @@ classdef CalcBG < handle
                 [sImgS0,Img0] = deal(cell(nPhase,1));                
                 
                 % retrieves the first frame for each phase
-                for i = 1:nPhase    
+                for i = 1:nPhase
                     if obj.isCalib
                         Img0{i} = double(get(findobj...
                                 (obj.hGUI.imgAxes,'type','image'),'CData'));
@@ -889,7 +900,7 @@ classdef CalcBG < handle
                     fPosNw = fpos{iApp,iFrm};
                     [iCol,~,iRow] = getRegionIndices(obj.iMov,iApp);
                     set(obj.hMark{iApp}{1},'xdata',fPosNw(:,1),...
-                                        'ydata',fPosNw(:,2))                                                                                 
+                                           'ydata',fPosNw(:,2))                                                                                 
 
                     % updates the other properties                        
                     if imov.flyok(iRow,iCol)
@@ -1121,7 +1132,7 @@ classdef CalcBG < handle
                 set(hObject,'checked','off')
 
                 % removes the information GUI         
-                try; delete(obj.hInfo); end
+                try; delete(obj.hInfo.hFig); end
                 obj.hInfo = [];
                 
             else
@@ -1129,7 +1140,7 @@ classdef CalcBG < handle
                 set(hObject,'checked','on')        
 
                 % updates the data structs   
-                obj.hInfo = FlyCombCondInfo(obj);  
+                obj.hInfo = FlyInfoGUI(obj);  
             end
         
         end
@@ -1773,7 +1784,6 @@ classdef CalcBG < handle
             obj.updateManualTrackTable();
 
             % resets the table header size
-            setTableHeader(hgui.tableFlyUpdate)
             setObjEnable(hObject,'off')
         
         end

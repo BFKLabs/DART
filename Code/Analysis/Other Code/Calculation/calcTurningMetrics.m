@@ -26,7 +26,7 @@ end
 % parameters and initialisations
 [dpMin,d2r,pW] = deal(10,pi/180,0.9);
 [nApp,T] = deal(length(snTot.Px),cell2mat(snTot.T));
-[fok,sFac] = deal(snTot.appPara.flyok,snTot.sgP.sFac);
+[fok,sFac] = deal(snTot.iMov.flyok,snTot.sgP.sFac);
     
 % sets the relevant time points and apparatus indices for this expt
 if (cP.useAll)
@@ -63,7 +63,7 @@ for i = 1:nApp
         return
     end       
     
-    if snTot.appPara.ok(i)
+    if snTot.iMov.ok(i)
         % updates the waitbar figure
         wStrNw = 'Calculating Relative 2D Coordinates';
         h.Update(2+wOfs,wStrNw,1/(length(fok{i})+1));

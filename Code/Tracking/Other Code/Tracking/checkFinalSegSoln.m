@@ -346,30 +346,20 @@ while cont
             end
         end              
         
-        % 
-        iPhase = find(iMov.iPhase(:,1)<=iFrm,1,'last');  
-        if any(iMov.vPhase(iPhase) == [1,2])        
-            % retrieves the global images for the surrounding frames   
-            jFrm = iFrm + [-1,0];
+        % sets the surrounding frames (and the phase indices)
+        jFrm = iFrm + [-1,0];
+        iPhase = arrayfun(@(x)(find(iMov.iPhase(:,1)<=x,1,'last')),jFrm);
+         
+        if all(iMov.vPhase(iPhase) < 3)        
+            % retrieves the global images for the surrounding frames               
             Img = arrayfun(@(x)(getDispImage...
                                 (iData,iMov,x,0,handles)),jFrm,'un',0);            
             ImgL = cellfun(@(x)(double(x(iRL,iC))),Img,'un',0);
 
-            % sets the    
-            switch iMov.vPhase(iPhase)
-                case 1
-                    % calculates the residual image
-                    IbgL = iMov.Ibg{iPhase}{iApp}(iRT,:);   
-                    ImgR0 = cellfun(@(x)(imfilter(IbgL-x,hG)),ImgL,'un',0);
-                    pR = iMov.pBG{iApp}(iTube);
-
-                case 2
-                    % uses the normalised images
-                    pR = NaN;
-                    ImgR0 = cellfun(@(x)(imfilter...
-                                (1-normImg(x),hG)),ImgL,'un',0);
-            end
-
+            % sets up the residual image stack  
+            [ImgR0,pR] = setupResidualImages...
+                                        (iMov,ImgL,iPhase,iApp,iTube,hG);
+                                    
             % determines if the next frame needs to be fixed         
             fixNext = compFrameRes(ImgR0,[X(jFrm),Y(jFrm)],pR);
             [ImgR,iFrmU] = deal(ImgR0{1+fixNext},jFrm(1+fixNext));
@@ -405,17 +395,46 @@ h.Update(wOfs+3,sprintf('%s (100%% Complete)',wStr),1);
 pData.fPosL{iApp}{iTube} = [X,Y];
 pData.fPos{iApp}{iTube} = pData.fPosL{iApp}{iTube} + pOfs;
 
+% --- sets up the residual image stack
+function [ImgR0,pR] = setupResidualImages(iMov,ImgL,iPhase,iApp,iTube,hG)
+
+% sets the row indices
+iRT = iMov.iRT{iApp}{iTube};
+
+% memory allocation
+switch max(iMov.vPhase(iPhase))
+    case 1
+        % case is a low variance phase
+        pR = iMov.pBG{iApp}(iTube);
+        
+        IbgL = iMov.Ibg{iPhase(1)}{iApp}(iRT,:);  
+        ImgR0 = cellfun(@(x)(imfilter(IbgL-x,hG)),ImgL,'un',0);
+
+    case 2
+        % case is a high variance phase
+        pR = NaN;
+        
+        h0 = ceil(getMedBLSize(iMov)*2);
+        ImgR0 = cellfun(@(x)...
+                (max(0,removeImageMedianBL(x,false,true,h0))),ImgL,'un',0);                              
+end
+
 % --- extrapolates the signal
 function xExt = extrapSignalRev(x,iFrm)
 
 % sets the interpolation array
-nP = min(5,length(x)-(iFrm+1));
+nP = max(1,min(5,length(x)-(iFrm+1)));
 xP = flip(x((iFrm+1):(iFrm+nP)));
 
 % calculates the extrapolated coordinates
-if range(xP) == 0
+if length(xP) == 1
+    % case is there is only one value
+    xExt = xP(1);
+    
+elseif range(xP) == 0
     % if the range of the array is zero
     xExt = xP(1);
+    
 else
     % sets up the filter
     a = arburg(xP,length(xP)-1);    
@@ -442,7 +461,7 @@ ImgRP = max(0,cellfun(@(I,x)(I(x)-median(I(:))),ImgR(:),num2cell(iP(:))));
 %
 if isnan(pR)
     %
-    fixNext = ImgRP(1)/ImgRP(2) > prTol;
+    fixNext = argMax(ImgRP) == 1;
 else
     %
     isOK = ImgRP > pR;

@@ -128,8 +128,6 @@ classdef VideoPhase < handle
 
             % updates the check flags for the new frame indices
             obj.isCheck(iFrm) = true;
-
-            %
             while 1
                 % reads in the new frame (the mid-point between the limits)
                 iFrmNw = roundP(mean(iFrm));
@@ -185,7 +183,6 @@ classdef VideoPhase < handle
             nGrp = size(iGrp,1);
             vPhaseF = zeros(nGrp,1);
 
-            %
             for i = 1:nGrp
                 % retrieves the non-sparse frames for the current group
                 iGrpNw = iGrp(i,1):iGrp(i,2);
@@ -193,7 +190,7 @@ classdef VideoPhase < handle
 
                 % determines if the frame range is too low for tracking                
                 ZrngNw = full(obj.Zrng(:,iFrmG));
-                if any(ZrngNw(:) < pTolRng)
+                if all(ZrngNw(:) < pTolRng)
                     % pixel range is too low, so set as untrackable
                     vPhaseF(i) = 3;
                 else

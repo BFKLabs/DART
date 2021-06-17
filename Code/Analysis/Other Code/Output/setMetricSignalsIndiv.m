@@ -3,7 +3,11 @@ function iData = setMetricSignalsIndiv(snTot,iData,plotD,pType)
 
 % sets the number of experiments
 [hasTime,nExp] = deal(true,iData.sepExp*(length(snTot)-1) + 1);
-fok = cellfun(@(x)(x.appPara.flyok),num2cell(snTot),'un',0);
+if ~iscell(snTot(1).iMov.flyok)
+    fok = arrayfun(@(x)(groupAcceptFlags(x)),snTot,'un',0);
+else
+    fok = arrayfun(@(x)(x.iMov.flyok),snTot,'un',0);
+end
 
 % initialisations
 [yVar,xVar,Y] = deal(iData.yVar(pType),iData.xVar,iData.Y{6});

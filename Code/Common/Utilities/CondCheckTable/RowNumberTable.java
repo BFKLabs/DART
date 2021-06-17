@@ -15,9 +15,9 @@ public class RowNumberTable extends JTable
 {
 	private JTable main;
 
-	public RowNumberTable(JTable table)
+	public RowNumberTable(JTable table, boolean is2D)
 	{
-		main = table;
+		main = table;        
 		main.addPropertyChangeListener( this );
 		main.getModel().addTableModelListener( this );
                 
@@ -25,11 +25,10 @@ public class RowNumberTable extends JTable
 		setAutoCreateColumnsFromModel( false );
 		setSelectionModel( main.getSelectionModel() );
 
-
 		TableColumn column = new TableColumn();
 		column.setHeaderValue(" ");
 		addColumn( column );
-		column.setCellRenderer(new RowNumberRenderer());
+		column.setCellRenderer(new RowNumberRenderer(is2D));
 
 		getColumnModel().getColumn(0).setPreferredWidth(50);
 		setPreferredScrollableViewportSize(getPreferredSize());
@@ -148,8 +147,16 @@ public class RowNumberTable extends JTable
 	 */
 	private static class RowNumberRenderer extends DefaultTableCellRenderer
 	{
-		public RowNumberRenderer()
+        private String typeStr;
+        
+		public RowNumberRenderer(boolean is2D)
 		{            
+            if (is2D) {
+                typeStr = "Row";
+            } else {
+                typeStr = "Fly";
+            }  
+            
 			setHorizontalAlignment(JLabel.CENTER);
 		}
 
@@ -166,10 +173,10 @@ public class RowNumberTable extends JTable
 					setBackground(header.getBackground());
 					setFont(header.getFont());
 				}
-			}
-
+			}          
+            
 			setFont(new Font("Segoe UI", Font.PLAIN, 12));
-			setText((value == null) ? "" : "Fly #" + value.toString());
+			setText((value == null) ? "" : typeStr + " #" + value.toString());
 
 			return this;
 		}

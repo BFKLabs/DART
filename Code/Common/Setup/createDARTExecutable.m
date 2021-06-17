@@ -112,10 +112,8 @@ warnStr = '-w disable:all_warnings';
 % retrieves the names of all the folders within the Code directory
 codeDir = findDirAll(fullfile(progDir,'Code'));
 
-% removes all toolbox strings and R2014a video drivers folder
-winVidDir = fullfile('WinVideo','R2014a');
-isOK = cellfun(@(x)(~strContains(x,winVidDir)),codeDir) & ...
-       cellfun(@(x)(~strContains(x,'\Git')),codeDir) & ...
+% removes all git and external app folders from the executable
+isOK = cellfun(@(x)(~strContains(x,'\Git')),codeDir) & ...
        cellfun(@(x)(~strContains(x,'\External Apps')),codeDir);
 
 % removes the non-valid directories
