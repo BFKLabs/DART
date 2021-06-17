@@ -57,7 +57,7 @@ classdef EmptyCheck < handle
             cEdit = [false(1,3),true];
             cHdr = {'Region','Sub-Region','Quality (%)','Empty?'};
             Qscore = obj.Qval(obj.isAnom);
-            tData0 = num2cell([obj.iApp(:),obj.iTube(:),Qscore]);
+            tData0 = num2cell([obj.iApp(:),obj.iTube(:),Qscore(:)]);
             tData = [tData0,num2cell(obj.isEmpty)];
             cForm = {'numeric','numeric','numeric','logical'};
             

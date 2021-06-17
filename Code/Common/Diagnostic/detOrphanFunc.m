@@ -249,7 +249,7 @@ function [mNameG,ind] = alphaGroupStrings(mName,nMax)
 
 % sets the lengths of the file names
 nLen = cellfun(@length,mName);
-if (nargin == 1); 
+if (nargin == 1)
     nMax = max(nLen); 
 else
     nLen = min(nMax+1,nLen);

@@ -51,20 +51,21 @@ for i = 1:nSoln
         % if the user cancelled, then exit the function
         cellfun(@delete,A)
         return
-    else        
-        % initialisations
-        nFly = cellfun(@(x)(size(x,2)),snTot{i}.Px);        
-        if ~iscell(snTot{i}.appPara.flyok)
-            snTot{i}.appPara.flyok = num2cell(snTot{i}.appPara.flyok,1);
-        end
-        
-        % check to see if the accept/reject flags have been set correctly
-        isOk = cellfun(@(x)(sum(x)),snTot{i}.appPara.flyok);
-        nOk = cellfun(@(x)(length(x)),snTot{i}.appPara.flyok);        
-        if ~isequal(nOk,isOk) && isequal(isOk,nFly)
-            % if not, then reset them
-            snTot{i}.appPara.flyok = ...
-                            cellfun(@(x)(true(x,1)),num2cell(isOk),'un',0);
+    else
+        % removes any extraneous/obsolete fields
+        rmvFld = {'appPara'};
+        for j = 1:length(rmvFld)
+            if isfield(snTot{i},rmvFld{j})
+                % retrieves any important field information
+                switch rmvFld{j}
+                    case 'appPara'
+                        % case is the apparatus parameters
+                        snTot{i}.iMov.ok = snTot{i}.appPara.ok;
+                end
+
+                % removes the field
+                snTot{i} = rmfield(snTot{i},rmvFld{j});
+            end
         end
     end
 end
@@ -85,11 +86,11 @@ if range(nStr) ~= 0
     % for each of these solution files add in the missing fields
     for i = find(i0)
         for j = find(~cellfun(@(x)(any(strcmp(x,fStr{i}))),fStrT(:)'))
-            switch (fStrT{j})
+            switch fStrT{j}
                 % updates the fields based on the field type
                 case ('Type') % case is the type field
                     ii = cellfun(@(x)(any(strcmp(x,'Type'))),fStr);
-                    if (~any(ii))
+                    if ~any(ii)
                         % if there are no other matches, then set the field
                         % type to 0 (flags an older solution file type)
                         snTot{i}.Type = 0;
@@ -112,4 +113,3 @@ end
 snTot = cell2mat(snTot);
 h.Update(1,'Multi-Experimental Solution File Load Complete!',1);
 h.closeProgBar();
-

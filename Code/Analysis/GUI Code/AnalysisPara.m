@@ -1289,15 +1289,16 @@ for j = 1:nTab
 
                     % if so, create the check box and set the offset value                
                     [hObj{3},cOfs] = deal(cell(2,1),hOfs);                    
-                    lStr = snTotL.appPara.Name;
-                    if (pData.useAll)
+                    lStr = snTotL.iMov.pInfo.gName;
+                    if pData.useAll
                         lStr = [lStr;{'All Genotypes'}];
                     end
 
                     % creates the new objects
                     hObj{3}{2}{1} = createNewObj(hPanel,pOfs,'Text',...
                                     'Currently Viewing');                   
-                    hObj{3}{2}{2} = createNewObj(hPanel,pOfs,'PopupMenu',lStr,1);
+                    hObj{3}{2}{2} = createNewObj(hPanel,pOfs,...
+                                    'PopupMenu',lStr,1);
                     
                     set(hObj{3}{2}{1},'tag','hTextS');
                     set(hObj{3}{2}{2},'callback',cbFcn,'UserData',i,...
@@ -1318,8 +1319,9 @@ for j = 1:nTab
                 end               
 
                 % retrieves the matching parameter value      
-                if (~isempty(pData.sP(3).Para))
-                    ii = cellfun(@(x)(strcmp(x,p(i).Para)),field2cell(pData.cP,'Para'));
+                if ~isempty(pData.sP(3).Para)
+                    pPara = field2cell(pData.cP,'Para');
+                    ii = cellfun(@(x)(strcmp(x,p(i).Para)),pPara);
                     if (any(ii))                
                         cP = pData.cP(ii);                
                         if (strcmp(cP.Type,'List'))
@@ -1331,15 +1333,18 @@ for j = 1:nTab
 
                     % sets the column 
                     switch (p(i).Para)
-                        case ('nBin') % case is the sleep intensity metrics
+                        case ('nBin') 
+                            % case is the sleep intensity metrics
                             nRow = 60/nNew;          
                             lStr = setTimeBinStrings(nNew,nRow,1);                       
-                        case ('nGrp') % case is the time-grouped stimuli response
-                            [lStr,nRow] = deal(setTimeGroupStrings(nNew,tDay),nNew);                        
+                        case ('nGrp') 
+                            % case is the time-grouped stimuli response
+                            nRow = nNew;
+                            lStr = setTimeGroupStrings(nNew,tDay);                                                    
                         case {'appName','appNameS'}
-                            lStr = snTotT(1).appPara.Name;
+                            lStr = snTotT(1).iMov.pInfo.gName;
                             if (pInd ~= 3)                            
-                                lStr = lStr(snTotT(eInd).appPara.ok);
+                                lStr = lStr(snTotT(eInd).iMov.ok);
                             end
                             nRow = length(lStr);
                     end        

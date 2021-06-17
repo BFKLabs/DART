@@ -58,7 +58,12 @@ classdef SingleTrack < Track
                         sInd = obj.iMov.vPhase(:);
                     end
                                         
-            end                  
+            end     
+            
+            %
+            if isfield(obj.iMov,'pInfo')
+                obj.iMov.flyok(obj.iMov.pInfo.iGrp == 0) = false;
+            end
             
             % memory allocation            
             obj.fObj = cell(length(sInd),1);

@@ -409,13 +409,18 @@ pData.fPos{iApp}{iTube} = pData.fPosL{iApp}{iTube} + pOfs;
 function xExt = extrapSignalRev(x,iFrm)
 
 % sets the interpolation array
-nP = min(5,length(x)-(iFrm+1));
+nP = max(1,min(5,length(x)-(iFrm+1)));
 xP = flip(x((iFrm+1):(iFrm+nP)));
 
 % calculates the extrapolated coordinates
-if range(xP) == 0
+if length(xP) == 1
+    % case is there is only one value
+    xExt = xP(1);
+    
+elseif range(xP) == 0
     % if the range of the array is zero
     xExt = xP(1);
+    
 else
     % sets up the filter
     a = arburg(xP,length(xP)-1);    

@@ -2,23 +2,25 @@
 %     solution file, fName --- %
 function ok = saveCombSolnFile(dDir,fName,snTot,oPara,h,varargin)
 
+% initialisations
+[nApp,calcPhi] = deal(length(snTot.Px),isfield(snTot,'Phi'));
+
 % sets the output parameter struct (if not provided)
-if (isempty(oPara))
+if isempty(oPara)
     oPara = struct('outY',~isempty(snTot.Py));
 end
 
 % removes any previous files
 a = [dir(fullfile(dDir,'*.mj2'));dir(fullfile(dDir,'*.mat'))];
-if (~isempty(a))
+if ~isempty(a)
     aa = cellfun(@(x)(fullfile(dDir,x)),field2cell(a,'name'),'un',0);
     cellfun(@delete,aa)
 end
 
 % determines if there are any quotation marks in the file name. if so, then
 % add in an extra quotation mark for each instance
-[nApp,calcPhi] = deal(length(snTot.appPara.ok),isfield(snTot,'Phi'));
 iNw = regexp(fName,[''''],'once');
-if (~isempty(iNw))
+if ~isempty(iNw)
     for i = length(iNw):-1:1
         fName = [fName(1:iNw(i)),char(39),fName((iNw(i)+1):end)];
     end
@@ -26,7 +28,7 @@ end
 
 % sets the field names
 isOut = ~cellfun(@isempty,snTot.Px);
-B = cellfun(@(x)(sprintf('Px%i.mj2',x)),num2cell(1:nApp),'un',0);
+B = arrayfun(@(x)(sprintf('Px%i.mj2',x)),1:nApp,'un',0);
 [A,tmpFile] = deal(['Data.mat',B],fullfile(dDir,'Temp.tar'));
 tarFiles = cellfun(@(x)(fullfile(dDir,x)),A,'un',0);
 pW = (length(fieldnames(snTot))-1) + (oPara.outY + calcPhi);
@@ -92,22 +94,22 @@ if calcPhi
     % --- OBJECT SIZE OUTPUT --- %
     % -------------------------- %    
 
-    if hasAxR
-        % updates the waitbar figure
-        h.Update(1+wOfs,'Creating Object Aspect Ratio Movie...',3/pW);
-
-        % sets the new tar files
-        D = cellfun(@(x)(sprintf('Pa%i.mj2',x)),num2cell(1:nApp),'un',0);
-        tarFilesN = cellfun(@(x)(fullfile(dDir,x)),D,'un',0);        
-        tarFiles = [tarFiles,tarFilesN];   
-    
-        % output the y-position videos. exit the function if cancelled    
-        [snTot.pMapAxR,ok] = createPosMovie(snTot.AxR,tarFilesN,0,h);
-        if ~ok; return; end  
-        
-        % removes the fields from the solution struct
-        snTot = rmfield(snTot,'AxR');            
-    end    
+%     if hasAxR
+%         % updates the waitbar figure
+%         h.Update(1+wOfs,'Creating Object Aspect Ratio Movie...',3/pW);
+% 
+%         % sets the new tar files
+%         D = arrayfun(@(x)(sprintf('Pa%i.mj2',x)),1:nApp,'un',0);
+%         tarFilesN = cellfun(@(x)(fullfile(dDir,x)),D,'un',0);        
+%         tarFiles = [tarFiles,tarFilesN];   
+%     
+%         % output the y-position videos. exit the function if cancelled    
+%         [snTot.pMapAxR,ok] = createPosMovie(snTot.AxR,tarFilesN,0,h);
+%         if ~ok; return; end  
+%         
+%         % removes the fields from the solution struct
+%         snTot = rmfield(snTot,'AxR');            
+%     end    
 else
     % removes the mapping field
     if isfield(snTot,'pMapPhi')

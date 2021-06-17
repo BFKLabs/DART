@@ -160,10 +160,11 @@ switch get(hFig,'tag')
             resetObjPos(hPI,'Height',pPosO(4)-(yPosI-dY))
             
         else
-            % reshapes the GUI to hide the missing panel    
-            resetObjPos(hPI,'Height',pPosO(4))        
+            % reshapes the GUI to hide the missing panel
             resetObjPos(hPI,'Bottom',dY)
+            resetObjPos(hPI,'Height',pPosO(4))                    
         end
+                     
 end
 
 % --- sorts the channel names (dependent on device type)

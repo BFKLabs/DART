@@ -24,8 +24,8 @@ end
 function FlyAnalysis_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % global variables
-global mainProgDir isDocked initDock regSz updateFlag canSelect
-[isDocked,initDock,canSelect] = deal(true);
+global mainProgDir isDocked initDock regSz updateFlag canSelect isAnalysis
+[isDocked,initDock,canSelect,isAnalysis] = deal(true);
 updateFlag = 2; pause(0.1); 
 
 % Choose default command line output for FlyAnalysis
@@ -192,9 +192,9 @@ else
     tempSolnDataIO(handles,'remove')     
     
     % initialises the apparatus parameter struct
-    snTot.appPara = initAppStruct(snTot,iMov);
+%     snTot.appPara = initAppStruct(snTot,iMov);
     sName = getFinalDirString(fDir);
-    if (~iscell(sName)); sName = {sName}; end
+    if ~iscell(sName); sName = {sName}; end
     
     % sets the solution file struct into the GUI
     snTot = reduceCombSolnFiles(snTot);
@@ -2214,35 +2214,6 @@ sNameTT = getToolTipStrings(handles,ind);
 set(handles.textSolnDirL,'string',' File: ')
 set(handles.textSolnDir,'string',sName,'ToolTipString',sNameTT)
 
-% --- initialises the apparatus data 
-function appPara = initAppStruct(snTot,iMov)
-
-% determines the number of apparatus
-appPara = struct('ok',[],'Name',[],'flyok',[]);
-
-% if the data has been read from the combined solution file, then
-% set the dimensions on the cell dimensions
-nApp = length(snTot.Px);
-nFly = max(cellfun(@(x)(size(x,2)),snTot.Px));        
-
-% sets the data struct fields
-appPara.ok = true(nApp,1);
-appPara.Name = cellfun(@(x)(sprintf('Region #%i',x)),...
-                        num2cell(1:nApp)','un',0);
-
-% sets the individual fly feasibility                    
-if (isempty(iMov))           
-    if (isempty(snTot))
-        appPara.flyok = true(nFly,nApp);                                    
-    elseif (isfield(snTot.appPara,'flyok'))
-        appPara.flyok = snTot.appPara.flyok;
-    else
-        appPara.flyok = true(nFly,nApp);                    
-    end
-else
-    appPara.flyok = iMov.flyok;
-end
-
 % --- resets the GUI objects with the new solution file struct, snTot 
 function resetGUIObjects(handles,varargin)
 
@@ -2251,7 +2222,7 @@ global updateFlag
 updateFlag = 0;
 
 % retrieves the solution struct and solution directory/file names
-if (nargin == 1)
+if nargin == 1
     snTot = getappdata(handles.figFlyAnalysis,'snTot');    
 else
     snTot = varargin{1};
@@ -2307,7 +2278,7 @@ resetExptListStrings(handles,snTot)
 function resetExptListStrings(handles,snTot)
 
 % retrieves the solution struct (if not provided)
-if (nargin == 1)
+if nargin == 1
     snTot = getappdata(handles.figFlyAnalysis,'snTot');
 end
 
@@ -2340,16 +2311,15 @@ else
     setObjVisibility(handles.toggleExptSel,'off'); 
     pause(0.05);        
     
-    % determines if the solution file is for a multi-experiment solution file
-    isMulti = length(snTot) > 1;
-    if (isMulti)
+    % determines if the solution file is for a multi-expt solution file
+    if length(snTot) > 1
         % sets the table strings and makes the popup menu active
         set(setObjEnable(hPopup,'on'),'string',sName)
         setSolnInfo(handles,'Experiment')
     else
         % sets the table strings but makes the popup menu inactive
         set(setObjEnable(hPopup,'inactive'),'string',sName,'value',1)
-        if (~iscell(sName0)); sName0 = {sName0}; end
+        if ~iscell(sName0); sName0 = {sName0}; end
         setSolnInfo(handles,'Experiment',sName0{eInd},snTot(eInd)) 
     end
 end
@@ -2365,7 +2335,7 @@ hFig = handles.figFlyAnalysis;
 [eInd,~,pInd] = getSelectedIndices(handles);
 
 % enables the experiment information panel
-if (nargin == 1); snTot = getappdata(hFig,'snTot'); end
+if nargin == 1; snTot = getappdata(hFig,'snTot'); end
 
 % sets the fly/sub-region count
 if isfield(snTot(eInd),'iMov')

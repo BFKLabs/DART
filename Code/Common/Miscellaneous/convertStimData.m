@@ -103,9 +103,14 @@ for iCh = 1:nCh
             
         else
             sPara.sAmp = 100*iParaNw.pAmp(1);
-            sPara.tDurOn = iParaNw.pDur(1);
-            sPara.tDurOff = iParaNw.pDelay(1);
-            sPara.nCount = iParaNw.nCount;            
+            sPara.tDurOn = iParaNw.pDur(1);            
+            sPara.nCount = iParaNw.nCount;   
+            
+            if sPara.nCount == 1
+                sPara.tDurOff = 0;
+            else
+                sPara.tDurOff = iParaNw.pDelay(1);
+            end
         end
 
         % sets the information for the current block
@@ -150,10 +155,16 @@ for iBlk = 1:nBlk
         % sets the time offset of the current block    
         t0(iBlk) = t0Nw + iParaNw.iDelay.pVal;
 
-        % calculates the duration of the blocks
+        % calculates the duration of the blocks                
         tDurOn = iParaNw.pDur.pVal;
-        tDurOff = iParaNw.pDelay.pVal;
         nCount = iParaNw.pCount.pVal;
+        
+        % sets the off signal duration
+        if nCount == 1
+            tDurOff = 0;
+        else
+            tDurOff = iParaNw.pDelay.pVal;
+        end
         
     else
         % sets the time offset of the current block    
@@ -161,8 +172,14 @@ for iBlk = 1:nBlk
         
         % calculates the duration of the blocks
         tDurOn = iParaNw.pDur(1);
-        tDurOff = iParaNw.pDelay(1);
-        nCount = iParaNw.nCount;        
+        nCount = iParaNw.nCount;       
+        
+        % sets the off signal duration
+        if nCount == 1
+            tDurOff = 0;
+        else
+            tDurOff = iParaNw.pDelay(1);
+        end
     end
     
     % sets the duration of the time block

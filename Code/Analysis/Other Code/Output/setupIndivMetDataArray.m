@@ -20,7 +20,7 @@ mIndG = find(Type(:,3));
 
 % retrieves the fly acceptance/rejection flags
 snTot = getappdata(handles.figDataOutput,'snTot');
-flyok = cellfun(@(x)(x.appPara.flyok),num2cell(snTot),'un',0)';
+flyok = cellfun(@(x)(x.iMov.flyok),num2cell(snTot),'un',0)';
 for i = 1:length(flyok); flyok{i} = flyok{i}(appOut); end
 
 % sets the output type

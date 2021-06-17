@@ -7,14 +7,54 @@ if detIfMultiTrack(iMov)
     return
 end
 
-% determines if the if the fixed fly count flag has been set
-if isfield(iMov,'dTube')
-    % if so, determine if there is regional variation in the fly count
+if isfield(iMov,'pInfo')
+    % retrieves the entire sub-count arrays 
+    if iMov.is2D        
+        % case is a 2D setup
+        nFly = iMov.pInfo.nRow*ones(1,iMov.pInfo.nCol);
+    else
+        % case is a 1D setup
+        if iMov.nRow*iMov.nCol == numel(iMov.pInfo.nFly)
+            nFly = iMov.pInfo.nFly;
+        else
+            nFly = iMov.pInfo.nFlyMx*ones(iMov.nRow,iMov.nCol);
+        end
+    end
+    
+    % calculates the row/column indices (if required)
+    switch nargin
+        case 2
+            % only the apparatus index was provided
+            iApp = varargin{1};
+            iRow = floor((iApp-1)/iMov.nCol) + 1;
+            iCol = mod((iApp-1),iMov.nCol) + 1; 
+            
+        case 3
+            % both row/column indices were provided
+            [iRow,iCol] = deal(varargin{1},varargin{2});            
+            
+        otherwise
+            % otherwise, exit the function
+            return
+    end
+    
+    % returns the value at the specified row/column index
+    nFly = nFly(iRow,iCol);
+
+elseif isfield(iMov,'dTube')
+    % if the fixed fly count flag has been set, determine if there is 
+    % regional variation in the fly count
     if iMov.dTube
         % retrieves the row/column indices
         switch nargin
             case 1
-                nFly = reshape(iMov.nTubeR,[iMov.nRow,iMov.nCol]);
+                if numel(iMov.nTubeR) == iMov.nRow*iMov.nCol
+                    szGrp = [iMov.nRow,iMov.nCol];
+                    nFly = reshapeIndexArray(iMov.nTubeR,szGrp);
+                else
+                    nFly = iMov.nTubeR;
+                end
+                
                 return
                 
             case 2

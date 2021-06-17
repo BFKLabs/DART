@@ -22,6 +22,12 @@ for i = 1:length(snTot.iExpt)
     [snTot.iExpt(i).Timing.T0,snTot.sgP(i).T0] = deal(iPara.Ts); 
 end
 
+% if the stimuli parameter field is missing (old solution file format) then
+% set up the this field within the solution data struct
+if ~isfield(snTot,'stimP')
+    snTot.stimP = getExptStimInfo(snTot);
+end
+
 % offsets the time arrays for the new indices
 [snTot.T,Tofs] = reshapeTimeArrays(snTot.T,indS,indF);
 snTot.isDay = reshapeTimeArrays(snTot.isDay,indS,indF,0);

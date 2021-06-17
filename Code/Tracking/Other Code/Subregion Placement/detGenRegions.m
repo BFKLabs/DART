@@ -11,28 +11,15 @@ pTol = 0.75;
 sz = size(Istack{1});
 hG = fspecial('gaussian',5,2);
 
-% sets up the fly count array (arranged in row/column format)
-nFlyT = iMov.nTubeR;
-
 % sets the total row/column counts
-[nRowT,nColT] = deal(sum(max(nFlyT,[],2)),iMov.nCol);
+[nRowT,nColT] = size(iMov.pInfo.iGrp);
 
 % ------------------------------------ %
 % --- INITIAL SUB-REGION DETECTION --- %
 % ------------------------------------ %
 
-% sets the global search region
-dT = 10;
-Bg = false(sz);
-iRG = roundP(max(1,iMov.posG(2)-dT):min(sz(1),sum(iMov.posG([2 4]))+dT));
-iCG = roundP(max(1,iMov.posG(1)-dT):min(sz(2),sum(iMov.posG([1 3]))+dT));
-Bg(iRG,iCG) = true;
-
-% calculates the median baseline removed image
-I = calcImageStackFcn(Istack,'min');
-h0 = ceil(getMedBLSize(iMov)*2);
-ImdBL0 = removeImageMedianBL(double(I),false,true,h0);
-ImdBL0(~Bg) = 0;
+% sets up the 
+ImdBL0 = setupRegionEstimateImage(iMov,Istack);
 
 % updates the waitbar figure
 if h.Update(1,wStr{1},0.1/6)
@@ -79,6 +66,7 @@ end
 
 % recalculates the median baseline removed image (based on the region size)
 h0 = getMedBLSize(iMov);
+I = calcImageStackFcn(Istack);
 ImdBL = removeImageMedianBL(double(I),false,true,h0);
 
 % ------------------------------------ %
@@ -225,7 +213,7 @@ end
 % aligns the sub-region centroids
 [xC0,yC0] = getBinaryCoords(BC);
 dLim = min(0.1*[range(xC0),range(yC0)]);      
-[xP,yP,ok] = realignSubRegions(iMov,Ixc,pMax,nFlyT,dLim);
+[xP,yP,ok] = realignSubRegions(iMov,Ixc,pMax,nRowT,dLim);
 
 % prompts the user for the final binary dilation
 BC = GenPara(iMov,B0,nDil,xP,yP,h);
@@ -258,16 +246,13 @@ autoP = struct('X0',xP,'Y0',yP,'XC',xC,'YC',yC,'BC',BC,'BT',[],...
 autoP.BT = cell(nApp,1);
            
 %
-for i = 1:nApp
-    % retrieves the global row/column index
-    [iCol,iFlyR0,iRow] = getRegionIndices(iMov,i);
-    iFlyR = iFlyR0(iMov.isUse{iRow,iCol});
-    
+[nRow,nCol] = size(xP);
+for i = 1:nCol
     % determines the min/max locations of the objects in the sub-region
-    xMin = max(1,floor(xP(iFlyR,iCol)+xCmn));
-    xMax = min(sz(2),ceil(xP(iFlyR,iCol)+xCmx));
-    yMin = max(1,floor(yP(iFlyR,iCol)+yCmn));
-    yMax = min(sz(1),ceil(yP(iFlyR,iCol)+yCmx));
+    xMin = max(1,floor(xP(:,i)+xCmn));
+    xMax = min(sz(2),ceil(xP(:,i)+xCmx));
+    yMin = max(1,floor(yP(:,i)+yCmn));
+    yMax = min(sz(1),ceil(yP(:,i)+yCmx));
     
     % resets the global row/column indices
     iMov.iC{i} = min(xMin):max(xMax);
@@ -283,11 +268,10 @@ for i = 1:nApp
     % allocates memory for the sub-region binary masks
     szBT = [length(iMov.iR{i}),length(iMov.iC{i})];
     autoP.BT{i} = false(szBT);
-    for j = 1:length(iFlyR)
+    for j = 1:nRow
         % sets the coordinates of the outline
-        k = iFlyR(j);
-        xNw = min(szBT(2),max(1,xP(k,iCol)+(xC-xOfs)));
-        yNw = min(szBT(1),max(1,yP(k,iCol)+(yC-yOfs)));        
+        xNw = min(szBT(2),max(1,xP(j,i)+(xC-xOfs)));
+        yNw = min(szBT(1),max(1,yP(j,i)+(yC-yOfs)));        
         autoP.BT{i}(sub2ind(size(autoP.BT{i}),yNw,xNw)) = true;
         
         % sets the vertical position of the tubes
@@ -534,7 +518,7 @@ iP = iP([ii;(ii(end)+1)]);
 indG = [max(1,iP(1:end-1)-del),min(length(Z),iP(2:end)+del)];
 ind = cellfun(@(x)(x(1):x(2)),num2cell(indG,2),'un',0);
 
-% --- calculates the 
+% --- calculates the likely peaks from the signal, Z
 function [iP,Zscore] = detLikelySignalPeaks(Z,tPer)
 
 %
@@ -559,26 +543,6 @@ ii = cellfun(@(x)(x(argMax(Zscore0(x)))),jGrp);
 % returns the most likely groupings for each band
 iP = iP0(ii);
 Zscore = mean(Zscore0(ii))/(1+mean(abs(diff(iP)-tPer)));
-
-% --- calculates the signal periodicity
-function tPer = calcSignalPeriodicity(Z)
-
-% parameters
-pkTol = 0.5;
-
-% removes the signal baseline
-dZ = Z - nanmean(Z);
-[aY,tLag0] = xcorr(dZ,'coeff');
-[~,tPeak,~,P] = findpeaks(aY);
-
-% reduces the times down to the positive time peaks
-ii = tLag0(tPeak) >= 0;
-[tPeak,P] = deal(tLag0(tPeak(ii)),P(ii));
-
-% determines the first peak to the right of the central peak
-jj = tPeak > 1;
-[tPeak,P] = deal(tPeak(jj),P(jj));
-tPer = tPeak(find(P/max(P)>pkTol,1,'first'));
 
 % ---------------------------------------------- %
 % --- CIRCULAR REGION OPTIMISATION FUNCTIONS --- %
@@ -756,29 +720,18 @@ end
 function [ZC,ZR] = setupWeightedMeanSignals(I,nDim,h)
 
 % parameters
-del = 25;
-szB = 100;
-zTol = 0.35;
-sz = size(I);
 ok = true;
+zTol = 0.35;
 
-% determines the sub-image block count and row/column offset
-nB = floor((sz-szB)/del);
-pOfs = ceil((sz-(nB*del+szB))/2);
-
-% retrieves the block row/column indices
-iRB = arrayfun(@(x)((pOfs(1)+(x-1)*del)+(1:szB)),1:nB(1),'un',0);
-iCB = arrayfun(@(x)((pOfs(2)+(x-1)*del)+(1:szB)),1:nB(2),'un',0);
-
-% sets the row/column image blocks 
-IR = cellfun(@(x)(nonZeroMean(I(x,:))),iRB,'un',0);
-IC = cellfun(@(x)(nonZeroMean(I(:,x)')),iCB,'un',0);
+% retrieves the sub-region image stack estimate
+[IR,IC] = getSubRegionStackEst(I);
 
 % calculates the mean positive/negative signals
 if nDim(2) > 1
     % sets up the negative/positive mean signals
-    ZC1 = calcSigMu(cellfun(@(I)(-min(0,I)),IR,'un',0));
-    ZC2 = calcSigMu(cellfun(@(I)(max(0,I)),IR,'un',0));
+    ZR0 = sum(cell2mat(IR(:)));
+    ZC1 = smooth(max(0,-ZR0));
+    ZC2 = smooth(max(0,ZR0));
     
     % calculates the coefficient of variances (removes an infeasible)
     zCOV = [calcCOV(ZC1),calcCOV(ZC2)];
@@ -792,16 +745,17 @@ if nDim(2) > 1
     elseif zCOV(1) < zCOV(2)
         % case is negative signals give a better representation of frequency
         ZC = ZC1;
-        ZR = calcSigMu(cellfun(@(I)(-min(0,I)),IC,'un',0));
+        ZR = smooth(max(0,-sum(cell2mat(IC(:)))));
     else
         % case is positive signals give a better representation of frequency
         ZC = ZC2;
-        ZR = calcSigMu(cellfun(@(I)(max(0,I)),IC,'un',0));    
+        ZR = smooth(max(0,sum(cell2mat(IC(:)))));    
     end
 else
     % sets up the negative/positive mean signals
-    ZR1 = calcSigMu(cellfun(@(I)(-min(0,I)),IC,'un',0));
-    ZR2 = calcSigMu(cellfun(@(I)(max(0,I)),IC,'un',0));
+    ZC0 = sum(cell2mat(IC(:)));
+    ZR1 = smooth(max(0,-ZC0));
+    ZR2 = smooth(max(0,ZC0));    
     
     % calculates the coefficient of variances (removes an infeasible)
     zCOV = [calcCOV(ZR1),calcCOV(ZR2)];
@@ -815,11 +769,11 @@ else
     elseif zCOV(1) < zCOV(2)
         % case is negative signals give a better representation of frequency
         ZR = ZR1;
-        ZC = calcSigMu(cellfun(@(I)(-min(0,I)),IR,'un',0));
+        ZC = smooth(max(0,-sum(cell2mat(IR(:)))));
     else
         % case is positive signals give a better representation of frequency
         ZR = ZR2;
-        ZC = calcSigMu(cellfun(@(I)(max(0,I)),IR,'un',0));   
+        ZC = smooth(max(0,sum(cell2mat(IR(:)))));   
     end    
 end
 
@@ -837,60 +791,6 @@ if ~ok
                
     % returns empty arrays
     [ZR,ZC] = deal([]);
-end
-
-%
-function Ymn = nonZeroMean(Y)
-
-% memory allocation
-Ymn = zeros(1,size(Y,2));
-
-% determines if there are any non-zero values
-ii = abs(Y)>0;
-if any(ii(:))
-    jj = any(ii,1);
-    Ymn(jj) = cellfun(@(x,y)...
-                    (mean(x(y))),num2cell(Y(:,jj),1),num2cell(ii(:,jj),1));
-end
-
-% --- calculates the weighted signal mean 
-function Z = calcSigMu(Z0)
-
-%
-zCOV = cellfun(@(x)(calcCOV(x)),Z0);
-if all(isnan(zCOV))
-    Q = ones(size(Z0))/length(Z0);
-else
-    % calculates the signal weights (removes any NaN values)
-    Q = 1./zCOV;
-    Q = Q/nansum(Q);
-    Q(isnan(Q)) = 0;
-end
-
-% calculates the overall signal mean
-Zc = cellfun(@(x,y)(x*y),num2cell(Q),Z0,'un',0);
-Z = smooth(nansum(cell2mat(Zc(:)),1));
-
-% --- calculates the coefficient of variance in difference times for the
-%     most prominent peaks, given by P
-function zCOV = calcCOV(Z)
-
-% parameters
-pTol = 0.30;
-pkTol = 0.50;
-
-% removes any non-prominent peaks and calculates the distance btwn them
-[~,tPk,~,P] = findpeaks(Z/nanmax(abs(Z)),'MinPeakHeight',pkTol);
-tPk = tPk(P/max(P) > pTol);
-if length(tPk) <= 2
-    zCOV = NaN;
-else
-    dtPk = pdist2(tPk,tPk);
-
-    % calculates the coefficient of variance in the differences of the 
-    % spatial points
-    dT = abs(diff(dtPk(:,1)));
-    zCOV = std(dT)/mean(dT);
 end
 
 % --- calculates the outline coordinate fo the binary mask, BC

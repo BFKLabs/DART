@@ -28,7 +28,7 @@ wState = warning('off','all');
 global nChannelMax nDACMax
 nDACMax = 7;                                % this is the max number of attached DAC devices (prob too high...)
 nChannelMax = 2;                            % this is the max number of channels per DAC device (increase if device has more channels)
-[IMAQonly,isSet] = deal(false);
+[hasIMAQ,isSet] = deal(true,false);
 
 % Choose default command line output for AdaptorInfo
 handles.output = hObject;
@@ -152,12 +152,9 @@ if DAConly
 
     % readjusts the control button locations and properties        
     set(handles.buttonExit,'String','Cancel')
-end
-
-% if not DAC only, then delete the USB requirements panel and 
-% readjusts the GUI
-if ~DAConly
-    % deletes the panel
+else
+    % if not DAC only, then delete the USB requirements panel and 
+    % readjusts the GUI
     Hpanel0 = cell2mat(retObjDimPos({handles.panelUSBRequire},4));
     delete(handles.panelUSBRequire)
     
@@ -181,14 +178,7 @@ else
     % sets the stimulus struct
     if isInit
         % resets all the image/data acquisition objects
-        if ~isTest
-            % image acquisition object reset
-%            try
-%                imaqreset; 
-%                imaqmex('feature','-limitPhysicalMemoryUsage',false);
-%                pause(0.1); 
-%            end
-                   
+        if ~isTest   
             % data acquisition object reset
             try
                 daqreset; 
@@ -211,6 +201,7 @@ setappdata(hObject,'nChannel',nChannel)
 % initialises the imaq/daq selection indices
 setappdata(hObject,'vSelIMAQ',[])
 
+% ----------------------------------------------- %
 % --- IMAGE ACQUISITION OBJECT INITIALISATION --- %
 % ----------------------------------------------- %
 
@@ -232,22 +223,9 @@ if ~DAConly
     
     % determins if there are any attached recording objects
     if isempty(imaqInfo.InstalledAdaptors) && ~isTest
-        % if there are no attached recording objects, then return an
-        % error and exit the function
-        try
-            % deletes the loadbar
-            delete(h);
-        catch
-        end
+        % flag that there is no image acquisition device attached
+        hasIMAQ = false;
         
-        % outputs the error message
-        eStr = [{'No video recording devices attached to computer!'};...
-            {'Attach recording device and restart Matlab.'}];
-        waitfor(warndlg(eStr,'Recording Device Not Detected','modal'))
-        
-        % cancels the GUI with an empty array (should exit program outside)
-        buttonExit_Callback(handles.buttonExit, [], handles)
-        return
     else
         % otherwise, initialise the imaq object listbox
         if isTest
@@ -285,47 +263,35 @@ if ~DAConly
             % sets the
             sInd = ones(length(sFormat),1);
             
-            % if there are not proper camera devices attached, then exit the
-            % program displaying an error
-            if (~any(~cellfun(@isempty,imaqInfoDev)))
-                % if there are no attached recording objects, then return an
-                % error and exit the function
-                try
-                    % deletes the loadbar
-                    delete(h);
-                catch
-                end
-                
-                % outputs the error message
-                eStr = {'No video recording devices attached to computer!';...
-                        'Attach recording device and restart Matlab.'};
-                waitfor(warndlg(eStr,'Recording Device Not Detected','modal'))
-                
-                % cancels the GUI with an empty array (should exit program outside)
-                buttonExit_Callback(handles.buttonExit, [], handles)
-                return
-            end
-            
-            % updates the data structs into the GUI
-            setappdata(hObject,'imaqInfo',imaqInfo)
-            setappdata(hObject,'imaqInfoDev',imaqInfoDev)
-            setappdata(hObject,'sFormat',sFormat)
-            setappdata(hObject,'sInd',sInd)
+            % determines if there are any valid recording devices attached
+            if ~any(~cellfun(@isempty,imaqInfoDev))
+                % if not, then flag that there are no cameras
+                hasIMAQ = false;                
+            else
+                % updates the data structs into the GUI
+                setappdata(hObject,'imaqInfo',imaqInfo)
+                setappdata(hObject,'imaqInfoDev',imaqInfoDev)
+                setappdata(hObject,'sFormat',sFormat)
+                setappdata(hObject,'sInd',sInd)                
+            end            
         end
         
-        % sets the name strings within the list box
-        vStrIMAQ = reshape(vStrIMAQ,length(vStrIMAQ),1);
-        vStrIMAQ = cellfun(@(x,y)(sprintf('%i - %s',x,y)),...
-            num2cell(1:length(vStrIMAQ))',...
-            vStrIMAQ,'un',false);
-        set(handles.listIMAQObj,'String',vStrIMAQ,'value',[])
-        
-        % sets the other information into the GUI
-        setappdata(hObject,'vIndIMAQ',vIndIMAQ)
-        setappdata(hObject,'vStrIMAQ',vStrIMAQ)
+        if hasIMAQ
+            % sets the name strings within the list box
+            vStrIMAQ = reshape(vStrIMAQ,length(vStrIMAQ),1);
+            vStrIMAQ = cellfun(@(x,y)(sprintf('%i - %s',x,y)),...
+                num2cell(1:length(vStrIMAQ))',...
+                vStrIMAQ,'un',false);
+            set(handles.listIMAQObj,'String',vStrIMAQ,'value',[])
+
+            % sets the other information into the GUI
+            setappdata(hObject,'vIndIMAQ',vIndIMAQ)
+            setappdata(hObject,'vStrIMAQ',vStrIMAQ)
+        end
     end
 end
 
+% --------------------------------------------- %
 % --- DATA ACQUISTION OBJECT INITIALISATION --- %
 % --------------------------------------------- %
 
@@ -344,55 +310,37 @@ if isTest
     setappdata(hObject,'vStrDAC',vStrDAC)
 else
     % determines the attached data acquisition objects
-    [daqInfo,hasDevice] = detConnectedDevice();
+    [daqInfo,hasDAQ] = detConnectedDevice();
     
     % determines if there are any attached DAC objects
-    if ~hasDevice
-        if DAConly
-            eStr = {'Error! There are no devices attached to the computer',...
-                    'You must attach a device before trying again.'};
-            waitfor(errordlg(eStr,'No Devices Attached?','modal'))
-        end
-        
-        % if there are no attached recording objects, then prompt the user 
-        % if they want to still continue (i.e., recording mode only)
-        setObjVisibility(h.Control,'off');
-        
-        % if there are no devices, then disables the other radio buttons 
-        % (can't record with stimuli)
-        setObjEnable(handles.radioRecordStim,'off')
-
-        % otherwise, disable the panel
-        setPanelProps(handles.panelDACObj,'off')
-        set(handles.radioRecordOnly,'value',1)
-        set(handles.listDACObj,'Value',[])
-        setObjVisibility(h.Control,'on');
-        [IMAQonly,vStrDAC] = deal(true,[]);
-        
-    else
-        % otherwise, initialise the DAC/serial object listbox 
+    if hasDAQ
+        % if so, initialise the DAC/serial object listbox 
         isS = strcmp(daqInfo.dType,'Serial');
         [nChannelMax,vStrDAC] = deal(2*(1+isS),cell(length(isS),1));
         setappdata(hObject,'daqInfo',daqInfo)
         
         % determines the adaptor string names for the serial objects       
         pStr = cellfun(@(x)(get(x,'Port')),daqInfo.Control,'un',0);
-        if (any(isS))
-            vStrDAC(isS) = cellfun(@(x,y,z)(sprintf('%i - %s (%s)',x,y,z)),...
+        if any(isS)
+            % sets the device name strings
+            vStrDAC(isS) = cellfun(@(x,y,z)...
+                (sprintf('%i - %s (%s)',x,y,z)),...
                 num2cell(find(isS(:))),daqInfo.BoardNames(isS),...
                 pStr(isS),'un',false);
         end
         
         % determines the adaptor string names for the dac objects
-        if (any(~isS))
+        if any(~isS)
+            % sets the device name strings
             indD = num2cell(find(~isS));
             bName = daqInfo.BoardNames(~isS);            
-            vStrDAC(~isS) = cellfun(@(x,y,z)(sprintf('%i - %s (DAC %i)',x,y,z)),...
-                indD(:),bName(:),num2cell(1:sum(~isS))','un',0);  
+            vStrDAC(~isS) = cellfun(@(x,y,z)...
+                        (sprintf('%i - %s (DAC %i)',x,y,z)),...
+                        indD(:),bName(:),num2cell(1:sum(~isS))','un',0);  
             
             % determines if the objects are the new format. if so, then set
             % the maximum number of channels
-            if (~verLessThan('matlab','9.2'))
+            if ~verLessThan('matlab','9.2')
                 ii = find(~isS);
                 a = daqInfo.ObjectConstructorName(~isS,:);
                 for i = 1:size(a,1)
@@ -404,35 +352,104 @@ else
         % sets the name strings within the list box
         set(handles.listDACObj,'String',vStrDAC,'value',[])
         setappdata(hObject,'vStrDAC',vStrDAC)
+    else
+        % case is no external devices were detected
+        if DAConly
+            % if running in DAC only mode, then prompt the user that they 
+            % need to attach a device before continuing            
+            eStr = {'Error! There are no external devices detected.',...
+                    'You must attach a device before trying again.'};
+            waitfor(msgbox(eStr,'No Devices Attached?','modal'))
+            
+            % closes the adaptor information GUI 
+            buttonExit_Callback(handles.buttonExit, [], handles)            
+            return
+        end
+        
+        % if there are no devices, then disables the other radio buttons 
+        % (can't record with stimuli)
+        setObjVisibility(h.Control,'off');        
+
+        % otherwise, disable the panel
+        setPanelProps(handles.panelDACObj,'off')        
+        set(handles.listDACObj,'Value',[])
+        [IMAQonly,vStrDAC] = deal(true,[]);        
     end
 end
 
-% initialises the channel count edit boxes
-if ~IMAQonly
-    nDACMax = min(nDACMax,length(vStrDAC));
-    initChannelEdit(handles,daqInfo);
+% sets the experiment radio buttons based
+setObjEnable(handles.radioRecordStim,hasDAQ && hasIMAQ)
+setObjEnable(handles.radioRecordOnly,hasIMAQ)
+setObjEnable(handles.radioStimOnly,hasDAQ)
+
+% sets the radio button of the first valid experiment type
+if hasIMAQ
+    set(handles.radioRecordOnly,'value',1)
+else
+    set(handles.radioStimOnly,'value',1)
 end
 
-% sets the list/channel values (if adaptors have been set)
-if isSet && ~isempty(objDACInfo)
-    set(handles.listDACObj,'value',objDACInfo.vSelDAC)
-    for i = 1:length(objDACInfo.vSelDAC)
-        j = objDACInfo.vSelDAC(i);
-        hEdit = findobj(handles.panelDACObj,'style','edit','UserData',j);
-        if isnan(nChannel(j))
-            setEditProp(handles,j,'opto')
-        else
-            set(hEdit,'backgroundcolor','w','enable','on',...
-                      'ForegroundColor','k','string',num2str(nChannel(j)))
+% ------------------------------------- %
+% --- FINAL HOUSE-KEEPING EXERCISES --- %
+% ------------------------------------- %
+
+% if there are no attached recording objects, then return an
+% error and exit the function
+if ~hasDAQ && ~hasIMAQ
+    % deletes the loadbar
+    try; delete(h); end
+
+    % outputs the error message
+    eStr = {'No video or other external devices were detected!';...
+            ['Please ensure that either a recording device or ',...
+             'an external stimuli delivering device is attached ',...
+             'before attempting to record an experiment.']};
+    waitfor(errordlg(eStr,'No Video/External Devices Detected','modal'))
+
+    % cancels the GUI with an empty array (should exit program outside)
+    buttonExit_Callback(handles.buttonExit, [], handles)
+    return
+end
+
+% initialises the channel count edit boxes
+if hasDAQ
+    % initialises the device channel count editbox
+    nDACMax = min(nDACMax,length(vStrDAC));
+    initChannelEdit(handles,daqInfo);
+
+    % determines if the channel fields have already been set
+    if isSet
+        % sets the list/channel values (if adaptors have been set)
+        set(handles.listDACObj,'value',objDACInfo.vSelDAC)
+        for i = 1:length(objDACInfo.vSelDAC)
+            % retrieves the edit box corresponding to the device
+            j = objDACInfo.vSelDAC(i);
+            hEdit = findobj(handles.panelDACObj,...
+                                            'style','edit','UserData',j);
+            
+            % sets the channel value (based on the device type)
+            if isnan(nChannel(j))
+                % case is opto, so no channels are required to be set
+                setEditProp(handles,j,'opto')
+            else
+                % otherwise, update the channel dependent editbox
+                nChStr = num2str(nChannel(j));
+                set(hEdit,'backgroundcolor','w','enable','on',...
+                          'ForegroundColor','k','string',nChStr)
+            end
         end
     end
 end
 
 % sets the imaq only flag
-setappdata(hObject,'IMAQonly',IMAQonly)
 if ~DAConly
     panelExptType_SelectionChangeFcn(handles.panelExptType, '1', handles)
 end
+
+%
+setappdata(hObject,'hasDAQ',hasDAQ)
+setappdata(hObject,'hasIMAQ',hasIMAQ)
+setappdata(hObject,'IMAQonly',IMAQonly)
 
 % centres the figure
 centreFigPosition(hObject);
@@ -517,31 +534,34 @@ end
 % --- Executes on selection change in listIMAQObj.
 function listIMAQObj_Callback(hObject, eventdata, handles)
 
+% initialisations
+hFig = handles.figAdaptInfo;
+
 % sets the current user selection
 vSelIMAQ = get(hObject,'Value');
-if (isempty(vSelIMAQ))
+if isempty(vSelIMAQ)
     return
 else
-    setappdata(handles.figAdaptInfo,'vSelIMAQ',vSelIMAQ)
+    setappdata(hFig,'vSelIMAQ',vSelIMAQ)
 end
 
 %
-nChannel = getappdata(handles.figAdaptInfo,'nChannel');
-IMAQonly = getappdata(handles.figAdaptInfo,'IMAQonly');
-sFormat = getappdata(handles.figAdaptInfo,'sFormat');
-sInd = getappdata(handles.figAdaptInfo,'sInd');
+nChannel = getappdata(hFig,'nChannel');
+hasDAQ = getappdata(hFig,'IMAQonly');
+sFormat = getappdata(hFig,'sFormat');
+sInd = getappdata(hFig,'sInd');
 
 % if the required info has been set, then enable the connection button
-if IMAQonly || get(handles.radioRecordOnly,'value')
+if ~hasDAQ || get(handles.radioRecordOnly,'value')
     setObjEnable(handles.buttonConnect,length(vSelIMAQ) == 1)
 else
-    vSelDAC = getappdata(handles.figAdaptInfo,'vSelDAC');
+    vSelDAC = getappdata(hFig,'vSelDAC');
     canConnect = ~(isempty(vSelDAC) || any(nChannel(vSelDAC) == 0));
     setObjEnable(handles.buttonConnect,canConnect)
 end
 
 % updates the drop-down box
-isTest = getappdata(handles.figAdaptInfo,'isTest');
+isTest = getappdata(hFig,'isTest');
 if ~isa(eventdata,'char') && ~isTest
     setObjEnable(handles.textVidResolution,'on')
     set(handles.popupVidResolution,'string',...
@@ -564,8 +584,11 @@ function panelExptType_SelectionChangeFcn(hObject, eventdata, handles)
 % global variables
 global nDACMax
 
+% initialisations
+hFig = handles.figAdaptInfo;
+
 % retrieves the experiment type
-if (isa(eventdata,'char'))
+if isa(eventdata,'char')
     exptType = get(get(hObject,'SelectedObject'),'UserData');
 else
     exptType = get(eventdata.NewValue,'UserData');
@@ -574,20 +597,24 @@ end
 % sets the DAC object panel enabled
 switch exptType
     case ('RecordOnly') % case is recording only
-        % otherwise, disable the panel
+        % disables the DAQ panel
         setPanelProps(handles.panelDACObj,'off')
+        
+        % clears the DAQ listbox selection & device selection list
         set(handles.listDACObj,'value',[])
+        setappdata(hFig,'vSelDAC',[]);
         
         % resets the selection fields for the DAC information
-        objDACInfo = getappdata(handles.figAdaptInfo,'objDACInfo');
-        objDACInfo.vSelDAC = [];
-        
-        % updates the data structs
-        setappdata(handles.figAdaptInfo,'vSelDAC',[]);
-        setappdata(handles.figAdaptInfo,'objDACInfo',objDACInfo);
+        objDACInfo = getappdata(hFig,'objDACInfo');
+        objDACInfo.vSelDAC = [];        
+        setappdata(hFig,'objDACInfo',objDACInfo);
         
         % updates the camera object list properties
         listIMAQObj_Callback(handles.listIMAQObj, '1', handles)
+        
+    case ('StimOnly') % case is stimuli only
+        % disables the DAQ panel
+        setPanelProps(handles.panelDACObj,'off')        
         
     otherwise % case is the other buttons
         % otherwise, disable the panel
@@ -598,14 +625,14 @@ switch exptType
         listDACObj_Callback(handles.listDACObj, [], handles)
         
         % disables the non-DAC editbox entries
-        nCh = length(getappdata(handles.figAdaptInfo,'nChannel'));
+        nCh = length(getappdata(hFig,'nChannel'));
         hCheck = cellfun(@(x)(findall(handles.panelDACObj,'UserData',x)),...
                         num2cell((nDACMax+1):nCh),'un',0);
         cellfun(@(x)(setObjEnable(x,'Inactive')),hCheck)
 end
 
 % updates the experiment type
-setappdata(handles.figAdaptInfo,'exptType',exptType)
+setappdata(hFig,'exptType',exptType)
 
 % --- CHANNEL COUNT EDITBOXES --- %
 % ------------------------------- %
@@ -617,9 +644,11 @@ function editChannelUpdate(hObject, eventdata, handles)
 global nChannelMax
 
 % retrieves the required data structs
-nChannel = getappdata(handles.figAdaptInfo,'nChannel');
-DAConly = getappdata(handles.figAdaptInfo,'DAConly');
-vSelDAC = getappdata(handles.figAdaptInfo,'vSelDAC');
+hFig = handles.figAdaptInfo;
+nChannel = getappdata(hFig,'nChannel');
+DAConly = getappdata(hFig,'DAConly');
+hasIMAQ = getappdata(hFig,'hasIMAQ');
+vSelDAC = getappdata(hFig,'vSelDAC');
 iEdit = get(hObject,'UserData');
 
 % retrieves the new value and determines if it is valid
@@ -627,7 +656,7 @@ nwVal = str2double(get(hObject,'string'));
 if chkEditValue(nwVal,[0 nChannelMax(iEdit)],1)
     % if the value is valid, set the new value and update the vector
     nChannel(iEdit) = nwVal;
-    setappdata(handles.figAdaptInfo,'nChannel',nChannel)
+    setappdata(hFig,'nChannel',nChannel)
     
     % check to see if only the DAC objects are being set
     if DAConly
@@ -636,8 +665,7 @@ if chkEditValue(nwVal,[0 nChannelMax(iEdit)],1)
     else
         % otherwise, check to see if the IMAQ object has been set AND at
         % least one channel has been provided for each DAC device
-        if ((any(nChannel(vSelDAC) == 0)) || ...
-                (isempty(getappdata(handles.figAdaptInfo,'vSelIMAQ'))))
+        if any(nChannel(vSelDAC) == 0) || isempty(hFig,'vSelIMAQ')
             setObjEnable(handles.buttonConnect,'off')
         else
             setObjEnable(handles.buttonConnect,'on')
@@ -711,7 +739,8 @@ if ~DAConly
         sInd = getappdata(hFig,'sInd');
         
         % otherwise, set the video object to the user selection
-        imaqInfoDev = imaqInfoDev0(~cellfun(@isempty,imaqInfoDev0));
+%         imaqInfoDev = imaqInfoDev0(~cellfun(@isempty,imaqInfoDev0));
+        imaqInfoDev = imaqInfoDev0;
         try
             vConStr = imaqInfoDev{vIndIMAQ(vSelIMAQ,1)}...
                            (vIndIMAQ(vSelIMAQ,2)).VideoInputConstructor;

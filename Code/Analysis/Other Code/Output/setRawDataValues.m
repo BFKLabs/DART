@@ -2,11 +2,11 @@
 function plotD = setRawDataValues(plotD,snTot,Y,indD,pStr,iExpt,iApp,Type,mlt)
 
 % initialisations
-if (~exist('mlt','var')); mlt = 1; end
-fok = snTot.appPara.flyok{iApp};
+if ~exist('mlt','var'); mlt = 1; end
+fok = snTot.iMov.flyok{iApp};
 
 % sets up the raw data array
-switch (Type)
+switch Type
     case (1) % case is pre-day separated data
         Yr = setupRawDataArray(Y,indD);
     case (2) % case is post-day separated data

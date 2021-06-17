@@ -1,6 +1,9 @@
 % --- loads a combined solution file --- %
 function [snTot,ok] = loadCombSolnFiles(TempDir,fName,handles,ind,indApp,h)
 
+% global variables
+global isAnalysis
+
 % sets the waitbar figure title
 [p0,ok] = deal(0.2,true);
 
@@ -17,14 +20,14 @@ end
 
 % unzips the files to the temporary directory
 A = untar(fName,TempDir);
-fName = cellfun(@(x)(getFileName(x)),A,'un',0);
+fNameS = cellfun(@(x)(getFileName(x)),A,'un',0);
 
 % determines the data and x/y position files in the solution file
-indD = cellfun(@(x)(strContains(x,'Data')),fName);
-indX = find(cellfun(@(x)(strContains(x,'Px')),fName));
-indY = find(cellfun(@(x)(strContains(x,'Py')),fName));
-indP = find(cellfun(@(x)(strContains(x,'Pp')),fName));  
-% indN = find(cellfun(@(x)(strContains(x,'Pa')),fName));
+indD = cellfun(@(x)(strContains(x,'Data')),fNameS);
+indX = find(cellfun(@(x)(strContains(x,'Px')),fNameS));
+indY = find(cellfun(@(x)(strContains(x,'Py')),fNameS));
+indP = find(cellfun(@(x)(strContains(x,'Pp')),fNameS));  
+% indN = find(cellfun(@(x)(strContains(x,'Pa')),fNameS));
 
 % ------------------------- %
 % --- DATA FILE LOADING --- %
@@ -32,12 +35,14 @@ indP = find(cellfun(@(x)(strContains(x,'Pp')),fName));
 
 % loads the base data file
 switch nargin
-    case (2) % case is loading from single combined solution files
+    case (2) 
+        % case is loading from single combined solution files
         wStr = {'Loading Data File','Current File Progress'};
         [indApp,wOfs,isSave] = deal([],0,false);
         h = ProgBar(wStr,'Loading Experimental Solution File'); 
         
-    case (3) % case is loading from multiple combined solution files
+    case (3) 
+        % case is loading from multiple combined solution files
         [indApp,wOfs,isSave,h] = deal([],1,false,handles);
         
     case (6)
@@ -61,27 +66,8 @@ if h.Update(1+wOfs,'Loading Base Data File...',p0)
     
 else
     % otherwise, load the file data file
-    snTot = load(fullfile(TempDir,fName{indD}));
-    if ~isfield(snTot,'iMov')       
-        % closes the waitbar figure
-        try; delete(h); end
-        
-        % exit the function with a false flag
-        switch nargin
-            case (2)
-                eStr = {['This single experimental solution file ',...
-                         '(.ssol) has an obsolete format.'];'';...
-                        ['You will need to recombine the .ssol file ',...
-                         'before being able to analyse the data ',...
-                         'within the DART Analysis GUI.']}; 
-        end
-
-        % outputs the error to screen and exits the function
-        waitfor(errordlg(eStr,'Obsolete Solution File Format','modal'));
-        [snTot,ok] = deal([],false);
-        return  
-        
-    elseif ~isfield(snTot,'Type')
+    snTot = load(fullfile(TempDir,fNameS{indD}));
+    if ~isfield(snTot,'Type')
         % sets the type if it hasn't been set
         snTot.Type = 0; 
         snTot = orderfields(snTot);
@@ -224,6 +210,30 @@ end
 %     end            
 % end
 
+% initialises the region parameter information field (if not set)
+if isfield(snTot.iMov,'pInfo')
+    % converts the data value arrays for the new format files
+    if ~isAnalysis
+        snTot = convertDataArrays(snTot);
+        [snTot.pMapPx,snTot.pMapPy] = deal([]);
+    end
+else
+    % sets the 2D flag
+    snTot.iMov.is2D = anyY;
+    
+    % sets up the region data struct based on the type
+    if ~isequal(size(snTot.iMov.flyok),size(snTot.appPara.flyok))
+        % case is the expt solution file is from a multi-expt file
+        snTot.iMov.pInfo = getMultiRegionDataStructs(snTot);
+    else
+        % case is the expt solution file is loaded separately
+        snTot.iMov.pInfo = getRegionDataStructs(snTot.iMov,snTot.appPara);         
+    end       
+    
+    % sets up the fly location ID array
+    snTot.cID = setupFlyLocID(snTot.iMov);
+end
+
 % removes any extraneous fields
 if isfield(snTot,'sName')
     snTot = rmfield(snTot,'sName');
@@ -257,5 +267,69 @@ if isfield(snTot,'iMov')
             % is obsolete if the row index range is > y-value range
             isObs = rMax > yRng;
         end        
+    end
+else
+    % if the region data struct is missing then considered obsolete
+    isObs = true;
+end
+
+% --- converts the data array fields so that they match the original
+%     data array dimensioning
+function snTot = convertDataArrays(snTot)
+
+% initialisations
+cID = snTot.cID;
+iMov = snTot.iMov;
+pInfo = iMov.pInfo;
+nFrm = size(snTot.Px{1},1);
+
+% sets the data array fields to 
+pFld = {'Px'};
+if iMov.is2D
+    pFld = [pFld,{'Py'}]; 
+    if iMov.calcPhi
+        pFld = [pFld,{'Phi','axR'}]; 
+    end
+end
+
+% converts data arrays (for all the specified fields
+for i = 1:length(pFld)
+    % retrieves the struct field
+    if isfield(snTot,pFld{i})
+        Z0 = getStructField(snTot,pFld{i});
+
+        % converts the data arrays based on the type
+        if iMov.is2D
+            % case is the 2D experimental setup        
+            Zf = repmat({NaN(nFrm,pInfo.nRow)},1,pInfo.nCol);        
+            for j = 1:length(cID)            
+                for k = 1:size(cID{j},1)
+                    [iRow,iCol] = deal(cID{j}(k,2),cID{j}(k,1));
+                    Zf{iCol}(:,iRow) = Z0{j}(:,k);
+                end
+            end                
+
+        else
+            % case is the 1D experimental setup
+
+            % memory allocation
+            nRowMx = size(snTot.iMov.flyok,1);
+            szG = [pInfo.nRow,pInfo.nCol];        
+
+            % allocates memory for each region  
+            Zf = repmat({NaN(nFrm,nRowMx)},1,prod(szG));
+
+            % sets the data values for each grouping
+            for j = 1:length(cID)    
+                iApp = (cID{j}(:,1)-1)*pInfo.nRow + cID{j}(:,2);        
+                for k = 1:size(cID{j},1)
+                    Zf{iApp(k)}(:,cID{j}(k,3)) = Z0{j}(:,k);
+                end
+            end            
+
+        end   
+
+        % resets the solution struct field   
+        snTot = setStructField(snTot,pFld{i},Zf);
     end
 end

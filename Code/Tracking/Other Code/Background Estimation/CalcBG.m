@@ -889,7 +889,7 @@ classdef CalcBG < handle
                     fPosNw = fpos{iApp,iFrm};
                     [iCol,~,iRow] = getRegionIndices(obj.iMov,iApp);
                     set(obj.hMark{iApp}{1},'xdata',fPosNw(:,1),...
-                                        'ydata',fPosNw(:,2))                                                                                 
+                                           'ydata',fPosNw(:,2))                                                                                 
 
                     % updates the other properties                        
                     if imov.flyok(iRow,iCol)
@@ -1121,7 +1121,7 @@ classdef CalcBG < handle
                 set(hObject,'checked','off')
 
                 % removes the information GUI         
-                try; delete(obj.hInfo); end
+                try; delete(obj.hInfo.hFig); end
                 obj.hInfo = [];
                 
             else
@@ -1129,7 +1129,7 @@ classdef CalcBG < handle
                 set(hObject,'checked','on')        
 
                 % updates the data structs   
-                obj.hInfo = FlyCombCondInfo(obj);  
+                obj.hInfo = FlyInfoGUI(obj);  
             end
         
         end

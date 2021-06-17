@@ -533,11 +533,23 @@ if ~isdeployed
         try; javarmpath(jDirHC); end
     end      
     
+%     % removes the conditional check table java files to the path
+%     jDirCCT = fullfile(cDir,'Utilities','CondCheckTable.zip');
+%     if exist(jDirCCT,'file')
+%         try; javarmpath(jDirCCT); end
+%     end          
+    
     % removes the conditional check table java files to the path
-    jDirCCT = fullfile(cDir,'Utilities','CondCheckTable');
+    jDirCCT = fullfile(cDir,'Utilities','CondCheckTable');    
     if exist(jDirCCT,'dir')
         try; javarmpath(jDirCCT); end
-    end          
+    end 
+    
+    % removes the conditional check table java files to the path
+    jDirCR = fullfile(cDir,'File Exchange','ColoredFieldCellRenderer.zip');
+    if exist(jDirCR,'file')
+        try; javarmpath(jDirCR); end
+    end        
     
     % delete the progressbar and removes the directory from the path
     h.delete();
@@ -967,11 +979,23 @@ if ~isdeployed
         javaaddpath(fullfile(jDirHC,'MatlabGarbageCollector.jar'),'-END');
     end    
     
+%     % adds the conditional check table java files to the path
+%     jDirCCT = fullfile(cDir,'Utilities','CondCheckTable.zip');
+%     if exist(jDirCCT,'file')
+%         javaaddpath(jDirCCT,'-END');
+%     end    
+    
     % adds the conditional check table java files to the path
     jDirCCT = fullfile(cDir,'Utilities','CondCheckTable');
-    if (exist(jDirCCT,'dir'))
+    if exist(jDirCCT,'dir')
         javaaddpath(jDirCCT);
-    end    
+    end        
+    
+    % adds the coloured field cell renderer
+    jDirCR = fullfile(cDir,'File Exchange','ColoredFieldCellRenderer.zip');
+    if exist(jDirCR,'file')
+        javaaddpath(jDirCR,'-END');
+    end        
 end
 
 % global variables
