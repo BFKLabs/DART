@@ -10,7 +10,7 @@ pause(0.05)
 I = setupRegionEstimateImage(iMov,Istack);
 
 % if the number of circles is high, then use the new detection algo
-[iMov,R,X,Y,ok] = detImageCirclesNew(I,iMov,h);
+[iMov,R,X,Y,ok] = detImageCirclesNew(I,Istack,iMov,h);
 
 % if it failed, then try the old algorithm
 if ~ok
@@ -23,7 +23,7 @@ end
 
 % --- determines an estimate of the circle centres/radii from the 2D
 %     cross-correlation of the candidate image with a circle template
-function [iMov,R,X,Y,ok] = detImageCirclesNew(I,iMov,h)
+function [iMov,R,X,Y,ok] = detImageCirclesNew(I,Istack,iMov,h)
 
 % global variables
 global RnwTol Rmax 
@@ -75,9 +75,14 @@ if isnan(tPer0)
     return
 end
 
+% calculates the median image from the image stack
+Imd = calcImageStackFcn(Istack,'median');
+Imd = Imd(iRG,iCG);
+
 try           
-    % determines the regions over the columns/rows    
-    [X0,Y0,R0] = detInitCircleCentres(IG,roundP(max(R0).*pdR),tPer0,dim,h);
+    % determines the regions over the columns/rows
+    [X0,Y0,R0] = detInitCircleCentres...
+                        (IG,Imd,roundP(max(R0).*pdR),tPer0,dim,h);
     Rmax = calcMaxRadii(X0,Y0);
     
     % sets the final x/y centre coordinates and the maximum radii
@@ -416,7 +421,7 @@ else
 end
 
 % --- determines the initial estimate of the circle centres
-function [xC,yC,R] = detInitCircleCentres(IG,rTol,tPer0,dim,h)    
+function [xC,yC,R] = detInitCircleCentres(IG,Imd,rTol,tPer0,dim,h)    
     
 % intialisations and memory allocation
 Z = NaN(2,1);
@@ -459,13 +464,13 @@ Rmax0 = calcMaxRadii(xC,yC);
 h.Update(1,'Calculating Image Cross-Correlation',0.5);
 
 % sets up the xcorr template image
-Isub = setupSubImageStack(IG,roundP(xC),roundP(yC),Rmax0);
+Isub = setupSubImageStack(Imd,roundP(xC),roundP(yC),Rmax0);
 IsubMn = calcImageStackFcn(Isub(:),'median');
 
 % calculate the cross-correlation image (from the template)
-IGex = padarray(IG,Rmax0*[1,1],'replicate','both');
+IGex = padarray(Imd,Rmax0*[1,1],'replicate','both');
 IxcT = normxcorr2(IsubMn,IGex);
-Ixc = IxcT(2*Rmax0+(1:size(IG,1)),2*Rmax0+(1:size(IG,2)));
+Ixc = IxcT(2*Rmax0+(1:size(Imd,1)),2*Rmax0+(1:size(Imd,2)));
 
 % updates the progressbar
 h.Update(1,'Fine Resolution Detection',0.75);
@@ -478,7 +483,7 @@ iMx = find(imregionalmax(Ixc));
 DMx = pdist2([xC(:),yC(:)],[xMx,yMx]);
 for i = 1:size(DMx,1)
     % determines all the maxima that are within tolerance of the centre
-    ii = find(DMx(i,:) < Rmax0/4);
+    ii = find(DMx(i,:) < Rmax0/3);
     if ~isempty(ii)
         % determines the most likely candidate for resetting
         if length(ii) == 1
@@ -614,7 +619,7 @@ end
 function iMatch = searchRegionGridDir(pC,ind0,dX,dY,tPer,sz,sDir)
 
 % initialisations
-dTol = tPer/6;
+dTol = tPer/4;
 [iMatch,ind] = deal([],ind0);
 
 %
@@ -656,15 +661,17 @@ while true
             
         otherwise
             % case is there are numerous potential matches
-            if sDir(1) ~= 0
-                D = sqrt((sDir(1)*dX(i2,ind)-tPer).^2 + dY(i2,ind).^2);
-            else
-                D = sqrt(dX(i2,ind).^2 + (sDir(2)*dY(i2,ind)-tPer).^2);
-            end
+            [iMatch(end+1),ind] = deal(i2(1));
             
-            %
-            imn = argMin(D);
-            [iMatch(end+1),ind] = deal(i2(imn));
+%             if sDir(1) ~= 0
+%                 D = sqrt((sDir(1)*dX(i2,ind)-tPer).^2 + dY(i2,ind).^2);
+%             else
+%                 D = sqrt(dX(i2,ind).^2 + (sDir(2)*dY(i2,ind)-tPer).^2);
+%             end
+%             
+%             %
+%             imn = argMin(D);
+%             [iMatch(end+1),ind] = deal(i2(imn));
     end
 end
 

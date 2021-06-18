@@ -201,12 +201,12 @@ for iCol = 1:iMov.nCol
         if createMark
             % outline marker needs to be created
             pCol = tCol(iGrp(j)+1,:);
-            fill(xP,yP,pCol,'tag','hOuter','UserData',[j iCol],...
+            fill(xP,yP,pCol,'tag','hOuter','UserData',[iCol,j],...
                    'facealpha',0.25,'LineWidth',1.5,'Parent',hAx) 
                
         else
             % otherwise, coordinates of outline
-            hP = findobj(hOut,'UserData',[j iCol]);
+            hP = findobj(hOut,'UserData',[iCol,j]);
             set(hP,'xData',xP,'yData',yP)
         end               
     end

@@ -11,6 +11,7 @@ classdef DirectDetect < handle
         
         % boolean/scalar flags
         is2D
+	iFrm
         wOfs = 1;
         hasProg = false;
         calcOK = true;
@@ -231,7 +232,7 @@ classdef DirectDetect < handle
             
             % allocates memory for the positional coordinates
             obj.fPos = repmat(arrayfun(@(x)...
-                (NaN(x,2)),obj.nTube(:),'un',0),1,obj.nImg);
+                            (NaN(x,2)),obj.nTube(:),'un',0),1,obj.nImg);
             
             % calculates the object locations over all regions/frames
             for i = find(obj.iMov.ok(:)')
@@ -329,8 +330,7 @@ classdef DirectDetect < handle
         % --- calculates the sub-region image residual
         function IR = calcSubRegionRes(obj,I,iApp)
             
-            B = obj.iMov.IbgT{iApp} > 0;
-            IR = B.*imfilter(I-obj.iMov.IbgT{iApp},obj.hG);
+            IR = imfilter(I-obj.iMov.IbgT{iApp},obj.hG);
             IR(isnan(IR)) = 0;
             
         end

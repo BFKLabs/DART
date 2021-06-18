@@ -121,7 +121,14 @@ classdef FlyInfoGUI < handle
             % sets the data array and table column names
             obj.Data = obj.setupDataArray(num2cell(obj.ok));  
             [obj.nRow,obj.nCol] = size(obj.Data);
-            set(obj.hFig,'CloseRequestFcn',[]);
+            
+            % removes the close request function
+            if isempty(obj.snTot)
+                cbFcn = {@obj.closeGUI,obj};
+                set(obj.hFig,'CloseRequestFcn',cbFcn);
+            else
+                set(obj.hFig,'CloseRequestFcn',[]);
+            end
             
             % sets up the cell background colour array
             colArr = getAllGroupColours(max(obj.iGrp(:)));            
@@ -182,8 +189,12 @@ classdef FlyInfoGUI < handle
             % parameters
             [fPos,WT] = deal(get(obj.hFig,'Position'),0);            
             
+            % updates the progress bar (if it exists)
+            if ~isempty(obj.hProp)
+                obj.hProp.Update(1,'Creating Information GUI Objects',0.8);
+            end
+            
             % creates the checkbox table
-            obj.hProp.Update(1,'Creating Information GUI Objects',0.8);
             obj.createCheckTable();             
             
             % Create the base panel
@@ -221,7 +232,9 @@ classdef FlyInfoGUI < handle
             pPos = round([obj.dX*[1,1] W (H+hOfs)]);
             
             % updates the progressbar
-            obj.hProp.Update(1,'Repositioning GUI Objects',0.9);
+            if ~isempty(obj.hProp)
+                obj.hProp.Update(1,'Repositioning GUI Objects',0.9);
+            end
             
             % sets the object position and locations
             set(obj.hFig,'position',[fPos(1:2),pPos(3:4)+2*obj.dX])
@@ -313,14 +326,6 @@ classdef FlyInfoGUI < handle
             
         end
         
-        % --- gui close callback function
-        function closeGUI(obj, ~)
-            
-            % deletes the GUI
-            delete(obj.hFig);
-            
-        end
-        
         % --- repositions the sub-gui
         function repositionGUI(obj)
             
@@ -337,6 +342,18 @@ classdef FlyInfoGUI < handle
             
             % REMOVE ME
             a = 1;
+            
+        end
+        
+        % --- closes the gui
+        function closeGUI(hFig, evnt, obj)
+            
+            % removes the menu check
+            hh = guidata(obj.hFigMain);
+            set(hh.menuFlyAccRej,'Checked','off');
+            
+            % deletes the GUI
+            delete(obj.hFig);
             
         end
         

@@ -16,7 +16,7 @@ classdef SingleTrackInit < SingleTrack
         % quality metric boltzmann curve parameters
         hQ = 5;
         kQ = 4;
-        Qtol = 50;
+        Qtol = 10;
         
     end
     
@@ -141,63 +141,39 @@ classdef SingleTrackInit < SingleTrack
                 end
             end
             
-            % determines the valid (non-untrackable) phases
-            validPh = find(obj.iMov.vPhase(:) < 3);
-            fObjF = obj.fObj(validPh);
+            % sets the feasible phases (low and high variance only)
+            okPh = obj.iMov.vPhase < 3;
             
-            % calculates the final total background images
-            IbgT0 = cell2cell(cellfun(@(x)(x.iMov.IbgT),fObjF,'un',0));
+            % calculates the final total background images            
+            fObjBG = obj.fObj(obj.iMov.vPhase < 3);
+            IbgT0 = cell2cell...
+                        (cellfun(@(x)(x.iMov.IbgT),fObjBG(okPh),'un',0));
             IbgTF = cellfun(@(x)(...
                         calcImageStackFcn(x)),num2cell(IbgT0,1),'un',0);                                
                 
             % retrieves the object sizes (for each phase)
-            szObj = cellfun(@(x)(x.szObj),fObjF,'un',0);
+            szObj = cellfun(@(x)(x.szObj),obj.fObj(okPh),'un',0);
             szObj = cell2mat(szObj(~cellfun(@(x)(isnan(x(1))),szObj)));
                     
             % sets the background images into the sub-region data struct            
             obj.iMov.IbgT = IbgTF;
             obj.iMov.szObj = ceil(median(szObj,1));
-            obj.iMov.Ibg = cell(nPhase,1);
-            obj.iMov.Ibg(validPh) = cellfun(@(x)(x.IBG),fObjF,'un',0);
+            
+            % sets the final background images
+            obj.iMov.Ibg = cell(length(obj.fObj),1);
+            obj.iMov.Ibg(okPh) = cellfun(@(x)(x.IBG),obj.fObj(okPh),'un',0);
             
             % calculates the residual detection tolerances
             obj.setupResidualTolerances();
                         
             % calculates the overall quality of the flies (prompting the
             % user to exclude any empty/anomalous regions)
-            if ~obj.isBatch && ~all(obj.iMov.vPhase == 3)
+            if ~obj.isBatch && any(okPh)
                 obj.calcOverallQuality()
             end
             
             % sets the status flags for each phase (full and overall)
-            obj.iMov.StatusF = cell(nPhase,1);
-            obj.iMov.StatusF(validPh) = cellfun(@(x)(x.iStatus),fObjF,'un',0);            
-            
-%             % calculates the final total background images
-%             IbgT0 = cell2cell(cellfun(@(x)(x.iMov.IbgT),obj.fObj,'un',0));
-%             IbgTF = cellfun(@(x)(...
-%                         calcImageStackFcn(x)),num2cell(IbgT0,1),'un',0);                                
-%                 
-%             % retrieves the object sizes (for each phase)
-%             szObj = cellfun(@(x)(x.szObj),obj.fObj,'un',0);
-%             szObj = cell2mat(szObj(~cellfun(@(x)(isnan(x(1))),szObj)));
-%                     
-%             % sets the background images into the sub-region data struct            
-%             obj.iMov.IbgT = IbgTF;
-%             obj.iMov.szObj = ceil(median(szObj,1));
-%             obj.iMov.Ibg = cellfun(@(x)(x.IBG),obj.fObj,'un',0);
-%             
-%             % calculates the residual detection tolerances
-%             obj.setupResidualTolerances();
-%                         
-%             % calculates the overall quality of the flies (prompting the
-%             % user to exclude any empty/anomalous regions)
-%             if ~obj.isBatch && ~all(obj.iMov.vPhase == 3)
-%                 obj.calcOverallQuality()
-%             end
-%             
-%             % sets the status flags for each phase (full and overall)
-%             obj.iMov.StatusF = cellfun(@(x)(x.iStatus),obj.fObj,'un',0);
+            obj.iMov.StatusF = cellfun(@(x)(x.iStatus),obj.fObj,'un',0);
             
             % determines which regions are potentially empty 
             ii = ~cellfun(@isempty,obj.iMov.StatusF);
@@ -406,14 +382,11 @@ classdef SingleTrackInit < SingleTrack
             % for each sub-region, determine if the object has moved
             % appreciably over the entirety of the phase image stacks            
             for i = 1:nApp
-                [~,iFlyR,~] = getRegionIndices(obj.iMov,i);
-                
                 wStr = sprintf('%s (Region %i of %i)',wStrB,i,nApp);
-                for j = 1:length(iFlyR)
-                    k = iFlyR(j);
-                    if obj.iMov.flyok(k,i)
+                for j = 1:nTube(i)
+                    if obj.iMov.flyok(j,i)
                         % updates the progressbar
-                        pW = pW0*((i-1)+j/length(iFlyR))/nApp;
+                        pW = pW0*((i-1)+j/nTube(i))/nApp;
                         if obj.hProg.Update(3+obj.wOfsL,wStr,pW)
                             rFlag = -1;
                             return
@@ -421,9 +394,8 @@ classdef SingleTrackInit < SingleTrack
                         
                         % tracks the object over all frames (for the given
                         % sub-region (i,j))
-                        [fPosNw,sFlag(k,i),IbgTmp{k,i},IsubNw{k,i}] = ...
-                               obj.trackAllSubRegionFrames(Img,iFrm,[i,k]); 
-                           
+                        [fPosNw,sFlag(j,i),IbgTmp{j,i},IsubNw{j,i}] = ...
+                               obj.trackAllSubRegionFrames(Img,iFrm,[i,j]);                        
                         if isempty(fPosNw)
                             % if there is a severe error then exit 
                             rFlag = -2;
@@ -433,7 +405,7 @@ classdef SingleTrackInit < SingleTrack
                             % otherwise, set the sub-region coordinates 
                             % for all frames (if a valid movement detected
                             fPos = obj.setSubRegionCoord(...
-                                                fPos,fPosNw,gMap,[i,k]);                                                                     
+                                                fPos,fPosNw,gMap,[i,j]);                                                                     
                         end
                     end
                 end

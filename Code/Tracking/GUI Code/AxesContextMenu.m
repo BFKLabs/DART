@@ -224,7 +224,7 @@ classdef AxesContextMenu < handle
                 % sets the callback function for each label/menu item
                 cbFcnS = {@obj.menuSelect,obj};                
                 for i = 1:size(obj.hLbl,1)                
-                    for j = 1:2                        
+                    for j = 1:2
                         jLbl = findjobj(obj.hLbl{i,j});
                         set(jLbl,'MouseClickedCallback',cbFcnS);
                     end 

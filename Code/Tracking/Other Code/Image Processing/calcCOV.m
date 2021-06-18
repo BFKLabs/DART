@@ -21,5 +21,5 @@ else
     dT = abs(diff(dtPk(:,1)));
     
     % calculates the variance in the peak difference wrt the period
-    zCOV = var((dT-Tp)/Tp);
+    zCOV = mean(abs((dT-Tp)/Tp));
 end

@@ -328,8 +328,8 @@ elseif isMenuOpen
     if isOverAxes(get(hFig,'CurrentPoint'))
         hMenu = findAxesHoverObjects(hFig,{'tag','hMenu'},hFig);
         if ~isempty(hMenu)
-            % if the mouse is over the context menu, then determine which text
-            % label the mouse is hovering over
+            % if the mouse is over the context menu, then determine which 
+            % text label the mouse is hovering over
             hLbl = findAxesHoverObjects(hFig,{'style','text'},hMenu);
             if ~isempty(hLbl)         
                 % if the mouse is over a label, then retrieve the label index
@@ -679,8 +679,9 @@ if ~showInner
 end
 
 % updates the enabled properties of the detection menu items
-setObjEnable(handles.menuDetectSetup1D,useAuto && ~iData.is2D);
-setObjEnable(handles.menuDetectSetup2D,useAuto && iData.is2D);
+setObjEnable(handles.menuUseAuto,1)
+setObjEnable(handles.menuDetectSetup1D,~iData.is2D);
+setObjEnable(handles.menuDetectSetup2D,iData.is2D);
 
 % --- callback function for the parameter editbox update
 function editParaUpdate(hObj, ~, handles)
@@ -1665,12 +1666,13 @@ handles = guidata(hFig);
 pInfo = getDataSubStruct(handles,1);
 sz = size(pInfo.iGrp);
 
-%
+% retrieves the axes handle
 hGUI = getappdata(hFig,'hGUI');
 hAx = hGUI.imgAxes;
 
 % retrieves the patch colours
-tCol = getAllGroupColours(max(pInfo.iGrp(:)));
+nGrpT = max(max(pInfo.iGrp(:)),pInfo.nGrp);
+tCol = getAllGroupColours(nGrpT);
 
 % resets the region to the selected value
 if get(handles.radioGridGroup,'Value')
@@ -1824,10 +1826,12 @@ function resetConfigAxes(handles)
 hAx = handles.axesConfig;
 hFig = handles.figRegionSetup;
 iMov = getappdata(hFig,'iMov');
+hGUI = getappdata(hFig,'hGUI');
 iData = getappdata(hFig,'iData');
 pInfo = getDataSubStruct(handles);
 pCol = getAllGroupColours(length(pInfo.gName));
 isMultiTrack = detIfMultiTrack(iMov);
+hAxM = hGUI.imgAxes;
 
 % memory allocation and parameters
 [hP,iGrp] = deal(zeros(pInfo.nRow,pInfo.nCol),pInfo.iGrp);
@@ -1868,6 +1872,12 @@ for i = 1:pInfo.nRow
                 % sets the patch properties/coordinates
                 plot(hAx,xx,((i-1)+dY*k)*[1,1],'k','linewidth',0.5);
             end
+        end
+        
+        % updates the patch objects on the main axes (if it exists)
+        hOuter = findall(hAxM,'tag','hOuter','UserData',[j,i]);
+        if ~isempty(hOuter)
+            set(hOuter,'FaceColor',pColNw)
         end
     end
 end
@@ -2490,7 +2500,7 @@ for iCol = 1:nCol
         % calculates the new coordinates and plots the circle
         pCol = tCol(iGrp(k,iCol)+1,:);
         [xP,yP] = deal(X(k,iCol)+XC,Y(k,iCol)+YC);
-        fill(xP,yP,pCol,'tag','hOuter','UserData',[iCol k],...
+        fill(xP,yP,pCol,'tag','hOuter','UserData',[iCol,k],...
                    'facealpha',0.25,'LineWidth',1,'Parent',hAx,...
                    'visible',eStr{1+(iGrp(k,iCol)>0)})
     end
@@ -2526,7 +2536,7 @@ for iCol = 1:nCol
     for k = 1:nRow
         pCol = tCol(iGrp(k,iCol)+1,:);
         fill(X0(k,iCol)+XC,Y0(k,iCol)+YC,pCol,'tag','hOuter',...
-                   'UserData',[iCol k],'facealpha',0.25,'LineWidth',1,...
+                   'UserData',[iCol,k],'facealpha',0.25,'LineWidth',1,...
                    'Parent',hAx,'Visible',eStr{1+(iGrp(k,iCol)>0)})
     end
 end 

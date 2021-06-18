@@ -134,6 +134,12 @@ classdef CalcBG < handle
             % initialisations
             hgui = obj.hGUI;
             
+            % removes the menu check
+            hh = guidata(obj.hFig);
+            if strcmp(get(hh.menuFlyAccRej,'Checked'),'on')            
+                obj.menuFlyAccRej(hh.menuFlyAccRej, [])
+            end
+            
             % makes the main tracking gui invisible
             setObjVisibility(obj.hFig,'off'); pause(0.05);
             
@@ -554,7 +560,7 @@ classdef CalcBG < handle
                 [sImgS0,Img0] = deal(cell(nPhase,1));                
                 
                 % retrieves the first frame for each phase
-                for i = 1:nPhase    
+                for i = 1:nPhase
                     if obj.isCalib
                         Img0{i} = double(get(findobj...
                                 (obj.hGUI.imgAxes,'type','image'),'CData'));

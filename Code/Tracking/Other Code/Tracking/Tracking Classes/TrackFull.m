@@ -185,8 +185,8 @@ classdef TrackFull < Track
                 % otherwise, if data from the previous phase object is
                 % available then use these values
                 iPhPr = iPhase-1;
-%                 iFrmF = obj.iMov.iPhase(iPhPr,2);
-                prDataPh = obj.sObj.getPrevPhaseData(obj.fObj{iPhPr}); 
+                iFrmF = obj.iMov.iPhase(iPhPr,2);
+                prDataPh = obj.sObj.getPrevPhaseData(obj.fObj{iPhPr},iFrmF); 
                 
             else
                 % if there is no positional data, then retrieve the
