@@ -1,8 +1,6 @@
 % --- loads a combined solution file --- %
-function [snTot,ok] = loadCombSolnFiles(TempDir,fName,handles,ind,indApp,h)
-
-% global variables
-global isAnalysis
+function [snTot,ok] = loadExptSolnFiles...
+                            (TempDir,fName,sepData,handles,ind,indApp,h)
 
 % sets the waitbar figure title
 [p0,ok] = deal(0.2,true);
@@ -35,19 +33,19 @@ indP = find(cellfun(@(x)(strContains(x,'Pp')),fNameS));
 
 % loads the base data file
 switch nargin
-    case (2) 
+    case (3) 
         % case is loading from single combined solution files
         wStr = {'Loading Data File','Current File Progress'};
         [indApp,wOfs,isSave] = deal([],0,false);
         h = ProgBar(wStr,'Loading Experimental Solution File'); 
         
-    case (3) 
+    case (4) 
         % case is loading from multiple combined solution files
         [indApp,wOfs,isSave,h] = deal([],1,false,handles);
         
-    case (6)
+    case (7)
         % case is save the combined solution files, so need reshaping
-        [isSave,wOfs] = deal(1,1);
+        [isSave,wOfs] = deal(true,1);
         
     otherwise
         [snTot,ok] = deal([],false);
@@ -77,20 +75,20 @@ else
     if checkIfSolnObsolete(snTot)
         % if the file is obsolete, then output a message to screen 
         switch nargin
-            case (2)
+            case (3)
                 eStr = {['This single experimental solution file ',...
                          '(.ssol) has an obsolete format.'];'';...
                         ['You will need to recombine the .ssol file ',...
                          'before being able to analyse the data ',...
                          'within the DART Analysis GUI.']};                    
-            case (3)
+            case (4)
                 eStr = {['The current single experimental solution ',...
                          'file (.ssol) within this multi-experiment ',...
                          'solution file (.msol) has an obsolete format.'];'';...
                         ['You will need to recombine the .ssol ',...
                          'file(s) before being able to analyse the ',...
                          'data within the DART Analysis GUI.']};                     
-            case (6)
+            case (7)
                 eStr = {['The current single experimental solution ',...
                          'file (.ssol) within this multi-experiment ',...
                          'solution file (.msol) has an obsolete format.'];'';...
@@ -213,10 +211,12 @@ end
 % initialises the region parameter information field (if not set)
 if isfield(snTot.iMov,'pInfo')
     % converts the data value arrays for the new format files
-    if ~isAnalysis
+    if sepData
         snTot = convertDataArrays(snTot);
-        [snTot.pMapPx,snTot.pMapPy] = deal([]);
     end
+    
+    % removes the mapping array fields
+    [snTot.pMapPx,snTot.pMapPy] = deal([]);
 else
     % sets the 2D flag
     snTot.iMov.is2D = anyY;
@@ -304,7 +304,7 @@ for i = 1:length(pFld)
             Zf = repmat({NaN(nFrm,pInfo.nRow)},1,pInfo.nCol);        
             for j = 1:length(cID)            
                 for k = 1:size(cID{j},1)
-                    [iRow,iCol] = deal(cID{j}(k,2),cID{j}(k,1));
+                    [iRow,iCol] = deal(cID{j}(k,1),cID{j}(k,2));
                     Zf{iCol}(:,iRow) = Z0{j}(:,k);
                 end
             end                
@@ -321,7 +321,7 @@ for i = 1:length(pFld)
 
             % sets the data values for each grouping
             for j = 1:length(cID)    
-                iApp = (cID{j}(:,1)-1)*pInfo.nRow + cID{j}(:,2);        
+                iApp = (cID{j}(:,1)-1)*pInfo.nCol + cID{j}(:,2);        
                 for k = 1:size(cID{j},1)
                     Zf{iApp(k)}(:,cID{j}(k,3)) = Z0{j}(:,k);
                 end

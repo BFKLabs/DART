@@ -1779,7 +1779,6 @@ classdef CalcBG < handle
             obj.updateManualTrackTable();
 
             % resets the table header size
-            setTableHeader(hgui.tableFlyUpdate)
             setObjEnable(hObject,'off')
         
         end

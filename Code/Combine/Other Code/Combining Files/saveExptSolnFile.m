@@ -1,6 +1,6 @@
-% --- saves the data in the combined solution file, snTot, to the combined
-%     solution file, fName --- %
-function ok = saveCombSolnFile(dDir,fName,snTot,oPara,h,varargin)
+% --- saves the data in the experimental solution file, snTot, to the 
+%     combined solution file, fName --- %
+function ok = saveExptSolnFile(dDir,fName,snTot,oPara,h,varargin)
 
 % initialisations
 [nApp,calcPhi] = deal(length(snTot.Px),isfield(snTot,'Phi'));

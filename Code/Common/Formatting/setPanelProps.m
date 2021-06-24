@@ -31,17 +31,14 @@ end
 % loops through all the panel objects setting the enabled properties
 for i = 1:length(hChild)   
     if ~any(cellfun(@(x)(x == hChild(i)),nonHandle))   
-        switch (get(hChild(i),'type'))
+        switch get(hChild(i),'type')
             case {'uitabgroup'}                                
-                if isHG1                    
-                    jTab = getappdata(handle(hChild(i)),'JTabbedPane');
-                else
-                    jTab = getappdata(hChild(i),'UserData');
-                end
+                % retrieves the java tab object
+                jTab = getappdata(hChild(i),'UserData');
                     
                 hTab = get(hChild(i),'Children');
                 for j = 1:length(hTab)
-                    if (nargin > 2)
+                    if nargin > 2
                         p = varargin;
                         setPanelProps(hTab(j),eType,p)
                     else

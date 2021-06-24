@@ -1,5 +1,8 @@
 % --- loads a multi-combined solution file --- %
-function [snTot,sName,ok] = loadMultiCombSolnFiles(TempDir,mName,ind)
+function [snTot,sName,ok] = loadMultiExptSolnFiles(TempDir,mName,ind)
+
+% global variables
+global isAnalysis
 
 % ------------------------------- %
 % --- SOLUTION FILE UNTARRING --- %
@@ -46,12 +49,12 @@ for i = 1:nSoln
     h.Update(1,wStrNw,(i+1)/(nSoln+2));
 
     % loads the current solution file
-    [snTot{i},ok] = loadCombSolnFiles(TempDir,A{ind(i)},h);
+    [snTot{i},ok] = loadExptSolnFiles(TempDir,A{ind(i)},0,h);
     if ~ok
         % if the user cancelled, then exit the function
         cellfun(@delete,A)
         return
-    else
+    elseif ~isAnalysis
         % removes any extraneous/obsolete fields
         rmvFld = {'appPara'};
         for j = 1:length(rmvFld)

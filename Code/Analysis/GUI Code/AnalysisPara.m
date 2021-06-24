@@ -1013,10 +1013,10 @@ snTotT = getappdata(hGUI.figFlyAnalysis,'snTot');
 
 % retrieves the parameter struct
 pData = getappdata(hFig,'pData');
-[eStr,dX,dY,dY0,nPmx,hTabG] = deal({'off','on'},5,3,15,0,[]);
+[dX,dY,dY0,nPmx,hTabG] = deal(5,3,15,0,[]);
 
 % sets the panel handles and parameter struct
-switch (type)
+switch type
     case ('Calc') % case is 
         [hPanel0,p] = deal(handles.panelCalcPara,pData.cP);        
     case ('Plot') % case is plotting parameters
@@ -1054,7 +1054,7 @@ if (iType > 0)
     
     % creates the master tab group and sets the properties
     hTabG = findall(hPanel0,'type','uitabgroup');
-    if ((isHG1) || isempty(hTabG))
+    if isempty(hTabG)
         % if the tab group does not exist, create a new one
         if (isempty(hTabG))
             hTabG = createTabPanelGroup(hPanel0,1);
@@ -1063,42 +1063,15 @@ if (iType > 0)
         
         % 
         hTab = getappdata(hFig,'hTab');
-        if (isempty(hTab)); hTab = cell(1,2); end
+        if isempty(hTab); hTab = cell(1,2); end
         
-        %
-        if (isHG1)
-            N = nTab;
-            if (isempty(hTab{iType}))
-                [hTabP,i0] = deal(cell(nTabMax,1),1);
-            else
-                hTabP = hTab{iType};
-                i0 = find(cellfun(@isempty,hTabP),1,'first');
-            end
-        else
-            % memory allocation
-            [hTabP,N,i0] = deal(cell(nTabMax,1),nTabMax,1);
-        end
+        % memory allocation
+        [hTabP,N,i0] = deal(cell(nTabMax,1),nTabMax,1);
         
         % creates the new tab panels                                    
         for j = i0:N
-            if (isHG1)
-                if (isempty(hTabP{j}))
-                    hTabP{j} = createNewTabPanel(hTabG,1,'UserData',j); 
-                end
-            else
-                hTabP{j} = createNewTabPanel(hTabG,1,'UserData',j);  
-            end
-        end
-        
-        %
-        if (isHG1)
-            for j = (N+1):nTabMax
-                if (~isempty(hTabP{j}))
-                    delete(hTabP{j})
-                    hTabP{j} = [];
-                end
-            end
-        end
+            hTabP{j} = createNewTabPanel(hTabG,1,'UserData',j);  
+        end        
              
         % updates the tab object array
         hTab{iType} = hTabP;
@@ -1110,10 +1083,8 @@ if (iType > 0)
     end     
     
     % sets the tab panel visibility properties
-    if (~isHG1)
-        cellfun(@(x)(set(x,'Parent',hTabG)),hTabP(1:nTab))
-        cellfun(@(x)(set(x,'Parent',[])),hTabP((nTab+1):nTabMax))        
-    end
+    cellfun(@(x)(set(x,'Parent',hTabG)),hTabP(1:nTab))
+    cellfun(@(x)(set(x,'Parent',[])),hTabP((nTab+1):nTabMax))        
 end
 
 % creates the required parameter fields over all tabs
@@ -1518,24 +1489,6 @@ for j = 1:nTab
         end    
     end
 end
-
-% %
-% if ((useTab) && (~isHG1))
-%     hTabG.TabTitles = cellfun(@(x)(x(5:end)),tStrU,'un',0);
-%     hTabG.FontUnits = 'pixels';
-%     hTabG.FontSize = 11;
-%     hTabG.FontWeight = 'bold';
-%     hTabG.Selection = 1;
-%     
-%     tWid = zeros(nTab,1);
-%     for i = 1:nTab
-%         set(handles.textTabText,'string',tStrU{i}(5:end));
-%         resetObjExtent(handles.textTabText);
-%         tWid(i) = cell2mat(retObjDimPos({handles.textTabText},3));
-%     end
-%     
-%     hTabG.TabWidth = max(tWid) + 10;
-% end
 
 % --- creates the new ui control object and sets the string/position fields
 function hObj = createNewObj(hPanel,yNew,Style,Name,Value,Para)

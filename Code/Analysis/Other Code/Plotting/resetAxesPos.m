@@ -28,8 +28,8 @@ if (numel(hAx) ~= m*n)
     hAx = [hAx(:);cell(m*n-numel(hAx),1)];
 end
 
-%
-if (numel(hAx) == m*n)
+% reshapes the axis
+if numel(hAx) == m*n
     hAx = reshape(hAx,n,m)';
 end
 
@@ -37,12 +37,12 @@ end
 hDim = cell(m,n);
 for i = 1:m
     for j = 1:n       
-        if (~isHG1); pause(0.05); end
+        pause(0.05);
         hDim{i,j} = getPlotObjTextHeight(hAx{i,j}); 
         
-        if (length(hAx{i,j}) == 2)
+        if length(hAx{i,j}) == 2
             hTitle = findall(hAx{i,j}(2),'tag','Title');
-            if (~isempty(hTitle)); delete(hTitle); end
+            if ~isempty(hTitle); delete(hTitle); end
         end
     end
 end

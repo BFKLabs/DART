@@ -298,7 +298,7 @@ snTot = reshapeExptSolnFile(snTot);
 
 % outputs the solution file
 fFileFull = [fNameFull,'.ssol'];
-saveCombSolnFile(iProg.TempFile,fFileFull,snTot,oPara);
+saveExptSolnFile(iProg.TempFile,fFileFull,snTot,oPara);
 
 % --- outputs a Matlab mat solution file --- %
 function outputMATSoln(handles,oPara,fNameFull)

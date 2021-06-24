@@ -1,8 +1,11 @@
 % --- sets the combined solution file data struct --- %
-function [snTot,iMov] = combineSolnFiles(sName)
+function [snTot,iMov] = combineSolnFiles(sName,isReduce)
 
 % global variables
 global hh hDay
+
+% sets the default input arguments
+if ~exist('isReduce','var'); isReduce = false; end
 
 % parameters and initialisations
 updateSumm = false;
@@ -22,11 +25,15 @@ if exist(smFile,'file')
     h = ProgressLoadbar('Determining Valid Solution Files...');
     
     % retrieves the index of the first file
-    i0 = getVideoFileIndex(sName{1})-1;
-    if isnan(i0)
-        % if there is an issue, then exit
-        [snTot,iMov] = deal([]);
-        return      
+    if length(sName) == 1
+        i0 = 0;
+    else
+        i0 = getVideoFileIndex(sName{1})-1;
+        if isnan(i0)
+            % if there is an issue, then exit
+            [snTot,iMov] = deal([]);
+            return      
+        end
     end
         
     % retrieves the stimuli protocol/experiment information
@@ -426,54 +433,62 @@ for i = 1:nApp
     end
 end
 
-% % removes the rejected apparatus from the analysis fields
-% if ~isempty(iMov)
-%     if isfield(iMov,'ok')        
-%         % retrieves the acceptance/rejection flags
-%         ok0 = iMov.ok;
-%         
-%         % resets the solution data struct
-%         snTot.Px = snTot.Px(ok0);
-%         snTot.Py = snTot.Py(ok0);         
-%         
-%         % resets the orientation angles (if calculated)
-%         if calcPhi
-%             snTot.Phi = snTot.Phi(ok0); 
-%             snTot.AxR = snTot.AxR(ok0); 
-%         end
-%         
-%         % if there are any 
-%         if any(~ok0)
-%             for i = find(~ok0(:)')
-%                 [iCol,~,iRow] = getRegionIndices(iMov,i);
-%                 iMov.nTubeR(iRow,iCol) = NaN;
-%             end
-%         end
-%         
-%         % sets the region index fields
-%         if isfield(iMov,'indR')
-%             % if the field exists, then reduce it
-%             iMov.indR = iMov.indR(ok0);
-%         else
-%             % otherwise, initialise the field
-%             iMov.indR = find(ok0);
-%         end
-%         
-%         % resets the sub-region data struct         
-%         [iMov.ok,iMov.flyok] = deal(iMov.ok(ok0),iMov.flyok(:,ok0));
-%         [iMov.iR,iMov.iC] = deal(iMov.iR(ok0),iMov.iC(ok0));
-%         [iMov.iRT,iMov.iCT] = deal(iMov.iRT(ok0),iMov.iCT(ok0));
-%         [iMov.xTube,iMov.yTube] = deal(iMov.xTube(ok0),iMov.yTube(ok0));
-%         [iMov.pos,iMov.Status] = deal(iMov.pos(ok0),iMov.Status(ok0));
-%         
-%         % resets the background image arrays       
-%         for i = 1:length(iMov.Ibg)
-%             if iMov.vPhase(i) == 1
-%                 iMov.Ibg{i} = iMov.Ibg{i}(ok0);
-%             end
-%         end
-%     end
-% end
+% removes the rejected apparatus from the analysis fields
+if ~isempty(iMov) && isReduce
+    if isfield(iMov,'ok')        
+        % retrieves the acceptance/rejection flags
+        ok0 = iMov.ok;
+        
+        % resets the solution data struct
+        snTot.Px = snTot.Px(ok0);
+        snTot.Py = snTot.Py(ok0);         
+        
+        % resets the orientation angles (if calculated)
+        if calcPhi
+            snTot.Phi = snTot.Phi(ok0); 
+            snTot.AxR = snTot.AxR(ok0); 
+        end
+        
+        % if there are any 
+        if any(~ok0)
+            for i = find(~ok0(:)')
+                [iCol,~,iRow] = getRegionIndices(iMov,i);
+                iMov.nTubeR(iRow,iCol) = NaN;
+            end
+        end
+        
+        % sets the region index fields
+        if isfield(iMov,'indR')
+            % if the field exists, then reduce it
+            iMov.indR = iMov.indR(ok0);
+        else
+            % otherwise, initialise the field
+            iMov.indR = find(ok0);
+        end
+        
+        % resets the sub-region data struct         
+        iMov.ok = iMov.ok(ok0);
+        [iMov.iR,iMov.iC] = deal(iMov.iR(ok0),iMov.iC(ok0));
+        [iMov.iRT,iMov.iCT] = deal(iMov.iRT(ok0),iMov.iCT(ok0));
+        [iMov.xTube,iMov.yTube] = deal(iMov.xTube(ok0),iMov.yTube(ok0));
+        [iMov.pos,iMov.Status] = deal(iMov.pos(ok0),iMov.Status(ok0));
+        iMov.pInfo.gName = iMov.pInfo.gName(ok0);
+        
+        %
+        if iscell(iMov.flyok)
+            iMov.flyok = iMov.flyok(ok0);
+        else
+            iMov.flyok = iMov.flyok(:,ok0);
+        end
+        
+        % resets the background image arrays       
+        for i = 1:length(iMov.Ibg)
+            if iMov.vPhase(i) == 1
+                iMov.Ibg{i} = iMov.Ibg{i}(ok0);
+            end
+        end
+    end
+end
 
 % updates the summary file (if in need of update)
 if updateSumm

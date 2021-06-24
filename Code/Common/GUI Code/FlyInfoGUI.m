@@ -224,7 +224,7 @@ classdef FlyInfoGUI < handle
             end
 
             % sets the table height/width
-            hOfs = 2*(~verLessThan('matlab','8.4'));
+            hOfs = 2;
             H = jTableH.getPreferredSize.getHeight() + 4 + ...
                 jTableH.getTableHeader().getPreferredSize().getHeight();            
             W = obj.rTable.getColumnModel.getColumn(0).getWidth() + ...
@@ -323,6 +323,14 @@ classdef FlyInfoGUI < handle
                 % clears the arrays
                 clear Px Dtot; pause(0.01);
             end
+            
+        end
+        
+        % --- gui close callback function
+        function closeFigure(obj, ~)
+            
+            % deletes the GUI
+            delete(obj.hFig);
             
         end
         

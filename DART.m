@@ -658,25 +658,14 @@ end
 mFile = dir(mainDir);
 fName = cellfun(@(x)(x.name),num2cell(mFile),'un',0);
 isDir = cellfun(@(x)(x.isdir),num2cell(mFile));
-isHG1v = verLessThan('matlab','8.4');
 
 % sets the candidate directories for adding/removing files
-if isHG1v
-    naddStr = 'HG2';
-    nwDir = find(~(strcmp(fName,'.') | ...
-                   strcmp(fName,'..') | ...
-                   strcmp(fName,'Executable Only') | ...
-                   strcmp(fName,'Repo') | ...
-                   strContainsDART(fName,'_mcr')) & isDir);
-else
-    naddStr = 'HG1';
-    nwDir = find(~(strcmp(fName,'.') | ...
-                   strcmp(fName,'..') | ...
-                   strcmp(fName,'Executable Only') | ...
-                   strcmp(fName,'Repo') | ...
-                   strContainsDART(fName,'_mcr')) & isDir); 
-end
-      
+nwDir = find(~(strcmp(fName,'.') | ...
+               strcmp(fName,'..') | ...
+               strcmp(fName,'Executable Only') | ...
+               strcmp(fName,'Repo') | ...
+               strContainsDART(fName,'_mcr')) & isDir); 
+
 % sets the utilities directory
 uDir = {'MCC','NIDAQ'};
 if strcmp(type,'remove')
@@ -688,8 +677,7 @@ for i = 1:length(nwDir)
     % sets the new directory name (ignores the incorrect HG version and the
     % DAQ utility folders)
     nwDirName = fullfile(mainDir,fName{nwDir(i)});
-    validDir = ~strcmp(fName{nwDir(i)},naddStr) && ...
-                all(~strContainsDART(nwDirName,uDir));
+    validDir = all(~strContainsDART(nwDirName,uDir));
     
     % adds/removes the path based on the type flag
     if validDir    
@@ -828,7 +816,7 @@ if exist(testDir,'dir')
 end
 
 % global variables
-[mainDir,isHG1v] = deal(pwd,verLessThan('matlab','8.4'));
+mainDir = pwd;
 [isTest,ok,h] = deal(getappdata(handles.figDART,'isTest'),true,[]);
 
 % % uses the opengl software for rendering
@@ -898,7 +886,7 @@ if ~isdeployed
 end
 
 % creates the load bar
-h = ProgressLoadbar('Initialising DART Program...',isHG1v);
+h = ProgressLoadbar('Initialising DART Program...');
 
 % adds the miscellaneous file path
 if ~isdeployed

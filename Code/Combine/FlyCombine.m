@@ -179,28 +179,6 @@ else
     end
 end
 
-% % calculates the aspect ratio of the tube regions. if the aspect ratio is
-% % low (meaning the width/height is low) then suggest using 2 dimensions
-% if isfield(iMov,'is2D')
-%     % case is the flag is already set (new sub-region struct format)
-%     is2D = iMov.is2D;
-% else
-%     % case is the flag is already not set (old sub-region struct format)
-%     det2D = is2DCheck(iMov);
-%     if det2D
-%         % if the region is potentially 2D, then prompt the user if the
-%         % experiment is actually a 2D setup
-%         qStr = sprintf(['The tube region width/height aspect ratio \n',...
-%                         'is low. Do you wish to analyse data in 2 ',...
-%                         'dimensions?']);
-%         uChoice = questdlg(qStr,'2D Analysis?','Yes','No','Yes');
-%         is2D = strcmp(uChoice,'Yes');
-%     else
-%         % aspect ratio is high, so use 1 dimension for analysis
-%         is2D = false;
-%     end
-% end
-
 % updates the solution file name/directory
 setappdata(handles.figFlyCombine,'fDir',iProg.DirComb)
 setappdata(handles.figFlyCombine,'fName',fName)
@@ -229,7 +207,7 @@ if fIndex == 0
     return
 else
     % initialises the waitbar
-    snTot = loadCombSolnFiles(iProg.TempFile,fullfile(fDir,fName));    
+    snTot = loadExptSolnFiles(iProg.TempFile,fullfile(fDir,fName),1);
     
     % loads the solution file
     if isempty(snTot)
@@ -334,7 +312,7 @@ if strcmp(uChoice,'Yes')
     % deletes the figure and removes all added paths
     hGUIInfo = getappdata(hFig,'hGUIInfo');
     if ~isempty(hGUIInfo)
-        hGUIInfo.closeGUI();
+        hGUIInfo.closeFigure();
     end
         
     % sets the Fly Track GUI to be invisible
@@ -1765,7 +1743,7 @@ hGUIInfo = getappdata(hFig,'hGUIInfo');
 % removes an previous information GUIs
 if ~isempty(hGUIInfo)
     setappdata(hFig,'hGUIInfo',[])
-    hGUIInfo.closeGUI();           
+    hGUIInfo.closeFigure();           
 end
 
 % creates a waitbar figure

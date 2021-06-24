@@ -861,7 +861,7 @@ for i = 1:iMov.pInfo.nGrp
     
     % case is a 2D expt setup
     if iMov.is2D        
-        fPos{i} = arrayfun(@(ir,ic)(fPos0{ir}{ic}),iRowG,iColG,'un',0)';        
+        fPos{i} = arrayfun(@(ir,ic)(fPos0{ic}{ir}),iRowG,iColG,'un',0)';        
     else
         iRegG = (iRowG-1)*iMov.pInfo.nCol + iColG;
         nFly = iMov.pInfo.nFly(iRegG);

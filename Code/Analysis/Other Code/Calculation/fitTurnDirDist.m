@@ -28,14 +28,17 @@ fOpt = fitoptions('method','NonlinearLeastSquares','Lower',xL,...
 Yfit = calcFittedValues(g,pExp,X);
 
 % retrieves the coefficient values and confidence intervals
-[pp,ppS] = deal(coeffvalues(pExp),diff(confint(pExp),[],1)/(2*1.96));
+try
+    pp = coeffvalues(pExp);
+    ppS = diff(confint(pExp),[],1)/(2*1.96);    
+catch
+    [pp,ppS] = deal(NaN(1,2));
+end
 
 % sets the fitted values into the output data struct
 [p,fStr] = deal(struct('R2',G.rsquare),fieldnames(pExp));
-for i = 1:length(fStr)   
+for i = 1:length(fStr)
     eval(sprintf('p.%s = zeros(1,2);',fStr{i}));
     eval(sprintf('p.%s(1) = pp(i);',fStr{i}));
     eval(sprintf('p.%s(2) = ppS(i);',fStr{i}));
 end
-
-

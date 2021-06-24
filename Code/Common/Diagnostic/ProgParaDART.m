@@ -82,7 +82,7 @@ hDART = getappdata(handles.figProgDef,'hDART');
 
 % determines if the program defaults have been set
 progFile = fullfile(mainProgDir,'Para Files','ProgDef.mat');
-if (isempty(hDART))
+if isempty(hDART)
     % if running from command-line, update the local parameter file    
     ProgDef = ProgDefNw;    
 else

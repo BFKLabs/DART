@@ -51,13 +51,21 @@ fOpt = fitoptions('method','NonlinearLeastSquares','Lower',xL,...
                   'MaxIter',1e10);
                                 
 % runs the solver
-[pExp,G] = fit(x(ii),y(ii),g,fOpt);   
+% if sum(ii) < 3
+%     [pExp,G] = fit(x,y,g,fOpt); 
+% else
+    [pExp,G] = fit(x(ii),y(ii),g,fOpt); 
+% end
 
 % calculates the fitted values
 Yfit = calcFittedValues(g,pExp,x);
 
 % retrieves the coefficient values and confidence intervals
-[pp,ppS] = deal(coeffvalues(pExp),diff(confint(pExp),[],1)/(2*1.96));
+try
+    [pp,ppS] = deal(coeffvalues(pExp),diff(confint(pExp),[],1)/(2*1.96));
+catch
+    [pp,ppS] = deal(NaN(1,3));
+end
 
 % sets the fitted values into the output data struct
 [p,fStr] = deal(struct('R2',G.rsquare),fieldnames(pExp));
@@ -66,6 +74,3 @@ for i = 1:length(fStr)
     eval(sprintf('p.%s(1) = pp(i);',fStr{i}));
     eval(sprintf('p.%s(2) = ppS(i);',fStr{i}));
 end
-
-
-

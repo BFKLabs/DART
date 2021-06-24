@@ -3,20 +3,21 @@ function updateFontProps(hObj,Font,ind,Type)
 
 % global variables
 global regSz newSz
-isHG2 = ~verLessThan('matlab','8.4');
-if (~iscell(hObj)); hObj = num2cell(hObj); end
+
+% ensures the objects are stored in a cell array
+if ~iscell(hObj); hObj = num2cell(hObj); end
 
 % determines the font ratio
-if (isempty(newSz)) || (isempty(regSz))
+if isempty(newSz) || isempty(regSz)
     fR = 1;
 else
     fR = min(newSz(3:4)./regSz(3:4))*get(0,'ScreenPixelsPerInch')/72;
 end
 
 % sets the subplot index to one (if not provided)
-if (nargin < 3)
+if nargin < 3
     ind = 1;
-elseif (nargin == 4) && (strcmp(Type,'Axis'))
+elseif (nargin == 4) && strcmp(Type,'Axis')
     ind = get(gca,'UserData');
 end 
 
@@ -26,14 +27,14 @@ fStr = fieldnames(Font);
 % updates the font struct field
 for j = 1:length(hObj)
     % sets the object tag (if not an axis item)
-    if (nargin == 4)
-        if (~(strcmp(Type,'Axis') || strcmp(Type,'Legend')))
+    if nargin == 4
+        if ~(strcmp(Type,'Axis') || strcmp(Type,'Legend'))
             set(hObj{j},'Tag',Type)
         end
     end
     
-    % retrieves the title/label properties (for HG2)
-    if ((isHG2) && (strcmp(get(hObj{j},'Type'),'axes')))
+    % retrieves the title/label properties 
+    if strcmp(get(hObj{j},'Type'),'axes')
         hObjT = {get(hObj{j},'Title'),...
                  get(hObj{j},'XLabel'),...
                  get(hObj{j},'YLabel')};
@@ -46,7 +47,7 @@ for j = 1:length(hObj)
         fNw = eval(sprintf('Font.%s',fStr{i}));
         
         % sets the property values based on the type
-        switch (fStr{i})
+        switch fStr{i}
             case ('Color') % case is the font colour
                 if (strcmp(get(hObj{j},'Type'),'axes'))
                     set(hObj{j},'xColor',fNw,'UserData',ind)
@@ -67,7 +68,7 @@ for j = 1:length(hObj)
     end
     
     % resets the title/label properties (for HG2)
-    if ((isHG2) && (strcmp(get(hObj{j},'Type'),'axes')))
+    if strcmp(get(hObj{j},'Type'),'axes')
         resetHandleSnapshot(hProp0)        
     end    
 end

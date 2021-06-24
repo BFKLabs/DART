@@ -54,7 +54,7 @@ setappdata(hObject,'stimP',iData.stimP);
 setappdata(hObject,'T',iData.Tv(iData.Frm0:iMov.sRate:end));
 
 % retrieves the objects within the stimuli panel
-if ~verLessThan('matlab','8.4'); delete(handles.editOuter); end
+delete(handles.editOuter);
 
 % initialises the tab objects
 initListBoxes(handles)

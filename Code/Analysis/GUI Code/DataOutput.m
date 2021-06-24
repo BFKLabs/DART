@@ -90,8 +90,8 @@ setappdata(hObject,'snTot',snTot)
 setappdata(hObject,'metType',metType)
 setappdata(hObject,'hasTest',find(hasTest))
 
-% removes the solution/plot data structs from the analysis GUI
-setappdata(hGUI,'snTot',[])
+% % removes the solution/plot data structs from the analysis GUI
+% setappdata(hGUI,'snTot',[])
 
 % sets the function handles into the GUI
 setappdata(hObject,'updateSheetData',@updateSheetData)
@@ -326,12 +326,12 @@ end
 hGUI = getappdata(handles.figDataOutput,'hGUI');
 hPara = getappdata(handles.figDataOutput,'hPara');
 
-% resets the solution/plot data structs from the analysis GUI
-setappdata(hGUI,'snTot',getappdata(handles.figDataOutput,'snTot'))
+% % resets the solution/plot data structs from the analysis GUI
+% setappdata(hGUI,'snTot',getappdata(handles.figDataOutput,'snTot'))
 
 % deletes the output stats GUI (if open)
 hStats = findall(0,'tag','figStatTest');
-if (~isempty(hStats)); delete(hStats); end
+if ~isempty(hStats); delete(hStats); end
 
 % deletes the sub-GUI and makes the parameter GUI visible again
 delete(handles.figDataOutput)
@@ -420,11 +420,7 @@ if iData.nTab == 1
 end
 
 % updates the metric 
-if isHG1
-    updateTabSelection(hTabGrpM,iData.tData.mSel(iData.cTab),mSel0)
-else
-    updateTabSelection(hTabGrpM,iData.tData.mSel(iData.cTab),1)
-end
+updateTabSelection(hTabGrpM,iData.tData.mSel(iData.cTab),1)
 
 % sets the worksheet information and data 
 updateSheetInfo(handles)
@@ -631,8 +627,7 @@ pPosIO(2) = H0 - (pPosIO(4)+dY);
 set(h.panelInfoOuter,'position',pPosIO);
 
 % resets the edit position
-ePos = [[dX dY]/2-dX*(~isHG1),pPosDO(3)-(dX+2),pPosDO(4)-(7*dY/2)];
-if (isHG1); set(h.editTabPanel,'position',ePos); end
+ePos = [[dX dY]/2-dX,pPosDO(3)-(dX+2),pPosDO(4)-(7*dY/2)];
 
 % resets the data sheet table position
 tPos = [10,10,pPosDO(3:4)-[22 42]];
@@ -823,12 +818,7 @@ else
     setappdata(handles.figDataOutput,'iData',iData)    
     
     % hides the currently visible table
-    hTab0 = findall(handles.panelMetricInfo,'type','uitable','visible','on');
     hTab1 = findall(handles.panelMetricInfo,'type','uitable','UserData',mSel);    
-    if isHG1
-        setObjVisibility(hTab0,'off')
-        setObjVisibility(hTab1,'on')
-    end
     
     % retrieves the table object
     [jTab,Data] = deal(getappdata(hTab1,'jTable'),get(hTab1,'Data'));
@@ -1074,11 +1064,11 @@ end
 function changeInfoTab(hObject, eventdata)
 
 % retrieves the GUI handles
-[handles,eStr,showTable] = deal(guidata(hObject),{'off','on'},false(2,1));
+[handles,showTable] = deal(guidata(hObject),false(2,1));
 iData = getappdata(handles.figDataOutput,'iData');
 
 % sets the visibility of the genotype inclusion table
-switch (get(eventdata.NewValue,'Title'))
+switch get(eventdata.NewValue,'Title')
     case ('Genotype Groups') % case is the genotyp groups        
         [iData.incTab,showTable(1)] = deal(1,true);
     case ('Experiment Output') % case is the experiment output        
@@ -1089,12 +1079,6 @@ end
 
 % updates the table data
 setappdata(handles.figDataOutput,'iData',iData)
-
-% sets the table visibility        
-if isHG1
-    setObjVisibility(handles.tableGroupInc,showTable(1))
-    setObjVisibility(handles.tableExptInc,showTable(2))
-end
 
 % --- Executes when entered data in editable cell(s) in tableGroupInc.
 function tableGroupInc_CellEditCallback(hObject, eventdata, handles)
@@ -1395,20 +1379,14 @@ else
     
     % updates the metric selection tab
     uDataM = get(hTabM,'UserData');
-    if (iscell(uDataM)); uDataM = cell2mat(uDataM); end
+    if iscell(uDataM); uDataM = cell2mat(uDataM); end
 
     % updates the selected tab
-    [i0,i1] = deal(find(uDataM==mSel0),find(uDataM==iData.tData.mSel(iData.cTab)));
-    if (isHG1)
-        % case is for HG1 graphics
-        updateTabSelection(hTabGrpM,i1,i0);            
-    else
-        % case is for HG2 graphics
-        updateTabSelection(hTabGrpM,i1);            
-    end            
+    i1 = find(uDataM==iData.tData.mSel(iData.cTab));
+    updateTabSelection(hTabGrpM,i1);
     
     % sets the worksheet information
-    if (iData.tData.iSel(iData.cTab) == 1)
+    if iData.tData.iSel(iData.cTab) == 1
         changeMetricTab(hTabGrpM)
     else
         changeMetricTab(hTabGrpM, struct('NewValue',hTabM(i1)), 1)
@@ -1538,7 +1516,7 @@ hTable = createTabTable(handles.panelDataOuter,iData.nTab,iData.tData.hTab{end})
 
 % creates the new tab
 iData.tData.hTab{end+1} = createNewTabPanel(hTabGrp,1,'Title','+');
-if (~isHG1); set(hTable,'Parent',iData.tData.hTab{end-1}); end
+set(hTable,'Parent',iData.tData.hTab{end-1});
 setappdata(handles.figDataOutput,'iData',iData);
 
 % resets the user data/title fields
@@ -2554,11 +2532,6 @@ mInd = find(any(metType,1));
 iData.tData.mSel = mInd(1);
 setappdata(handles.figDataOutput,'iData',iData)          
 
-% sets the outer panel to transparent
-if (isHG1)
-    set(handles.panelOuter,'BackgroundColor','none')
-end
-
 % --------------------------------------- %
 % --- USER INFO GROUP INITIALISATIONS --- %
 % --------------------------------------- %
@@ -2679,23 +2652,18 @@ tStr = {'Metrics (Pop)','Metrics (Fixed)','Metrics (Indiv)',...
         'General Array (Indiv)','Other'};
 tabPosM = getTabPosVector(handles.panelMetricInfo);
 
-% sets the tabke properties
-cWid{1} = {130+10*(~isHG1),45,105+2*(~isHG1)};
-cWid{2} = {215+10*(~isHG1),45};
+% sets the table properties
+cWid{1} = {140,45,107};
+cWid{2} = {225,45};
 mInd(end+1) = length(tStr);
 
 % creates a tab panel group
 hTabGrpM = createTabPanelGroup(handles.panelMetricInfo,1);
 set(hTabGrpM,'tag','metricTabGrp','Units','Pixels','position',tabPosM)
 
-if (isHG1)
-    % if using HG1 graphics, set the table position vector
-    tPos = [10*[1 1] 300 94];     
-else
-    % otherwise, resets the tab group dimensions
-    resetObjPos(hTabGrpM,'height',2,1)
-    resetObjPos(hTabGrpM,'bottom',-2,1)    
-end
+% otherwise, resets the tab group dimensions
+resetObjPos(hTabGrpM,'height',2,1)
+resetObjPos(hTabGrpM,'bottom',-2,1)
 
 % creates the tabs         
 [hTabM,hTable] = deal(cell(length(mInd),1));
@@ -2704,7 +2672,7 @@ for i = 1:length(mInd)
     hTabM{i} = createNewTabPanel(hTabGrpM,1,'title',tStr{mInd(i)},'UserData',mInd(i)); 
     
     % retrieves the table position vector (HG2 graphics only)
-    if (~isHG1); tPos = getTabTablePos(hTabGrpM,false); end
+    tPos = getTabTablePos(hTabGrpM,false);
     
     % creates the table object
     cEdit = [false,true];
@@ -2723,11 +2691,7 @@ for i = 1:length(mInd)
                 'ColumnEditable',cEdit);                                 
     
     % makes the table invisible (if the tab is not selected)
-    if isHG1
-        setObjVisibility(hTable{i},mInd(i)==mInd(1));
-    else
-        set(hTable{i},'parent',hTabM{i}); 
-    end          
+    set(hTable{i},'parent',hTabM{i}); 
 end           
 
 % automatically resizes the table columns
@@ -2812,55 +2776,48 @@ for i = 1:length(hCheck)
     set(hCheck(i),'Callback',{@checkOtherFormat});
 end
 
-% % sets the radio buttons to the top
-% hR = {handles.radioMetricData,handles.radioStatTest};
-% cellfun(@(x)(uistack(x,'top')),hR)
+% removes the background edit boxes
+delete(handles.editTabBack)
+delete(handles.editDataBack)
+delete(handles.editTabPanel)
 
-%
-if (~isHG1)
-    % removes the background edit boxes
-    delete(handles.editTabBack)
-    delete(handles.editDataBack)
-    delete(handles.editTabPanel)
-    
-    % resets the tab group height
-    resetObjPos(hTabGrpU,'height',2,1)
-    resetObjPos(hTabGrpU,'bottom',-2,1)
-        
-    % resets the position of the table
-    set(handles.tableGroupInc,'parent',hTabU{1},...
-                              'position',getTabTablePos(hTabGrpU,0))
-    
-    % resets the metric order listbox dimensions
-    set(handles.listMetricOrder,'parent',hTabU{2})
-    resetObjPos(handles.listMetricOrder,'width',-15,1)
-    resetObjPos(handles.listMetricOrder,'height',-10,1)
-    resetObjPos(handles.listMetricOrder,'left',5)
-    resetObjPos(handles.listMetricOrder,'bottom',5)        
-    
-    % resets the position of the up/down arrow buttons
-    hObj = {handles.buttonMoveUp,handles.buttonMoveDown};
-    for i = 1:length(hObj)
-        set(hObj{i},'parent',hTabU{2})
-        resetObjPos(hObj{i},'left',-20,1)
-        resetObjPos(hObj{i},'bottom',-10,1)        
-    end
-    
-    % resets the experiment inclusion table (if required)
-    if (length(hTabU) == 3)
-        % sets the experiment inclusion data
-        sName = getappdata(handles.figDataOutput,'sName');
-        DataExp = [sName(:),num2cell(iData.expOut)];
-        
-        % sets the table properties
-        set(handles.tableExptInc,'parent',hTabU{3},'Data',DataExp,...
-                                 'position',getTabTablePos(hTabGrpU,0))             
-        autoResizeTableColumns(handles.tableExptInc); 
-    else
-        % if not required, then delete the table
-        delete(handles.tableExptInc); 
-    end        
-end        
+% resets the tab group height
+resetObjPos(hTabGrpU,'height',2,1)
+resetObjPos(hTabGrpU,'bottom',-2,1)
+
+% resets the position of the table
+set(handles.tableGroupInc,'parent',hTabU{1},...
+                          'position',getTabTablePos(hTabGrpU,0))
+
+% resets the metric order listbox dimensions
+set(handles.listMetricOrder,'parent',hTabU{2})
+resetObjPos(handles.listMetricOrder,'width',-15,1)
+resetObjPos(handles.listMetricOrder,'height',-10,1)
+resetObjPos(handles.listMetricOrder,'left',5)
+resetObjPos(handles.listMetricOrder,'bottom',5)        
+
+% resets the position of the up/down arrow buttons
+hObj = {handles.buttonMoveUp,handles.buttonMoveDown};
+for i = 1:length(hObj)
+    set(hObj{i},'parent',hTabU{2})
+    resetObjPos(hObj{i},'left',-20,1)
+    resetObjPos(hObj{i},'bottom',-10,1)        
+end
+
+% resets the experiment inclusion table (if required)
+if length(hTabU) == 3
+    % sets the experiment inclusion data
+    sName = getappdata(handles.figDataOutput,'sName');
+    DataExp = [sName(:),num2cell(iData.expOut)];
+
+    % sets the table properties
+    set(handles.tableExptInc,'parent',hTabU{3},'Data',DataExp,...
+                             'position',getTabTablePos(hTabGrpU,0))             
+    autoResizeTableColumns(handles.tableExptInc); 
+else
+    % if not required, then delete the table
+    delete(handles.tableExptInc); 
+end   
 
 % resizes the table columns
 autoResizeTableColumns(handles.tableGroupInc); 
@@ -2878,19 +2835,16 @@ function initGUIJavaObjects(handles)
 % initialisations
 hFig = handles.figDataOutput;
 
-% 
-if (~isHG1)
-    % retrieves all the tab groups from the 
-    hTabG = findall(hFig,'type','uitabgroup');
-    for i = 1:length(hTabG)
-        % retrieves the tabbed pane object from the tab group
-        jH = findjobj(hTabG(i));
-        jHT = jH(cellfun(@(x)(isa(x,['javahandle_withcallbacks.',...
-                    'com.mathworks.mwswing.MJTabbedPane'])),num2cell(jH)));
-                
-        % sets the java object into the tab group
-        setappdata(hTabG(i),'UserData',jHT)        
-    end
+% retrieves all the tab groups from the 
+hTabG = findall(hFig,'type','uitabgroup');
+for i = 1:length(hTabG)
+    % retrieves the tabbed pane object from the tab group
+    jH = findjobj(hTabG(i));
+    jHT = jH(cellfun(@(x)(isa(x,['javahandle_withcallbacks.',...
+                'com.mathworks.mwswing.MJTabbedPane'])),num2cell(jH)));
+
+    % sets the java object into the tab group
+    setappdata(hTabG(i),'UserData',jHT)        
 end
 
 % --- updates the metric order selection buttons
@@ -3108,25 +3062,21 @@ snTot = getappdata(handles.figDataOutput,'snTot');
 
 % retrieves the tab group java object handle (based on graphics type)
 hTabG = findall(handles.panelUserInfo,'tag','userTabGrp');
-if (isHG1)
-    jTabG = getappdata(handle(hTabG),'JTabbedPane');            
-else
-    jTabG = getappdata(hTabG,'UserData'); 
-    if (isempty(jTabG))
-        return       
-    end
+jTabG = getappdata(hTabG,'UserData'); 
+if isempty(jTabG)
+    return       
 end
 
 % updates the experiment output tab properties
-if (length(snTot) > 1)
-    if (~isempty(jTabG))
+if length(snTot) > 1
+    if ~isempty(jTabG)
         jTabG.setEnabledAt(length(get(hTabG,'children'))-1,isOK)        
     end
 end
 
 % if disabling the tab (and it is selected), then shift the
 % selected tab to the first tab instead
-if ((~isOK) && (iData.incTab == 3))
+if ~isOK && (iData.incTab == 3)
     % shifts the tab
     updateTabSelection(hTabG,1,3)
 
@@ -3460,21 +3410,12 @@ end
 function updateTabSelection(hTabG,iNw,iPr)
 
 % updates the selected tab based on the graphics type
-if (isHG1)
-    % graphics type is HG1
-    if (nargin == 3)
-        set(hTabG,'SelectedIndex',iPr); pause(0.05);
-    end
-    set(hTabG,'SelectedIndex',iNw)    
+if nargin == 2
+    % new index is the order within tab group
+    hTabG.SelectedTab = hTabG.Children(iNw);
 else
-    % graphics type is HG2
-    if (nargin == 2)
-        % new index is the order within tab group
-        hTabG.SelectedTab = hTabG.Children(iNw);
-    else
-        % new index is based on the user data flag
-        hTabG.SelectedTab = findall(hTabG,'UserData',iNw,'Parent',hTabG);
-    end
+    % new index is based on the user data flag
+    hTabG.SelectedTab = findall(hTabG,'UserData',iNw,'Parent',hTabG);
 end
 
 % --- gets the tab table position vector
@@ -3484,23 +3425,18 @@ function tPos = getTabTablePos(hPanel,isShift)
 global tCount
 
 % determines if the table needs to be shifted
-if (nargin < 2)
+if nargin < 2
     tCount = tCount + 1;
     isShift = tCount < 1;
 end
 
 % sets the table position vector
-if (isHG1)
-    pPos = get(hPanel,'position');
-    tPos = [10*[1 1],pPos(3)-22,pPos(4)-45];
+hTabG = findall(hPanel,'type','uitabgroup');
+tgPos = get(hTabG,'position');    
+if isShift
+    tPos = [1 31 tgPos(3:4)-[6 30]];        
 else
-    hTabG = findall(hPanel,'type','uitabgroup');
-    tgPos = get(hTabG,'position');    
-    if (isShift)
-        tPos = [1 31 tgPos(3:4)-[6 30]];        
-    else
-        tPos = [1 1 tgPos(3:4)-[6 30]];        
-    end    
+    tPos = [1 1 tgPos(3:4)-[6 30]];        
 end
 
 % --- determines if the metric (iSel) has data

@@ -1,8 +1,11 @@
 % --- reduces down the combined solution files such that the apparatus 
-function snTot = reduceCombSolnFiles(snTot,indNw,appName)
+function snTot = reduceExptSolnFiles(snTot,indNw,appName)
 
 % sets the new indices (if not provided)
-if nargin < 2; indNw = num2cell(1:length(snTot.Px))'; end
+if nargin < 2
+    indNw = num2cell(1:length(snTot.Px))'; 
+    indNw(cellfun(@isempty,snTot.Px)) = {[]};
+end
 if nargin < 3; appName = snTot.iMov.pInfo.gName; end
 
 if isfield(snTot,'iMov')
@@ -32,7 +35,7 @@ if calcPhi; [Phi,AxR] = deal(cell(nApp,1)); end
 % reduces down the arrays
 for i = 1:nApp
     % sets apparatus name
-    Name{i} = appName{i};        
+    Name{i} = appName{i};
     
     % sets the indices for the current apparatus
     if ~isempty(indNw{i})
@@ -105,6 +108,17 @@ end
 %     fokTmp(isnan(fokTmp)) = 0;
 %     snTot.iMov.flyok = logical(fokTmp);
 % end
+
+% groups the acceptance flags (if not already grouped)
+if ~iscell(snTot.iMov.flyok)
+    fok0 = groupAcceptFlags(snTot);
+    snTot.iMov.flyok = cellfun(@(x)...
+                            (cell2mat(arr2vec(fok0(x)))),indNw,'un',0);                        
+end
+
+% regroups the ID flags
+cID0 = snTot.cID;
+snTot.cID = cellfun(@(x)(cell2mat(arr2vec(cID0(x)))),indNw,'un',0);
 
 % sets the coordinates/mapping arrays (if required)
 if ~isempty(snTot.Py); snTot.Py = Py; end

@@ -291,7 +291,7 @@ else
 end
 
 % loads the multi-experiment solution file
-[snTot,fFile,ok] = loadMultiCombSolnFiles(iProg.TempFile,mFile);
+[snTot,fFile,ok] = loadMultiExptSolnFiles(iProg.TempFile,mFile);
 if ~ok
     % if the user cancelled, then exit the function
     return
@@ -372,7 +372,8 @@ for i = 1:nFile
         if ~isempty(snTot.Py); snTot.Py = snTot.Py(ok); end        
     else
         % creates the new cell array for the new variable
-        [snTot,ok] = loadCombSolnFiles(tmpDir,sFile{i},handles,i,indApp,h);        
+        [snTot,ok] = loadExptSolnFiles...
+                                (tmpDir,sFile{i},0,handles,i,indApp,h);
         if ~ok
             % if the user cancelled, then exit the function
             cellfun(@delete,tarFiles(1:(i-1)))
@@ -392,14 +393,14 @@ for i = 1:nFile
 %     snTot = reshapeExptSolnFile(snTot);
     
     % removes any extraneous fields    
-    snTot = reduceCombSolnFiles(snTot,indNw,appName);
+    snTot = reduceExptSolnFiles(snTot,indNw,appName);
     if isfield(snTot,'sName')        
         snTot = rmfield(snTot,'sName');
     end
         
     % outputs the single combined solution file
     tarFiles{i} = fullfile(iProg.TempFile,[fName{i},'.ssol']);
-    if ~saveCombSolnFile(iProg.TempFile,tarFiles{i},snTot,[],h)
+    if ~saveExptSolnFile(iProg.TempFile,tarFiles{i},snTot,[],h)
         % otherwise, delete the solution files and exits 
         cellfun(@delete,tarFiles(1:(i-1)))
         return
@@ -933,12 +934,9 @@ appOut = appOut(1:max(ind,nAppMx));
 setappdata(handles.figMultCombInfo,'appOut',appOut);
 set(hObject,'Data',appOut)
 
-% resets the table header 
-setTableHeader(hObject)
-
 % if the listbox is selected, then update the link table data
 indSel = get(handles.listSolnAdded,'value');
-if (~isempty(indSel))
+if ~isempty(indSel)
     updateLinkTable(handles,indSel)
     setAddList(handles)
 end
@@ -952,19 +950,15 @@ appOut = getappdata(handles.figMultCombInfo,'appOut');
 indSoln = get(handles.listSolnAdded,'value');
 
 % determines if the update is required
-if (isHG1)
-    isUpdate = ~isa(eventdata,'char') && isfield(eventdata,'Indices');
-else
-    isUpdate = ~isa(eventdata,'char') && ...
-                isa(eventdata,'matlab.ui.eventdata.CellEditData');
-end
+isUpdate = ~isa(eventdata,'char') && ...
+            isa(eventdata,'matlab.ui.eventdata.CellEditData');
 
 % retrieves the selected apparatus/solution indices
-if (isUpdate)
+if isUpdate
     % determines the selected index
     indApp = eventdata.Indices(1);
     indNw = find(cellfun(@(x)(strcmp(x,eventdata.EditData)),appOut));
-    if (isempty(indNw))
+    if isempty(indNw)
         % no selection, so set as 0
         iSolnAdd.indOut{indSoln}(indApp) = 0;
     else
