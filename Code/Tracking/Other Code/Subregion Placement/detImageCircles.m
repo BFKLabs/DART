@@ -47,20 +47,24 @@ else
 end
 
 % initialisations
-[pdR,dim] = deal([0.80,1.20],[nRow,iMov.nCol]);
+[pdR,dim] = deal([0.75,1],[nRow,iMov.nCol]);
 [IG,pOfs] = deal(I(iRG,iCG),[iCG(1),iRG(1)]-1);
 
-% calculates the region periodicity estimate
-tPer0 = calcRegionPeriodicityEst(IG,dim);
-if isnan(tPer0)
-    % if there was an error, then set empty output variables
-    [R,X,Y,ok] = deal([],[],[],false);
-    
-    % updates and closes the waitbar
-    h.Update(1,'Automatic Dectection Failed!',1); pause(0.05);
-    h.closeProgBar()    
-    return
-end
+%
+sz = size(IG);
+Rest = ceil(min([sz(1)/iMov.pInfo.nRow,sz(2)/iMov.pInfo.nCol])/2);
+
+% % calculates the region periodicity estimate
+% % tPer0 = calcRegionPeriodicityEst(IG,dim);
+% if isnan(tPer0)
+%     % if there was an error, then set empty output variables
+%     [R,X,Y,ok] = deal([],[],[],false);
+%     
+%     % updates and closes the waitbar
+%     h.Update(1,'Automatic Dectection Failed!',1); pause(0.05);
+%     h.closeProgBar()    
+%     return
+% end
 
 % creates the median image from the image stack
 Imd = double(calcImageStackFcn(Istack,'median'));
@@ -68,8 +72,8 @@ Imd = Imd(iRG,iCG);
 
 try    
     % determines the regions over the columns/rows      
-    R0s = roundP((tPer0/2).*pdR);
-    [X0,Y0,R0] = detInitCircleCentres(Imd,R0s,tPer0,dim,h);
+    R0s = roundP(Rest.*pdR);
+    [X0,Y0,R0] = detInitCircleCentres(Imd,IG,R0s,dim,h);
     Rmax = calcMaxRadii(X0,Y0);
     
     % sets the final x/y centre coordinates and the maximum radii
@@ -95,45 +99,145 @@ catch ME
     h.closeProgBar()
 end
 
-% --- calculates the estimated region periodicity
-function tPer0 = calcRegionPeriodicityEst(IG,nDim)
+% --- determines the initial estimate of the circle centres
+function [xC,yC,R] = detInitCircleCentres(I,IBL,rTol,dim,h)
 
-% memory allocation
-Z = cell(2,1);
+% updates the progressbar
+h.Update(1,'Determining Initial Circle Centre Estimate',0.25);
 
-% retrieves the sub-region stack estimate
-[IRG,ICG] = getSubRegionStackEst(IG);
+% parameters
+mTol = 0.25;
+sTol = 0.995;
+sz = size(I);
+NC = prod(dim);
+Type = {'dark','bright'};
+[pC0,R0,M0] = deal(cell(length(Type),1));
+
+% --------------------------------------- %
+% --- INITIAL CIRCLE CENTRE DETECTION --- %
+% --------------------------------------- %
+
+% calculate the circle regions using the object polarity type, Type
+for i = 1:length(Type)
+    [pC0{i},R0{i},M0{i}] = imfindcircles(I,rTol,'Method',...
+                'TwoStage','ObjectPolarity',Type{i},'Sensitivity',sTol);
+end
+
+% determines the type which produces the better circle centre predictions
+Mmn = mean(cell2mat(cellfun(@(x)(x(1:NC)),M0','un',0)),1);
+Rvar = 1./var(cell2mat(cellfun(@(x)(x(1:NC)),R0','un',0)),[],1);
+imx = argMax(Mmn.*Rvar);
+
+% determines the most likely circle centres
+ii = (M0{imx}/M0{imx}(1) > mTol);
+ii = ii & setGroup(1:min(NC,sum(ii)),size(M0{imx}));
+
+% strips out the best x/y circle centres and radii
+[xC0,yC0,R0] = deal(pC0{imx}(ii,1),pC0{imx}(ii,2),R0{imx}(ii));
+Rmax0 = max(R0);    
+
+% ------------------------------------ %
+% --- FINE CIRCLE CENTRE DETECTION --- %
+% ------------------------------------ %
+
+% initialisations
+II = {I,IBL};
+Ixc = cell(length(II),1);
+
+% sets up the xcorr template image
+for i = 1:length(II)
+    Isub = setupSubImageStack(II{i},roundP(xC0),roundP(yC0),Rmax0);
+    IsubMn = calcImageStackFcn(Isub(:),'median');
+
+    % calculate the cross-correlation image (from the template)
+    Iex = padarray(II{i},Rmax0*[1,1],'replicate','both');
+    IxcT = max(0,normxcorr2(IsubMn,Iex));
+    Ixc{i} = IxcT(2*Rmax0+(1:sz(1)),2*Rmax0+(1:sz(2)));
+end
+
+% determines the regional maxima from the lowest entropy xcorr image
+imn = argMin(cellfun(@entropy,Ixc));
+iMx0 = find(imregionalmax(Ixc{imn}));
+[yMx0,xMx0] = ind2sub(sz,iMx0);
+
+% sorts the xcorr maxima points in descending order (by x-corr values)
+[~,iS] = sort(Ixc{imn}(iMx0),'descend');
+[xMx0,yMx0,iMx0,R] = deal(xMx0(iS),yMx0(iS),iMx0(iS),Rmax0);
+
+% ------------------------ %
+% --- FINAL GRID SETUP --- %
+% ------------------------ %
+
+% parameters
+pR = 1.95;
+[xC,yC] = deal(NaN(dim));
+
+% calculates the distance between all maxima points
+D = pdist2([xMx0,yMx0],[xMx0,yMx0]);
 
 %
-if nDim(1) > nDim(2)
-    % sets up the negative/positive mean signals
-    ZR0 = sum(cell2mat(IRG(:)));
-    Z{1} = smooth(max(0,-ZR0));
-    Z{2} = smooth(max(0,ZR0));    
-else
-    % sets up the negative/positive mean signals
-    ZC0 = sum(cell2mat(ICG(:)));
-    Z{1} = smooth(max(0,-ZC0));
-    Z{2} = smooth(max(0,ZC0));        
+for i = 1:size(D,2)
+    if ~isnan(all(D(:,i)))
+        ii = find(D(:,i) < pR*R);
+        iMx = argMax(Ixc{imn}(iMx0(ii)));
+        
+        jj = ii(~setGroup(iMx,size(ii)));
+        [D(jj,:),D(:,jj)] = deal(NaN);
+    end
 end
 
-% calculates the coefficient of variances (removes an infeasible)
-zCOV = cellfun(@calcCOV,Z);
-if all(isnan(zCOV))
-    tPer0 = NaN;
-else
-    tPer0 = calcSignalPeriodicity(Z{argMin(zCOV)});
+% memory allocation
+k = ~isnan(D(:,1));
+[xMx,yMx] = deal(xMx0(k),yMx0(k));
+
+% sorts the maxima points by the y-location
+[yMx,iS] = sort(yMx);
+xMx = xMx(iS);
+
+% splits the y-location by the maximum radii
+ii = find(diff([yMx;(yMx(end)+2*Rmax0)]) > Rmax0);
+xiC = num2cell([[1;(ii(1:end-1)+1)],ii],2);
+indC = cellfun(@(x)(x(1):x(2)),xiC,'un',0);
+
+% sets the final grid locations
+for i = 1:dim(1)
+    % if there are more points than required, then reduce the grouping
+    if length(indC{i}) > dim(2)
+        a = 1;
+    end
+    
+    % sets the x/y grid coordinates
+    [xC(i,:),jS] = sort(xMx(indC{i}));
+    yC(i,:) = yMx(indC{i}(jS));
 end
 
-% --- calculates the location of the missing circle center
-function pCtmp = calcMissingCircleCenter(pC,xi,xiI)
+% --- setup cross-correlation sub-image
+function Isub = setupSubImageStack(IG,xC,yC,R)
 
-% calculates the x/y locations of the missing circle center
-F0x = fit(xi,pC(:,1),'poly1');
-F0y = fit(xi,pC(:,2),'poly1');
+% initalisations
+sz = size(IG);
+nImg = numel(xC);
+xiS = -R:R;
+Isub = repmat({NaN(2*R+1)},size(xC));
 
-% calculates the estimated location point
-pCtmp = roundP([F0x.p1*xiI + F0x.p2,F0y.p1*xiI + F0y.p2]);
+%
+for i = 1:nImg
+    % sets the row/column indices surround the current coordinate
+    [iR,iC] = deal(yC(i)+xiS,xC(i)+xiS);
+    [ii,jj] = deal((iR >= 1) & (iR <= sz(1)),(iC >= 1) & (iC <= sz(2)));
+    
+    % sets the sub-image
+    Isub{i}(ii,jj) = IG(iR(ii),iC(jj));
+end
+
+% --- calculates the maximum possible radii between circles
+function Rmax = calcMaxRadii(xC,yC)
+
+% calculates the maximum radii such that the 
+P = [xC(:),yC(:)]; 
+Dc = pdist2(P,P); 
+Dc(logical(eye(size(Dc)))) = NaN;
+Rmax = roundP(nanmin(Dc(:))/2);
 
 %-------------------------------------------------------------------------%
 %                    OLD DETECTION ALGORITHM FUNCTIONS                    %
@@ -366,66 +470,11 @@ else
     F = -max(IXnw(:));    
 end
 
-% --- determines the initial estimate of the circle centres
-function [xC,yC,R] = detInitCircleCentres(Imd,rTol,tPer0,dim,h)
-    
-% intialisations and memory allocation
-Z = NaN(2,1);
-Type = {'dark','bright'};
-[xC0,yC0,R0,M0] = deal(cell(length(Type),1));
-
-% updates the progressbar
-h.Update(1,'Determining Initial Circle Centre Estimate',0.25);
-
-% loops through each detection type estimating the circle centres
-for i = 1:length(Type)
-    % optimises the circle parmeters
-    [xC0{i},yC0{i},R0{i},M0{i}] = ...
-                        optCircleDetectPara(Imd,rTol,tPer0,Type{i});
-    if isequal(size(xC0{i}),dim)
-        % if the dimensions are correct, then calculate the difference
-        % between the grid row/column coordinates
-        dxC0 = max(0,1-abs(diff(xC0{i},[],2)-tPer0)/tPer0);
-        dyC0 = max(0,1-abs(diff(yC0{i},[],1)-tPer0)/tPer0);        
-        dxR0 = max(0,1-abs(xC0{i}-repmat(mean(xC0{i},1),dim(1),1))/tPer0);
-        dyR0 = max(0,1-abs(yC0{i}-repmat(mean(yC0{i},2),1,dim(2)))/tPer0);
-        
-        % calculates the overall for the polarity type
-        Z(i) = nanmean(dxC0(:))*nanmean(dyC0(:))*...
-               nanmean(dxR0(:))*nanmean(dyR0(:))*nanmean(M0{i}(:));
-    end
-end
-
-% returns the type that has the least variation from the region
-% periodicitiy and the greatest metric values
-i0 = argMax(Z);
-[xC,yC,R] = deal(xC0{i0},yC0{i0},R0{i0});
-
-% --- setup cross-correlation sub-image
-function Isub = setupSubImageStack(IG,xC,yC,R)
-
-% initalisations
-sz = size(IG);
-nImg = numel(xC);
-xiS = -R:R;
-Isub = repmat({NaN(2*R+1)},size(xC));
-
-%
-for i = 1:nImg
-    % sets the row/column indices surround the current coordinate
-    [iR,iC] = deal(yC(i)+xiS,xC(i)+xiS);
-    [ii,jj] = deal((iR >= 1) & (iR <= sz(1)),(iC >= 1) & (iC <= sz(2)));
-    
-    % sets the sub-image
-    Isub{i}(ii,jj) = IG(iR(ii),iC(jj));
-end
-
 % --- calculates 
-function [XC,YC,Rnw,MC] = optCircleDetectPara(I,rTol,tPer0,Type)
+function [XC,YC,Rnw,MC] = optCircleDetectParaOld(I,rTol,Type)
 
 % initialisations
 mTol = 0.25;
-sTol = 0.995;
 wState = warning('off','all');
 
 % calculate the circle regions using the object polarity type, Type
@@ -485,6 +534,50 @@ end
 % resets the warnings to their original state
 warning(wState)
 
+% --- calculates the estimated region periodicity
+function tPer0 = calcRegionPeriodicityEst(IG,nDim)
+
+% parameters and memory allocation
+pTolP = 90;
+Z = cell(2,1);
+
+%
+B = IG > prctile(IG(:),90);
+
+% retrieves the sub-region stack estimate
+[IRG,ICG] = getSubRegionStackEst(IG);
+
+%
+if nDim(1) > nDim(2)
+    % sets up the negative/positive mean signals
+    ZR0 = sum(cell2mat(IRG(:)));
+    Z{1} = smooth(max(0,-ZR0));
+    Z{2} = smooth(max(0,ZR0));    
+else
+    % sets up the negative/positive mean signals
+    ZC0 = sum(cell2mat(ICG(:)));
+    Z{1} = smooth(max(0,-ZC0));
+    Z{2} = smooth(max(0,ZC0));        
+end
+
+% calculates the coefficient of variances (removes an infeasible)
+zCOV = cellfun(@calcCOV,Z);
+if all(isnan(zCOV))
+    tPer0 = NaN;
+else
+    tPer0 = calcSignalPeriodicity(Z{argMin(zCOV)});
+end
+
+% --- calculates the location of the missing circle center
+function pCtmp = calcMissingCircleCenter(pC,xi,xiI)
+
+% calculates the x/y locations of the missing circle center
+F0x = fit(xi,pC(:,1),'poly1');
+F0y = fit(xi,pC(:,2),'poly1');
+
+% calculates the estimated location point
+pCtmp = roundP([F0x.p1*xiI + F0x.p2,F0y.p1*xiI + F0y.p2]);
+
 % --- determines the matching grid indices
 function iGrid = detGridMatchIndices(I,pC,tPer)
 
@@ -537,6 +630,12 @@ for i = 1:dimG(1)
         end
     end
 end
+
+% calculates the relative distance between the points
+function dZ = calcRelativeDistance(Z)
+
+Y = repmat(Z,1,length(Z));
+dZ = Y - Y';
 
 % --- searches the 
 function iMatch = searchRegionGridDir(pC,ind0,dX,dY,tPer,sz,sDir)
@@ -601,60 +700,4 @@ end
 % flips the array (if searching in reverse directions)
 if any(sDir < 0)
     iMatch = flip(iMatch);
-end
-
-% --- calculates the maximum possible radii between circles
-function Rmax = calcMaxRadii(xC,yC)
-
-% calculates the maximum radii such that the 
-P = [xC(:),yC(:)]; 
-Dc = pdist2(P,P); 
-Dc(logical(eye(size(Dc)))) = NaN;
-Rmax = roundP(nanmin(Dc(:))/2);
-
-% calculates the relative distance between the points
-function dZ = calcRelativeDistance(Z)
-
-Y = repmat(Z,1,length(Z));
-dZ = Y - Y';
-
-% --- calculates the parameters for the missing circles
-function [ok,indG,R,pC] = ...
-                detMissingCirclePara(iMov,IG,iGrpE,indG,pC,R,tPer0,TypeMx)
-
-% initialisations
-rTol = [min(R),max(R)];
-[ok,Rmax,sz] = deal(true,rTol(2)+1,size(IG));
-
-% determines the regions which are missing
-[iFly,iApp] = find(iGrpE);
-
-%
-for i = 1:length(iFly)
-    if (iMov.nCol == 1)
-        % if there is only one column, then search down the rows
-        [ii,xiI] = deal(indG(:,iApp(i)),true,iFly(i));
-    else
-        % otherwise, search across the columns for the missing region
-        if (i == 1); indRow = repmat(1:iMov.nCol,iMov.nRow,1); end
-        
-        iRow = floor((iApp(i)-1)/iMov.nCol) + 1;
-        ii = indG(iFly(i),indRow(iRow,:));
-        xiI = mod(iApp(i)-1,iMov.nCol) + 1;
-    end
-    
-    % calculates the estimated location of the missing circle center
-    xi = find(~cellfun(@isempty,ii(:)));
-    pCxi = pC(cell2mat(ii(xi)),:);
-    pCtmp = calcMissingCircleCenter(pCxi,xi,xiI);
-    
-    % retrieves the sub-image surrounding the estimated location point
-    iR = max(1,pCtmp(2)-Rmax):min(sz(1),pCtmp(2)+Rmax);
-    iC = max(1,pCtmp(1)-Rmax):min(sz(2),pCtmp(1)+Rmax);
-    IGL = imadjust(uint8(IG(iR,iC)),stretchlim(uint8(IG(iR,iC))),[]);
-    
-    % fits the circle parameters and updates the arrays
-    [pCL,R(end+1)] = optCircleDetectPara(IGL,rTol,tPer0,TypeMx);
-    pC(end+1,:) = [pCL(1)+(iC(1)-1),pCL(2)+(iR(1)+1)];    
-    indG{iFly(i),iApp(i)} = length(R);
 end

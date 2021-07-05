@@ -182,8 +182,13 @@ tempSolnDataIO(handles,'store')
 
 % sets the files and combines the solution files
 sName = cellfun(@(x)(fullfile(fDir,x)),fName,'un',0);
-[snTot,iMov] = combineSolnFiles(sName,1);
+[snTot,iMov,eStr] = combineSolnFiles(sName,1);
 if isempty(snTot)
+    % if there was an error, then output this to screen
+    if ~isempty(eStr)
+        waitfor(msgbox(eStr,'Video Solution File Error','modal'))
+    end    
+    
     % if the user cancelled, then exit the function
     tempSolnDataIO(handles,'reload') 
     return

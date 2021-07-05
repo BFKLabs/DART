@@ -84,7 +84,8 @@ classdef FlyInfoGUI < handle
             obj.hFig = figure('Position',fPos,'tag','figFlyInfoCond',...
                               'MenuBar','None','Toolbar','None',...
                               'Name','Individual Fly Information',...
-                              'NumberTitle','off','Visible','off');  
+                              'NumberTitle','off','Visible','off',...
+                              'Resize','off');  
             
             % creates the panel object
             pPos = [obj.dX*[1,1],fPos(3:4)-2*obj.dX];
@@ -150,7 +151,7 @@ classdef FlyInfoGUI < handle
             else
                 obj.cHdr = setup1DRegionNames(obj.iMov.pInfo,3);
             end
-              
+            
         end
         
         % --- sets up the data array (removes any missing/none regions)

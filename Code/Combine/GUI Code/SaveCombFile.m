@@ -155,17 +155,12 @@ switch class(objChng)
         
     case 'sun.awt.shell.Win32ShellFolder2'
         % case is the folder change
-        fDir = char(objChng.getPath);
-        fExtn = getappdata(hFig,'fExtn');
-
-        % if the selection includes the file extension, then reduce the
-        % file directory to remove the file name
-        if endsWith(fDir,fExtn)
-            fDir = fileparts(fDir);
-        end
+        fDir = fileparts(char(objChng.getPath));
+        [~,fName,~] = fileparts(char(objChng.getName));
         
-        % updates the file name
+        % updates the file name        
         setappdata(hFig,'fDir',fDir)
+        setappdata(hFig,'fName',fName)
 end
 
 % --- updates when the file name is changed

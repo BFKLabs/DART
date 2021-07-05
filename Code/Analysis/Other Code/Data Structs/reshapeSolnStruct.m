@@ -19,7 +19,7 @@ end
     
 % resets the solution file start time to the new start time
 for i = 1:length(snTot.iExpt)    
-    [snTot.iExpt(i).Timing.T0,snTot.sgP(i).T0] = deal(iPara.Ts); 
+    snTot.iExpt(i).Timing.T0 = iPara.Ts; 
 end
 
 % if the stimuli parameter field is missing (old solution file format) then
@@ -38,7 +38,7 @@ snTot.stimP = reshapeStimuliTiming(snTot,Tofs);
 function [Tnw,Tofs] = reshapeTimeArrays(T,indS,indF,varargin)
 
 % resets the time arrays and ensures the first/last array is set correctly
-if (indS(1) == indF(1))
+if indS(1) == indF(1)
     % start/finish index is within a single time vector
     Tnw = {T{indS(1)}(indS(2):indF(2))};
 else
@@ -120,4 +120,4 @@ end
 
 % if there were no devices with stimuli events within the set limits of the
 % experiment, then return an empty array
-if ~any(devOK); stimP = []; end;
+if ~any(devOK); stimP = []; end

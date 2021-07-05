@@ -20,7 +20,9 @@ p = ip.Results;
 
 % creates the java object
 fcPos = [0,0,pPos(3:4)-10];
+wState = warning('off','all');
 [hjFileC, ~] = javacomponent(javaObjType, fcPos, hParent);
+warning(wState)
 
 % sets the file chooser properties
 hjFileC.setCurrentDirectory(java.io.File(p.defDir));

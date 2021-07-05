@@ -227,6 +227,7 @@ else
         snTot.iMov.pInfo = getMultiRegionDataStructs(snTot);
     else
         % case is the expt solution file is loaded separately
+        snTot = separateCombinedGroups(snTot);
         snTot.iMov.pInfo = getRegionDataStructs(snTot.iMov,snTot.appPara);         
     end       
     
@@ -234,10 +235,10 @@ else
     snTot.cID = setupFlyLocID(snTot.iMov);
 end
 
-% removes any extraneous fields
-if isfield(snTot,'sName')
-    snTot = rmfield(snTot,'sName');
-end
+% % removes any extraneous fields
+% if isfield(snTot,'sName')
+%     snTot = rmfield(snTot,'sName');
+% end
 
 % updates the waitbar figure
 snTot = orderfields(snTot);

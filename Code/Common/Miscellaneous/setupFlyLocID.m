@@ -26,7 +26,7 @@ else
     [iCol,iRow] = deal(zeros(size(iMov.flyok,2),1));
     for i = 1:size(iGrp,2)
         [iCol(i),~,iRow(i)] = getRegionIndices(iMov,i);
-        if iMov.ok(i)
+        if iMov.ok(iMov.pInfo.iGrp(iRow(i),iCol(i)))
             iGrp(iMov.flyok(:,i),i) = iMov.pInfo.iGrp(iRow(i),iCol(i));
         end
     end

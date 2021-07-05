@@ -39,10 +39,7 @@ for i = 1:nDir
     
     % if there are solution files and a summary file, then determines the
     % start/finish time of the experiment
-    if (~isempty(solnDir) && exist(smFile,'file'))
-        % determines the indices of the solution files in the directory
-        indSoln = cellfun(@(x)(str2double(x((end-8):(end-4)))),field2cell(solnDir,'name'));
-        
+    if ~isempty(solnDir) && exist(smFile,'file')
         % loads the summary file data and determines the last feasible
         % movie
         aa = load(smFile,'tStampV','iExpt');
@@ -51,7 +48,7 @@ for i = 1:nDir
         
         % determines the first feasible video index
         i0 = find(~isnan(cellfun(@(x)(x(1)),tStampV)),1,'first');                
-        if (isempty(i0))
+        if isempty(i0)
             % sets the initial index and time offset
             [tOfs,i0] = deal(0,1);
             

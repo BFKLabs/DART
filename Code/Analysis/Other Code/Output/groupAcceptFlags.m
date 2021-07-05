@@ -7,8 +7,13 @@ function fok = groupAcceptFlags(snTot,iApp)
 sz = size(fok0);
 
 % memory allocation
-nGrp = length(cID);
-fok = cell(1,nGrp);
+if iscell(fok0)
+    fok = fok0;
+    return
+else
+    nGrp = length(cID);
+    fok = cell(1,nGrp);
+end
 
 % loops through each group type setting the acceptance flags
 for i = 1:nGrp

@@ -178,38 +178,3 @@ if isempty(indR)
     pCFmn = cell2mat(cellfun(@(x)(mean(x,1)),pCF,'un',0));
     indR = argMin(pdist2(pCFmn,[xMn,yMn]));
 end
-
-% --- sets up the region index map array 
-function indR = setRegionIndexMap(iMov,X0)
-
-% retrieves the circle parameters
-indR = NaN(size(X0));
-
-% sets the use flags
-nTubeR = getSRCount(iMov);
-if isfield('iMov','isUse')
-    isUse = iMov.isUse;
-else
-    isUse = arrayfun(@(n)(true(n,1)),nTubeR,'un',0);
-end
-
-% determines the max sub-region count over all the rows
-nSRMx = max(nTubeR,[],2);
-
-% sets the region indices
-[nR,nC] = size(isUse);
-for iR = 1:nR
-    for iC = 1:nC
-        % sets the over all global index and the row offset
-        iG = (iR-1)*nC + iC;
-        if iR == 1
-            iOfsR = 0;
-        else
-            iOfsR = sum(nSRMx(1:(iR-1)));
-        end
-        
-        % updates the row indices
-        iRnw = iOfsR + (1:length(isUse{iR,iC}));
-        indR(iRnw,iC) = iG*isUse{iR,iC};
-    end
-end

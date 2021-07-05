@@ -7,7 +7,7 @@ function ok = saveExptSolnFile(dDir,fName,snTot,oPara,h,varargin)
 
 % sets the output parameter struct (if not provided)
 if isempty(oPara)
-    oPara = struct('outY',~isempty(snTot.Py));
+    oPara = struct('outY',snTot.iMov.is2D);
 end
 
 % removes any previous files

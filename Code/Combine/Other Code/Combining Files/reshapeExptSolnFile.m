@@ -62,7 +62,7 @@ if calcPhi; [snTot.Phi,snTot.AxR] = deal(Phi,AxR); end
 %     indices, iRow/iCol (for a 2D expt setup)
 function Zf = getGroupValues2D(Z,iRow,iCol)
 
-Zf = cell2mat(arrayfun(@(ir,ic)(Z{ir}(:,ic)),iRow,iCol,'un',0)');
+Zf = cell2mat(arrayfun(@(ir,ic)(Z{ic}(:,ir)),iRow,iCol,'un',0)');
 
 % --- retrieves the values from the array, Z for the grid row/column and
 %     sub-region indices, iRow/iCol/iFly (for a 1D expt setup)

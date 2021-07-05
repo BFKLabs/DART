@@ -56,7 +56,7 @@ else
             for i = 1:size(nTubeR,1)            
                 for j = 1:size(nTubeR,2)                
                     iOfs = sum(max(nTubeR(1:(i-1),:),[],2));
-                    A.iGrp(iOfs + (1:nTubeR(i,j)),j) = 1;
+                    A.iGrp(iOfs + (1:nTubeR(i,j)),j) = j;
                 end
             end            
         else
@@ -75,13 +75,18 @@ else
     
     % sets the group names (if not already set)
     if isempty(A.gName)
+        % sets the unique grouping numbers
         if is2D
-            a = 1;
+            % case is the 2D setup
+            iGrpN = unique(A.iGrp(:));
         else
+            % case is the 1D setup
             iGrpN = arr2vec(A.iGrp');
-            A.gName = arrayfun(@(x)(sprintf('Region #%i',x)),iGrpN,'un',0);
-            A.nGrp = length(unique(iGrpN));
         end
+        
+        % sets the group names and counts
+        A.gName = arrayfun(@(x)(sprintf('Region #%i',x)),iGrpN,'un',0);
+        A.nGrp = length(unique(iGrpN));        
     end
 end
 
