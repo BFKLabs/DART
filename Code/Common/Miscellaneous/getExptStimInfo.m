@@ -200,6 +200,10 @@ else
     [Ts,Tf] = deal(tLim(1)+tS0,tLim(2)+tS0);
 end
 
+% reduces down the stimuli times to those that are feasible
+iSF = find(diff([Ts;-1])<0,1,'first');
+[Ts,Tf] = deal(Ts(1:iSF),Tf(1:iSF));
+
 % otherwise, use the start/finish times from the expt
 stimPS = appendStimField(stimPS,chName,'Ts',Ts);
 stimPS = appendStimField(stimPS,chName,'Tf',Tf);

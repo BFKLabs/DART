@@ -1,5 +1,5 @@
 function varargout = MultFlyCombInfo(varargin)
-% Last Modified by GUIDE v2.5 01-Oct-2016 11:16:49
+% Last Modified by GUIDE v2.5 06-Jul-2021 20:03:24
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -71,7 +71,7 @@ setappdata(hObject,'iPara',initParaStruct);
 setappdata(hObject,'iSolnAll',iSolnAll);
 setappdata(hObject,'iSolnAdd',iSolnAdd);
 setappdata(hObject,'appOut',[]);
-setappdata(hObject,'snTot',[])
+setappdata(hObject,'snTot',[]);
 
 % UIWAIT makes MultFlyCombInfo wait for user response (see UIRESUME)
 % uiwait(handles.figMultCombInfo);
@@ -247,6 +247,7 @@ end
 setappdata(handles.figMultCombInfo,'iSolnAll',iSolnAll);
 
 % resets the GUI object properties (if initialising)
+setObjEnable(handles.menuClearAll,'on')
 if length(iSolnAll.iExpt) == nAdd
     resetSolnProps(handles,iSolnAll,~isa(eventdata,'struct'))
 else
@@ -417,6 +418,33 @@ movefile(tmpFile,mFile,'f');
 % deletes the temporary files and closes the waitbar figure
 cellfun(@delete,tarFiles)
 h.closeProgBar()
+
+% -------------------------------------------------------------------------
+function menuClearAll_Callback(hObject, eventdata, handles)
+
+% prompt the user if they want to clear all the data
+qStr = 'Are you sure you want to clear all the loaded data?';
+uChoice = questdlg(qStr,'Clear All Data?','Yes','No','Yes');
+if ~strcmp(uChoice,'Yes')
+    % if the user rejected clearing all, then exit the function
+    return
+end
+
+% object retrieval
+hFig = handles.figMultCombInfo;
+
+% resets the all/added data structs
+[iSolnAll,iSolnAdd] = initDataStruct(handles);
+setappdata(hFig,'iSolnAll',iSolnAll)
+setappdata(hFig,'iSolnAdd',iSolnAdd)
+setappdata(hObject,'snTot',[]);
+
+% runs the solution reset
+buttonSolnReset_Callback(handles.buttonSolnReset, '1', handles)
+
+% disables the add button
+setObjEnable(hObject,'off')
+setObjEnable(handles.buttonSolnAdd,'off')
 
 % -------------------------------------------------------------------------
 function menuExit_Callback(hObject, eventdata, handles)
@@ -773,15 +801,19 @@ pause(0.01);
 function buttonSolnReset_Callback(hObject, eventdata, handles)
 
 % resets the data structs and GUI object properties
+iSolnAdd = getappdata(handles.figMultCombInfo,'iSolnAdd');
 iSolnAll = getappdata(handles.figMultCombInfo,'iSolnAll');
 
 % resets the data structs
-[~,iSolnAdd] = initDataStruct(handles,1);
-iSolnAll.isAdded(:) = false;
+if ischar(eventdata)
+    % resets the added struct and flushes all the added regions
+    [~,iSolnAdd] = initDataStruct(handles,1);
+    iSolnAll.isAdded(:) = false;
 
-% resets the selection to the all loaded listbox
-set(handles.listSolnAll,'value',1)
-listSolnAll_Callback(handles.listSolnAll, [], handles)
+    % resets the selection to the all loaded listbox
+    set(handles.listSolnAll,'value',1)
+    listSolnAll_Callback(handles.listSolnAll, [], handles)
+end
 
 % disables the up/down buttons
 setObjEnable(hObject,'off')

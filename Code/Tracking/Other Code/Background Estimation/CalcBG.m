@@ -322,6 +322,11 @@ classdef CalcBG < handle
                         obj.updateManualTrackTable();
                         obj.addManualMarker(uListNw);
                         
+                        % enables the manual correction control buttons
+                        setObjEnable(obj.hGUI.buttonAddManual,1)
+                        setObjEnable(obj.hGUI.buttonRemoveManual,0)
+                        setObjEnable(obj.hGUI.buttonUpdateManual,1)
+                        
                         % disables everything else
                         obj.manualButtonClick(hObject, 'alt') 
                     end

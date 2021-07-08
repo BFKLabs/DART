@@ -1416,14 +1416,14 @@ if ~isempty(hGrpF)
     end
     
     % sorts the fields in descending order
-    iiG = 1:length(iGrp);
+    iiG = (1:length(iGrp))';
     [~,iS] = sort(cellfun(@(x)(get(x,'UserData')),hGrpF));
     hGrpF = hGrpF(iS);    
     
     % updates the face colours of the fill objects
     tCol = getAllGroupColours(length(unique(iMov.pInfo.gName)));
     cellfun(@(h,i,isV)(set(setObjVisibility(h,isV),'FaceColor',...
-                tCol(i+1,:))),hGrpF(iiG),num2cell(iGrp),isVis(iiG));
+              tCol(i+1,:))),hGrpF(iiG),num2cell(iGrp),arr2vec(isVis(iiG)));
 end
 
 % resets the apparatus ok flags so that they match up correctly
@@ -1931,12 +1931,13 @@ snTot.iMov = reduceRegionInfo(snTot.iMov);
 setappdata(hFig,'snTot',snTot)
 
 % sets the table information
+iok = snTot.iMov.ok(:);
 if snTot.iMov.is2D
     % case is a 2D expt setup
-    Data = [gName0(snTot.iMov.ok) num2cell(snTot.iMov.ok)];        
+    Data = [gName0(iok) num2cell(iok)];        
 else
     % case is 1D expt setup 
-    Data = [gName0(:) num2cell(snTot.iMov.ok)];
+    Data = [gName0(:) num2cell(iok)];
 end           
 
 % resets the 

@@ -864,7 +864,7 @@ for i = 1:iMov.pInfo.nGrp
         fPos{i} = arrayfun(@(ir,ic)(fPos0{ic}{ir}),iRowG,iColG,'un',0)';        
     else
         iRegG = (iRowG-1)*iMov.pInfo.nCol + iColG;
-        nFly = iMov.pInfo.nFly(iRegG);
+        nFly = iMov.pInfo.nFly(iRowG,iColG);
         
         fPos{i} = cell2cell(arrayfun(@(i,n)...
                                     (fPos0{i}(1:n)),iRegG,nFly,'un',0),0);
