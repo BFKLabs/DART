@@ -354,12 +354,7 @@ for i = 1:nFile
         % if the user cancelled, delete the solution files and exits 
         cellfun(@delete,tarFiles(1:(i-1)))
         return        
-    end
-    
-    % sets the output apparatus indices 
-    ii = find(iSolnAdd.indOut{i} > 0);
-    [~,jj] = sort(iSolnAdd.indOut{i}(ii),'ascend');
-    indApp = ii(jj);
+    end    
     
     % determines if the solution data has already been loaded
     if iSolnAdd.isMulti(i)
@@ -372,6 +367,11 @@ for i = 1:nFile
         if ~isempty(snTot.Px); snTot.Px = snTot.Px(ok); end
         if ~isempty(snTot.Py); snTot.Py = snTot.Py(ok); end        
     else
+        % sets the output apparatus indices 
+        ii = find(iSolnAdd.indOut{i} > 0);
+        [~,jj] = sort(iSolnAdd.indOut{i}(ii),'ascend');
+        indApp = ii(jj);        
+        
         % creates the new cell array for the new variable
         [snTot,ok] = loadExptSolnFiles...
                                 (tmpDir,sFile{i},0,handles,i,indApp,h);
@@ -397,7 +397,7 @@ for i = 1:nFile
     snTot = reduceExptSolnFiles(snTot,indNw,appName);
     if isfield(snTot,'sName')        
         snTot = rmfield(snTot,'sName');
-    end
+    end        
         
     % outputs the single combined solution file
     tarFiles{i} = fullfile(iProg.TempFile,[fName{i},'.ssol']);

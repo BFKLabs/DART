@@ -280,6 +280,9 @@ else
             sNameNw = {[getFileName(sNameF),'.ssol']};
             sNameF = {sNameF};
             setappdata(handles.figFlyAnalysis,'sName',sNameNw)
+            
+            % reduces down the experimental solution file info
+            snTot = reduceExptSolnFiles(snTot);
         end        
     end
 end
@@ -292,10 +295,10 @@ for i = 1:length(sNameF)
     end
 end
 
-% reduces down the combined experiment solution files
-for i = 1:length(snTot)
-    snTot(i) = reduceExptSolnFiles(snTot(i));
-end
+% % reduces down the combined experiment solution files
+% for i = 1:length(snTot)
+%     snTot(i) = reduceExptSolnFiles(snTot(i));
+% end
 
 % ensures the solution file names are stored as a cell array
 if ~iscell(sNameF); sNameF = {sNameF}; end
@@ -431,9 +434,9 @@ uChoice = questdlg(qStr,'Continue Temporary Data Load?','Yes','No','Yes');
 if ~strcmp(uChoice,'Yes'); return; end
 
 % prompts the user for the solution file directory
-fMode = {'*.tdat;','Temporary Data File (*.tdat)'},;
+fMode = {'*.tdat;','Temporary Data File (*.tdat)'};
 [tName,tDir,fIndex] = uigetfile(fMode,'Temporary Data File File',dDir);
-if (fIndex == 0)
+if fIndex == 0
     % if the user cancelled, then exit
     return
 else    
@@ -479,16 +482,16 @@ end
 pData = getappdata(handles.figFlyAnalysis,'pData');
 plotD = getappdata(handles.figFlyAnalysis,'plotD');
 for i = 1:length(pData) 
-    if (~isempty(pData{i}) && ~isempty(A.pData{i}))        
+    if ~isempty(pData{i}) && ~isempty(A.pData{i})      
         % retrieves the function names for the current function type
         funcT = field2cell(cell2mat(A.pData{i}(:,1)),'Func');
         
         % loops through all of the functions in the currently loaded set
         % determining the matches with the loaded data
-        for j = 1:size(pData{i},1)            
+        for j = 1:size(pData{i},1)
             % determines if there is a match between data structs
             ii = strcmp(pData{i}{j,1}.Func,funcT);
-            if (any(ii))
+            if any(ii)
                 % if so, then update the function/plotting data structs
                 pData{i}(j,:) = A.pData{i}(ii,:);
                 plotD{i}(j,:) = A.plotD{i}(ii,:);
@@ -611,7 +614,7 @@ dDir = iData.ProgDef.OutFig;
 tStr = 'Set The Subplot Configuration Output File';
 fMode = {'*.spp','Subplot Configuration File (*.spp)'};
 [fName,fDir,fIndex] = uiputfile(fMode,tStr,dDir);
-if (fIndex == 0)
+if fIndex == 0
     % if the user cancelled, then exit
     return
 else
@@ -750,7 +753,7 @@ listPlotFunc_Callback(handles.listPlotFunc, '0', handles)
 
 % deletes the parameter GUI
 hPara = getappdata(handles.figFlyAnalysis,'hPara');
-if (~isempty(hPara))
+if ~isempty(hPara)
     setappdata(hPara,'pData',pData)
     resetRecalcObjProps(handles,'Yes')    
 end
@@ -1033,7 +1036,7 @@ if isSet
             else
                 feval(pDataNw.pFcn,reduceSolnAppPara(snTot(eInd)),...
                                             pDataNw,plotDNw);           
-            end         
+            end
             
             % ensures the figure is still invisible
             setObjVisibility(hObject,'off'); 
@@ -1442,7 +1445,7 @@ if isShowPara
     
     % checks to see if the plot index has changed index
     fIndex = getappdata(handles.figFlyAnalysis,'fIndex');
-    if (fIndex ~= fIndNw) || (isa(eventdata,'char')) || (nReg > 1)
+    if (fIndex ~= fIndNw) || isa(eventdata,'char') || (nReg > 1)
         % clears the plot axis and resets the data
         if ~isa(eventdata,'char'); eventdata = '0'; end
         clearAxesObject(handles)                       
@@ -1637,7 +1640,7 @@ end
 nReg = size(sPara.pos,1);
 
 % sets the new solution data struct for the analysis
-if (pInd == 3)
+if pInd == 3
     % case is for the multi-experiment file analysis    
     snTot = snTot(iData.indExpt);
 else
@@ -1853,7 +1856,7 @@ end
 function plotMetricGraph(handles,iData,fmtStr)
 
 % sets the GUI/format data structs (if not provided)
-if (nargin == 1)
+if nargin == 1
     iData = getappdata(handles.figFlyAnalysis,'iData');
     fmtStr = iData.fmtStr;
 end
@@ -1874,7 +1877,7 @@ sInd = getappdata(handles.figFlyAnalysis,'sInd');
 sPara = getappdata(handles.figFlyAnalysis,'sPara');    
 
 % sets the units string/axis handles for setting up the figure   
-if (isDocked)    
+if isDocked
     % retrieves the sub-plot parameter struct
     [h,hFig] = deal(handles,handles.figFlyAnalysis);
     sInd = getappdata(hFig,'sInd');
@@ -1893,7 +1896,7 @@ hAx = axes('Units','normalized','outerposition',[0 0 1 1]);
 axis(hAx,'off');    
 
 % determines how many axis there are
-if (size(sPara.pos,1) == 1)        
+if size(sPara.pos,1) == 1       
     % only one axis, so set with the overall plot panel
     set(hAx,'parent',h.panelPlot,'Units',uStr)        
     set(h.panelPlot,'Units','Pixels')
@@ -1926,8 +1929,8 @@ sPara = getappdata(handles.figFlyAnalysis,'sPara');
 nReg = size(sPara.pos,1);
 
 % deletes all the axis objects
-if (nReg == 1)
-    if (isDocked)        
+if nReg == 1
+    if isDocked       
         h = handles.figFlyAnalysis;
         hAx = findall(handles.panelPlot,'type','axes');    
     else
@@ -1936,10 +1939,10 @@ if (nReg == 1)
     end
     
     % deletes the axis objects (if they exist)
-    if (~isempty(hAx)); delete(hAx); end
+    if ~isempty(hAx); delete(hAx); end
 else
     % sets the currently selected index
-    if (nargin == 1)
+    if nargin == 1
         sInd = getappdata(handles.figFlyAnalysis,'sInd');
     else
         sInd = 1:nReg;
@@ -1947,7 +1950,7 @@ else
     
     % retrieves the axis objects for all the selected indices
     for i = sInd    
-        if (isDocked)
+        if isDocked
             % case is the figure is docked
             hP = findall(handles.panelPlot,'tag','subPanel','UserData',i);
         else
@@ -1958,7 +1961,7 @@ else
     
         % retrieves the axis object
         hAx = findall(hP,'type','axes');
-        if (~isempty(hAx)); delete(hAx); end
+        if ~isempty(hAx); delete(hAx); end
     end        
 end
 
@@ -2059,9 +2062,11 @@ global mainProgDir
 progFileDir = fullfile(mainProgDir,'Para Files');
 progFile = fullfile(progFileDir,'ProgDef.mat');
 
+% creates the directory (if it doesn't exist)
+if ~exist(progFileDir,'dir'); mkdir(progFileDir); end
+
 % determines if the program defaults have been set
-if (~exist(progFileDir,'dir')); mkdir(progFileDir); end
-if (exist(progFile,'file'))
+if exist(progFile,'file')
     % if so, loads the program preference file and set the program
     % preferences (based on the OS type)
     A = load(progFile);
@@ -2071,11 +2076,11 @@ else
     uChoice = questdlg(['Program default file not found. Would you like ',...
         'to setup the program fefault file manually or automatically?'],...
         'Program Default Setup','Manually','Automatically','Manually');
-    switch (uChoice)
-        case ('Manually')
+    switch uChoice
+        case 'Manually'
             % user chose to setup manually, so load the ProgDef sub-GUI
             ProgDef = ProgParaAnalysis(handles.figFlyAnalysis,[],1);
-        case ('Automatically')
+        case 'Automatically'
             % user chose to setup automatically then create the directories            
             ProgDef = setupAutoDir(mainProgDir,progFile);
             pause(0.05); % pause required otherwise program crashes?
@@ -2097,45 +2102,47 @@ for i = 1:length(fldNames)
     fType = 'dir';
     
     % if no directory has not set, then set the field names
-    switch (fldNames{i})
-        case ('DirSoln')
+    switch fldNames{i}
+        case 'DirSoln'
             [dirName,type] = deal('Video Solution','file');
-        case ('DirComb')
+        case 'DirComb'
             [dirName,type] = deal('Experiment Solution','file');
-        case ('OutFig')
+        case 'OutFig'
             [dirName,type] = deal('Figure Output','directory');
-        case ('OutData')
+        case 'OutData'
             [dirName,type] = deal('Data Output','directory');
-        case ('DirFunc')
+        case 'DirFunc'
             [dirName,type] = deal('Analysis Function','directory');
-        case ('TempFile')
+        case 'TempFile'
             [dirName,type] = deal('Temporary File','directory');
     end
     
     % check to see if the directory exists
-    if (isempty(nwDir))
+    if isempty(nwDir)
         % flag that the directory has not been set
         isExist(i) = false;
-        if (nargin == 1)
+        if nargin == 1
             wStr = sprintf('Warning! The "%s" %s is not set.',dirName,type);
             waitfor(warndlg(wStr,'Directory Location Error','modal'))   
         end
-    elseif (exist(nwDir,fType) == 0)
+        
+    elseif ~exist(nwDir,fType)
         % if the directory does not exist, then clear the directory field
         % and flag a warning
         isExist(i) = false;
         eval(sprintf('%s = [];',nwVar));        
-        if (nargin == 1)
-            wStr = sprintf('Warning! The "%s" %s does not exist.',dirName,type);
+        if nargin == 1
+            wStr = sprintf('Warning! The "%s" %s does not exist.',...
+                            dirName,type);
             waitfor(warndlg(wStr,'Missing File/Directory','modal'))
         end
     end
 end
 
 % if any of the directories do not exist, then
-if (any(~isExist))
+if any(~isExist)
     % runs the program default sub-ImageSeg
-    if (nargin == 1)
+    if nargin == 1
         ProgDef = ProgParaAnalysis(handles.figFlyAnalysis,ProgDef,1);
     end
 end
@@ -2161,7 +2168,7 @@ for i = 1:length(b)
     nwDir = eval(sprintf('a.%s',b{i}));
 
     % if the directory does not exist, then create it
-    if (exist(nwDir,'dir') == 0)
+    if exist(nwDir,'dir') == 0
         mkdir(nwDir)
     end
 end
@@ -2440,7 +2447,7 @@ setPanelProps(handles.panelFuncDesc,'on')
 % sets the listbox strings
 lName = {'Experiment Analysis (Individual)',...
          'Experiment Analysis (Population)'};
-if (length(snTot) > 1)    
+if length(snTot) > 1    
     lName = [lName,{'Multi-Experiment Analysis'}];         
 end
 
@@ -2467,7 +2474,7 @@ a = struct('fcn',[],'Name',[],'fType',[],'fDesc',[]);
 pDataT = struct('Indiv',[],'Pop',[],'Multi',[]);
 
 % retrieves the partial/full file names
-if (isdeployed)
+if isdeployed
     % loads the analysis function data file
     pFile = fullfile(mainProgDir,'Para Files','AnalysisFunc.mat');
     pData = load(pFile);
@@ -2477,7 +2484,7 @@ if (isdeployed)
         
     % determines if this is the computer the executable was created on 
     [~, hName] = system('hostname');
-    if (strcmp(hName,pData.hName))
+    if strcmp(hName,pData.hName)
         % if so, set the analysis files relative to the current computer
         fFile = cellfun(@(x,y)(fullfile(x,y)),fDir,fName,'un',0);
     else
@@ -2488,7 +2495,7 @@ if (isdeployed)
 
     % determines if any of the files are missing from where they should be
     ii = cellfun(@(x)(exist(x,'file')),fFile) > 0;
-    if (any(~ii))
+    if any(~ii)
         % if there are missing files, then 
         eStr = sprintf(['The following files appear to be missing from ',...
                         'the analysis function path:\n\n']);
@@ -2502,10 +2509,10 @@ if (isdeployed)
     % file sizes from their original 
     fData = cell2mat(cellfun(@(x)(dir(x)),fFile(ii),'un',0));
     jj = ii(find((field2cell(fData,'bytes',1) - pData.fSize(ii)) > 0)');
-    if (~isempty(jj))
+    if ~isempty(jj)
         % if there is a change, then flag that the executable may need 
         % to be updated to include these changes
-        if (~isempty(eStr)); eStr = sprintf('%s\n',eStr); end
+        if ~isempty(eStr); eStr = sprintf('%s\n',eStr); end
         eStr = sprintf(['%sThe following files in the default analysis file ',...
                         'directory are not up to date:\n\n'],eStr);
 
@@ -2516,7 +2523,7 @@ if (isdeployed)
     end
     
     % if there are any issues, then output a warning to screen
-    if (~isempty(eStr))
+    if ~isempty(eStr)
         eStr = sprintf(['%s\nIt is strongly suggested that you recompile ',...
                         'the executable to account for the missing files ',...
                         'and/or out of date analysis functions.\n'],eStr);
@@ -2541,12 +2548,13 @@ for i = 1:length(fName)
         a.fDesc = getFuncCommentStr(fFile{i});
         
         % sets the field type strings
-        tStr = pDataNw.Type; if (~iscell(tStr)); tStr = {tStr}; end
+        tStr = pDataNw.Type; 
+        if ~iscell(tStr); tStr = {tStr}; end
         
         % sets the new type field string
         for j = 1:length(tStr)
             typeStr = sprintf('pDataT.%s',tStr{j});
-            if (isempty(eval(typeStr)))
+            if isempty(eval(typeStr))
                 % if the field is empty, then initialise with the struct
                 eval(sprintf('%s = a;',typeStr))
             else
@@ -2585,7 +2593,7 @@ fName = fName(1:(end-(nSoln==1)));
 pData = cell(length(fName),1);
 for i = 1:length(fName)
     % sets the array size (depending on the plotting type)
-    if (strcmp(fName{i},'Multi'))
+    if strcmp(fName{i},'Multi')
         N = 1;
     else
         N = nSoln;
@@ -2598,11 +2606,12 @@ for i = 1:length(fName)
     % sets the parameter data structs for all the function handles
     for j = 1:length(p)
         for k = 1:N
-            if (nargin == 2)
-                if (strcmp(fName{i},'Multi'))
+            if nargin == 2
+                if strcmp(fName{i},'Multi')
                     pData{i}{j,k} = feval(p(j).fcn,snTot);
                 else
-                    pData{i}{j,k} = feval(p(j).fcn,reduceSolnAppPara(snTot(k)));
+                    pData{i}{j,k} = ...
+                            feval(p(j).fcn,reduceSolnAppPara(snTot(k)));
                 end
                 
                 pData{i}{j,k}.fDesc = p(j).fDesc;
@@ -2616,7 +2625,7 @@ function pDataNw = resetPlottingData(handles,varargin)
 
 % resets the legend strings
 [eInd,fInd,pInd] = getSelectedIndices(handles);
-if (~any([eInd,fInd,pInd] == 0))    
+if ~any([eInd,fInd,pInd] == 0)   
     % retrieves the relevant data/parameter structs
     snTot = getappdata(handles.figFlyAnalysis,'snTot');
     pDataT = getappdata(handles.figFlyAnalysis,'pDataT');   
@@ -2624,7 +2633,7 @@ if (~any([eInd,fInd,pInd] == 0))
     fName = fieldnames(pDataT);
     
     % reduces the solution struct (if not analysing multi-experiment)
-    if (pInd == 3)
+    if pInd == 3
         snTotL = snTot;
     else
         snTotL = reduceSolnAppPara(snTot(eInd));
@@ -2633,7 +2642,7 @@ if (~any([eInd,fInd,pInd] == 0))
     % reinitialises the parameter struct
     p = eval(sprintf('pDataT.%s;',fName{pInd}));
     A = feval(p(fInd).fcn,snTotL);
-    if (nargin == 2)
+    if nargin == 2
         pDataNw = varargin{1};
         pDataNw.pF = A.pF;
     else        
@@ -2654,10 +2663,10 @@ end
 function updateListColourStrings(handles,type)
 
 % sets the list object to read (based on the type flag)
-switch (type)
-    case ('func') % case is for the analysis function list
+switch type
+    case 'func' % case is for the analysis function list
         hObj = handles.listPlotFunc;
-    case ('expt') % case is for the experiment selection list
+    case 'expt' % case is for the experiment selection list
         hObj = handles.popupExptIndex;
 end
 
@@ -2677,7 +2686,7 @@ plotD = getappdata(handles.figFlyAnalysis,'plotD');
 
 % determines which of the 
 [eInd,~,pInd] = getSelectedIndices(handles);
-switch (lower(type))
+switch lower(type)
     case ('expt') % case is the experiment selection
         ii = any(~cellfun(@isempty,plotD{pInd}),1);
         lCol = repmat({'k'},length(ii),1); lCol(ii) = {'r'};        
@@ -2734,7 +2743,7 @@ function sNameTT = getToolTipStrings(handles,ind)
 
 % retrieves the full solution file name strings
 a = getappdata(handles.figFlyAnalysis,'sNameFull');
-if (nargin == 1); ind = 1:length(a); end
+if nargin == 1; ind = 1:length(a); end
 
 % sets the solution file tool-tip strings
 sNameTT = a{ind(1)};
@@ -2757,7 +2766,7 @@ switch Type
         snTot = getappdata(handles.figFlyAnalysis,'snTot');
         
         % if the solution data exists, then reset
-        if (~isempty(snTot))
+        if ~isempty(snTot)
             % creates a loadbar figure
             h = ProgressLoadbar('Saving Temporary Solution File...');
             
@@ -2773,7 +2782,7 @@ switch Type
         end
         
     case ('reload') % case is reloading the data
-        if (exist(tFile,'file'))
+        if exist(tFile,'file')
             % creates a loadbar figure
             h = ProgressLoadbar('Loading Temporary Solution File...');
             
@@ -2786,11 +2795,11 @@ switch Type
             
             % removes the sub-region and solution file data struct
             setappdata(handles.figFlyAnalysis,'iMov',a.iMov);
-            setappdata(handles.figFlyAnalysis,'snTot',a.snTot);        
+            setappdata(handles.figFlyAnalysis,'snTot',a.snTot);
         end
                 
     case ('remove') % case is removing the data        
-        if (exist(tFile,'file'))
+        if exist(tFile,'file')
             % deletes the temporary solution file (if it exists)
             delete(tFile)
         end

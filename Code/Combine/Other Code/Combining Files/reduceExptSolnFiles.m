@@ -40,19 +40,19 @@ for i = 1:nApp
     % sets the indices for the current apparatus
     if ~isempty(indNw{i})
         % sets the current indices
-        ii = reshape(indNw{i},length(indNw{i}),1);
+        ii = indNw{i}(:)';
         
         % sets the fly x-locations
-        Px{i} = cell2mat(snTot.Px(ii)');
+        Px{i} = cell2mat(arr2vec(snTot.Px(ii))');
         if ~isempty(snTot.Py)
             % sets the fly y-locations (if they exist)
-            Py{i} = cell2mat(snTot.Py(ii)');
+            Py{i} = cell2mat(arr2vec(snTot.Py(ii))');
         end
         
         % sets the orientation angles/aspect ratios
         if calcPhi
-            Phi{i} = cell2mat(snTot.Phi(ii)');
-            AxR{i} = cell2mat(snTot.AxR(ii)');
+            Phi{i} = cell2mat(arr2vec(snTot.Phi(ii))');
+            AxR{i} = cell2mat(arr2vec(snTot.AxR(ii))');
         end
 
         % reduces down the x-location scale values
@@ -111,7 +111,7 @@ end
 
 % groups the acceptance flags (if not already grouped)
 if ~iscell(snTot.iMov.flyok)
-    fok0 = groupAcceptFlags(snTot);
+    fok0 = groupAcceptFlags(snTot,1);    
     snTot.iMov.flyok = cellfun(@(x)...
                             (cell2mat(arr2vec(fok0(x)))),indNw,'un',0);                        
 end

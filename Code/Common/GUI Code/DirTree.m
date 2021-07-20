@@ -40,7 +40,7 @@ setappdata(hObject,'defDir',defDir)
 setappdata(hObject,'sDir',[]);
 
 % sets the title based on the GUI it was called from
-if (~isempty(findobj(0,'tag','figFlyTrack')))
+if ~isempty(findobj(0,'tag','figFlyTrack'))
     % case is the figure fly 
     set(hObject,'Name','Batch Process Movie Files')
     set(handles.panelMovieInfo,'Title','BATCH PROCESSING MOVIE INFORMATION')
@@ -420,13 +420,13 @@ end
 function sStr = splitStringRegExpLocal(Str,sStr)
 
 % ensures the string is not a cell array
-if (iscell(Str))
+if iscell(Str)
     Str = Str{1};
 end
 
 % determines the indices of the non-white regions in the string
-if (length(sStr) == 1)
-    if (strcmp(sStr,'\') || strcmp(sStr,'/'))    
+if length(sStr) == 1
+    if strcmp(sStr,'\') || strcmp(sStr,'/')  
         ind = strfind(Str,sStr)';
     else
         ind = regexp(Str,sprintf('[%s]',sStr))';

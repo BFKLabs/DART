@@ -11,7 +11,7 @@ fPosM = get(hFigMain,'Position');
 fPosS = get(hFigSub,'Position');
 
 % calculates the left/top position of the sub-gui
-[fRight,fTop] = deal(sum(fPosM([1,3])),sum(fPosM([2,4])));
+[fRight,fBottom] = deal(sum(fPosM([1,3])),fPosM(2));
 
 % determines which side of the gui has more space
 if fPosM(1) >= (scrSz(3) - fRight)
@@ -24,4 +24,4 @@ end
 
 % repositions the sub-gui
 resetObjPos(hFigSub,'Left',Lnw)
-resetObjPos(hFigSub,'Bottom',fTop-(fPosS(4)+2*dX));
+resetObjPos(hFigSub,'Bottom',fBottom);

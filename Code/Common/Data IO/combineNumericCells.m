@@ -2,7 +2,7 @@
 function Y = combineNumericCells(Yc,varargin)
 
 %
-if (iscell(Yc{1}))
+if iscell(Yc{1})
     Yc = cellfun(@(x)(cell2mat(x(:))),Yc,'un',0);
 end
 

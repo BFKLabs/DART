@@ -34,10 +34,13 @@ tarFiles = cellfun(@(x)(fullfile(dDir,x)),A,'un',0);
 pW = (length(fieldnames(snTot))-1) + (oPara.outY + calcPhi);
 
 % creates the waitbar figure
-if nargin == 5
+if exist('h','var')
+    % case is multiple experiment solution files are being output 
     wOfs = 1+(nargin==6);
 else
-    wStr = {'Overall Progress','Current Experiment Progress',...
+    % otherwise, create the waitbar figure within the function
+    wStr = {'Overall Progress',...
+            'Current Experiment Progress',...
             'Output Data Field'};
     [h,wOfs] = deal(ProgBar(wStr,'Saving Experimental Solution Files'),0);
 end
@@ -171,6 +174,4 @@ end
 if exist(tmpFile,'file'); delete(tmpFile); end
 
 % closes the waitbar figure (if created in the function)
-if wOfs == 0
-    h.closeProgBar(); 
-end
+if wOfs == 0; h.closeProgBar(); end

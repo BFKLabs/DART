@@ -4824,7 +4824,7 @@ iCh = uData0{indFcn('iCh')};
 
 % retrieves the full experiment signal
 sPara = uData0{indFcn('sPara')};
-sParaExP = eval(sprintf('sParaEx.%s',sType(1)));
+sParaExP = getStructField(sParaEx,Type(1));
 xyData = setupFullExptSignal(hFig,sTrainS,sParaExP);
 iChObj = find(~cellfun(@isempty,xyData));
 
@@ -5088,74 +5088,6 @@ switch pType
         
         % creates the imrect object
         hSigTmp = createSignalRectObj(hFig,uData,rPos,0);
-end
-
-% --- retrieves the full experiment signal
-function xyData = setupFullExptSignal(hFig,sTrain,sPara)
-
-% retrieves the properties from the gui
-hAx = get(hFig,'CurrentAxes');
-iExpt = getappdata(hFig,'iExpt');
-sParaEx = getappdata(hFig,'sParaEx');
-
-% sets the default input arguments (if not provided)
-if nargin < 3
-    % retrieves the experiment parameter struct (if not provided)
-    sType = getappdata(hFig,'sType');    
-    sPara = eval(sprintf('sParaEx.%s',sType(1)));            
-        
-    % retrieves the selected signal train info (if not provided)
-    if nargin < 2
-        sTrain = getSelectedSignalTrainInfo(hFig);
-    end
-end
-
-% retrieves the experiment-dependent parameter struct (for the current
-% device type and protocol type)
-[~,tUnits] = vec2time(iExpt.Timing.Texp,iExpt.Timing.TexpU);
-tDurStim = vec2time(sPara.tStim,tUnits);
-
-% retrieves the currently selected stimuli train
-blkInfo = sTrain.blkInfo;
-
-% memory allocation
-[nCh,nBlk] = deal(length(sTrain.chName),length(blkInfo));
-[xyData,xyData0] = deal(cell(nCh,1));
-tUnitsS = lower(tUnits(1));
-
-% retrieves and separates the stimuli signal coordinates by channel
-for i = 1:nBlk    
-    % calculates the signal time multiplier
-    tMltDur = getTimeMultiplier(tUnitsS,blkInfo(i).sPara.tDurU);
-    tMltOfs = getTimeMultiplier(tUnitsS,blkInfo(i).sPara.tOfsU);
-    
-    % retrieves the signal from the current stimuli block
-    iCh = find(strcmp(sTrain.chName,blkInfo(i).chName) & ...
-               strcmp(sTrain.devType,blkInfo(i).devType));
-    [xS,yS] = setupScaledStimuliSignal(...
-                hAx,blkInfo(i).sPara,iCh,blkInfo(i).sType,0);
-    
-    % stores the signal values for the given channel
-    tOfs = tMltOfs*blkInfo(i).sPara.tOfs;
-    xyData0{iCh} = [xyData0{iCh};[tMltDur*xS(:)+tOfs,yS(:)]];
-end
-
-% repeats the signals for the necessary counta
-for i = 1:nCh
-    if ~isempty(xyData0{i})
-        % adds on the inter-stimuli duration
-        xyDataNw = cell2mat(arrayfun(@(x)(colAdd(...
-                xyData0{i},1,(x-1)*tDurStim)),(1:sPara.nCount)','un',0));        
-            
-        % scales the values in the
-        j = (nCh+1) - i;
-        yS = xyDataNw(:,2);
-        xyDataNw(:,2) = yS + (j+mod(yS(1),1))-(1+yS(1));                                
-        
-        % sorts the time-shifted data in chronological order
-        [~,iSort] = sort(xyDataNw(:,1));
-        xyData{i} = xyDataNw(iSort,:);
-    end
 end
 
 % --- creates the signal imrect object
@@ -6592,11 +6524,12 @@ function [xS,yS] = setupScaledStimuliSignal(hAx,sParaS,iCh,sType,useTOfs)
 global yGap
 
 % calculates the actual stimuli signal values
+yLim = get(hAx,'ylim');
 [xS0,yS0] = setupStimuliSignal(sParaS,sType,1/100);
 
 % determines the pixel-to-data scale factors
 axPos = get(hAx,'Position');
-[pX,pY] = deal(sParaS.tDur/axPos(3),diff(get(hAx,'ylim'))/axPos(4));
+[pX,pY] = deal(sParaS.tDur/axPos(3),diff(yLim)/axPos(4));
 
 % calculates the time offset (if required)
 if useTOfs
@@ -6875,7 +6808,7 @@ iCh = uData{indFcn('iCh')};
 sType = uData{indFcn('sType')};
 hSigObj = uData{indFcn('hSigObj')};
 
-%
+% calculates the parameter time multiplier
 tMltP = getTimeMultiplier(sParaP.tDurU,sParaS.tDurU);
 
 % updates the position of the signal block
@@ -6900,33 +6833,6 @@ resetSignalBlockTimeLimits(hFig,hSigSel);
 iBlk = cellfun(@(x)(isequal(hSigSel,x)),sigBlk{iProto}{iCh});
 sigBlk{iProto}{iCh}{iBlk} = hSigSel;
 setappdata(hFig,'sigBlk',sigBlk)
-
-% --- retrieves the channel colour array
-function chCol = getChannelCol(devType,nCh)
-
-% memory allocation
-nDev = length(nCh);
-chCol = cell(nDev,1);
-
-% sets the colour array based on type
-for i = 1:nDev
-    j = nDev - (i-1);
-    switch devType{i}
-        case 'Opto' % case is the optogenetics device
-            chCol{j} = {'y','b','g','r'}';
-
-        case 'Motor' % case is a motor (with nCh motors)
-            chCol0 = {'r','g','b','m','y','c'}';
-            chCol{j} = flip(chCol0((1:nCh(i))'));
-
-        case 'RecordOnly' % case is recording only (no colours required)
-            chCol{j} = [];
-
-    end
-end
-
-% combines into a single array
-chCol = cell2cell(chCol);
 
 % --- retrieves the general motor channel names (for nCh channels)
 function chName = getOptoChannelNames(varargin)

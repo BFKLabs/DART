@@ -1,5 +1,5 @@
 % --- loads a multi-combined solution file --- %
-function [snTot,sName,ok] = loadMultiExptSolnFiles(TempDir,mName,ind)
+function [snTot,sName,ok] = loadMultiExptSolnFiles(TempDir,mName,ind,h)
 
 % global variables
 global isAnalysis
@@ -8,20 +8,28 @@ global isAnalysis
 % --- SOLUTION FILE UNTARRING --- %
 % ------------------------------- %
 
+% sets the index offset
+iOfs = 0;
+
 % creates a waitbar figure
-wStr = {'Overall Progress','Current File Progress','Data Output'};
-h = ProgBar(wStr,'Loading Experimental Solution File'); 
-setObjVisibility(h.hFig,'on')  
+if ~exist('h','var')
+    wStr = {'Overall Progress','Current File Progress','Data Output'};
+    h = ProgBar(wStr,'Loading Experimental Solution File'); 
+    setObjVisibility(h.hFig,'on')
+else
+    iOfs = 1;
+    wStr = h.wStr(2:end);
+end
 
 % unzips the files to the temporary directory
 if ~iscell(mName)
     wStrNw = sprintf('%s (%s)',wStr{1},'Loading Experimental Solution File');
-    h.Update(1,wStrNw,0);    
+    h.Update(1+iOfs,wStrNw,0);    
     A = untar(mName,TempDir);   
     
 else    
     wStrNw = sprintf('%s (%s)',wStr{1},'Copying Experimental Solution File');
-    h.Update(1,wStrNw,0);
+    h.Update(1+iOfs,wStrNw,0);
     cellfun(@(x)(copyfile(x,TempDir)),mName);
     mNameBase = cellfun(@(x)(getFileName(x)),mName,'un',0);
     A = cellfun(@(x)(fullfile(TempDir,[x,'.ssol'])),mNameBase,'un',0);
@@ -32,7 +40,11 @@ sName = cellfun(@(x)(getFileName(x)),A,'un',0);
 nFile = length(sName);
 
 % sets the indices for loading the solution files
-if nargin == 2; ind = 1:nFile; end        
+if ~exist('ind','var')
+    ind = 1:nFile; 
+elseif isempty(ind)
+    ind = 1:nFile;
+end        
 
 % ------------------------- %
 % --- DATA FILE LOADING --- %
@@ -46,10 +58,15 @@ snTot = cell(nSoln,1);
 for i = 1:nSoln
     % updates the waitbar figure
     wStrNw = sprintf('%s (File %i of %i)',wStr{1},i,nSoln);
-    h.Update(1,wStrNw,(i+1)/(nSoln+2));
+    h.Update(1+iOfs,wStrNw,(i+1)/(nSoln+2));
 
     % loads the current solution file
-    [snTot{i},ok] = loadExptSolnFiles(TempDir,A{ind(i)},0,h);
+    if nargin == 4
+        [snTot{i},ok] = loadExptSolnFiles(TempDir,A{ind(i)},1,h,1);
+    else
+        [snTot{i},ok] = loadExptSolnFiles(TempDir,A{ind(i)},1,h);
+    end
+    
     if ~ok
         % if the user cancelled, then exit the function
         cellfun(@delete,A)
@@ -75,6 +92,16 @@ end
     
 % deletes the temporary solution files
 cellfun(@delete,A)
+
+% % sets the unique group names (over all solution files)
+% gName0 = cellfun(@(x)(x.iMov.pInfo.gName(:)),snTot,'un',0);
+% gNameT = unique(cell2cell(gName0));
+% 
+% % reduces the experimental solution files
+% for i = 1:length(snTot)
+%     indNw = cellfun(@(x)(find(strcmp(x,gName0{i}))),gNameT,'un',0);
+%     snTot{i} = reduceExptSolnFiles(snTot{i},indNw,gNameT);
+% end
 
 % determines the fields for each of the solution files
 fStr = cellfun(@(x)(fieldnames(x)),snTot,'un',0);
@@ -114,5 +141,9 @@ end
 
 % converts the cell array to a struct and closes the waitbar figure
 snTot = cell2mat(snTot);
-h.Update(1,'Multi-Experimental Solution File Load Complete!',1);
-h.closeProgBar();
+
+% closes the progressbar (if created within this function)
+if nargin < 4
+    h.Update(1+iOfs,'Multi-Experimental Solution File Load Complete!',1);
+    h.closeProgBar();
+end

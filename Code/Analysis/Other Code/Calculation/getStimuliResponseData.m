@@ -32,7 +32,8 @@ nApp = length(snTot.iMov.flyok);
 xiG = num2cell(1:nGrp)';
 
 % sets the stimuli times
-Ts = cell2mat(snTot.Ts);
+Ts = getMotorFiringTimes(snTot.stimP);
+% Ts = cell2mat(snTot.Ts);
 if isempty(Ts)
     % if there are no recorded stimuli events, then output an error    
     if wOfs == 0

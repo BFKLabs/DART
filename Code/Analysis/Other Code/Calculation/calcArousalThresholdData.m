@@ -41,7 +41,7 @@ TsigR = cumsum([0;(Tsig + field2cell(pSig,'sDelay',1));1e10]);
 [cP.tNonR,tImmobTol] = deal(TsigR(end-1),TsigR(2));
 
 % sets the stimuli times
-Ts = cell2mat(snTot.Ts);
+Ts = getMotorFiringTimes(snTot.stimP);
 if isempty(Ts)
     % if there are no recorded stimuli events, then output an error    
     if wOfs == 0

@@ -2749,7 +2749,7 @@ mltGrp = any(detDataGroupSize(iData,plotD,[])) > 1;
 
 % sets the button c-data values
 cdFile = fullfile(mainProgDir,'Para Files','ButtonCData.mat');
-if (exist(cdFile,'file'))
+if exist(cdFile,'file')
     [A,nDS] = deal(load(cdFile),3); 
     [Iup,Idown] = deal(A.cDataStr.Iup,A.cDataStr.Idown);        
     set(handles.buttonMoveUp,'Cdata',uint8(dsimage(Iup,nDS)));        

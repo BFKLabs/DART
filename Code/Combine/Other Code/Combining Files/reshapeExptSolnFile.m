@@ -11,7 +11,7 @@ else
 end
 
 % sets up the fly configuration ID flags for each grouping
-snTot.cID = setupFlyLocID(iMov);
+snTot.cID = setupFlyLocID(iMov,true);
 
 % memory allocation
 nGrp = length(snTot.cID);
@@ -20,7 +20,7 @@ nGrp = length(snTot.cID);
 
 % initialises data for the orientation angle data values
 if calcPhi
-    [Phi,AxR] = deal(cell(nApp,1)); 
+    [Phi,AxR] = deal(cell(nGrp,1)); 
     [Phi0,AxR0] = deal(snTot.Phi,snTot.AxR);
 end
 
