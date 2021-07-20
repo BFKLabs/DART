@@ -31,8 +31,8 @@ if isfield(snTot.iMov,'dTube')
     snTot.iMov = rmfield(snTot.iMov,'dTube');
 end
 
-% sets the sub-region data struct into the solution data struct
-snTot.iMov.ok = any(snTot.iMov.flyok,1)';
+% % sets the sub-region data struct into the solution data struct
+% snTot.iMov.ok = any(snTot.iMov.flyok,1)';
 
 % --- re-arranges the regions so that they match spatially 
 function snTot = realignRegionInfo(snTot)

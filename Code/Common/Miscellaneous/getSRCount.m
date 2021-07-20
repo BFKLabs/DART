@@ -48,11 +48,11 @@ elseif isfield(iMov,'dTube')
         % retrieves the row/column indices
         switch nargin
             case 1
-                if numel(iMov.nTubeR) == iMov.nRow*iMov.nCol
-                    szGrp = [iMov.nRow,iMov.nCol];
-                    nFly = reshapeIndexArray(iMov.nTubeR,szGrp);
-                else
+                szGrp = [iMov.nRow,iMov.nCol];
+                if isequal(size(iMov.nTubeR),szGrp)
                     nFly = iMov.nTubeR;
+                else
+                    nFly = reshapeIndexArray(iMov.nTubeR,szGrp);
                 end
                 
                 return

@@ -11,9 +11,10 @@ frmInd = (frmOfs(indS(1))+indS(2)):(frmOfs(indF(1))+indF(2));
 
 % resets the fly position x/y data arrays (if required)
 if nargin == 2
-    snTot.Px = cellfun(@(x)(x(frmInd,:)),snTot.Px,'un',0);
+    ii = ~cellfun(@isempty,snTot.Px);
+    snTot.Px(ii) = cellfun(@(x)(x(frmInd,:)),snTot.Px(ii),'un',0);
     if ~isempty(snTot.Py)
-        snTot.Py = cellfun(@(x)(x(frmInd,:)),snTot.Py,'un',0);
+        snTot.Py(ii) = cellfun(@(x)(x(frmInd,:)),snTot.Py(ii),'un',0);
     end
 end
     

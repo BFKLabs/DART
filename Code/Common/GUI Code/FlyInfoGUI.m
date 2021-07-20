@@ -16,7 +16,7 @@ classdef FlyInfoGUI < handle
         jTable
         rTable        
         
-        % other fields
+        % other fields        
         is2D      
         isVis
         ok
@@ -30,6 +30,7 @@ classdef FlyInfoGUI < handle
         cHdr        
         
         % parameters
+        iTab = NaN;
         Type = 1;
         dX = 10;
         Dmin = 3;
@@ -50,12 +51,16 @@ classdef FlyInfoGUI < handle
             if ~exist('snTot','var')
                 % case is running the gui from the background estimation
                 obj.iMov = hGUI.iMov;
-                obj.hFigMain = obj.hGUI.hFig;
+                obj.hFigMain = obj.hGUI.hFig;                
             else
                 % case is running the gui through the data combining gui
                 obj.hFigMain = hGUI.figFlyCombine;
                 [obj.snTot,obj.hProp] = deal(snTot,hProp);
                 obj.iMov = obj.snTot.iMov;
+                
+                % sets the currently selected tab
+                hTabGrp = getappdata(obj.hFigMain,'hTabGrp');
+                obj.iTab = get(get(hTabGrp,'SelectedTab'),'UserData');
             end            
             
             % initialises the object properties
@@ -90,16 +95,11 @@ classdef FlyInfoGUI < handle
             % creates the panel object
             pPos = [obj.dX*[1,1],fPos(3:4)-2*obj.dX];
             obj.hPanel = uipanel(obj.hFig,'Title','','Units','Pixels',...
-                                          'Position',pPos);
-            
-            % sets the acceptance flag array
-            ind = 1:length(obj.iMov.ok);
-            obj.ok = obj.iMov.flyok(:,ind);
-            if isempty(obj.snTot)
-                % case is the bg calculation type
-                obj.ok(:,~obj.iMov.ok) = false;                
-                
-            else
+                                          'Position',pPos);            
+                                      
+            % sets the acceptance flag array            
+            obj.ok = obj.iMov.flyok;
+            if ~isempty(obj.snTot)
                 % calculates the other fly information
                 obj.initFlyInfo()
                 ppPos = [10,15,165,25];
@@ -157,15 +157,24 @@ classdef FlyInfoGUI < handle
         % --- sets up the data array (removes any missing/none regions)
         function DataArr = setupDataArray(obj, DataArr)
             
-%             % sets the table data array
-%             for i = 1:length(obj.iMov.ok)
-%                 if obj.iMov.ok(i)
-%                     DataArr((getSRCount(obj.iMov,i)+1):end,i) = {[]};
-%                 end
-%             end      
+            %
+            szArr = size(DataArr);
+            pC0 = cell2mat(obj.snTot.cID(:));
             
-            % removes any None groups from the table
-            DataArr(~obj.iMov.flyok) = {[]};
+            % sets the row/column indices of the known sub-regions 
+            if obj.snTot.iMov.is2D
+                % case is for 2D expt setups
+                pC = pC0(:,1:2);
+            else
+                % case is for 1D expt setups
+                iCol = (pC0(:,1)-1)*obj.snTot.iMov.pInfo.nCol + pC0(:,2);
+                pC = [pC0(:,3),iCol];
+            end
+            
+            % removes the missing items
+            isMiss = ~setGroup(sub2ind(szArr,pC(:,1),pC(:,2)),szArr);
+            [DataArr(isMiss),obj.ok(isMiss)] = deal({[]},false);
+            
         end
         
         % --- creates the information table
@@ -208,8 +217,8 @@ classdef FlyInfoGUI < handle
             jSP = javaObjectEDT('javax.swing.JScrollPane',jTableH);
             jSP.setRowHeaderView(obj.rTable);
             jSP.setCorner(jSP.UPPER_LEFT_CORNER,...
-                                        obj.rTable.getTableHeader());
-                                                
+                                        obj.rTable.getTableHeader());                                                
+                                    
             % retrieves the matlab handle
             wStr = warning('off','all');
             [~, hContainer] = javacomponent(jSP, [], obj.hPanelV);
@@ -254,7 +263,7 @@ classdef FlyInfoGUI < handle
         end
         
         % --- creates the check table 
-        function createCheckTable(obj, jSP)
+        function createCheckTable(obj,jSP)
             
             % Create table model
             modTypeStr = 'javax.swing.table.DefaultTableModel';
@@ -292,9 +301,11 @@ classdef FlyInfoGUI < handle
             % calculates the NaN counts/inactive times for each apparatus
             for i = 1:nApp
                 % updates the waitbar figure
-                wStrNw = sprintf(['Calculating Combined Dataset ',...
-                                  'Metrics (Region %i of %i)'],i,nApp);
-                obj.hProp.Update(1,wStrNw,0.7*(i/nApp));
+                if ~isempty(obj.hProp)
+                    wStrNw = sprintf(['Calculating Combined Dataset ',...
+                                      'Metrics (Region %i of %i)'],i,nApp);
+                    obj.hProp.Update(1,wStrNw,0.7*(i/nApp));
+                end
 
                 % retrieves the position/distance travelled values    
                 if i == 1
@@ -328,9 +339,10 @@ classdef FlyInfoGUI < handle
         end
         
         % --- gui close callback function
-        function closeFigure(obj, ~)
+        function closeFigure(obj,~)
             
             % deletes the GUI
+            setappdata(obj.hFigMain,'hGUIInfo',[])
             delete(obj.hFig);
             
         end
@@ -339,6 +351,21 @@ classdef FlyInfoGUI < handle
         function repositionGUI(obj)
             
             repositionSubGUI(obj.hFigMain,obj.hFig); 
+            
+        end
+        
+        % --- updates the solution file accepatance flags
+        function updateSolutionFlags(obj)
+            
+            % if the apparatus being updating is also being shown on 
+            % the combined solution viewing GUI, then update the figure
+            hFigM = obj.hGUI.figFlyCombine;
+
+            % updates the flag within the corresponding solution data
+            % field (within the main GUI)
+            sInfo0 = getappdata(hFigM,'sInfo');
+            sInfo0{obj.iTab}.snTot.iMov.flyok = obj.ok;
+            setappdata(hFigM,'sInfo',sInfo0);
             
         end
         
@@ -370,7 +397,7 @@ classdef FlyInfoGUI < handle
         function tableCellChange(hTable, evnt, obj)
             
             % global variables
-            global isPlotAll tableUpdating
+            global tableUpdating
             tableUpdating = true;
 
             % sets the cell selection callback function (non background estimate)
@@ -382,35 +409,31 @@ classdef FlyInfoGUI < handle
             obj.ok(indNw(1),indNw(2)) = newValue;
 
             % updates the sub-region data struct
-            if ~isempty(obj.snTot)
-                % if the apparatus being updating is also being shown on 
-                % the combined solution viewing GUI, then update the figure
-                hFigM = obj.hGUI.figFlyCombine;
-                if isPlotAll
-                    hPos = findobj(hFigM,'UserData',indNw(2),'Tag','hPos');
-                    setObjVisibility(hPos,evnt.NewData);        
-                else
-                    % determines if the grouping traces is selected
-                    grpCheck = get(obj.hGUI.menuAvgSpeedGroup,'Checked');
-                    if strcmp(grpCheck,'on')
-                        % if so, then update the main trace again
-                        updateFcn = getappdata(obj.hFigMain,'updatePlot');
-                        updateFcn(obj.hGUI);
-                                              
-                    else 
-                        % case is updating non-group trace fields
-                        iApp = get(obj.hGUI.popupAppPlot,'value');    
-                        if iApp == indNw(2)
-                            % updates the trace object visibility field
-                            hPos = findall(hFigM,'UserData',indNw(1),...
-                                                 'Tag','hPos');
-                            setObjVisibility(hPos,newValue);
+            if ~isempty(obj.snTot)                
+                % determines if the grouping traces is selected
+                grpCheck = get(obj.hGUI.menuAvgSpeedGroup,'Checked');
+                if strcmp(grpCheck,'on')
+                    % if so, then update the main trace again
+                    updateFcn = getappdata(obj.hFigMain,'updatePlot');
+                    updateFcn(obj.hGUI);
 
-                            % updates the fill object visibility field
-                            hGrpF = findall(hFigM,'UserData',indNw(1),...
-                                                  'tag','hGrpFill');
-                            setObjVisibility(hGrpF,newValue);
-                        end
+                else 
+                    % case is updating non-group trace fields
+                    iApp = get(obj.hGUI.popupAppPlot,'value');    
+                    if iApp == indNw(2)
+                        % updates the trace object visibility field
+                        hFigM = obj.hFigMain;
+                        hPos = findall(hFigM,'UserData',indNw(1),...
+                                             'Tag','hPos');
+                        setObjVisibility(hPos,newValue);
+
+                        % updates the fill object visibility field
+                        hGrpF = findall(hFigM,'UserData',indNw(1),...
+                                              'tag','hGrpFill');
+                        setObjVisibility(hGrpF,newValue);
+                        
+                        bgC = obj.bgCol{indNw(1),indNw(2)};
+                        set(hGrpF,'FaceColor',bgC.getColorComponents([]))
                     end
                 end
             else

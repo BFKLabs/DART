@@ -13,8 +13,12 @@ axCol = 0.9*ones(1,3);
 % determines if any stimuli information is available
 showStim = ~isempty(stimP);
 
+% retrieves the main figure handle
+fStr = fieldnames(handles);
+iFig = cellfun(@(x)(startsWith(x,'fig')),fStr);
+hFig = getStructField(handles,fStr{iFig});
+
 % object handle retrieval
-hFig = handles.output;
 [hAxS,hAxI] = deal(handles.axesStim,handles.axesImg);
 [hPS,hPI] = deal(handles.panelStim,handles.panelImg);  
 
@@ -111,7 +115,9 @@ if showStim
         end
 
         % links the 2-axes in the x-direction
+        wState = warning('off','all');
         linkaxes([hAxI,hAxS],'x')
+        warning(wState);
     end
 end
 
@@ -141,13 +147,14 @@ switch get(hFig,'tag')
 
     case 'figFlyCombine'
         % retrieves the outer panel positional coordinates
-        pPosO = get(handles.panelOuter,'Position');  
+        pPosO = get(handles.panelExptOuter,'Position');  
         resetObjPos(hFig,'Height',pPosO(4)+2*dY);
-        resetObjPos(handles.panelOuter,'Bottom',dY)
+        resetObjPos(handles.panelExptOuter,'Bottom',dY)
         
         % sets the stimuli axes units to being normalised
         set(hAxS,'Units','Normalized')
         setObjVisibility(hPS,showStim)
+        set(hPI,'Units','Pixels')
         
         if showStim
             % retrieves the position of the stimuli plot panel
@@ -160,10 +167,12 @@ switch get(hFig,'tag')
             resetObjPos(hPI,'Height',pPosO(4)-(yPosI-dY))
             
         else
-            % reshapes the GUI to hide the missing panel
+            % reshapes the GUI to hide the missing panel            
             resetObjPos(hPI,'Bottom',dY)
-            resetObjPos(hPI,'Height',pPosO(4))                    
+            resetObjPos(hPI,'Height',pPosO(4))                  
         end
+        
+        set(hPI,'Units','Normalized')
                      
 end
 

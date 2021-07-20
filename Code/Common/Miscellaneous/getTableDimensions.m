@@ -18,8 +18,7 @@ end
 % retrieves the table row header width
 try
     rowHeaderViewport = jObjT.getComponent(4);
-    rowHeader = rowHeaderViewport.getComponent(0);
-    W0 = double(get(rowHeader,'Width') + 2);
+    W0 = double(get(rowHeaderViewport,'Width')) + 2;
 catch
     W0 = 0;
 end

@@ -39,9 +39,10 @@ switch nargin
         [indApp,wOfs,isSave] = deal([],0,false);
         h = ProgBar(wStr,'Loading Experimental Solution File'); 
         
-    case (4) 
+    case {4,5} 
         % case is loading from multiple combined solution files
-        [indApp,wOfs,isSave,h] = deal([],1,false,handles);
+        [indApp,isSave,h] = deal([],false,handles);
+        wOfs = 1 + (nargin==5);
         
     case (7)
         % case is save the combined solution files, so need reshaping
@@ -187,7 +188,7 @@ if isfield(snTot,'iMov')
 end
 
 % creates the stimuli train timing/parameter structs (if missing)
-if ~isfield(snTot,'stimP')
+if ~isfield(snTot,'stimP') || ~isfield(snTot,'sTrainEx')
     [snTot.stimP,snTot.sTrainEx] = getExptStimInfo(snTot);
 end
 
@@ -207,6 +208,11 @@ end
 %         h.Update(2+wOfs,'Object Size Reading Complete!',1);
 %     end            
 % end
+
+% ensures any empty regions are set to false
+if iscell(snTot.iMov.flyok)
+    snTot.iMov.flyok = splitAcceptanceFlags(snTot);
+end
 
 % initialises the region parameter information field (if not set)
 if isfield(snTot.iMov,'pInfo')
@@ -229,9 +235,11 @@ else
         % case is the expt solution file is loaded separately
         snTot = separateCombinedGroups(snTot);
         snTot.iMov.pInfo = getRegionDataStructs(snTot.iMov,snTot.appPara);         
-    end       
-    
-    % sets up the fly location ID array
+    end           
+end
+
+% sets up the fly location ID array (non multi-expt file loading only)
+if ~any(nargin == [4,5]) || ~isfield(snTot,'cID')
     snTot.cID = setupFlyLocID(snTot.iMov);
 end
 
@@ -318,16 +326,21 @@ for i = 1:length(pFld)
             szG = [pInfo.nRow,pInfo.nCol];        
 
             % allocates memory for each region  
-            Zf = repmat({NaN(nFrm,nRowMx)},1,prod(szG));
+            Zf = repmat({NaN(nFrm,nRowMx)},prod(szG),1);
 
             % sets the data values for each grouping
             for j = 1:length(cID)    
+                % strips out the data values as given in the 
                 iApp = (cID{j}(:,1)-1)*pInfo.nCol + cID{j}(:,2);        
                 for k = 1:size(cID{j},1)
                     Zf{iApp(k)}(:,cID{j}(k,3)) = Z0{j}(:,k);
                 end
-            end            
-
+                
+                % reduces down the array to only include the required flies
+                [iCol,~,iRow] = getRegionIndices(iMov,j);
+                Zf{iApp(k)} = Zf{iApp(k)}(:,1:pInfo.nFly(iRow,iCol));
+            end
+            
         end   
 
         % resets the solution struct field   

@@ -26,47 +26,47 @@ function SaveCombFile_OpeningFcn(hObject, eventdata, handles, varargin)
 % sets the input arguments
 hMain = varargin{1};
 hFigM = hMain.figFlyCombine;
-iPara = getappdata(hFigM,'iPara');
-snTot = getappdata(hFigM,'snTot');
+sInfo = getappdata(hFigM,'sInfo');
 hGUIInfo = getappdata(hFigM,'hGUIInfo');
 
 % makes the information GUI invisible
 setObjVisibility(hGUIInfo.hFig,'off')
 
 % sets the data structs into the GUI
-setappdata(hObject,'fExtn','.ssol');
+setappdata(hObject,'fExtn','.ssol')
 setappdata(hObject,'fDir',getappdata(hFigM,'fDir'))
 setappdata(hObject,'fName',getappdata(hFigM,'fName'))
 setappdata(hObject,'iProg',getappdata(hFigM,'iProg'))
 
 % updates the other fields in the gui
-setappdata(hObject,'iPara',iPara)
+% setappdata(hObject,'iPara',iPara)
 setappdata(hObject,'hGUIInfo',hGUIInfo)
 
 % reshapes the solution file
-snTot = reshapeSolnStruct(snTot,iPara);
-setappdata(hObject,'snTot',snTot)
-
-% if only recording, then disable stimuli time-stamp checkbox
-if length(snTot.iExpt) == 1
-    if strcmp(snTot.iExpt.Info.Type,'RecordOnly')
-        setObjEnable(handles.checkOutputStim,'off')
-    end
-else
-    Type = field2cell(field2cell(snTot.iExpt,'Info',1),'Type');
-    if all(strcmp(Type,'RecordOnly'))
-        setObjEnable(handles.checkOutputStim,'off')
-    end
+for i = 1:length(sInfo)
+    sInfo{i}.snTot = reshapeSolnStruct(sInfo{i}.snTot,sInfo{i}.iPara);
 end
+
+% % if only recording, then disable stimuli time-stamp checkbox
+% if length(snTot.iExpt) == 1
+%     if strcmp(snTot.iExpt.Info.Type,'RecordOnly')
+%         setObjEnable(handles.checkOutputStim,'off')
+%     end
+% else
+%     Type = field2cell(field2cell(snTot.iExpt,'Info',1),'Type');
+%     if all(strcmp(Type,'RecordOnly'))
+%         setObjEnable(handles.checkOutputStim,'off')
+%     end
+% end
     
 % initialises the file information
 initFileInfo(handles)
 
 % updates the solution time object properties
 set(handles.checkSolnTime,'value',0)
-if snTot.iMov.is2D 
-    set(setObjEnable(handles.checkOutputY,'off'),'value',1); 
-end
+% if snTot.iMov.is2D 
+%     set(setObjEnable(handles.checkOutputY,'off'),'value',1); 
+% end
 checkSolnTime_Callback(handles.checkSolnTime, [], handles)
 
 % updates the object properties
@@ -137,15 +137,19 @@ function chooserPropChange(hObject, eventdata, handles)
 
 % initialisations
 hFig = handles.figCombSave;
+iExp = getappdata(hFig,'iExp');
+fExtn = getappdata(hFig,'fExtn');
 objChng = eventdata.getNewValue;
 
 switch class(objChng)
     case 'com.mathworks.mwswing.FileExtensionFilter'
+        %        
+        
         % case is the file extension filter change
-        fExtn = char(objChng.getSimpleFilterExtension);
+        fExtn{iExp} = char(objChng.getSimpleFilterExtension);
         setappdata(hFig,'fExtn',fExtn)
         
-        %
+        % retrieves the current file path
         jFileC = getappdata(hFig,'jFileC');
         currFile = getCurrentFilePath(hFig);
         jFileC.setSelectedFile(java.io.File(currFile));
@@ -166,11 +170,8 @@ end
 % --- updates when the file name is changed
 function saveFileNameChng(hObject, eventdata, handles)
 
-% retrieves the new file name
-fName = char(get(hObject,'Text'));
-setappdata(handles.figCombSave,'fName',fName)
-
 % enables the create button enabled properties (disable if no file name)
+fName = char(get(hObject,'Text'));
 setObjEnable(handles.buttonCreate,~isempty(fName))
 
 % ---------------------------------------- %
@@ -198,9 +199,16 @@ oPara = struct('useComma',get(handles.checkUseComma,'value'),...
 hFig = handles.figCombSave;
 snTot = getappdata(hFig,'snTot');
 iPara = getappdata(hFig,'iPara');
-fDir = getappdata(hFig,'fDir');
-fName = getappdata(hFig,'fName');
-fExtn = getappdata(hFig,'fExtn');
+jFileC = getappdata(hFig,'jFileC');
+
+% retrieves the file directory, name and extension
+fDir = char(jFileC.getCurrentDirectory);
+fName = get(get(jFileC,'UI'),'FileName');
+fExtn = char(jFileC.getFileFilter.getSimpleFilterExtension);
+
+% updates the file directory/name into the gui
+setappdata(hFig,'fDir',fDir)
+setappdata(hFig,'fName',fName)
 
 % removes the extension from the file name
 if endsWith(fName,fExtn)
@@ -208,7 +216,11 @@ if endsWith(fName,fExtn)
 end
 
 % sets the full file name
-fNameFull = fullfile(fDir,fName);
+if chkDirString(fName)
+    fNameFull = fullfile(fDir,fName);
+else
+    return
+end
 
 % if not splitting a file (and not outputting a DART file) then determine
 % if the files are too long
@@ -880,6 +892,7 @@ defFile = getCurrentFilePath(hFig);
 jFileC = setupJavaFileChooser(hPanel,'fSpec',fSpec,...
                                      'defDir',defDir,...
                                      'defFile',defFile);
+jFileC.setName(getFileName(defFile,1))                                 
 jFileC.PropertyChangeCallback = {@chooserPropChange,handles};
 setappdata(hFig,'jFileC',jFileC)
 

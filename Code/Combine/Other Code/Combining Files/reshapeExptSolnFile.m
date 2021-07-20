@@ -11,7 +11,7 @@ else
 end
 
 % sets up the fly configuration ID flags for each grouping
-snTot.cID = setupFlyLocID(iMov);
+snTot.cID = setupFlyLocID(iMov,true);
 
 % memory allocation
 nGrp = length(snTot.cID);

@@ -280,6 +280,9 @@ else
             sNameNw = {[getFileName(sNameF),'.ssol']};
             sNameF = {sNameF};
             setappdata(handles.figFlyAnalysis,'sName',sNameNw)
+            
+            % reduces down the experimental solution file info
+            snTot = reduceExptSolnFiles(snTot);
         end        
     end
 end
@@ -292,10 +295,10 @@ for i = 1:length(sNameF)
     end
 end
 
-% reduces down the combined experiment solution files
-for i = 1:length(snTot)
-    snTot(i) = reduceExptSolnFiles(snTot(i));
-end
+% % reduces down the combined experiment solution files
+% for i = 1:length(snTot)
+%     snTot(i) = reduceExptSolnFiles(snTot(i));
+% end
 
 % ensures the solution file names are stored as a cell array
 if ~iscell(sNameF); sNameF = {sNameF}; end
@@ -2677,7 +2680,7 @@ plotD = getappdata(handles.figFlyAnalysis,'plotD');
 
 % determines which of the 
 [eInd,~,pInd] = getSelectedIndices(handles);
-switch (lower(type))
+switch lower(type)
     case ('expt') % case is the experiment selection
         ii = any(~cellfun(@isempty,plotD{pInd}),1);
         lCol = repmat({'k'},length(ii),1); lCol(ii) = {'r'};        

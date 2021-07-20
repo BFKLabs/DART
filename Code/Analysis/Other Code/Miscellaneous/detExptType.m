@@ -58,7 +58,6 @@ end
 
 % determines if there are any stimuli events in the solution file
 stimP = field2cell(snTot,'stimP');
-dKey = any(cell2mat(cellfun(@(x)(getDevTypeKey(x)),stimP(:),'un',0)),1);
 
 % determines if the experiment is an RT experiment
 isRT = fType(:,1) == 4;
@@ -81,8 +80,9 @@ else
 end
     
 % sets the feasibility of the stimuli dependent functions
+dKey = any(cell2mat(cellfun(@(x)(getDevTypeKey(x)),stimP(:),'un',0)),1);
 for i = 1:length(dKey)
-    ii = ~isRT & (fType(:,i+1) == (i+1));
+    ii = ~isRT & (fType(:,2) == (i+1));
     isFeas(ii) = isFeas(ii) & dKey(i);
 end
 

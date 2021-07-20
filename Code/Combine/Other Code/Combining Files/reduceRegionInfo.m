@@ -12,7 +12,8 @@ end
 % resets the region information based on experimental setup type
 if iMov.is2D
     % case is a 2D expt setup    
-    iok = arrayfun(@(x)(any(iMov.pInfo.iGrp(:)==x)),1:nApp)';   
+    nGrp = max(iMov.pInfo.iGrp(:));
+    iok = arrayfun(@(x)(any(iMov.pInfo.iGrp(:)==x)),(1:nGrp)');   
     
 else
     % case is 1D expt setup

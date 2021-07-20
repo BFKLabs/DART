@@ -23,7 +23,6 @@ end
 if exist(smFile,'file')
     % creates the load bar
     smData = load(smFile);
-    h = ProgressLoadbar('Determining Valid Solution Files...');
     
     % determines the solution files which contain the base file name
     baseName = smData.iExpt.Info.BaseName;
@@ -190,10 +189,6 @@ if exist(smFile,'file')
         iExpt.Info.Type = 'RecordStim';
     end    
     
-    % closes the load bar
-    try; close(h); end
-    pause(0.05);
-    
 else
     % otherwise, set an empty time-stamp array
     [tStampS,tStampV,T0,iExpt,stimP,sTrainEx] = deal([]); 
@@ -217,7 +212,7 @@ if ~isempty(sData); snTot.sData = sData; end
 % retrieves the waitbar figure properties
 if ~isempty(hh)
     [h,wOfs] = deal(hh,1);
-    if isa(h,'ProgBar')
+    if isa(h,'ProgBar') && ishandle(h.hFig)
         % if the waitbar is valid, then retrieve the level strings
         wStr = h.wStr;
     else
@@ -421,8 +416,12 @@ end
 
 % checks to see which of the solution files were feasible
 if all(~isOK)
-    % case is none of the video solution files are feasible
-    h.closeProgBar();
+    % closes the progressbar (if created within function)
+    if wOfs == 0
+        h.closeProgBar();
+    end
+    
+    % case is none of the video solution files are feasible    
     eStr = sprintf(['All selected video solution files are either ',...
                     'corrupt, or have not been fully tracked. Check ',...
                     'that these videos have been tracked properly ',...

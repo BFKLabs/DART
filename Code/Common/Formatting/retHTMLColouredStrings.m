@@ -1,9 +1,6 @@
 % --- converts the an HTML colour string, StrCol, into the base string, Str
 function Str = retHTMLColouredStrings(StrNw)
 
-% determines the start/finish parts of the HTML code components
-ii = strfind(StrNw,'<');
-
 % removes the HTML code component of the string
 if ~strContains(StrNw,'<')       
     Str = StrNw;
