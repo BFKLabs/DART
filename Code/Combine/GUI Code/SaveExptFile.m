@@ -573,7 +573,7 @@ setObjVisibility(handles.panelFileInfo,tabData{iRow,2})
 if tabData{iRow,2}
     % retrieves the group name table colour array
     ok = sInfo{iRow}.snTot.iMov.ok;
-    bgCol = getGroupNameTableColour(ok);
+    bgCol = getGroupNameTableColour(hFig,iRow);
 
     % resets the group name table properties
     Data = [gName{iRow}(:),num2cell(ok)];
@@ -614,6 +614,10 @@ switch iCol
             gName{iExp}{iRow} = nwStr;
             setappdata(hFig,'gName',gName)
             setappdata(hFig,'isChange',true)
+            
+            % resets the table background colour scheme
+            bgCol = getGroupNameTableColour(hFig,iExp);
+            set(hObject,'BackgroundColor',bgCol)              
             return
         end
         
@@ -626,7 +630,7 @@ switch iCol
             setappdata(hFig,'isChange',true)
 
             % resets the table background colour scheme
-            bgCol = getGroupNameTableColour(sInfo{iExp}.snTot.iMov.ok);
+            bgCol = getGroupNameTableColour(hFig,iExp);
             set(hObject,'BackgroundColor',bgCol)  
             return
         end
@@ -639,7 +643,8 @@ waitfor(msgbox(mStr,'Rejected Region Error','modal'))
 
 % resets the table data to the previous string
 tabData{iRow,iCol} = prStr;
-set(hObject,'Data',tabData);
+bgCol = getGroupNameTableColour(hFig,iExp);
+set(hObject,'Data',tabData,'BackgroundColor',bgCol);
     
 % ---------------------------------------- %
 % --- PROGRAM CONTROL BUTTON CALLBACKS --- %
@@ -885,7 +890,7 @@ end
 
 % updates the region data struct
 snTot = updateRegionInfo(snTot);
-snTot = reshapeExptSolnFile(snTot,1);
+snTot = reshapeExptSolnFile(snTot);
 
 % outputs the solution file
 fFileFull = [fNameFull,'.ssol'];
@@ -1651,6 +1656,8 @@ setappdata(hFig,'useExp',useExp);
 
 % sets the experiment name table
 Data = [fName(:),num2cell(true(length(fName),1)),fExtn(:)];
+Data(:,end) = centreTableData(Data(:,end));
+
 set(hTableEx,'Data',Data)
 resetExptTableBG(hFig)
 setTableSelection(hTableEx,0,0)
@@ -1969,7 +1976,7 @@ fileExist = detExistingExpt(hFig);
 
 % updates the table background colours 
 isUpdating = true;
-bgCol = getGroupNameTableColour(getappdata(hFig,'useExp'),fileExist);
+bgCol = getExptNameTableColour(getappdata(hFig,'useExp'),fileExist);
 set(handles.tableExptName,'BackgroundColor',bgCol)  
 pause(0.05);
 isUpdating = false;
@@ -2120,19 +2127,40 @@ useExp = getappdata(hFig,'useExp');
 useExp(iExp) = nwValue;
 setappdata(hFig,'useExp',useExp)
 
-% --- sets the group name table background colour array
-function bgCol = getGroupNameTableColour(ok,fileExist)
+% --- sets the experiment name table background colour array
+function bgCol = getExptNameTableColour(ok,fileExist)
+
+% sets the default input arguments
+if ~exist('fileExist','var'); fileExist = []; end
 
 % sets the background colour array
 bgCol = ones(length(ok),3);
 bgCol(~ok,:) = 0.81;
 
 % if the existing file information is given then add this info to the array
-if exist('fileExist','var')
+if ~isempty(fileExist)
     bgCol(fileExist,1) = 1;
     bgCol(fileExist,2:3) = 0.5;
     bgCol(~ok & fileExist,2:3) = 0.81;
 end
+
+% --- sets the group name table background colour array
+function bgCol = getGroupNameTableColour(hFig,iExp)
+
+% field retrieval
+sInfo0 = getappdata(hFig,'sInfo');
+gName0 = getappdata(hFig,'gName');
+[sInfo,gName] = deal(sInfo0{iExp},gName0{iExp});
+
+% retrieves the unique group names from the list
+grayCol = 0.81;
+[gNameU,~,iGrpNw] = unique(gName,'stable');
+isOK = sInfo.snTot.iMov.ok & ~strcmp(gName,'* REJECTED *');
+
+% sets the background colour based on the matches within the unique list
+tCol = getAllGroupColours(length(gNameU),1);
+bgCol = tCol(iGrpNw,:);
+bgCol(~isOK,:) = grayCol;
 
 % --- resets the chooser file extension to fExtn
 function resetChooserFileExtn(jFileC,fExtn)

@@ -758,6 +758,9 @@ end
 resetStorageArrays(hFig)
 pause(0.05);
 
+% retrieves the tab group java object handles
+jTabGrp = getTabGroupJavaObj(hTabGrp);
+
 % updates the objects into the GUI
 setappdata(hFig,'hTab',hTab)
 setappdata(hFig,'hPanel',hPanel)
@@ -781,13 +784,25 @@ if ~isempty(sInfo0)
 end
 
 % creates the explorer tree for each panel
+hasTree = true(nTab,1);
 for i = nTab:-1:1
+    % creates a new explorer tree on the current tab
     setappdata(hFig,'iTab',i)
-    createDepExplorerTree(hFig,sDirO{i})     
+    createDepExplorerTree(hFig,sDirO{i})
+    
+    % determines if a tree was created
+    jRoot = getappdata(hFig,'jRoot');
+    hasTree(i) = ~isempty(jRoot{i});
+    if ~hasTree(i)
+        % if not, then disable the tab
+        jTabGrp.setEnabledAt(i-1,false)
+    end
 end
 
-% resets the storage arrays
-setappdata(hFig,'iTab',1)
+% sets the first valid tab
+i0 = find(hasTree,1,'first');
+set(hTabGrp,'SelectedTab',hTab{i0});
+setappdata(hFig,'iTab',i0)
 
 % closes the loadbar
 try; close(h); end
@@ -1106,9 +1121,9 @@ iTab = getappdata(hFig,'iTab');
 % searches the batch processing movie directory for movies
 sFile = findFileAllLocal(sDir,fType);
 if isempty(sFile)        
-    % if there are no feasible files, then output an error to screen
-    eStr = 'Error! No candidate files detected from base search directory.';
-    waitfor(errordlg(eStr,'Invalid Directory Selection','modal'))
+%     % if there are no feasible files, then output an error to screen
+%     eStr = 'Error! No candidate files detected from base search directory.';
+%     waitfor(errordlg(eStr,'Invalid Directory Selection','modal'))
         
     % closes the loadbar and sets empty variables for the outputs
     [jRoot,mFile,hM] = deal([]);    

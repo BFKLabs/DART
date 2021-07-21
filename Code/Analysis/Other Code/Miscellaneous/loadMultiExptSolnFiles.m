@@ -62,9 +62,9 @@ for i = 1:nSoln
 
     % loads the current solution file
     if nargin == 4
-        [snTot{i},ok] = loadExptSolnFiles(TempDir,A{ind(i)},0,h,1);
+        [snTot{i},ok] = loadExptSolnFiles(TempDir,A{ind(i)},1,h,1);
     else
-        [snTot{i},ok] = loadExptSolnFiles(TempDir,A{ind(i)},0,h);
+        [snTot{i},ok] = loadExptSolnFiles(TempDir,A{ind(i)},1,h);
     end
     
     if ~ok

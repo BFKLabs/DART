@@ -20,7 +20,7 @@ nGrp = length(snTot.cID);
 
 % initialises data for the orientation angle data values
 if calcPhi
-    [Phi,AxR] = deal(cell(nApp,1)); 
+    [Phi,AxR] = deal(cell(nGrp,1)); 
     [Phi0,AxR0] = deal(snTot.Phi,snTot.AxR);
 end
 

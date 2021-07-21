@@ -215,15 +215,7 @@ if iscell(snTot.iMov.flyok)
 end
 
 % initialises the region parameter information field (if not set)
-if isfield(snTot.iMov,'pInfo')
-    % converts the data value arrays for the new format files
-    if sepData
-        snTot = convertDataArrays(snTot);
-    end
-    
-    % removes the mapping array fields
-    [snTot.pMapPx,snTot.pMapPy] = deal([]);
-else
+if ~isfield(snTot.iMov,'pInfo')
     % sets the 2D flag
     snTot.iMov.is2D = anyY;
     
@@ -243,10 +235,13 @@ if ~any(nargin == [4,5]) || ~isfield(snTot,'cID')
     snTot.cID = setupFlyLocID(snTot.iMov);
 end
 
-% % removes any extraneous fields
-% if isfield(snTot,'sName')
-%     snTot = rmfield(snTot,'sName');
-% end
+% converts the data value arrays for the new format files
+if sepData
+    snTot = convertDataArrays(snTot);
+end
+
+% removes the mapping array fields
+[snTot.pMapPx,snTot.pMapPy] = deal([]);
 
 % updates the waitbar figure
 snTot = orderfields(snTot);
@@ -297,7 +292,7 @@ pFld = {'Px'};
 if iMov.is2D
     pFld = [pFld,{'Py'}]; 
     if iMov.calcPhi
-        pFld = [pFld,{'Phi','axR'}]; 
+        pFld = [pFld,{'Phi','AxR'}]; 
     end
 end
 

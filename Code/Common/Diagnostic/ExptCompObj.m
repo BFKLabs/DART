@@ -68,7 +68,7 @@ classdef ExptCompObj < handle
                 crData0{i,1} = setupStr{1+obj.sInfo{i}.is2D};    
                 crData0{i,2} = regStr;    
                 crData0{i,3} = stimStr; 
-                crData0{i,4} = obj.sInfo{i}.snTot.stimP;
+                crData0{i,4} = obj.sInfo{i}.snTot.sTrainEx;
                 crData0{i,5} = obj.sInfo{i}.tDur;
             end
             
@@ -111,7 +111,7 @@ classdef ExptCompObj < handle
                         otherwise
                             % case is the string values
                             isEq = strcmp(obj.crData(:,iCr),...
-                                        obj.crData{iExp,iCr});
+                                          obj.crData{iExp,iCr});
                                                                         
                     end
 
