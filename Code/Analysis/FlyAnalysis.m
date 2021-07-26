@@ -1,5 +1,5 @@
 function varargout = FlyAnalysis(varargin)
-% Last Modified by GUIDE v2.5 24-Mar-2021 21:10:08
+% Last Modified by GUIDE v2.5 26-Jul-2021 14:47:28
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -78,15 +78,24 @@ iData = initDataStruct(handles,ProgDefNew);
 if ~isdeployed
     addpath(iData.ProgDef.DirFunc);
 end
-    
+
+% intialises the loaded information data structs
+setappdata(hObject,'sInfo',[])
+setappdata(hObject,'snTot',[])
+setappdata(hObject,'LoadSuccess',false);
+
 % initialises the structs
-setappdata(hObject,'hDART',hDART)
+setappdata(hObject,'sInd',1)
 setappdata(hObject,'hPara',[])
 setappdata(hObject,'hUndock',[])
-setappdata(hObject,'sInd',1)
+setappdata(hObject,'hDART',hDART)
 setappdata(hObject,'iData',iData)
 setappdata(hObject,'gPara',gPara)
 setappdata(hObject,'iProg',iData.ProgDef)
+
+% sets the default input opening files
+sDir = {iData.ProgDef.DirSoln;iData.ProgDef.DirComb;iData.ProgDef.DirComb};
+setappdata(hObject,'sDirO',sDir);
 
 % sets all the functions
 setappdata(hObject,'plotMetricGraph',@plotMetricGraph);
@@ -94,6 +103,7 @@ setappdata(hObject,'initAxesObject',@initAxesObject)
 setappdata(hObject,'clearAxesObject',@clearAxesObject)
 setappdata(hObject,'popupSubInd',@popupSubInd_Callback);
 setappdata(hObject,'axisClickCallback',@axisClickCallback);
+setappdata(hObject,'postSolnLoadFunc',@postSolnLoadFunc)
 
 % initialises the gui object properties
 initGUIObjects(handles)
@@ -123,6 +133,144 @@ varargout{1} = handles.output;
 % ------------------------------- %
 % --- DATA FILE OPENING ITEMS --- %
 % ------------------------------- %
+
+% -------------------------------------------------------------------------
+function loadExptSoln_Callback(hObject, eventdata, handles)
+
+% field retrieval
+hFig = handles.figFlyAnalysis;
+
+% if the parameter gui is present, then make it visible
+hPara = findall(0,'tag','figAnalysisPara');
+if ~isempty(hPara)
+    setObjVisibility(hPara,0);
+end
+
+% if there is currently loaded data, then combine the sInfo and snTot data
+% structs for the 
+if ~isempty(getappdata(hFig,'sInfo'))  
+    % saves a copy of the currently loaded solution file data
+    tempSolnDataIO(handles,'store')
+    
+    % combines the solution information/data structs
+    combineInfoDataStructs(hFig);
+end
+
+% opens the solution file gui
+OpenSolnFile(hFig);
+
+% --- function for the after running the solution file loading gui
+function postSolnLoadFunc(hFig,sInfoNw)
+
+% retrieves the gui object handle
+handles = guidata(hFig);
+
+% performs the actions based on the user input
+if ~exist('sInfoNw','var')      
+    % if the user cancelled or there was no change, then exit the function
+    tempSolnDataIO(handles,'reload')
+    
+    % if the parameter gui is present, then make it visible   
+    hPara = findall(0,'tag','figAnalysisPara');
+    if ~isempty(hPara)
+        setObjVisibility(hPara,1);
+    end
+    
+    % closes the loadbar
+    try; close(h); end
+    
+    % makes the gui visible again and exits the function
+    setObjVisibility(hFig,'on');
+    return
+elseif isempty(sInfoNw)    
+    % if all data was cleared, then reset the gui
+    menuClearData_Callback(handles.menuClearData, [], handles)
+    
+    % makes the gui visible again
+    tempSolnDataIO(handles,'remove')
+    setObjVisibility(hFig,'on');        
+    return
+end
+
+% creates a loadbar
+h = ProgressLoadbar('Updating Analysis Information...');
+
+% separates the solution file information from the loaded data
+[~,sInfoNw] = separateInfoDataStruct(hFig,sInfoNw);
+
+% makes the gui visible again
+tempSolnDataIO(handles,'remove')
+setObjVisibility(hFig,'on');
+
+% sets the experiment name strings
+sName = cellfun(@(x)(x.expFile),sInfoNw,'un',0);
+sNameFull = cellfun(@(x)(x.sFile),sInfoNw,'un',0);
+setappdata(hFig,'sName',sName)
+setappdata(hFig,'sNameFull',sNameFull)
+setappdata(hFig,'LoadSuccess',true);
+
+% retrieve all the 
+setSolnInfo(handles)
+resetGUIObjects(guidata(hFig))
+
+% attempts to close the loadbar
+try; close(h); end
+
+% --- separates the solution file information data struct into
+%     its components (snTot is used for analysis)
+function [snTot,sInfo] = separateInfoDataStruct(hFig,sInfo)
+
+% memory allocation
+nExp = length(sInfo);
+snTot = cell(nExp,1);
+
+% separates the data struct (removes snTot from sInfo)
+for i = 1:nExp
+    if i == 1
+        snTot{i} = sInfo{i}.snTot;
+    else
+        snTot{i} = orderfields(sInfo{i}.snTot,snTot{1});
+    end
+        
+    sInfo{i}.snTot = [];
+end
+
+% converts the solution file data cell array into a struct array
+snTot = cell2mat(snTot);
+
+% updates the data struct into the gui
+setappdata(hFig,'sInfo',sInfo)
+setappdata(hFig,'snTot',snTot)
+
+% --- combines the solution data and information structs into a single
+%     data struct (to be used for opening file data)
+function combineInfoDataStructs(hFig)
+
+% retrieves the data structs
+sInfo = getappdata(hFig,'sInfo');
+snTot = num2cell(getappdata(hFig,'snTot'));
+
+% sets the solution data field for each experiment
+for i = 1:length(sInfo)
+    % separates the multi-experiment group names
+    gName = separateMultiExptGroupNames(snTot{i});    
+    
+    % updates the group names
+    snTot{i}.iMov.pInfo.gName = gName;
+    
+    % converts the data value arrays for the new format files
+    snTot{i}.iMov.flyok = splitAcceptanceFlags(snTot{i});
+    sInfo{i}.snTot = convertDataArrays(snTot{i});
+    sInfo{i}.snTot.iMov = reduceRegionInfo(sInfo{i}.snTot.iMov);  
+    sInfo{i}.gName = gName;
+    
+    % converts the data arrays
+    snTot{i} = [];
+end
+
+% updates the solution file info into the gui
+setappdata(hFig,'snTot',[])
+setappdata(hFig,'sInfo',sInfo)
 
 % -------------------------------------------------------------------------
 function menuOpenIndiv_Callback(hObject, eventdata, handles)
@@ -219,7 +367,7 @@ end
 
 % sets the data fields
 setappdata(hFig,'sNameFull',{fDir})
-setSolnInfo(handles,'Experiment')
+setSolnInfo(handles)
 resetGUIObjects(handles,snTot)
        
 % -------------------------------------------------------------------------
@@ -366,7 +514,7 @@ else
 end        
    
 % sets the data fields
-setSolnInfo(handles,'Multiple',fName)
+setSolnInfo(handles)
 resetGUIObjects(handles)
 
 % -------------------------------------------------------------------------
@@ -671,6 +819,66 @@ try; close(h); end
 % ------------------- %
 
 % -------------------------------------------------------------------------
+function menuClearData_Callback(hObject, eventdata, handles)
+
+% handle objects
+hFig = handles.figFlyAnalysis;
+
+% prompts the user to confirm data clearing
+if ~isempty(eventdata)
+    qStr = 'Are you sure you want to clear all the loaded experiment data?';
+    uChoice = questdlg(qStr,'Clear All Data?','Yes','No','Yes');
+    if ~strcmp(uChoice,'Yes')
+        % if the user cancelled, then exit the function
+        return
+    end
+end
+
+% disables 
+hPanel = findall(hFig,'type','uipanel');
+for i = 1:length(hPanel)
+    switch get(hPanel(i),'tag')
+        case 'panelPlot'
+            % case is the plot axes
+            initAxesObject(handles);
+        case 'panelOuter'
+            % case is the output panel (do nothing...?)
+        otherwise
+            % case is the other panel types
+            hObjC = findall(hPanel(i),'UserData',1);
+            arrayfun(@(x)(set(x,'String','')),hObjC)
+            
+            % removes the selection from the popupmenus
+            hPopup = findall(hObjC,'Style','popupmenu');
+            arrayfun(@(x)(set(x,'String',{' '},'Value',1)),hPopup);
+    end
+    
+    % disables all the plot panels
+    setPanelProps(hPanel(i),'off')
+end
+
+% deletes the analysis parameter gui (if it exists)
+hPara = findall(0,'tag','figAnalysisPara');
+if ~isempty(hPara)
+    delete(hPara);    
+end
+
+% resets the data/object fields within the gui
+setappdata(hFig,'hPara',[])
+setappdata(hFig,'plotD',[])
+setappdata(hFig,'pData',[])
+setappdata(hFig,'sInfo',[])
+setappdata(hFig,'snTot',[])
+setappdata(hFig,'sName',[])
+setappdata(hFig,'sNameFull',[])
+
+% disables the relevant menu items
+setObjEnable(hObject,'off')
+setObjEnable(handles.menuSave,'off')
+setObjEnable(handles.menuPlot,'off') 
+setObjEnable(handles.menuGlobal,'off') 
+
+% -------------------------------------------------------------------------
 function menuProgPara_Callback(hObject, eventdata, handles)
 
 % runs the program default GUI
@@ -681,6 +889,7 @@ iData = getappdata(hFig,'iData');
 % updates the data struct if the user specifed changes
 if isSave
     setappdata(hFig,'iData',iData);
+    setappdata(hFig,'iProg',iData.ProgDef)
 end
 
 % -------------------------------------------------------------------------
@@ -1225,92 +1434,6 @@ if (eIndex ~= get(hObject,'value')) || isa(eventdata,'char')
     updateListColourStrings(handles,'func')
     listPlotFunc_Callback(handles.listPlotFunc, '1', handles)          
 end   
-
-% --- Executes on button press in toggleExptSel.
-function toggleExptSel_Callback(hObject, eventdata, handles)
-
-% global variables
-global indExpt0
-
-% parameters
-[B0,H0,nMax] = deal(95,20,7);
-if ispc; Htxt = 14; else; Htxt = 14; end
-
-% sets the other object properties
-lPos = get(handles.listExptSel,'Position');
-iData = getappdata(handles.figFlyAnalysis,'iData');
-sName = getappdata(handles.figFlyAnalysis,'sName');
-
-% updates the listbox properties based on toggle button value
-if get(hObject,'value')
-    % resets the list strings and position
-    Hnw = Htxt*min(nMax,length(sName));
-    Bnw = (B0 + H0) - Hnw;
-    indExpt0 = iData.indExpt;
-    
-    % makes the relevant objects disabled 
-    setObjProps(handles,'off',1)
-    
-    % resets the listbox string and positions
-    ind = find(iData.indExpt);
-    set(handles.listExptSel,'string',sName,'value',ind(end:-1:1),...
-                    'Position',[lPos(1) Bnw lPos(3) Hnw],'enable','on',...
-                    'Style','listbox')                             
-else        
-    % makes the relevant objects enabled again
-    setObjProps(handles,'on',1)
-    
-    % resets the listbox strings and positions
-    set(handles.listExptSel,'value',1,'string','Multi Experiment',...
-                    'Position',[lPos(1) B0 lPos(3) H0],'enable',...
-                    'inactive','Style','popupmenu')     
-
-    % if there is a change, then prompt the user if they want to update the
-    % changes. if so, then clear the multi-experiment plot data
-    if ~isa(eventdata,'char')
-        if any(xor(iData.indExpt,indExpt0))
-            % prompts the user if they really want to make the changes
-            tStr = 'Reset Experiment List?';
-            qStr = 'Are you sure you want to reset the experiment list?';            
-            uChoice = questdlg(qStr,tStr,'Yes','No','Yes');
-            if strcmp(uChoice,'Yes')
-                % resets the plot data struct
-                menuResetData_Callback...
-                                (handles.menuResetData,'Multi',handles)             
-            else
-                % resets the experiment indices to the original
-                iData.indExpt = indExpt0;
-                setappdata(handles.figFlyAnalysis,'iData',iData)                            
-            end
-        end
-    end
-end
-
-% --- Executes on selection change in listExptSel.
-function listExptSel_Callback(hObject, eventdata, handles)
-
-% determines the listbox indices that were selected
-iSel = get(hObject,'Value');
-iData = getappdata(handles.figFlyAnalysis,'iData');
-
-% determines if the indices were selected correctly
-if isempty(iSel)
-    % if no list indices are selected, then output an error
-    eStr = 'Error! At least one experiment must be selected.';
-    waitfor(errordlg(eStr,'Experiment List Selection Error','modal'))
-
-    % resets the selected listbox indices
-    set(hObject,'value',find(iData.indExpt));
-else
-    % updates the experimental indices
-    iData.indExpt(:) = false;
-    iData.indExpt(iSel) = true;    
-    
-    % otherwise update the data struct
-    set(handles.textSolnCount,'string',num2str(sum(iData.indExpt)))
-    setappdata(handles.figFlyAnalysis,'iData',iData);
-    setExptInfo(handles)
-end
     
 % ---------------------------------------- %
 % --- PLOTTING TYPE CALLBACK FUNCTIONS --- %
@@ -1978,9 +2101,6 @@ setPanelProps(handles.panelExptInfo,'off')
 setPanelProps(handles.panelPlotFunc,'off')
 setPanelProps(handles.panelFuncDesc,'off')    
 
-% makes the plot function listbox invisible
-set(setObjVisibility(handles.listPlotFunc,'off'),'value',[])
-
 % makes the panel description object invisible
 setObjVisibility(handles.textFuncDesc,'off')
 setObjVisibility(handles.textFuncDescBack,'off')
@@ -2006,7 +2126,7 @@ function resetFigSize(h,fPos)
 
 % sets the overall width/height of the figure
 [W0,H0,dY,dX] = deal(fPos(3),fPos(4),10,10);
-[HLF,YLF] = deal(H0 - 480,108);
+[HLF,YLF] = deal(H0 - 460,108);
 [pPosO,HPF] = deal(get(h.panelOuter,'position'),HLF + 200);
 
 % resets the plot panel dimensions
@@ -2182,49 +2302,67 @@ save(progFile,'ProgDef');
 % ------------------------------- %
 
 % --- sets the solution file in
-function setSolnInfo(handles,sType,sName,snTot)
+function setSolnInfo(handles)
+
+% object retrieval
+hFig = handles.figFlyAnalysis;
+
+% field retrieval
+if ~exist('snTot','var'); snTot = getappdata(hFig,'snTot'); end
 
 % retrieves the currently selected indices and plot types
-eInd = getSelectedIndices(handles);
+iMov = snTot(1).iMov;
+[nExp,nGrp] = deal(length(snTot),length(iMov.pInfo.gName));
 
-% enables the solution file info panel 
-if nargin < 4
-    snTot = getappdata(handles.figFlyAnalysis,'snTot');
+% avg expt duration
+Ts = arrayfun(@(x)(x.T{1}(1)),snTot);
+Tf = arrayfun(@(x)(x.T{end}(end)),snTot);
+[~,~,tStr] = calcTimeDifference(60*roundP(mean(Tf-Ts)/60));
+durStr = sprintf('%s Days, %s Hours, %s Mins',tStr{1},tStr{2},tStr{3});
+
+% expt setup type
+if snTot(1).iMov.is2D
+    if isempty(iMov.autoP)
+        % case is no region shape was used
+        setupStr = 'General 2D Region Setup';
+    else        
+        % sets the region string 
+        switch iMov.autoP.Type
+            case 'Circle'
+                setupStrS = 'Circle';
+            case 'GeneralR'
+                setupStrS = 'General Repeating';            
+            case 'GeneralC'
+                setupStrS = 'General Custom';
+        end   
+        
+        % sets the final string
+        setupStr = sprintf('2D Grid (%s Regions)',setupStrS);
+    end
+else
+    % case is a 1D experimental setup
+    setupStr = '1D Test-Tube Assay';
 end
+
+% sets up the stimuli type string
+if isempty(snTot(1).stimP)
+    % no external stimuli
+    stimStr = 'No External Stimuli';
+else
+    % external stimuli, so strip out the stimuli types
+    stimType = strjoin(fieldnames(snTot(1).stimP)','/');
+    stimStr = sprintf('%s External Stimuli',stimType);
+end
+
+% updates the information fields
+set(handles.textExptCount,'string',num2str(nExp))
+set(handles.textGrpCount,'string',num2str(nGrp))
+set(handles.textAvgDur,'string',durStr)
+set(handles.textSetupType,'string',setupStr)
+set(handles.textStimType,'string',stimStr)
+
+% enables the solution data panel
 setPanelProps(handles.panelSolnData,'on');
-
-% sets the solution file direcoty (if not provided)
-iData = getappdata(handles.figFlyAnalysis,'iData');
-if nargin < 3
-    sName = getappdata(handles.figFlyAnalysis,'sName');
-    if iscell(sName); sName = sName{1}; end
-end
-
-% sets the text fields depending on the file load type
-switch sType
-    case ('Experiment') % case is a single experiment solution file(s)        
-        if length(snTot) == 1
-            ind = eInd;
-            nCount = num2str(length(snTot(eInd).T));
-            set(handles.textSolnType,'string','Experiment Solution File')            
-            set(handles.textSolnCount,'string',nCount)
-        else
-            ind = 1:length(snTot);
-            set(handles.textSolnType,'string','Experiment Solution Files')
-            set(handles.textSolnCount,'string',num2str(sum(iData.indExpt)))
-        end
-    case ('Multiple') % case is a multi-experiment solution file
-        ind = 1:length(snTot);
-        set(handles.textSolnType,'string','Multi-Experiment Solution File')       
-        set(handles.textSolnCount,'string',num2str(sum(iData.indExpt)))
-end
-
-% retrieves the tool-tip strings
-sNameTT = getToolTipStrings(handles,ind);
-
-% resets the solution file name (if flag as doing so)
-set(handles.textSolnDirL,'string',' File: ')
-set(handles.textSolnDir,'string',sName,'ToolTipString',sNameTT)
 
 % --- resets the GUI objects with the new solution file struct, snTot 
 function resetGUIObjects(handles,varargin)
@@ -2267,12 +2405,14 @@ setObjEnable(handles.menuResetData,'on')
 setObjEnable(handles.menuZoom,'off') 
 setObjEnable(handles.menuDataCursor,'off') 
 setObjEnable(handles.menuGlobal,'on') 
+setObjEnable(handles.menuPlot,'on')
 setObjEnable(handles.menuSplitPlot,'on')
 setObjEnable(handles.menuSaveData,'off')
 setObjEnable(handles.menuSaveTempData,'off')
 setObjEnable(handles.menuSaveSubConfig,'off')
 setObjEnable(handles.menuOpenSubConfig,'on')
 setObjEnable(handles.menuOpenTempData,'on')
+setObjEnable(handles.menuClearData,'on')
 
 % removes any existing panels/plots
 hPanel = findall(handles.panelPlot,'tag','subPanel');
@@ -2301,141 +2441,63 @@ hPopup = handles.popupExptIndex;
 % re-enables the save menu item
 if pInd == 3
     % case is the multi-experiment type has been selected
-    setObjVisibility(hPopup,'off')
-    setSolnInfo(handles,'Multiple')
+    setObjEnable(hPopup,'off')   
+    set(hPopup,'Value',1,'String',{'Multi-Experiment Calculations'})
     
-    % updates the properties of the other 
-    set(setObjVisibility(handles.toggleExptSel,'on'),'value',0)
-    setObjVisibility(handles.listExptSel,'on')
-    toggleExptSel_Callback(handles.toggleExptSel,'1',handles)
-    
+    % updates the experimental information
+    setExptInfo(handles,[]);    
 else
     % retrieves the lists colour strings
     [sName,sName0] = deal(getappdata(handles.figFlyAnalysis,'sName'));
     sName = cellfun(@(x)(simpFileName(x,18)),sName,'un',0);
-    sName = getListColourStrings(handles,sName,'Expt');
-    
-    % case is the single-experiment type has been selected
-    setObjVisibility(hPopup,'on')        
-
-    % sets the list/toggle button visibility properites
-    setObjVisibility(handles.listExptSel,'off'); 
-    setObjVisibility(handles.toggleExptSel,'off'); 
-    pause(0.05);        
+    sName = getListColourStrings(handles,sName,'Expt');         
     
     % determines if the solution file is for a multi-expt solution file
     if length(snTot) > 1
         % sets the table strings and makes the popup menu active
         set(setObjEnable(hPopup,'on'),'string',sName)
-        setSolnInfo(handles,'Experiment')
     else
         % sets the table strings but makes the popup menu inactive
         set(setObjEnable(hPopup,'inactive'),'string',sName,'value',1)
-        if ~iscell(sName0); sName0 = {sName0}; end
-        setSolnInfo(handles,'Experiment',sName0{eInd},snTot(eInd)) 
     end
+    
+    % updates the experimental information
+    setExptInfo(handles,snTot);
 end
-
-% updates the experimental information
-setExptInfo(handles,snTot);
     
 % --- sets the experiment information
 function setExptInfo(handles,snTot)
 
 % retrieves the currently selected indices and plot types
 hFig = handles.figFlyAnalysis;
-[eInd,~,pInd] = getSelectedIndices(handles);
+setPanelProps(handles.panelExptInfo,~isempty(snTot))
+
+% if multi-expt analysis is being performed, then reset the config string
+if isempty(snTot)
+    set(handles.textSetupConfig,'String','N/A');
+    return
+end
 
 % enables the experiment information panel
 if nargin == 1; snTot = getappdata(hFig,'snTot'); end
 
 % sets the fly/sub-region count
-if isfield(snTot(eInd),'iMov')
-    % case is the newer solution file format
-    nFly = getSRCountMax(snTot(eInd).iMov);
-    nApp = length(snTot(eInd).Px);
+[eInd,~,~] = getSelectedIndices(handles);
+iMov = snTot(eInd).iMov;
+
+% sets up the setup configuration string
+if iMov.is2D
+    % sets the full string
+    configStr = sprintf('%i x %i Grid Assay',...
+                        size(iMov.flyok,1),iMov.nCol);
 else
-    % case is the older solution file format
-    [nFly,nApp] = deal(size(snTot(eInd).Px{1},2),length(snTot(eInd).Px));
+    % sets the experiment string
+    configStr = sprintf('%i x %i Assay (Max Count = %i)',...
+            iMov.pInfo.nRow,iMov.pInfo.nCol,iMov.pInfo.nFlyMx);
 end
 
-% turns on the enabled properties for the experimental info panel
-setPanelProps(handles.panelExptInfo,'on')
-
-% sets the experiment information fields
-if pInd == 3
-    % sets the save stimuli menu item
-    hasStim = any(~cellfun(@isempty,field2cell(snTot,'stimP')));
-    setObjEnable(handles.menuSaveStim,hasStim)
-    
-    % sets the experiment type
-    set(handles.textExptType,'string','Combined Multi-Experiment')
-    set(handles.textSolnDir,'string',getappdata(hFig,'fName'),...
-                            'ToolTipString',getappdata(hFig,'fNameFull'))
-    
-    % calculates the sum of the experiment durations    
-    iData = getappdata(hFig,'iData'); 
-    ii = iData.indExpt;
-    dT = sum(cellfun(@(x)(x{end}(end)-x{1}(1)),field2cell(snTot(ii),'T')));
-else
-    % sets the selected solution file       
-    [snTotNw,sName] = deal(snTot(eInd),getappdata(hFig,'sName'));
-    sNameF = getappdata(hFig,'sNameFull');
-    dT = snTotNw.T{end}(end)-snTotNw.T{1}(1);   
-    
-    % sets the experiment type string
-    if length(snTotNw.iExpt) > 1
-        % sets the experiment type label string
-        set(handles.textExptType,'string','Multi-Phase Experiment')        
-        
-        % determines the number stimuli that were used in the experiment
-        Type = field2cell(cell2mat(field2cell(snTot.iExpt,'Info')),'Type');        
-        if any(cellfun(@(x)(strContains(x,'Stim')),Type))
-            % at least one stimuli experiment, so determine if any random
-            % stimuli events were used
-            setObjEnable(handles.menuSaveStim,'on')
-        else
-            % no stimuli events (all circadian rhythm)
-            setObjEnable(handles.menuSaveStim,'off')
-        end
-    else        
-        switch snTotNw.iExpt.Info.Type
-            case ('RecordOnly') 
-                set(handles.textExptType,'string','Recording Only')
-                setObjEnable(handles.menuSaveStim,'off')
-                
-            case {'RecordStim','StimRecord'}
-                set(handles.textExptType,'string','Recording and Stimuli')                    
-                setObjEnable(handles.menuSaveStim,'on')
-                
-            case ('RTTrack')
-                set(handles.textExptType,'string','Real-Time Tracking')
-                setObjEnable(handles.menuSaveStim,'on')
-        end
-    end
-
-    % calculates the experiment duration    
-    if length(snTot) == 1
-        set(handles.textSolnDir,'string',sName,...
-                            'ToolTipString',getToolTipStrings(handles))
-    else
-        set(handles.textSolnDir,'string',[sName{eInd},'.ssol'],...
-                            'ToolTipString',sNameF{eInd})       
-    end
-    
-    % sets the stimuli/solution count strings
-    set(handles.textSolnCount,'string',num2str(length(snTotNw.T)))
-end
-
-% sets the other fields
-[~,~,tStr] = calcTimeDifference(dT);
-nwStr = sprintf('%s Days, %s Hours, %s Mins',tStr{1},tStr{2},tStr{3});
-
-% sets the other fields
-set(findall(0,'string','Fly Tube Count: '),'string','Max Fly Count: ')
-set(handles.textExptDur,'string',nwStr)
-set(handles.textAppCount,'string',num2str(nApp))
-set(handles.textFlyCount,'string',num2str(nFly))
+% sets the setup configuration string
+set(handles.textSetupConfig,'String',configStr);
 
 % --- sets the plot function information/functions
 function setPlotInfo(handles,snTot)
@@ -2470,7 +2532,7 @@ iProg = getappdata(handles.figFlyAnalysis,'iProg');
 dDir = iProg.DirFunc;
 
 % initialises the struct for the plotting function data types
-a = struct('fcn',[],'Name',[],'fType',[],'fDesc',[]);
+a = struct('fcn',[],'Name',[],'fType',[],'fDesc',[],'rI',[]);
 pDataT = struct('Indiv',[],'Pop',[],'Multi',[]);
 
 % retrieves the partial/full file names
@@ -2539,13 +2601,16 @@ end
 for i = 1:length(fName)
     % retrieves the function file name
     fcnName = getFileName(fName{i});    
-    try        
+    try
         % attempts to run the function and set the function handle to the
         % corresponding function type
         a.fcn = eval(sprintf('@%s',fcnName));
-        pDataNw = feval(a.fcn);      
+        pDataNw = feval(a.fcn);
         [a.Name,a.fType] = deal(pDataNw.Name,pDataNw.fType);
         a.fDesc = getFuncCommentStr(fFile{i});
+        
+        % adds the requirement information field (if it exists)
+        if isfield(pDataNw,'rI'); a.rI = pDataNw.rI; end
         
         % sets the field type strings
         tStr = pDataNw.Type; 
@@ -2640,7 +2705,7 @@ if ~any([eInd,fInd,pInd] == 0)
     end
     
     % reinitialises the parameter struct
-    p = eval(sprintf('pDataT.%s;',fName{pInd}));
+    p = getStructField(pDataT,fName{pInd});
     A = feval(p(fInd).fcn,snTotL);
     if nargin == 2
         pDataNw = varargin{1};
@@ -2650,6 +2715,7 @@ if ~any([eInd,fInd,pInd] == 0)
     end
         
     % resets the data struct
+    pDataNw.fDesc = p(fInd).fDesc;
     pData{pInd}{fInd,eInd} = pDataNw;            
     setappdata(handles.figFlyAnalysis,'pData',pData);            
             
@@ -2755,30 +2821,27 @@ end
 function tempSolnDataIO(handles,Type)
 
 % loads the data structs from the GUI
-iData = getappdata(handles.figFlyAnalysis,'iData');
+hFig = handles.figFlyAnalysis;
+iData = getappdata(hFig,'iData');
 tFile = fullfile(iData.ProgDef.OutData,'TempSolnData.mat');
 
 % performs the solution file 
 switch Type
     case ('store') % case is storing the data
         % retrieves the solution data
-        iMov = getappdata(handles.figFlyAnalysis,'iMov');
-        snTot = getappdata(handles.figFlyAnalysis,'snTot');
+        sInfo = getappdata(hFig,'sInfo');
+        snTot = getappdata(hFig,'snTot');
         
         % if the solution data exists, then reset
-        if ~isempty(snTot)
+        if ~isempty(sInfo)
             % creates a loadbar figure
             h = ProgressLoadbar('Saving Temporary Solution File...');
             
             % saves the sub-region and solution file data struct to file
-            save(tFile,'iMov','snTot');
+            save(tFile,'sInfo','snTot');
             
             % closes the loadbar
-            try delete(h); end
-            
-            % removes the sub-region and solution file data struct
-            setappdata(handles.figFlyAnalysis,'iMov',[]);
-            setappdata(handles.figFlyAnalysis,'snTot',[]);
+            try; delete(h); end
         end
         
     case ('reload') % case is reloading the data
@@ -2794,8 +2857,8 @@ switch Type
             try delete(h); end            
             
             % removes the sub-region and solution file data struct
-            setappdata(handles.figFlyAnalysis,'iMov',a.iMov);
-            setappdata(handles.figFlyAnalysis,'snTot',a.snTot);
+            setappdata(hFig,'sInfo',a.sInfo);
+            setappdata(hFig,'snTot',a.snTot);
         end
                 
     case ('remove') % case is removing the data        

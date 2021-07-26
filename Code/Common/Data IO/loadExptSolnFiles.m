@@ -230,14 +230,27 @@ if ~isfield(snTot.iMov,'pInfo')
     end           
 end
 
-% sets up the fly location ID array (non multi-expt file loading only)
-if ~any(nargin == [4,5]) || ~isfield(snTot,'cID')
-    snTot.cID = setupFlyLocID(snTot.iMov);
+% determines if the configuration ID flags need to be reset
+resetID = true;
+if isfield(snTot,'cID')
+    % if an experiment file is being loaded from a multi-experiment
+    % solution file, then there is no need to reset the ID flags
+    if any(nargin == [4,5])
+        resetID = length(h.wStr) == 3;
+    end
+else
+    % if the configuration 
+    [snTot.cID,resetID] = deal(setupFlyLocID(snTot.iMov),false);
 end
 
-% converts the data value arrays for the new format files
-if sepData
+if sepData && (~snTot.iMov.is2D)
+    % converts the data value arrays for the new format files
     snTot = convertDataArrays(snTot);
+    
+    % resets the configuration ID flags (if required)
+    if resetID
+        snTot.cID = setupFlyLocID(snTot.iMov);
+    end
 end
 
 % removes the mapping array fields
@@ -275,70 +288,4 @@ if isfield(snTot,'iMov')
 else
     % if the region data struct is missing then considered obsolete
     isObs = true;
-end
-
-% --- converts the data array fields so that they match the original
-%     data array dimensioning
-function snTot = convertDataArrays(snTot)
-
-% initialisations
-cID = snTot.cID;
-iMov = snTot.iMov;
-pInfo = iMov.pInfo;
-nFrm = size(snTot.Px{1},1);
-
-% sets the data array fields to 
-pFld = {'Px'};
-if iMov.is2D
-    pFld = [pFld,{'Py'}]; 
-    if iMov.calcPhi
-        pFld = [pFld,{'Phi','AxR'}]; 
-    end
-end
-
-% converts data arrays (for all the specified fields
-for i = 1:length(pFld)
-    % retrieves the struct field
-    if isfield(snTot,pFld{i})
-        Z0 = getStructField(snTot,pFld{i});
-
-        % converts the data arrays based on the type
-        if iMov.is2D
-            % case is the 2D experimental setup        
-            Zf = repmat({NaN(nFrm,pInfo.nRow)},1,pInfo.nCol);        
-            for j = 1:length(cID)            
-                for k = 1:size(cID{j},1)
-                    [iRow,iCol] = deal(cID{j}(k,1),cID{j}(k,2));
-                    Zf{iCol}(:,iRow) = Z0{j}(:,k);
-                end
-            end                
-
-        else
-            % case is the 1D experimental setup
-
-            % memory allocation
-            nRowMx = size(snTot.iMov.flyok,1);
-            szG = [pInfo.nRow,pInfo.nCol];        
-
-            % allocates memory for each region  
-            Zf = repmat({NaN(nFrm,nRowMx)},prod(szG),1);
-
-            % sets the data values for each grouping
-            for j = 1:length(cID)    
-                % strips out the data values as given in the 
-                iApp = (cID{j}(:,1)-1)*pInfo.nCol + cID{j}(:,2);        
-                for k = 1:size(cID{j},1)
-                    Zf{iApp(k)}(:,cID{j}(k,3)) = Z0{j}(:,k);
-                end
-                
-                % reduces down the array to only include the required flies
-                [iCol,~,iRow] = getRegionIndices(iMov,j);
-                Zf{iApp(k)} = Zf{iApp(k)}(:,1:pInfo.nFly(iRow,iCol));
-            end
-            
-        end   
-
-        % resets the solution struct field   
-        snTot = setStructField(snTot,pFld{i},Zf);
-    end
 end

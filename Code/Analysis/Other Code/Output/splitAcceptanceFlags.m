@@ -14,7 +14,9 @@ if snTot.iMov.is2D
     
     % sets the acceptance flags for each group 
     for i = 1:length(cID)
-        fok(sub2ind(sz,cID{i}(:,1),cID{i}(:,2))) = fok0{i};
+        if ~isempty(cID{i})
+            fok(sub2ind(sz,cID{i}(:,1),cID{i}(:,2))) = fok0{i};
+        end
     end
     
 else

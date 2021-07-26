@@ -255,7 +255,7 @@ jTree = com.mathworks.mwswing.MJTree(jRoot);
 jCheckBoxTree = handle(CheckBoxTree(jTree.getModel),'CallbackProperties');
 jScrollPane = com.mathworks.mwswing.MJScrollPane(jCheckBoxTree);
 
-%
+% creates the final tree explorer object
 wState = warning('off','all');
 [~,~] = javacomponent(jScrollPane,[dX*[1 1],objP(3:4)-2*dX],hObj);
 warning(wState);

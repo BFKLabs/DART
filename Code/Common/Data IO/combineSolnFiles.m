@@ -1,5 +1,5 @@
 % --- sets the combined solution file data struct --- %
-function [snTot,iMov,eStr] = combineSolnFiles(sName,isReduce)
+function [snTot,iMov,eStr] = combineSolnFiles(sFile,isReduce)
 
 % global variables
 global hh hDay
@@ -11,12 +11,13 @@ if ~exist('isReduce','var'); isReduce = false; end
 eStr = [];
 updateSumm = false;
 wState = warning('off','all');
+sName = cellfun(@(x)(getFileName(x,1)),sFile,'un',0);
 
 % sets the summary file name from the solution file data
-A = importdata(sName{1},'-mat');
+A = importdata(sFile{1},'-mat');
 smFile = getSummaryFilePath(A.fData);
 if isempty(smFile)
-    smFile = getSummaryFilePath(struct('movStr',sName{1}));
+    smFile = getSummaryFilePath(struct('movStr',sFile{1}));
 end
 
 % sets the video/stimuli arrays
@@ -35,7 +36,7 @@ if exist(smFile,'file')
         xi = cellfun(@(x)(getVideoFileIndex(x)),sName(hasBN));
         xi = xi(~isnan(xi));
         
-    elseif length(sName) == 1
+    elseif length(sFile) == 1
         % if there is only one video, then only use this video
         xi = 1;
         
@@ -60,7 +61,7 @@ if exist(smFile,'file')
     [stimP,sTrainEx] = getExptStimInfo(smFile);     
     
     % if the summary file exists, then load it and set the time fields 
-    [iExpt,nFile] = deal(smData.iExpt,length(sName));
+    [iExpt,nFile] = deal(smData.iExpt,length(sFile));
     [Tp,T0] = deal(smData.iExpt.Timing.Tp,NaN(nFile,1));
     
     % determines if any of the videos are all NaNs
@@ -133,7 +134,7 @@ if exist(smFile,'file')
     end
 
     % sets the video start/end times
-    tStampVF = tStampV(1:min(length(sName),length(tStampV)));
+    tStampVF = tStampV(1:min(length(sFile),length(tStampV)));
     T0 = cellfun(@(x)(x(1)),tStampVF);
     Tf = cellfun(@(x)(x(end)),tStampVF);
     dT = T0(2:end) - Tf(1:(end-1)); 
@@ -195,7 +196,7 @@ else
 end
     
 % memory allocation
-nFile = min(length(sName),length(tStampV));
+nFile = min(length(sFile),length(tStampV));
 isOK = true(nFile,1);
 sgP = struct('sRate',[],'fRate',[],'sFac',[]);
 snTot = orderfields(struct('T',[],'Px',[],'Py',[],'Phi',[],'AxR',[],...
@@ -242,20 +243,20 @@ for i = 1:nFile
     end        
             
     % loads the positional data from the solution file
-    A = load(sName{i},'-mat','pData');
+    A = load(sFile{i},'-mat','pData');
     if isempty(A.pData)          
         % if it is empty, then flag that the movie is not suitable
         isOK(i) = false;
         
     else                        
         % otherwise, load the solution file
-        a = load(sName{i},'-mat');            
+        a = load(sFile{i},'-mat');            
         fPos = a.pData.fPos;
         [nFrm,sRate] = deal(size(fPos{1}{1},1),a.iMov.sRate); 
         
         % retrieves the index of the file to be analysed
         vFile = getFileName(a.fData.name);
-        D0 = cellfun(@(x)(fzsearch(x,vFile)),sName(:),'un',0);
+        D0 = cellfun(@(x)(fzsearch(x,vFile)),sFile(:),'un',0);
         D = cell2mat(cellfun(@(x)(x(1:2)),D0,'un',0));
         ii = argMin(D(:,1));
         
@@ -433,7 +434,7 @@ if all(~isOK)
     
 elseif any(~isOK)
     % some were infeasible    
-    [Px,Py,sName] = deal(Px(isOK),Py(isOK),sName(isOK)); 
+    [Px,Py,sFile] = deal(Px(isOK),Py(isOK),sFile(isOK)); 
     [snTot.T,snTot.isDay] = deal(snTot.T(isOK),snTot.isDay(isOK));
     if calcPhi; [PhiF,AxRF] = deal(PhiF(isOK),AxRF(isOK)); end
 end
@@ -442,7 +443,7 @@ end
 iMov = backFormatRegionDataStruct(iMov);
 
 % sets the apparatus/individual fly boolean flags
-snTot.sName = sName;
+snTot.sName = sFile;
 
 % resets the x/y locations into a cell array
 for i = 1:nApp

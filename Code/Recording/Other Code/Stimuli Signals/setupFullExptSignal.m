@@ -1,14 +1,12 @@
 % --- retrieves the full experiment signal
-function [xyData,sPara] = setupFullExptSignal(hFig,sTrain,sPara)
-
-% retrieves the current axes handle
-hAx = get(hFig,'CurrentAxes');
+function [xyData,sPara] = setupFullExptSignal(sObj,sTrain,sPara)
 
 % retrieves the properties from the gui
-switch get(hFig,'tag')
+switch class(sObj)
     case 'figExptSetup'
         % retrieves the axes object/experiment data struct   
         useTOfs = 0;
+        hFig = sObj;
         iExpt = getappdata(hFig,'iExpt');
 
         % sets the default input arguments (if not provided)
@@ -24,16 +22,18 @@ switch get(hFig,'tag')
             end
         end
 
-    case 'figOpenSoln'
+    case 'OpenSolnFileTab'
         % object retrieval
-        useTOfs = 1;
-        iExp = getappdata(hFig,'iExp');
-        sInfo = getappdata(hFig,'sInfo');        
+        useTOfs = 1;        
         
         % retrieves the stimuli information for the current experiment
-        iExpt = sInfo{iExp}.snTot.iExpt;
+        hFig = sObj.hFig;
+        iExpt = sObj.sInfo{sObj.iExp}.snTot.iExpt;
         
 end
+
+% retrieves the current axes handle
+hAx = get(hFig,'CurrentAxes');
 
 %
 if isfield(iExpt.Timing,'TexpU')

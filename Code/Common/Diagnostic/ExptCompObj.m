@@ -1,16 +1,11 @@
 classdef ExptCompObj < handle
     % class properties
     properties
-        % main class fields
-        hFig
-        hGUI        
-        sInfo
-        
-        % creates data
+        % data fields
+        iSel
         crData
         cmpData
-        expData
-        iSel
+        expData        
         
         % parameters
         pDur = 50;
@@ -20,24 +15,33 @@ classdef ExptCompObj < handle
     % class methods
     methods 
         % --- class contructor methods
-        function obj = ExptCompObj(hFig)
-            
-            % sets the main class fields
-            obj.hFig = hFig;
-            obj.hGUI = guidata(hFig);                        
-            obj.sInfo = getappdata(hFig,'sInfo');
+        function obj = ExptCompObj(sInfo)            
             
             % sets the derived value fields
-            obj.nExp = length(obj.sInfo);           
+            obj.nExp = length(sInfo);           
             
             % sets up the experiment criteria and compatibility flags
-            obj.setupExptCriteriaData();
+            obj.setupExptCriteriaData(sInfo);
             obj.calcCompatibilityFlags();
-            obj.setupExptInfo()
+            obj.setupExptInfo(sInfo);
+            
+        end
+        
+        % --- updates the experiment data and related compatibility fields
+        function updateExptCompData(obj,sInfoNw)
+            
+            % updates the data related fields
+            obj.nExp = length(sInfoNw);
+            
+            % updates the experiment criteria and compatibility flags
+            obj.setupExptCriteriaData(sInfoNw);
+            obj.calcCompatibilityFlags();
+            obj.setupExptInfo(sInfoNw)
+            
         end
         
         % --- sets up the experiment criteria data
-        function setupExptCriteriaData(obj)
+        function setupExptCriteriaData(obj,sInfo)
 
             % memory allocation            
             crData0 = cell(obj.nExp,5);
@@ -46,18 +50,18 @@ classdef ExptCompObj < handle
             % loops through all experiments 
             for i = 1:obj.nExp    
                 % sets the region string (based on type/detection method)
-                if isempty(obj.sInfo{i}.snTot.iMov.autoP)
+                if isempty(sInfo{i}.snTot.iMov.autoP)
                     % case is there is no automatic detection
                     regStr = 'None';
                 else
                     % case is there is automatic detection
-                    regStr = obj.sInfo{i}.snTot.iMov.autoP.Type;
+                    regStr = sInfo{i}.snTot.iMov.autoP.Type;
                 end    
 
                 % determine if stimuli was delivered for the experiment
-                if obj.sInfo{i}.hasStim
+                if sInfo{i}.hasStim
                     % case is there is a stimuli device used
-                    devStr = unique(fieldnames(obj.sInfo{i}.snTot.stimP));
+                    devStr = unique(fieldnames(sInfo{i}.snTot.stimP));
                     stimStr = strjoin(devStr,'/');
                 else
                     % case is there was stimuli delivered
@@ -65,11 +69,11 @@ classdef ExptCompObj < handle
                 end
 
                 % sets the experiment criteria data for the current expt                
-                crData0{i,1} = setupStr{1+obj.sInfo{i}.is2D};    
+                crData0{i,1} = setupStr{1+sInfo{i}.is2D};    
                 crData0{i,2} = regStr;    
                 crData0{i,3} = stimStr; 
-                crData0{i,4} = obj.sInfo{i}.snTot.sTrainEx;
-                crData0{i,5} = obj.sInfo{i}.tDur;
+                crData0{i,4} = sInfo{i}.snTot.sTrainEx;
+                crData0{i,5} = sInfo{i}.tDur;
             end
             
             % stores the criteria data into the class object
@@ -82,6 +86,7 @@ classdef ExptCompObj < handle
         function calcCompatibilityFlags(obj,indCr)
 
             % other initialisations and memory allocation
+            iColStim = 4;
             tExp = cell2mat(obj.crData(:,end));
             nCr = size(obj.crData,2);
 
@@ -91,16 +96,30 @@ classdef ExptCompObj < handle
             else
                 cmpData0 = obj.cmpData;
             end
+            
+            if any(indCr == iColStim)
+                % determines the experiments with stimuli
+                hasStim = ~cellfun(@isempty,obj.crData(:,iColStim));
+                [sTrain,sParaEx] = deal(cell(length(hasStim),1));
+                
+                % for the expts with stimuli, retrieve the train/expt data
+                crD = obj.crData(hasStim,iColStim);                
+                sTrain(hasStim) = cellfun(@(x)(x.sTrain),crD,'un',0);
+                sParaEx(hasStim) = cellfun(@(x)(x.sParaEx),crD,'un',0);
+            end
 
             % loops through each criteria index updating the compatibility
             % flags
             for iCr = indCr
                 for iExp = 1:obj.nExp
                     switch iCr
-                        case 4
+                        case iColStim
                             % case is the stimuli structs
-                            isEq = cellfun(@(x)(isequaln(x,obj.crData...
-                                        {iExp,iCr})),obj.crData(:,iCr));
+                            isEq1 = cellfun(@(x)(isequaln(x,...
+                                        sTrain{iExp})),sTrain);
+                            isEq2 = cellfun(@(x)(isequaln(x,...
+                                        sParaEx{iExp})),sParaEx);
+                            isEq = isEq1 & isEq2;
                                     
                         case 5
                             % case is the experiment duration
@@ -126,7 +145,7 @@ classdef ExptCompObj < handle
         end
         
         % --- sets up the experiment info fields
-        function setupExptInfo(obj)
+        function setupExptInfo(obj,sInfo)
             
             % initialistions and memory allocation
             nHdr = 6;
@@ -141,7 +160,7 @@ classdef ExptCompObj < handle
                     switch iHdr
                         case 1
                             % case is the experiment number
-                            expFile = obj.sInfo{iExp}.expFile;
+                            expFile = sInfo{iExp}.expFile;
                             expData0(iExp,iHdr,:) = {expFile};
 
                         case {2,3,4}
@@ -159,7 +178,7 @@ classdef ExptCompObj < handle
                             
                         case 6
                             % case is the expt duration 
-                            expData0(iExp,iHdr,:) = {obj.sInfo{iExp}.tDurS};                            
+                            expData0(iExp,iHdr,:) = {sInfo{iExp}.tDurS};                            
                     end    
                 end
                 

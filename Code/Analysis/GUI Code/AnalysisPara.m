@@ -162,7 +162,7 @@ pData = getappdata(handles.figAnalysisPara,'pData');
 uData = get(hObject,'UserData');
 
 % updates the parameter based on the object type
-if (strcmp(get(hObject,'type'),'uitable'))
+if strcmp(get(hObject,'type'),'uitable')
     % case is updating the plotting output boolean flags
     [ind,Value] = deal(eventdata.Indices(1),pData.sP(uData).Value);
 
@@ -177,9 +177,9 @@ elseif (strcmp(get(hObject,'style'),'edit'))
     Lim = [1 sum(Value.isPlot)];
 
     % checks to see if the new value is valid
-    if (chkEditValue(nwVal,Lim,1))
+    if chkEditValue(nwVal,Lim,1)
         % if so, then update the corresponding parameter
-        if (uData{2} == 2)
+        if uData{2} == 2
             Value.nRow = nwVal;
             Value.nCol = ceil(Lim(2)/Value.nRow);
         else
@@ -191,7 +191,7 @@ elseif (strcmp(get(hObject,'style'),'edit'))
         pData.sP(uData{1}).Value = Value;
     else
         % resets the object string to the previous valid value
-        if (uData{2} == 2)
+        if uData{2} == 2
             % case was the row count
             set(hObject,'string',num2str(Value.nRow))
         else

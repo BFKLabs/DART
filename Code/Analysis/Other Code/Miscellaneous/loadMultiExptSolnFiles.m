@@ -1,8 +1,8 @@
 % --- loads a multi-combined solution file --- %
 function [snTot,sName,ok] = loadMultiExptSolnFiles(TempDir,mName,ind,h)
 
-% global variables
-global isAnalysis
+% % global variables
+% global isAnalysis
 
 % ------------------------------- %
 % --- SOLUTION FILE UNTARRING --- %
@@ -10,6 +10,7 @@ global isAnalysis
 
 % sets the index offset
 iOfs = 0;
+sepData = true;
 
 % creates a waitbar figure
 if ~exist('h','var')
@@ -62,16 +63,16 @@ for i = 1:nSoln
 
     % loads the current solution file
     if nargin == 4
-        [snTot{i},ok] = loadExptSolnFiles(TempDir,A{ind(i)},1,h,1);
+        [snTot{i},ok] = loadExptSolnFiles(TempDir,A{ind(i)},sepData,h,1);
     else
-        [snTot{i},ok] = loadExptSolnFiles(TempDir,A{ind(i)},1,h);
+        [snTot{i},ok] = loadExptSolnFiles(TempDir,A{ind(i)},sepData,h);
     end
     
     if ~ok
         % if the user cancelled, then exit the function
         cellfun(@delete,A)
         return
-    elseif ~isAnalysis
+    else %if ~isAnalysis
         % removes any extraneous/obsolete fields
         rmvFld = {'appPara'};
         for j = 1:length(rmvFld)
