@@ -413,6 +413,9 @@ if exObj.userStop && exObj.isStart
         % otherwise, clear the logfile data
         clear logFile
     end
+    
+    % exits the function
+    return
 else
     % clears the logfile
     if strcmp(exObj.vidType,'Test') && ~exObj.isError

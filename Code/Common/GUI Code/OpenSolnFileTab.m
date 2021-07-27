@@ -101,7 +101,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 hObj = getStructField(obj.hGUI,ceObj{i});
                 cbFcn = eval(sprintf('@obj.%sCE',ceObj{i}));
                 set(hObj,'CellEditCallback',cbFcn)
-            end                   
+            end  
+            
         end
         
         % --- initialises the tab panel object properties
@@ -1901,13 +1902,17 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % sets the expt setup dependent fields
             if iMov.is2D
                 % case is a 2D experiment
-                switch iMov.autoP.Type
-                    case 'Circle'
-                        setupType = 'Circle';
-                    case 'GeneralR'
-                        setupType = 'General Repeating';            
-                    case 'GeneralC'
-                        setupType = 'General Custom';
+                if isempty(iMov.autoP)
+                    setupType = 'No Shape';
+                else
+                    switch iMov.autoP.Type
+                        case 'Circle'
+                            setupType = 'Circle';
+                        case 'GeneralR'
+                            setupType = 'General Repeating';            
+                        case 'GeneralC'
+                            setupType = 'General Custom';
+                    end
                 end
 
                 % sets the full string

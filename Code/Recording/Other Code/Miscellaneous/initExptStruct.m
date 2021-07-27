@@ -9,8 +9,8 @@ tOfs = tNow(4) >= tStartH;
 % 
 if isa(varargin{1},'matlab.ui.Figure')
     hFig = varargin{1};
-    exptType = getappdata(hFig,'exptType');
-    objIMAQ = getappdata(hFig,'objIMAQ');
+    infoObj = getappdata(hFig,'infoObj');
+    [exptType,objIMAQ] = deal(infoObj.exType,infoObj.objIMAQ);
 else
     [exptType,objIMAQ] = deal(varargin{1},varargin{2});
 end

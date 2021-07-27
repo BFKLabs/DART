@@ -1,6 +1,6 @@
 % --- reduces down the device information data struct to only include those
 %     fields that were selected by the user
-function [objDACInfo,objDACInfo0] = reduceDevInfo(objDACInfo0,isTest,vSel)
+function [objDAQ,objDAQ0] = reduceDevInfo(objDAQ0,vSel)
 
 % global variables
 global mainProgDir
@@ -9,55 +9,50 @@ global mainProgDir
 A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
 
 % initialisations
-objDACInfo = objDACInfo0;
-if isempty(objDACInfo)
+objDAQ = objDAQ0;
+if isempty(objDAQ)
     return    
 end
 
 % sets the selection indices (if not provided)
 if ~exist('vSel','var')
-    vSel = objDACInfo.vSelDAC;
+    vSel = objDAQ.vSelDAQ;
 end
 
 % reduces the sub-fields
-objDACInfo.vStrDAC = objDACInfo.vStrDAC(vSel);
-objDACInfo.nChannel = objDACInfo.nChannel(vSel);
-objDACInfo.sRate = objDACInfo.sRate(vSel); 
-objDACInfo.dType = objDACInfo.dType(vSel); 
-objDACInfo.sType = objDACInfo.sType(vSel); 
+objDAQ.vStrDAQ = objDAQ.vStrDAQ(vSel);
+objDAQ.nChannel = objDAQ.nChannel(vSel);
+objDAQ.sRate = objDAQ.sRate(vSel); 
+objDAQ.dType = objDAQ.dType(vSel); 
+objDAQ.sType = objDAQ.sType(vSel); 
+ 
+% reduces the device object properties
+objDAQ.BoardNames = objDAQ.BoardNames(vSel);
+objDAQ.InstalledBoardIds = objDAQ.InstalledBoardIds(vSel);
+objDAQ.ObjectConstructorName = ...
+                        objDAQ.ObjectConstructorName(vSel,:);
+objDAQ.Control = objDAQ.Control(vSel);
 
-if ~isTest   
-    % reduces the device object properties
-    objDACInfo.BoardNames = objDACInfo.BoardNames(vSel);
-    objDACInfo.InstalledBoardIds = objDACInfo.InstalledBoardIds(vSel);
-    objDACInfo.ObjectConstructorName = ...
-                            objDACInfo.ObjectConstructorName(vSel,:);
-    objDACInfo.Control = objDACInfo.Control(vSel);
+% opens the required serial device (if this is the device type)
+if ~isempty(objDAQ.vSelDAQ)
+    isS = find(strcmp(objDAQ.dType,'Serial'));
+    for i = 1:length(isS)
+        % sets the device type (based on the associated info)
+        iType = cellfun(@(x)(strContains(...
+                    objDAQ.vStrDAQ{isS(i)},x)),A.sDev);
+        if any(iType)
+            sType = find(iType);
+        else
+            sType = 0;
+        end
 
-    % opens the required serial device (if this is the device type)
-    if ~isempty(objDACInfo.vSelDAC)
-        isS = find(strcmp(objDACInfo.dType,'Serial'));
-        for i = 1:length(isS)
-            % sets the device type (based on the associated info)
-            iType = cellfun(@(x)(strContains(...
-                        objDACInfo.vStrDAC{isS(i)},x)),A.sDev);
-            if any(iType)
-                sType = find(iType);
-            else
-                sType = 0;
-            end
-            
-            % resets user data (serial device ID flags)
-            set(objDACInfo.Control{isS(i)},'UserData',sType)
-            set(objDACInfo0.Control{isS(i)},'UserData',sType)
+        % resets user data (serial device ID flags)
+        set(objDAQ.Control{isS(i)},'UserData',sType)
+        set(objDAQ0.Control{isS(i)},'UserData',sType)
 
-            % opens the device
-            if strcmp(get(objDACInfo.Control{isS(i)},'status'),'closed')
-                fopen(objDACInfo.Control{isS(i)});  
-            end
+        % opens the device
+        if strcmp(get(objDAQ.Control{isS(i)},'status'),'closed')
+            fopen(objDAQ.Control{isS(i)});  
         end
     end
-else
-    % otherwise, set the device type name to be a DAC
-    objDACInfo.dType = 'DAC';
 end

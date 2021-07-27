@@ -2,7 +2,7 @@
 function [xyData,sPara] = setupFullExptSignal(sObj,sTrain,sPara)
 
 % retrieves the properties from the gui
-switch class(sObj)
+switch get(sObj,'tag')
     case 'figExptSetup'
         % retrieves the axes object/experiment data struct   
         useTOfs = 0;

@@ -31,7 +31,7 @@ exObj = varargin{1};
 setappdata(hObject,'exObj',exObj);
 
 % initialises the progress bar/stimulus information panels
-initProgBars(handles)
+initProgBars(handles,exObj)
 initStimInfo(handles)
 centreFigPosition(hObject);
 
@@ -67,34 +67,36 @@ varargout{1} = handles.output;
 % ------------------------------------------------ %
 
 % --- initialises the progress bar properties --- %
-function initProgBars(handles)
+function initProgBars(handles,exObj)
 
 % global variables
 global wImg
 wImg = ones(1,1000,3);
 
 % loads the experimental data struct
-nStr = 2;
+nStr = 1 + exObj.hasIMAQ;
 hP = handles.panelProgress;
 hObj = repmat(struct('wStr',[],'wAxes',[],'wImg',[]),nStr,1);
 
-% alter these parameters if more than one experiment
-nExpt = 1;
-indExpt = 1;
-
-% if only one experiment being run, then get rid of the overall experiment
-% progress bar from the GUI
-if (nExpt == 1)
+% removes the video progress waitbar figure
+if ~exObj.hasIMAQ
     % retrieves the locations 
+    dHght = 50;
     posP = get(hP,'position');
     figP = get(handles.figExptProg,'position');
     
-    % deletes the 
-    delete(findobj(hP,'UserData',3))
+    % deletes the video progressbar
+    delete(findobj(hP,'UserData',2))
     
     % resets the GUI object dimensions    
-    resetObjPos(handles.figExptProg,'height',figP(4)-50);    
-    resetObjPos(hP,'height',posP(4)-50);
+    resetObjPos(handles.figExptProg,'height',figP(4)-dHght);    
+    resetObjPos(hP,'height',posP(4)-dHght);
+    
+    % repositions the experiment progress objects
+    resetObjPos(handles.textExptProgress,'Bottom',-dHght,1)
+    resetObjPos(handles.axesExptProgress,'Bottom',-dHght,1)
+    
+    % resets the bottom location of the panel/cancel button
     resetObjPos(handles.panelStimInfo,'bottom',45);
     resetObjPos(handles.buttonAbort,'bottom',10);
 end
@@ -117,12 +119,6 @@ end
 % sets the objects into the GUI
 setappdata(handles.figExptProg,'hObj',hObj)
 
-% if running multi-experiment, then update the overall progress bar
-if (nExpt > 1)
-    wStr = sprintf('Overall Progress (Experiment %i of %i)',indExpt,nExpt);
-    updateBar(3,wStr,indExpt/nExpt,handles.figExptProg);
-end
-
 % --- initialises the progress bar properties --- %
 function initStimInfo(handles)
 
@@ -135,38 +131,38 @@ hFig = handles.figExptProg;
 exObj = getappdata(hFig,'exObj');
 [nCount,chID] = deal([]);
 
-% sets the experiment type based on whether a RT expt is running
-if exObj.isRT
-    exptType = 'RTTrack';
-else
-    if isempty(exObj.ExptSig)
-        exptType = 'RecordOnly'; 
-    else
-        exptType = 'RecordStim';
-    end
-end
-
 % if the experiment type field is not set, then set its value
 if isempty(exObj.iExpt.Info.Type)
+    % sets the experiment type based on whether a RT expt is running
+    if exObj.isRT
+        exptType = 'RTTrack';
+    else
+        iType = double(exObj.hasIMAQ) + 2*double(exObj.hasDAQ);
+        exptTypeS = {'RecordOnly','StimOnly','RecordStim'};
+        exptType = exptTypeS{iType};
+    end    
+    
+    % sets the experiment type into the experiment information struct
     exObj.iExpt.Info.Type = exptType;
 end
 
 % sets the number of text objects to add
-switch (exptType)
-    case ('RecordStim')
+switch (exObj.iExpt.Info.Type)
+    case {'RecordStim','StimOnly'}
         % case is a stimuli-dependent experiment
         ID = field2cell(exObj.ExptSig,'ID');
-        chInfo = getappdata(exObj.hExptF,'chInfo');  
+        chInfo = getappdata(exObj.hExptF,'chInfo'); 
+        iOfs = double(exObj.hasIMAQ);
         
-        %
+        % sets the channel/device ID flags
         chID = cell2mat(cellfun(@(x)(unique(x,'rows')),ID,'un',0));
         chID = [chID,zeros(size(chID,1),1)];
         devID = cell2mat(chInfo(:,1));
         
         % sets the final mapping values
-        nStim = size(chID,1) + 1;
-        nCount = zeros(nStim-1,1);
-        for i = 1:nStim-1
+        nStim = size(chID,1) + iOfs;
+        nCount = zeros(nStim-iOfs,1);
+        for i = 1:nStim-iOfs
             ii = find(devID==chID(i,1),chID(i,2),'first');
             chID(i,3) = ii(end);            
             nCount(i) = sum(cellfun(@(x)(isequal(x,chID(i,1:2))),...
@@ -222,20 +218,22 @@ for i = 1:nStim
         switch (k)
             case (1) % case is the stimuli number
                 hAlign = 'right';                
-                if (j == 1)
+                if (j == 1) && exObj.hasIMAQ
                     tStr = 'Video Recordings: ';                   
                 else
-                    tStr = sprintf('%s (%s): ',chInfo{chID(j-1,3),3},...
-                                               chInfo{chID(j-1,3),2});                
+                    iOfs = double(exObj.hasIMAQ);
+                    tStr = sprintf('%s (%s): ',chInfo{chID(j-iOfs,3),3},...
+                                               chInfo{chID(j-iOfs,3),2});                
                 end
             case (2) % case is the current count (initially 0)
                 tStr = '0';
                 
             case (3) % case is the total stimuli count
-                if (j == 1)
+                if (j == 1) && exObj.hasIMAQ
                     tStr = num2str(exObj.iExpt.Video.nCount);
                 else
-                    tStr = num2str(nCount(j-1));
+                    iOfs = double(exObj.hasIMAQ);
+                    tStr = num2str(nCount(j-iOfs));
                 end
                 
             case (4) % case is the time to next stimuli field
@@ -280,9 +278,9 @@ function isCancel = updateBar(ind,wStr,wProp,h)
 % global variables
 global wImg 
 
-% retrieves the maximum change/current waitbar probabilities, and
-% calculates the new probability
+% initialisations
 isCancel = 0;
+
 % retrieves the waitbar handle (if not set)
 if nargin == 3
     h = findobj('tag','waitbar');
@@ -290,7 +288,7 @@ end
 
 % retrieves the current status of the waitbar cancel status
 [hObj,hBut] = deal(getappdata(h,'hObj'),getappdata(h,'hBut'));    
-if (get(hBut,'value'))    
+if get(hBut,'value')   
     % if flagged to cancel, then delete the waitbar object
     isCancel = 1;
 else

@@ -55,7 +55,10 @@ classdef VideoPreview < handle
             % resets the running flag
             obj.isOn = true;   
             obj.iMov = getappdata(obj.hFig,'iMov'); 
-            obj.objIMAQ = getappdata(obj.hFig,'objIMAQ');
+            
+            % sets the image acquisition object handle
+            infoObj = getappdata(obj.hFig,'infoObj');
+            obj.objIMAQ = infoObj.objIMAQ;
             
             % other initialisations
             initStr = 'Initialising...';
@@ -129,8 +132,11 @@ classdef VideoPreview < handle
         function startVideoPreview(obj)
 
             % resets the running flag
-            obj.isOn = true;            
-            obj.objIMAQ = getappdata(obj.hFig,'objIMAQ');
+            obj.isOn = true; 
+            
+            % retrieves the image acquisition object
+            infoObj = getappdata(obj.hFig,'infoObj');
+            obj.objIMAQ = infoObj.objIMAQ;
             
             % updates the video status
             set(obj.hGUI.editVideoStatus,'string','Initialising...',...

@@ -69,18 +69,18 @@ isMultiTrack = detIfMultiTrack(iMov);
 
 % sets the frame size (if calibrating for the RT-Tracking/Calibration)
 if isCalib
-    objIMAQ = getappdata(hFig,'objIMAQ');
-    if isa(objIMAQ,'cell')
+    infoObj = getappdata(hFig,'infoObj');
+    if isa(infoObj.objIMAQ,'cell')
         % case is the testing form of the gui
-        frmSz0 = size(objIMAQ{1});
+        frmSz0 = size(infoObj.objIMAQ{1});
     else
         % case is for proper calibration/RT-tracking
-        vRes = getVideoResolution(getappdata(hFig,'objIMAQ'));
+        vRes = getVideoResolution(infoObj.objIMAQ);
         frmSz0 = vRes([2 1]);
     end
 
     % sets the image acquisition object into the GUI
-    setappdata(hObject,'objIMAQ',objIMAQ);
+    setappdata(hObject,'infoObj',infoObj);
 end
 
 % updates the GUI font-sizes and disables all tracking panels
@@ -2761,9 +2761,9 @@ hFig = handles.figRegionSetup;
 % retrieves the initial image stack
 if isCalib
     % case is the user is calibrating the camera
-    objIMAQ = getappdata(hFig,'objIMAQ');
+    infoObj = getappdata(hFig,'infoObj');
     for i = 1:nFrm
-        I{i} = getsnapshot(objIMAQ);
+        I{i} = getsnapshot(infoObj.objIMAQ);
         pause(1);
     end
     

@@ -22,6 +22,9 @@ end
 % --- Executes just before ExptSetup is made visible.
 function ExptSetup_OpeningFcn(hObject, eventdata, handles, varargin)
 
+% Choose default command line output for ExptSetup
+handles.output = hObject;
+
 % global variables
 global axLimMax mType dyMax isUpdating isCreateBlk
 global objOff mpStrDef hSigTmp hSigSel iSigObj
@@ -30,80 +33,82 @@ global t2sStatus updateList
 [objOff,mpStrDef,hSigTmp,hSigSel,iSigObj] = deal(true,'arrow',[],[],0);
 [t2sStatus,updateList] = deal(-1,true);
 
-% Choose default command line output for ExptSetup
-handles.output = hObject;
+% initialisations
+hProg = [];
+stimOnly = false;
 
-% sets the input arguments based on type
-if isempty(varargin)
-    % case is testing the gui (REMOVE ME LATER)
-    
-    % sets the input arguments
-%     [devType,nCh] = deal({'Motor'},2);                % COMPLETE!
-%     [devType,nCh] = deal({'Motor'},6);                % COMPLETE!
-%     [devType,nCh] = deal({'Motor'},6);                % COMPLETE!
-%     [devType,nCh] = deal({'Motor','Opto'},[4,NaN]);   % COMPLETE!
-%     [devType,nCh] = deal({'Opto','Motor'},[NaN,4]);   % COMPLETE!
-%     [devType,nCh] = deal({'Motor','Opto'},[2,NaN]);   % COMPLETE!
-    [devType,nCh] = deal({'Motor','Opto'},[6,NaN]);   % COMPLETE!
-%     [devType,nCh] = deal({'Motor','Motor'},[4,4]);    % COMPLETE!
-%     [devType,nCh] = deal({'Opto','Opto'},[NaN,NaN]);  % COMPLETE!
-%     [devType,nCh] = deal({'RecordOnly'},NaN);         % COMPLETE!
-    
-else
-    % sets the input variables
-    hMain = varargin{1};
+% sets the input arguments
+switch length(varargin)
+    case 1
+        % case is running a video dependent experiment
 
-%     % makes the main gui invisible
-%     setObjVisibility(hMain,'off')    
-    
-    % loads the required structs/data objects from the main GUI
-    iStim = getappdata(hMain,'iStim');
-    iProg = getappdata(hMain,'iProg');
-    exptType = getappdata(hMain,'exptType');
-    objIMAQ = getappdata(hMain,'objIMAQ');
-    iMov = getappdata(hMain,'iMov');
+        % sets the input variables
+        hMain = varargin{1};        
 
-    % sets the device/channel count information (dependent on expt/devices)
-    switch exptType
-        case 'RecordOnly' % case is a recording only experiment
+        % loads the required structs/data objects from the main GUI
+        iMov = getappdata(hMain,'iMov');    
+        iProg = getappdata(hMain,'iProg');      
+        infoObj = getappdata(hMain,'infoObj');
 
-            % sets the device type to record only
-            [devType,nCh] = deal({'RecordOnly'},NaN);
+    case 2    
+        % case is running a stimuli only experiment
 
-        case 'RecordStim' % case is a stimuli dependent experiment
+        % sets the input variables
+        infoObj = varargin{1};
+        hProg = varargin{2};
+        
+        % sets the data acquistion objects into the gui
+        [objDAQ,objDAQ0] = reduceDevInfo(infoObj.objDAQ);
+        setappdata(hObject,'objDAQ',objDAQ)   
+        setappdata(hObject,'objDAQ0',objDAQ0)        
 
-            % retrives the device types from the device information struct
-            objDACInfo = getappdata(hMain,'objDACInfo');
-            devType = objDACInfo.sType;
-            nCh = objDACInfo.nChannel;
-            
-            % sets the device channel counts
-            iStim.nChannel(1:length(nCh)) = nCh;
-    end    
-    
-    % sets the important fields into the gui    
-    setappdata(hObject,'iMov',iMov)
-    setappdata(hObject,'hMain',hMain)  
-    setappdata(hObject,'objIMAQ',objIMAQ)
-    setappdata(hObject,'iProg',iProg)
-    setappdata(hObject,'iStim',iStim)      
+        % loads the required structs/data objects from the main GUI
+        [iMov,hMain,stimOnly] = deal([],infoObj.hFigM,true);    
+        iProg = getappdata(hMain,'ProgDefNew');             
+
+end
+
+% makes the main gui invisible
+setObjVisibility(hMain,'off')        
+
+% sets the device/channel count information (dependent on expt/devices)
+switch infoObj.exType
+    case 'RecordOnly' 
+        % case is a recording only experiment
+
+        % sets the device type to record only
+        [devType,nCh] = deal({'RecordOnly'},NaN);
+
+    case {'RecordStim','StimOnly'} 
+        % case is a stimuli dependent experiment
+
+        % retrives the device types from the device information struct
+        devType = infoObj.objDAQ.sType;
+        nCh = infoObj.objDAQ.nChannel;
+
+        % sets the device channel counts
+        infoObj.iStim.nChannel(1:length(nCh)) = nCh;
+
 end
 
 % sets the function handles into the gui
+setappdata(hObject,'afterExptFunc',@afterExptFunc)
 setappdata(hObject,'getProtoTypeStr',@getProtoTypeStr);
 setappdata(hObject,'editSingleStimPara',@editSingleStimPara);             
 setappdata(hObject,'addCustomSignalTab',@addCustomSignalTab);
 
 % sets the other important fields
+setappdata(hObject,'nCh0',nCh)   
+setappdata(hObject,'iMov',iMov)
+setappdata(hObject,'hMain',hMain)      
+setappdata(hObject,'iProg',iProg)
+setappdata(hObject,'infoObj',infoObj)
 setappdata(hObject,'devType',devType)
 setappdata(hObject,'devType0',devType)
-setappdata(hObject,'nCh0',nCh)
-
-% sets the function handles unti the GUI
-setappdata(hObject,'afterExptFunc',@afterExptFunc)
+setappdata(hObject,'stimOnly',stimOnly)
 
 % initialises the GUI object properties
-initObjProps(handles,devType,nCh,true)
+initObjProps(handles,devType,nCh,true,hProg)
 
 % makes the gui visible
 setObjVisibility(hObject,'on')
@@ -141,49 +146,57 @@ function figExptSetup_WindowButtonMotionFcn(hFig, eventdata, handles)
 % global variables
 global mType mpStrDef
 
-% Modify mouse pointer over axes
-mPos = get(hFig,'CurrentPoint');
-if isOverAxes(mPos)
-    hHover = findAxesHoverObjects(hFig);
-    if mType == 4
-        % case is the placement of an experiment block
-        exptPlaceMouseMove(hFig,hHover)
-        
-    elseif mType == 5 
-        % case is the setting of an experiment block
-        exptSetMouseMove(hFig,hHover)
-               
-    elseif ~isempty(hHover)
-        %
-        isChP = arrayfun(@(x)(strContains(...
-                                get(x,'tag'),'chFill')),hHover);        
+% ignore mouse clicjs on the experiment information tab
+hTabSel = get(getappdata(hFig,'hTabGrp'),'SelectedTab');
+if get(hTabSel,'UserData') == 1
+    % case is the experiment information tab is selected
+    mpStrDef = 'arrow';
+else
+    % Modify mouse pointer over axes
+    mPos = get(hFig,'CurrentPoint');
+    if isOverAxes(mPos)
+        hHover = findAxesHoverObjects(hFig);
+        if mType == 4
+            % case is the placement of an experiment block
+            exptPlaceMouseMove(hFig,hHover)
 
-        % if objects are being hovered over, then update the axes
-        % properties based on the type of action being performed
-        switch mType
-            case {0,1} % case is a normal mouse movement
-                normalMouseMove(hFig,hHover,isChP)
+        elseif mType == 5 
+            % case is the setting of an experiment block
+            exptSetMouseMove(hFig,hHover)
 
-            case {2} % case is the placement of a stimuli block
-                stimPlaceMouseMove(hFig,hHover,isChP)
+        elseif ~isempty(hHover)
+            %
+            isChP = arrayfun(@(x)(strContains(...
+                                    get(x,'tag'),'chFill')),hHover);        
 
-            case {3} % case is the setting of a stimuli block
-                stimSetMouseMove(hFig,hHover,isChP)                                   
+            % if objects are being hovered over, then update the axes
+            % properties based on the type of action being performed
+            switch mType
+                case {0,1} % case is a normal mouse movement
+                    normalMouseMove(hFig,hHover,isChP)
 
+                case {2} % case is the placement of a stimuli block
+                    stimPlaceMouseMove(hFig,hHover,isChP)
+
+                case {3} % case is the setting of a stimuli block
+                    stimSetMouseMove(hFig,hHover,isChP)                                   
+
+            end
+        else
+            % if not over anything important then turn off the block 
+            % highlights (not if the signal/experiment block has been set)        
+            mpStrDef = 'arrow';
+            if ~any(mType == [3,5])
+                turnOffFillObj(hFig)
+            end
         end
-    else
-        % if not over anything important then turn off the block highlights
-        % (not if the signal/experiment block has been set)        
-        mpStrDef = 'arrow';
+    else    
+        % if not over the axes then turn off the block highlights (not if 
+        % the signal/experiment block has been set)
+        mpStrDef = 'arrow';    
         if ~any(mType == [3,5])
             turnOffFillObj(hFig)
         end
-    end
-else
-    % if not over the axes then turn off the block highlights (not if the
-    % signal/experiment block has been set)
-    if ~any(mType == [3,5])
-        turnOffFillObj(hFig)
     end
 end
 
@@ -205,6 +218,12 @@ global mpStrDef mType hSigSel iSigObj isReleased nProto
 
 % sets the selection type (if not provided)
 if nargin < 4; selType = get(hFig,'SelectionType'); end
+
+% ignore mouse clicjs on the experiment information tab
+hTabSel = get(getappdata(hFig,'hTabGrp'),'SelectedTab');
+if (get(hTabSel,'UserData') == 1) && (nargin < 4)
+    return
+end
 
 % updates the gui properties based on the selection/mouse hover type
 switch selType
@@ -371,15 +390,8 @@ if ~strcmp(uChoice,'Yes'); return; end
 
 % sets the other important fields
 hFig = handles.figExptSetup;
-hMain = getappdata(hFig,'hMain');
 devType = getappdata(hFig,'devType0');
 nCh = getappdata(hFig,'nCh0');
-
-% if not testing, then reset the stimuli parameter struct
-hMain = getappdata(hFig,'hMain');
-if ~isempty(hMain)
-    setappdata(hFig,'iStim',getappdata(hMain,'iStim'));
-end
 
 % resets the other fields  
 setappdata(hFig,'pType','Experiment Information')  
@@ -404,6 +416,7 @@ function menuOpenProto_Callback(hObject, eventdata, handles)
 % initialisations 
 hFig = handles.figExptSetup;  
 iProg = getappdata(hFig,'iProg');
+infoObj = getappdata(hFig,'infoObj');
 
 % retrieves the default directory
 if isempty(iProg)
@@ -447,10 +460,12 @@ switch fExtn
             dType = unique(fData.chInfo(:,3),'stable');            
             nCh = cellfun(@(x)(sum(strcmp(fData.chInfo(:,3),x))),dType);
 
-            %
+            % initialisese the stimuli data struct
             if isfield(fData,'iStim')
+                % retrieves the field if available
                 iStim = fData.iStim;
             else
+                % otherwise, create a new struct
                 iStim = initTotalStimParaStruct();
             end
         else
@@ -463,7 +478,7 @@ switch fExtn
         % otherwise, set the stimulus protocol playlist and sets 
         % up the experimental playlist struct
         [sTrainS,dType,nCh] = convertStimData(fData);        
-        iExpt = initExptStruct(fData,objIMAQ,dType,exptType);
+        iExpt = initExptStruct(objIMAQ,exptType);
         iStim = initTotalStimParaStruct();
         sTrainEx = [];
 end
@@ -510,10 +525,13 @@ if ~isempty(sTrain.Ex)
     end
 end
 
+% updates the stimuli parameter struct
+infoObj.iStim = iStim;
+
 % updates the loaded data within the gui    
 setappdata(hFig,'iExpt',iExpt)
-setappdata(hFig,'iStim',iStim)
 setappdata(hFig,'sTrain',sTrain)
+setappdata(hFig,'infoObj',infoObj)
 
 % initialises the object properties
 initObjProps(handles,dType(:)',nCh,false)
@@ -552,9 +570,10 @@ if (fIndex ~= 0)
     iExpt = getappdata(hFig,'iExpt');
     sTrain = storeExptTrainPara(hFig);
     chInfo = getappdata(hFig,'chInfo');
-    iStim = getappdata(hFig,'iStim');
+    infoObj = getappdata(hFig,'infoObj');    
     
     % sets the experiment file name
+    iStim = infoObj.iStim;
     iExpt.Info.FileName = fName;   
     set(handles.textFileName,'String',fName);
     
@@ -587,7 +606,7 @@ end
 hFig = handles.figExptSetup;
 hMain = getappdata(hFig,'hMain');
 iExpt = getappdata(hFig,'iExpt');
-iStim = getappdata(hFig,'iStim');
+infoObj = getappdata(hFig,'infoObj');
 
 % stops the timer object
 try
@@ -596,25 +615,39 @@ try
     delete(timerObj)
 end
 
-% if so, then update the experiment/stimuli train data structs
-setappdata(hMain,'iExpt',iExpt)
-setappdata(hMain,'iStim',iStim)
-setappdata(hMain,'sTrain',storeExptTrainPara(hFig))
+switch infoObj.exType
+    case 'StimOnly'
+        % closes the GUI
+        delete(hFig)
+        pause(0.05);        
+        
+        % case is a stimui type expt (re-opens DART)
+        setObjVisibility(infoObj.hFigM,'on')
+        
+    otherwise
+        % case is a recording type expt (re-opens FlyRecord)
+        
+        % if so, then update the experiment/stimuli train data structs
+        setappdata(hMain,'iExpt',iExpt)
+        setappdata(hMain,'infoObj',infoObj)
+        setappdata(hMain,'sTrain',storeExptTrainPara(hFig))
 
-% closes the GUI
-delete(hFig)
+        % closes the GUI
+        delete(hFig)
+        pause(0.05);        
+        
+        % makes the main gui visible again
+        if ~isempty(hMain)
+            % re-enables the menu items
+            hMainH = guidata(hMain);
+            setObjEnable(hMainH.menuFile,'on');
+            setObjEnable(hMainH.menuExpt,'on');
+            setObjEnable(hMainH.menuOpto,'on');
+        %     setObjEnable(hMainH.menuRTTrack,'on');
 
-% makes the main gui visible again
-if ~isempty(hMain)
-    % re-enables the menu items
-    hMainH = guidata(hMain);
-    setObjEnable(hMainH.menuFile,'on');
-    setObjEnable(hMainH.menuExpt,'on');
-    setObjEnable(hMainH.menuOpto,'on');
-%     setObjEnable(hMainH.menuRTTrack,'on');
-    
-    % sets focus to the recording gui
-    figure(hMain); 
+            % sets focus to the recording gui
+            figure(hMain); 
+        end
 end
 
 % -------------------------------------------------------------------------
@@ -622,36 +655,43 @@ function menuRunExpt_Callback(hObject, eventdata, handles)
 
 % retrieves the fly record GUI handles
 hFig = handles.figExptSetup;
-hMain = getappdata(hFig,'hMain');
-objIMAQ = getappdata(hFig,'objIMAQ');
+iExpt = getappdata(hFig,'iExpt');
+infoObj = getappdata(hFig,'infoObj');
 timerObj = getappdata(hFig,'timerObj');
 
 % stops the experiment start-time timer
 stop(timerObj)
 
 % checks the video resolution is feasible (exit if not)
-iExpt = getappdata(hFig,'iExpt');
-if ~checkVideoResolution(objIMAQ,iExpt.Video)
-    start(timerObj)
-    return
-end
-
-% determines if there is feasible space to store the experiment's videos
-mStr = calcVideoTiming(handles);
-if ~isempty(mStr)
-    % if not, then prompt the user if they wish to continue
-    mStr = sprintf(['%sDo you still wish to continue with ',...
-                    'the experiment?'],mStr);
-    uChoice = questdlg(mStr,'Low Space Warning!','Yes','No','Yes');
-    if ~strcmp(uChoice,'Yes')
-        % if not, then exit the experiment
+if infoObj.hasIMAQ
+    % sets the main gui to be the recording gui
+    hMain = getappdata(hFig,'hMain');
+    
+    if ~checkVideoResolution(infoObj.objIMAQ,iExpt.Video)
         start(timerObj)
         return
     end
+
+    % determines if there is feasible space to store the experiment's videos
+    mStr = calcVideoTiming(handles);
+    if ~isempty(mStr)
+        % if not, then prompt the user if they wish to continue
+        mStr = sprintf(['%sDo you still wish to continue with ',...
+                        'the experiment?'],mStr);
+        uChoice = questdlg(mStr,'Low Space Warning!','Yes','No','Yes');
+        if ~strcmp(uChoice,'Yes')
+            % if not, then exit the experiment
+            start(timerObj)
+            return
+        end
+    end
+else
+    % sets the main gui to be the experiment setup gui
+    hMain = hFig;    
 end
 
 % determines if the stimuli protocol has been set (record-stim expts only)
-if ~isempty(getappdata(hMain,'objDACInfo'))
+if infoObj.hasDAQ
     % if this is a record-stim expt, then determine if the experimental
     % stimuli protocol has been set
     sTrain = getappdata(hFig,'sTrain');    
@@ -682,25 +722,29 @@ if ~isempty(getappdata(hMain,'objDACInfo'))
     setappdata(hMain,'iExpt',iExpt)
 end
 
-% re-enables the video preview button
-hMainH = guidata(hMain);
-if get(hMainH.toggleVideoPreview,'Value')
-    % retrieves the toggle button callback function
-    toggleFcn = getappdata(hMain,'toggleVideoPreview');
-    
-    % unchecks the box and runs the callback function
-    set(hMainH.toggleVideoPreview,'Value',0)
-    toggleFcn(hMainH.toggleVideoPreview,'1',guidata(hMain))
-end
+% disables the video preview button (if recording video)
+if infoObj.hasIMAQ
+    hMainH = guidata(hMain);
+    if get(hMainH.toggleVideoPreview,'Value')
+        % retrieves the toggle button callback function
+        toggleFcn = getappdata(hMain,'toggleVideoPreview');
 
-% disables the relevant objects
-setObjEnable(hMainH.toggleVideoPreview,'off')
-setObjEnable(hMainH.menuAdaptors,'off')
-setObjEnable(hMainH.menuCalibrate,'off')
+        % unchecks the box and runs the callback function
+        set(hMainH.toggleVideoPreview,'Value',0)
+        toggleFcn(hMainH.toggleVideoPreview,'1',guidata(hMain))
+    end
+    
+    % disables the relevant objects
+    setObjEnable(hMainH.toggleVideoPreview,'off')
+    setObjEnable(hMainH.menuAdaptors,'off')
+    setObjEnable(hMainH.menuCalibrate,'off')    
+end
 
 % makes the experimental info GUI invisible
 setObjVisibility(hFig,'off')
-if ~isempty(hMain); figure(hMain); end
+if infoObj.hasIMAQ
+    if ~isempty(hMain); figure(hMain); end
+end
 
 % initialises and runs the experiment object
 exObj = RunExptObj(hMain,'Expt',hFig,false,false);
@@ -712,22 +756,24 @@ function afterExptFunc(hFig)
 
 % retrieves the timer object
 handles = guidata(hFig);
+exObj = getappdata(hFig,'exObj');
+infoObj = getappdata(hFig,'infoObj');
 hMainH = guidata(getappdata(hFig,'hMain'));
     
 % turns off the camera (if still running)
-objIMAQ = getappdata(hFig,'objIMAQ');
-if strcmp(get(objIMAQ,'Running'),'on')
-    stop(objIMAQ);
-end
+if infoObj.hasIMAQ
+    if strcmp(get(infoObj.objIMAQ,'Running'),'on')
+        stop(infoObj.objIMAQ);
+    end
 
-% converts the videos (if required)
-exObj = getappdata(hFig,'exObj');
-exObj.convertExptVideos();
-    
-% re-enables the video preview button
-setObjEnable(hMainH.toggleVideoPreview,'on')
-setObjEnable(hMainH.menuAdaptors,'on')
-setObjEnable(hMainH.menuCalibrate,'on')
+    % converts the videos (if required)
+    exObj.convertExptVideos();
+
+    % re-enables the video preview button
+    setObjEnable(hMainH.toggleVideoPreview,'on')
+    setObjEnable(hMainH.menuAdaptors,'on')
+    setObjEnable(hMainH.menuCalibrate,'on')
+end
 
 % deletes the experiment object struct
 % setObjVisibility(exObj.hMain,'off')
@@ -839,10 +885,9 @@ function buttonOutDir_Callback(hObject, eventdata, handles)
 % retrieves the experimental protocol data struct
 hFig = handles.figExptSetup;
 iExpt = getappdata(hFig,'iExpt');
-dDir = iExpt.Info.OutDir;
 
 % prompts the user for the new default directory
-dirName = uigetdir(dDir,'Set The Default Path');
+dirName = uigetdir(iExpt.Info.OutDir,'Set The Default Path');
 if dirName
     % otherwise, update the directory string names
     iExpt.Info.OutDir = dirName;
@@ -1399,6 +1444,12 @@ tMlt = getTimeMultiplier(lStr{iSel},sPara.tDurU);
 sPara.tDur = roundP(sPara.tDur*tMlt,nDP);
 sPara.tDurU = lStr{iSel};
 setappdata(hFig,'sParaL',sPara);
+
+% deselects any selected experimental protocol groups
+pType0 = getappdata(hFig,'pType');
+setappdata(hFig,'pType','Experiment Stimuli Protocol')
+figExptSetup_WindowButtonDownFcn(hFig, [], handles, 'alt')
+setappdata(hFig,'pType',pType0)
 
 % resets the axes properties
 resetExptTimeAxes(handles,'L',tDur0)
@@ -2492,9 +2543,9 @@ end
 hFig = handles.figExptSetup;
 
 % retrieves the parameter data struct
-iStim = getappdata(hFig,'iStim');
 hMain = getappdata(hFig,'hMain');
 chInfo = getappdata(hFig,'chInfo');
+infoObj = getappdata(hFig,'infoObj');
 
 % retrieves the current stimuli train information
 sTrainC = getStimTrainInfo(handles);
@@ -2504,6 +2555,7 @@ sTrainC = getStimTrainInfo(handles);
 % ------------------------- %
 
 % sets up the signals for the devices 
+iStim = infoObj.iStim;
 sRate = field2cell(iStim.oPara,'sRate',1);
 xySig = setupDACSignal(sTrainC,chInfo,1./sRate);
 iDev = find(cellfun(@(x)(~all(cellfun(@isempty,x(:,1)))),xySig));
@@ -2514,11 +2566,11 @@ if isempty(hMain)
     nDev = length(xySig);
     isDAC = false(nDev,1);
     sRate = 50*ones(nDev,1);  
-    objDACInfo = [];
+    objDAQ = [];
 else
     % proper case
-    objDACInfo = getappdata(hMain,'objDACInfo');    
-    isDAC = strcmp(objDACInfo.dType(iDev),'DAC');
+    objDAQ = infoObj.objDAQ;    
+    isDAC = strcmp(objDAQ.dType(iDev),'DAC');
     
     % sets the sample rate for the device(s)
     if max(iDev) > length(iStim.oPara)
@@ -2537,7 +2589,7 @@ objDev = cell(nDev,1);
 % determines if there are any DAC devices being tested
 if any(isDAC)
     % if so, create the DAC objects
-    objDev(isDAC) = createDACObjects(objDACInfo,sRate(iD),iD);
+    objDev(isDAC) = createDACObjects(objDAQ,sRate(iD),iD);
     
     % sets up and runs the device (if objects are valid)    
     if (~isempty(objDev)) 
@@ -2548,7 +2600,7 @@ end
 % if so, set up the serial controller devices
 if any(~isDAC)
     objDev{sum(isDAC)+1} = setupSerialDevice(...
-                                objDACInfo,'Test',xySig(iDev),sRate,iDev);   
+                                objDAQ,'Test',xySig(iDev),sRate,iDev);   
 end
 
 % ------------------------ %
@@ -2876,7 +2928,14 @@ setappdata(hFig,'iExpt',iExpt)
 
 % resets the experiment time axes
 if isempty(varargin)
-    resetExptTimeAxes(handles,'Ex'); 
+    % deselects any selected experimental protocol groups
+    pType0 = getappdata(hFig,'pType');
+    setappdata(hFig,'pType','Experiment Stimuli Protocol')
+    figExptSetup_WindowButtonDownFcn(hFig, [], handles, 'alt')
+    setappdata(hFig,'pType',pType0)    
+    
+    % resets the experiment time axis and the protocol type flag
+    resetExptTimeAxes(handles,'Ex');
 end
 
 % --- callback function for updating the experiment duration popup boxes.
@@ -2925,6 +2984,12 @@ elseif tExp >= tMin
         hPopup = findobj(hFig,'tag',sprintf('%sInfo',ptStr(1:end-2)));
     end
 
+    % deselects any selected experimental protocol groups
+    pType0 = getappdata(hFig,'pType');
+    setappdata(hFig,'pType','Experiment Stimuli Protocol')
+    figExptSetup_WindowButtonDownFcn(hFig, [], handles, 'alt')
+    setappdata(hFig,'pType',pType0)    
+    
     % resets the experiment time axes
     set(hPopup,'Value',iSel)
     resetExptTimeAxes(handles,'Ex',TexpU0)   
@@ -3015,6 +3080,12 @@ end
 if ~isempty(hPopup)
     set(hPopup,'Value',iSel)
 end
+
+% deselects any selected experimental protocol groups
+pType0 = getappdata(hFig,'pType');
+setappdata(hFig,'pType','Experiment Stimuli Protocol')
+figExptSetup_WindowButtonDownFcn(hFig, [], handles, 'alt')
+setappdata(hFig,'pType',pType0)
 
 % updates the parameter struct and resets the experiment time axes
 setappdata(hFig,'iExpt',iExpt);
@@ -3116,7 +3187,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % --- initialises the GUI object properties
-function initObjProps(handles,devType,nCh,isInit)
+function initObjProps(handles,devType,nCh,isInit,h)
 
 % global variables
 global chCol nProto figPos0 nParaMax initObj
@@ -3125,13 +3196,23 @@ global chCol nProto figPos0 nParaMax initObj
 initObj = true;
 hFig = handles.figExptSetup;
 hMain = getappdata(hFig,'hMain');
+infoObj = getappdata(hFig,'infoObj');
 
 % creates the load bar
 if isInit
-    h = ProgressLoadbar('Initialising GUI Objects...');
+    % case is the gui is being opened
+    mStr = 'Initialising Experiment Setup GUI...';
+    if isempty(h)
+        % case is a progress loadbar has not been provided
+        h = ProgressLoadbar(mStr);
+    else
+        % otherwise, update the progress loadbar
+        h.StatusMessage = mStr;
+    end
 else
+    % case is a new experimental protocol is being opened
     setObjVisibility(hFig,'off');
-    h = ProgressLoadbar('Resetting GUI Objects...');    
+    h = ProgressLoadbar('Resetting Experiment Setup GUI...');    
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -3141,6 +3222,7 @@ end
 % initialisations
 nParaMax = 6;
 hasStim = true;
+hasVid = ~strcmp(infoObj.exType,'StimOnly');
 nDev = length(devType);
 eStr = {'off','on'};
 devType = devType(:);
@@ -3511,17 +3593,24 @@ initDurObjProps(handles,'Dur','Info')
 setDurPopupValues(handles.panelExptDurInfo,iExpt.Timing.Texp);
 setStartTimeValues(handles.panelInfoStartTime,iExpt.Timing.T0);
 
-% sets the stimuli dependent popup object values
-if ~strcmp(devType{1},'RecordOnly')    
+% sets the stimuli dependent popup object values (if stimuli available)
+if hasStim   
     setDurPopupValues(handles.panelStimIntS,sParaEx.S.tStim);
-    setDurPopupValues(handles.panelStimIntL,sParaEx.L.tStim);
-    
+    setDurPopupValues(handles.panelStimIntL,sParaEx.L.tStim);    
     setDurPopupValues(handles.panelExptDurEx,iExpt.Timing.Texp);
     setStartTimeValues(handles.panelStartTimeEx,iExpt.Timing.T0);
 end
 
 % sets the protocol type strings
 setappdata(hFig,'pTypeT',tStr)
+
+% starts the timer
+try 
+    start(getappdata(hFig,'timerObj'))
+catch
+    initTimerObj(handles)
+    start(getappdata(hFig,'timerObj'))
+end
 
 % pause to update
 pause(0.05);
@@ -3692,7 +3781,7 @@ setFigurePosition(handles,hasStim)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % intialises the experiment info fields
-setExptInfoFields(handles,devType)
+setExptInfoFields(handles,devType,hasVid)
 
 % runs the feasibility check
 editExptTitle_Callback(handles.editExptTitle, '1', handles)
@@ -4500,7 +4589,7 @@ hTimer = timer('ExecutionMode','fixedRate','BusyMode','drop',...
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % --- sets the experiment information fields
-function setExptInfoFields(handles,devType)
+function setExptInfoFields(handles,devType,hasVid)
 
 % initialisations
 sdTypes = {'Opto','Motor'};
@@ -4508,16 +4597,39 @@ hasStim = any(cellfun(@(x)(any(strcmp(sdTypes,x))),devType));
 
 % initialises the experiment information panel
 initExptSetupProps(handles)
-initVideoParaProps(handles)
+
+% initialises the experiment video parameters (if recording)
+if hasVid
+    % initialises the video parameter properties
+    initVideoParaProps(handles)
+else
+    % disables the recording parameter panels
+    setPanelProps(handles.panelVideoPara,'off')
+    setPanelProps(handles.panelRecordType,'off')
+    setPanelProps(handles.panelFixedDur,'off')
+    
+    % disables the video parameter feasibility checkbox
+    setObjEnable(handles.checkVidFeas,'off')
+    setObjEnable(handles.textBaseName,'off')
+    setObjEnable(handles.editBaseName,'off')  
+    
+    % disables the video count/frame text labels
+    set(handles.textFrmCountL,'enable','off')
+    set(handles.textFrmCount,'string','N/A','enable','off')
+    set(handles.textVidCountL,'enable','off')
+    set(handles.textVidCount,'string','N/A','enable','off')
+end
 
 % sets the enabled properties of the 
-setObjEnable(handles.radioFixedDur,hasStim)
-setObjEnable(handles.radioBtwnStim,hasStim)
+setObjEnable(handles.radioFixedDur,hasStim && hasVid)
+setObjEnable(handles.radioBtwnStim,hasStim && hasVid)
 setObjEnable(handles.checkProtoFeas,hasStim)
 setObjEnable(handles.checkStimFeas,hasStim)
 
 % updates the recording parameters
-panelRecordType_SelectionChangeFcn([], '1', handles)
+if hasVid
+    panelRecordType_SelectionChangeFcn([], '1', handles)
+end
 
 % updates the minimum duration fields
 updateMinDurFields(handles)
@@ -4586,7 +4698,7 @@ setappdata(hFig,'iExpt',iExpt);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % --- initialises the experimental information fields
-function initVideoParaProps(handles,varargin)
+function initVideoParaProps(handles)
 
 % global variables
 global isUpdate
@@ -4595,27 +4707,23 @@ isUpdate0 = isUpdate;
 % retrieves the experimental duration data struct
 hFig = handles.figExptSetup;
 iExpt = getappdata(hFig,'iExpt');
-objIMAQ = getappdata(hFig,'objIMAQ');
+infoObj = getappdata(hFig,'infoObj');
 Dmax = iExpt.Video.Dmax;
 
 % sets the frame rate box
-if (nargin == 1)
-    if isempty(objIMAQ)
-        % retrieves the frame rate and set the 
-        fRate = cellfun(@num2str,{5,10,15,20,25,30},'un',false);
-        iExpt.Video.FPS = 5; 
-        
-    else
-        % retrieves the camera object        
-        srcObj = getselectedsource(objIMAQ);
-                
-        % resorts the frame rate array
-        [~,fRate,~] = detCameraFrameRate(srcObj,iExpt.Video.FPS);    
-    end
-    
-    % updates the video data struct
-    setappdata(hFig,'iExpt',iExpt)    
-end       
+if ~infoObj.hasIMAQ
+    % retrieves the frame rate and set the 
+    fRate = cellfun(@num2str,{5,10,15,20,25,30},'un',false);
+    iExpt.Video.FPS = 5; 
+
+else                
+    % resorts the frame rate array
+    srcObj = getselectedsource(infoObj.objIMAQ);
+    [~,fRate,~] = detCameraFrameRate(srcObj,iExpt.Video.FPS);    
+end
+
+% updates the video data struct
+setappdata(hFig,'iExpt',iExpt)   
 
 % initialises the frame rate listbox
 iSel = find(strcmp(fRate,num2str(iExpt.Video.FPS)));  
@@ -4655,7 +4763,7 @@ isUpdate = isUpdate0;
 
 % sets up the video compression popup menu
 hPopup = handles.popupVideoCompression;
-setupVideoCompressionPopup(objIMAQ,hPopup)
+setupVideoCompressionPopup(infoObj.objIMAQ,hPopup)
 ii = strcmp(getappdata(hPopup,'pStr'),iExpt.Video.vCompress);
 
 % sets the popup menu value
@@ -4824,7 +4932,7 @@ iCh = uData0{indFcn('iCh')};
 
 % retrieves the full experiment signal
 sPara = uData0{indFcn('sPara')};
-sParaExP = getStructField(sParaEx,Type(1));
+sParaExP = getStructField(sParaEx,sType(1));
 xyData = setupFullExptSignal(hFig,sTrainS,sParaExP);
 iChObj = find(~cellfun(@isempty,xyData));
 
@@ -6146,7 +6254,7 @@ end
 [sBlkCh,sigBlk,iProto] = getSignalBlock(hFig,iCh);
 
 % initialisations
-if iProto(nProto)
+if iProto(nProto) || iProto(1)
     iExpt = getappdata(hFig,'iExpt');
     tDur = iExpt.Timing.Texp;
 else
@@ -6155,7 +6263,7 @@ else
 end
 
 % updates the parameters for the signal blocks
-for i = 1:length(sBlkCh)        
+for i = 1:length(sBlkCh)
     % sets the block y-axis limits
     uDataB = get(sBlkCh{i},'UserData');
     iChB = uDataB{indFcn('iCh')};
@@ -6193,8 +6301,8 @@ for i = 1:length(sBlkCh)
 end
 
 % updates the signal blocks within the gui
-if iProto(nProto)
-    sigBlk{iProto} = sBlkCh;
+if iProto(nProto) || iProto(1)
+    sigBlk{nProto} = sBlkCh;
 else
     sigBlk{iProto}{iCh} = sBlkCh;
 end
@@ -7275,6 +7383,7 @@ global nProto
 hFig = handles.figExptSetup;
 iExpt = getappdata(hFig,'iExpt');
 sigBlk = getappdata(hFig,'sigBlk');
+infoObj = getappdata(hFig,'infoObj');
 
 %
 switch Type
@@ -7356,7 +7465,7 @@ end
 
 % if the experiment duration exceeds that of the video duration then reset
 % the video duration popup
-if strcmp(Type,'Ex')
+if strcmp(Type,'Ex') && ~strcmp(infoObj.exType,'StimOnly')
     if vec2sec([0,iExpt.Video.Dmax]) > vec2sec(iExpt.Timing.Texp)
         iExpt = resetVideoDurationPopup(handles,iExpt,false);
         setappdata(hFig,'iExpt',iExpt)
@@ -7371,7 +7480,11 @@ else
     if ~isempty(sigBlk)
         hSigBlk = cell2cell(sigBlk{iBlk});
         if ~isempty(hSigBlk)    
-            cellfun(@(x)(resetSignalBlockTimeLimits(hFig,x)),hSigBlk);
+            if iscell(hSigBlk)
+                cellfun(@(x)(resetSignalBlockTimeLimits(hFig,x)),hSigBlk);
+            else
+                arrayfun(@(x)(resetSignalBlockTimeLimits(hFig,x)),hSigBlk);
+            end
         end
     end
 end
@@ -7486,7 +7599,7 @@ end
 
 % determines if the start time is ok (and if there are any fixed time
 % events)
-if (get(handles.checkFixStart,'value'))    
+if get(handles.checkFixStart,'value')    
     % calculates the time difference between the current time and the
     % experiment start time (T0)
     [dT,~,TS] = calcTimeDifference(T0,nwTime);
@@ -7571,7 +7684,6 @@ timerObj = timer('TimerFcn',{@timeToStart, handles}, 'Period', 1.0,...
                  'tag','StartTimer');
 
 % starts the timer object
-start(timerObj)
 setappdata(handles.figExptSetup,'timerObj',timerObj)
 
 % --- stores the experiment training parameter struct

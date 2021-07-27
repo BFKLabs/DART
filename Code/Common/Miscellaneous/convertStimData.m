@@ -7,7 +7,7 @@ if ~exist('useSolnForm','var'); useSolnForm = false; end
 % initialisations
 if useSolnForm
     % determines if this is a record-only experiment
-    if isempty(fData.iExpt.Stim)
+    if ~isfield(fData.iExpt,'Stim') || isempty(fData.iExpt.Stim)
         % if so, then return an empty array 
         [sTrainS,devType,nCh] = deal({[]},{'RecordOnly'},0);
         return

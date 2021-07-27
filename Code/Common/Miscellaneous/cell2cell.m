@@ -1,5 +1,11 @@
 function B = cell2cell(A,isCol)
 
+% returns an empty array (if the original array is empty)
+if isempty(A)
+    B = [];
+    return
+end
+
 % memory allocation
 A = A(~cellfun(@isempty,A));
 if (isempty(A))

@@ -79,7 +79,7 @@ else
         case (1) % case is the actuator min voltage
             [nwLim,isInt,pStr] = deal([0 iStim.oPara(iRow).vMax],0,'vMin');
         case (2) % case is the actuator max voltage
-            dInfo = getappdata(hGUI,'objDACInfo');
+            dInfo = getappdata(hGUI,'objDAQ');
             if (strcmp(dInfo.BoardNames{iRow},'STMicroelectronics STLink Virtual COM Port'))
                 vMax = 3.5;
             else
@@ -131,7 +131,7 @@ X0 = 10;
 
 % initialisations
 hGUI = getappdata(handles.figDevicePara,'hGUI');
-[iStim,dInfo] = deal(getappdata(hGUI,'iStim'),getappdata(hGUI,'objDACInfo'));
+[iStim,dInfo] = deal(getappdata(hGUI,'iStim'),getappdata(hGUI,'objDAQ'));
 [nDACObj,oPara] = deal(length(iStim.oPara),iStim.oPara);
 [isDAC,cWid] = deal(~strcmp(dInfo.dType,'Serial'),{106,106,126});
 cName = {'Min Voltage (V)','Max Voltage (V)','Sample Rate (Hz)'};

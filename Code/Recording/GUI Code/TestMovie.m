@@ -36,7 +36,7 @@ handles.output = hObject;
 guidata(hObject, handles);
 
 % sets the input arguments
-setappdata(hObject,'objIMAQ',varargin{1});
+setappdata(hObject,'infoObj',varargin{1});
 setappdata(hObject,'iProg',varargin{2});
 
 % memory allocation
@@ -179,23 +179,22 @@ durStr = num2str(roundP(vPara.Tf*vPara.FPS));
 function initVideoParaProps(handles)
 
 % retrieves the experimental duration data struct
-vPara = getappdata(handles.figTestMovie,'vPara');
-objIMAQ = getappdata(handles.figTestMovie,'objIMAQ');
+hFig = handles.figTestMovie;
+vPara = getappdata(hFig,'vPara');
+infoObj = getappdata(hFig,'infoObj');
 
 % retrieves the camera frame rate strings
-srcObj = getselectedsource(objIMAQ);
+srcObj = getselectedsource(infoObj.objIMAQ);
 [fRateNum,fRate,iSel] = detCameraFrameRate(srcObj,vPara.FPS);
 
-% sets the video frame rate
+% updates the video frame rate
 vPara.FPS = fRateNum(iSel);
-    
-% initialises the video compression parameters
-setappdata(handles.figTestMovie,'vPara',vPara)    
+setappdata(hFig,'vPara',vPara)    
       
 % initialises the frame rate listbox
 set(handles.popupFrmRate,'string',fRate,'value',iSel)
 if length(fRateNum) == 1; setObjEnable(handles.popupFrmRate,'off'); end
 
 % sets up the video compression popup box
-setupVideoCompressionPopup(objIMAQ,handles.popupVideoCompression,1)
+setupVideoCompressionPopup(infoObj.objIMAQ,handles.popupVideoCompression,1)
 popupFrmRate_Callback(handles.popupFrmRate, [], handles)

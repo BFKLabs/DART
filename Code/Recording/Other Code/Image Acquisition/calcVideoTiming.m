@@ -10,10 +10,18 @@ mStr = [];
 hFig = handles.figExptSetup;
 iExpt = getappdata(hFig,'iExpt');
 sTrain = getappdata(hFig,'sTrain');
-objIMAQ = getappdata(hFig,'objIMAQ');
-[isCheck,VV,szFrm] = deal(true,iExpt.Video,getVideoResolution(objIMAQ));
+infoObj = getappdata(hFig,'infoObj');
 
-% 
+% if this is a stimuli only expt, then exit the function
+if strcmp(infoObj.exType,'StimOnly')
+    return
+end
+
+% derived parameters
+[isCheck,VV] = deal(true,iExpt.Video);
+szFrm = getVideoResolution(infoObj.objIMAQ);
+
+% determines if there are any stimuli signals
 if isempty(sTrain)
     hasStim = false;
 else
@@ -87,7 +95,7 @@ fSizeTot = b2gb*estTotalVideoSize(nFrmTot,szFrm,VV.vCompress);
 
 % determines the currently selected volume (from the video file output)
 volInfo = getDiskVolumeInfo();
-iVol = strcmp(volInfo(:,1),iExpt.Info.OutDir(1:2));
+iVol = cellfun(@(x)(startsWith(iExpt.Info.OutDir,x)),volInfo(:,1));
 isWarn = fSizeTot > volInfo{iVol,3};
 
 % sets the total video/frame count strings

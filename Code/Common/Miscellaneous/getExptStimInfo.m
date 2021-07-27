@@ -76,6 +76,12 @@ end
 % --- retrieves the stimuli information (new experiment parameter format)
 function stimP = getStimInfo(sPara,snTot)
 
+% if there is no stimuli data, then exit
+if isempty(sPara.sTrain)
+    stimP = [];
+    return
+end
+
 % initialisations
 pStr0 = struct('Ts',[],'Tf',[],'iStim',[]);
 if ~exist('snTot','var'); snTot = []; end

@@ -5,5 +5,5 @@ function iStim = initTotalStimParaStruct()
 sStr = struct('sRate',[]);
 iStim = struct('oPara',sStr,'nDACObj',0,'nChannel',[],'ID',[]);
 
-% sets the min/max actuator potentials
+% sets the firing frequency of the device (obsolete?)
 iStim.oPara.sRate = 50;

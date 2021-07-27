@@ -16,6 +16,7 @@ classdef StimObj < handle
         isRT
         nDev
         hasStim
+        hasIMAQ
         
         % channel timing arrays
         tEvent
@@ -42,46 +43,54 @@ classdef StimObj < handle
     % class methods
     methods
         % class constructor
-        function obj = StimObj(hS,xySig,dT,stType,sType)            
+        function obj = StimObj(hS,xySig,dT,stType,sType,hasIMAQ)
             
-        % sets the important fields
-        obj.hS = hS;
-        obj.dT = dT;
-        obj.sType = sType;
-        obj.stType = stType;
-        obj.isRT = strcmp(obj.stType,'RTStim');
-        obj.nDev = length(xySig);
-        
-        % calculates the global channel ID's
-        obj.hasStim = cellfun(@(x)...
-                (~cellfun(@isempty,x(:,1))),xySig,'un',0);
-        obj.iChMap = cell2mat(cellfun(@(i,x)([i*ones(sum(x),1),...
-                find(x(:))]),num2cell((1:obj.nDev)'),obj.hasStim,'un',0));
-        obj.xySig = cell2cell(...
-                cellfun(@(x,ok)(x(ok,:)),xySig,obj.hasStim,'un',0));
+            % sets the important fields
+            obj.hS = hS;
+            obj.dT = dT;
+            obj.sType = sType;
+            obj.stType = stType;
+            obj.isRT = strcmp(obj.stType,'RTStim');
+            obj.nDev = length(xySig);
             
-        % other field initialisations
-        obj.nCh = size(obj.xySig,1);
-        obj.tSigSF = NaN(2,obj.nCh);
-        obj.isRunning = false(1,obj.nCh);        
-        [obj.iCountD,obj.nCountD] = deal(zeros(1,obj.nCh));
-        obj.yAmp = cellfun(@(x)(zeros(1,length(x))),obj.hasStim,'un',0);
-        
-        % sets the dac device properties based on the setup type
-        switch (obj.stType)
-            case ('RTStim')        
-        
-            case ('Test')
-                % determines the details of when there is an event change
-                obj.detEventChange();
-                obj.setupTimerObj();             
-                
-            case ('Expt')
-                % determines the details of when there is an event change
-                obj.detEventChange();                             
-                obj.setupTimerObj();
-                
-        end        
+            % sets the imaq existence flag
+            if exist('hasIMAQ','var')
+                obj.hasIMAQ = hasIMAQ;
+            else
+                obj.hasIMAQ = false;
+            end
+
+            % calculates the global channel ID's
+            obj.hasStim = cellfun(@(x)...
+                    (~cellfun(@isempty,x(:,1))),xySig,'un',0);
+            obj.iChMap = cell2mat(cellfun(@(i,x)([i*ones(sum(x),1),...
+                    find(x(:))]),num2cell((1:obj.nDev)'),...
+                    obj.hasStim,'un',0));
+            obj.xySig = cell2cell(...
+                    cellfun(@(x,ok)(x(ok,:)),xySig,obj.hasStim,'un',0));
+
+            % other field initialisations
+            obj.nCh = size(obj.xySig,1);
+            obj.tSigSF = NaN(2,obj.nCh);
+            obj.isRunning = false(1,obj.nCh);        
+            [obj.iCountD,obj.nCountD] = deal(zeros(1,obj.nCh));
+            obj.yAmp = cellfun(@(x)(zeros(1,length(x))),obj.hasStim,'un',0);
+
+            % sets the dac device properties based on the setup type
+            switch (obj.stType)
+                case ('RTStim')        
+
+                case ('Test')
+                    % determines the details of event changes
+                    obj.detEventChange();
+                    obj.setupTimerObj();             
+
+                case ('Expt')
+                    % determines the details of event changes
+                    obj.detEventChange();                             
+                    obj.setupTimerObj();
+
+            end        
         
         end        
         
@@ -92,62 +101,62 @@ classdef StimObj < handle
         % --- initialises the stimuli timer objects
         function setupTimerObj(obj)
         
-        % creates the stimuli timer
-        if obj.isRT
-            % case is a real-time tracking experiment
-            obj.hTimer = timer('StartFcn',@(h,e)obj.serialStart,...
-                               'TimerFcn',@(h,e)obj.serialTimer,...
-                               'StopFcn',@(h,e)obj.serialStopRT);
-        else
-            % case is another stimuli type
-            obj.hTimer = timer('StartFcn',@(h,e)obj.serialStart,...
-                               'TimerFcn',@(h,e)obj.serialTimer);
-        end
-                
-        % updates the other timer parameters
-        set(obj.hTimer,'Period',max(obj.dT),'tag','hTimerExpt',...
-                       'ExecutionMode','FixedRate')
-                       
-        % memory allocation for stimuli time-stamps
-        if strcmp(obj.stType,'Expt')
-            obj.tStampS = arrayfun(@(x)(NaN(x,1)),obj.nCountD,'un',0);
-        end
+            % creates the stimuli timer
+            if obj.isRT
+                % case is a real-time tracking experiment
+                obj.hTimer = timer('StartFcn',@(h,e)obj.serialStart,...
+                                   'TimerFcn',@(h,e)obj.serialTimer,...
+                                   'StopFcn',@(h,e)obj.serialStopRT);
+            else
+                % case is another stimuli type
+                obj.hTimer = timer('StartFcn',@(h,e)obj.serialStart,...
+                                   'TimerFcn',@(h,e)obj.serialTimer);
+            end
+
+            % updates the other timer parameters
+            set(obj.hTimer,'Period',max(obj.dT),'tag','hTimerExpt',...
+                           'ExecutionMode','FixedRate')
+
+            % memory allocation for stimuli time-stamps
+            if strcmp(obj.stType,'Expt')
+                obj.tStampS = arrayfun(@(x)(NaN(x,1)),obj.nCountD,'un',0);
+            end
         
         end        
         
         % --- start callback function
         function serialStart(obj)
         
-        % initialises the start time of the stimuli event 
-        obj.tStim = tic;
-        obj.cEvent = 1 + (obj.tEvent(1)==0);
-        
-        % updates the stimuli channels/progressbar if the stimuli train
-        % starts immediately
-        if obj.cEvent == 2
-            obj.updateStimChannels(1)
-            obj.updateProgressBar(1)
-        end
+            % initialises the start time of the stimuli event 
+            obj.tStim = tic;
+            obj.cEvent = 1 + (obj.tEvent(1)==0);
+
+            % updates the stimuli channels/progressbar if the stimuli train
+            % starts immediately
+            if obj.cEvent == 2
+                obj.updateStimChannels(1)
+                obj.updateProgressBar(1)
+            end
         
         end             
         
         % --- timer callback function
         function serialTimer(obj)
 
-        % determines if the time is greater than the next change event         
-        if toc(obj.tStim) >= obj.tEvent(obj.cEvent)
-            % if so, update the stimuli channels 
-            obj.updateStimChannels(obj.cEvent);                       
-            obj.updateProgressBar(obj.cEvent);
+            % determines if the time is greater than the next change event
+            if toc(obj.tStim) >= obj.tEvent(obj.cEvent)
+                % if so, update the stimuli channels 
+                obj.updateStimChannels(obj.cEvent);
+                obj.updateProgressBar(obj.cEvent);
 
-            % increments the event counter
-            obj.cEvent = obj.cEvent + 1;
-            if obj.cEvent > length(obj.tEvent)
-                % if no more events then stop/delete the timer
-                try; stop(obj.hTimer); end
-                try; delete(obj.hTimer); end
+                % increments the event counter
+                obj.cEvent = obj.cEvent + 1;
+                if obj.cEvent > length(obj.tEvent)
+                    % if no more events then stop/delete the timer
+                    try; stop(obj.hTimer); end
+                    try; delete(obj.hTimer); end
+                end
             end
-        end
         
         end       
         
@@ -191,8 +200,9 @@ classdef StimObj < handle
 
                         % updates the triggered device count within the 
                         % expertiment progress GUI
+                        iOfsCh = double(obj.hasIMAQ);
                         tFunc = getappdata(obj.hGUI,'tFunc');
-                        tFunc([(iCh+1) 2],num2str(iCount),obj.hGUI);                     
+                        tFunc([(iCh+iOfsCh) 2],num2str(iCount),obj.hGUI);                     
 
                     case 3   
                         % case is a running stimuli train is finishing
@@ -215,7 +225,7 @@ classdef StimObj < handle
         end           
         
         % --- updates the serial controller output channels
-        function updateStimChannels(obj,ind)          
+        function updateStimChannels(obj,ind)
             
             % initialisations       
             [iGrp,yAmpNw] = deal(obj.iEventCh{ind},obj.yEvent{ind});
@@ -344,9 +354,9 @@ classdef StimObj < handle
         % --- sets the progress gui handle
         function setProgressGUI(obj,hGUI)
            
-        % sets the progressbar handle into the class object
-        obj.hGUI = hGUI;
-        setappdata(hGUI,'sObj',obj)                    
+            % sets the progressbar handle into the class object
+            obj.hGUI = hGUI;
+            setappdata(hGUI,'sObj',obj)                    
         
         end
         
@@ -355,20 +365,22 @@ classdef StimObj < handle
 
             function tLim = getStimTimingLimits(xSig)
 
-            if isempty(xSig)
-                tLim = [];
-            else
-                tLim = cell2mat(cellfun(@(x)(x([1,end])'),xSig(:),'un',0));
-            end
+                if isempty(xSig)
+                    tLim = [];
+                else
+                    tLim = cell2mat(cellfun...
+                                    (@(x)(x([1,end])'),xSig(:),'un',0));
+                end
 
             end
 
             function aSig = getStimActFlag(xSig)
+                
                 % --- function for setting up a single action flag array
                 function aSig = getStimActFlagSingle(xSigS)
 
-                aSig = 2*ones(length(xSigS),1);
-                [aSig(1),aSig(end)] = deal(1,3);
+                    aSig = 2*ones(length(xSigS),1);
+                    [aSig(1),aSig(end)] = deal(1,3);
 
                 end
 
@@ -376,7 +388,8 @@ classdef StimObj < handle
                 if isempty(xSig)
                     aSig = [];
                 else
-                    aSig = cellfun(@(x)(getStimActFlagSingle(x)),xSig,'un',0);
+                    aSig = cellfun(@(x)...
+                                  (getStimActFlagSingle(x)),xSig,'un',0);
                 end
             end
 
@@ -400,122 +413,122 @@ classdef StimObj < handle
 
             end            
             
-        % sets the amplitude multiplier
-        yMlt = zeros(1,obj.nCh);
-        for i = 1:obj.nCh
-            switch obj.sType{obj.iChMap(i,1)}
-                case 'Opto'
-                    yMlt(i) = 0.5;
-                otherwise
-                    yMlt(i) = 1;
-            end
-        end
-
-        % retrieves the time/amplitude of the signal points (the time
-        % points are rounded to the nearest sampling time point)
-        dt = obj.dT(1);
-        xSig = cell2mat(cell2cell(cellfun(@(x)(cellfun(@(y)...
-                (roundP(y,dt)),x,'un',0)),obj.xySig(:,1),'un',0)));
-        ySig = repmat(yMlt,size(xSig,1),1).*...
-                           cell2mat(cell2cell(obj.xySig(:,2))); 
-        
-        % retrieves the action/channel indices
-        aSig = cell2mat(cell2cell(cellfun(@(x)(...
-                    getStimActFlag(x)),obj.xySig(:,1),'un',0)));
-        iChSig = cell2mat(cell2cell(cellfun(@(i,x)(...
-                    getStimChIndices(i,x)),num2cell(1:obj.nCh)',...
-                    obj.xySig(:,1),'un',0)));  
-        iIndSig = cell2mat(cell2cell(cellfun(@(x)(...
-                    getStimEventIndices(x)),obj.xySig(:,1),'un',0))); 
-        obj.tStimSF = cellfun(@(x)(...
-                    getStimTimingLimits(x)),obj.xySig(:,1),'un',0);                            
-                
-        % initialises the stimuli timing array values
-        for i = 1:obj.nCh
-            obj.tSigSF(:,i) = obj.tStimSF{i}(1,:);
-            obj.nCountD(i) = size(obj.tStimSF{i},1);
-        end                      
-        
-        % sorts the time points temporally
-        [xSig,ii] = sort(xSig); 
-        [ySig,aSig] = deal(ySig(ii),aSig(ii));
-        [iChSig,iIndSig] = deal(iChSig(ii),iIndSig(ii));
-
-        % memory allocation
-        [nRow,iRow] = deal(length(xSig),1);
-        [tEvent0,diRow] = deal(zeros(nRow,1),0);
-        [yEvent0,aEvent0,iEventInd0] = deal(zeros(nRow,obj.nCh));       
-
-        % determines the time/amplitudes of any significant activity in 
-        % any of the channels
-        for i = 1:nRow
-            % increments the row count it there is a change in amplitude 
-            % of any signals between channels
-            if i > 1
-                diRow = (diff(xSig((i-1):i)) >= obj.dT);
-                iRow = iRow + diRow;
+            % sets the amplitude multiplier
+            yMlt = zeros(1,obj.nCh);
+            for i = 1:obj.nCh
+                switch obj.sType{obj.iChMap(i,1)}
+                    case 'Opto'
+                        yMlt(i) = 0.5;
+                    otherwise
+                        yMlt(i) = 1;
+                end
             end
 
-            % sets the new time/signal values
-            tEvent0(iRow) = xSig(i);    
-            yEvent0(iRow,iChSig(i)) = ySig(i); 
-            aEvent0(iRow,iChSig(i)) = aSig(i);
-            iEventInd0(iRow,iChSig(i)) = iIndSig(i);
+            % retrieves the time/amplitude of the signal points (the time
+            % points are rounded to the nearest sampling time point)
+            dt = obj.dT(1);
+            xSig = cell2mat(cell2cell(cellfun(@(x)(cellfun(@(y)...
+                    (roundP(y,dt)),x,'un',0)),obj.xySig(:,1),'un',0)));
+            ySig = repmat(yMlt,size(xSig,1),1).*...
+                               cell2mat(cell2cell(obj.xySig(:,2))); 
 
-            if diRow
-                iColOther = (1:obj.nCh) ~= iChSig(i);
-                yEvent0(iRow,iColOther) = yEvent0(iRow-1,iColOther);  
+            % retrieves the action/channel indices
+            aSig = cell2mat(cell2cell(cellfun(@(x)(...
+                        getStimActFlag(x)),obj.xySig(:,1),'un',0)));
+            iChSig = cell2mat(cell2cell(cellfun(@(i,x)(...
+                        getStimChIndices(i,x)),num2cell(1:obj.nCh)',...
+                        obj.xySig(:,1),'un',0)));  
+            iIndSig = cell2mat(cell2cell(cellfun(@(x)(...
+                        getStimEventIndices(x)),obj.xySig(:,1),'un',0))); 
+            obj.tStimSF = cellfun(@(x)(...
+                        getStimTimingLimits(x)),obj.xySig(:,1),'un',0);                            
+
+            % initialises the stimuli timing array values
+            for i = 1:obj.nCh
+                obj.tSigSF(:,i) = obj.tStimSF{i}(1,:);
+                obj.nCountD(i) = size(obj.tStimSF{i},1);
+            end                      
+
+            % sorts the time points temporally
+            [xSig,ii] = sort(xSig); 
+            [ySig,aSig] = deal(ySig(ii),aSig(ii));
+            [iChSig,iIndSig] = deal(iChSig(ii),iIndSig(ii));
+
+            % memory allocation
+            [nRow,iRow] = deal(length(xSig),1);
+            [tEvent0,diRow] = deal(zeros(nRow,1),0);
+            [yEvent0,aEvent0,iEventInd0] = deal(zeros(nRow,obj.nCh));       
+
+            % determines the time/amplitudes of any significant activity in 
+            % any of the channels
+            for i = 1:nRow
+                % increments the row count it there is a change in  
+                % amplitude of any signals between channels
+                if i > 1
+                    diRow = (diff(xSig((i-1):i)) >= obj.dT);
+                    iRow = iRow + diRow;
+                end
+
+                % sets the new time/signal values
+                tEvent0(iRow) = xSig(i);    
+                yEvent0(iRow,iChSig(i)) = ySig(i); 
+                aEvent0(iRow,iChSig(i)) = aSig(i);
+                iEventInd0(iRow,iChSig(i)) = iIndSig(i);
+
+                if diRow
+                    iColOther = (1:obj.nCh) ~= iChSig(i);
+                    yEvent0(iRow,iColOther) = yEvent0(iRow-1,iColOther);  
+                end
             end
-        end
 
-        % removes the points where there is no signal change
-        isChange = [true;sum(abs(diff(yEvent0,[],1)),2) > 0];
-        tEvent0 = tEvent0(isChange);
-        yEvent0 = num2cell(yEvent0(isChange,:),2);
-        aEvent0 = num2cell(aEvent0(isChange,:),2);
-        iEventInd0 = num2cell(iEventInd0(isChange,:),2);
+            % removes the points where there is no signal change
+            isChange = [true;sum(abs(diff(yEvent0,[],1)),2) > 0];
+            tEvent0 = tEvent0(isChange);
+            yEvent0 = num2cell(yEvent0(isChange,:),2);
+            aEvent0 = num2cell(aEvent0(isChange,:),2);
+            iEventInd0 = num2cell(iEventInd0(isChange,:),2);
 
-        % ensures the last time points has all device channels set to zero
-        if sum(yEvent0{end}) > 0
-            yEvent0{end+1} = zeros(1,length(yEvent0{1}));
-            aEvent0{end+1} = zeros(1,length(aEvent0{1}));
-            iEventInd0{end+1} = zeros(1,length(iEventInd0{1}));
-            tEvent0(end+1) = tEvent0(end+1) + dt;
-        end
-        
-        % removes all channels where there is no change in signal over time
-        yEvent0 = cell2mat(yEvent0);
-        yEvent0(abs(diff([-ones(1,size(yEvent0,2));yEvent0],[],1)) == 0) = NaN;
-        yEvent0 = num2cell(yEvent0,2);
+            % ensures the final point for all device channels is to zero
+            if sum(yEvent0{end}) > 0
+                yEvent0{end+1} = zeros(1,length(yEvent0{1}));
+                aEvent0{end+1} = zeros(1,length(aEvent0{1}));
+                iEventInd0{end+1} = zeros(1,length(iEventInd0{1}));
+                tEvent0(end+1) = tEvent0(end+1) + dt;
+            end
 
-        % determine the channel indices/amplitudes for each of the events
-        iEventCh0 = cellfun(@(x)(find(~isnan(x))),yEvent0,'un',0);
-        yEvent0 = cellfun(@(i,y)(y(i)),iEventCh0,yEvent0,'un',0); 
-        aEvent0 = cellfun(@(i,y)(y(i)),iEventCh0,aEvent0,'un',0); 
-        iEventInd0 = cellfun(@(i,y)(y(i)),iEventCh0,iEventInd0,'un',0); 
-        
-        % sets the class object fields
-        [obj.tEvent,obj.yEvent] = deal(tEvent0,yEvent0);
-        [obj.aEvent,obj.iEventCh] = deal(aEvent0,iEventCh0);
-        obj.iEventInd = iEventInd0;
+            % removes all channels where there is no change in the signal
+            yEvent0 = cell2mat(yEvent0);
+            yEvent0(abs(diff([-ones(1,...
+                            size(yEvent0,2));yEvent0],[],1)) == 0) = NaN;
+            yEvent0 = num2cell(yEvent0,2);
+
+            % determine the channel indices/amplitudes for each event
+            iEventCh0 = cellfun(@(x)(find(~isnan(x))),yEvent0,'un',0);
+            yEvent0 = cellfun(@(i,y)(y(i)),iEventCh0,yEvent0,'un',0); 
+            aEvent0 = cellfun(@(i,y)(y(i)),iEventCh0,aEvent0,'un',0); 
+            iEventInd0 = cellfun(@(i,y)(y(i)),iEventCh0,iEventInd0,'un',0); 
+
+            % sets the class object fields
+            [obj.tEvent,obj.yEvent] = deal(tEvent0,yEvent0);
+            [obj.aEvent,obj.iEventCh] = deal(aEvent0,iEventCh0);
+            obj.iEventInd = iEventInd0;
         
         end    
         
         % --- force stops all devices
         function forceStopDevices(obj)
 
-        % for each device, write all zeros
-        for i = 1:obj.nDev
-            % determine which channels belong to this device
-            ii = obj.iChMap(:,1) == i;
+            % for each device, write all zeros
+            for i = 1:obj.nDev
+                % determine which channels belong to this device
+                ii = obj.iChMap(:,1) == i;
 
-            % sets all amplitudes to zero
-            obj.yAmp{i}(:) = 0;                  
-            obj.setChannelStrings(i,obj.iChMap(ii,1));
-        end
+                % sets all amplitudes to zero
+                obj.yAmp{i}(:) = 0;                  
+                obj.setChannelStrings(i,obj.iChMap(ii,1));
+            end
             
         end
-        
         
     end
 end

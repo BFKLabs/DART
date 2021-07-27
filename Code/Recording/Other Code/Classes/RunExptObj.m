@@ -8,7 +8,7 @@ classdef RunExptObj < handle
         hProg
         hAx
         objIMAQ
-        objDACInfo
+        objDAQ
         objDev  
         objDRT
                 
@@ -46,6 +46,7 @@ classdef RunExptObj < handle
         vType
         vPara
         vParaVV
+        rfRate
         
         % large-video handling fields
         vComp0
@@ -70,8 +71,11 @@ classdef RunExptObj < handle
         isSaving
         isTrigger
         isUserStop
+        hasDAQ
+        hasIMAQ
         userStop   
         hasStim
+        
     end
 
     % class methods
@@ -90,7 +94,10 @@ classdef RunExptObj < handle
             [obj.isUserStop,obj.isStart,obj.isConvert] = deal(false);
             
             % sets the image acquisition object handle
-            obj.objIMAQ = getappdata(obj.hMain,'objIMAQ');                
+            infoObj = getappdata(obj.hMain,'infoObj');
+            obj.hasDAQ = infoObj.hasDAQ;
+            obj.hasIMAQ = infoObj.hasIMAQ;
+            obj.objIMAQ = infoObj.objIMAQ;                
             
             %
             switch obj.vidType
@@ -104,12 +111,19 @@ classdef RunExptObj < handle
                     obj.hExptF = hExptF;   
                     iExpt0 = getappdata(obj.hExptF,'iExpt');                    
                     obj.sTrain = getappdata(obj.hExptF,'sTrain'); 
-                    obj.iStim = getappdata(obj.hMain,'iStim');
+                    obj.iStim = infoObj.iStim;
                     
                     % sets the other fields
                     [obj.iExpt,obj.iExpt0] = deal(iExpt0);    
                     [obj.isRT,obj.isRTB] = deal(isRTExpt,isRTBatch); 
-                    obj.vCompStr = 'obj.iExpt.Video.vCompress';
+                    
+                    % sets the video dependent fields (if recording)
+                    if obj.hasIMAQ
+                        obj.vCompStr = 'obj.iExpt.Video.vCompress';
+                        obj.rfRate = roundP(obj.iExpt.Video.FPS);
+                    else
+                        obj.rfRate = 1;
+                    end
                     
                     % initialises the experiment object
                     obj.initExptObjFields();   
@@ -138,9 +152,13 @@ classdef RunExptObj < handle
         % --- initialises the experiment object
         function initExptObjFields(obj)
             
-            % sets up the camera properties           
-            obj.initCameraProperties();
-            obj.objDACInfo = getappdata(obj.hMain,'objDACInfo');
+            % initialises the camera properties (if recording)
+            if obj.hasIMAQ
+                obj.initCameraProperties();
+            end
+            
+            % sets up the camera properties                       
+            obj.objDAQ = getappdata(obj.hMain,'objDAQ');
 
             % deletes any previous experiment timers
             hTimerExptOld = timerfindall('tag','hTimerExpt');
@@ -156,7 +174,7 @@ classdef RunExptObj < handle
             % sets up the experimental stimulus signals
             if ~isempty(obj.sTrain)
                 % sets the DAC device flags
-                obj.hasDAC = any(strcmp(obj.objDACInfo.dType{1},'DAC'));
+                obj.hasDAC = any(strcmp(obj.objDAQ.dType{1},'DAC'));
                 if ~obj.isRT
                     % sets up the stimuli signals for the experiment
                     obj.setupExptStimSignals(); 
@@ -171,7 +189,7 @@ classdef RunExptObj < handle
             if ~isempty(obj.ExptSig)
                 % initialisations and array dimensioning                
                 ID = field2cell(obj.ExptSig,'ID',1);                
-                isD = strcmp(obj.objDACInfo.dType(unique(ID(:,1))),'DAC');
+                isD = strcmp(obj.objDAQ.dType(unique(ID(:,1))),'DAC');
                 nCh = size(unique(ID,'rows'),1);
 
                 % memory allocations
@@ -183,7 +201,7 @@ classdef RunExptObj < handle
                 % sets up the DAC devices (if any)
                 if any(isD)
                     % memory allocation
-                    objDACT = createDACObjects(obj.objDACInfo,50);        
+                    objDACT = createDACObjects(obj.objDAQ,50);        
                     if ~isempty(objDACT)
                         obj.objDev(isD) = setupDACDevice(...
                                     objDACT,'Expt',obj.ExptSig,obj.hProg);        
@@ -193,7 +211,7 @@ classdef RunExptObj < handle
                 % sets up the serial devices (if any)
                 if any(~isD)
                     obj.objDev{nDAC+1} = setupSerialDevice(...
-                                obj.objDACInfo,'Expt',obj,find(~isD));         
+                                obj.objDAQ,'Expt',obj,find(~isD));         
                 end    
 
                 % sets the stimuli flags for each device
@@ -223,16 +241,16 @@ classdef RunExptObj < handle
 
             % creates new device objects (if they are invalid/deleted)
             if obj.hasDAC
-                obj.objDACInfo.Control = ...
-                            createDACObjects(obj.objDACInfo,[]);            
-                setappdata(obj.hMain,'objDACInfo',obj.objDACInfo)    
+                obj.objDAQ.Control = ...
+                            createDACObjects(obj.objDAQ,[]);            
+                setappdata(obj.hMain,'objDAQ',obj.objDAQ)    
             end
 
             % it stimulating (for single pulse signals) then allocate 
             % memory for the stimuli event time/index arrays    
             if strcmp(rtP.Stim.sType,'Single')
                 % determines the number of channel used for stimulation
-                if any(strcmp(obj.objDACInfo.dType,'DAC'))
+                if any(strcmp(obj.objDAQ.dType,'DAC'))
                     % case is the DAC device is being used
                     nCh = length(unique(obj.iStim.ID(:,1)));
                     obj.objDRT = cell(nCh,1);                               
@@ -435,13 +453,15 @@ classdef RunExptObj < handle
             warning(wState);
 
             % resets the preview axes image to black
-            vRes = getVideoResolution(obj.objIMAQ);
-            if obj.isRot
-                Img0 = zeros(vRes);    
-            else
-                Img0 = zeros(vRes([2 1]));
+            if obj.hasIMAQ
+                vRes = getVideoResolution(obj.objIMAQ);
+                if obj.isRot
+                    Img0 = zeros(vRes);    
+                else
+                    Img0 = zeros(vRes([2 1]));
+                end
+                set(findobj(obj.hAx,'Type','Image'),'cData',Img0);
             end
-            set(findobj(obj.hAx,'Type','Image'),'cData',Img0);
 
             % determines if the real-time tracking expt is being run
             if obj.isRT
@@ -489,16 +509,21 @@ classdef RunExptObj < handle
     %             obj.forceStopDevices()   
 
                 % determines if the disk logger object still exists
-                if obj.objIMAQ.TriggersExecuted == 1
-                    % if so, then close and delete the movie   
-                    logFile = getLogFile(obj.objIMAQ);
-                    fName = get(logFile,'FileName');
+                if obj.hasIMAQ
+                    if obj.objIMAQ.TriggersExecuted == 1
+                        % if so, then close and delete the movie   
+                        logFile = getLogFile(obj.objIMAQ);
+                        fName = get(logFile,'FileName');
 
-                    % closes the log file and deletes it
-                    wState = warning('off','all');
-                    close(logFile);        
-                    delete(fName)  
-                    warning(wState)
+                        % closes the log file and deletes it
+                        wState = warning('off','all');
+                        close(logFile);                             
+                        
+                        % pauses to left the file close...
+                        pause(1);
+                        delete(fName)  
+                        warning(wState)
+                    end
                 end
             end
 
@@ -531,10 +556,15 @@ classdef RunExptObj < handle
                 % saves the summary file to disk
                 obj.saveSummaryFile()
             else
-                % deletes the video output directory
-                pause(1)
+                % waits until the camera stops logging
+                while islogging(obj.objIMAQ)
+                    pause(0.1)
+                end
+                
+                % deletes the folder
                 vDir = fullfile(obj.iExpt.Info.OutDir,obj.iExpt.Info.Title);
                 deleteAllFiles(vDir,'*.*',1)
+                pause(0.05);
             end
 
             % closes the experiment progress GUI
@@ -569,7 +599,6 @@ classdef RunExptObj < handle
                 % clears the camera callback functions
                 [obj.objIMAQ.StopFcn,obj.objIMAQ.StartFcn] = deal([]);
                 [obj.objIMAQ.TriggerFcn,obj.objIMAQ.TimerFcn] = deal([]);
-                setappdata(obj.hMain,'objIMAQ',obj.objIMAQ)    
                 setappdata(obj.hMain,'iExpt',obj.iExpt0)    
 
                 % if running a RT-tracking experiment (and outputting the 
@@ -673,7 +702,12 @@ classdef RunExptObj < handle
             else
                 % if still open, then update the summary figure
                 pFunc = getappdata(obj.hProg,'pFunc');
-                pFunc(1,'Starting Experiment',1,obj.hProg);     
+                pFunc(1,'Starting Experiment',1,obj.hProg);
+                
+                % initialises the experiment timer (for stimuli only expts)
+                if ~obj.hasIMAQ                                    
+                    obj.tExpt = tic;
+                end
 
                 % otherwise, start the experiment timer
                 obj.isStart = true;
@@ -694,16 +728,21 @@ classdef RunExptObj < handle
             obj.hTimerExpt = timer;
 
             % sets the total number of frames
-            if isempty(obj.iExpt.Video.FPS)
-                % sets the camera frame rate
-                srcObj = getselectedsource(obj.objIMAQ);
-                [fRate,~,iSel] = detCameraFrameRate(srcObj,[]);
-                obj.iExpt.Video.FPS = fRate(iSel);               
-            end
+            if obj.hasIMAQ
+                if isempty(obj.iExpt.Video.FPS)
+                    % sets the camera frame rate
+                    srcObj = getselectedsource(obj.objIMAQ);
+                    [fRate,~,iSel] = detCameraFrameRate(srcObj,[]);
+                    obj.iExpt.Video.FPS = fRate(iSel);               
+                end
 
-            % sets up the object time array
-            obj.FPS = roundP(1/obj.iExpt.Video.FPS,0.001); 
-            obj.setVideoEventArray();
+                % sets up the object time array
+                obj.FPS = roundP(1/obj.iExpt.Video.FPS,0.001); 
+                obj.setVideoEventArray();
+            else
+                % case is a stimuli only experiment
+                obj.FPS = 1;
+            end
 
             % sets the timer object properties
             set(obj.hTimerExpt,'Period',obj.FPS,...
@@ -739,9 +778,9 @@ classdef RunExptObj < handle
             hTimer = obj.hTimerExpt;
             iFrm = get(hTimer,'TasksExecuted') + obj.indOfs;        
 
-            % sets the sub-structs
-            VV = obj.iExpt.Video;
+            % sets the sub-structs            
             tTot = vec2sec(obj.iExpt.Timing.Texp);
+            VV = obj.iExpt.Video;
 
             % checks to see if the user aborted the experiment. if so, then 
             % stop the timer object and exit the function
@@ -756,9 +795,11 @@ classdef RunExptObj < handle
             %         obj.hTimerExpt.StopFcn = [];
                 else
                     % attempts to close the video file
-                    wState = warning('off','all');
-                    close(getLogFile(obj.objIMAQ));
-                    warning(wState)
+                    if obj.hasIMAQ
+                        wState = warning('off','all');
+                        close(getLogFile(obj.objIMAQ));
+                        warning(wState)
+                    end
                 end
 
                 % stops/deletes the experiment timer
@@ -776,16 +817,25 @@ classdef RunExptObj < handle
             % determines if the current frame is an event frame
             if obj.iEvent <= size(obj.tEvent,1)
                 % if not logging, then retrieve the current time
-                if ~islogging(obj.objIMAQ)
-                    if isempty(obj.tExpt)
-                        obj.tNew = 0;
-                    else
-                        obj.tNew = toc(obj.tExpt);
+                if obj.hasIMAQ
+                    if ~islogging(obj.objIMAQ)
+                        if isempty(obj.tExpt)
+                            obj.tNew = 0;
+                        else
+                            try
+                                obj.tNew = toc(obj.tExpt);
+                            catch
+                                obj.tNew = 0;
+                            end
+                        end
                     end
+                    
+                    % determines if there is a new event
+                    hasEvent = obj.tNew >= obj.tEvent{obj.iEvent,1};
                 end
 
                 % determine if a new event has taken place
-                if obj.tNew >= obj.tEvent{obj.iEvent,1}
+                if hasEvent
                     % if so, loop through all the event types triggering 
                     % the devices
                     for i = 1:length(obj.tEvent{obj.iEvent,2})
@@ -822,10 +872,13 @@ classdef RunExptObj < handle
                     % increments the event counter
                     obj.iEvent = obj.iEvent + 1;
                 end
+            else
+                % stimuli only, so flag no event
+                obj.tNew = toc(obj.tExpt);             
             end
 
             % otherwise, update the summary figure (every second)
-            if (mod(iFrm,roundP(obj.iExpt.Video.FPS)) == 1)
+            if mod(iFrm,obj.rfRate) == 0
                 % ---------------------------------- %
                 % --- EXPERIMENT PROGRESS UPDATE --- %
                 % ---------------------------------- %
@@ -833,6 +886,7 @@ classdef RunExptObj < handle
                 if isempty(obj.hProg) || ~ishandle(obj.hProg)
                     % if the figure handle is invalid, then exit function
                     return
+                    
                 else
                     % otherwise, set a copy of the current time
                     tCurr = obj.tNew;        
@@ -842,15 +896,25 @@ classdef RunExptObj < handle
                     pFunc(1,sprintf('Overall Progress (%i%s Complete)',...
                             floor(100*(tCurr/tTot)),'%'),...
                             tCurr/tTot,obj.hProg); 
+                        
+                    % stops the timer if the current experiment time
+                    % exceeds experiment duration (stimuli expt only)
+                    if (tCurr >= tTot) && ~obj.hasIMAQ
+                        stop(obj.hTimerExpt)
+                        obj.finishExptObj()
+                        return
+                    end
                 end
 
                 % if first video has not started, then update the countdown
-                if tCurr < obj.iExpt.Video.Ts(1)
-                    nSec = roundP(obj.iExpt.Video.Ts(1) - tCurr);
-                    wStr = sprintf(['Waiting For Recording To Start ',...
-                                    '(%i Seconds Remain)'],nSec);
-                    pFunc(2,wStr,0,obj.hProg);
-                end    
+                if obj.hasIMAQ
+                    if tCurr < obj.iExpt.Video.Ts(1)
+                        nSec = roundP(obj.iExpt.Video.Ts(1) - tCurr);
+                        wStr = sprintf(['Waiting For Recording To ',...
+                                        'Start (%i Seconds Remain)'],nSec);
+                        pFunc(2,wStr,0,obj.hProg);
+                    end    
+                end
 
                 % ------------------------------ %
                 % --- STIMULUS TIMING UPDATE --- %
@@ -863,10 +927,17 @@ classdef RunExptObj < handle
 
                 % expands the running flags and stimuli start/finish time 
                 % (if the experiment has stimuli)
-                if nInfo > 1                
+                if nInfo > 1 || ~obj.hasIMAQ
+                    % sets the device running flags for the devices
                     isRunning = [isRunning;cell2mat(cellfun(@(x,ok)...
                                 (x.isRunning(ok)'),obj.objDev,...
                                 obj.hasStim,'un',0))];
+                            
+                    % removes the video camera running flag (if stim only)
+                    if ~obj.hasIMAQ
+                        isRunning = isRunning(2:end);
+                    end
+                            
                     tSigSF = cell2mat(cellfun(@(x,ok)...
                             (x.tSigSF(:,ok)),obj.objDev(:)',...
                             obj.hasStim(:)','un',0));
@@ -885,7 +956,8 @@ classdef RunExptObj < handle
                         tCol = 'r';
 
                         % determines the time remaining for the event
-                        tDiffR = floor(tSigSF(2,i-1) - tCurr);
+                        i0 = double(obj.hasIMAQ);
+                        tDiffR = floor(tSigSF(2,i-i0) - tCurr);
                         if tDiffR < 0
                             % if less than zero
                             nwStr = 'N/A';
@@ -898,15 +970,15 @@ classdef RunExptObj < handle
                         [nwStr,tCol] = deal('N/A','r');
 
                     else 
-
                         % otherwise, sets the time until the next event is
                         % supposed to occur
-                        if i == 1
+                        if (i == 1) && obj.hasIMAQ
                             % case is the video recordings
                             tDiffS = roundP(VV.Ts(jStim+1) - tCurr); 
                         else
                             % case is the stimuli events
-                            tDiffS = max(0,roundP(tSigSF(1,i-1) - tCurr));
+                            i0 = double(obj.hasIMAQ);
+                            tDiffS = max(0,roundP(tSigSF(1,i-i0) - tCurr));
                         end
 
                         % set the time to the next event
@@ -954,91 +1026,95 @@ classdef RunExptObj < handle
             % --- repeats the stimuli blocks and adds on the time offset
             function xySigS = repeatStimBlocks(xySigS,sParaEx)
 
-            % calculates the time offset of the block (in seconds)
-            tStimNw = vec2sec(sParaEx.tStim);
-            tOfs = sParaEx.tOfs*getTimeMultiplier('s',sParaEx.tOfsU);
+                % calculates the time offset of the block (in seconds)
+                tStimNw = vec2sec(sParaEx.tStim);
+                tOfs = sParaEx.tOfs*getTimeMultiplier('s',sParaEx.tOfsU);
 
-            % repeats/appends the signals depending on the repetition count 
-            xySigS{1} = arrayfun(@(x)(xySigS{1}+(x-1)*tStimNw + tOfs),...
-                                           (1:sParaEx.nCount)','un',0);
-            xySigS{2} = repmat({xySigS{2}},sParaEx.nCount,1);   
+                % repeats/appends the signals depending on repetition count 
+                xySigS{1} = arrayfun(@(x)(xySigS{1}+...
+                        (x-1)*tStimNw + tOfs),(1:sParaEx.nCount)','un',0);
+                xySigS{2} = repmat({xySigS{2}},sParaEx.nCount,1);   
                                        
             end
 
-        % if there are no experiment stimuli trains, then exit
-        if isempty(obj.sTrain.Ex)
-            return
-        end
-
-        % field retrival
-        chInfo = getappdata(obj.hExptF,'chInfo');
-        sRate = field2cell(obj.iStim.oPara,'sRate',1);
-        sTrainS = obj.sTrain.Ex.sTrain;
-        sParaEx = obj.sTrain.Ex.sParaEx;
-
-        % memory allocation
-        nTrain = length(sTrainS);
-        sRate = sRate(1);
-
-        % calculates the signals for the current train
-        xySigS = arrayfun(@(x)(setupDACSignal...
-                                    (x,chInfo,1/sRate)),sTrainS,'un',0);
-        
-        % calculates the serial device signals (for each device)
-        for i = 1:nTrain
-            if i == 1
-                % memory allocation for the full x/y data values
-                xySigF = cellfun(@(x)(cell(length(x),2)),xySigS{i},'un',0);
+            % if there are no experiment stimuli trains, then exit
+            if isempty(obj.sTrain.Ex)
+                return
             end
 
-            % repeats the signals for each channel within the train
-            for j = 1:length(xySigS{i})
-                for k = 1:size(xySigS{i}{j},1)
-                    if ~isempty(xySigS{i}{j}{k,1})
-                        % repeats the stimuli blocks
-                        xySigSR = repeatStimBlocks(xySigS{i}{j}(k,:),...
-                                                   sParaEx(i));
+            % field retrival
+            chInfo = getappdata(obj.hExptF,'chInfo');
+            sRate = field2cell(obj.iStim.oPara,'sRate',1);
+            sTrainS = obj.sTrain.Ex.sTrain;
+            sParaEx = obj.sTrain.Ex.sParaEx;
 
-                        % appends the new data values onto the full 
-                        % signal arrays
-                        if isempty(xySigF{j}{k,1})
-                            xySigF{j}{k,1} = xySigSR{1}(:);
-                            xySigF{j}{k,2} = xySigSR{2}(:);
-                        else
-                            xySigF{j}{k,1} = [xySigF{j}{k,1};xySigSR{1}(:)];
-                            xySigF{j}{k,2} = [xySigF{j}{k,2};xySigSR{2}(:)];
+            % memory allocation
+            nTrain = length(sTrainS);
+            sRate = sRate(1);
+
+            % calculates the signals for the current train
+            xySigS = arrayfun(@(x)(setupDACSignal...
+                                (x,chInfo,1/sRate)),sTrainS,'un',0);
+
+            % calculates the serial device signals (for each device)
+            for i = 1:nTrain
+                if i == 1
+                    % memory allocation for the full x/y data values
+                    xySigF = cellfun(@(x)...
+                                (cell(length(x),2)),xySigS{i},'un',0);
+                end
+
+                % repeats the signals for each channel within the train
+                for j = 1:length(xySigS{i})
+                    for k = 1:size(xySigS{i}{j},1)
+                        if ~isempty(xySigS{i}{j}{k,1})
+                            % repeats the stimuli blocks
+                            xySigSR = repeatStimBlocks(xySigS{i}{j}(k,:),...
+                                                       sParaEx(i));
+
+                            % appends the new data values onto the full 
+                            % signal arrays
+                            if isempty(xySigF{j}{k,1})
+                                xySigF{j}{k,1} = xySigSR{1}(:);
+                                xySigF{j}{k,2} = xySigSR{2}(:);
+                            else
+                                xySigF{j}{k,1} = ...
+                                            [xySigF{j}{k,1};xySigSR{1}(:)];
+                                xySigF{j}{k,2} = ...
+                                            [xySigF{j}{k,2};xySigSR{2}(:)];
+                            end
                         end
                     end
                 end
             end
-        end
 
-        % memory allocation
-        nDev = length(xySigF);
-        sStr = struct('XY',[],'Ts',[],'Tf',[],'ID',[]);
-        obj.ExptSig = repmat(sStr,nDev,1);
+            % memory allocation
+            nDev = length(xySigF);
+            sStr = struct('XY',[],'Ts',[],'Tf',[],'ID',[]);
+            obj.ExptSig = repmat(sStr,nDev,1);
 
-        % stores the information for each device
-        for i = 1:nDev
-            % sets the signal data
-            obj.ExptSig(i).XY = xySigF{i};
+            % stores the information for each device
+            for i = 1:nDev
+                % sets the signal data
+                obj.ExptSig(i).XY = xySigF{i};
 
-            % retrieves channel ID flags for each stimuli for the device
-            ii = find(~cellfun(@isempty,xySigF{i}(:,1)));
-            iChID = cell2mat(arrayfun(@(x)...
+                % retrieves channel ID flags for each device stimuli 
+                ii = find(~cellfun(@isempty,xySigF{i}(:,1)));
+                iChID = cell2mat(arrayfun(@(x)...
                             (x*ones(length(xySigF{i}{x,1}),1)),ii,'un',0));
 
-            % retrieves the start/end values of each sub-signal and sorts 
-            % them in chronological order
-            tStim = cell2mat(cellfun(@(y)(cell2mat(cellfun(@(x)(x([1,end])'),...
-                             y,'un',0))),xySigF{i}(ii,1),'un',0));
-            [~,iS] = sort(tStim(:,1));    
+                % retrieves the start/end values of each sub-signal and  
+                % sorts them in chronological order
+                tStim = cell2mat(cellfun(@(y)...
+                                (cell2mat(cellfun(@(x)(x([1,end])'),...
+                                 y,'un',0))),xySigF{i}(ii,1),'un',0));
+                [~,iS] = sort(tStim(:,1));    
 
-            % sets the final start/finish times and the ID flags
-            obj.ExptSig(i).Ts = tStim(iS,1);
-            obj.ExptSig(i).Tf = tStim(iS,2);
-            obj.ExptSig(i).ID = [i*ones(length(iChID),1),iChID(iS)];
-        end
+                % sets the final start/finish times and the ID flags
+                obj.ExptSig(i).Ts = tStim(iS,1);
+                obj.ExptSig(i).Tf = tStim(iS,2);
+                obj.ExptSig(i).ID = [i*ones(length(iChID),1),iChID(iS)];
+            end
         
         end
         
@@ -1086,7 +1162,7 @@ classdef RunExptObj < handle
                    
             % initialisations and array dimensioning                
             ID = field2cell(obj.ExptSig,'ID',1);                
-            isD = strcmp(obj.objDACInfo.dType(unique(ID(:,1))),'DAC');        
+            isD = strcmp(obj.objDAQ.dType(unique(ID(:,1))),'DAC');        
 
             % function only applies to serial devices
             if any(~isD)
@@ -1118,14 +1194,17 @@ classdef RunExptObj < handle
             % removes any nan-time video stamps by interpolating the other 
             % time values (only do this if there are any videos that have 
             % been recorded)
-            iVideo = find(cellfun(@(x)(~all(isnan(x))),a.tStampV),1,'last');
-            if ~isempty(iVideo)
-                ii = isnan(a.tStampV{iVideo}); 
-                if any(ii)
-                    jj = find(~ii); ii = find(ii);
-                    if length(jj) > 1
-                        a.tStampV{iVideo}(ii) = interp1(jj,...
+            if obj.hasIMAQ
+                iVideo = find(cellfun(@(x)...
+                                    (~all(isnan(x))),a.tStampV),1,'last');
+                if ~isempty(iVideo)
+                    ii = isnan(a.tStampV{iVideo}); 
+                    if any(ii)
+                        jj = find(~ii); ii = find(ii);
+                        if length(jj) > 1
+                            a.tStampV{iVideo}(ii) = interp1(jj,...
                                a.tStampV{iVideo}(jj),ii,'linear','extrap');
+                        end
                     end
                 end
             end

@@ -220,7 +220,7 @@ switch length(varargin)
         iMov = initMovStruct(iData);
         
         % sets the data structs/flags
-        setappdata(hObject,'objIMAQ',[])
+        setappdata(hObject,'infoObj',[])
         setappdata(hObject,'isTest',false)                
         setappdata(hObject,'iMov',iMov);
         setappdata(hObject,'rtP',[]);
@@ -248,9 +248,9 @@ switch length(varargin)
         setObjVisibility(hMainGUI,'off'); pause(0.01);                
         
         % stops the camera (if running)
-        objIMAQ = getappdata(hMainGUI,'objIMAQ');        
-        if isrunning(objIMAQ)
-            stop(objIMAQ); pause(0.1);
+        infoObj = getappdata(hMainGUI,'infoObj');       
+        if isrunning(infoObj.objIMAQ)
+            stop(infoObj.objIMAQ); pause(0.1);
         end         
         
 %         % retrieves/sets/updates the scale factor
@@ -282,18 +282,18 @@ switch length(varargin)
             iMov = initMovStruct(iData);            
         end       
                 % sets the camera logging mode to memory
-        set(objIMAQ,'LoggingMode','Memory');
+        set(infoObj.objIMAQ,'LoggingMode','Memory');
         while 1
             try
                 % starts the camera                        
-                start(objIMAQ); pause(0.1);
+                start(infoObj.objIMAQ); pause(0.1);
 
                 % updates the frame size string
-                Inw = getsnapshot(objIMAQ);
-                stop(objIMAQ); pause(0.1);
+                Inw = getsnapshot(infoObj.objIMAQ);
+                stop(infoObj.objIMAQ); pause(0.1);
                 break
             catch 
-                stop(objIMAQ); pause(0.1);
+                stop(infoObj.objIMAQ); pause(0.1);
             end
         end
         
@@ -304,9 +304,8 @@ switch length(varargin)
         % sets the image size vector/string
         nwStr = sprintf('%i %s %i',iData.sz(1),char(215),iData.sz(2)); 
         
-        
         % sets the data structs/flags
-        setappdata(hObject,'objIMAQ',getappdata(hMainGUI,'objIMAQ'))
+        setappdata(hObject,'infoObj',infoObj)
         setappdata(hObject,'hMainGUI',hMainGUI)
         setappdata(hObject,'isTest',false)        
         setappdata(hObject,'iData',iData)         
@@ -1037,9 +1036,9 @@ if strcmp(uChoice,'Yes')
         % mode flags
         if ~isTest                    
             % stops the camera and resets the disklogging properties
-            objIMAQ = getappdata(hFig,'objIMAQ');
-            stop(objIMAQ)
-            set(objIMAQ,'LoggingMode','Disk');                        
+            infoObj = getappdata(hFig,'infoObj');
+            stop(infoObj.objIMAQ)
+            set(infoObj.objIMAQ,'LoggingMode','Disk');                        
         end 
         
         % retrieves the full DART program default struct directory
@@ -1797,8 +1796,9 @@ function checkReject_Callback(hObject, eventdata, handles)
 global isCalib
 
 % retrieves the data struct
-iData = getappdata(handles.figFlyTrack,'iData');
-iMov = getappdata(handles.figFlyTrack,'iMov');
+hFig = handles.figFlyTrack;
+iData = getappdata(hFig,'iData');
+iMov = getappdata(hFig,'iMov');
 
 % updates the ok flags within the sub-region data struct
 iMov.ok(iData.cMov) = ~get(hObject,'value');
@@ -1812,8 +1812,8 @@ else
     % updates the movie flag and updates the GUI properties
     setappdata(handles.figFlyTrack,'iMov',iMov);
     if isCalib
-        objIMAQ = getappdata(handles.figFlyTrack,'objIMAQ');    
-        updateVideoFeedImage(handles.figFlyTrack,objIMAQ) 
+        infoObj = getappdata(hFig,'infoObj');    
+        updateVideoFeedImage(hFig,infoObj.objIMAQ) 
         checkShowTube_Callback(handles.checkShowTube, 1, handles)
     else
         setTrackGUIProps(handles,'CheckReject');        
@@ -1887,8 +1887,8 @@ end
 % updates the edit box value and the image axis
 set(hObj,'string','1');
 if isCalib
-    objIMAQ = getappdata(handles.figFlyTrack,'objIMAQ');    
-    updateVideoFeedImage(handles.figFlyTrack,objIMAQ) 
+    infoObj = getappdata(hFig,'infoObj');    
+    updateVideoFeedImage(hFig,infoObj.objIMAQ) 
 else
     dispImage(handles)
 end
@@ -1946,8 +1946,8 @@ end
 % updates the edit box value and the image axis
 set(hObj,'string',num2str(nwVal));
 if isCalib
-    objIMAQ = getappdata(handles.figFlyTrack,'objIMAQ');    
-    updateVideoFeedImage(handles.figFlyTrack,objIMAQ) 
+    infoObj = getappdata(hFig,'infoObj');    
+    updateVideoFeedImage(hFig,infoObj.objIMAQ) 
 else
     dispImage(handles)
 end
@@ -2007,8 +2007,8 @@ if nwVal > 1
     % updates the edit box value and the image axis
     set(hObj,'string',num2str(nwVal-cStp));
     if isCalib
-        objIMAQ = getappdata(handles.figFlyTrack,'objIMAQ');    
-        updateVideoFeedImage(handles.figFlyTrack,objIMAQ) 
+        infoObj = getappdata(hFig,'infoObj');    
+        updateVideoFeedImage(hFig,infoObj.objIMAQ) 
     else
         dispImage(handles)
     end
@@ -2076,8 +2076,8 @@ if nwVal < mxVal
     % updates the edit box value and the image axis
     set(hObj,'string',num2str(nwVal+cStp));
     if isCalib
-        objIMAQ = getappdata(hFig,'objIMAQ');    
-        updateVideoFeedImage(hFig,objIMAQ) 
+        infoObj = getappdata(hFig,'infoObj');    
+        updateVideoFeedImage(hFig,infoObj.objIMAQ) 
     else
         dispImage(handles)
     end
@@ -2365,22 +2365,25 @@ function checkShowMark_Callback(hObject, eventdata, handles)
 % global variables
 global isCalib
 
+% object retrieval
+hFig = handles.figFlyTrack;
+
 % updates the image axes
 if isCalib
     if isfield(handles,'menuRTTrack')
         if ~strcmp(get(handles.menuRTTrack,'checked'),'on')
-            objIMAQ = getappdata(handles.figFlyTrack,'objIMAQ');
-            updateVideoFeedImage(handles.figFlyTrack,objIMAQ)  
+            infoObj = getappdata(hFig,'infoObj');
+            updateVideoFeedImage(hFig,infoObj.objIMAQ)  
         end
     else
         % updates the plot markers
-        iMov = getappdata(handles.figFlyTrack,'iMov');
+        iMov = getappdata(hFig,'iMov');
         updateAllPlotMarkers(handles,iMov,true)
     end
 else
     % initialisations
     isOn = get(hObject,'Value');
-    hMark = getappdata(handles.figFlyTrack,'hMark');
+    hMark = getappdata(hFig,'hMark');
                   
     try
         % attempts to update the marker visibility
@@ -3847,8 +3850,8 @@ global vFrm
 if nargin == 1; isStart = true; end
 
 % determines whether whether the calibration is a test
-isTest = getappdata(handles.figFlyTrack,'isTest');
-objIMAQ = getappdata(handles.figFlyTrack,'objIMAQ');
+hFig = handles.figFlyTrack;
+isTest = getappdata(hFig,'isTest');
 
 % retrieves all the previous video timer objects
 hTimer = timerfind; 
@@ -3878,9 +3881,9 @@ vFrm = 1;
 
 % sets the timer object properties
 set(vidTimer,'Period',0.5,'ExecutionMode','FixedRate',...
-           'TimerFcn',{@timerVideoFcn,handles,objIMAQ,isTest},...
-           'StartFcn',{@startVideoFcn,handles,objIMAQ,isTest},...
-           'StopFcn',{@stopVideoFcn,handles,objIMAQ,isTest},...
+           'TimerFcn',{@timerVideoFcn,handles,infoObj.objIMAQ,isTest},...
+           'StartFcn',{@startVideoFcn,handles,infoObj.objIMAQ,isTest},...
+           'StopFcn',{@stopVideoFcn,handles,infoObj.objIMAQ,isTest},...
            'TasksToExecute',inf);
        
 % includes the timer object within the GUI

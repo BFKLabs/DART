@@ -103,9 +103,9 @@ classdef CalcBG < handle
             
             % stops the camera (if running)
             if obj.isCalib
-                objIMAQ = getappdata(obj.hFig,'objIMAQ');  
-                if strcmp(get(objIMAQ,'Running'),'off')
-                    start(objIMAQ); pause(0.05); 
+                infoObj = getappdata(obj.hFig,'infoObj');  
+                if strcmp(get(infoObj.objIMAQ,'Running'),'off')
+                    start(infoObj.objIMAQ); pause(0.05); 
                 end                
             end
             
@@ -165,9 +165,9 @@ classdef CalcBG < handle
             % update axes with the original image (non-calibrating only)
             if obj.isCalib
                 % stops the camera (if running)
-                objIMAQ = getappdata(obj.hFig,'objIMAQ'); 
-                if strcmp(get(objIMAQ,'Running'),'on')
-                    stop(objIMAQ); pause(0.05); 
+                infoObj = getappdata(obj.hFig,'infoObj'); 
+                if strcmp(get(infoObj.objIMAQ,'Running'),'on')
+                    stop(infoObj.objIMAQ); pause(0.05); 
                 end
                 
             else
@@ -1236,7 +1236,7 @@ classdef CalcBG < handle
             % retrieves the normal image
             if obj.isCalib
                 % retrieves the camera the required number of snapshots
-                objIMAQ = getappdata(obj.hFig,'objIMAQ');    
+                infoObj = getappdata(obj.hFig,'infoObj');    
                 
                 % prompts the user for the video capture information
                 frmPara = CapturePara();
@@ -1245,7 +1245,8 @@ classdef CalcBG < handle
                     return
                 else
                     % reads the snapshots from the camera (stopping after)
-                    Img = getCameraSnapshots(imov,idata,objIMAQ,frmPara);
+                    Img = getCameraSnapshots...
+                                (imov,idata,infoObj.objIMAQ,frmPara);
                     if isempty(Img)
                         % if the user cancelled, then exit the function
                         return

@@ -1,9 +1,9 @@
 % --- sets up the serial device
-function objS = setupSerialDevice(objDACInfo,stType,varargin)
+function objS = setupSerialDevice(objDAQ,stType,varargin)
 
 % sets the serial device handle
-if ~isempty(objDACInfo)
-    hS = objDACInfo.Control;
+if ~isempty(objDAQ)
+    hS = objDAQ.Control;
 
     % re=opens any closed devices
     for i = 1:length(hS)
@@ -14,13 +14,13 @@ if ~isempty(objDACInfo)
                 end
             end        
         else
-            comStr = regexp(objDACInfo.vStrDAC{i},'\(\w+\)','match','once');
+            comStr = regexp(objDAQ.vStrDAQ{i},'\(\w+\)','match','once');
             hS{i} = createSerialDevObject(comStr(2:end-1),1);
         end
     end
     
     % resets the serial object handles
-    objDACInfo.Control = hS;
+    objDAQ.Control = hS;
 end
 
 % sets the dac device properties based on the setup type
@@ -51,14 +51,14 @@ switch stType
         
         % memory allocation 
         nDev = length(iDev);
-        if isempty(objDACInfo)
+        if isempty(objDAQ)
             % case is testing the gui
             sType = getappdata(evalin('caller','hFig'),'devType');
             hS = cell(nDev,1);
         else
             % case is using the gui within DART
             hS = hS(iDev);
-            sType = objDACInfo.sType(iDev);                         
+            sType = objDAQ.sType(iDev);                         
         end
         
         % ensures all signal trains are stored in cells of cells        
@@ -96,7 +96,7 @@ switch stType
 
         % sets the stop/trigger functions for the experiment DAC devices
         XY = field2cell(exObj.ExptSig,'XY');
-        objS = StimObj(hS,XY,dT,stType,sType);
+        objS = StimObj(hS,XY,dT,stType,sType,exObj.hasIMAQ);
         objS.setProgressGUI(exObj.hProg)                 
         
 end

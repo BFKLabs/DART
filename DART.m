@@ -452,11 +452,13 @@ AboutDART();
 function buttonFlyRecord_Callback(hObject, eventdata, handles)
 
 % sets the program defaults directories for the recording program
-setappdata(handles.figDART,'ProgDefNew',get(hObject,'UserData'))
+hFig = handles.figDART;
+iStim0 = initTotalStimParaStruct();
+setappdata(hFig,'ProgDefNew',get(hObject,'UserData'))
 
-% runs the Fly Recording Program and re-updates the default directory struct
+% runs the Adaptor Info gui 
 wState = warning('off','all');
-FlyRecord(handles,getappdata(handles.figDART,'isTest'))
+AdaptorInfo('hFigM',hFig,'iType',1,'iStim',iStim0);
 warning(wState);
 
 % --- Executes on button press in buttonFlyTrack.

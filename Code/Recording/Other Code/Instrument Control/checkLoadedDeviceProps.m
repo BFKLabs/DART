@@ -5,6 +5,7 @@ function ok = checkLoadedDeviceProps(hFig,sTrain)
 % initialisations
 ok = true;
 hMain = getappdata(hFig,'hMain');
+infoObj = getappdata(hFig,'infoObj');
                 
 % check to see if there is a valid experiment stimuli train
 if isempty(sTrain) || isempty(hMain)
@@ -36,12 +37,23 @@ end
 
 % initialisations
 devStr = {'Motor','Opto'};
-objDACInfo = getappdata(hMain,'objDACInfo'); 
-objDACInfo0 = getappdata(hMain,'objDACInfo0'); 
+switch infoObj.exType
+    case 'StimOnly'
+        % case is a stimuli only experiment
+        hFigUpdate = hFig;       
+        
+    otherwise
+        % case is a recording dependent experiment
+        hFigUpdate = hMain; 
+end
+
+% retrieves the current/original data acquisition info objects
+objDAQ = getappdata(hFigUpdate,'objDAQ'); 
+objDAQ0 = getappdata(hFigUpdate,'objDAQ0'); 
 
 % determines the device names/channel counts from the currently loaded
-devType = objDACInfo0.sType;
-nCh = objDACInfo0.nChannel(1:length(devType));
+devType = objDAQ0.sType;
+nCh = objDAQ0.nChannel(1:length(devType));
 nDev = cellfun(@(x)(sum(strContains(devType,x))),devStr);
                     
 % determines the device names/channel counts from the loaded file      
@@ -73,23 +85,26 @@ if updateDev
         ok = false;
         return
     else    
-        % retrieves the new DAC information
-        setappdata(hMain,'objDACInfo',objDACInfo0)
-        [~,objDACInfoNw] = AdaptorInfo(hMain,reqdCFig);        
-        if isempty(objDACInfoNw)
+        % updates the daq object into the gui
+        setappdata(hFigUpdate,'objDAQ',objDAQ0)
+        
+        % retrieves the new DAC information        
+        objDAQNw = AdaptorInfo('hFigM',hMain,'iType',3,...
+                               'reqdConfig',reqdCFig);        
+        if isempty(objDAQNw)
             % if the user cancelled then return a false flag value and exit
-            setappdata(hMain,'objDACInfo',objDACInfo)
+            setappdata(hFigUpdate,'objDAQ',objDAQ)
             ok = false;
             return
         else
             % updates the device information struct into the main GUI
-            setappdata(hMain,'objDACInfo0',objDACInfoNw)        
+            setappdata(hFigUpdate,'objDAQ0',objDAQNw)        
         end
     end
 end
 
 % ensure that the stimuli train order matches the device order
-reduceDevInfoReload(hMain,devTypeL,nChL)
+reduceDevInfoReload(hFigUpdate,devTypeL,nChL)
 
 % --- prompts the user of the configuration requirements and whether they
 %     wish to continue with resets the device configuration
@@ -136,8 +151,7 @@ end
 function reduceDevInfoReload(hMain,devTypeL,nChL)
 
 % initialisations
-objD = getappdata(hMain,'objDACInfo0');
-isTest = getappdata(hMain,'isTest');
+objD = getappdata(hMain,'objDAQ0');
 nDev0 = length(objD.sRate);
 [devTypeD,nChD] = deal(objD.sType(:),objD.nChannel(1:nDev0));
 nChD(isnan(nChD)) = 0;
@@ -158,8 +172,7 @@ for i = 1:length(devTypeL)
         iDevNw = find(strcmp(devTypeD,devTypeL{i}) & ...
                     isAvail & (nChD(:) <= nChL(:)),1,'first');
     end
-       
-        
+               
     if isempty(iDevNw)
         % if there is no match, then exit the function
         return
@@ -170,10 +183,10 @@ for i = 1:length(devTypeL)
 end
 
 % reduces down the information even further
-objD = reduceDevInfo(objD,isTest,iDev);
+objD = reduceDevInfo(objD,iDev);
 
 % updates the device data object 
-setappdata(hMain,'objDACInfo',objD)
+setappdata(hMain,'objDAQ',objD)
 
 % --- sets up the required configuration data struct
 function reqdCFig = setupReqdConfigDataStuct(devTypeL,nChL)

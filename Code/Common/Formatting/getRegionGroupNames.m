@@ -9,12 +9,13 @@ if snTot.iMov.is2D
     % case is a 2D experiment    
     
     % sets the final data/column headers
-    iReg = cellfun(@(x)(unique(x(:,end))),snTot.cID,'un',0);
+    ii = ~cellfun(@isempty,snTot.cID);
+    iReg = cellfun(@(x)(unique(x(:,end))),snTot.cID(ii),'un',0);
     nReg = max(cell2mat(iReg));
     gName = cell(nReg,1);
     
     % sets the group names (for each grouping)
-    for i = 1:length(cID)
+    for i = 1:length(iReg)
         gName(iReg{i}) = gName0(i);
     end
     

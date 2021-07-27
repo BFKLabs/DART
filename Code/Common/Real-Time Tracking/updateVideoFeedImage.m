@@ -12,27 +12,28 @@ global vFrm tLastFeed tFrmMn sFin sStart objDRT
 dispImage = getappdata(hGUI,'dispImage');
 
 % sets the new image frame (if not provided)
-if (nargin == 2)
+if nargin == 2
     % retrieves the frames from the image stack/camera
-    if (isTest)
+    if isTest
         % retrieves the video frame from the image stack 
         iData = getappdata(hGUI,'iData');
         ImgNw = getDispImage(iData,iMov,vFrm,false,handles);          
-        if (isempty(iMov)); iMov.Ibg = []; end
+        if isempty(iMov); iMov.Ibg = []; end
     else
         % retrieves the video object and reads a single frame
-        objIMAQ = getappdata(hGUI,'objIMAQ');
+        infoObj = getappdata(hGUI,'infoObj');
+        objIMAQ = infoObj.objIMAQ;
         ImgNw = getsnapshot(objIMAQ);
     end
 end
 
 % sets the display image to be the frame that was read from file/camera
 [ImgDisp,hGUIH] = deal(ImgNw,guidata(hGUI));
-if (strcmp(get(hGUI,'tag'),'figFlyTrack'))
+if strcmp(get(hGUI,'tag'),'figFlyTrack')
     % if calibrating through the fly track GUI, check to see if the local
     % image flag has been set. if so, then set the display image to be the
     % sub-image
-    if (get(hGUIH.checkLocalView,'value'))
+    if get(hGUIH.checkLocalView,'value')
         ImgDisp = setSubImage(handles,ImgNw);
     end    
     
@@ -43,7 +44,7 @@ end
 % retrieves the position data struct and calculate the new fly
 % locations from the current frame
 hTrack = getappdata(hGUI,'hTrack');
-if (~isempty(hTrack))
+if ~isempty(hTrack)
     % ------------------------------------------- %
     % --- INITIALISATIONS & MEMORY ALLOCATION --- %
     % ------------------------------------------- %        
@@ -70,13 +71,13 @@ if (~isempty(hTrack))
     % ---------------------------------------- %    
 
     % sets the new time stamp for the current frame
-    if (all(isnan(rtD.T)))
+    if all(isnan(rtD.T))
         % if the first time point, then set to the feed time
         [rtD.T(1),rtD.Tofs] = deal(tNewFeed);        
     else
         % otherwise, determined the last valid value
         iTime = find(~isnan(rtD.T),1,'last');
-        if (iTime == nMax)
+        if iTime == nMax
             % if buffer full, then add new point to the end
             rtD.T = [rtD.T(2:end);(rtD.T(end)+dT)];
         else
@@ -94,18 +95,19 @@ if (~isempty(hTrack))
     for iApp = 1:nApp
         % determines the current valid index
         p0{iApp} = cell(getSRCount(iMov,iApp),1);
-        if (iMov.ok(iApp))
+        if iMov.ok(iApp)
             % determines the regions where the flies have not moved
             ii = ~cellfun(@isempty,iMov.IbgE(1:nFlyR(iApp),iApp)) & ...
-                  cellfun(@(x)(~isnan(x(1))),field2cell(iMov.pStats{iApp},'fxPos'));
-            if (any(ii))
+                  cellfun(@(x)(~isnan(x(1))),...
+                  field2cell(iMov.pStats{iApp},'fxPos'));
+            if any(ii)
                 % sets the points where the fly has not moved
                 p0{iApp}(ii) = cellfun(@(x)(x.fxPos(1,2:3)),...
                     num2cell(iMov.pStats{iApp}(ii)),'un',0);
             end
 
             %
-            if ((rtD.ind > 0) && (any(~ii)))
+            if (rtD.ind > 0) && any(~ii)
                 % determines the last valid position index. retrieves
                 % their values and set it into the positional array                       
                 [xOfs,zOfs] = deal(iMov.iC{iApp}(1)-1,iMov.iR{iApp}(1)-1);                
@@ -126,7 +128,7 @@ if (~isempty(hTrack))
     [fPosNew,iMov,isChange] = calcSingleFramePos(iMov,ImgNw,p0);          
 
     % if there was a change in the background, then 
-    if (isChange); setappdata(hGUI,'iMov',iMov); end
+    if isChange; setappdata(hGUI,'iMov',iMov); end
         
     % --------------------------------------- %
     % --- MOVEMENT STATISTIC CALCULATIONS --- %
@@ -137,8 +139,8 @@ if (~isempty(hTrack))
     ii = max(1,rtD.ind-(rtP.trkP.nSpan+1)):rtD.ind;
 
     % updates the real-time tracking experiment struct (if available)
-    if (nargin == 4)
-        if (~isempty(rtPos))
+    if nargin == 4
+        if ~isempty(rtPos)
             varargout{1} = updateRTExptStruct(rtPos,fPosNew,rtD.T(rtD.ind));
         end
     end    
@@ -147,7 +149,7 @@ if (~isempty(hTrack))
     for iApp = find(iMov.ok(:)')
         % updates the index values and fly metric arrays  
         kApp = any(rtP.combG.iGrp == iApp,2);
-        if ((rtD.ind == nMax) && (~isnan(rtD.VP(nMax,kApp))))
+        if (rtD.ind == nMax) && ~isnan(rtD.VP(nMax,kApp))
             % shifts the positional arrays
             for iFly = 1:nFlyR(iApp)
                 rtD.P{iFly,iApp}(jj-1,:) = rtD.P{iFly,iApp}(jj,:);
@@ -163,7 +165,7 @@ if (~isempty(hTrack))
         end
 
         % calculates the individual avg speed (if sufficient points)
-        if (rtD.ind > tFrmMn)                               
+        if rtD.ind > tFrmMn                              
             % calculates the sequence mean speed for each object 
             Tnw = rtD.T(ii)-rtD.T(ii(1));
             rtD.VI{iApp}(rtD.ind,:) = ...
@@ -171,7 +173,7 @@ if (~isempty(hTrack))
         end                                        
 
         % updates the inactivity times/locations
-        if (rtD.ind > 1)                
+        if rtD.ind > 1               
             % only calculate if the new frame is feasible              
             isInact = rtD.VI{iApp}(rtD.ind,:) < rtP.trkP.Vmove;
 
@@ -187,7 +189,7 @@ if (~isempty(hTrack))
     % calculates the population metrics (for the each grouping)
     for iGrp = 1:size(rtP.combG.iGrp,1)
         % updates the index values and fly metric arrays     
-        if ((rtD.ind == nMax) && (~isnan(rtD.VP(nMax,iGrp))))
+        if (rtD.ind == nMax) && ~isnan(rtD.VP(nMax,iGrp))
             rtD.VP(jj-1,iGrp) = rtD.VP(jj,iGrp);  
             rtD.pInact(jj-1,iGrp) = rtD.pInact(jj,iGrp);
             rtD.muInactT(jj-1,iGrp) = rtD.muInactT(jj,iGrp);                               
@@ -198,14 +200,14 @@ if (~isempty(hTrack))
         fok = iMov.flyok(:,jGrp);
         
         % calculates the average speed (if there are sufficient points)
-        if (rtD.ind > tFrmMn)         
+        if rtD.ind > tFrmMn         
             % calculates the population speed
             VI = cell2mat(cellfun(@(x)(x(rtD.ind,:)),rtD.VI(jGrp),'un',0));
             rtD.VP(rtD.ind,iGrp) = mFunc(VI(fok(:)));                                                     
         end
             
         % calculates the mean/proportional inactivity 
-        if (rtD.ind > 1) 
+        if rtD.ind > 1
             Told = rtD.Told(:,jGrp);
             rtD.muInactT(rtD.ind,iGrp) = mFunc(Told(fok));    
             rtD.pInact(rtD.ind,iGrp) = mean(Told(fok)>0);                    
@@ -222,7 +224,7 @@ if (~isempty(hTrack))
     % updates the tracking property fields   
     try
         hTrackH = guidata(hTrack);    
-        if (isTest)
+        if isTest
             set(hTrack,'name',sprintf('%s (Frame %i)',titleStr,vFrm));
         end
     catch
@@ -230,12 +232,12 @@ if (~isempty(hTrack))
     end             
     
     % decrements the cool-down timer (only for channel to tube)
-    if (~isempty(rtD.Tcool))
+    if ~isempty(rtD.Tcool)
         % determines if any of the stimuli devices finished running. if
         % so then update their details within the real-time data struct
-        if (~isempty(sFin))
+        if ~isempty(sFin)
             iDev = find(sFin(:,1) == 1);
-            if (~isempty(iDev))
+            if ~isempty(iDev)
                 for i = reshape(iDev,1,length(iDev))
                     % adds the new data to the stimuli data fields
                     rtD.sData{i}{end,2} = sFin(i,2);
@@ -254,12 +256,12 @@ if (~isempty(hTrack))
 
         % determines which channels are still "cooling down"
         ii = rtD.Tcool > 0;
-        if (any(ii))
+        if any(ii)
             % update the status flags to being cooling down
             rtD.sStatus(ii,2) = 2;                    
 
             % updates the status colours (based on type)
-            if (isC2A)
+            if isC2A
                 % case is population activity
                 popSC = rtP.popSC;
                 mInd = find([popSC.isPtol,popSC.isMtol,popSC.isVtol]);
@@ -277,12 +279,12 @@ if (~isempty(hTrack))
         % determines which channels were previously "cooling down"
         % but are now open 
         jj = (~ii == (rtD.sStatus(:,2) == 2));
-        if (any(jj))
+        if any(jj)
             % resets the status flags to being open
             rtD.sStatus(jj,2) = 0;       
 
             % updates the status colours
-            if (isC2A)
+            if isC2A
                 [iC2A,popSC] = deal(num2cell(rtP.Stim.C2A(jj,:),2),rtP.popSC);
                 mInd = find([popSC.isPtol,popSC.isMtol,popSC.isVtol]);
                 cellfun(@(x)(uFunc(hTrack,'hTotE',{x,mInd},0)),iC2A)                                     
@@ -298,7 +300,7 @@ if (~isempty(hTrack))
     % -------------------------------------------- %
     
     % updates the field properties (only for more than one time point)
-    if (rtD.ind > 1)
+    if rtD.ind > 1
         % updates the data properties (based on the selected metrics)
         hMenuD = getappdata(hTrack,'hMenuD');                                    
         hMenuDC = hMenuD{cellfun(@(x)(strcmp(get(x,'checked'),'on')),hMenuD)};
@@ -321,7 +323,7 @@ if (~isempty(hTrack))
     % ----------------------------- %            
 
     % determines if continuously stimulating
-    if (~isempty(rtP.Stim))        
+    if ~isempty(rtP.Stim)       
         isCont = strcmp(rtP.Stim.sType,'Cont');
         dInfo = getappdata(hGUI,'objDACInfo');
     else
@@ -330,17 +332,17 @@ if (~isempty(hTrack))
 
     % if running a running a full-test/experiment, then determine if a
     % DAC device needs to be triggered
-    if (~isempty(indS))
+    if ~isempty(indS)
         % parameters and other information    
         isC2A = getappdata(hTrack,'isC2A');
         ID = iStim.ID(indS,:);            
         yAmp = rtP.Stim.oPara.vMax;            
         
         % retrieves the object handles
-        if (~isTest); hS = dInfo.Control; end
+        if ~isTest; hS = dInfo.Control; end
         
         % data retrieval and memory allocation            
-        if (isCont)
+        if isCont
             % applies a stimuli to the specified channels. update the
             % status flag to indicate that the channel is running                
             for i = 1:length(indS)         
@@ -348,8 +350,8 @@ if (~isempty(hTrack))
                 rtD.sStatus(indS(i),2) = 1;  
                 
                 % stimulates the specified channel (not for testing)
-                if (~isTest)
-                    if (isDAC)
+                if ~isTest
+                    if isDAC
                         % case is for a DAC device
                         iChG = find(iStim.ID(:,1) == ID(i,1));
                         updateStimChannels(hS{ID(i,1)},yAmp,1,rtD,iChG)                        
@@ -361,23 +363,23 @@ if (~isempty(hTrack))
             end
 
             % updates the tracking GUI fields (channel to app only)
-            if (isC2A); updateTrackingStimFields(hTrack,rtD,indS); end                
+            if isC2A; updateTrackingStimFields(hTrack,rtD,indS); end                
         else
             % if a single stimuli, then set up and run the devices                
             dT = diff(rtP.Stim.sFix.Tsig([1 2]));
             Ys = rtP.Stim.sFix.Ysig;            
             
             % sets up the run flags (DAC device only)
-            if (isDAC); isRun = false(length(objDRT),1); end
+            if isDAC; isRun = false(length(objDRT),1); end
             
             % sets up the serial device for each stimuli event
             objS = cell(length(indS),1);
             for i = 1:length(objS)
                 % updates the status of the device channel 
                 rtD.sStatus(indS(i),2) = 1;                       
-                if (~isTest)
+                if ~isTest
                     % sets up the channel properties for running
-                    if (isDAC)
+                    if isDAC
                         % case is for a DAC device                        
                         Ts = rtP.Stim.sFix.Tsig;
                         iChG = find(iStim.ID(:,1) == iStim.ID(indS(i),1));
@@ -394,15 +396,15 @@ if (~isempty(hTrack))
                     end
                 else
                     % update the stimuli start time (test case only)
-                    if (sStart(indS(i)) == 0)
+                    if sStart(indS(i)) == 0
                         sStart(indS(i)) = rtD.T(rtD.ind);
                     end
                 end                                              
             end
 
             % runs each stimuli event (non-test only)
-            if (~isTest)
-                if (isDAC)
+            if ~isTest
+                if isDAC
                     % case is for a DAC device 
                     runTimedDevice(objDRT(isRun)); 
                 else
@@ -412,27 +414,27 @@ if (~isempty(hTrack))
             end
 
             % updates the tracking GUI fields (channel to app only)
-            if (isC2A); updateTrackingStimFields(hTrack,rtD,indS); end                
+            if isC2A; updateTrackingStimFields(hTrack,rtD,indS); end                
         end
     end
 
     % determines if any of the running channels need to be stopped
-    if (isCont)
+    if isCont
         % initialisations
         ID = iStim.ID;
 
         % determines if any of the running channels no longer need to
         % be stimulated. if this is the case, then stop the stimuli and
         % reset the status flag 
-        if (~isTest); hS = dInfo.Control; end
+        if ~isTest; hS = dInfo.Control; end
         for i = 1:size(rtD.sStatus,1)
-            if (isequal(rtD.sStatus(i,:),[0 1]))
+            if isequal(rtD.sStatus(i,:),[0 1])
                 % resets the channels status
                 rtD.sStatus(i,:) = [0,2];
                 
                 % turns off the channel
-                if (~isTest)
-                    if (isDAC)
+                if ~isTest
+                    if isDAC
                         % case is a DAC device  
                         yAmp = rtP.Stim.oPara.vMax;
                         iChG = find(iStim.ID(:,1) == ID(i,1));
@@ -452,7 +454,7 @@ if (~isempty(hTrack))
         % determines if a device is "running" (for test conditions). if
         % the duration is sufficient, then "stop" the device
         ii = find(sStart > 0);
-        if (~isempty(ii))
+        if ~isempty(ii)
             for jj = reshape(ii,1,length(ii))
                 if (rtD.T(rtD.ind) - sStart(jj)) > rtD.rtP.Stim.Tdur
                     sFin(jj,:) = [1,rtD.T(rtD.ind)];

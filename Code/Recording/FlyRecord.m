@@ -41,6 +41,13 @@ global defVal minISI isAddPath nFrmRT mainProgDir runTrack
 [defVal,minISI,nFrmRT] = deal(5,60,150);
 [isAddPath,runTrack] = deal(false);
 
+% input arguments
+infoObj = varargin{1};
+h = varargin{2};
+
+% updates the progress message
+h.StatusMessage = 'Initialising Recording GUI...';
+
 % seeds the random number generator to the system clock
 rSeed = sum(100*clock);
 try
@@ -49,52 +56,20 @@ catch
     RandStream.setDefaultStream(RandStream('mt19937ar','seed',rSeed));
 end
 
+% initialises the other GUI functions
+setappdata(hObject,'initExptStruct',@initExptStruct)
+setappdata(hObject,'toggleVideoPreview',@toggleVideoPreview_Callback);
+setappdata(hObject,'resetVideoPreviewDim',@resetVideoPreviewDim);
+
 % ----------------------------------------------------------- %
 % --- FIELD INITIALISATIONS & DIRECTORY STRUCTURE SETTING --- %
 % ----------------------------------------------------------- %
 
-% sets the DART object handles, program directory and test flag
-switch length(varargin)
-    case (0) % case is running the full program from the command line
-        [hDART,isTest,mainProgDir] = deal([],false,pwd);
-        
-    case (1) % case is running the test program from the command line
-        [hDART,isTest,mainProgDir] = deal([],true,pwd); 
-        
-    case (2) % case is running the program from DART
-        [hDART,isTest] = deal(varargin{1},varargin{2});           
-        if ~isfield(hDART,'figDART')
-            % displays an error message if DART handle not correct
-            eStr = ['Error! Invalid DART program handle. ',...
-                    'Exiting Recording GUI...'];
-            tStr = 'Recording GUI Initialisation Error';
-            waitfor(errordlg(eStr,tStr,'modal'))
+% sets the input arguments
+hDART = infoObj.hFigM;
 
-            % deletes the GUI and exits the function
-            delete(hObject)
-            return          
-        else
-            % otherwise, make the DART GUI invisible
-            setObjVisibility(hDART.figDART,'off')    
-        end
-    otherwise % case is any other number of input arguments
-        % displays an error message
-        eStr = ['Error! Incorrect number of input arguments. ',...
-                'Exiting Recording GUI...'];
-        waitfor(errordlg(eStr,'Recording GUI Initialisation Error','modal'))
-        
-        % deletes the GUI and exits the function
-        delete(hObject)
-        return        
-end
-
-% sets the program directory and the DART object handles
-setappdata(hObject,'isTest',isTest)
-setappdata(hObject,'hDART',hDART)
-    
-% initialises the other GUI functions
-setappdata(hObject,'toggleVideoPreview',@toggleVideoPreview_Callback);
-setappdata(hObject,'initExptStruct',@initExptStruct)
+% otherwise, make the DART GUI invisible
+setObjVisibility(hDART,'off')    
 
 % ---------------------------------- %
 % --- DATA STRUCT INITIALISATION --- %
@@ -109,56 +84,34 @@ if isempty(hDART)
     iProg = initProgDef(handles); 
 else
     % retrieves the program defaults from DART
-    iProg = getappdata(hDART.figDART,'ProgDefNew');
+    iProg = getappdata(hDART,'ProgDefNew');
 end
 
 % sets the program data struct
 setappdata(hObject,'iPara',iPara);
 setappdata(hObject,'iProg',iProg);
 
-% sets up the stimulus train parameter struct
-iStim = initTotalStimParaStruct();
-
 % ------------------------------------- %
 % --- ADAPTOR OBJECT INITIALISATION --- %
-% ------------------------------------- %
-
-% initialises the experimental adaptors
-[objIMAQ,objDACInfo0,exptType,iStim] = initExptAdaptors(handles,iStim,1);
-if isempty(objIMAQ) && isempty(objDACInfo0) 
-    
-    % if the DART GUI exists, then make it visible again
-    if ~isempty(hDART)
-        setObjVisibility(hDART.figDART,'on')
-    end        
-
-    % if the user cancelled (or there was an error) then exit program
-    delete(hObject)
-    return
-else
-    % if running the test through DART, then load the test image stack 
-    % (in External Files) and set that as the image acquisition object
-    if isTest
-        a = load('TestStack');
-        objIMAQ = a.I;
-    end
-end    
-
-% creates the load bar
-h = ProgressLoadbar('Initialising Recording GUI...');
-
-% sets the data structs into the GUI
-setappdata(hObject,'exptType',exptType)
-setappdata(hObject,'objIMAQ',objIMAQ);
-setappdata(hObject,'iStim',iStim);
-setappdata(hObject,'sTrain',[]);
-setappdata(hObject,'iMov',[]);
-setappdata(hObject,'isRot',false);
+% ------------------------------------- %   
 
 % reduces the device information
-[objDACInfo,objDACInfo0] = reduceDevInfo(objDACInfo0,isTest);
-setappdata(hObject,'objDACInfo0',objDACInfo0);
-setappdata(hObject,'objDACInfo',objDACInfo);
+if infoObj.hasDAQ
+    [objDAQ,objDAQ0] = reduceDevInfo(infoObj.objDAQ);
+else
+    [objDAQ,objDAQ0] = deal([]);
+end
+
+% sets the program directory and the DART object handles
+setappdata(hObject,'iMov',[]);
+setappdata(hObject,'sTrain',[]);
+setappdata(hObject,'hDART',hDART)
+setappdata(hObject,'isRot',false);
+setappdata(hObject,'objDAQ0',objDAQ0);
+setappdata(hObject,'objDAQ',objDAQ);
+setappdata(hObject,'infoObj',infoObj)
+setappdata(hObject,'iStim',infoObj.iStim);
+% setappdata(hObject,'objIMAQ',infoObj.objIMAQ);
 
 % runs the external packages
 runExternPackage(handles,'RTTrack');
@@ -167,43 +120,31 @@ runExternPackage(handles,'RTTrack');
 % --- GUI OBJECT PROPERTY INITIALISATION --- %
 % ------------------------------------------ %
 
+% updates the progress message
+h.StatusMessage = 'Starting Video Preview...';
+
 % updates the DAC adaptor name strings
-iExpt = initExptStruct(exptType,objIMAQ);
+iExpt = initExptStruct(infoObj.exType,infoObj.objIMAQ);
 setappdata(hObject,'iExpt',iExpt);
 
 % initialises the GUI properties
-handles = setRecordGUIProps(handles,'InitGUI',exptType);
+handles = setRecordGUIProps(handles,'InitGUI',infoObj.exType);
 resetVideoPreviewDim(handles)
-    
-% sets the function handles into the GUI
-setappdata(hObject,'resetVideoPreviewDim',@resetVideoPreviewDim);
-
-% ------------------------------------- %
-% --- FINAL HOUSE-KEEPING EXERCISES --- %
-% ------------------------------------- %
 
 % creates the video preview object
 prObj = VideoPreview(hObject,true);
 setappdata(hObject,'prObj',prObj);
 
-% sets the GUI properties based on whether testing or not
-if isTest
-    % initialises using test GUI setup
-    setRecordGUIProps(handles,'InitGUITestOnly');    
-    
-    % runs the loop video
-    if ~isempty(hDART)
-        set(handles.toggleVideoPreview,'value',1)
-        toggleVideoPreview_Callback(handles.toggleVideoPreview,'1',handles);
-    end
-else
-    % initialises using full GUI setup
-    setRecordGUIProps(handles,'InitGUIFullOnly');
-    
-    % turns on the camera for preview
-    set(handles.toggleVideoPreview,'value',1)
-    toggleVideoPreview_Callback(handles.toggleVideoPreview,1,handles);    
-end
+% ------------------------------------- %
+% --- FINAL HOUSE-KEEPING EXERCISES --- %
+% ------------------------------------- %
+
+% initialises using full GUI setup
+setRecordGUIProps(handles,'InitGUIFullOnly');
+
+% turns on the camera for preview
+set(handles.toggleVideoPreview,'value',1)
+toggleVideoPreview_Callback(handles.toggleVideoPreview,1,handles);
 
 % initialises the axes properties
 initAxesProps(handles,[],handles.axesPreview)
@@ -238,59 +179,46 @@ function menuNewExpt_Callback(hObject, eventdata, handles)
 
 % global variables
 hFig = handles.figFlyRecord;
+infoObj0 = getappdata(hFig,'infoObj');
 setObjVisibility(hFig,'off'); pause(0.05);
 
-% retrieves the stimulus parameter struct 
-onIR = false;
-isTest = getappdata(hFig,'isTest');
-iStimNw = initTotalStimParaStruct();
+% retrieves the camera field names and property values
+srcObj = getselectedsource(infoObj0.objIMAQ);
+[~,fldNames] = combineDataStruct(propinfo(srcObj));
+pVal0 = get(srcObj,fldNames);
 
-% retrieves the current camera parameters
-if ~isTest
-    % retrieves the camera source object
-    objIMAQ = getappdata(hFig,'objIMAQ');
-    srcObj = getselectedsource(objIMAQ);
-
-    % retrieves the camera field names and property values
-    [~,fldNames] = combineDataStruct(propinfo(srcObj));
-    pVal0 = get(srcObj,fldNames);
-    
-    % if the IR lights are on, then turn them off
-    onIR = strcmp(get(handles.menuToggleIR,'Checked'),'on');
-    if onIR
-        menuToggleIR_Callback(handles.menuToggleIR, '1', handles)    
-    end
+% if the IR lights are on, then turn them off
+onIR = strcmp(get(handles.menuToggleIR,'Checked'),'on');
+if onIR
+    menuToggleIR_Callback(handles.menuToggleIR, '1', handles)    
 end
 
 % initialises the experimental adaptors
-[objIMAQNw,objDACInfo0,exptType,iStim] = ...
-                    initExptAdaptors(handles,iStimNw,false);
-if isempty(exptType)
+iStimNw = initTotalStimParaStruct();
+infoObj = AdaptorInfo('hFigM',hFig,'iType',2,'iStim',iStimNw);
+if isempty(infoObj)
+    % if the IR was originally on, then turn the light back on
     if onIR
         menuToggleIR_Callback(handles.menuToggleIR, '1', handles)    
     end    
     
+    % makes the gui visible again and exits
     setObjVisibility(hFig,'on')
     return
 else
     % sets the data structs into the GUI
-    if isTest
-        propStr = 'InitGUITestOnly';        
-        objIMAQNw = getappdata(hFig,'objIMAQ');
-    else
-        propStr = 'InitGUIFullOnly';
-        setappdata(hFig,'objIMAQ',objIMAQNw);
-    end      
+    propStr = 'InitGUIFullOnly';
+    setappdata(hFig,'infoObj',infoObj);
         
     % updates the stimuli data struct and expt type
     setappdata(hFig,'iMov',[]);
-    setappdata(hFig,'iStim',iStim);
-    setappdata(hFig,'exptType',exptType)
+    setappdata(hFig,'iStim',infoObj.iStim);
+    setappdata(hFig,'exptType',infoObj.exType)
     
     % reduces the device information
-    [objDACInfo,objDACInfo0] = reduceDevInfo(objDACInfo0,isTest);
-    setappdata(hFig,'objDACInfo0',objDACInfo0);
-    setappdata(hFig,'objDACInfo',objDACInfo);    
+    [objDAQ,objDAQ0] = reduceDevInfo(infoObj.objDAQ);
+    setappdata(hFig,'objDAQ0',objDAQ0);
+    setappdata(hFig,'objDAQ',objDAQ);    
     
     % resets the real-time tracking parameters
     rtObj = getappdata(hFig,'rtObj');
@@ -305,28 +233,26 @@ end
 % ------------------------------------------ %
 
 % initialises the experiment struct
-iExpt = initExptStruct(iStim,objIMAQNw,exptType);
+iExpt = initExptStruct(infoObj.iStim,infoObj.objIMAQ,infoObj.exType);
 setappdata(hFig,'iExpt',iExpt);
 
 % sets the GUI properties based on whether testing or not
-setRecordGUIProps(handles,'InitGUI',exptType);
+setRecordGUIProps(handles,'InitGUI',infoObj.exType);
 setRecordGUIProps(handles,propStr)
 
 % if there is no change in the camera type, then reset the camera to the
 % original parameters (full program only)
-if (~isTest)
-    srcObjNw = getselectedsource(objIMAQNw);
-    [srcInfoNw,fldNamesNw] = combineDataStruct(propinfo(srcObjNw));
-    if (isequal(fldNamesNw,fldNames))
-        % only updates the non read-only fields
-        for i = 1:length(fldNamesNw)
-            if (~strcmp(srcInfoNw(i).ReadOnly,'always'))
-                switch (fldNames{i})
-                    case ('FrameRate')
-                        set(srcObjNw,fldNames{i},srcObjNw.FrameRate)
-                    otherwise
-                        set(srcObjNw,fldNames{i},pVal0{i})
-                end
+srcObjNw = getselectedsource(infoObj.objIMAQ);
+[srcInfoNw,fldNamesNw] = combineDataStruct(propinfo(srcObjNw));
+if isequal(fldNamesNw,fldNames)
+    % only updates the non read-only fields
+    for i = 1:length(fldNamesNw)
+        if (~strcmp(srcInfoNw(i).ReadOnly,'always'))
+            switch (fldNames{i})
+                case ('FrameRate')
+                    set(srcObjNw,fldNames{i},srcObjNw.FrameRate)
+                otherwise
+                    set(srcObjNw,fldNames{i},pVal0{i})
             end
         end
     end
@@ -381,22 +307,19 @@ if strcmp(selection,'Yes')
         menuToggleIR_Callback(handles.menuToggleIR, '1', handles)    
     end    
 
-    % removes the adaptor object handles (full program mode only)
-    if ~getappdata(handles.figFlyRecord,'isTest')
-        % deletes any previous DAC objects in memory
-        try
-            daqObj = daqfind;
-            if (~isempty(daqObj))
-                delete(daqObj)
-            end
+    % deletes any previous DAC objects in memory
+    try
+        daqObj = daqfind;
+        if (~isempty(daqObj))
+            delete(daqObj)
         end
+    end
 
-        % deletes any previous imaq objects in memory
-        try
-            imaqObj = imaqfind;
-            if (~isempty(imaqObj))
-                delete(imaqObj)
-            end
+    % deletes any previous imaq objects in memory
+    try
+        imaqObj = imaqfind;
+        if (~isempty(imaqObj))
+            delete(imaqObj)
         end
     end
 
@@ -452,12 +375,13 @@ VideoPara(handles)
 function menuTestRecord_Callback(hObject, eventdata, handles)
 
 % retrieves the parameter data struct
+hFig = handles.figFlyRecord;
 hToggle = handles.toggleVideoPreview;
-iProg = getappdata(handles.figFlyRecord,'iProg');
-objIMAQ = getappdata(handles.figFlyRecord,'objIMAQ');
+iProg = getappdata(hFig,'iProg');
+infoObj = getappdata(hFig,'infoObj');
 
 % prompts the user for the movie parameters
-vPara = TestMovie(objIMAQ,iProg); 
+vPara = TestMovie(infoObj,iProg); 
 if ~isempty(vPara)    
     % turns off the video preview (if on)    
     if get(hToggle,'Value')
@@ -466,11 +390,11 @@ if ~isempty(vPara)
     end
         
     % retrieves the video recording object
-    setObjEnable(handles.toggleVideoPreview,'off')
+    setObjEnable(hToggle,'off')
     pause(0.05);        
     
     % sets up and runs the test video recording
-    exObj = RunExptObj(handles.figFlyRecord,'Test',vPara); 
+    exObj = RunExptObj(hFig,'Test',vPara); 
     if ~exObj.isOK
         % if there was an issue in setting up the recording object, then
         % exit the function
@@ -521,7 +445,6 @@ function menuSetupExpt_Callback(hObject, eventdata, handles)
 
 % retrieves the test flag
 hFig = handles.figFlyRecord;
-isTest = getappdata(hFig,'isTest');
 
 % disables the file menu items
 setObjEnable(handles.menuFile,'off')
@@ -530,7 +453,7 @@ setObjEnable(handles.menuOpto,'off')
 % setObjEnable(handles.menuRTTrack,'off')
 
 % otherwise, run the full stimuli experimental protocol GUI
-ExptSetup(handles.figFlyRecord,isTest);   
+ExptSetup(handles.figFlyRecord);   
 
 % ------------------------------ %
 % --- CALIBRATION MENU ITEMS --- %
@@ -629,25 +552,27 @@ end
 function resetVideoPreviewDim(handles,rPos)
 
 % retrieves the video object
+hFig = handles.figFlyRecord;
+hAx = handles.axesPreview;
 isReset = exist('rPos','var');
-objIMAQ = getappdata(handles.figFlyRecord,'objIMAQ');
+infoObj = getappdata(hFig,'infoObj');
 
 % determines if the new roi position has been provided
 if isReset
     % if so, then reset the dimensions of the preview
-    set(objIMAQ,'ROIPosition',rPos); 
-    set(handles.axesPreview,'xlim',[0,rPos(3)],'ylim',[0,rPos(4)])
+    set(infoObj.objIMAQ,'ROIPosition',rPos); 
+    set(hAx,'xlim',[0,rPos(3)],'ylim',[0,rPos(4)])
     
     % if the camera preview is off, then reset the axes image
-    prObj = getappdata(handles.figFlyRecord,'prObj');
+    prObj = getappdata(hFig,'prObj');
     if ~prObj.isOn
         % retrieves the image resolution
-        hImage = findall(handles.axesPreview,'type','Image');
+        hImage = findall(hAx,'type','Image');
         set(hImage,'CData',uint8(zeros(rPos([4,3]))));
     end
 else
     % otherwise, retrieve the current roi position    
-    rPos = get(objIMAQ,'ROIPosition');
+    rPos = get(infoObj.objIMAQ,'ROIPosition');
 end
 
 % calculates the change in the GUI height
@@ -656,11 +581,11 @@ pPos = get(handles.panelImg,'Position');
 dH = roundP(pAR*pPos(3) - pPos(4));
 
 % resets the dimensions of the GUI
-resetObjPos(handles.figFlyRecord,'Height',dH,1);
-resetObjPos(handles.figFlyRecord,'Bottom',-dH,1);
+resetObjPos(hFig,'Height',dH,1);
+resetObjPos(hFig,'Bottom',-dH,1);
 resetObjPos(handles.panelVidPreview,'Height',dH,1);
 resetObjPos(handles.panelImg,'Height',dH,1);
-resetObjPos(handles.axesPreview,'Height',dH,1);
+resetObjPos(hAx,'Height',dH,1);
 
 % ---------------------------------------------- %
 % --- OBJECT/STRUCT INITIALISATION FUNCTIONS --- %
@@ -838,11 +763,12 @@ function initGridLines(handles)
 
 % retrieves the parameter struct
 hAx = handles.axesPreview;
-set(handles.figFlyRecord,'CurrentAxes',hAx);
-objIMAQ = getappdata(handles.figFlyRecord,'objIMAQ');
+hFig = handles.figFlyRecord;
+set(hFig,'CurrentAxes',hAx);
+infoObj = getappdata(hFig,'infoObj');
 
 % retrieves the image size
-vRes = get(objIMAQ,'VideoResolution');
+vRes = get(infoObj.objIMAQ,'VideoResolution');
 sz = vRes([2 1]);
 
 % retrieves the greatest common denominator

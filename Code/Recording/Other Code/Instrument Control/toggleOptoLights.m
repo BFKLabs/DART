@@ -5,7 +5,7 @@ if nargin < 4; yAmp = '050'; end
 
 % initialisations
 hFig = handles.figFlyRecord;
-objD = getappdata(hFig,'objDACInfo');
+objDAQ = getappdata(hFig,'objDAQ');
 
 % sets the light properties based on the checked state of the menu item
 if strcmp(get(hObject,'Checked'),'off')
@@ -29,7 +29,7 @@ else
 end
 
 % writes the serial string to each of the devices
-hOpto = objD.Control(strcmp(objD.sType,'Opto'));
+hOpto = objDAQ.Control(strcmp(objDAQ.sType,'Opto'));
 if ~isempty(hOpto)
     for i = 1:length(hOpto)
         try

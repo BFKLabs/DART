@@ -223,11 +223,11 @@ dX = 10;
 hFig = handles.figVideoROI;
 hAx = handles.axesImg;
 hAxM = findall(hFigM,'type','axes');
-objIMAQ = getappdata(hFigM,'objIMAQ');
+infoObj = getappdata(hFigM,'infoObj');
 
 % retrieves the current/full video resolution
-rPos = get(objIMAQ,'ROIPosition');
-vRes = get(objIMAQ,'VideoResolution');
+rPos = get(infoObj.objIMAQ,'ROIPosition');
+vRes = get(infoObj.objIMAQ,'VideoResolution');
 
 % -------------------------------------- %
 % --- OBJECT PROPERTY INITIALISATION --- %
@@ -252,9 +252,9 @@ end
 % ------------------------ %
 
 %
-set(objIMAQ,'ROIPosition',[0,0,vRes])
-Img = getsnapshot(objIMAQ);
-set(objIMAQ,'ROIPosition',rPos)
+set(infoObj.objIMAQ,'ROIPosition',[0,0,vRes])
+Img = getsnapshot(infoObj.objIMAQ);
+set(infoObj.objIMAQ,'ROIPosition',rPos)
 
 % if there is no image object, then create a new one
 image(uint8(Img),'parent',hAx);    

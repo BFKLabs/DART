@@ -93,12 +93,12 @@ switch (typeStr)
             set(handles.textFrameSizeS,'string','N/A')                   
         else
             % retrieves the video resolution
-            objIMAQ = getappdata(handles.figFlyTrack,'objIMAQ');
-            vRes = getVideoResolution(objIMAQ);
+            infoObj = getappdata(handles.figFlyTrack,'infoObj');
+            vRes = getVideoResolution(infoObj.objIMAQ);
             vStr = sprintf('%i %s %i',vRes(2),char(215),vRes(2));
             
             % determines the video framerate
-            objSrc = get(objIMAQ,'Source');
+            objSrc = get(infoObj.objIMAQ,'Source');
             vRate = roundP(str2double(get(objSrc,'FrameRate')));
             
             % sets the field strings

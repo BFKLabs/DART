@@ -3,7 +3,7 @@ function varargout = setRecordGUIProps(handles,typeStr,varargin)
 
 % class object retrieval
 hFig = handles.figFlyRecord;
-objDACInfo = getappdata(hFig,'objDACInfo');
+objDAQ = getappdata(hFig,'objDAQ');
 
 % retrieves the computer host name
 [~,hostname]= system('hostname');
@@ -61,12 +61,12 @@ switch (typeStr)
             
     case 'InitGUIFullOnly' % case is initialiseing the GUI for full case
         
-        if isempty(objDACInfo)
+        if isempty(objDAQ)
             % no devices are loaded
             isOpto = false;
         else
             % determines if any of the loaded devices are opto
-            isOpto = strcmp(objDACInfo.sType,'Opto');
+            isOpto = strcmp(objDAQ.sType,'Opto');
         end
         
         % determines if there are any        
@@ -75,7 +75,7 @@ switch (typeStr)
             sStr = '3,000,000,000,000,050\n';
 
             % loops through each opto device turning on the IR lights
-            hOpto = objDACInfo.Control(isOpto);
+            hOpto = objDAQ.Control(isOpto);
             for i = 1:length(hOpto)
                 % if the device is closed, then open it
                 if strcmp(get(hOpto{i},'Status'),'closed')

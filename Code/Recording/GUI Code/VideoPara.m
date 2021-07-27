@@ -29,16 +29,17 @@ setObjVisibility(hObject,'off'); pause(0.01)
 hMain = varargin{1};
 
 % retrieves the imaq object and the program default struct
-objIMAQ = getappdata(hMain.figFlyRecord,'objIMAQ');
-iProg = getappdata(hMain.figFlyRecord,'iProg');
+hFigM = hMain.figFlyRecord;
+iProg = getappdata(hFigM,'iProg');
+infoObj = getappdata(hFigM,'infoObj');
 
 % sets the input arguments into the sub-GUI
-setappdata(hObject,'objIMAQ',objIMAQ)
+setappdata(hObject,'infoObj',infoObj)
 setappdata(hObject,'iProg',iProg)
 setappdata(hObject,'hMain',hMain)
 
 % disables the real-time tracking menu item (if available)
-if (isfield(hMain,'menuRTTrack'))
+if isfield(hMain,'menuRTTrack')
     setappdata(hObject,'eStr0',get(hMain.menuRTTrack,'enable'));
     setObjEnable(hMain.menuRTTrack,'off')
     
@@ -48,7 +49,7 @@ if (isfield(hMain,'menuRTTrack'))
 end
 
 % intialises the GUI panels and objects
-initGUIObjects(handles,objIMAQ); pause(0.1)
+initGUIObjects(handles,infoObj.objIMAQ); pause(0.1)
 centreFigPosition(hObject);
 
 % Update handles structure
@@ -77,9 +78,10 @@ varargout{1} = handles.output;
 function editCallback(hObject, eventdata, handles)
 
 % retrieves the source object and related information
-objIMAQ = getappdata(handles.figVideoPara,'objIMAQ');
-srcObj = getappdata(handles.figVideoPara,'srcObj');
+hFig = handles.figVideoPara;
 srcInfo = get(hObject,'UserData');
+srcObj = getappdata(hFig,'srcObj');
+infoObj = getappdata(hFig,'infoObj');
 
 % retrieves the previous/new values
 prVal = get(srcObj,srcInfo.Name);
@@ -96,7 +98,7 @@ if chkEditValue(nwVal,srcInfo.ConstraintValue,1)
         setObjEnable(handles.buttonReset,'on')
     catch
         % outputs the error message and resets the to its previous values
-        outputUpdateErrorMsg(objIMAQ,srcInfo)               
+        outputUpdateErrorMsg(infoObj.objIMAQ,srcInfo)               
         set(hObject,'string',num2str(prVal))
     end    
 else
@@ -108,9 +110,10 @@ end
 function popupCallback(hObject, eventdata, handles)
 
 % retrieves the source object and related information
-objIMAQ = getappdata(handles.figVideoPara,'objIMAQ');
-srcObj = getappdata(handles.figVideoPara,'srcObj');
+hFig = handles.figVideoPara;
 srcInfo = get(hObject,'UserData');
+srcObj = getappdata(hFig,'srcObj');
+infoObj = getappdata(hFig,'infoObj');
 
 % retrieves the current property value
 lStr = get(hObject,'String');
@@ -122,7 +125,7 @@ try
     setappdata(handles.figVideoPara,'srcObj',srcObj);
 catch 
     % outputs the error message and resets the to its original values
-    outputUpdateErrorMsg(objIMAQ,srcInfo)       
+    outputUpdateErrorMsg(infoObj.objIMAQ,srcInfo)       
     set(hObject,'Value',find(strcmp(lStr,prVal)))
 end
 
@@ -317,12 +320,7 @@ srcInfo = combineDataStruct(propinfo(sObj));
 % retrieves the field names and the original property values
 fType = field2cell(srcInfo,'Type');
 fConstraint = field2cell(srcInfo,'Constraint');
-fReadOnly = field2cell(srcInfo,'ReadOnly');
-                    
-% COMMENT ME OUT!
-% allPropFlds = setupPropInfoArray(srcInfo);
-% save('VideoProp.mat','allPropFlds')
-% get(objIMAQ)  
+fReadOnly = field2cell(srcInfo,'ReadOnly');                      
 
 % determines which of parameters are manual/auto or numeric parameters
 isEnum = strcmp(fType,'string') & strcmp(fConstraint,'enum') & ...
