@@ -1206,3 +1206,5 @@ catch
     % if that fails, use the older version of the function
     hasPat = ~isempty(strfind(str,pat));
 end
+
+% MOOF SQUISH
