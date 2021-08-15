@@ -8,8 +8,8 @@ classdef VideoPreview < handle
         hImage
         objIMAQ
         
-        % data structs
-        iMov 
+        % other data structs/arrays
+        iMov
         
         % boolean flags
         isRecord
@@ -41,10 +41,10 @@ classdef VideoPreview < handle
             else
                 % case is the preview is run through the tracking GUI
                 obj.hAx = obj.hGUI.imgAxes;                
-            end            
+            end
             
-        end             
-
+        end
+        
         % ------------------------------------------------- %
         % --- TRACKING VIDEO PREVIEW CALLBACK FUNCTIONS --- %
         % ------------------------------------------------- %      
@@ -143,8 +143,8 @@ classdef VideoPreview < handle
                                         'BackgroundColor',[0.93,0.69,0.13])             
             
             % resets the start/stop preview button enabled properties
-            set(obj.hGUI.toggleVideoPreview,'string','Stop Video Preview');            
-                       
+            set(obj.hGUI.toggleVideoPreview,'string','Stop Video Preview');                       
+            
             % initialises the preview image
             if obj.initPreviewImage(@obj.previewRec)
                 % enables the grid marker checkbox

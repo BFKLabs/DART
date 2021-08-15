@@ -308,10 +308,20 @@ try
 end
 triggerconfig(infoObj.objIMAQ,'manual')
 
+% resets any ROI parameters
+resetCameraROIPara(infoObj.objIMAQ)
+
 % sets the camera automatic fields to manual
-try
-    srcObj = getselectedsource(infoObj.objIMAQ);
-    set(srcObj,'FocusMode','manual','ExposureMode','auto');
+srcObj = getselectedsource(infoObj.objIMAQ);
+resetFld = {{'FocusMode','manual'},{'ExposureMode','auto'}};
+
+% resets the flagged camera properties (if they exist)
+for i = 1:length(resetFld)
+    if isprop(srcObj,resetFld{i}{1})
+        try
+            set(srcObj,resetFld{i}{1},resetFld{i}{2})
+        end
+    end
 end
 
 % increases the amount of memory available to the camera

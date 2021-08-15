@@ -313,21 +313,19 @@ classdef AdaptorInfoClass < handle
             % determines the adaptor string names
             adaptStr = imaqInfo.InstalledAdaptors;
             nAdapt = length(adaptStr);
-            isOK = true(nAdapt,1);   
+            isOK = false(nAdapt,1);   
             nInfo = zeros(nAdapt,1);
             [obj.objIMAQDev,obj.sFormat,vStrIMAQ0] = deal(cell(nAdapt,1));
-            
+                  
             % loops through the adaptor strings retrieving the device names
             for i = 1:length(adaptStr)                
-                try
-                    % retrieves the imaq device information
-                    obj.objIMAQDev{i} = imaqhwinfo(adaptStr{i},'DeviceInfo');
-                    
-                    % if there are adaptors of the type attached, then 
-                    % append their information to the data arrays
-                    if isempty(obj.objIMAQDev{i})
-                        isOK(i) = false;
-                    else
+                try 
+                    % attempts to retrieve the device info
+                    devInfo = imaqhwinfo(adaptStr{i});                    
+                    if ~isempty(devInfo.DeviceInfo)
+                        % if available then set the imaq device information                    
+                        obj.objIMAQDev{i} = devInfo.DeviceInfo;
+                        isOK(i) = true;
                         nInfo(i) = length(obj.objIMAQDev{i});
                         vStrIMAQ0{i} = obj.objIMAQDev{i}.DeviceName;
                         obj.sFormat{i} = obj.detFeasCamFormat(i);
@@ -337,6 +335,9 @@ classdef AdaptorInfoClass < handle
                     isOK(i) = false;
                 end
             end
+            
+            % clears the screen
+            clc
             
             % if there are no feasible recording devices, then exit
             if ~any(isOK)

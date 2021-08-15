@@ -557,6 +557,9 @@ hAx = handles.axesPreview;
 isReset = exist('rPos','var');
 infoObj = getappdata(hFig,'infoObj');
 
+% turns off all warnings
+wState = warning('off','all');
+
 % determines if the new roi position has been provided
 if isReset
     % if so, then reset the dimensions of the preview
@@ -586,6 +589,9 @@ resetObjPos(hFig,'Bottom',-dH,1);
 resetObjPos(handles.panelVidPreview,'Height',dH,1);
 resetObjPos(handles.panelImg,'Height',dH,1);
 resetObjPos(hAx,'Height',dH,1);
+
+% resets the warning flags
+warning(wState)
 
 % ---------------------------------------------- %
 % --- OBJECT/STRUCT INITIALISATION FUNCTIONS --- %

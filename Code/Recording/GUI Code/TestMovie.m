@@ -102,9 +102,32 @@ fList = get(hObject,'String');
 
 % updates the experimental data struct 
 FPSnw = str2double(fList(get(hObject,'Value')));
-if (~isnan(FPSnw))
+if ~isnan(FPSnw)
     vPara.FPS = FPSnw;
 end
+
+% updates the movie duration
+setappdata(handles.figTestMovie,'vPara',vPara);
+set(handles.textMovDur,'string',detDurString(vPara));
+
+% --- Executes on slider movement.
+function sliderFrmRate_Callback(hObject, eventdata, handles)
+
+% object retrieval
+hFig = handles.figTestMovie;
+vPara = getappdata(hFig,'vPara');
+infoObj = getappdata(hFig,'infoObj');
+
+% updates the frame rate
+vPara.FPS = round(get(hObject,'Value'),1);
+set(handles.textFrmRate,'String',num2str(vPara.FPS))
+
+% sets the camera frame rate
+srcObj = get(infoObj.objIMAQ,'Source');
+fpsFld = getCameraRatePara(srcObj);
+fpsInfo = propinfo(srcObj,fpsFld);
+fpsLim = fpsInfo.ConstraintValue;
+set(srcObj,fpsFld,max(min(vPara.FPS,fpsLim(2)),fpsLim(1)));
 
 % updates the movie duration
 setappdata(handles.figTestMovie,'vPara',vPara);
@@ -180,21 +203,36 @@ function initVideoParaProps(handles)
 
 % retrieves the experimental duration data struct
 hFig = handles.figTestMovie;
+hPopup = handles.popupFrmRate;
+hSlider = handles.sliderFrmRate;
 vPara = getappdata(hFig,'vPara');
 infoObj = getappdata(hFig,'infoObj');
+isVarFPS = detIfFrameRateVariable(infoObj.objIMAQ);
 
-% retrieves the camera frame rate strings
+% retrieves the camera frame rate
 srcObj = getselectedsource(infoObj.objIMAQ);
 [fRateNum,fRate,iSel] = detCameraFrameRate(srcObj,vPara.FPS);
 
-% updates the video frame rate
-vPara.FPS = fRateNum(iSel);
-setappdata(hFig,'vPara',vPara)    
-      
-% initialises the frame rate listbox
-set(handles.popupFrmRate,'string',fRate,'value',iSel)
-if length(fRateNum) == 1; setObjEnable(handles.popupFrmRate,'off'); end
+% sets the object visibility flags
+setObjVisibility(hPopup,~isVarFPS)
+setObjVisibility(handles.textFrmRate,isVarFPS)
+setObjVisibility(hSlider,isVarFPS)
+
+% sets up the camera frame rate objects
+if isVarFPS
+    % case is a variable frame rate camera
+    initFrameRateSlider(hSlider,srcObj,fRateNum);    
+    sliderFrmRate_Callback(hSlider, [], handles) 
+else
+    % updates the video frame rate
+    vPara.FPS = fRateNum(iSel);
+    setappdata(hFig,'vPara',vPara)    
+
+    % initialises the frame rate listbox
+    set(hPopup,'string',fRate,'value',iSel)
+    if length(fRateNum) == 1; setObjEnable(hPopup,0); end
+    popupFrmRate_Callback(hPopup, [], handles)
+end
 
 % sets up the video compression popup box
 setupVideoCompressionPopup(infoObj.objIMAQ,handles.popupVideoCompression,1)
-popupFrmRate_Callback(handles.popupFrmRate, [], handles)

@@ -1035,8 +1035,8 @@ end
 %%%%    VIDEO RECORDING PARAMETER CALLBACKS    %%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% --- Executes on selection change in popupFrameRate.
-function popupFrameRate_Callback(hObject, eventdata, handles)
+% --- Executes on selection change in popupFrmRate.
+function popupFrmRate_Callback(hObject, eventdata, handles)
 
 % loads the data struct and frame list strings
 hFig = handles.figExptSetup;
@@ -1046,6 +1046,29 @@ fList = get(hObject,'String');
 % updates the experimental data struct 
 iExpt.Video.FPS = str2double(fList(get(hObject,'Value')));
 setappdata(hFig,'iExpt',iExpt);
+
+% updates the recording parameters
+panelRecordType_SelectionChangeFcn([], '1', handles)
+
+% --- Executes on slider movement.
+function sliderFrmRate_Callback(hObject, eventdata, handles)
+
+% object retrieval
+hFig = handles.figExptSetup;
+iExpt = getappdata(hFig,'iExpt');
+infoObj = getappdata(hFig,'infoObj');
+
+% updates the frame rate
+iExpt.Video.FPS = round(get(hObject,'Value'),1);
+set(handles.textFrmRate,'String',num2str(iExpt.Video.FPS))
+setappdata(hFig,'iExpt',iExpt);
+
+% sets the camera frame rate
+srcObj = get(infoObj.objIMAQ,'Source');
+fpsFld = getCameraRatePara(srcObj);
+fpsInfo = propinfo(srcObj,fpsFld);
+fpsLim = fpsInfo.ConstraintValue;
+set(srcObj,fpsFld,max(min(iExpt.Video.FPS,fpsLim(2)),fpsLim(1)));
 
 % updates the recording parameters
 panelRecordType_SelectionChangeFcn([], '1', handles)
@@ -4708,7 +4731,12 @@ isUpdate0 = isUpdate;
 hFig = handles.figExptSetup;
 iExpt = getappdata(hFig,'iExpt');
 infoObj = getappdata(hFig,'infoObj');
+hPopup = handles.popupFrmRate;
+hSlider = handles.sliderFrmRate;
+
+% other initialisations
 Dmax = iExpt.Video.Dmax;
+isVarFPS = detIfFrameRateVariable(infoObj.objIMAQ);
 
 % sets the frame rate box
 if ~infoObj.hasIMAQ
@@ -4719,16 +4747,28 @@ if ~infoObj.hasIMAQ
 else                
     % resorts the frame rate array
     srcObj = getselectedsource(infoObj.objIMAQ);
-    [~,fRate,~] = detCameraFrameRate(srcObj,iExpt.Video.FPS);    
+    [fRateNum,fRate,~] = detCameraFrameRate(srcObj,iExpt.Video.FPS);    
 end
 
 % updates the video data struct
-setappdata(hFig,'iExpt',iExpt)   
+setappdata(hFig,'iExpt',iExpt)
 
-% initialises the frame rate listbox
-iSel = find(strcmp(fRate,num2str(iExpt.Video.FPS)));  
-set(handles.popupFrameRate,'string',fRate,'value',iSel)
-popupFrameRate_Callback(handles.popupFrameRate, [], handles)
+% sets the object visibility flags
+setObjVisibility(hPopup,~isVarFPS)
+setObjVisibility(handles.textFrmRate,isVarFPS)
+setObjVisibility(hSlider,isVarFPS)
+
+% sets up the camera frame rate objects
+if isVarFPS
+    % case is a variable frame rate camera
+    initFrameRateSlider(hSlider,srcObj,fRateNum)
+    sliderFrmRate_Callback(hSlider, [], handles) 
+else
+    % case is a fixed frame rate camera
+    iSel = find(strcmp(fRate,num2str(iExpt.Video.FPS)));  
+    set(hPopup,'string',fRate,'value',iSel)
+    popupFrmRate_Callback(hPopup, [], handles)
+end
 
 % initalises the hour string
 [a,b] = deal(num2cell(0:9)',num2cell(10:12)');
@@ -8261,8 +8301,8 @@ setPanelProps(handles.panelVideoPara,eStr)
 
 if (strcmp(eStr,'on'))
     % disables the frame rate popup menu (if only one selection)
-    fStr = get(handles.popupFrameRate,'string');
-    if length(fStr) == 1; setObjEnable(handles.popupFrameRate,'off'); end
+    fStr = get(handles.popupFrmRate,'string');
+    if length(fStr) == 1; setObjEnable(handles.popupFrmRate,'off'); end
     
     % determines if the video parameters have been set    
     iExpt = getappdata(hFig,'iExpt');

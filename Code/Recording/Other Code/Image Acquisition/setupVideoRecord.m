@@ -584,6 +584,11 @@ else
     logFile.FrameRate = vPara.FPS;
 end
     
+% sets the colormap (for an index avi
+if strcmp(vPara.vCompress,'Indexed AVI')
+    logFile.Colormap = repmat(linspace(0,1,256)',[1,3]);
+end
+
 % sets the other video parameters
 if strcmp(exObj.objIMAQ.LoggingMode,'memory')
     exObj.objIMAQ.UserData = logFile;

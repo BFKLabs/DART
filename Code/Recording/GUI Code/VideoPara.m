@@ -49,7 +49,8 @@ if isfield(hMain,'menuRTTrack')
 end
 
 % intialises the GUI panels and objects
-initGUIObjects(handles,infoObj.objIMAQ); pause(0.1)
+initGUIObjects(handles,infoObj.objIMAQ); 
+pause(0.1)
 centreFigPosition(hObject);
 
 % Update handles structure
@@ -87,12 +88,18 @@ infoObj = getappdata(hFig,'infoObj');
 prVal = get(srcObj,srcInfo.Name);
 nwVal = str2double(get(hObject,'string'));
 
+% retrieves the current parameters constraints values
+srcInfoNw = propinfo(srcObj,srcInfo.Name);
+nwLim = srcInfoNw.ConstraintValue;
+isInt = all(mod(nwLim,1) == 0);
+
 % check to see if the new value is valid
-if chkEditValue(nwVal,srcInfo.ConstraintValue,1)
+if chkEditValue(nwVal,nwLim,isInt)
     try
         % if so, then update the camera parameters
         set(srcObj,srcInfo.Name,nwVal)
         setappdata(handles.figVideoPara,'srcObj',srcObj);
+        specialParaUpdate(handles,srcInfo.Name)
         
         % enables the reset button
         setObjEnable(handles.buttonReset,'on')
@@ -123,14 +130,15 @@ try
     % updates the relevant field in the source object
     set(srcObj,srcInfo.Name,lStr{get(hObject,'value')})
     setappdata(handles.figVideoPara,'srcObj',srcObj);
+    specialParaUpdate(handles,srcInfo.Name)
+
+    % enables the reset button
+    setObjEnable(handles.buttonReset,'on')
 catch 
     % outputs the error message and resets the to its original values
     outputUpdateErrorMsg(infoObj.objIMAQ,srcInfo)       
     set(hObject,'Value',find(strcmp(lStr,prVal)))
 end
-
-% enables the reset button
-setObjEnable(handles.buttonReset,'on')
 
 % --- runs on updating editPauseTime
 function editPauseTime_Callback(hObject, eventdata, handles)
@@ -144,7 +152,7 @@ hMain = getappdata(handles.figVideoPara,'hMain');
 iExpt = getappdata(hMain.figFlyRecord,'iExpt');
 
 % check to see if the new value is valid
-if (chkEditValue(nwVal,nwLim,1))
+if chkEditValue(nwVal,nwLim,1)
     % if so, then update the video pause time (in the main GUI as well)
     iExpt.Timing.Tp = nwVal;
     setappdata(hMain.figFlyRecord,'iExpt',iExpt)
@@ -154,36 +162,6 @@ else
     set(hObject,'string',num2str(iExpt.Timing.Tp));
 end
 
-% --- Executes on button press in checkRotateVideo.
-function checkRotateVideo_Callback(hObject, eventdata, handles)
-
-% retrieves the main gui handles and the experimental data struct
-hMain = getappdata(handles.figVideoPara,'hMain');
-
-% updates the flag/properties based on the main GUI type
-if (isfield(hMain,'figFlyRecord'))
-    % case is running from the recording GUI
-        
-    % updates the rotation flag
-    setappdata(hMain.figFlyRecord,'isRot',get(hObject,'value'))
-    if (get(hMain.toggleVideoPreview,'value'))
-        % if the preview is running, stop/restart the video preview        
-        togglePrev = getappdata(hMain.figFlyRecord,'toggleVideoPreview');
-        
-        set(hMain.toggleVideoPreview,'value',false)
-        togglePrev(hMain.toggleVideoPreview, 1, hMain); pause(0.05);
-        
-        set(hMain.toggleVideoPreview,'value',true)
-        togglePrev(hMain.toggleVideoPreview, 1, hMain); 
-    end
-    
-    % returns focus to the video parameter GUI
-    figure(handles.figVideoPara);    
-else
-    % case is running from the tracking GUI
-    
-end
-    
 % ------------------------------- %
 % --- PROGRAM CONTROL BUTTONS --- %
 % ------------------------------- %
@@ -208,14 +186,15 @@ if (fIndex ~= 0)
     ii = ~cellfun(@(x)(strcmp(x,'Parent')),fldNames);
     
     % determines if the camera properties match that of the loaded file 
-    if (~all(cellfun(@(x)(any(strcmp(vprData.fldNames,x))),fldNames(ii))))
+    if ~all(cellfun(@(x)(any(strcmp(vprData.fldNames,x))),fldNames(ii)))
         % if not, then exit with an error
         eStr = 'Camera presets do not match video properties.';
         waitfor(errordlg(eStr,'Invalid Camera Presets','modal'))
         return
     else
         % resets the parameter struct and updates the parameters
-        setappdata(handles.figVideoPara,'pVal0',[vprData.fldNames,vprData.pVal]);
+        pVal0 = [vprData.fldNames,vprData.pVal];
+        setappdata(handles.figVideoPara,'pVal0',pVal0);
         buttonReset_Callback(handles.buttonReset, eventdata, handles)
     end
 end
@@ -248,43 +227,93 @@ end
 function buttonReset_Callback(hObject, eventdata, handles)
 
 % retrieves the original parameters and the camera source object
-pVal0 = getappdata(handles.figVideoPara,'pVal0');
-srcObj = getappdata(handles.figVideoPara,'srcObj');
+hFig = handles.figVideoPara;
+pVal0 = getappdata(hFig,'pVal0');
+hMain = getappdata(hFig,'hMain');
+srcObj = getappdata(hFig,'srcObj');
+infoObj = getappdata(hFig,'infoObj');
 [srcInfo,fldName] = combineDataStruct(propinfo(srcObj));
+
+% other initialisations
+srcFld = field2cell(srcInfo,'Name');
+[ignoreFld,ignoreName] = getIgnoredFieldInfo(infoObj);
+wState = warning('off','all');
+
+% determines if the video preview is running
+vidOn = get(hMain.toggleVideoPreview,'Value');
+if vidOn
+    % if so, then turn it off
+    toggleFcn = getappdata(hMain.figFlyRecord,'toggleVideoPreview');    
+    set(hMain.toggleVideoPreview,'Value',false)
+    toggleFcn(hMain.toggleVideoPreview,[],hMain);
+end
 
 % retrieves the field names and edit box/popup menu handles
 hEdit = findobj(handles.figVideoPara,'Style','Edit');
 hPopup = findobj(handles.figVideoPara,'Style','PopupMenu');
 
+% resets the camera ROI (if necessary)
+resetCameraROIPara(infoObj.objIMAQ);
+
 % retrieves the parameter struct fieldnames
 for i = 1:length(hEdit)
     % retrieves the editbox user data
     uData = get(hEdit(i),'UserData');
-    if isstruct(uData)
-        indNw = find(strcmp(pVal0(:,1),uData.Name));
+    if isstruct(uData) 
+        isIgnore = strcmp(ignoreName,uData.Name);
+        if any(isIgnore)
+            % if the field is to be ignored, then use the fixed value
+            pValEdit = ignoreFld{isIgnore}{2};
+        else
+            % otherwise, use the stored value
+            indNw = strcmp(pVal0(:,1),uData.Name);
+            pValEdit = pVal0{indNw,2};
+        end
 
         % resets the camera properties and the editbox string
-        set(srcObj,uData.Name,pVal0{indNw,2});
-        set(hEdit(i),'string',num2str(pVal0{indNw,2}))
+        try
+            set(srcObj,uData.Name,pValEdit);
+            set(hEdit(i),'string',num2str(pValEdit))
+        catch
+            pValNw = get(srcObj,uData.Name);
+            set(hEdit(i),'string',num2str(pValNw))
+        end
     end
 end
 
 % retrieves the parameter struct fieldnames
 for i = 1:length(hPopup)
     % retrieves the editbox user data
-    uData = get(hPopup(i),'UserData');
-    indNw = find(strcmp(pVal0(:,1),uData.Name));
+    uData = get(hPopup(i),'UserData');    
+    isIgnore = strcmp(ignoreName,uData.Name);
+    if any(isIgnore)
+        % if the field is to be ignored, then use the fixed value
+        pValPopup = ignoreFld{isIgnore}{2};
+    else
+        % otherwise, use the stored value
+        indNw = strcmp(pVal0(:,1),uData.Name);
+        pValPopup = pVal0{indNw,2};
+    end
     
     % resets the camera properties and the editbox string
-    iSel = find(strcmp(pVal0{indNw,2},uData.ConstraintValue));
+    iSel = find(strcmp(pValPopup,uData.ConstraintValue));
     if ~isempty(iSel)
-        set(srcObj,uData.Name,pVal0{indNw,2});
+        set(srcObj,uData.Name,pValPopup);
         set(hPopup(i),'Value',iSel)
     end
 end
 
 % disables the update/reset buttons
 setObjEnable(hObject,'off')
+
+% turns the video preview back on (if already on)
+if vidOn
+    set(hMain.toggleVideoPreview,'Value',true)    
+    toggleFcn(hMain.toggleVideoPreview,[],hMain);
+end
+
+% reverts the warning back to their original state
+warning(wState)
 
 % --- Executes on button press in buttonClose.
 function buttonClose_Callback(hObject, eventdata, handles)
@@ -306,12 +335,26 @@ delete(handles.figVideoPara)
 % --- initialises the GUI panels and their constituent objects --- %
 function initGUIObjects(handles,objIMAQ)
 
+% creates a loadbar
+h = ProgressLoadbar('Retrieving Camera Properties...');
+
 % sets the horizontal/vertical gap sizes
 [vGap,hGap] = deal(2,10);
 [tWidN,tWidE,pWidN,pWidE] = deal(0);
 [vGapP,hGapP,Wt,Wp] = deal(10,10,150,50);
 pGap = [hGap vGap hGapP vGapP];
 hFig = handles.figVideoPara;
+hMain = getappdata(hFig,'hMain');
+
+% determines if the video preview is running
+vidOn = get(hMain.toggleVideoPreview,'Value');
+if vidOn
+    % if so, then turn it off
+    toggleFcn = getappdata(hMain.figFlyRecord,'toggleVideoPreview');
+    
+    set(hMain.toggleVideoPreview,'Value',false)
+    toggleFcn(hMain.toggleVideoPreview,[],hMain);
+end
 
 % retrieves the source object handle and the property information
 sObj = getselectedsource(objIMAQ);
@@ -398,15 +441,15 @@ if (dWidT > 0) || (dWidP > 0)
     
     % resets the button dimensions
     hBut = hBut(argSort(posBut(:,1)));
-    for i = 1:length(hBut)        
+    for i = 1:length(hBut)
         resetObjPos(hBut(i),'Width',dWidBut,1);
         resetObjPos(hBut(i),'Left',(i-1)*dWidBut,1);
     end
     
     % resets the other object dimensions
     resetObjPos(hFig,'Width',2*dWid,1)
-    resetObjPos(handles.panelOtherPara,'Width',2*dWid,1);
-    resetObjPos(handles.checkRotateVideo,'Left',dWid,1);
+    resetObjPos(handles.panelOtherPara,'Width',2*dWid,1); 
+    resetObjPos(handles.editPauseTime,'Width',dWid,1); 
 end
 
 % sets the source object handle and original parameter values into the GUI
@@ -418,6 +461,15 @@ setappdata(hFig,'pVal0',[pStr(:),get(sObj,pStr(:))'])
 hMain = getappdata(hFig,'hMain');
 iExpt = getappdata(hMain.figFlyRecord,'iExpt');
 set(handles.editPauseTime,'string',num2str(iExpt.Timing.Tp))
+
+% turns the video preview back on (if already on)
+if vidOn
+    set(hMain.toggleVideoPreview,'Value',true)    
+    toggleFcn(hMain.toggleVideoPreview,[],hMain);
+end
+
+% deletes the loadbar
+try; delete(h); end
 
 % --- 
 function resetPanelObjPos(hPanel,pStyle,dWidT,dWidP)
@@ -454,8 +506,27 @@ function [tWidMx,pWidMx] = initNumericPanel(handles,srcInfoNum,srcObj,pGap)
 pLim = arrayfun(@(x)(double(x.ConstraintValue)),srcInfoNum(:),'un',0);
 isFeas = diff(cell2mat(pLim),[],2) > 0;
 srcInfoNum = srcInfoNum(isFeas);
+
+% other initialisations
+hFig = handles.figVideoPara;
+srcFld = field2cell(srcInfoNum,'Name');
+ignoreFld = getIgnoredFieldInfo(getappdata(hFig,'infoObj'));
+
+% removes any of the fields which have been flagged for being ignored
+isKeep = true(length(srcFld),1);
+for i = 1:length(ignoreFld)
+    % determines if the ignored field exists in the camera properties
+    isKeepNw = ~strcmp(srcFld,ignoreFld{i}{1});
+    isKeep = isKeep & isKeepNw;
+    
+    % if the field exists, then set the fixed field value
+    if any(~isKeepNw)
+        set(srcObj,ignoreFld{i}{1},ignoreFld{i}{2});
+    end
+end
                     
 % determines the number of parameters to setup
+srcInfoNum = srcInfoNum(isKeep);
 nPara = length(srcInfoNum);
 hFig = handles.figVideoPara;
 [hGap,vGap,vGapP] = deal(pGap(1),pGap(2),pGap(4));
@@ -548,10 +619,28 @@ function [tWidMx,pWidMx] = ...
 cVal = field2cell(srcInfoENum,'ConstraintValue'); 
 isMulti = cellfun(@length,cVal) > 1;
 srcInfoENum = srcInfoENum(isMulti);
+
+% other initialisations
+hFig = handles.figVideoPara;
+srcFld = field2cell(srcInfoENum,'Name');
+ignoreFld = getIgnoredFieldInfo(getappdata(hFig,'infoObj'));
+
+% removes any of the fields which have been flagged for being ignored
+isKeep = true(length(srcFld),1);
+for i = 1:length(ignoreFld)
+    % determines if the ignored field exists in the camera properties
+    isKeepNw = ~strcmp(srcFld,ignoreFld{i}{1});
+    isKeep = isKeep & isKeepNw;
+    
+    % if the field exists, then set the fixed field value
+    if any(~isKeepNw)
+        set(srcObj,ignoreFld{i}{1},ignoreFld{i}{2});
+    end
+end
                 
 % determines the number of parameters to setup
+srcInfoENum = srcInfoENum(isKeep);
 nPara = length(srcInfoENum);
-hFig = handles.figVideoPara;
 [hGap,vGap,vGapP] = deal(pGap(1),6,pGap(4));
 [nRow,nCol,pOfs,tWidMx,pWidMx,dpWid] = deal(ceil(nPara/2),2,15,0,0,5);
 
@@ -674,3 +763,36 @@ else
                     'operating correctly and try again.'],srcInfo.Name);
     waitfor(errordlg(eStr,'Video Property Update Error','modal'))        
 end
+
+% --- post parameter update function (for a specific set of parameters)
+function specialParaUpdate(handles,pName)
+
+% memory allocation
+hFig = handles.figVideoPara;
+hMain = getappdata(hFig,'hMain');
+infoObj = getappdata(hFig,'infoObj');
+
+% updates the video ROI (depending on camera type)
+switch get(infoObj.objIMAQ,'Name')
+    case 'Allied Vision 1800 U-501m NIR'
+        switch pName
+            case {'AutoModeRegionOffsetX','AutoModeRegionOffsetY',...
+                  'AutoModeRegionWidth','AutoModeRegionHeight'}
+                resetCameraROI(hMain,infoObj.objIMAQ)
+        end
+end
+             
+
+% --- retrieves the ignored field information
+function [ignoreFld,ignoreName] = getIgnoredFieldInfo(infoObj)
+
+% initialisations
+pROI = get(infoObj.objIMAQ,'ROIPosition');
+
+% sets the ignored field information/names
+ignoreFld = {{'AcquisitionFrameRateEnable','True'},...
+             {'AutoModeRegionOffsetX',pROI(1)},...
+             {'AutoModeRegionOffsetY',pROI(2)},...
+             {'AutoModeRegionWidth',pROI(3)},...
+             {'AutoModeRegionHeight',pROI(4)}};
+ignoreName = cellfun(@(x)(x{1}),ignoreFld,'un',0);

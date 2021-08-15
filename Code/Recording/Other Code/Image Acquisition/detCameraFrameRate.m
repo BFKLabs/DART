@@ -13,6 +13,14 @@ if strContains(objIMAQ.Name,'UV155xLE-C')
 elseif isprop(srcObj,'AcquisitionFrameRate')
     % case is the Allied Vision Camera
     [fRate,iSel] = deal(srcObj.AcquisitionFrameRate,1);
+%     fRateM = mod(fRate,1);
+%     if min(fRateM,1-fRateM) < 0.01
+%         fRate = roundP(fRate);
+%     else
+%         fRate = floor(fRate);
+%     end
+    
+    % sets the string version of the frame rate
     cFPSS = num2str(roundP(fRate,0.001));
     
 else
