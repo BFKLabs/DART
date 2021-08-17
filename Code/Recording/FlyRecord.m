@@ -380,6 +380,12 @@ hToggle = handles.toggleVideoPreview;
 iProg = getappdata(hFig,'iProg');
 infoObj = getappdata(hFig,'infoObj');
 
+% disables the preview (if currently on)
+if get(handles.toggleVideoPreview,'Value')
+    set(handles.toggleVideoPreview,'Value',0)
+    toggleVideoPreview_Callback(handles.toggleVideoPreview, [], handles)
+end
+
 % prompts the user for the movie parameters
 vPara = TestMovie(infoObj,iProg); 
 if ~isempty(vPara)    
@@ -562,6 +568,10 @@ wState = warning('off','all');
 
 % determines if the new roi position has been provided
 if isReset
+    % inverts the bottom location of the ROI
+    vRes = get(infoObj.objIMAQ,'VideoResolution');
+    rPos(2) = vRes(2) - sum(rPos([2,4]));
+    
     % if so, then reset the dimensions of the preview
     set(infoObj.objIMAQ,'ROIPosition',rPos); 
     set(hAx,'xlim',[0,rPos(3)],'ylim',[0,rPos(4)])
