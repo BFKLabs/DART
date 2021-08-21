@@ -335,7 +335,7 @@ classdef DirectDetect < handle
             
         end
         
-        % --- 
+        % --- matches the residual blobs
         function [iGrpF,IRmx] = matchResBlobs(obj,IRT)
             
             % parameters
@@ -898,6 +898,7 @@ classdef DirectDetect < handle
             del = getSubImageDim(obj);
             Ngrp = cellfun(@(x)(size(x,1)),fPos0{1}(:));
             fok = obj.iMov.flyok(:,iApp);
+            xiF = (1:nFly)';
             
             % sets up the blob binary masks for each frame
             Bmap = cellfun(@(x)(createLabelMap(x,sz)),iGrp,'un',0);
@@ -913,7 +914,7 @@ classdef DirectDetect < handle
             Ns = [0;cumsum(Ngrp)];
             indG0 = cell2mat(arrayfun(@(x,y,z)...
                 ([z*ones(y-x+1,1),(x:y)']),...
-                Ns(1:end-1)+1,Ns(2:end),(1:nFly)','un',0));
+                Ns(1:end-1)+1,Ns(2:end),xiF,'un',0));
             
             % ----------------------------------- %
             % --- SUB-REGION IMAGE RETRIEVAL  --- %
@@ -957,15 +958,14 @@ classdef DirectDetect < handle
                 % sets up the sub-region to global index array
                 indG = [indG0(isOK,1),(1:size(fPosR,1))'];
                 indSR = arrayfun(@(x)...
-                    (indG(indG(:,1)==x,2)),(1:nFly)','un',0);
+                    (indG(indG(:,1)==x,2)),xiF,'un',0);
                 iBestPr = indG(:,2);
                 
                 % keep loopings until the best index array doesn't change
                 while 1
                     % calculates the new optimal grouping
                     [iBest,indC0] = obj.detLikelyStaticBlobsSR...
-                        (IsubR,IsubMx,indSR,iBestPr);
-                    
+                                            (IsubR,IsubMx,indSR,iBestPr);                    
                     if isInit
                         % flag that the loop is no longer initialising
                         isInit = false;
@@ -981,6 +981,21 @@ classdef DirectDetect < handle
                     % resets the best index array
                     iBestPr = iBest;
                 end
+                
+                % determines the global indices of the best blob for each
+                % sub-region/row
+                ii = ~isnan(iBest);
+                jj = num2cell(ones(nFly,1)); 
+                jj(ii) = cellfun(@(x,y)(find(x==y)),...
+                            indSR(ii),num2cell(indG(iBest(ii),2)),'un',0);
+                                    
+                % sets the final (optimal) sub-region index array
+                indSRF = arrayfun(@(x)(indG0(indG0(:,1)==x,2)),xiF,'un',0);                
+                
+                % resets the binary removal masks
+                kk = ~cellfun(@isempty,indSRF);
+                indF = cellfun(@(x,y)(x(y)),indSRF(kk),jj(kk));                
+                Brmv = cellfun(@(x)(setGroup(x(indF),sz)),iGrp,'un',0);
                 
             else
                 % there are no valid static flies in this region
@@ -1307,10 +1322,8 @@ classdef DirectDetect < handle
                 
                 % clears the array
                 clear IappF
-            end
-            
-            % clears up any missing
-            if obj.vPh == 2
+                
+            elseif obj.vPh == 2
                 % calculates the average image stack across all frames
                 for iApp = find(obj.iMov.ok(:)')
                     % sets
@@ -1321,14 +1334,14 @@ classdef DirectDetect < handle
                     
                     % calculates the final background estimate
                     obj.iMov.IbgT{iApp} = ...
-                        interpImageGaps(calcImageStackFcn(IappF));
+                            interpImageGaps(calcImageStackFcn(IappF));
                 end
             end
             
         end
         
         % --- calculates the residual tolerances for each sub-region
-        function pBG = calcResTolerance(obj,Iapp,iApp)            
+        function pBG = calcResTolerance(obj,Iapp,iApp)
             
             % initialisations
             Brmv = obj.BrmvBG{iApp};
@@ -1779,7 +1792,7 @@ classdef DirectDetect < handle
             
         end
         
-        % ---
+        % --- sets up the progress bar object
         function setProgBarSubN(obj,hProgN)
             
             obj.hProgN = hProgN;

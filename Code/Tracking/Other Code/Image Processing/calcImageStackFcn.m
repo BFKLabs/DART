@@ -24,6 +24,9 @@ switch fType
         Ifcn = prctile(Ic,varargin{1},3);
         
     case 'var'
-        Ifcn = nanvar(Ic,[],3);        
+        Ifcn = nanvar(Ic,[],3);   
+        
+    case 'sum'
+        Ifcn = nansum(Ic,3);           
         
 end

@@ -268,7 +268,7 @@ classdef CalcBG < handle
         % -------------------------------------------- %      
         
         % --- callback function for mouse movement
-        function manualTrackMotion(obj, hObject, eventdata)
+        function manualTrackMotion(obj, ~, ~)
             
             % only update the marker colours if over the axes
             if obj.isOverImageAxes()
@@ -370,31 +370,7 @@ classdef CalcBG < handle
             setObjEnable(obj.hGUI.buttonRemoveManual,'off')
             setObjEnable(obj.hGUI.buttonUpdateManual,~isempty(Data));
             
-        end                 
-        
-        % --- calculates the coordinates of the axes with respect to the 
-        %     global coordinate position system
-        function calcAxesGlobalCoords(obj)
-
-            % retrieves the position vectors for each associated panel/axes
-            pPosP = get(obj.hGUI.panelImg,'Position');
-            axPos = get(obj.hGUI.imgAxes,'Position');
-
-            % calculates the global x/y coordinates of the
-            obj.axPosX = (pPosP(1)+axPos(1)) + [0,axPos(3)];
-            obj.axPosY = (pPosP(2)+axPos(2)) + [0,axPos(4)];  
-        
-        end
-
-        % --- determines if the mouse pointer is over the image axes
-        function isOver = isOverImageAxes(obj)
-        
-            % determines if the mouse position is over the image axes
-            mPos = get(obj.hFig,'CurrentPoint');
-            isOver = prod(sign(obj.axPosX - mPos(1))) == -1 && ...
-                     prod(sign(obj.axPosY - mPos(2))) == -1;        
-        
-        end
+        end                         
                  
         % ----------------------------------------- %
         % ---- OBJECT INITIALISATION FUNCTIONS ---- %
@@ -1089,35 +1065,7 @@ classdef CalcBG < handle
                 setObjVisibility(hGitP,~openBG)
             end
             
-        end                                              
-        
-        % --- equalises the image to the background image
-        function IL = equaliseImg(obj,IL,iPhase)
-            
-            % initialisations
-            pTolEq = 5;
-            [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);
-            
-            % determines which images are outside of tolerance
-            ILmn = cellfun(@(x)(nanmean(x(:))),IL(:));
-            if isfield(obj.iMov,'ImnF')
-                ImnF = obj.iMov.ImnF{iPhase};
-            elseif isfield(obj.iMov,'Ibg')
-                ImnF = cellfun(@(x)(nanmean(x(:))),obj.iMov.Ibg{iPhase}');
-            else
-                return
-            end                        
-            
-            % equalises the histograms (if required)
-            isOK = abs(ImnF - ILmn) < pTolEq;
-            if any(~isOK)
-                for i = find(~isOK(:)')
-                    Iref = uint8(obj.ImgFrm{iPhase}(iR{i},iC{i}));
-                    IL{i} = double(imhistmatch(uint8(IL{i}),Iref));
-                end
-            end
-            
-        end
+        end                                                      
         
         % --------------------------------- %
         % ---- MENU CALLBACK FUNCTIONS ---- %
@@ -1146,7 +1094,7 @@ classdef CalcBG < handle
         end
 
         % -----------------------------------------------------------------
-        function menuPara(obj, hObject, eventdata)
+        function menuPara(obj, ~, ~)
 
             % runs the reflection glare parameter GUI
             bgPnw = BackgroundPara(obj.iMov);
@@ -1158,7 +1106,7 @@ classdef CalcBG < handle
         end   
         
         % -----------------------------------------------------------------
-        function menuCloseEstBG(obj, hObject, eventdata)
+        function menuCloseEstBG(obj, ~, ~)
 
             % updates the change flag wrt the ok flags
             obj.iMov.ddD = [];
@@ -1187,7 +1135,7 @@ classdef CalcBG < handle
         % ---------------------------------------- %       
 
         % --- Executes on button press in buttonUpdateStack.
-        function buttonUpdateStack(obj, hObject, eventdata)
+        function buttonUpdateStack(obj, ~, ~)
 
             % retrieves the program data struct and the image stack size
             idata = obj.iData;
@@ -1336,7 +1284,7 @@ classdef CalcBG < handle
         % --------------------------------- %
         
         % --- Executes on button press in frmFirstPhase.
-        function frmFirstPhase(obj, hObject, eventdata)
+        function frmFirstPhase(obj, ~, ~)
 
             % updates the parameter struct
             obj.iPara.cPhase = 1;
@@ -1350,7 +1298,7 @@ classdef CalcBG < handle
         end
 
         % --- Executes on button press in frmPrevPhase.
-        function frmPrevPhase(obj, hObject, eventdata)
+        function frmPrevPhase(obj, ~, ~)
 
             % retrieves the parameter and sub-image data structs
             if obj.iPara.cPhase == 1; return; end
@@ -1367,7 +1315,7 @@ classdef CalcBG < handle
         end
 
         % --- Executes on button press in frmNextPhase.
-        function frmNextPhase(obj, hObject, eventdata)
+        function frmNextPhase(obj, ~, ~)
 
             % retrieves the parameter and sub-image data structs
             if (obj.iPara.cPhase == length(obj.sImgS)); return; end
@@ -1384,7 +1332,7 @@ classdef CalcBG < handle
         end
 
         % --- Executes on button press in frmLastPhase.
-        function frmLastPhase(obj, hObject, eventdata)
+        function frmLastPhase(obj, ~, ~)
 
             % updates the parameter struct
             obj.iPara.cPhase = length(obj.sImgS);
@@ -1398,7 +1346,7 @@ classdef CalcBG < handle
         end
 
         % --- Executes on updating in editPhaseCount.
-        function editPhaseCount(obj, hObject, eventdata)
+        function editPhaseCount(obj, hObject, ~)
 
             % checks if the new value is valid
             nwVal = str2double(get(hObject,'string'));
@@ -1423,7 +1371,7 @@ classdef CalcBG < handle
         % --------------------------------- %
 
         % --- Executes on button press in frmFirstFrame.
-        function frmFirstFrame(obj, hObject, eventdata)
+        function frmFirstFrame(obj, ~, ~)
 
             % updates the parameter struct
             obj.iPara.cFrm = 1;
@@ -1435,7 +1383,7 @@ classdef CalcBG < handle
         end
 
         % --- Executes on button press in frmPrevFrame.
-        function frmPrevFrame(obj, hObject, eventdata)
+        function frmPrevFrame(obj, ~, ~)
 
             % retrieves the parameter and sub-image data structs
             if obj.iPara.cFrm == 1; return; end
@@ -1450,7 +1398,7 @@ classdef CalcBG < handle
         end
 
         % --- Executes on button press in frmNextFrame.
-        function frmNextFrame(obj, hObject, eventdata)
+        function frmNextFrame(obj, ~, ~)
 
             % retrieves the parameter and sub-image data structs
             if obj.iPara.cFrm == length(obj.sImgS(obj.iPara.cPhase).iFrm)
@@ -1467,7 +1415,7 @@ classdef CalcBG < handle
         end
 
         % --- Executes on button press in frmLastFrame.
-        function frmLastFrame(obj, hObject, eventdata)
+        function frmLastFrame(obj, ~, ~)
 
             % updates the parameter struct
             obj.iPara.cFrm = length(obj.sImgS(obj.iPara.cPhase).iFrm);
@@ -1479,7 +1427,7 @@ classdef CalcBG < handle
         end
 
         % --- Executes on updating in editFrameCount.
-        function editFrameCount(obj, hObject, eventdata)
+        function editFrameCount(obj, hObject, ~)
 
             % checks if the new value is valid
             nwVal = str2double(get(hObject,'string'));
@@ -1503,7 +1451,7 @@ classdef CalcBG < handle
         % ---------------------------- %
 
         % --- Executes when selected object is changed in panelImageType.
-        function panelImageType(obj, hObject, eventdata)
+        function panelImageType(obj, ~, ~)
 
             % updates the main image axes
             obj.updateMainImage()
@@ -1515,7 +1463,7 @@ classdef CalcBG < handle
         % ------------------------------------ %        
         
         % --- Executes on button press in checkTubeRegions.
-        function checkTubeRegions(obj, hObject, eventdata)
+        function checkTubeRegions(obj, hObject, ~)
 
             % retrieves the tube show check callback function
             hgui = obj.hGUI;
@@ -1527,7 +1475,7 @@ classdef CalcBG < handle
         end
         
         % --- Executes on button press in checkFlyMarkers.
-        function checkFlyMarkers(obj, hObject, eventdata)
+        function checkFlyMarkers(obj, hObject, ~)
 
             % if the video phase info is not set then exit
             if ~isfield(obj.iMov,'vPhase')
@@ -1555,7 +1503,7 @@ classdef CalcBG < handle
         % ---------------------------------- %
         
         % --- Executes on button press in buttonUpdateEst.
-        function buttonUpdateEst(obj, hObject, eventdata)
+        function buttonUpdateEst(obj, ~, ~)
 
             % global variables
             global wOfs1
@@ -1568,10 +1516,6 @@ classdef CalcBG < handle
             if obj.isMultiTrack
                 wStr{end} = 'Background Image Estimation';
             end
-            
-            % otherwise, retrieve the program data struct
-            hgui = obj.hGUI;
-            imov = obj.iMov;
 
             % retrieves the sub-image data struct
             if initDetectCompleted(obj.iMov)
@@ -1587,15 +1531,18 @@ classdef CalcBG < handle
                     % if the user cancelled, then exit
                     return
                 end
-            end
+            end            
             
             % deselects the tube tracking regions
-            set(hgui.checkTubeRegions,'value',0);
-            obj.checkTubeRegions(hgui.checkTubeRegions,[])
+            set(obj.hGUI.checkTubeRegions,'value',0);
+            obj.checkTubeRegions(obj.hGUI.checkTubeRegions,[])
 
             % deselects the fly markers
-            set(hgui.checkFlyMarkers,'value',0);
-            obj.checkFlyMarkers(hgui.checkFlyMarkers,[])
+            set(obj.hGUI.checkFlyMarkers,'value',0);
+            obj.checkFlyMarkers(obj.hGUI.checkFlyMarkers,[])
+            
+            % disables the manual tracking panel
+            obj.setManualObjProps('off')             
             
             % sets the image array (if calibrating only)
             if obj.isCalib
@@ -1643,10 +1590,10 @@ classdef CalcBG < handle
                 obj.fPos = cellfun(@(x)(x.fPosG),obj.trkObj.fObj,'un',0);
 
                 % updates the list box properties but clears the list
-                setPanelProps(hgui.panelManualSelect,'on')   
-                set(hgui.tableFlyUpdate,'Data',[])
-                setObjEnable(hgui.buttonRemoveManual,'off')
-                setObjEnable(hgui.buttonUpdateManual,'off')                
+                setPanelProps(obj.hGUI.panelManualSelect,'on')   
+                set(obj.hGUI.tableFlyUpdate,'Data',[])
+                setObjEnable(obj.hGUI.buttonRemoveManual,'off')
+                setObjEnable(obj.hGUI.buttonUpdateManual,'off')                
                 
                 % deletes any all potential object markers 
                 if ~isempty(obj.hMarkAll)
@@ -1655,7 +1602,7 @@ classdef CalcBG < handle
                 end    
 
                 % sets the fly markers to be visible
-                set(setObjEnable(hgui.checkFlyMarkers,'on'),'value',1) 
+                set(setObjEnable(obj.hGUI.checkFlyMarkers,'on'),'value',1) 
                 
                 % enables the manual tracking panel
                 obj.setManualObjProps('on')                
@@ -1665,7 +1612,7 @@ classdef CalcBG < handle
                 
                 % updates the object markers
                 obj.updateObjMarkers()
-                obj.checkFlyMarkers(hgui.checkFlyMarkers, [])
+                obj.checkFlyMarkers(obj.hGUI.checkFlyMarkers, [])
                 obj.updateMainImage()
                 
                 % updates the frame/phase object properties
@@ -1684,7 +1631,7 @@ classdef CalcBG < handle
         % ----------------------------------- %
         
         % --- Executes when selected cell(s) is changed in tableFlyUpdate.
-        function tableFlyUpdate(obj, hObject, eventdata)
+        function tableFlyUpdate(obj, ~, eventdata)
 
             % enables the remove update button
             if isempty(eventdata.Indices)
@@ -1718,27 +1665,24 @@ classdef CalcBG < handle
         end
         
         % --- Executes on button press in buttonAddManual.
-        function buttonAddManual(obj, hObject, eventdata)
-
-            % object handles
-            hgui = obj.hGUI;
+        function buttonAddManual(obj, hObject, ~)
             
             % if the tubes are on, then remove them
-            if get(hgui.checkTubeRegions,'value')
-                set(hgui.checkTubeRegions,'value',false)
-                obj.checkTubeRegions(hgui.checkTubeRegions, [])
+            if get(obj.hGUI.checkTubeRegions,'value')
+                set(obj.hGUI.checkTubeRegions,'value',false)
+                obj.checkTubeRegions(obj.hGUI.checkTubeRegions, [])
             end  
             
             % if the tubes are on, then remove them
-            if get(hgui.checkFlyMarkers,'value')
-                set(hgui.checkFlyMarkers,'value',false)
-                obj.checkFlyMarkers(hgui.checkFlyMarkers, [])
+            if get(obj.hGUI.checkFlyMarkers,'value')
+                set(obj.hGUI.checkFlyMarkers,'value',false)
+                obj.checkFlyMarkers(obj.hGUI.checkFlyMarkers, [])
             end               
             
-            % sets the mouse motion callback function
-            [obj.iCloseR,obj.iCloseSR,obj.iCloseF] = deal(-1);
+            % sets the mouse motion callback function            
             setObjEnable(hObject,'off')
             setObjEnable(obj.hGUI.buttonUpdateManual,'off')
+            [obj.iCloseR,obj.iCloseSR,obj.iCloseF] = deal(-1);
             
             % sets up the manual marker map
             [obj.Imap,obj.pMn] = setupManualMarkMap(obj);   
@@ -1753,10 +1697,7 @@ classdef CalcBG < handle
         end
         
         % --- Executes on button press in buttonRemoveManual.
-        function buttonRemoveManual(obj, hObject, eventdata)
-
-            % retrieves the selected list value and the list string
-            hgui = obj.hGUI;
+        function buttonRemoveManual(obj, hObject, ~)
             
             % retrieves the java object handle (if not set)
             if isempty(obj.jTable)
@@ -1790,10 +1731,214 @@ classdef CalcBG < handle
         end
         
         % --- Executes on button press in buttonUpdateManual.
-        function buttonUpdateManual(obj, hObject, eventdata)
+        function buttonUpdateManual(obj, ~, ~)
+            
+            % initialisations
+            xiC = [1,3,4];
+            
+            % determines the unique combinations
+            [~,~,iC] = unique(obj.uList(:,xiC),'rows');
+            iRowM = arrayfun(@(x)(find(iC==x)),1:max(iC),'un',0)';                                    
+            
+            % --------------------------------- %
+            % --- BACKGROUND RE-CALCULATION --- %
+            % --------------------------------- %        
+            
+            % creates the loadbar
+            h = ProgressLoadbar('Updating Manual Resegmentation...');
+            
+            % calculates the background and position for each of the 
+            % manually reset points
+            for i = 1:length(iRowM)                
+                obj.setupManualBGImages(iRowM{i});
+            end       
+            
+            % loops through each phase/region interpolating any gaps
+            for iPh = 1:obj.trkObj.nPhase
+                for iApp = 1:obj.trkObj.nApp
+                    % determines if there are any gaps in the images
+                    if obj.trkObj.fObj{iPh}.iPh == 1                    
+                        % case is for the low-variance phases
+                        IBG = obj.trkObj.fObj{iPh}.IBG{iApp};
+                        if any(isnan(IBG(:)))
+                            % if there are gaps, then interpolate them
+                            obj.trkObj.fObj{iPh}.IBG{iApp} = ...
+                                                    interpImageGaps(IBG);
+                        end
+                    else
+                        % case is for the high-variance phases
+                        IBG = obj.iMov.IbgT{iApp};
+                        if any(isnan(IBG(:)))
+                            % if there are gaps, then interpolate them
+                            obj.iMov.IbgT{iApp} = interpImageGaps(IBG);
+                        end
+                    end
+                end
+            end
+            
+            % sets the feasible phases (low and high variance only)
+            fObj = obj.trkObj.fObj;
+            okP = obj.iMov.vPhase < 3;       
+            obj.iMov.Ibg = cell(length(fObj),1);
+            obj.iMov.Ibg(okP) = cellfun(@(x)(x.IBG),fObj(okP),'un',0);            
+            
+            % ------------------------------- %
+            % --- POSITION RE-CALCULATION --- %
+            % ------------------------------- %              
+            
+            % recalculates the manually selected points over all frames
+            for i = 1:length(iRowM)
+                obj.recalcManualPos(iRowM{i});
+            end
+            
+            % ------------------------------- %
+            % --- HOUSE-KEEPING EXERCISES --- %
+            % ------------------------------- %
+            
+            % enables the manual tracking panel
+            obj.setManualObjProps('off')
+            
+            % clears the table and disables the manual reselection panel
+            set(obj.hGUI.tableFlyUpdate,'Data',[]);
+            setPanelProps(obj.hGUI.panelManualSelect,0);
+            
+            % updates the main image
+            obj.updateMainImage()
+            
+            % deselects the fly markers
+            set(obj.hGUI.checkFlyMarkers,'value',1);
+            obj.checkFlyMarkers(obj.hGUI.checkFlyMarkers,[])            
+            
+            % closes the loadbar
+            delete(h);
+            
+        end
+
+        % -------------------------------------- %
+        % --- MANUAL RECALCULATION FUNCTIONS --- %
+        % -------------------------------------- %   
+        
+        % --- recalculates the background/position from the manually 
+        %     selected points
+        function setupManualBGImages(obj,iRowM)
+            
+            % initialisations
+            uListG = obj.uList(iRowM,:);            
+            iFrm = sort(uListG(:,2));
+            [iPh,iApp,iTube] = deal(uListG(1,1),uListG(1,3),uListG(1,4));
+            
+            % retrieves the local images
+            iRT = obj.iMov.iRT{iApp}{iTube};
+            iRL = obj.iMov.iR{iApp}(iRT);
+            [iCL,fObj] = deal(obj.iMov.iC{iApp},obj.trkObj.fObj{iPh}); 
+            
+            % sets the local images
+            if fObj.iPh == 1
+                % case is for a low-variance phase
+                IL = cellfun(@(x)(x(iRL,iCL)),fObj.Img(iFrm),'un',0);
+            else
+                % case is for a high-variance phase
+                IL = cellfun(@(x)(x(iRL,iCL)),fObj.ImgMd(iFrm),'un',0);
+            end
+            
+            % sets the marker x/y coordinates            
+            hM = obj.hManual(iRowM);
+            [xOfs,yOfs,szL] = deal(iCL(1)-1,iRL(1)-1,size(IL{1}));            
+            xD = cell2mat(arrayfun(@(h)(get(h,'xData')-xOfs),hM,'un',0));
+            yD = cell2mat(arrayfun(@(h)(get(h,'yData')-yOfs),hM,'un',0));
+            
+            % sets the 
+            Bopt = deal(fObj.Bopt);
+            [pOfs,szB] = deal((size(Bopt)-1)/2,size(Bopt));
+            
+            % removes the background image
+            for i = 1:length(IL)
+                % sets the row/column indices
+                iRB = (yD(i)-pOfs(1)) + ((1:szB(1))'-1);
+                iCB = (xD(i)-pOfs(2)) + ((1:szB(2))'-1);
+                
+                % determines the feasible row/column indices
+                iiR = (iRB > 0) & (iRB <= szL(1));
+                iiC = (iCB > 0) & (iCB <= szL(2));
+                
+                % removes the region containing the fly location      
+                IL{i}(iRB(iiR),iCB(iiC)) = ...
+                            ~Bopt(iiR,iiC).*IL{i}(iRB(iiR),iCB(iiC));  
+                IL{i}(IL{i}==0) = NaN;
+            end      
+            
+            % resets the background image using the new images
+            if fObj.iPh == 1
+                % case is for a low variance phase
+                fObj.IBG{iApp}(iRT,:) = calcImageStackFcn(IL);
+                obj.trkObj.fObj{iPh} = fObj;       
+            else
+                % case is for a high variance phase
+                obj.iMov.IbgT{iApp}(iRT,:) = calcImageStackFcn(IL);
+            end
+            
+        end        
+        
+        % --- recalculates the positions from the manually selected point
+        function recalcManualPos(obj,iRowM)
+           
+            % initialisations
+            pW = 0.75;
+            uListG = obj.uList(iRowM,:);            
+            iFrm = sort(uListG(:,2));
+            [iPh,iApp,iTube] = deal(uListG(1,1),uListG(1,3),uListG(1,4));            
+            
+            % retrieves the local images
+            iRT = obj.iMov.iRT{iApp}{iTube};
+            iRL = obj.iMov.iR{iApp}(iRT);
+            [iCL,fObj] = deal(obj.iMov.iC{iApp},obj.trkObj.fObj{iPh});                    
+            
+            % sets up the residual image stack based on the 
+            if obj.iMov.vPhase(iPh) == 1
+                IBG = fObj.IBG{iApp}(iRT,:);
+                IL = cellfun(@(x)(x(iRL,iCL)),fObj.Img,'un',0);
+            else
+                IBG = obj.iMov.IbgT{iApp}(iRT,:);
+                IL = cellfun(@(x)(x(iRL,iCL)),fObj.ImgMd,'un',0);
+            end
+            
+            % sets the marker x/y coordinates     
+            hM = obj.hManual(iRowM);
+            [xOfs,yOfs,szL] = deal(iCL(1)-1,iRL(1)-1,size(IL{1}));
+            xD = cell2mat(arrayfun(@(h)(get(h,'xData')-xOfs),hM,'un',0));
+            yD = cell2mat(arrayfun(@(h)(get(h,'yData')-yOfs),hM,'un',0));            
+            idxD = num2cell(sub2ind(szL,roundP(yD),roundP(xD)));
+            
+            % calculates the residual image stack and local maxima
+            IRL = cellfun(@(x)(imfilter(IBG-x,fObj.hG)),IL,'un',0);                        
+            Bmax = cellfun(@(x)(imregionalmax(x)),IRL,'un',0);
             
             % 
+            pTolRL = pW*mean(cellfun(@(x,y)(x(y)),IRL(iFrm),idxD));
+            BRLmax = cellfun(@(x,y)(x.*(y>pTolRL)),Bmax,IRL,'un',0);
+            iGrpMx = cellfun(@(x)(find(x(:))),BRLmax,'un',0);
             
+            % sets the final position vector
+            for i = 1:length(IRL)
+                % recalculates the positions for each 
+                switch length(iGrpMx{i})
+                    case 0
+                        % case is there is no solution
+                        iGrpF = argMax(IRL{i}(:));
+                        
+                    case 1
+                        % case is there is a unique solution
+                        iGrpF = iGrpMx{i};
+                        
+                    otherwise
+                        % case is there are unique solutions
+                        iGrpF = iGrpMx{i}(argMax(IRL{i}(iGrpMx{i})));
+                end
+                
+                % updates the positions
+                [yP,xP] = ind2sub(szL,iGrpF);
+                obj.fPos{iPh}{iApp,i}(iTube,:) = [(xP+xOfs),(yP+yOfs)];
+            end
             
         end
         
@@ -1973,14 +2118,58 @@ classdef CalcBG < handle
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %
         % ------------------------------- %
+        
+        % --- calculates the coordinates of the axes with respect to the 
+        %     global coordinate position system
+        function calcAxesGlobalCoords(obj)
 
-        % --- function that initialises the parameter struct
-        function iPara = initParaStruct(obj,nFrm)
+            % retrieves the position vectors for each associated panel/axes
+            pPosP = get(obj.hGUI.panelImg,'Position');
+            axPos = get(obj.hGUI.imgAxes,'Position');
 
-            % initialises the parameter struct
-            iPara = struct('nFrm',nFrm,'nFrm0',nFrm,'cFrm',1,'cPhase',1);
-
+            % calculates the global x/y coordinates of the
+            obj.axPosX = (pPosP(1)+axPos(1)) + [0,axPos(3)];
+            obj.axPosY = (pPosP(2)+axPos(2)) + [0,axPos(4)];  
+        
         end
+
+        % --- determines if the mouse pointer is over the image axes
+        function isOver = isOverImageAxes(obj)
+        
+            % determines if the mouse position is over the image axes
+            mPos = get(obj.hFig,'CurrentPoint');
+            isOver = prod(sign(obj.axPosX - mPos(1))) == -1 && ...
+                     prod(sign(obj.axPosY - mPos(2))) == -1;        
+        
+        end        
+
+        % --- equalises the image to the background image
+        function IL = equaliseImg(obj,IL,iPhase)
+            
+            % initialisations
+            pTolEq = 5;
+            [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);
+            
+            % determines which images are outside of tolerance
+            ILmn = cellfun(@(x)(nanmean(x(:))),IL(:));
+            if isfield(obj.iMov,'ImnF')
+                ImnF = obj.iMov.ImnF{iPhase};
+            elseif isfield(obj.iMov,'Ibg')
+                ImnF = cellfun(@(x)(nanmean(x(:))),obj.iMov.Ibg{iPhase}');
+            else
+                return
+            end                        
+            
+            % equalises the histograms (if required)
+            isOK = abs(ImnF - ILmn) < pTolEq;
+            if any(~isOK)
+                for i = find(~isOK(:)')
+                    Iref = uint8(obj.ImgFrm{iPhase}(iR{i},iC{i}));
+                    IL{i} = double(imhistmatch(uint8(IL{i}),Iref));
+                end
+            end
+            
+        end                
 
         % --- creates the general background image
         function createGenBGImage(obj,iSel)
@@ -2007,7 +2196,6 @@ classdef CalcBG < handle
         % --- sets the manual object enabled properties
         function setManualObjProps(obj,state)
             
-            % 
             switch lower(state)
                 case 'on'
                     % enables the panel (ignores the remove/update buttons)
@@ -2016,7 +2204,10 @@ classdef CalcBG < handle
                     setPanelProps(obj.hGUI.panelManualSelect,'on',hIgnore)
                     
                 case 'off'
-                    % disables the entire panel
+                    % clears the stored list
+                    obj.uList = [];
+                    
+                    % disables the entire panel                    
                     setPanelProps(obj.hGUI.panelManualSelect,'off')
                     
                     % clears the marker table
@@ -2052,6 +2243,18 @@ classdef CalcBG < handle
             setObjEnable(obj.hGUI.buttonUpdateManual,~isempty(obj.uList))
 
         end                              
+    
+    end
+    
+    methods (Static)
+    
+        % --- function that initialises the parameter struct
+        function iPara = initParaStruct(nFrm)
+
+            % initialises the parameter struct
+            iPara = struct('nFrm',nFrm,'nFrm0',nFrm,'cFrm',1,'cPhase',1);
+
+        end        
     
     end
 end

@@ -236,7 +236,7 @@ classdef SingleTrackInit < SingleTrack
             
         end
         
-        % --- 
+        % --- sets up the tracking image stack/index array
         function [iFrm,Img] = getTrackingImages(obj)
             
             % 
