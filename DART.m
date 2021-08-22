@@ -20,7 +20,7 @@ else
     try
         gui_mainfcn(gui_State, varargin{:});
     catch ME
-        if (strcmp(ME.message,'Session Already Running'))
+        if strcmp(ME.message,'Session Already Running')
             set(findall(0,'tag','figDART'),'visible','off')            
         else
             rethrow(ME)
@@ -69,12 +69,14 @@ A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
 try
     guidata(hObject, handles);
 catch ME        
-    if (strcmp(ME.message,'H must be the handle to a figure or figure descendent.'))
+    eStrComp = 'H must be the handle to a figure or figure descendent.';
+    if strcmp(ME.message,eStrComp)
         % user is automatically updating program so exit
         return
     else
         % otherwise, output error to screen
-        eStr = 'Critical error! Unable to open DART program interface. Quitting...';
+        eStr = ['Critical error! Unable to open DART program ',...
+                'interface. Quitting...'];
         waitfor(errordlg(eStr))
         return
     end
@@ -89,7 +91,7 @@ set(handles.tableDummy,'Data',Data)
 drawnow; pause(0.05);
 
 % keep trying to determine the object dimensions until they are found
-while (1)
+while true
     try
         % attempts to retrieve the object dimensions
         [H0T,HWT,W0T] = getTableDimensions(findjobj(handles.tableDummy));
@@ -214,7 +216,7 @@ copyAllFiles(fullfile(fileDir,'DART Main'),progDir);
 
 % copies the analysis function to the designated
 [funcDir,isAnalyDir] = deal(fullfile(tmpDir,'Analysis Functions'),true);
-if (exist(funcDir,'dir'))
+if exist(funcDir,'dir')
     copyAllFiles(funcDir,ProgDef.Analysis.DirFunc);
 end
 
@@ -263,8 +265,8 @@ global isFull mainProgDir
 ProgDef = getappdata(handles.figDART,'ProgDef');
 
 % sets the default search directory
-if (isfield(ProgDef,'DART'))
-    if (exist(ProgDef.DART.DirVer,'dir'))
+if isfield(ProgDef,'DART')
+    if exist(ProgDef.DART.DirVer,'dir')
         dDir = ProgDef.DART.DirVer;
     else
         dDir = pwd;
@@ -319,7 +321,7 @@ for i = 1:length(sName)
     nwDir{i} = fullfile(tmpDir,sName{i}); mkdir(nwDir{i});
     
     % copies over the directories     
-    switch (sName{i})
+    switch sName{i}
         case ('DART Main') 
             % case is the main DART directory
             copyAllFiles(mainProgDir,nwDir{i},1);            
@@ -377,11 +379,11 @@ function menuSetupProg_Callback(hObject, eventdata, handles)
 % prompts the user if they really want to update the program
 uChoice = questdlg('Are you sure you want to setup a new version of DART?',...
                    'Setup New DART Version','Yes','No','Yes');
-if (~strcmp(uChoice,'Yes'))
+if ~strcmp(uChoice,'Yes')
     % if not, then exit the function
     return
 else
-    if (~setupDARTProgram())
+    if ~setupDARTProgram()
         eStr = 'New DART setup was unsuccessful';
         waitfor(errordlg(eStr,'Unsuccessful DART Setup','modal'));
     end
@@ -434,7 +436,7 @@ ProgDef = getappdata(handles.figDART,'ProgDef');
 [ProgDef.DART,isSave] = ProgParaDART(handles.figDART,ProgDef.DART);
 
 % updates the data struct if the user specifed changes
-if (isSave)
+if isSave
     setappdata(handles.figDART,'ProgDef',ProgDef);
 end
 
@@ -579,7 +581,7 @@ function ProgDef = setupAllDefaultDir(defFile)
 global mainProgDir
 
 % if the default file hasn't been provided, then set the default name
-if (nargin == 0)
+if nargin == 0
     defFile = fullfile(mainProgDir,'Para Files','ProgDef.mat'); 
 end
 
@@ -729,7 +731,7 @@ for i = 1:length(fldNames)
         dirDetails{j} = eval(sprintf('nwStr.fldData.%s;',fldNamesS{j}));
         
         % check to see if the directory exists
-        if (~exist(nwDir,'dir'))
+        if ~exist(nwDir,'dir')
             % if the directory does not exist, then clear the directory
             % field and flag a warning
             ok(j) = false;
@@ -747,7 +749,7 @@ for i = 1:length(fldNames)
         waitfor(warndlg(wStr,'Program Default File Missing'));
                     
         % runs the program default directory reset GUI         
-        switch (fldNames{i})
+        switch fldNames{i}
             case ('DART') % case is the Recording default directories
                 nwStr = ProgParaDART(hDART,nwStr,1);            
             case ('Recording') % case is the Recording default directories
@@ -898,7 +900,7 @@ if ~isdeployed
     hFigTag = get(hFig0,'tag');         
     ii = ~(strcmp(hFigTag,'figDART') | cellfun(@isempty,hFigTag) | ...
            strcmp(hFigTag,'__progressbar__'));    
-    if (any(ii))
+    if any(ii)
         % if so, then set the tag strings for these figures
         [hFigT, hFigTag] = deal(hFig0(ii), hFigTag(ii));
         vStr = cellfun(@(x)(get(x,'visible')),num2cell(hFigT),'un',0);
@@ -923,7 +925,7 @@ if ~isdeployed
         end          
 
         % determines if any of these figures are open
-        if (isFound)
+        if isFound
             % if so, then output an error to screen
             set(handles.figDART,'visible','off'); pause(0.05)
             eStr = 'Error! A DART session is already running!';
@@ -965,7 +967,7 @@ if ~isdeployed
     
     % adds the heap clear java files to the path
     jDirHC = fullfile(cDir,'File Exchange','jheapcl');
-    if (exist(jDirHC,'dir'))
+    if exist(jDirHC,'dir')
         javaaddpath(fullfile(jDirHC,'MatlabGarbageCollector.jar'),'-END');
     end    
     
@@ -1060,7 +1062,7 @@ for i = 1:length(BData)
         
     % updates the button colour data
     set(hButton,'CData',uint8(ImgNw));
-    if (i ~= length(BData))       
+    if i ~= length(BData)    
         % searches for the program main file
         fNameNw = sprintf('%s.m',BData{i}{2});
         fMatch = fileNameMatchSearch(fNameNw,mainProgDir);            
@@ -1069,7 +1071,7 @@ for i = 1:length(BData)
         ProgDefNw = eval(sprintf('ProgDef.%s',BData{i}{1}));
         
         % if there is a match, then set the file match
-        if (~isempty(fMatch)) || (isdeployed)
+        if ~isempty(fMatch) || isdeployed
             uData = ProgDefNw;
         else
             uData = [];
@@ -1112,12 +1114,21 @@ else
     end
 end
 
+% sets the I/O menu item properties
+[uType,eStr] = deal(getUserType(),{'on','off'});
+setObjVisibility(handles.menuUpdateProg,uType==0)
+setObjVisibility(handles.menuOutputProg,uType==0)
+setObjVisibility(handles.menuDeployExe,uType==0)
+set(handles.menuExeUpdate,'Separator',eStr{1+uType})
+
+% -------------------------------- %
 % --- PARAMETER FILE DETECTION --- %
 % -------------------------------- %
 
 % if the program parameter file is missing, then create it
 pFile = fullfile(paraDir,'ProgPara.mat');
 if ~exist(pFile,'file')
+    % if the file is missing, then initialise it
     initProgParaFile(paraDir);
     
 else
@@ -1206,5 +1217,3 @@ catch
     % if that fails, use the older version of the function
     hasPat = ~isempty(strfind(str,pat));
 end
-
-% MOOF SQUISH
