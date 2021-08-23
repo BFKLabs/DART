@@ -9,21 +9,15 @@ global mainProgDir
 warning off all
 
 % sets the default search directory
-[~,B] = system('hostname');
-switch (B(1:end-1))
-    case ('LankyG-PC') % case is home computer
-        dDir = 'E:\Work\Versions\DART Tracking\Full Versions';
-    otherwise
-        if (isempty(mainProgDir))
-            dDir = pwd;
-        else
-            dDir = mainProgDir;
-        end
+if isempty(mainProgDir)
+    dDir = pwd;
+else
+    dDir = mainProgDir;
 end
         
 % sets the program .zip file for the program setup
 [tmpDir,ok] = deal(fullfile(pwd,'Temp Files'),false);
-if (isdeployed)
+if isdeployed
     % if deployed, then use the attached .zip file
     zFile = 'DART.zip';
 else
@@ -42,18 +36,17 @@ end
 % prompts the user to select the directory where they want to install the
 % DART program
 cDir = uigetdir(pwd,'Select To Install DART Program');
-if (cDir == 0)
+if cDir == 0
     % if the user cancelled, then exit the function
     return
 else
-    % sets the directory seperation string (dependent on OS type)
-    if (ispc); sStr = '\'; else sStr = '/'; end
-    cDirSub = splitStringRegExp(cDir,sStr);
+    % sets the directory seperation string (dependent on OS type)    
+    cDirSub = splitStringRegExp(cDir,filesep);
     
     % check to see if the directory name is valid. if not, then the
     % compiler will not be able to create executables. a valid directory
     % title has no white space or special characters
-    if (~all(cellfun(@(x)(chkDirString(x,1)),cDirSub(2:end))))
+    if ~all(cellfun(@(x)(chkDirString(x,1)),cDirSub(2:end)))
         return
     end
 end

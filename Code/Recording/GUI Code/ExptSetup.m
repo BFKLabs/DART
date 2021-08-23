@@ -60,7 +60,7 @@ switch length(varargin)
         % sets the data acquistion objects into the gui
         [objDAQ,objDAQ0] = reduceDevInfo(infoObj.objDAQ);
         setappdata(hObject,'objDAQ',objDAQ)   
-        setappdata(hObject,'objDAQ0',objDAQ0)        
+        setappdata(hObject,'objDAQ0',objDAQ0)             
 
         % loads the required structs/data objects from the main GUI
         [iMov,hMain,stimOnly] = deal([],infoObj.hFigM,true);    
@@ -88,6 +88,9 @@ switch infoObj.exType
 
         % sets the device channel counts
         infoObj.iStim.nChannel(1:length(nCh)) = nCh;
+        
+        % updates the opto menu gui properties
+        setRecordGUIProps(handles,'InitOptoMenuItems')        
 
 end
 
@@ -595,8 +598,8 @@ DiskSpace()
 function menuExit_Callback(hObject, eventdata, handles)
 
 % prompts the user if they want to close the GUI
-uChoice = questdlg('Are you sure you want to close the GUI?',...
-                   'Close GUI?','Yes','No','Yes');
+qStr = 'Are you sure you want to close the GUI?';
+uChoice = questdlg(qStr,'Close GUI?','Yes','No','Yes');
 if ~strcmp(uChoice,'Yes')
     % if the user cancelled, then exit
     return
@@ -613,6 +616,13 @@ try
     timerObj = getappdata(hFig,'timerObj');
     stop(timerObj)
     delete(timerObj)
+end
+
+% if the IR lights are on, then turn them off (opto only)
+if strcmp(get(handles.menuOpto,'Visible'),'on')
+    if strcmp(get(handles.menuToggleIR,'Checked'),'on')
+        menuToggleIR_Callback(handles.menuToggleIR, '1', handles)    
+    end    
 end
 
 switch infoObj.exType
@@ -643,7 +653,6 @@ switch infoObj.exType
             setObjEnable(hMainH.menuFile,'on');
             setObjEnable(hMainH.menuExpt,'on');
             setObjEnable(hMainH.menuOpto,'on');
-        %     setObjEnable(hMainH.menuRTTrack,'on');
 
             % sets focus to the recording gui
             figure(hMain); 
@@ -750,6 +759,18 @@ end
 exObj = RunExptObj(hMain,'Expt',hFig,false,false);
 setappdata(hFig,'exObj',exObj)
 exObj.startExptObj()
+
+% --------------------------------------------------------------------
+function menuToggleIR_Callback(hObject, eventdata, handles)
+
+% toggles the IR lights
+toggleOptoLights(handles,hObject,true)
+
+% --------------------------------------------------------------------
+function menuToggleWhite_Callback(hObject, eventdata, handles)
+
+% toggles the white lights
+toggleOptoLights(handles,hObject,false)
 
 % --- function that runs after the experiment is complete --- %
 function afterExptFunc(hFig)
@@ -4636,6 +4657,10 @@ else
     setObjEnable(handles.textBaseName,'off')
     setObjEnable(handles.editBaseName,'off')  
     
+    % removes the variable frame rate objects
+    setObjVisibility(handles.textFrmRate,'off');
+    setObjVisibility(handles.sliderFrmRate,'off');
+    
     % disables the video count/frame text labels
     set(handles.textFrmCountL,'enable','off')
     set(handles.textFrmCount,'string','N/A','enable','off')
@@ -4733,91 +4758,92 @@ iExpt = getappdata(hFig,'iExpt');
 infoObj = getappdata(hFig,'infoObj');
 hPopup = handles.popupFrmRate;
 hSlider = handles.sliderFrmRate;
+hTxt = handles.textFrmRate;
 
 % other initialisations
 Dmax = iExpt.Video.Dmax;
-isVarFPS = detIfFrameRateVariable(infoObj.objIMAQ);
 
 % sets the frame rate box
-if ~infoObj.hasIMAQ
-    % retrieves the frame rate and set the 
-    fRate = cellfun(@num2str,{5,10,15,20,25,30},'un',false);
-    iExpt.Video.FPS = 5; 
-
-else                
+if infoObj.hasIMAQ
     % resorts the frame rate array
+    isVarFPS = detIfFrameRateVariable(infoObj.objIMAQ);
     srcObj = getselectedsource(infoObj.objIMAQ);
-    [fRateNum,fRate,~] = detCameraFrameRate(srcObj,iExpt.Video.FPS);    
+    [fRateNum,fRate,~] = detCameraFrameRate(srcObj,iExpt.Video.FPS);  
+    
+    % sets up the camera frame rate objects
+    if isVarFPS
+        % case is a variable frame rate camera
+        initFrameRateSlider(hSlider,srcObj,fRateNum)
+        sliderFrmRate_Callback(hSlider, [], handles) 
+    else
+        % case is a fixed frame rate camera
+        iSel = find(strcmp(fRate,num2str(iExpt.Video.FPS)));  
+        set(hPopup,'string',fRate,'value',iSel)
+        popupFrmRate_Callback(hPopup, [], handles)
+    end
+
+    % initalises the hour string
+    [a,b] = deal(num2cell(0:9)',num2cell(10:12)');
+    hourStr = [cellfun(@(x)(sprintf('0%i',x)),a,'un',false);
+               cellfun(@num2str,b,'un',false)];
+    set(handles.popupVidHour,'String',hourStr,'Value',...
+                              Dmax(1)+1,'UserData',1);
+
+    % initalises the minute string
+    [a,b] = deal(num2cell(0:9)',num2cell(10:59)');
+    msStr = [cellfun(@(x)(sprintf('0%i',x)),a,'un',false);
+              cellfun(@num2str,b,'un',false)];
+    set(handles.popupVidMin,'String',msStr,'Value',Dmax(2)+1,'UserData',2);
+    set(handles.popupVidSec,'String',msStr,'Value',Dmax(3)+1,'UserData',3);
+
+    % initalises all the start time popup object properties
+    for i = 1:3
+        % retrieves the popup menu handle
+        hObj = findobj(handles.panelVideoPara,'Style',...
+                                        'popupmenu','UserData',i);
+
+        % sets the callback function
+        set(hObj,'Callback',{@popupVideoDuration,handles})
+    end
+
+    % updates the video duration
+    isUpdate = false;
+    popupVideoDuration(handles.popupVidHour, '1', handles, 1)
+    isUpdate = isUpdate0;
+
+    % % disables the fixed duration panel
+    % setAllVideoProps(handles,'off')
+
+    % sets up the video compression popup menu
+    hPopup = handles.popupVideoCompression;
+    setupVideoCompressionPopup(infoObj.objIMAQ,hPopup)
+    ii = strcmp(getappdata(hPopup,'pStr'),iExpt.Video.vCompress);
+
+    % sets the popup menu value
+    if ~any(ii)
+        set(hPopup,'value',1);
+    else
+        set(hPopup,'value',find(ii));
+    end        
+    
+    % sets the object visibility flags
+    setObjVisibility(hPopup,~isVarFPS)
+    setObjVisibility(hTxt,isVarFPS)
+    setObjVisibility(hSlider,isVarFPS)    
+else
+    % retrieves the frame rate and set the object visibility flags 
+    iExpt.Video.FPS = NaN; 
+    setObjVisibility(hTxt,0)
+    setObjVisibility(hSlider,0)       
 end
 
 % updates the video data struct
 setappdata(hFig,'iExpt',iExpt)
 
-% sets the object visibility flags
-setObjVisibility(hPopup,~isVarFPS)
-setObjVisibility(handles.textFrmRate,isVarFPS)
-setObjVisibility(hSlider,isVarFPS)
-
-% sets up the camera frame rate objects
-if isVarFPS
-    % case is a variable frame rate camera
-    initFrameRateSlider(hSlider,srcObj,fRateNum)
-    sliderFrmRate_Callback(hSlider, [], handles) 
-else
-    % case is a fixed frame rate camera
-    iSel = find(strcmp(fRate,num2str(iExpt.Video.FPS)));  
-    set(hPopup,'string',fRate,'value',iSel)
-    popupFrmRate_Callback(hPopup, [], handles)
-end
-
-% initalises the hour string
-[a,b] = deal(num2cell(0:9)',num2cell(10:12)');
-hourStr = [cellfun(@(x)(sprintf('0%i',x)),a,'un',false);
-           cellfun(@num2str,b,'un',false)];
-set(handles.popupVidHour,'String',hourStr,'Value',Dmax(1)+1,'UserData',1);
-
-% initalises the minute string
-[a,b] = deal(num2cell(0:9)',num2cell(10:59)');
-msStr = [cellfun(@(x)(sprintf('0%i',x)),a,'un',false);
-          cellfun(@num2str,b,'un',false)];
-set(handles.popupVidMin,'String',msStr,'Value',Dmax(2)+1,'UserData',2);
-set(handles.popupVidSec,'String',msStr,'Value',Dmax(3)+1,'UserData',3);
-
-% initalises all the start time popup object properties
-for i = 1:3
-    % retrieves the popup menu handle
-    hObj = findobj(handles.panelVideoPara,'Style','popupmenu','UserData',i);
-   
-    % sets the callback function
-    bFunc = @(hObj,e)ExptSetup('popupVideoDuration',hObj,[],guidata(hObj));
-    set(hObj,'Callback',bFunc)
-end
-
-% updates the video duration
-isUpdate = false;
-popupVideoDuration(handles.popupVidHour, '1', handles, 1)
-isUpdate = isUpdate0;
-
-% % disables the fixed duration panel
-% setAllVideoProps(handles,'off')
-
-% sets up the video compression popup menu
-hPopup = handles.popupVideoCompression;
-setupVideoCompressionPopup(infoObj.objIMAQ,hPopup)
-ii = strcmp(getappdata(hPopup,'pStr'),iExpt.Video.vCompress);
-
-% sets the popup menu value
-if ~any(ii)
-    set(hPopup,'value',1);
-else
-    set(hPopup,'value',find(ii));
-end    
-
 % --- sets the save/run menu item enabled properties --- %
 function updateFeasFlag(handles,pStrChk,chkVal)
 
 % initialisations
-eStr = {'off','on'};
 hFig = handles.figExptSetup;
 
 % updates the feasibility flag to the new check value

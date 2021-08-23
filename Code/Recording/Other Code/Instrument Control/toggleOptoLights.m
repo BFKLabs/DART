@@ -4,7 +4,7 @@ function toggleOptoLights(handles,hObject,isIR,yAmp)
 if nargin < 4; yAmp = '050'; end
 
 % initialisations
-hFig = handles.figFlyRecord;
+hFig = handles.output;
 objDAQ = getappdata(hFig,'objDAQ');
 
 % sets the light properties based on the checked state of the menu item

@@ -4,21 +4,14 @@ function [figPos,figPosMx] = getMaxScreenDim(pPos)
 % global variables
 global scrSz
 
-% sets the figure position
-[~,B] = system('Hostname');
-if (strfind(B,'LankyG-PC'))
-    % my computer...
-    figPos = [1 41 1920 964];    
+% sets the screen dimensions and offset
+[del,scrsz] = deal(50,scrSz);    
+if (ispc)
+    % case is OS is PC
+    figPos = [scrsz(1) del scrsz(3) (scrsz(4)-3*del)];
 else
-    % sets the screen dimensions and offset
-    [del,scrsz] = deal(50,scrSz);    
-    if (ispc)
-        % case is OS is PC
-        figPos = [scrsz(1) del scrsz(3) (scrsz(4)-3*del)];
-    else
-        % case is OS is Mac
-        figPos = [scrsz(1) del scrsz(3) (scrsz(4)-2*del)];
-    end
+    % case is OS is Mac
+    figPos = [scrsz(1) del scrsz(3) (scrsz(4)-2*del)];
 end
 
 % makes a copy of the absolute max position

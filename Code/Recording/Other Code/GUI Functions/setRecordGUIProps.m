@@ -2,15 +2,12 @@
 function varargout = setRecordGUIProps(handles,typeStr,varargin)
 
 % class object retrieval
-hFig = handles.figFlyRecord;
+hFig = handles.output;
 objDAQ = getappdata(hFig,'objDAQ');
-
-% retrieves the computer host name
-[~,hostname]= system('hostname');
-isHome = strfind(hostname,'LankyG-PC');
 
 % sets the object properties based on the type string
 switch (typeStr)
+    % ------------------------------ %    
     % --- OBJECT INITIALISATIONS --- %
     % ------------------------------ %
     
@@ -20,7 +17,7 @@ switch (typeStr)
         axis(handles.axesPreview,'off')
                 
         % centres the figure
-        centreFigPosition(handles.figFlyRecord);        
+        centreFigPosition(hFig);        
         
         % --------------------------------------------------- %
         % --- REMOVE ME LATER (only for testing purposes) --- %
@@ -59,7 +56,7 @@ switch (typeStr)
         % outputs the handles struct
         varargout{1} = handles;                           
             
-    case 'InitGUIFullOnly' % case is initialiseing the GUI for full case
+    case 'InitOptoMenuItems' % case is initialiseing the GUI for full case
         
         if isempty(objDAQ)
             % no devices are loaded
@@ -88,6 +85,7 @@ switch (typeStr)
             
             % sets the toggle IR menu check
             set(handles.menuToggleIR,'Checked','On');
+            setObjVisibility(handles.menuOpto,'on');
         else
             % makes the opto menu item invisible
             setObjVisibility(handles.menuOpto,'off');

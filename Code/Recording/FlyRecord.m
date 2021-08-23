@@ -140,7 +140,7 @@ setappdata(hObject,'prObj',prObj);
 % ------------------------------------- %
 
 % initialises using full GUI setup
-setRecordGUIProps(handles,'InitGUIFullOnly');
+setRecordGUIProps(handles,'InitOptoMenuItems');
 
 % turns on the camera for preview
 set(handles.toggleVideoPreview,'value',1)
@@ -207,7 +207,7 @@ if isempty(infoObj)
     return
 else
     % sets the data structs into the GUI
-    propStr = 'InitGUIFullOnly';
+    propStr = 'InitOptoMenuItems';
     setappdata(hFig,'infoObj',infoObj);
         
     % updates the stimuli data struct and expt type
