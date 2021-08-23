@@ -30,7 +30,7 @@ end
 % End initialization code - DO NOT EDIT
 
 % --- Executes just before menuDART is made visible.
-function DART_OpeningFcn(hObject, eventdata, handles, varargin)
+function DART_OpeningFcn(hObject, ~, handles, varargin)
 
 % Choose default command line output for menuDART
 handles.output = hObject;
@@ -43,8 +43,7 @@ setappdata(hObject,'hTrack',[])
 setappdata(hObject,'isInit',true)
 
 % initialises the GUI objects
-[ok,h] = initGUIObjects(handles);
-if ~ok
+if ~initGUIObjects(handles)
     % if there was an error, then exit
     try; delete(hObject); end
     return        
@@ -60,10 +59,6 @@ scrSz = getPanelPosPix(0,'Pixels','ScreenSize');
 % loads the global analysis parameters from the program parameter file
 A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
 [tDay,hDay] = deal(A.gPara.Tgrp0,A.gPara.TdayC);
-
-% centres the figure position
-% hPos = get(hObject,'position');
-% set(hObject,'position',[(scrSz(3)-hPos(3))/2,(scrSz(4)-hPos(4))/2,hPos(3:4)])
 
 % Update handles structure
 try
@@ -113,7 +108,7 @@ set(hObject,'visible','on'); pause(0.05);
 % uiwait(handles.figDART);
 
 % --- Outputs from this function are returned to the command line.
-function varargout = DART_OutputFcn(hObject, eventdata, handles) 
+function varargout = DART_OutputFcn(~, ~, ~) 
 
 % Get default command line output from handles structure
 varargout{1} = [];
@@ -127,7 +122,7 @@ varargout{1} = [];
 % ------------------------------ %
 
 % -------------------------------------------------------------------------
-function menuUpdateProg_Callback(hObject, eventdata, handles)
+function menuUpdateProg_Callback(~, eventdata, handles)
 
 % global variables
 global isFull isAnalyDir mainProgDir 
@@ -250,13 +245,13 @@ waitfor(msgbox(mStr,'DART Update Successful','modal'))
 buttonExitButton_Callback([], [], handles)
 
 % -------------------------------------------------------------------------
-function menuExeUpdate_Callback(hObject, eventdata, handles)
+function menuExeUpdate_Callback(~, ~, handles)
 
 % runs the executable update GUI
 ExeUpdate(handles.figDART)
 
 % -------------------------------------------------------------------------
-function menuOutputProg_Callback(hObject, eventdata, handles)
+function menuOutputProg_Callback(~, ~, handles)
 
 % global variables
 global isFull mainProgDir
@@ -360,7 +355,7 @@ try; delete(h); end
 warning(wState);
 
 % -------------------------------------------------------------------------
-function menuDeployExe_Callback(hObject, eventdata, handles)
+function menuDeployExe_Callback(~, ~, handles)
 
 % global variables
 global mainProgDir
@@ -374,11 +369,11 @@ if outDir ~= 0
 end
 
 % -------------------------------------------------------------------------
-function menuSetupProg_Callback(hObject, eventdata, handles)
+function menuSetupProg_Callback(~, ~, ~)
 
 % prompts the user if they really want to update the program
-uChoice = questdlg('Are you sure you want to setup a new version of DART?',...
-                   'Setup New DART Version','Yes','No','Yes');
+qStr = 'Are you sure you want to setup a new version of DART?';
+uChoice = questdlg(qStr,'Setup New DART Version','Yes','No','Yes');
 if ~strcmp(uChoice,'Yes')
     % if not, then exit the function
     return
@@ -390,7 +385,7 @@ else
 end
 
 % -------------------------------------------------------------------------
-function menuAddPackage_Callback(hObject, eventdata, handles)
+function menuAddPackage_Callback(~, ~, ~)
 
 % global variables
 global mainProgDir
@@ -417,19 +412,19 @@ runPackageInstaller(fullfile(fDir,fName),fDirOut);
 % ------------------------------------- %
 
 % -------------------------------------------------------------------------
-function menuConfigOther_Callback(hObject, eventdata, handles)
+function menuConfigOther_Callback(~, ~, ~)
 
 % runs the installation information GUI
 InstallInfo();
 
 % -------------------------------------------------------------------------
-function menuConfigSerial_Callback(hObject, eventdata, handles)
+function menuConfigSerial_Callback(~, ~, handles)
 
 % runs the diagnostic tool GUI
 SerialConfig(handles.figDART);
 
 % -------------------------------------------------------------------------
-function menuProgPara_Callback(hObject, eventdata, handles)
+function menuProgPara_Callback(~, ~, handles)
 
 % runs the program default GUI
 ProgDef = getappdata(handles.figDART,'ProgDef');
@@ -441,7 +436,7 @@ if isSave
 end
 
 % -------------------------------------------------------------------------
-function menuAboutDART_Callback(hObject, eventdata, handles)
+function menuAboutDART_Callback(~, ~, ~)
 
 % runs the about DART GUI
 AboutDART();
@@ -451,7 +446,7 @@ AboutDART();
 %-------------------------------------------------------------------------%
 
 % --- Executes on button press in buttonFlyRecord.
-function buttonFlyRecord_Callback(hObject, eventdata, handles)
+function buttonFlyRecord_Callback(hObject, ~, handles)
 
 % sets the program defaults directories for the recording program
 hFig = handles.figDART;
@@ -464,7 +459,7 @@ AdaptorInfo('hFigM',hFig,'iType',1,'iStim',iStim0);
 warning(wState);
 
 % --- Executes on button press in buttonFlyTrack.
-function buttonFlyTrack_Callback(hObject, eventdata, handles)
+function buttonFlyTrack_Callback(hObject, ~, handles)
 
 % sets the new file path and adds it to the matlab path
 setappdata(handles.figDART,'ProgDefNew',get(hObject,'UserData'))
@@ -475,7 +470,7 @@ setappdata(handles.figDART,'hTrack',FlyTrack(handles))
 warning(wState)
 
 % --- Executes on button press in buttonFlyCombine.
-function buttonFlyCombine_Callback(hObject, eventdata, handles)
+function buttonFlyCombine_Callback(hObject, ~, handles)
 
 % sets the new file path and adds it to the matlab path
 setappdata(handles.figDART,'ProgDefNew',get(hObject,'UserData'))
@@ -486,7 +481,7 @@ FlyCombine(handles)
 warning(wState);
 
 % --- Executes on button press in buttonFlyAnalysis.
-function buttonFlyAnalysis_Callback(hObject, eventdata, handles)
+function buttonFlyAnalysis_Callback(hObject, ~, handles)
 
 % sets the new file path and adds it to the matlab path
 setappdata(handles.figDART,'ProgDefNew',get(hObject,'UserData'))
@@ -500,7 +495,7 @@ FlyAnalysis(handles)
 warning(wState);
 
 % --- Executes on button press in buttonExitButton.
-function buttonExitButton_Callback(hObject, eventdata, handles)
+function buttonExitButton_Callback(~, ~, handles)
 
 % global variables
 global mainProgDir
@@ -817,6 +812,9 @@ testDir = fullfile(mainProgDir,'Test Files');
 if exist(testDir,'dir')
     nwDir = fullfile(mainProgDir,'External Files');
     ok = movefile(testDir,nwDir,'f');
+    
+    % if there was an error, then exit
+    if ~ok; return; end
 end
 
 % global variables
