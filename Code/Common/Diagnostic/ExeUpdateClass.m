@@ -135,10 +135,7 @@ classdef ExeUpdateClass < handle
             
             % ------------------------------ %
             % --- EXECUTABLE FILE UPDATE --- %
-            % ------------------------------ %
-            
-%             % creates a progress loadbar
-%             h = ProgressLoadbar('Updating DART Executable...');
+            % ------------------------------ %            
             
             % makes the current GUI invisible
             setObjVisibility(obj.hFig,0);
@@ -148,7 +145,6 @@ classdef ExeUpdateClass < handle
             if isdeployed
                 % kills the ExeUpdate.exe process (if it is running)
                 obj.killExternExe('DART.exe')
-%                 obj.waitForDARTClose()
             else
                 % deletes the GUI
                 delete(obj.hFig)

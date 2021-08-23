@@ -969,13 +969,7 @@ if ~isdeployed
     jDirHC = fullfile(cDir,'File Exchange','jheapcl');
     if exist(jDirHC,'dir')
         javaaddpath(fullfile(jDirHC,'MatlabGarbageCollector.jar'),'-END');
-    end    
-    
-%     % adds the conditional check table java files to the path
-%     jDirCCT = fullfile(cDir,'Utilities','CondCheckTable.zip');
-%     if exist(jDirCCT,'file')
-%         javaaddpath(jDirCCT,'-END');
-%     end    
+    end
     
     % adds the conditional check table java files to the path
     jDirCCT = fullfile(cDir,'Utilities','CondCheckTable');
@@ -1032,6 +1026,10 @@ setappdata(handles.figDART,'ProgDef',ProgDef)
 % --------------------------------------------- %
 % --- OTHER OBJECT PROPERTY INITIALISATIONS --- %
 % --------------------------------------------- %
+
+% other initialisations
+[uType,sepStr] = deal(getUserType(),{'off','on'});
+hasSep = (uType == 0) && ~isdeployed; 
 
 % only include the add package menu item if the function exists
 hasPackageFile = exist('runPackageInstaller','var');
@@ -1115,11 +1113,12 @@ else
 end
 
 % sets the I/O menu item properties
-[uType,eStr] = deal(getUserType(),{'on','off'});
-setObjVisibility(handles.menuUpdateProg,uType==0)
-setObjVisibility(handles.menuOutputProg,uType==0)
-setObjVisibility(handles.menuDeployExe,uType==0)
-set(handles.menuExeUpdate,'Separator',eStr{1+uType})
+setObjVisibility(handles.menuUpdateProg,hasSep)
+setObjVisibility(handles.menuOutputProg,hasSep)
+setObjVisibility(handles.menuDeployExe,hasSep)
+setObjVisibility(handles.menuSetupProg,~isdeployed)
+set(handles.menuExeUpdate,'Separator',sepStr{1+hasSep})
+set(handles.menuSetupProg,'Separator',sepStr{1+(uType>0)})
 
 % -------------------------------- %
 % --- PARAMETER FILE DETECTION --- %
