@@ -86,11 +86,8 @@ classdef AdaptorInfoClass < handle
         % --- initialises the class object fields
         function initClassFields(obj)
             
-            % global variables
-            global mainProgDir     
-            
             % initialises the parameter file path
-            obj.pFile = fullfile(mainProgDir,'Para Files','ProgPara.mat');
+            obj.pFile = getParaFileName('ProgPara.mat');
            
             % iType convention
             %  =1 - running directly from DART

@@ -665,8 +665,8 @@ progFileDir = fullfile(mainProgDir,'Para Files');
 progFile = fullfile(progFileDir,'ProgDef.mat');
 
 % determines if the program defaults have been set
-if (~exist(progFileDir,'dir')); mkdir(progFileDir); end
-if (exist(progFile,'file'))
+if ~exist(progFileDir,'dir'); mkdir(progFileDir); end
+if exist(progFile,'file')
     % if so, loads the program preference file and set the program
     % preferences (based on the OS type)
     A = load(progFile);

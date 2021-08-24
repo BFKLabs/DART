@@ -1663,7 +1663,7 @@ if chkEditValue(nwVal,nwLim,isInt)
         
         % updates the off-cycle duration objects (square-wave only)
         if isSW
-            set(findobj(hTab,'UserData','tDurOffL'),...
+            setObjEnable(findobj(hTab,'UserData','tDurOffL'),...
                 'enable',eStr{1+(sParaS.nCount>1)})
             set(findobj(hTab,'UserData','tDurOff'),...
                 'enable',eStr{1+(sParaS.nCount>1)})
@@ -2028,7 +2028,6 @@ if ~strcmp(uChoice,'Yes')
 end
 
 % initialisations
-eStr = {'off','on'};
 hFig = handles.figExptSetup;
 sigBlk = getappdata(hFig,'sigBlk');
 iProto = getProtocolIndex(hFig);
@@ -2929,7 +2928,6 @@ function panelExptStartTime_SelectionChangedFcn(...
                                 hObject, eventdata, handles, varargin)
 
 % initialisations
-eStr = {'off','on'};
 hFig = handles.figExptSetup;
 
 % determines if the fixed start time radiobutton was selected
@@ -2941,7 +2939,7 @@ end
 
 % updates the start time enabled properties
 isFixed = strcmp(get(hRadio,'tag'),'radioFixedStartTime');
-setPanelProps(handles.panelStartTimeEx,eStr{1+isFixed});
+setPanelProps(handles.panelStartTimeEx,isFixed);
 set(handles.checkFixStart,'Value',isFixed)
 
 % updates the experiment parameter data struct
@@ -4817,7 +4815,6 @@ end
 function updateFeasFlag(handles,pStrChk,chkVal)
 
 % initialisations
-eStr = {'off','on'};
 hFig = handles.figExptSetup;
 
 % updates the feasibility flag to the new check value
@@ -6138,7 +6135,6 @@ function setSelectedSignalProps(handles,sState,varargin)
 global mType hSigSel nProto
 
 % initialisations
-eStr = {'off','on'};
 hFig = handles.figExptSetup;
 
 % retrieves the protocol suffix letter

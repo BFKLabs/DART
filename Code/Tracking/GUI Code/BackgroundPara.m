@@ -142,7 +142,7 @@ end
 function buttonUpdate_Callback(hObject, eventdata, handles)
 
 % global parameters
-global bgPNw mainProgDir
+global bgPNw
 
 % retrieves the parameter struct
 bgPNw = getappdata(handles.figBGPara,'bgP');
@@ -152,7 +152,7 @@ qStr = 'Do you want to also update the default parameter file?';
 uChoice = questdlg(qStr,'Update Default Parameters?','Yes','No','Yes');
 if strcmp(uChoice,'Yes')
     % if so, the update the parameter file
-    pFile = fullfile(mainProgDir,'Para Files','ProgPara.mat');  
+    pFile = getParaFileName('ProgPara.mat');  
     
     % updates the file
     A = load(pFile);

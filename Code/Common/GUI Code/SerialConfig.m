@@ -147,11 +147,8 @@ setObjVisibility(hGUI,'on');
 % --- initialises the GUI object properties
 function initObjProps(handles)
 
-% global variables
-global mainProgDir
-
 % retrieves the serial device strings from the parameter file
-A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+A = load(getParaFileName('ProgPara.mat'));
 sStr = A.sDev;
 
 % initialisations

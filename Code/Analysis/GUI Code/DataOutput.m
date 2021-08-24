@@ -656,7 +656,7 @@ function panelInfoOuter_SelectionChangeFcn(hObject, eventdata, handles)
 global nMetG
 
 % creates a loadbar figure
-if (~isa(eventdata,'char'))
+if ~isa(eventdata,'char')
     h = ProgressLoadbar('Updating Data Table...');
 end
 
@@ -667,25 +667,25 @@ iData.tData.iSel(iData.cTab) = iSelT;
 setappdata(handles.figDataOutput,'iData',iData)
 
 % sets the index of the radio button that was 
-[eStr,eInd] = deal({'off','on'},num2cell(zeros(1,3)));
+eInd = num2cell(zeros(1,3));
 if (iSel == 1)
     % case is the statistical tests
     eInd{1} = 1;
     
     % updates the data alignment panel properties
     iPara = iData.tData.iPara{iData.cTab}{1};
-    setPanelProps(handles.panelDataAlign,eStr{1+(length(iPara{1})>1)})    
+    setPanelProps(handles.panelDataAlign,length(iPara{1})>1)    
 else
     % case is the data metrics
     eInd(2:3) = {1};
 end    
 
-%
+% updates the checkbox object properties
 updateCheckboxProps(handles,iSelT)
 
 % updates the current sheet tab
 hP = {handles.panelStatTest,handles.panelMetricData,handles.panelMetricInfo};
-try; cellfun(@(x,y)(setPanelProps(x,eStr{1+y})),hP,eInd); end
+try; cellfun(@(x,y)(setPanelProps(x,y)),hP,eInd); end
 setTimeUnitObjProps(handles,iSelT-1)
 updateOrderList(handles);
 
@@ -718,7 +718,7 @@ if (isempty(eventdata.Indices)); return; end
 
 % retrieves the row/column indices
 hasTest = getappdata(handles.figDataOutput,'hasTest');
-[jRow,iCol,eStr] = deal(eventdata.Indices(1),eventdata.Indices(2),{'off','on'});
+[jRow,iCol] = deal(eventdata.Indices(1),eventdata.Indices(2));
 iRow = hasTest(jRow);
 
 % sets the table java object (if not set)
@@ -758,7 +758,7 @@ if iCol == 3
         end
         
         % updates the data alignment panel properties
-        setPanelProps(handles.panelDataAlign,eStr{1+(length(iPara{1})>1)})
+        setPanelProps(handles.panelDataAlign,length(iPara{1})>1)
                 
         % updates the data struct
         setappdata(handles.figDataOutput,'iData',iData);
@@ -886,18 +886,18 @@ function tableCellEdit(hObject, eventdata)
 global canEditCell
 
 % if the indices are empty, then exit
-if ((isempty(eventdata.Indices)) || (~canEditCell))
+if isempty(eventdata.Indices) || ~canEditCell
     return; 
 end
 
 % retrieves the row index
-[handles,eStr] = deal(guidata(hObject),{'off','on'});
+handles = guidata(hObject);
 [iRow,iCol] = deal(eventdata.Indices(1),eventdata.Indices(2));
 iData = getappdata(handles.figDataOutput,'iData');
 [nwVal,nwData,updateSheet] = deal(eventdata.NewData,[],false);
 
 % sets the parameter index (based on the table that was editted)
-if (get(hObject,'UserData') == 0)    
+if get(hObject,'UserData') == 0
     % case is the statistical test table
     pInd = 1;
     if (~isnan(iData.tData.stInd{iData.cTab}(iRow,1)))
@@ -921,16 +921,16 @@ end
 
 % updates the order array
 iPara = iData.tData.iPara{iData.cTab}{pInd};
-if (iCol == 2)
-    if (nwVal)
+if iCol == 2
+    if nwVal
         % adds the indices associated with the metric
-        if (~isempty(nwData))
+        if ~isempty(nwData)
             updateSheet = true;
             iPara{1} = [iPara{1};nwData];
         end
     else
         % ensures the statistical test type cell is empty
-        if (pInd == 1)
+        if pInd == 1
             Data = get(handles.tableStatTest,'Data');
             Data{iRow,3} = '';
             set(handles.tableStatTest,'Data',Data);
@@ -944,8 +944,8 @@ if (iCol == 2)
     end
     
     % updates the data alignment panel properties
-    if (get(handles.radioStatTest,'value'))        
-        setPanelProps(handles.panelDataAlign,eStr{1+(length(iPara{1})>1)})        
+    if get(handles.radioStatTest,'value')      
+        setPanelProps(handles.panelDataAlign,length(iPara{1})>1)        
     end
 else
     % case is updating the SEM inclusion checkbox
@@ -962,7 +962,7 @@ setappdata(handles.figDataOutput,'iData',iData);
 
 % updates the current tab
 updateOrderList(handles)
-if (updateSheet); updateSheetData(handles,true); end
+if updateSheet; updateSheetData(handles,true); end
 
 % --- Executes when selected cell(s) is changed in the metric table objects
 function metTableCellSelect(hObject, eventdata)
@@ -1096,7 +1096,7 @@ iData.appOut(eventdata.Indices(1),iData.cTab) = eventdata.NewData;
 hChk = handles.checkSepByApp;
 
 % determins if any of the inclusion indices have been set
-if (~any(Y))
+if ~any(Y)
     % if not, then output an error
     eStr = sprintf('Error! Data output must include at least one %s.',xStr);
     waitfor(errordlg(eStr,'Output Selection Error','modal'))    
@@ -1108,14 +1108,14 @@ if (~any(Y))
 else    
     % updates the enabled properties of the checkbox
     [iSel,iSelT] = getSelectedIndexType(handles);
-    [uData,eStr] = deal(isempty(get(hChk,'UserData')),{'off','on'});   
+    uData = isempty(get(hChk,'UserData'));   
     
     % resets the checkbox enabled properties
     isOK = (iSel==2) && all(iSelT ~= [5 6 nMetG]) && uData && (sum(Y) > 1);        
     setObjEnable(hChk,isOK)        
     
     % updates the checkbox flag and array value (if not ok)
-    if (~isOK)
+    if ~isOK
         % removes the check label for the separation                 
         mSel = iData.tData.mSel(iData.cTab);
         iData.tData.altChk{iData.cTab}{mSel}(get(hChk,'Max')) = false;
@@ -1155,10 +1155,8 @@ if (~any(Y))
     Data{eventdata.Indices(1),2} = true;
     set(hObject,'Data',Data)
 else    
-    % updates the enabled properties of the checkbox
-    [uData,eStr] = deal(isempty(get(hChk,'UserData')),{'off','on'});
-
     % resets the checkbox enabled properties
+    uData = isempty(get(hChk,'UserData'));
     isOK = uData && (sum(iData.expOut(:,iData.cTab)) > 1);
     setObjEnable(hChk,isOK)        
     
@@ -2206,15 +2204,15 @@ jTab = getappdata(getSheetTableHandle(handles),'jTable');
 % other initialisations
 iSel = iData.tData.iSel(iData.cTab);
 iPara = iData.tData.iPara{iData.cTab}{iSel};
-[Y,A,Data,eStr,h] = deal(iData.Y{iSel},iPara{1},[],{'off','on'},[]);
+[Y,A,Data,h] = deal(iData.Y{iSel},iPara{1},[],[]);
 
 % sets the tab worksheet data cell array
-if (~isRecalc)
+if ~isRecalc
     % if not recalculating, then retrieve the stored values 
     Data = iData.tData.Data{iData.cTab}{iSel};
-elseif (~isempty(iPara{1}))
+elseif ~isempty(iPara{1})
     % creates the load bar    
-    if (nargin == 2)
+    if nargin == 2
         h = ProgressLoadbar('Initialising Data Table Array...');
     end
     
@@ -2247,7 +2245,8 @@ elseif (~isempty(iPara{1}))
                     
                     %
                     if (isempty(DataT{i,3}))
-                        DataT{i,3} = setStatTestString(iData,iData.pStats{i},i);
+                        DataT{i,3} = setStatTestString...
+                                                (iData,iData.pStats{i},i);
                         set(handles.tableStatTest,'Data',DataT)
                     end
                 end                                    
@@ -2514,9 +2513,6 @@ end
 % --- initialises the GUI objects 
 function handles = initGUIObjects(handles,metType,hasTest)
 
-% global variables
-global mainProgDir
-
 % retrieves the data structs
 hGUI = getappdata(handles.figDataOutput,'hGUI');
 iData = getappdata(handles.figDataOutput,'iData');
@@ -2564,7 +2560,7 @@ set(handles.tableGroupInc,'Data',[iData.appName,num2cell(iData.appOut)],...
 
 % initialisations
 [sDN,dD] = deal(iData.fName(hasTest),cell(length(mInd)+1,1));
-[nStrS,eStr] = deal(length(sDN),{'off','on'});
+nStrS = length(sDN);
 
 % initialises the table data cell arrays
 for i = 1:length(dD)
@@ -2748,7 +2744,7 @@ mltApp = length(iData.appName) > 1;
 mltGrp = any(detDataGroupSize(iData,plotD,[])) > 1;
 
 % sets the button c-data values
-cdFile = fullfile(mainProgDir,'Para Files','ButtonCData.mat');
+cdFile = getParaFileName('ButtonCData.mat');
 if exist(cdFile,'file')
     [A,nDS] = deal(load(cdFile),3); 
     [Iup,Idown] = deal(A.cDataStr.Iup,A.cDataStr.Idown);        
@@ -2851,7 +2847,7 @@ end
 function updateButtonProps(handles)
 
 % initialisations
-[eStr,hList] = deal({'off','on'},handles.listMetricOrder);
+hList = handles.listMetricOrder;
 [iSel,nList] = deal(get(hList,'value'),length(get(hList,'string')));
 
 % updates the button enabled properties
@@ -2944,14 +2940,14 @@ global nMetG
 hCheck = findall(handles.panelManualData,'style','checkbox');
 
 % sets the metric parameter index
-[iSelT,eStr] = deal(iData.tData.iSel(iData.cTab),{'off','on'});
+iSelT = iData.tData.iSel(iData.cTab);
 
 % updates the checkbox values
 for i = 1:length(hCheck)
     hCheckNw = findall(hCheck,'Max',i);    
     set(hCheckNw,'value',i*iData.tData.altChk{iData.cTab}{iSelT}(i))
     
-    switch (get(hCheckNw,'tag'))
+    switch get(hCheckNw,'tag')
         case ('checkSepByExpt')
             % sets the check box enabled properties
             isOK = (any(iSelT == 2)) && iData.sepExp;
@@ -3011,9 +3007,6 @@ checkOtherFormat(handles.checkSepByApp,'1')
 
 % --- sets the time unit object properties
 function setTimeUnitObjProps(handles,mSel)
-
-% initialisations
-eStr = {'off','on'};
 
 % determines if the values are the population/individual signals
 if (any(mSel == [4 5]))

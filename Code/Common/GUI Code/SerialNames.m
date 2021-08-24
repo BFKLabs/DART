@@ -56,21 +56,18 @@ varargout{1} = handles.output;
 % --- Executes on updating editDeviceName.
 function editDeviceName_Callback(hObject, eventdata, handles)
 
-% retrieves the new edit string
-[nwStr,eStr] = deal(getDeviceString(handles),{'off','on'});
-
 % sets the enabled property of the add button
+nwStr = getDeviceString(handles);
 setObjEnable(handles.buttonAddDevice,~isempty(nwStr))
 
 % --- Executes when selected cell(s) is changed in tableDeviceName.
 function tableDeviceName_CellSelectionCallback(hObject, eventdata, handles)
 
 % retrieves the table java object
-eStr = {'off','on'};
 jTable = getappdata(handles.figDeviceNames,'jTable');
 
 % determines if the object has been set
-if (isempty(jTable))
+if isempty(jTable)
     % retrieves the table java object
     hh = findjobj(hObject);
     jTable = hh.getComponent(0).getComponent(0);
@@ -90,13 +87,10 @@ setObjEnable(handles.buttonRemoveDevice,~isempty(iSel))
 % --- Executes on button press in buttonAddDevice.
 function buttonAddDevice_Callback(hObject, eventdata, handles)
 
-% global variables
-global mainProgDir
-
 % prompts the user if they actually want to add the device name
 uChoice = questdlg(['Are you sure you want to add the device name to the ',...
                     'search list?'],'Add Device Name?','Yes','No','Yes');
-if (~strcmp(uChoice,'Yes'))
+if ~strcmp(uChoice,'Yes')
     % if the user cancelled, then exit
     return
 end
@@ -106,7 +100,7 @@ setObjVisibility(handles.figDeviceNames,'off'); pause(0.05)
 
 % updates the parameter file
 sDev = [get(handles.tableDeviceName,'Data');{getDeviceString(handles)}];
-save(fullfile(mainProgDir,'Para Files','ProgPara.mat'),'sDev','-append');
+save(getParaFileName('ProgPara.mat'),'sDev','-append');
 
 % disables the add/remove buttons and clears the device name editbox
 setObjEnable(hObject,'off')
@@ -120,16 +114,13 @@ setObjVisibility(handles.figDeviceNames,'on');
 % --- Executes on button press in buttonRemoveDevice.
 function buttonRemoveDevice_Callback(hObject, eventdata, handles)
 
-% global variables
-global mainProgDir
-
 % determines the row that has been selected
 jTable = getappdata(handles.figDeviceNames,'jTable');
 iSel = jTable.getSelectedRows + 1;
 
 % prompts the user if they actually want to remove the device name
 Data = get(handles.tableDeviceName,'Data');
-if (strcmp(Data{iSel},'STMicroelectronics STLink Virtual COM Port'))
+if strcmp(Data{iSel},'STMicroelectronics STLink Virtual COM Port')
     % outputs and error to screen and exits
     eStr = 'This is a default serial device type and can''t be removed.';
     waitfor(errordlg(eStr,'Device Removal Error','modal'))
@@ -138,7 +129,7 @@ else
     % prompts the user if they actually want to add the device name
     uChoice = questdlg(['Are you sure you want to remove the device name from the ',...
                         'search list?'],'Remove Device Name?','Yes','No','Yes');
-    if (~strcmp(uChoice,'Yes'))
+    if ~strcmp(uChoice,'Yes')
         % if the user cancelled, then exit
         return
     end    
@@ -149,7 +140,7 @@ setObjVisibility(handles.figDeviceNames,'off'); pause(0.05)
 
 % updates the parameter file
 sDev = Data((1:length(Data)) ~= iSel);
-save(fullfile(mainProgDir,'Para Files','ProgPara.mat'),'sDev','-append');
+save(getParaFileName('ProgPara.mat'),'sDev','-append');
 
 % disables the add/remove buttons and clears the device name editbox
 setObjEnable(hObject,'off')
@@ -177,12 +168,9 @@ setObjVisibility(hGUI,'on');
 % --- initialises the GUI object properties
 function initObjProps(handles,sStr)
 
-% global variables
-global mainProgDir
-
 % retrieves the serial device strings from the parameter file
-if (nargin == 1)
-    A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+if nargin == 1
+    A = load(getParaFileName('ProgPara.mat'));
     sStr = A.sDev;
 end
 
@@ -195,7 +183,7 @@ fPos = get(handles.figDeviceNames,'position');
 pPos = get(handles.panelDeviceNames,'position');
 
 % recalculates the gui object dimensions
-if (nDev > 0)
+if nDev > 0
     [tPos(4),Data] = deal(calcTableHeight(nDev),sStr);
 else
     [tPos(4),Data] = deal(calcTableHeight(1),cell(1));

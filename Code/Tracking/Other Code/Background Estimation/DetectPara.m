@@ -15,9 +15,6 @@ classdef DetectPara
 
         % --- resets the detection parameter struct
         function bgP = resetDetectParaStruct(bgP)
-
-            % global variables
-            global mainProgDir            
             
             % initialisations
             fStr = fieldnames(bgP);
@@ -90,7 +87,7 @@ classdef DetectPara
             % updates the parameter file (if required)
             if resaveFile
                 % retrieves the parameter file name
-                pFile = fullfile(mainProgDir,'Para Files','ProgPara.mat');  
+                pFile = getParaFileName('ProgPara.mat');  
                 
                 % updates the file with the new parameters
                 A = load(pFile);

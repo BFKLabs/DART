@@ -220,7 +220,7 @@ isCheck = strcmp(get(hObject,'checked'),'on');
 set(hObject,'checked',vStr{1+(~isCheck)})
 
 % updates the properties based on the 
-if (strcmp(get(hObject,'label'),'Display Criteria Markers'))
+if strcmp(get(hObject,'label'),'Display Criteria Markers')
     % case is displaying the criteria markers
     hCrit = findall(handles.axesProgress,'tag','hCrit');
     setObjVisibility(hCrit,~isCheck)    
@@ -326,7 +326,7 @@ function updateFigObjPos(hMenu,handles)
 % parameters
 [X0,Y0] = deal(10);
 [HfigT,WfigT] = deal(60,20);
-[eStr,scrSz] = deal({'off','on'},get(0,'screensize'));
+scrSz = get(0,'screensize');
 
 % toggles the check markers
 if strcmp(get(hMenu,'checked'),'on')

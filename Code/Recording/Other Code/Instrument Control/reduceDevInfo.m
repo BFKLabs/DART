@@ -2,11 +2,8 @@
 %     fields that were selected by the user
 function [objDAQ,objDAQ0] = reduceDevInfo(objDAQ0,vSel)
 
-% global variables
-global mainProgDir
-
 % retrieves the serial device strings from the parameter file
-A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+A = load(getParaFileName('ProgPara.mat'));
 
 % initialisations
 objDAQ = objDAQ0;

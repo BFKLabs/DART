@@ -41,7 +41,7 @@ h = ProgressLoadbar('Initialising Analysis GUI...');
 setappdata(hObject,'sPara',initSubRegionStruct)
 
 % loads the global analysis parameters from the program parameter file
-A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+A = load(getParaFileName('ProgPara.mat'));
 gPara = A.gPara;
 setappdata(hObject,'gPara',gPara)
 
@@ -1094,7 +1094,7 @@ qStr = 'Are you sure you want to reset the Global Parameters?';
 uChoice = questdlg(qStr,'Reset Global Parameters?','Yes','No','Yes');
 if strcmp(uChoice,'Yes')
     % if so, then re-initialise the global parameter struct
-    A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+    A = load(getParaFileName('ProgPara.mat'));
     gPara = A.gPara;    
     tDay = gPara.Tgrp0;
         
@@ -1931,9 +1931,6 @@ canSelect = true;
 % --- initialises the program data struct
 function iData = initDataStruct(handles,ProgDefNew)
 
-% global variables
-global mainProgDir
-
 % initialises the format structs and calculates the fixed metrics
 iData = struct('fmtStr',[],'ProgDef',[],'indExpt',[]);
        
@@ -1963,7 +1960,7 @@ else
         set(hDART.buttonFlyAnalysis,'UserData',ProgDefNew)
         
         % updates the program default file
-        progFile = fullfile(mainProgDir,'Para Files','ProgDef.mat');    
+        progFile = getParaFileName('ProgDef.mat');   
         save(progFile,'ProgDef');
     end    
     
@@ -2180,7 +2177,7 @@ global mainProgDir
 
 % sets the program default file name
 progFileDir = fullfile(mainProgDir,'Para Files');
-progFile = fullfile(progFileDir,'ProgDef.mat');
+progFile = getParaFileName('ProgDef.mat');
 
 % creates the directory (if it doesn't exist)
 if ~exist(progFileDir,'dir'); mkdir(progFileDir); end
@@ -2524,9 +2521,6 @@ set(handles.textFuncDescBack,'visible','on','backgroundcolor','k')
 % --- scans the plotting function directory for valid functions and places
 function scanPlotFuncDir(handles)
 
-% global variables
-global mainProgDir
-
 % scans the plotting function directory for any functions
 iProg = getappdata(handles.figFlyAnalysis,'iProg');
 dDir = iProg.DirFunc;
@@ -2538,7 +2532,7 @@ pDataT = struct('Indiv',[],'Pop',[],'Multi',[]);
 % retrieves the partial/full file names
 if isdeployed
     % loads the analysis function data file
-    pFile = fullfile(mainProgDir,'Para Files','AnalysisFunc.mat');
+    pFile = getParaFileName('AnalysisFunc.mat');
     pData = load(pFile);
     
     % sets the partial/full file names

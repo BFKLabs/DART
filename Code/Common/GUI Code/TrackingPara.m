@@ -333,7 +333,7 @@ end
 function checkSegPara(hObject, eventdata, handles)
 
 % retrieves the segmentation parameters
-[rtP,eStr] = deal(getappdata(handles.figTrackPara,'rtP'),{'off','on'});
+rtP = getappdata(handles.figTrackPara,'rtP');
 [pVal,uD] = deal(get(hObject,'value'),get(hObject,'UserData'));
 
 % sets the GUI properties based on the selection value

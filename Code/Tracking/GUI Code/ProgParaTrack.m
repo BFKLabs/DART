@@ -82,16 +82,13 @@ varargout{2} = isSave;
 % --- Executes on button press in buttonReset.
 function buttonReset_Callback(hObject, eventdata, handles)
 
-% global variables
-global mainProgDir
-
 % updates the program default file
 ProgDefNw = getappdata(handles.figProgDef,'ProgDef');
 hDART = getappdata(handles.figProgDef,'hDART');
 
 % updates the program default file (depending on whether the program is
 % being from the command line or through DART)
-progFile = fullfile(mainProgDir,'Para Files','ProgDef.mat');  
+progFile = getParaFileName('ProgDef.mat');  
 if (isempty(hDART))
     % if running from command-line, update the local parameter file    
     ProgDef = ProgDefNw;

@@ -160,7 +160,7 @@ end
 function checkNewDir_Callback(hObject, eventdata, handles)
 
 % checks if the new string is not empty
-[eStr,isNew] = deal({'off','on'},get(hObject,'value'));
+isNew = get(hObject,'value');
 sDir = getappdata(hObject,'sDir');
 
 % sets the other object properties

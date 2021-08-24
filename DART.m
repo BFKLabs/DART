@@ -23,6 +23,8 @@ else
         if strcmp(ME.message,'Session Already Running')
             set(findall(0,'tag','figDART'),'visible','off')            
         else
+            % creates an error log file and rethrows the error
+            createErrorLog(ME)
             rethrow(ME)
         end
     end        
@@ -58,7 +60,7 @@ mainProgDir = pwd;
 scrSz = getPanelPosPix(0,'Pixels','ScreenSize');
 
 % loads the global analysis parameters from the program parameter file
-A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+A = load(getParaFileName('ProgPara.mat'));
 [tDay,hDay] = deal(A.gPara.Tgrp0,A.gPara.TdayC);
 
 % centres the figure position
@@ -582,7 +584,7 @@ global mainProgDir
 
 % if the default file hasn't been provided, then set the default name
 if nargin == 0
-    defFile = fullfile(mainProgDir,'Para Files','ProgDef.mat'); 
+    defFile = getParaFileName('ProgDef.mat'); 
 end
 
 % allocates memory for the program default struct
@@ -708,7 +710,7 @@ global mainProgDir
 % retrieves the struct field names
 hDART = handles.figDART;
 fldNames = fieldnames(ProgDef);
-defFile = fullfile(mainProgDir,'Para Files','ProgDef.mat');
+defFile = getParaFileName('ProgDef.mat');
 
 % loops through all of the program directories determining if the default
 % directories exist. if they do not, then run the program default GUI
@@ -988,7 +990,7 @@ end
 mainProgDir = mainDir;
     
 % loads the default parameter files
-defFile = fullfile(mainProgDir,'Para Files','ProgDef.mat');
+defFile = getParaFileName('ProgDef.mat');
 if exist(defFile,'file')
     % if so, loads the program preference file and set the program
     % preferences (based on the OS type)
@@ -1041,7 +1043,7 @@ if exist('GitFunc','file') && ~isdeployed
 end
 
 % loads the button image data file
-A = load(fullfile(mainProgDir,'Para Files','ButtonCData.mat')); 
+A = load(getParaFileName('ButtonCData.mat')); 
 cData = A.cDataStr;
 
 % sets the button bitmap images and sub-object names
@@ -1174,6 +1176,11 @@ else
                   'USB Serial Device'};
     end
     
+    % sets the error log flag
+    if ~isfield(A,'logError')
+        A.logError = false;
+    end
+    
     % updates the parameter file
     if isChange
         save(pFile,'-struct','A');       
@@ -1186,15 +1193,12 @@ warning(wState)
 % --- updates the log-file with the new information
 function updateLogFile(zFile)
 
-% global variables
-global mainProgDir
-
 % determines the zip-file name parts
 [~,fName,fExtn] = fileparts(zFile);
 
 % resaves the log-file
 [Time,File] = deal(clock,[fName,fExtn]);
-save(fullfile(mainProgDir,'Para Files','Update Log.mat'),'File','Time')
+save(getParaFileName('Update Log.mat'),'File','Time')
 
 % --- wrapper function for determining if a string has a pattern. this is
 %     necessary because there are 2 different ways of determining this
@@ -1216,3 +1220,16 @@ catch
     % if that fails, use the older version of the function
     hasPat = ~isempty(strfind(str,pat));
 end
+
+% --- creates the error log file from the error message
+function createErrorLog(ME)
+
+% determines if errors are flagged to be logged
+A = load(getParaFileName('ProgPara.mat'));
+if ~A.logError
+    % if not logging errors, then exit
+    return
+end
+
+% FINISH ME!
+a = 1;

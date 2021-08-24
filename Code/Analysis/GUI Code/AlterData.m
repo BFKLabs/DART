@@ -242,11 +242,10 @@ jTab.setNonContiguousCellSelection(true);
 function initGUIObjects(handles,Type)
 
 % retrieves the main GUI handles
-eStr = {'off','on'};
 hGUI = getappdata(handles.figAlterData,'hGUI');
 
 % resizes the GUI (if type adding rows/columns only)
-if (any(Type == [1 2]))
+if any(Type == [1 2])
     % determines the figure offset
     rPos = get(handles.radioAlter2,'position');
     dH = rPos(2) - 10;

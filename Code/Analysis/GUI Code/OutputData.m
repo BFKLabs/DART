@@ -438,9 +438,6 @@ iData = struct('fName',[],'pStr',[],'appOut',[],'appName',[],...
 
 % --- updates the variable group selection buttons
 function updateButtonSelection(hBut,iData)
-
-% initialisations
-eStr = {'off','on'};
     
 % updates the button enabled properties
 setObjEnable(hBut{1},iData.cInd>1)

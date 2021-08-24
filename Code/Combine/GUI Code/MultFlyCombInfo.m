@@ -1027,12 +1027,9 @@ setAddList(handles,iSolnAdd)
 % --- initialises the movement buttons --- %
 function initMoveButtons(handles)
 
-% global variables
-global mainProgDir
-
 % sets the button c-data values
-cdFile = fullfile(mainProgDir,'Para Files','ButtonCData.mat');
-if (~exist(cdFile,'file'))
+cdFile = getParaFileName('ButtonCData.mat');
+if ~exist(cdFile,'file')
     return
 end
 
@@ -1391,8 +1388,7 @@ setappdata(handles.figMultCombInfo,'iPara',iPara)
 function updateSolnInfo(handles)
 
 % global variables
-global mainProgDir
-a = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+a = load(getParaFileName('ProgPara.mat'));
 
 % parameters
 tDay = a.gPara.Tgrp0;

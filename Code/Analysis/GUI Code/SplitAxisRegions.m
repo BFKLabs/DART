@@ -763,7 +763,6 @@ function fillButtonDownFcn(hObject, eventdata, handles)
 
 % global variables
 global hasCtrl tCol
-vStr = {'off','on'};
 
 % retrieves the parameter struct
 hGUI = getappdata(handles.figSplitPlot,'hGUI');
@@ -1086,7 +1085,6 @@ posXY(4,:) = [pos(1)+[0 pos(3)],sum(pos([2 4]))*[1 1]];
 function initObjProps(handles)
 
 % retrieves the segmentation parameters
-eStr = {'off','on'};
 sPara = getappdata(handles.figSplitPlot,'sPara');
       
 % sets the properties for all the parameter edit boxes 

@@ -1,11 +1,8 @@
 % --- initialises the fly position data struct --- %
 function pData = setupPosDataStruct(iMov,T)
 
-% global variables
-global mainProgDir
-
 % loads the global analysis parameters from the program parameter file
-A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+A = load(getParaFileName('ProgPara.mat'));
 nFrmS = A.trkP.nFrmS;
 
 % sets up the phase count (based on segmentation type)

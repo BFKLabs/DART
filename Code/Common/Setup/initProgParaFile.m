@@ -6,10 +6,11 @@ gPara = initGlobalPara();
 bgP = DetectPara.initDetectParaStruct('All');
 trkP = initTrackPara();
 sDev = initSerialDeviceNames();
+logError = false;
 
 % saves the parameter parameter structs to file
 pFile = fullfile(paraDir,'ProgPara.mat');
-save(pFile,'gPara','bgP','trkP','sDev');
+save(pFile,'gPara','bgP','trkP','sDev','logError');
 % save(pFile,'gPara','bgP','p1D','p2D','trkP','sDev','fOpto');
 % save(pFile,'gPara','bgP','p1D','p2D','trkP','sDev','lightR');
 

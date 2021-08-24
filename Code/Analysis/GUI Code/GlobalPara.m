@@ -149,7 +149,7 @@ setObjEnable(handles.buttonUpdate,'on')
 function buttonReset_Callback(hObject, eventdata, handles)
 
 % global variables
-global isChange mainProgDir
+global isChange
 
 % prompts the user if they wish to update the struct
 uChoice = questdlg('Are sure you wish to update the default global parameters?',...        
@@ -160,7 +160,7 @@ end
 
 % overwrites the global parameter struct in the program parameter data file
 gPara = getappdata(handles.figGlobalPara,'gPara');
-save(fullfile(mainProgDir,'Para Files','ProgPara.mat'),'gPara','-append');
+save(getParaFileName('ProgPara.mat'),'gPara','-append');
 
 % sets the change flag to true and disables the reset/update buttons
 isChange = true;

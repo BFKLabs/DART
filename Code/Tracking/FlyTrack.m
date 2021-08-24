@@ -3769,9 +3769,6 @@ indGrp = floor(bufData.iL/bufData.fDel)+4;
 % --- initialises the program data struct
 function iData = initDataStruct(handles,ProgDefNew)
 
-% global variables
-global mainProgDir
-
 % creates the data struct
 iData = struct('cFrm',1,'cMov',1,'cStep',1,'Status',0,...
            'nFrmMax',50,'nFrm',0,'nMov',0,'Frm0',NaN,...
@@ -3780,7 +3777,7 @@ iData = struct('cFrm',1,'cMov',1,'cStep',1,'Status',0,...
        
 % sets the sub-fields        
 if isempty(ProgDefNew)
-    pFile = fullfile(mainProgDir,'Para Files','ProgDef.mat');
+    pFile = getParaFileName('ProgDef.mat');
     if exist(pFile,'file')
         A = load(pFile);
         iData.ProgDef = A.ProgDef.Tracking;
@@ -3801,7 +3798,7 @@ function iMov = initMovStruct(iData)
 global mainProgDir 
 
 % determines if the tracking parameters have been set
-A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+A = load(getParaFileName('ProgPara.mat'));
 if ~isfield(A,'trkP')
     % track parameters have not been set, so initialise
     trkP = initTrackPara();
@@ -3962,7 +3959,7 @@ edgeCol = 'y';
 cStr = {'pNC','pMov','pStat','pRej'};
 
 % determines if the tracking parameters have been set
-A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+A = load(getParaFileName('ProgPara.mat'));
 if ispc
     % track parameters have not been set, so initialise
     mPara = A.trkP.PC;

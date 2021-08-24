@@ -178,7 +178,6 @@ end
 function setOtherButton(handles)
 
 % initialisations
-eStr = {'off','on'};
 iData = getappdata(handles.figSyncSummary,'iData');
 
 % if both fields have been set, then enable the sync button

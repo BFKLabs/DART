@@ -477,7 +477,6 @@ plotD = getappdata(hGUI.figFlyAnalysis,'plotD');
 [eInd,fInd,pInd] = getSelectedIndices(hGUI);
 
 % memory allocation
-eStr = {'off','on'};
 pData = getappdata(hFig,'pData');
 [hObj,hObjF,hTabG] = deal(cell(3,1));
 [wMax,nPmx] = deal(zeros(1,3));
@@ -1740,11 +1739,11 @@ set(handles.panelStimResPara,'position',[L 10 W H2])
 function p = resetParaEnable(hFig,p,iSel)
 
 % initialsations
-[eStr,hObj] = deal({'off','on'},[]);
+hObj = [];
 
 % sets the enables properties
 for i = 1:length(p)        
-    if (~isempty(p(i).Enable))                        
+    if ~isempty(p(i).Enable)                      
         % sets the parameter indices and enabled strings
         [pInd,onInd] = deal(p(i).Enable{1},p(i).Enable{2});     
         if (length(p(i).Enable) == 2)
@@ -1831,9 +1830,6 @@ end
 % --- updates the special panel properties base on type/selection
 function setSpecialPanelProps(hFig,pStr,offInd,Value)
 
-% initialisations
-eStr = {'off','on'};
-
 % updates the special panel properties for each element in the list
 for i = 1:length(pStr)
     % loop initialisation flag    
@@ -1889,7 +1885,7 @@ for i = 1:length(pStr)
     end
 
     % updates the panel properties (if not reset above)
-    if (isUpdate)
-        setPanelProps(hP,eStr{1+isOff})
+    if isUpdate
+        setPanelProps(hP,isOff)
     end            
 end

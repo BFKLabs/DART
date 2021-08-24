@@ -115,10 +115,7 @@ classdef OpenSolnMultiTab < dynamicprops & handle
         end
         
         % --- initialises the tab panel object properties
-        function initObjProps(obj)
-            
-            % global variables
-            global mainProgDir
+        function initObjProps(obj)            
             
             % object retrieval
             handles = obj.hGUI;            
@@ -225,7 +222,7 @@ classdef OpenSolnMultiTab < dynamicprops & handle
             hButtonDown = handles.buttonMoveDown;              
 
             % sets the button c-data values
-            cdFile = fullfile(mainProgDir,'Para Files','ButtonCData.mat');
+            cdFile = getParaFileName('ButtonCData.mat');
             if exist(cdFile,'file')
                 [A,nDS] = deal(load(cdFile),3); 
                 [Iup,Idown] = deal(A.cDataStr.Iup,A.cDataStr.Idown);

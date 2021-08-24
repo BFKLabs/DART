@@ -41,7 +41,7 @@ hPropTrack0 = varargin{2};
 hLoad = ProgressLoadbar('Initialising Region Setting GUI...');
 
 % loads the background parameter struct from the program parameter file
-A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+A = load(getParaFileName('ProgPara.mat'));
 bgP = A.bgP;
 
 % sets the input arguments into the gui

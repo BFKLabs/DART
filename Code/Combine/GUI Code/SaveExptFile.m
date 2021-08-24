@@ -1578,7 +1578,7 @@ setappdata(hFig,'Tmax',Tmax)
 setappdata(hFig,'sInfo',sInfo)
 
 % sets the tree explorer icons
-A = load(fullfile(mainProgDir,'Para Files','ButtonCData.mat'));
+A = load(getParaFileName('ButtonCData.mat'));
 [Im,mMap] = rgb2ind(A.cDataStr.Im,256);
 [Ifolder,fMap] = rgb2ind(A.cDataStr.Ifolder,256);
 imwrite(Im,mMap,getIconImagePath(hFig,'File'),'gif')

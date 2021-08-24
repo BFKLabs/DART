@@ -2,7 +2,7 @@
 function plotDayNightGraphComb(hAx,snTot,Y)
 
 % global variables
-global tDay hDay mainProgDir
+global tDay hDay
 
 % parameters and initialisations
 [fAlpha,T0] = deal(0.4,snTot.iExpt(1).Timing.T0);
@@ -12,7 +12,7 @@ if (ischar(xTickLbl)); xTickLbl = num2cell(xTickLbl,2)'; end
 % determines the times of the non-empty x-tick labels
 if (strcmpi(xTickLbl{1}(end),'m'))
     % determines the gap size
-    a = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+    a = load(getParaFileName('ProgPara.mat'));
     sGapS = repmat(' ',1,1-floor(log10(a.gPara.Tgrp0)));        
         
     % determines the matching time for the start of the day cycle
