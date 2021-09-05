@@ -763,12 +763,10 @@ classdef OpenSolnFileTab < dynamicprops & handle
                     switch obj.iTab
                         case 1                
                             % video solution files
-                            exDir = cellfun(@(x)...
-                                    (x.sFile),sInfoT,'un',0);
-                            sFileD = cellfun(@(x)...
-                                    (fileparts(x)),obj.sFileT,'un',0);
-                            isKeep = ~any(cell2mat(cellfun(@(y)(strcmp...
-                                    (sFileD,y)),exDir(:)','un',0)),2);
+                            sFileL = cell2cell(cellfun(@(x)...
+                                (x.snTot.sName),sInfoT,'un',0));  
+                            isKeep = ~any(cell2mat(cellfun(@(x)...
+                                (strcmp(obj.sFileT,x)),sFileL,'un',0)'),2);                                                                
 
                         otherwise
                             % experiment solution files
@@ -1410,7 +1408,9 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 sInfoNw{i}.hasStim = ~isempty(sInfoNw{i}.snTot.stimP);
 
                 % sets the experiment duration in seconds
-                sInfoNw{i}.tDur = ceil(sInfoNw{i}.snTot.T{end}(end));
+                t0 = sInfoNw{i}.snTot.T{1}(1);
+                t1 = sInfoNw{i}.snTot.T{end}(end);                
+                sInfoNw{i}.tDur = ceil(t1-t0);
 
                 % sets the duration string
                 s = seconds(sInfoNw{i}.tDur); 
