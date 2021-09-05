@@ -25,6 +25,7 @@ function FlyRecord_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % turns off all warnings
 wState = warning('off','all');
+handles.output = hObject;
 
 % --------------------------------------------------- %
 % --- PARAMETERS & FIGURE POSITION INITIALISATION --- %

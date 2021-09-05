@@ -484,7 +484,7 @@ classdef SingleTrackInit < SingleTrack
             if any(notOK(:))
                 % determines the regions that need to be reset
                 [iT,iApp] = find(notOK);                
-                for i = 1:length(iApp)                
+                for i = 1:length(iApp)
                     % resets the background region/status flag
                     IbgTmp{iT(i),iApp(i)} = [];
                     sFlag(iT(i),iApp(i)) = 2;  

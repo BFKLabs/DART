@@ -1,21 +1,23 @@
 % --- calculates the local image orientation angle
-function phi = calcLocalImageAngle(A,N)
+function phi = calcLocalImageAngle(A,N,B0)
 
 % sets the x/y meshgrid values
 [IL,fPosL] = deal(A{1},A{2});
 [xx,yy] = meshgrid(1:size(IL,2),1:size(IL,1));
 
 % determines the most likely points from the image
-B0 = (IL > nanmedian(IL(:))) & (IL ~= 0);
-if (sum(B0(:)) < N/2)
-    % if the thresholded image is too small, then rethreshold with so that
-    % the binary has a decent size
-    B0 = setGroup(detTopNPoints(IL(:),N,0,0),size(IL)) & (IL ~= 0);
+if ~exist('B0','var')
+    B0 = (IL > nanmedian(IL(:))) & (IL ~= 0);
+    if (sum(B0(:)) < N/2)
+        % if the thresholded image is too small, then rethreshold with so 
+        % that the binary has a decent size
+        B0 = setGroup(detTopNPoints(IL(:),N,0,0),size(IL)) & (IL ~= 0);
+    end
 end
     
 % thresholds the sub-image and determines the overlapping
 [~,Bnw] = detGroupOverlap(B0,fPosL);
-if (~any(Bnw(:)))
+if ~any(Bnw(:))
     % if there is no overlapping group, then determine the groups from the
     % initial binary image
     [iGrp,pCent] = getGroupIndex(B0,'Centroid');

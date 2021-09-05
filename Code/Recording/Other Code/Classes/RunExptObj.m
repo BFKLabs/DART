@@ -11,6 +11,7 @@ classdef RunExptObj < handle
         objDAQ
         objDev  
         objDRT
+        spixObj
                 
         % data structs/timers
         iExpt
@@ -105,7 +106,7 @@ classdef RunExptObj < handle
                     % sets the input arguments
                     hExptF = varargin{1};                    
                     isRTBatch = varargin{2};
-                    isRTExpt = varargin{3};          
+                    isRTExpt = varargin{3};                     
             
                     % retrieves the stimuli/experiment data structs 
                     obj.hExptF = hExptF;   
@@ -123,7 +124,10 @@ classdef RunExptObj < handle
                         obj.rfRate = roundP(obj.iExpt.Video.FPS);
                     else
                         obj.rfRate = 1;
-                    end
+                        
+                        % sets the streampix class object (if available)
+                        obj.spixObj = getappdata(obj.hExptF,'spixObj');
+                    end                                        
                     
                     % initialises the experiment object
                     obj.initExptObjFields();   
@@ -442,15 +446,20 @@ classdef RunExptObj < handle
             % deletes the timer objects
             if ~obj.isUserStop
                 wState = warning('off','all');   
-                stop(obj.hTimerExpt); 
+                try
+                    stop(obj.hTimerExpt);
+                    pause(0.05);
+                end
                 warning(wState);
             end
 
             % deletes the timer objects
-            wState = warning('off','all');
-            delete(obj.hTimerCDown);     
-            delete(obj.hTimerExpt);
-            warning(wState);
+            try
+                wState = warning('off','all');
+                delete(obj.hTimerCDown);     
+                delete(obj.hTimerExpt);
+                warning(wState);
+            end
 
             % resets the preview axes image to black
             if obj.hasIMAQ
@@ -460,7 +469,12 @@ classdef RunExptObj < handle
                 else
                     Img0 = zeros(vRes([2 1]));
                 end
-                set(findobj(obj.hAx,'Type','Image'),'cData',Img0);
+                set(findobj(obj.hAx,'Type','Image'),'cData',Img0); 
+            else
+                % force stops the streampix object (if available)
+                if ~isempty(obj.spixObj) && obj.isUserStop
+                    obj.spixObj.forceStop()
+                end                
             end
 
             % determines if the real-time tracking expt is being run
@@ -557,8 +571,10 @@ classdef RunExptObj < handle
                 obj.saveSummaryFile()
             else
                 % waits until the camera stops logging
-                while islogging(obj.objIMAQ)
-                    pause(0.1)
+                if obj.hasIMAQ
+                    while islogging(obj.objIMAQ)
+                        pause(0.1)
+                    end
                 end
                 
                 % deletes the folder
@@ -704,11 +720,9 @@ classdef RunExptObj < handle
                 pFunc = getappdata(obj.hProg,'pFunc');
                 pFunc(1,'Starting Experiment',1,obj.hProg);
                 
-                % initialises the experiment timer (for stimuli only expts)
-                if ~obj.hasIMAQ                                    
-                    obj.tExpt = tic;
-                end
-
+                % initialises the experiment tic object
+                obj.tExpt = tic;
+                
                 % otherwise, start the experiment timer
                 obj.isStart = true;
                 start(obj.hTimerExpt)
@@ -769,14 +783,22 @@ classdef RunExptObj < handle
                 end
             end
             
+            % starts the streampix object (if available)
+            if ~isempty(obj.spixObj)
+                obj.spixObj.startRecord()
+            end
         end
                
         % --- the experiment timer callback function       
         function timerExptFcn(obj)
 
             % gets the current frames
-            hTimer = obj.hTimerExpt;
-            iFrm = get(hTimer,'TasksExecuted') + obj.indOfs;        
+            try
+                hTimer = obj.hTimerExpt;
+                iFrm = get(hTimer,'TasksExecuted') + obj.indOfs;        
+            catch
+                return
+            end
 
             % sets the sub-structs            
             tTot = vec2sec(obj.iExpt.Timing.Texp);
@@ -802,8 +824,13 @@ classdef RunExptObj < handle
                     end
                 end
 
+                % force stops the streampix object (if available)
+                if ~isempty(obj.spixObj)
+                    obj.spixObj.forceStop()
+                end
+                
                 % stops/deletes the experiment timer
-                try
+                try                    
                     stop(obj.hTimerExpt)
                     delete(obj.hTimerExpt)
                 end
@@ -900,7 +927,7 @@ classdef RunExptObj < handle
                     % stops the timer if the current experiment time
                     % exceeds experiment duration (stimuli expt only)
                     if (tCurr >= tTot) && ~obj.hasIMAQ
-                        stop(obj.hTimerExpt)
+                        try; stop(obj.hTimerExpt); end
                         obj.finishExptObj()
                         return
                     end
@@ -1000,7 +1027,9 @@ classdef RunExptObj < handle
             end       
 
             % sets the new frame index (the total number of task executed)
-            obj.indFrmNw = get(hTimer,'TasksExecuted');
+            try
+                obj.indFrmNw = get(hTimer,'TasksExecuted');
+            end
 
         end
         

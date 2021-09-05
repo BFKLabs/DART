@@ -6,7 +6,7 @@ try
     h = varargin{2};
     subplot(h)
 catch exception
-    if (~isempty(exception.message))
+    if ~isempty(exception.message)
         sz = get(0,'ScreenSize');
 %         h = figure('position',[sz(1) sz(2)+sz(3)/2 sz(3)/4 sz(4)/2]);
         if prod(sz(3:4) < 10)
@@ -45,16 +45,50 @@ switch (pType)
                 I = p{1};
         end
 
+        % coverts to a cell array
+        if ~iscell(I); I = {I}; end
+        
         % 
         showImage(I{1})
         setappdata(h,'I',I);      
         setappdata(h,'cFrm',1);
         set(h,'WindowKeyPressFcn',@KeyPressCallback);
         title(sprintf('Frame %i of %i',1,length(I)));
+        
+    case ('show-pos')
+        %
+        pObj = p{1};
+        if length(p) == 1
+            iPh = 1:pObj.nPh;
+        else
+            iPh = p{2};
+        end        
+        
+        % displays the image
+        showImage(pObj.Img0{1}{1});        
+                
+        % sets the important field into the figure    
+        setappdata(h,'cPh',1);
+        setappdata(h,'cFrm',ones(length(iPh),1));
+        
+        %
+        setappdata(h,'I',pObj.Img0);
+        setappdata(h,'fPos',pObj.fPos);            
+        setappdata(h,'nFrm',pObj.nImg);
+        setappdata(h,'indS',pObj.indS);
+        setappdata(h,'iStatus',pObj.iStatus);
+        
+        % updates the plot markers
+        updatePlotMarkers(h)        
+                
+        % sets the callback marker and title
+        set(h,'WindowKeyPressFcn',@MarkerKeyPressCallback);
+        title(sprintf('Frame %i of %i (Phase %i)',1,pObj.nImg(1),1));        
+        
 end
 
 % 
-if (~isempty(vout))
+if ~isempty(vout)
     for i = 1:length(vout)
         varargout(i) = {vout{i}};
     end
@@ -63,6 +97,99 @@ end
 %-------------------------------------------------------------------------%
 %                          FIGURE PLOT FUNCTIONS                          % 
 %-------------------------------------------------------------------------%
+
+%
+function MarkerKeyPressCallback(hObject,eventdata)
+
+% field retrieval
+I = getappdata(hObject,'I');
+cPh = getappdata(hObject,'cPh');
+cFrm = getappdata(hObject,'cFrm');
+nFrm = getappdata(hObject,'nFrm');
+
+%
+switch eventdata.Key
+    case ('rightarrow') 
+        % case is the right arrow
+        cFrm(cPh) = min(nFrm(cPh),cFrm(cPh) + 1);
+        
+    case ('leftarrow') 
+        % case is the left arrow
+        cFrm(cPh) = max(1,cFrm(cPh) - 1);
+        
+    case ('uparrow') % case is the up arrow
+        cPh = min(cPh + 1,length(cFrm));
+        
+    case ('downarrow') % case is the down arrow
+        cPh = max(1,cPh - 1);
+        
+    otherwise % other keys
+        return
+end
+
+% updates the fields
+setappdata(hObject,'cPh',cPh);
+setappdata(hObject,'cFrm',cFrm);
+
+% updates the axis image
+Inw = I{cPh}{cFrm(cPh)};
+hImage = findobj(hObject,'Type','Image');
+set(hImage,'cData',Inw);
+
+% updates the plot markers
+updatePlotMarkers(hObject)
+
+% updates the image axis
+if ~isempty(Inw)
+    axis([1 size(Inw,2) 1 size(Inw,1)])
+else
+    axis([1 2 1 2])
+end
+
+% updates the title
+title(sprintf('Frame %i of %i (Phase %i)',cFrm(cPh),nFrm(cPh),cPh));
+
+%
+function updatePlotMarkers(hObject)
+
+% field retrieval
+cPh = getappdata(hObject,'cPh');
+cFrm = getappdata(hObject,'cFrm');
+fPos = getappdata(hObject,'fPos');
+indS = getappdata(hObject,'indS');
+iStatus = getappdata(hObject,'iStatus');
+hAx = findall(hObject,'type','Axes');
+
+% sets the values to be plotted
+fPosP = fPos{cPh}(cFrm(cPh),:); 
+[iStatusP,iSelP] = deal(iStatus(cPh,:),indS(cPh,:));
+
+
+% plots the points for each region
+for j = 1:length(fPosP)
+    %
+    ok = iStatusP{j} == 0;
+    iSelPNw = num2cell(iSelP{j}(ok,cFrm(cPh)));
+
+    % retrieves the plot values for the current region
+    fP = cellfun(@(x,i)(x(i,:)),fPosP{j}(ok),iSelPNw,'un',0);
+    
+    % updates/creates the plot markers
+    for i = 1:length(fP)
+        % determines if the plot markers exist
+        hP = findall(hAx,'tag','hMark','UserData',[i,j]);
+        if isempty(hP)
+            % if the markers don't exist, then create them
+            hold(hAx,'on')
+            plot(hAx,fP{i}(:,1),fP{i}(:,2),'ro','markersize',10,...
+                     'tag','hMark','UserData',[i,j]);
+            hold(hAx,'off')
+        else
+            % otherwise, update the plot info
+            set(hP,'xdata',fP{i}(:,1),'ydata',fP{i}(:,2));
+        end
+    end
+end
 
 % --- 
 function KeyPressCallback(hObject,eventdata)

@@ -28,13 +28,8 @@ cellfun(@(x)(delete(fullfile(exeDir,x))),name(~cell2mat(isdir)))
 % ------------------------------- %
 
 % prompts the user for the analysis functions that are to be added
-[fDir,fName,isDef] = AnalysisFunc(ProgDef);
+[fDir,fName,isDef,pkgName] = AnalysisFunc(ProgDef);
 if isempty(fDir)
-    % if there were no analysis functions added, then output an error
-    eStr = ['Error! No analysis functions were selected. ',...
-            'Unable to create executable...'];
-    waitfor(errordlg(eStr,'No Analysis Function Added','modal'))
-    
     % exits the function
     return
 else    
@@ -51,7 +46,7 @@ else
     else
         % no files to remove
         rmvFile = [];
-    end
+    end    
     
     % retrieves the computer hostname
     [~, hName] = system('hostname');
@@ -113,11 +108,11 @@ warnStr = '-w disable:all_warnings';
 codeDir = findDirAll(fullfile(progDir,'Code'));
 
 % removes all git and external app folders from the executable
-isOK = cellfun(@(x)(~strContains(x,'\Git')),codeDir) & ...
-       cellfun(@(x)(~strContains(x,'\External Apps')),codeDir);
+isOK = ~(strContains(codeDir,'\Git') | ...
+         strContains(codeDir,'\External Apps'));
 
 % removes the non-valid directories
-codeDir = codeDir(isOK);
+codeDir = [codeDir(isOK);pkgName];
 
 % sets up the main file, analysis function directory and other important
 % file directories add string

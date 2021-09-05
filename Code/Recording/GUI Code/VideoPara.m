@@ -471,7 +471,7 @@ end
 % deletes the loadbar
 try; delete(h); end
 
-% --- 
+% --- resets the panel object positions
 function resetPanelObjPos(hPanel,pStyle,dWidT,dWidP)
 
 % retrieves the handles of the objects within the panel
@@ -731,21 +731,6 @@ end
 % increases the popup max width
 pWidMx = pWidMx + dpWid;
 
-% --- returns the full video properties array
-function allPropFlds = setupPropInfoArray(srcInfo)
-
-% memory allocation
-[nPara,fStr] = deal(length(srcInfo),fieldnames(srcInfo));
-allPropFlds = cell(nPara,length(fStr));
-
-% sets the property fields
-for i = 1:length(fStr)
-    allPropFlds(:,i) = field2cell(srcInfo,fStr{i});
-end
-
-% sets the title fields 
-allPropFlds = [fStr(:)';allPropFlds];
-
 % --- outputs the update error message
 function outputUpdateErrorMsg(objIMAQ,srcInfo)
 
@@ -782,7 +767,6 @@ switch get(infoObj.objIMAQ,'Name')
         end
 end
              
-
 % --- retrieves the ignored field information
 function [ignoreFld,ignoreName] = getIgnoredFieldInfo(infoObj)
 

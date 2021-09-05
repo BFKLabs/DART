@@ -494,6 +494,17 @@ if ~isempty(sTrain)
         % if not, or the user cancels, then exit the function
         return
     end
+    
+    % ensures the stimuli timing/duration parameters are correct
+    [sTrain,isChange] = checkStimuliTiming(iExpt,sTrain);
+    if isChange
+        % alert the user if there was a change
+        mStr = sprintf(['This protocol was altered as one or more ',...
+                        'stimuli blocks were infeasible.\n',...
+                        'Re-save this experimental protocol file to ',...
+                        'save these changes.']);
+        waitfor(msgbox(mStr,'Stimuli Blocks Re-configured','modal'))
+    end    
 end
 
 % sets the experiment file name
@@ -701,6 +712,9 @@ end
 
 % determines if the stimuli protocol has been set (record-stim expts only)
 if infoObj.hasDAQ
+    % updates the experiment data struct with the experiment type
+    iExpt = getappdata(hMain,'iExpt');    
+    
     % if this is a record-stim expt, then determine if the experimental
     % stimuli protocol has been set
     sTrain = getappdata(hFig,'sTrain');    
@@ -722,13 +736,18 @@ if infoObj.hasDAQ
         
     else
         % otherwise, sets the experiment type to Recording + Stimuli
-        exptType = 'RecordStim';        
-    end
+        exptType = 'RecordStim';            
+    end    
     
-    % updates the experiment data struct with the experiment type
-    iExpt = getappdata(hMain,'iExpt');
+    % updates the alter parameter menu item (if package is available)
+    spixObj = getappdata(hFig,'spixObj');
+    if ~isempty(spixObj)
+        spixObj.setVideoTime(vec2sec(iExpt.Timing.Texp))
+    end    
+    
+    % updates the experiment information
     iExpt.Info.Type = exptType;
-    setappdata(hMain,'iExpt',iExpt)
+    setappdata(hMain,'iExpt',iExpt)    
 end
 
 % disables the video preview button (if recording video)
@@ -3295,7 +3314,7 @@ if isInit
     end
     
     % creates the custom-signal object (if package available)
-    runExternPackage(handles,'CustomSignalObj');    
+    runExternPackage(handles,'CustomSignalObj');     
     
     % updates the experiment information data struct into the gui
     setappdata(hFig,'iExpt',iExpt)    
@@ -3836,7 +3855,11 @@ initObj = false;
 delete(h)
 
 % makes the GUI visible again
-if ~isInit; setObjVisibility(hFig,'on'); end
+if isInit
+    runExternPackage(handles,'RunStreamPix');     
+else
+    setObjVisibility(hFig,'on'); 
+end
 
 % --- updates the figure positon
 function setFigurePosition(handles,hasStim)
@@ -6091,8 +6114,7 @@ function updateParaSignalField(hFig,dType,sType,sParaS)
 sParaStr = sprintf('sPara%s',dType);
 
 % retrieves the parameter struct,
-sPara = getappdata(hFig,sParaStr);
-eval(sprintf('sPara.%s = sParaS;',sType))
+sPara = setStructField(getappdata(hFig,sParaStr),sType,sParaS);
 setappdata(hFig,sParaStr,sPara)
 
 % --- updates the experiment sub-field for a given parameter struct
@@ -6102,8 +6124,7 @@ function updateParaExptField(hFig,dType,sType,sParaS)
 sParaStr = sprintf('sPara%s',dType);
 
 % retrieves the parameter struct,
-sPara = getappdata(hFig,sParaStr);
-eval(sprintf('sPara.%s = sParaS;',sType))
+sPara = setStructField(getappdata(hFig,sParaStr),sType,sParaS);
 setappdata(hFig,sParaStr,sPara)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

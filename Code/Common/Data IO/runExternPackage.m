@@ -24,6 +24,18 @@ switch pFile
             pkgObj = [];
         end
         
+    case 'RunStreamPix' 
+        % case is the custom signal object
+        try
+            % creates the class object and updates within the GUI
+            pkgObj = RunStreamPix();
+            if pkgObj.ok
+                setappdata(handles.figExptSetup,'spixObj',pkgObj);                
+            end
+        catch
+            pkgObj = [];
+        end        
+        
     case 'RTTrack'
         % case is real-time tracking object
         try

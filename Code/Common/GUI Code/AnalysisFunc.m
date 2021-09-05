@@ -1,5 +1,5 @@
 function varargout = AnalysisFunc(varargin)
-% Last Modified by GUIDE v2.5 08-Apr-2016 16:18:03
+% Last Modified by GUIDE v2.5 04-Sep-2021 00:23:31
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -19,7 +19,6 @@ else
     gui_mainfcn(gui_State, varargin{:});
 end
 % End initialization code - DO NOT EDIT
-
 
 % --- Executes just before AnalysisFunc is made visible.
 function AnalysisFunc_OpeningFcn(hObject, eventdata, handles, varargin)
@@ -48,9 +47,9 @@ end
     
 % sets the arrays into the GUI
 setappdata(hObject,'FuncDir',FuncDir)
-setappdata(hObject,'fName0',fName0)
-setappdata(hObject,'fDir0',fDir0)
-setappdata(hObject,'isDef0',true(length(fDir0),1))
+setappdata(hObject,'fName',fName0)
+setappdata(hObject,'fDir',fDir0)
+setappdata(hObject,'isDef',true(length(fDir0),1))
 
 % initialises the GUI objects
 initGUIObjects(handles)
@@ -66,12 +65,13 @@ uiwait(handles.figAnalyFunc);
 function varargout = AnalysisFunc_OutputFcn(hObject, eventdata, handles) 
 
 % global variables
-global fDir fName isDef
+global fDir fName isDef pkgName
 
 % Get default command line output from handles structure
 varargout{1} = fDir;
 varargout{2} = fName;
 varargout{3} = isDef;
+varargout{4} = pkgName;
 
 %-------------------------------------------------------------------------%
 %                        FIGURE CALLBACK FUNCTIONS                        %
@@ -95,95 +95,70 @@ end
 % --- PROGRAM CONTROL BUTTONS --- %
 % ------------------------------- %
 
-% --- Executes on button press in buttonAdd.
-function buttonAdd_Callback(hObject, eventdata, handles)
+% --- Executes when entered data in editable cell(s) in tableAnalyFunc.
+function tableAnalyFunc_CellEditCallback(hObject, eventdata, handles)
 
-% retrieves the default analysis function directory
-FuncDir = getappdata(handles.figAnalyFunc,'FuncDir');
+% determines the number of selected files
+Data = get(hObject,'Data');
+nFunc = sum(cell2mat(Data(:,2)));
 
-% user is manually selecting file to open
-[fName,fDir,fIndex] = uigetfile(...
-                {'*.m','Matlab M-Files (*.m)'},'Select A File',FuncDir,...
-                'MultiSelect','on');
-if (fIndex)       
-    % sets the names of the new files
-    if (~iscell(fName)); fName = {fName}; end
-    fName = reshape(fName,length(fName),1);
-           
-    % determines if the new files are valid
-    fName0 = getappdata(handles.figAnalyFunc,'fName');
-    fNameNw = fName(checkFuncFileValidity(fDir,fName,fName0));
-    if (~isempty(fNameNw))
-        % set the new file directory names
-        fDirNw = repmat({fDir},length(fNameNw),1);
-        isDefNw = strcmp(fDirNw,FuncDir);
-        
-        % updates the GUI objects
-        updateGUIObjects(handles,[fName0;fNameNw])
+% updates the function count label
+set(handles.textFuncCount,'string',num2str(nFunc))
+setObjEnable(handles.buttonCont,nFunc>0)
 
-        % resets the function flags and directory/file names 
-        setappdata(handles.figAnalyFunc,'isDef',...
-                        [getappdata(handles.figAnalyFunc,'isDef');isDefNw])
-        setappdata(handles.figAnalyFunc,'fDir',...
-                        [getappdata(handles.figAnalyFunc,'fDir');fDirNw])
-        setappdata(handles.figAnalyFunc,'fName',...
-                        [getappdata(handles.figAnalyFunc,'fName');fNameNw])    
-    end
-end
+% --- Executes when entered data in editable cell(s) in tableExternPkg.
+function tableExternPkg_CellEditCallback(hObject, eventdata, handles)
 
-% --- Executes on button press in buttonRemove.
-function buttonRemove_Callback(hObject, eventdata, handles)
+% determines the number of selected files
+Data = get(hObject,'Data');
+nPkg = sum(cell2mat(Data(:,2)));
 
-% prompts the user if they do want to remove the analysis functions
-uChoice = questdlg('Are you sure you want to remove the selected functions?',...
-                   'Remove Selected Functions','Yes','No','Yes');
-if (strcmp(uChoice,'Yes'))    
-    % retrieves the final analysis function names
-    isDef = getappdata(handles.figAnalyFunc,'isDef');
-    fDir = getappdata(handles.figAnalyFunc,'fDir');
-    fName = getappdata(handles.figAnalyFunc,'fName');    
-    
-    % determines the indices of the selected functions
-    isKeep = true(length(fName),1);
-    isKeep(get(handles.listAnalyFunc,'value')) = false;    
-    if (~any(isKeep))
-        % must be at least one function added to the executable
-        eStr = 'Error! At least one analysis function must be added to executable';
-        waitfor(errordlg(eStr,'Function Removal Error','modal'))
-        return
-    end
-    
-    % removes from the data arrays the files that are not to be kept
-    [isDef,fDir,fName] = deal(isDef(isKeep),fDir(isKeep),fName(isKeep));
-    
-    % updates the data arrays into the GUI
-    setappdata(handles.figAnalyFunc,'isDef',isDef)
-    setappdata(handles.figAnalyFunc,'fDir',fDir)
-    setappdata(handles.figAnalyFunc,'fName',fName)    
-    
-    % updates the GUI objects
-    updateGUIObjects(handles,fName)
-end
-
-% --- Executes on button press in buttonReset.
-function buttonReset_Callback(hObject, eventdata, handles)
-
-% re-initialises the GUI objects
-initGUIObjects(handles)
+% updates the function count label
+set(handles.textPkgCount,'string',num2str(nPkg))
 
 % --- Executes on button press in buttonCont.
 function buttonCont_Callback(hObject, eventdata, handles)
 
 % global variables
-global fDir fName isDef
+global fDir fName isDef pkgName
 
 % retrieves the final analysis function names
-isDef = getappdata(handles.figAnalyFunc,'isDef');
-fDir = getappdata(handles.figAnalyFunc,'fDir');
-fName = getappdata(handles.figAnalyFunc,'fName');
+hFig = handles.figAnalyFunc;
+fDir0 = getappdata(hFig,'fDir');
+isDef0 = getappdata(hFig,'isDef');
+pkgDir = getappdata(hFig,'pkgDir');
+
+% retrieves the table data
+fcnData = get(handles.tableAnalyFunc,'Data');
+pkgData = get(handles.tableExternPkg,'Data');
+
+% sets the function name/directories
+isSel = cell2mat(fcnData(:,2));
+[fName,isDef,fDir] = deal(fcnData(isSel,1),isDef0(isSel),fDir0(isSel));
+
+% retrieves the package name data
+pkgName0 = pkgData(cell2mat(pkgData(:,2)),1);
+if isempty(pkgName0)
+    pkgName = [];
+else
+    pkgName = cellfun(@(x)(fullfile(pkgDir,x)),pkgName0,'un',0);
+end
 
 % deletes the GUI
-delete(handles.figAnalyFunc)
+delete(hFig)
+
+% --- Executes on button press in buttonCancel.
+function buttonCancel_Callback(hObject, eventdata, handles)
+
+% global variables
+global fDir fName isDef pkgName
+
+% retrieves the final analysis function names
+hFig = handles.figAnalyFunc;
+[isDef,fDir,fName,pkgName] = deal([]);
+
+% deletes the GUI
+delete(hFig)
 
 %-------------------------------------------------------------------------%
 %                             OTHER FUNCTIONS                             %
@@ -196,29 +171,47 @@ delete(handles.figAnalyFunc)
 % --- initialises the GUI objects
 function initGUIObjects(handles)
 
+% global variables
+global mainProgDir
+
 % retrieves the final analysis function names
-isDef = getappdata(handles.figAnalyFunc,'isDef0');
-fDir = getappdata(handles.figAnalyFunc,'fDir0');
-fName = getappdata(handles.figAnalyFunc,'fName0');
+hFig = handles.figAnalyFunc;
 
-% updates the GUI objects
-updateGUIObjects(handles,fName)
+% sets the function table data
+fcnName = sort(getappdata(hFig,'fName'));
+fcnData = [fcnName,num2cell(true(length(fcnName),1))];
 
-% resets the function flags and directory/file names 
-setappdata(handles.figAnalyFunc,'isDef',isDef)
-setappdata(handles.figAnalyFunc,'fDir',fDir)
-setappdata(handles.figAnalyFunc,'fName',fName)
-
-% --- updates the GUI objects
-function updateGUIObjects(handles,fName)
-
-% sorts the file names in alphabetical order
-fName = sort(fName);
+% sets the external app field string
+pkgDir = fullfile(mainProgDir,'Code','External Apps');
+if exist(pkgDir,'dir')
+    % if it exists, then determine the valid packages
+    fDir = dir(pkgDir);
+    fDirS = field2cell(fDir,'name');
+    setappdata(hFig,'pkgDir',pkgDir)
+    
+    % determines the valid package directories
+    isValid = ~(strContains(fDirS,'.') | startsWith(fDirS,'Z - '));
+    if any(isValid)
+        % if there are valid packages, then set the table data
+        pkgData = [fDirS(isValid),num2cell(false(sum(isValid),1))];
+    else
+        % otherwise, set an empty table data array
+        pkgData = [];
+    end
+else
+    % otherwise, set an empty array
+    pkgData = [];
+end
 
 % sets the list/static text strings
-set(handles.listAnalyFunc,'string',fName,'value',[])
-set(handles.textFuncCount,'string',num2str(length(fName)))
-set(handles.textFuncPath,'string','N/A')
+set(handles.tableAnalyFunc,'Data',fcnData)
+set(handles.tableExternPkg,'Data',pkgData)
+set(handles.textFuncCount,'string',num2str(length(fcnName)))
+set(handles.textPkgCount,'string','0')
+
+% auto-resizes the table columns
+autoResizeTableColumns(handles.tableAnalyFunc)
+autoResizeTableColumns(handles.tableExternPkg)
 
 % ------------------------------- %
 % --- MISCELLANEOUS FUNCTIONS --- %
@@ -265,4 +258,5 @@ for i = 1:length(fName)
 end
 
 % remove directory from the known paths (if originally not on the path)
-if (~onPath); rmpath(fDir); end
+if ~onPath; rmpath(fDir); end
+

@@ -7,8 +7,7 @@ pStr = cellfun(@(x)(x.Name),vidProf,'un',0)';
 uStr = cellfun(@(x)(x.FileExtensions{1}),vidProf,'un',0)';
 
 % sets the feasible compression types (ignore indexed AVI)
-ii = true(size(pStr));
-% ii = ~cellfun(@(x)(strcmp(x,'Indexed AVI')),pStr);
+ii = ~cellfun(@(x)(strcmp(x,'Indexed AVI')),pStr);
 if isa(vObj,'VideoReader')
     if vObj.BitsPerPixel == 24
         % removes the uncompressed AVI compression type
