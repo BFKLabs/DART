@@ -513,6 +513,7 @@ if ~isdeployed
     % removes the main code directories
     rmpath(mainProgDir)
     updateSubDirectories(fullfile(mainProgDir,'Code'),'remove')
+    updateSubDirectories(fullfile(mainProgDir,'Git'),'remove')
     updateSubDirectories(fullfile(mainProgDir,'External Files'),'remove')
     updateSubDirectories(fullfile(mainProgDir,'Para Files'),'remove')
     
@@ -831,7 +832,7 @@ if ~isdeployed
         gitEnvVarFuncDART('GIT_DIR')
         
         % moves the directory
-        nwDir = fullfile(mainDir,'Code','Git');
+        nwDir = fullfile(mainDir,'Git');
         ok = movefile(gitDir,nwDir,'f');
 
         % to move the git folder, the user must quit and restart 
@@ -968,6 +969,7 @@ if ~isdeployed
     % adds the main program paths
     addpath(mainDir)
     updateSubDirectories(fullfile(mainDir,'Code'),'add')
+    updateSubDirectories(fullfile(mainDir,'Git'),'add')
     updateSubDirectories(fullfile(mainDir,'External Files'),'add')
     updateSubDirectories(fullfile(mainDir,'Para Files'),'add')
     
