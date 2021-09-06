@@ -112,7 +112,7 @@ else
 end
 
 % sets the separation colours checkbox (only applicable for multi-tracking)
-if detIfMultiTrack(iMov)
+if detMltTrkStatus(iMov)
     % sets the checkboxes value
     set(handles.checkSepColours,'value',iMov.sepCol)
 else

@@ -983,10 +983,16 @@ set(handles.textMovieFileS,'string',simpFileName(iData.fData.name),...
 if (nargin == 4)
     tFrm = iMov.sRate/iData.exP.FPS;
     [m,n] = deal(iData.sz(1),iData.sz(2));
+        
+    % sets the duration string
+    s = seconds(iData.Tv(end)); 
+    s.Format = 'dd:hh:mm:ss';
     
+    % updates the text label strings
     set(handles.textFrameCountS,'string',num2str(iData.nFrm));
     set(handles.textTimeStepS,'string',sprintf('%.2f sec',tFrm));        
-    set(handles.textFrameSizeS,'string',sprintf('%i %s %i',m,char(215),n));
+    set(handles.textVidDurS,'string',char(s))
+    set(handles.textFrameSizeS,'string',sprintf('%i %s %i',m,char(215),n));    
 end
 
 % --- Sets the image axis properties --------------------------------------

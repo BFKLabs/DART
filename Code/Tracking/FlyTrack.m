@@ -383,7 +383,7 @@ hFig = handles.figFlyTrack;
 iMov = getappdata(hFig,'iMov');
 if ~iMov.isSet
     return    
-elseif ~detIfMultiTrack(iMov)
+elseif ~detMltTrkStatus(iMov)
     return
 end
 
@@ -781,7 +781,7 @@ if isfield(solnData,'pData')
     if ~isempty(pData)    
         % determines the first feasible region/sub-region
         [i0,j0] = getFirstFeasRegion(iMov);
-        if detIfMultiTrack(iMov)
+        if detMltTrkStatus(iMov)
             % case is multi-tracking
             nFrm = size(pData.fPos{i0}{j0},1);
         else
@@ -2476,9 +2476,9 @@ iMov = getappdata(hFig,'iMov');
 pData = getappdata(hFig,'pData');
 
 % creates the tracking object based on the tracking type
-if detIfMultiTrack(iMov)
+if detMltTrkStatus(iMov)
     % case is tracking multiple objects
-    trkObj = MultiTrackFull(iData);
+    trkObj = feval('runExternPackage','MultiTrack',iData,'Full');
     
 else
     % case is tracking single objects
@@ -2814,12 +2814,12 @@ end
 
 % retrieves the data structs
 Type = getDetectionType(iMov);
-isMultiTrack = detIfMultiTrack(iMov);
+isMltTrk = detMltTrkStatus(iMov);
 [ii,jj,yDelG] = deal([1 2 2 1],[1 1 2 2],0.35);
 [nApp,isCG] = deal(length(iMov.iR),isColGroup(iMov));
 
 % array creation 
-if isMultiTrack
+if isMltTrk
     % case is single fly tracking
     nFlyR = arr2vec(iMov.nFlyR');
     A = arrayfun(@(x)(cell(x,1)),nFlyR,'un',0);
@@ -2889,7 +2889,7 @@ for i = 1:nApp
         
         % sets the x/y coordinates of the tube regions (either for single
         % tracking, or multi-tracking for the first iteration)
-        if (j == 1) || ~isMultiTrack
+        if (j == 1) || ~isMltTrk
             switch Type
                 case {'GeneralR','Circle'}
                     % sets the outline coordinates
@@ -3985,7 +3985,7 @@ if isCalib
     end
 else
     % resets the status flag (if the fly is flagged for rejection)
-    if detIfMultiTrack(iMov)
+    if detMltTrkStatus(iMov)
         % case is multi-fly tracking
         Status = 1;
         

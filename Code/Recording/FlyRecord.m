@@ -115,7 +115,7 @@ setappdata(hObject,'iStim',infoObj.iStim);
 % setappdata(hObject,'objIMAQ',infoObj.objIMAQ);
 
 % runs the external packages
-runExternPackage(handles,'RTTrack');
+feval('runExternPackage','RTTrack',handles);
 
 % ------------------------------------------ %
 % --- GUI OBJECT PROPERTY INITIALISATION --- %

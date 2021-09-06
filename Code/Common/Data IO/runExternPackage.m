@@ -1,5 +1,8 @@
 % --- runs the external package initialisation function
-function varargout = runExternPackage(handles,pFile,pFunc,varargin)
+function varargout = runExternPackage(pFile,varargin)
+
+% initialisations
+pkgObj = [];
 
 % if the package file doesn't exist, then exit
 if ~exist(pFile,'file')
@@ -12,48 +15,71 @@ if ~exist(pFile,'file')
     return
 end
 
-% creates/runs the packagae initialisation functions (based on type)
-switch pFile
-    case 'CustomSignal' 
-        % case is the custom signal object
-        try
-            % creates the class object and updates within the GUI
-            pkgObj = CustomSignalObj(handles);   
-            setappdata(handles.figExptSetup,'csObj',pkgObj);
-        catch
-            pkgObj = [];
-        end
-        
-    case 'RunStreamPix' 
-        % case is the custom signal object
-        try
-            % creates the class object and updates within the GUI
-            pkgObj = RunStreamPix();
-            if pkgObj.ok
-                setappdata(handles.figExptSetup,'spixObj',pkgObj);                
+% determines if the package is valid
+if isdeployed    
+    % case is running through the executable
+    pkgName = getStructField(load('ExternalPackages'),'pkgName');
+    if isempty(pkgName)
+        isOK = false;
+    else
+        isOK = any(cellfun(@(x)(strContains(x,pFile)),pkgName));        
+    end    
+else
+    % case is running through DART    
+    isOK = true;
+end
+
+% creates/runs the package initialisation functions (based on type)
+if isOK
+    switch pFile
+        case 'CustomSignal' 
+            % case is the custom signal object
+            try
+                % creates the class object and updates within the GUI
+                handles = varargin{1};
+                pkgObj = feval('CustomSignalObj',handles);   
+                setappdata(handles.figExptSetup,'csObj',pkgObj);
             end
-        catch
-            pkgObj = [];
-        end        
-        
-    case 'RTTrack'
-        % case is real-time tracking object
-        try
-            % creates the class object and updates within the GUI
-            pkgObj = RTTrackObj(handles);
-            setappdata(handles.figFlyRecord,'rtObj',pkgObj)
-            
-            % runs the recording GUI opening function
-            pkgObj.recordGUIOpen();
-            
-        catch 
-            pkgObj = [];
-        end
-        
-    case 'MultiTrack'
-        % case is multi-tracking
-        msgbox('Finish Me!')     
-        
+
+        case 'RunStreamPix' 
+            % case is the custom signal object
+            try
+                % creates the class object and updates within the GUI
+                pkgObj = feval('RunStreamPix');
+                if pkgObj.ok
+                    handles = varargin{1};
+                    setappdata(handles.figExptSetup,'spixObj',pkgObj);                
+                end
+            end        
+
+        case 'RTTrack'
+            % case is real-time tracking object
+            try
+                % creates the class object and updates within the GUI
+                handles = varargin{1};
+                pkgObj = feval('RTTrackObj');                
+                setappdata(handles.figFlyRecord,'rtObj',pkgObj)
+
+                % runs the recording GUI opening function
+                pkgObj.recordGUIOpen();
+            end
+
+        case 'MultiTrack'
+            % case is initialising the multi-tracking object
+            switch class(varargin{1})
+                case 'struct'         
+                    % case is initialising the tracking objects
+                    switch varargin{2}
+                        case 'Full'
+                            % case is running the full multi-tracking
+                            pkgObj = MultiTrackFull(varargin{1}); 
+                            
+                        case 'Init'
+                            % case is initialising the multi-tracking
+                            pkgObj = MultiTrackInit(varargin{1});
+                    end
+            end 
+    end
 end
 
 % sets the output arguments

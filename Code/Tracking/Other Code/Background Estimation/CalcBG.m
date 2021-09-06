@@ -29,7 +29,7 @@ classdef CalcBG < handle
         isCalib
         isVisible
         isChange
-        isMultiTrack
+        isMTrk
         frameSet        
         hasUpdated
         isBGCalc
@@ -424,7 +424,7 @@ classdef CalcBG < handle
             obj.iData = getappdata(obj.hFig,'iData');   
             obj.iPara = obj.initParaStruct(10); 
             obj.is2D = is2DCheck(obj.iMov);
-            obj.isMultiTrack = detIfMultiTrack(obj.iMov);
+            obj.isMTrk = detMltTrkStatus(obj.iMov);
             
             % retrieves the current image dimensions
             frmSz = getCurrentImageDim(obj.hGUI);
@@ -444,8 +444,9 @@ classdef CalcBG < handle
                 % case is tracking single objects
                 obj.trkObj = SingleTrackInit(obj.iData);
             else
-                % case is tracking multiple objects
-                obj.trkObj = MultiTrackInit(obj.iData);
+                % case is tracking multiple objects                
+                obj.trkObj = feval('runExternPackage',...
+                                   'MultiTrack',obj.iData,'Init');
             end
             
             % sets the calibration field
@@ -871,7 +872,7 @@ classdef CalcBG < handle
             % updates the fly markers for all apparatus
             for iApp = 1:length(imov.iR)
                 % retrieves the position values
-                if obj.isMultiTrack
+                if obj.isMTrk
                     % updates the marker locations
                     fPosNw = fpos{iApp,iFrm};
                     [iCol,~,iRow] = getRegionIndices(obj.iMov,iApp);
@@ -1513,7 +1514,7 @@ classdef CalcBG < handle
             wStr = {'Reading Initial Image Stack',...
                     'Image Baseline Subtraction',...
                     'Tracking Moving Objects'};    
-            if obj.isMultiTrack
+            if obj.isMTrk
                 wStr{end} = 'Background Image Estimation';
             end
 
@@ -1550,7 +1551,7 @@ classdef CalcBG < handle
             end
 
             % creates the waitbar figure
-            if obj.isMultiTrack
+            if obj.isMTrk
                 % case is tracking multiple objects
                 
                 % creates the progressbar figure            

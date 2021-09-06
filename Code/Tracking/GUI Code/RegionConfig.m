@@ -65,7 +65,7 @@ elseif isempty(iMov.bgP)
 end
 
 % determines if the user is using multi-fly tracking
-isMultiTrack = detIfMultiTrack(iMov);
+isMTrk = detMltTrkStatus(iMov);
 
 % sets the frame size (if calibrating for the RT-Tracking/Calibration)
 if isCalib
@@ -92,7 +92,7 @@ setappdata(hObject,'hProp0',hProp0)
 setappdata(hObject,'hDiff',[])
 setappdata(hObject,'iMov',iMov)
 setappdata(hObject,'iMov0',iMov)
-setappdata(hObject,'isMultiTrack',isMultiTrack)
+setappdata(hObject,'isMTrk',isMTrk)
 
 % ---------------------------------------- %
 % --- FIELD & PROPERTY INITIALISATIONS --- %
@@ -153,7 +153,7 @@ setappdata(hObject,'resetSubRegionDataStruct',@resetSubRegionDataStruct)
 % ---------------------------------- %
 
 % if multi-tracking, reset some of the object text strings
-if isMultiTrack
+if isMTrk
     % only use the 1D setup for multi-tracking
     [iData.is2D,iData.isFixed] = deal(false,true);
     
@@ -694,7 +694,7 @@ pInfo = getDataSubStruct(handles);
 nwVal = str2double(get(hObj,'String'));
 
 % iMov = getappdata(hFig,'iMov');
-% isMultiTrack = detIfMultiTrack(iMov);
+% isMTrk = detMltTrkStatus(iMov);
 
 % determines if the grid row/column multiplier needs to be taken into
 % account (only if 2D, more than 1 group, and grid grouping selected)
@@ -1117,7 +1117,7 @@ else
 end
 
 % resets the tube count/use flags (multi-fly tracking only)
-if detIfMultiTrack(iMov)
+if detMltTrkStatus(iMov)
     % case is 
     if isempty(iMov.nFlyR) || ~iMov.dTube  
         pInfo = getRegionDataStructs(iMov);
@@ -1830,7 +1830,7 @@ hGUI = getappdata(hFig,'hGUI');
 iData = getappdata(hFig,'iData');
 pInfo = getDataSubStruct(handles);
 pCol = getAllGroupColours(length(pInfo.gName));
-isMultiTrack = detIfMultiTrack(iMov);
+isMTrk = detMltTrkStatus(iMov);
 hAxM = hGUI.imgAxes;
 
 % memory allocation and parameters
@@ -1866,7 +1866,7 @@ for i = 1:pInfo.nRow
                     'tag','hRegion');
 
         % creates the sub-region markers (1D only)
-        if ~(iData.is2D || isMultiTrack)
+        if ~(iData.is2D || isMTrk)
             dY = 1/pInfo.nFly(i,j);
             for k = 1:(pInfo.nFly(i,j)-1)
                 % sets the patch properties/coordinates
@@ -2577,7 +2577,7 @@ end
 [L,B,W,H] = deal(pG(1),pG(2),pG(3)/nCol,pG(4)/nRow);
 
 % if multi-tracking, set the sub-region count to one/region
-if detIfMultiTrack(iMov)
+if detMltTrkStatus(iMov)
     [iMov.nTube,iMov.nTubeR] = deal(1,ones(nRow,nCol));
 end
 

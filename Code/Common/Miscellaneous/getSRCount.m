@@ -2,7 +2,7 @@
 function nFly = getSRCount(iMov,varargin)
 
 % determines if multi-tracking
-if detIfMultiTrack(iMov)
+if detIfMultTrk(iMov)
     nFly = 1;
     return
 end

@@ -70,6 +70,10 @@ else
     save(pFile,'fDir','fName','fSize','hName');    
 end
 
+% saves the package file
+pkgFile = fullfile(progDir,'ExternalPackages.mat');
+save(pkgFile,'pkgName');
+
 % ------------------------------- %
 % --- EXECUTABLE STRING SETUP --- %
 % ------------------------------- %
@@ -100,19 +104,32 @@ hLoad = ProgressLoadbar('Creating DART Program Executable...');
 set(hLoad.Control,'CloseRequestFcn',[]);
 
 srcStr = sprintf('-d ''%s''',exeDir);
+igDir = {'.','..','External Apps','Git'};
 toolStr = ['-N -p daq -p imaq -p images -p signal -p ',...
            'instrument -p optim -p stats -p curvefit -p shared'];
 warnStr = '-w disable:all_warnings';  
        
-% retrieves the names of all the folders within the Code directory
-codeDir = findDirAll(fullfile(progDir,'Code'));
+% determines files the directories that need to be added
+codeDirAll = dir(fullfile(progDir,'Code'));
+codeDir = cell(length(codeDirAll),1);
+for i = 1:length(codeDir)
+    if ~any(strcmp(igDir,codeDirAll(i).name))  && codeDirAll(i).isdir
+        codeDir{i} = fullfile(progDir,'Code',codeDirAll(i).name);
+    end
+end
 
-% removes all git and external app folders from the executable
-isOK = ~(strContains(codeDir,'\Git') | ...
-         strContains(codeDir,'\External Apps'));
+% sets the final code directory array
+codeDir = [codeDir(~cellfun(@isempty,codeDir));pkgName(:)];
 
-% removes the non-valid directories
-codeDir = [codeDir(isOK);pkgName];
+% % retrieves the names of all the folders within the Code directory
+% codeDir = cell2cell(codeDir);
+
+% % removes all git and external app folders from the executable
+% isOK = ~(strContains(codeDir,'\Git') | ...
+%          strContains(codeDir,'\External Apps'));
+
+% % removes the non-valid directories
+% codeDir = [cell2cell(codeDir)];
 
 % sets up the main file, analysis function directory and other important
 % file directories add string
@@ -120,11 +137,12 @@ fStr = [codeDir;{'DART.fig';'Para Files'}];
 addStr = sprintf('-v ''%s'' -a ''%s''',fullfile(progDir,'DART.m'),fcnDir);
 for i = 1:length(fStr)
     switch fStr{i}
-        case {'DART.fig','Para Files'}
+        case {'DART.fig'}
             addFiles = fullfile(progDir,fStr{i});
-            addStr = sprintf('%s -a ''%s''',addStr,addFiles);           
+            addStr = sprintf('%s -a ''%s''',addStr,addFiles);                            
+            
         otherwise
-            addStr = sprintf('%s -a ''%s\\*''',addStr,fStr{i});
+            addStr = sprintf('%s -a ''%s''',addStr,fStr{i});
     end
 end
 
@@ -140,11 +158,14 @@ start(tObj);
 % runs the compiler to create the executable
 try
     eval(sprintf('mcc %s %s %s %s %s',outStr,srcStr,toolStr,warnStr,addStr));
+    delete(pkgFile)
+    
 catch err 
     % deletes any extraneous files
     delete(hLoad);
-    if (~isempty(rmvFile)); cellfun(@(x)(delete(x)),rmvFile); end    
-    if (exist(pFileT,'file')); copyfile(pFileT,pFile); delete(pFileT); end
+    if ~isempty(rmvFile); cellfun(@(x)(delete(x)),rmvFile); end    
+    if exist(pFileT,'file'); copyfile(pFileT,pFile); delete(pFileT); end    
+    delete(pkgFile)
     
     % outputs the error to screen
     waitfor(errordlg('Error while creating executable'))
@@ -160,7 +181,7 @@ ctfFile = fullfile(exeDir,'DART.ctf');
 
 % check to see if the executable file has turn up in the executable
 % directory. if so, then move the executable file to the program directory
-if (exist(exeFile,'file'))
+if exist(exeFile,'file')
     % updates the loadbar string
     stop(tObj); delete(tObj); 
         
@@ -175,12 +196,14 @@ if (exist(exeFile,'file'))
         try
             movefile(exeFile,outDir);   
             break
+        catch
+            pause(0.1);
         end
     end
        
     % deletes the extraneous files
-    if (~isempty(rmvFile)); cellfun(@(x)(delete(x)),rmvFile); end
-    if (exist(pFileT,'file')); delete(pFileT); end    
+    if ~isempty(rmvFile); cellfun(@(x)(delete(x)),rmvFile); end
+    if exist(pFileT,'file'); delete(pFileT); end    
     
     % stops and deletes the timer object/loadbar figure        
     movefile(ctfFile,outDir);  

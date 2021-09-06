@@ -78,7 +78,7 @@ iMov = getappdata(hMain,'iMov');
 iMov.isUse = getappdata(hFig,'isUse0');
 
 % resets the fly/sub-region count (depending on algorithm type)
-if detIfMultiTrack(iMov)
+if detMltTrkStatus(iMov)
     iMov.nFlyR = getappdata(hFig,'nTubeR0');
 else
     iMov.nTubeR = getappdata(hFig,'nTubeR0');
@@ -90,7 +90,7 @@ setappdata(hMain,'iMov',iMov)
 % re-initialises the region axes objects
 if ~ischar(eventdata)
     % re-initialises the sub-region plot (if single-fly tracking)
-    if ~detIfMultiTrack(iMov)
+    if ~detMltTrkStatus(iMov)
         initRegionAxes(handles,iMov)
     end
         
@@ -112,7 +112,7 @@ nTubeR0 = getappdata(hFig,'nTubeR0');
 iMov = getappdata(hMain,'iMov');
 
 % sets the parameter field string based on the tracking type
-if detIfMultiTrack(iMov)
+if detMltTrkStatus(iMov)
     pStr = 'iMov.nFlyR';
 else
     pStr = 'iMov.nTubeR';
@@ -218,7 +218,7 @@ uData = get(hSel,'UserData');
 iMov = getappdata(hMain,'iMov');
  
 % if multi-tracking, then exit the function
-if detIfMultiTrack(iMov); return; end
+if detMltTrkStatus(iMov); return; end
 
 % retrieves the indices of the fly
 col = 'rg';
@@ -260,18 +260,18 @@ iMov = getappdata(hMain,'iMov');
 
 % retrieves the table data
 nwVal = eventdata.NewData;
-isMultiTrack = detIfMultiTrack(iMov);
+isMTrk = detMltTrkStatus(iMov);
 tData = get(handles.tableFlyCount,'Data');
 
 % sets the parameter field string based on the tracking type
-if isMultiTrack
+if isMTrk
     pStr = 'iMov.nFlyR';
 else
     pStr = 'iMov.nTubeR';
 end
 
 % updates the figure based on the table row that was altered
-if (iCol > iMov.nCol) && ~isMultiTrack
+if (iCol > iMov.nCol) && ~isMTrk
     % case is the max row count field
     
     % prompts the user if they wish to continue
@@ -302,7 +302,7 @@ if (iCol > iMov.nCol) && ~isMultiTrack
             setObjEnable(handles.menuReset,'on')
             
             % resets the regional axes
-            if ~isMultiTrack
+            if ~isMTrk
                 initRegionAxes(handles,iMov)
             end
         end
@@ -315,7 +315,7 @@ if (iCol > iMov.nCol) && ~isMultiTrack
     end
 else
     % determines if the new value is ok
-    if isMultiTrack
+    if isMTrk
         % if multi-tracking
         valOK = chkEditValue(nwVal,[1,100],1);
     else
@@ -370,13 +370,13 @@ fPos = get(hFig,'position');
 iMov = getappdata(hMain,'iMov');
 
 % other parameters and array dimensioning
-isMultiTrack = detIfMultiTrack(iMov);
+isMTrk = detMltTrkStatus(iMov);
 [nRow,nCol] = deal(iMov.nRow,iMov.nCol);
 [xiC,xiR,cWid0,dX] = deal(num2cell(1:nCol),num2cell(1:nRow),85,10);
 
 % retrieves the fly/sub-region count and flag
 if isempty(iMov.isUse)
-    if isMultiTrack
+    if isMTrk
         iMov.nFlyR = iMov.nFly*ones(iMov.nRow,iMov.nCol);
         [nFly,iMov.nTube] = deal(iMov.nFlyR,1);
     end
@@ -386,11 +386,11 @@ if isempty(iMov.isUse)
     iMov.isUse = arrayfun(@(n)(true(n,1)),nTubeR,'un',0);
     
     % if not multi-tracking, then the 
-    if ~isMultiTrack
+    if ~isMTrk
         nFly = nTubeR;
     end
 else
-    if isMultiTrack
+    if isMTrk
         nFly = iMov.nFlyR;
     else
         nFly = iMov.nTubeR;
@@ -414,7 +414,7 @@ setObjEnable(h.menuReset,'off')
 
 % sets the table information fields
 cStr = cellfun(@(x)(sprintf('Column #%i',x)),xiC(:),'un',0);
-if ~isMultiTrack; cStr = [cStr(:);{'Max Count'}]; end
+if ~isMTrk; cStr = [cStr(:);{'Max Count'}]; end
 
 rStr = cellfun(@(x)(sprintf('Row #%i',x)),xiR,'un',0);
 cWid = num2cell(cWid0*ones(1,iMov.nRow));
@@ -431,7 +431,7 @@ set(h.tableFlyCount,'rowname',cStr,'columnname',rStr,...
                  
 % retrieves the table dimensions
 [H0T,HWT,W0T] = getTableDimensions(findjobj(h.tableFlyCount));
-tPos = [dX*[1 1],W0T+nRow*cWid0,H0T+(nCol+(~isMultiTrack))*HWT];
+tPos = [dX*[1 1],W0T+nRow*cWid0,H0T+(nCol+(~isMTrk))*HWT];
 tPos(2) = fPos(4)-(3*dX+tPos(4));
 
 % reset GUI object positions
@@ -441,7 +441,7 @@ tData = getTableData(iMov);
 set(h.tableFlyCount,'position',tPos,'Data',tData);
 
 % resets the image panel/figure dimensions
-if isMultiTrack
+if isMTrk
     % disables the plot region
     setObjVisibility(h.panelRegion,'off')
     
@@ -556,7 +556,7 @@ axPosY = (pPosAx(2)+axPos(2)) + [0,axPos(4)];
 % --- sets up the data array for the table
 function tData = getTableData(iMov)
 
-if detIfMultiTrack(iMov)
+if detMltTrkStatus(iMov)
     tData = iMov.nFlyR';
 else
     nFlyMax = max(cellfun(@length,iMov.isUse),[],2)';

@@ -5,7 +5,7 @@ function is2D = is2DCheck(iMov,varargin)
 if ~iMov.isSet
     is2D = false;
     return
-elseif detIfMultiTrack(iMov)
+elseif detMltTrkStatus(iMov)
     is2D = true;
     return
 end

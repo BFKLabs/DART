@@ -38,7 +38,7 @@ hGUI = varargin{1};
 
 % determines if the video is 2D or not
 iMov = getappdata(hGUI.figFlyTrack,'iMov');
-is2D = is2DCheck(iMov) || detIfMultiTrack(iMov);
+is2D = is2DCheck(iMov) || detMltTrkStatus(iMov);
 iData = getappdata(hGUI.figFlyTrack,'iData');
 
 % sets the objects into the GUI
@@ -438,8 +438,8 @@ iMov = getappdata(hGUI.figFlyTrack,'iMov');
 iData = getappdata(hGUI.figFlyTrack,'iData');
 
 % sets the fly count (based on tracking type)
-isMultiTrack = detIfMultiTrack(iMov);
-if isMultiTrack
+isMTrk = detMltTrkStatus(iMov);
+if isMTrk
     nFly = max(iMov.nFlyR(:));
 else
     nFly = getSRCountMax(iMov);
@@ -743,8 +743,8 @@ switch iApp
     otherwise % case is the fly position plot
         % makes all the population plot lines invisible and the individual
         % plot line visible        
-        isMultiTrack = detIfMultiTrack(iMov);   
-        if isMultiTrack
+        isMTrk = detMltTrkStatus(iMov);   
+        if isMTrk
             nFly = getRegionFlyCount(iMov,iApp); 
             yLblStr = 'Fly Index';
         else
@@ -782,7 +782,7 @@ switch iApp
             xMin = iMov.iC{iApp}(1) - 1;
             xMax = iMov.iC{iApp}(end) - 1; 
             
-            if isMultiTrack
+            if isMTrk
                 % determines the min/max position values over all flies
                 % within the current region
                 xPosL = cell2mat(cellfun(@(x)...
@@ -797,7 +797,7 @@ switch iApp
         
         % calculates the y-coordinates
         if is2D && vType(2)
-            if isMultiTrack
+            if isMTrk
                 % determines the min/max position values over all flies
                 % within the current region
                 yPosL = cell2mat(cellfun(@(x)...

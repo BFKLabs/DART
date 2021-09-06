@@ -3314,7 +3314,7 @@ if isInit
     end
     
     % creates the custom-signal object (if package available)
-    runExternPackage(handles,'CustomSignalObj');     
+    feval('runExternPackage','CustomSignalObj',handles);     
     
     % updates the experiment information data struct into the gui
     setappdata(hFig,'iExpt',iExpt)    
@@ -3856,7 +3856,7 @@ delete(h)
 
 % makes the GUI visible again
 if isInit
-    runExternPackage(handles,'RunStreamPix');     
+    feval('runExternPackage','RunStreamPix',handles);     
 else
     setObjVisibility(hFig,'on'); 
 end

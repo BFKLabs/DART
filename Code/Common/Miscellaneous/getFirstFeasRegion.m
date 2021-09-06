@@ -5,6 +5,6 @@ function [i0,j0] = getFirstFeasRegion(iMov)
 [i0,j0] = deal(find(iMov.ok,1,'first'),1);
 
 % if not multi-tracking, then determine the first feasible sub-region
-if ~detIfMultiTrack(iMov)
+if ~detMltTrkStatus(iMov)
     j0 = find(iMov.flyok(:,i0),1,'first');
 end

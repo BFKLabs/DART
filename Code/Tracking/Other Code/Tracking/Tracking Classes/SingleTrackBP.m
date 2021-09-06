@@ -510,8 +510,9 @@ classdef SingleTrackBP < handle
                 trkObjF.setClassField('wOfs',1+obj.isMultiBatch);
                                 
             else
-                % case is single object tracking
-                trkObjF = MultiTrackFull(obj.iData); 
+                % case is single object tracking                
+                trkObjF = feval('runExternPackage','MultiTrack',...
+                                 obj.iData,'Full');
             end
             
             % sets the common tracking object fields
@@ -610,7 +611,8 @@ classdef SingleTrackBP < handle
                     
                 else
                     % case is tracking multiple objects
-                    trkObjI = MultiTrackInit(obj.iData); 
+                    trkObjI = feval('runExternPackage',...
+                                    'MultiTrack',obj.iData,'Init'); 
                 end                                                       
                 
                 % runs the initial tracking/background estimate

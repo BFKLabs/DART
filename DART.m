@@ -41,6 +41,7 @@ tic;
 set(0,'units','pixels')
 setappdata(hObject,'hTrack',[])
 setappdata(hObject,'isInit',true)
+setappdata(hObject,'dirUpdateFcn',@updateSubDirectories)
 
 % initialises the GUI objects
 if ~initGUIObjects(handles)
@@ -102,7 +103,6 @@ end
 
 % retrieves the table cell heights
 centreFigPosition(hObject);
-set(hObject,'visible','on'); pause(0.05);
 
 % UIWAIT makes menuDART wait for user response (see UIRESUME)
 % uiwait(handles.figDART);
@@ -364,7 +364,8 @@ global mainProgDir
 outDir = uigetdir(mainProgDir,'Set The Executable Output Directory');
 if outDir ~= 0
     % runs the executable creation code
-    ProgDef = getappdata(handles.figDART,'ProgDef');
+    hFig = handles.figDART;
+    ProgDef = getappdata(hFig,'ProgDef');    
     createDARTExecutable(mainProgDir,outDir,ProgDef)
 end
 
@@ -807,19 +808,35 @@ global addWinVideo mainProgDir
 % turns off all warnings
 wState = warning('off','all');
 
-% ensures the "Test Files" directory is renamed to "External Files"
-testDir = fullfile(mainProgDir,'Test Files');
-if exist(testDir,'dir')
-    nwDir = fullfile(mainProgDir,'External Files');
-    ok = movefile(testDir,nwDir,'f');
-    
-    % if there was an error, then exit
-    if ~ok; return; end
-end
-
 % global variables
 mainDir = pwd;
 [isTest,ok,h] = deal(getappdata(handles.figDART,'isTest'),true,[]);
+
+% resets the folder names/locations
+if ~isdeployed
+    % ensures the "Test Files" directory is renamed to "External Files"
+    testDir = fullfile(mainDir,'Test Files');
+    if exist(testDir,'dir')
+        nwDir = fullfile(mainDir,'External Files');
+        ok = movefile(testDir,nwDir,'f');
+
+        % if there was an error, then exit
+        if ~ok; return; end
+    end
+    
+    % ensures the Git folder is in the "Code" sub-directory
+    gitDir = fullfile(mainDir,'Code','Common','Git');
+    if exist(gitDir,'dir')
+        % removes the git-dir environment variables
+        gitEnvVarFuncDART('GIT_DIR')
+        
+        % moves the directory
+        nwDir = fullfile(mainDir,'Code','Git');
+        ok = movefile(gitDir,nwDir,'f');
+
+        % to move the git folder, the user must quit and restart 
+    end
+end
 
 % % uses the opengl software for rendering
 % try; opengl('hardware'); end
@@ -925,7 +942,7 @@ if ~isdeployed
         % determines if any of these figures are open
         if isFound
             % if so, then output an error to screen
-            set(handles.figDART,'visible','off'); pause(0.05)
+            setObjVisibility(handles.figDART,'visible',0); pause(0.05)
             eStr = 'Error! A DART session is already running!';
             waitfor(errordlg(eStr,'DART Initialisation Error','modal'))
             
@@ -1035,7 +1052,7 @@ setObjVisibility(handles.menuAddPackage,hasPackageFile);
 
 % creates the Git menu items
 if exist('GitFunc','file') && ~isdeployed
-    setupGitMenus(handles.figDART)
+    feval('setupGitMenus',handles.figDART)
 end
 
 % loads the button image data file
@@ -1214,3 +1231,13 @@ catch
     % if that fails, use the older version of the function
     hasPat = ~isempty(strfind(str,pat));
 end
+
+% --- removes the git environment variable
+function gitEnvVarFuncDART(vName)
+
+% case is removing an environment variable
+cmdStr = sprintf('reg delete "HKCU\\Environment" /v %s /f',vName);
+setenv(vName,'');
+
+% runs the string from the command line
+[~,~] = system(cmdStr);
