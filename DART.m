@@ -972,34 +972,34 @@ if ~isdeployed
     updateSubDirectories(fullfile(mainDir,'Git'),'add')
     updateSubDirectories(fullfile(mainDir,'External Files'),'add')
     updateSubDirectories(fullfile(mainDir,'Para Files'),'add')
-    
-    % adds the xlwrite java files to the path
-    cDir = fullfile(mainDir,'Code','Common');
-    jDirXL = fullfile(cDir,'File Exchange','xlwrite','poi_library');
-    if exist(jDirXL,'dir')
-        jFiles = dir(fullfile(jDirXL,'*.jar'));
-        jFile = arrayfun(@(x)(fullfile(jDirXL,x.name)),jFiles,'un',0);
-        cellfun(@(x)(javaaddpath(x,'-END')),jFile);        
-    end
-    
-    % adds the heap clear java files to the path
-    jDirHC = fullfile(cDir,'File Exchange','jheapcl');
-    if exist(jDirHC,'dir')
-        javaaddpath(fullfile(jDirHC,'MatlabGarbageCollector.jar'),'-END');
-    end
-    
-    % adds the conditional check table java files to the path
-    jDirCCT = fullfile(cDir,'Utilities','CondCheckTable');
-    if exist(jDirCCT,'dir')
-        javaaddpath(jDirCCT);
-    end        
-    
-    % adds the coloured field cell renderer
-    jDirCR = fullfile(cDir,'File Exchange','ColoredFieldCellRenderer.zip');
-    if exist(jDirCR,'file')
-        javaaddpath(jDirCR,'-END');
-    end        
 end
+    
+% adds the xlwrite java files to the path
+cDir = fullfile(mainDir,'Code','Common');
+jDirXL = fullfile(cDir,'File Exchange','xlwrite','poi_library');
+if exist(jDirXL,'dir')
+    jFiles = dir(fullfile(jDirXL,'*.jar'));
+    jFile = arrayfun(@(x)(fullfile(jDirXL,x.name)),jFiles,'un',0);
+    cellfun(@(x)(javaaddpath(x,'-END')),jFile);        
+end
+
+% adds the heap clear java files to the path
+jDirHC = fullfile(cDir,'File Exchange','jheapcl');
+if exist(jDirHC,'dir')
+    javaaddpath(fullfile(jDirHC,'MatlabGarbageCollector.jar'),'-END');
+end
+
+% adds the conditional check table java files to the path
+jDirCCT = fullfile(cDir,'Utilities','CondCheckTable');
+if exist(jDirCCT,'dir')
+    javaaddpath(jDirCCT);
+end        
+
+% adds the coloured field cell renderer
+jDirCR = fullfile(cDir,'File Exchange','ColoredFieldCellRenderer.zip');
+if exist(jDirCR,'file')
+    javaaddpath(jDirCR,'-END');
+end        
 
 % global variables
 mainProgDir = mainDir;

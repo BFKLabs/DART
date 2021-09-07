@@ -961,7 +961,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                         fFileS = cellfun(@(x)...
                                 (fullfile(fDirS{i},x)),fNameS{i},'un',0);
                         [snTotNw,iMov,eStr] = combineSolnFiles(fFileS);
-
+                                               
                         % if the user cancelled, or was an error, then exit    
                         if isempty(snTotNw)
                             if isempty(eStr)
@@ -975,6 +975,9 @@ classdef OpenSolnFileTab < dynamicprops & handle
                                 isOK(i) = false;
                             end           
                         else
+                            % resets the time vectors     
+                            snTotNw = obj.resetVideoAndStimTiming(snTotNw);                                                    
+                            
                             % sets up the fly location ID array
                             snTotNw.iMov = reduceRegionInfo(iMov);
                             snTotNw.cID = setupFlyLocID(snTotNw.iMov);
@@ -1954,6 +1957,48 @@ classdef OpenSolnFileTab < dynamicprops & handle
             bgCol(~isOK,:) = grayCol;
 
         end        
+        
+        % --- resets the video/stimuli times
+        function snTot = resetVideoAndStimTiming(snTot)
+        
+            % sets the start/finish times
+            [T0,T1] = deal(snTot.T{1}(1),snTot.T{end}(end));
+            
+            % resets the start time of the experiment
+            dN = datenum(snTot.iExpt.Timing.T0);            
+            snTot.iExpt.Timing.T0 = datevec(addtodate(dN,T0,'s'));   
+            
+            % offsets the video time stamps
+            snTot.T = cellfun(@(x)(x-T0),snTot.T,'un',0);
+
+            % resets stimuli times (only if stimuli is provided)
+            if ~isempty(snTot.stimP)
+                dType = fieldnames(snTot.stimP);
+                for i = 1:length(dType)
+                    % retrieves the device stimuli parameter sub-struct
+                    dStim = getStructField(snTot.stimP,dType{i});
+                    
+                    % updates each of the stimuli times
+                    chType = fieldnames(dStim);
+                    for j = 1:length(chType)
+                        % updates the start/stop stimuli times
+                        chStim = getStructField(dStim,chType{j});
+                        [Ts,Tf] = deal(chStim.Ts,chStim.Tf);
+                        
+                        % updates the start/finish times
+                        ii = (Ts >= T0) & (Tf <= T1);
+                        chStim.iStim = chStim.iStim(ii);
+                        [chStim.Ts,chStim.Tf] = deal(Ts(ii)-T0,Tf(ii)-T0);                         
+                        dStim = setStructField(dStim,chType{j},chStim);
+                    end
+                    
+                    % updates the device stimuli parameter sub-struct
+                    snTot.stimP = ...
+                            setStructField(snTot.stimP,dType{i},dStim);
+                end
+            end
+            
+        end
         
     end
     

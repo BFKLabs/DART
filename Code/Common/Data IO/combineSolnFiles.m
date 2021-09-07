@@ -9,6 +9,7 @@ if ~exist('isReduce','var'); isReduce = false; end
 
 % parameters and initialisations
 eStr = [];
+calcPhi = false;
 updateSumm = false;
 wState = warning('off','all');
 sName = cellfun(@(x)(getFileName(x,1)),sFile,'un',0);

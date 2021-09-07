@@ -121,6 +121,9 @@ end
 % sets the final code directory array
 codeDir = [codeDir(~cellfun(@isempty,codeDir));pkgName(:)];
 
+% sets the java jar files
+javaFiles = {which('ColoredFieldCellRenderer.zip')};
+
 % % retrieves the names of all the folders within the Code directory
 % codeDir = cell2cell(codeDir);
 
@@ -133,7 +136,7 @@ codeDir = [codeDir(~cellfun(@isempty,codeDir));pkgName(:)];
 
 % sets up the main file, analysis function directory and other important
 % file directories add string
-fStr = [codeDir;{'DART.fig';'Para Files'}];
+fStr = [codeDir(:);{'DART.fig';'Para Files'};javaFiles(:)];
 addStr = sprintf('-v ''%s'' -a ''%s''',fullfile(progDir,'DART.m'),fcnDir);
 for i = 1:length(fStr)
     switch fStr{i}
