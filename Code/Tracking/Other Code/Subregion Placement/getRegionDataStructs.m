@@ -5,7 +5,13 @@ function [D1,D2] = getRegionDataStructs(iMov,appPara)
 [D1,D2] = deal([]);
 is2D = is2DCheck(iMov);
 isNewFormat = isfield(iMov,'pInfo');
-hasNTube = isfield(iMov,'nTubeR');
+
+% determines if the variable sub-region count has been set
+if isfield(iMov,'nTubeR')
+    hasNTube = ~isempty(iMov.nTubeR);
+else
+    hasNTube = false;
+end
 
 % update the grouping fields (based on the format of iMov)
 if isNewFormat

@@ -224,6 +224,16 @@ function [snTot,sInfo] = separateInfoDataStruct(hFig,sInfo)
 nExp = length(sInfo);
 snTot = cell(nExp,1);
 
+% removes any apparatus information fields
+for i = 1:nExp
+    if isfield(sInfo{i}.snTot,'appPara')
+        sInfo{i}.snTot = rmfield(sInfo{i}.snTot,'appPara');
+    end
+end
+
+% % retrieves the fieldname from each solution file
+% fName = cellfun(@(x)(fieldnames(x.snTot)),sInfo,'un',0)';
+
 % separates the data struct (removes snTot from sInfo)
 for i = 1:nExp
     if i == 1
@@ -2538,8 +2548,7 @@ pDataT = struct('Indiv',[],'Pop',[],'Multi',[]);
 % retrieves the partial/full file names
 if isdeployed
     % loads the analysis function data file
-    pFile = fullfile(mainProgDir,'Para Files','AnalysisFunc.mat');
-    pData = load(pFile);
+    pData = load('AnalysisFunc.mat');
     
     % sets the partial/full file names
     [fDir,fName,eStr] = deal(pData.fDir,pData.fName,[]);
@@ -2584,13 +2593,13 @@ if isdeployed
         end  
     end
     
-    % if there are any issues, then output a warning to screen
-    if ~isempty(eStr)
-        eStr = sprintf(['%s\nIt is strongly suggested that you recompile ',...
-                        'the executable to account for the missing files ',...
-                        'and/or out of date analysis functions.\n'],eStr);
-        waitfor(warndlg(eStr,'Analysis Function Issues','modal'))
-    end
+%     % if there are any issues, then output a warning to screen
+%     if ~isempty(eStr)
+%         eStr = sprintf(['%s\nIt is strongly suggested that you recompile ',...
+%                         'the executable to account for the missing files ',...
+%                         'and/or out of date analysis functions.\n'],eStr);
+%         waitfor(warndlg(eStr,'Analysis Function Issues','modal'))
+%     end
 else
     % sets the partial/full file names
     fName = field2cell(dir(fullfile(dDir,'*.m')),'name');

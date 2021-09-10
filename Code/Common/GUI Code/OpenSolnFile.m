@@ -209,8 +209,5 @@ for i = 1:length(sInfo)
     indL = cellfun(@(y)(find(strcmp(gName{i},y))),grpName,'un',0);       
     
     % removes any extraneous fields    
-    sInfo{i}.snTot = reduceExptSolnFiles(sInfo{i}.snTot,indL,grpName);        
-%     if isfield(sInfo{i}.snTot,'sName')        
-%         sInfo{i}.snTot = rmfield(sInfo{i}.snTot,'sName');
-%     end    
+    sInfo{i}.snTot = reduceExptSolnFiles(sInfo{i}.snTot,indL,grpName);
 end

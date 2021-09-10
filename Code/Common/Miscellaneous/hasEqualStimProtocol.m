@@ -9,5 +9,10 @@ function [hasEqSP,nStim] = hasEqualStimProtocol(snTot)
 sTrainEx = field2cell(snTot,'sTrainEx');
 if ~isempty(sTrainEx{1})            
     hasEqSP = all(cellfun(@(x)(isequal(x,sTrainEx{1})),sTrainEx));
-    nStim = sTrainEx{1}.sParaEx.nCount*hasEqSP;
+    
+    % sets the stimuli count for each device (if required)
+    if nargout == 2
+        nCount = field2cell(sTrainEx{1}.sParaEx,'nCount');    
+        nStim = nCount*hasEqSP;
+    end
 end

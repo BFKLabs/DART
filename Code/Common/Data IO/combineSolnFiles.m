@@ -15,7 +15,7 @@ wState = warning('off','all');
 sName = cellfun(@(x)(getFileName(x,1)),sFile,'un',0);
 
 % sets the summary file name from the solution file data
-A = importdata(sFile{1},'-mat');
+A = load(sFile{1},'-mat');
 smFile = getSummaryFilePath(A.fData);
 if isempty(smFile)
     smFile = getSummaryFilePath(struct('movStr',sFile{1}));
@@ -207,7 +207,8 @@ snTot = orderfields(struct('T',[],'Px',[],'Py',[],'Phi',[],'AxR',[],...
                            'pMapPhi',[],'pMapAxR',[],...
                            'iMov',[],'Type',1));           
            
-% sub-struct memory allocation           
+% sub-struct memory allocation    
+initData = true;
 [snTot.T,Px,Py] = deal(cell(nFile,1)); 
 if ~isempty(sData); snTot.sData = sData; end
    
@@ -272,8 +273,9 @@ for i = 1:nFile
         yOfs = cellfun(@(x)(x(1)-1),a.iMov.iR);
         
         % sets the essential parameters (for the first frame)
-        if i == 1
-            % sets the experimental recording/segmentation parameters       
+        if initData
+            % sets the experimental recording/segmentation parameters  
+            initData = false;
             sgP = struct('sRate',a.iMov.sRate,'fRate',a.exP.FPS,...
                          'sFac',a.exP.sFac);
             [snTot.Px,snTot.Py] = deal(cell(nApp,1));            

@@ -1058,7 +1058,7 @@ if exist('GitFunc','file') && ~isdeployed
 end
 
 % loads the button image data file
-A = load(fullfile(mainProgDir,'Para Files','ButtonCData.mat')); 
+A = load('ButtonCData.mat'); 
 cData = A.cDataStr;
 
 % sets the button bitmap images and sub-object names
@@ -1072,8 +1072,8 @@ BData = {{'Recording','FlyRecord'};...
 % related properties
 for i = 1:length(BData)
     % retrieves the image and the button object handle
-    ImgNw = eval(sprintf('cData.%s',BData{i}{1}));
-    hButton = eval(sprintf('handles.button%s',BData{i}{2}));
+    ImgNw = getStructField(cData,BData{i}{1});
+    hButton = getStructField(handles,sprintf('button%s',BData{i}{2}));
         
     % updates the button colour data
     set(hButton,'CData',uint8(ImgNw));
@@ -1083,7 +1083,7 @@ for i = 1:length(BData)
         fMatch = fileNameMatchSearch(fNameNw,mainProgDir);            
 
         % retrieves the program defaults (depending on OS)
-        ProgDefNw = eval(sprintf('ProgDef.%s',BData{i}{1}));
+        ProgDefNw = getStructField(ProgDef,BData{i}{1});
         
         % if there is a match, then set the file match
         if ~isempty(fMatch) || isdeployed

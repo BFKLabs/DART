@@ -1027,12 +1027,9 @@ setAddList(handles,iSolnAdd)
 % --- initialises the movement buttons --- %
 function initMoveButtons(handles)
 
-% global variables
-global mainProgDir
-
 % sets the button c-data values
-cdFile = fullfile(mainProgDir,'Para Files','ButtonCData.mat');
-if (~exist(cdFile,'file'))
+cdFile = 'ButtonCData.mat';
+if ~exist(cdFile,'file')
     return
 end
 

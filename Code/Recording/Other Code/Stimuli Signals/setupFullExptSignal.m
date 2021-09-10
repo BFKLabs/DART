@@ -2,34 +2,31 @@
 function [xyData,sPara] = setupFullExptSignal(sObj,sTrain,sPara)
 
 % retrieves the properties from the gui
-switch get(sObj,'tag')
-    case 'figExptSetup'
-        % retrieves the axes object/experiment data struct   
-        useTOfs = 0;
-        hFig = sObj;
-        iExpt = getappdata(hFig,'iExpt');
+if isa(sObj,'OpenSolnFileTab')
+    % object retrieval
+    useTOfs = 1;        
 
-        % sets the default input arguments (if not provided)
-        if ~exist('sPara','var')
-            % retrieves the experiment parameter struct (if not provided)
-            sType = getappdata(hFig,'sType');    
-            sParaEx = getappdata(hFig,'sParaEx');
-            sPara = getStructField(sParaEx,sType(1));         
+    % retrieves the stimuli information for the current experiment
+    hFig = sObj.hFig;
+    iExpt = sObj.sInfo{sObj.iExp}.snTot.iExpt;    
+else
+    % retrieves the axes object/experiment data struct   
+    useTOfs = 0;
+    hFig = sObj;
+    iExpt = getappdata(hFig,'iExpt');
 
-            % retrieves the selected signal train info (if not provided)
-            if ~exist('sTrain','var')
-                sTrain = getSelectedSignalTrainInfo(hFig);
-            end
+    % sets the default input arguments (if not provided)
+    if ~exist('sPara','var')
+        % retrieves the experiment parameter struct (if not provided)
+        sType = getappdata(hFig,'sType');    
+        sParaEx = getappdata(hFig,'sParaEx');
+        sPara = getStructField(sParaEx,sType(1));         
+
+        % retrieves the selected signal train info (if not provided)
+        if ~exist('sTrain','var')
+            sTrain = getSelectedSignalTrainInfo(hFig);
         end
-
-    case 'OpenSolnFileTab'
-        % object retrieval
-        useTOfs = 1;        
-        
-        % retrieves the stimuli information for the current experiment
-        hFig = sObj.hFig;
-        iExpt = sObj.sInfo{sObj.iExp}.snTot.iExpt;
-        
+    end    
 end
 
 % retrieves the current axes handle

@@ -373,7 +373,7 @@ if checkExptName(hFig,fNameNw)
     resetExptTableBG(hFig)
     
     % resets the table value    
-    setTableValue(handles.tableExptName,iRow,1,java.lang.String(fNameNw))
+    setTableValue(handles.tableExptName,iExp,1,java.lang.String(fNameNw))
         
 else
     % otherwise, reset the chooser file
@@ -699,7 +699,7 @@ end
 
 % creates the progress bar
 wStr0 = {'File Batch Progress','Waiting For Process',...
-         'Current Experiment Progress','Output Data Field'};
+         'Current Experiment Progress'};
 hProg = ProgBar(wStr0,'Solution File Loading');
 
 % --------------------------------------- %
@@ -880,7 +880,6 @@ function outputDARTSoln(snTot,oPara,fNameFull,hProg,tmpDir)
 
 % resets the progress bar strings
 hProg.wStr(2:end) = {'Overall Progress',...
-                     'Current Experiment Progress',...
                      'Output Data Field'};
 
 % resets the progreebar
@@ -894,7 +893,7 @@ snTot = reshapeExptSolnFile(snTot);
 
 % outputs the solution file
 fFileFull = [fNameFull,'.ssol'];
-saveExptSolnFile(tmpDir,fFileFull,snTot,oPara,hProg,1);
+saveExptSolnFile(tmpDir,fFileFull,snTot,hProg,1);
 
 % --- outputs a Matlab mat solution file --- %
 function outputMATSoln(snTot,oPara,fNameFull,hProg)
@@ -1203,7 +1202,7 @@ for i = 1:nApp
             % sets the header string based on whether outputting y-data
             Hstr{i}{1} = 'Time';
             H1 = arrayfun(@(x)(sprintf('X%i',x)),okNw,'un',0);
-            if (oPara.outY)
+            if oPara.outY
                 % case is outputting both x and y data
                 H2 = [H1 arrayfun(@(x)(sprintf('Y%i',x)),okNw,'un',0)];
                 Hstr{i}(2:end) = reshape(H2',[1 numel(H2)]);
@@ -1504,7 +1503,9 @@ oPara = repmat(pStr0,length(sInfo),1);
 % sets the fields for each for the 
 for i = 1:length(sInfo)
     % ensures the data is always output for a 2D experiment
-    if sInfo{i}.is2D; oPara(i).outY = true; end
+    if sInfo{i}.snTot.iMov.is2D
+        oPara(i).outY = true;
+    end
 end
 
 % updates the array into the gui
@@ -1578,7 +1579,7 @@ setappdata(hFig,'Tmax',Tmax)
 setappdata(hFig,'sInfo',sInfo)
 
 % sets the tree explorer icons
-A = load(fullfile(mainProgDir,'Para Files','ButtonCData.mat'));
+A = load('ButtonCData.mat');
 [Im,mMap] = rgb2ind(A.cDataStr.Im,256);
 [Ifolder,fMap] = rgb2ind(A.cDataStr.Ifolder,256);
 imwrite(Im,mMap,getIconImagePath(hFig,'File'),'gif')
@@ -1984,8 +1985,11 @@ isUpdating = false;
 % --- Executes when selected object is changed in panelFileType.
 function updateObjectProps(handles,iExp)
 
-% initialisations
+% sets the default argument values
 if ~exist('iExp','var'); iExp = 1; end
+
+% initialisations
+igChk = {'checkOutputY'};
 [isCSV,isOut,isTime] = deal(false,true,true);
 
 % determines if there are any stimuli events
@@ -2017,7 +2021,7 @@ if tabDataEx{iExp,2}
     % updates the check-box properties
     setObjEnable(handles.checkUseComma,isCSV)
     setObjEnable(handles.checkSolnTime,isTime)
-    setObjEnable(handles.checkOutputY,~sInfo{iExp}.is2D)
+    setObjEnable(handles.checkOutputY,~sInfo{iExp}.snTot.iMov.is2D)
 
     % sets the output checkbox enabled properties
     setObjEnable(handles.checkOutputExpt,isOut)
@@ -2030,7 +2034,9 @@ for i = 1:length(pFld)
     % retrieves the checkbox item
     hChk = findall(handles.panelOtherPara,'UserData',pFld{i},...
                                           'Style','CheckBox');       
-    if strcmp(get(hChk,'Enable'),'off')
+    tagStr = get(hChk,'tag');
+                                      
+    if strcmp(get(hChk,'Enable'),'off') && ~any(strcmp(igChk,tagStr))
         % if the checkbox is disabled, then reset the flag value to false
         oPara(iExp) = setStructField(oPara(iExp),pFld{i},false);
     end

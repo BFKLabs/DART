@@ -36,13 +36,13 @@ guidata(hObject, handles);
 setGUIFontSize(handles)
 
 % sets the button c-data values
-cdFile = fullfile(mainProgDir,'Para Files','ButtonCData.mat');
-if (~exist(cdFile,'file'))
+cdFile = 'ButtonCData.mat';
+if ~exist(cdFile,'file')
     cdFile = [];
 end
 
 % sets the DART logo
-if (~isempty(cdFile))
+if ~isempty(cdFile)
     A = load(cdFile);    
     image(A.cDataStr.Ilogo,'parent',hAx)
     set(hAx,'xtick',[],'xticklabel',[],'ytick',[],'yticklabel',[])
@@ -50,7 +50,7 @@ if (~isempty(cdFile))
 end
 
 % determines if the update log-file exists
-if (isdeployed)
+if isdeployed
     a = dir(fullfile(mainProgDir,'DART.exe'));
     set(handles.textLastTime,'string',a.date)
     set(handles.textLastName,'string','Executable Version')

@@ -212,4 +212,7 @@ if exist(exeFile,'file')
     movefile(ctfFile,outDir);  
     pause(2.0); delete(hLoad); pause(0.2);    
     clc       
+    
+    % creates the executable update zip file
+    zip('ExeUpdate.zip',{'DART.exe','DART.ctf'});
 end

@@ -40,10 +40,11 @@ for i = 1:length(pFld)
         else
             % case is the 1D experimental setup
 
-            % allocates memory for each region  
-            nFly = arr2vec(pInfo.nFly');
-            nFly(isnan(nFly)) = 0;
-            Zf = arrayfun(@(n)(NaN(nFrm,n)),nFly,'un',0);
+            % allocates memory for each region 
+            Zf = cell(1,iMov.nRow*iMov.nCol);
+%             nFly = arr2vec(pInfo.nFly');
+%             nFly(isnan(nFly)) = 0;
+%             Zf = arrayfun(@(n)(NaN(nFrm,n)),nFly,'un',0);
 
             % sets the data values for each grouping
             for j = 1:length(cID)
@@ -54,8 +55,14 @@ for i = 1:length(pFld)
                     % calculates the total number of flies (over the unique
                     % regions within this grouping)
                     [iAppU,~,iC] = unique(iApp,'stable'); 
-                    nFlyU = nFly(iAppU);
+                    nFlyU = arrayfun(@(x)(max(cID{j}(iApp==x,3))),iAppU); 
+                    nFlyU = max(nFlyU(:),arr2vec(pInfo.nFly(iAppU)));                                        
+                    
+                    % memory allocation
                     nFlyT = sum(nFlyU);
+                    for k = 1:length(iAppU)
+                        Zf{iAppU(k)} = NaN(nFrm,nFlyU(k));                        
+                    end
                     
                     for k = 1:size(cID{j},1)  
                         % sets the new configuration index

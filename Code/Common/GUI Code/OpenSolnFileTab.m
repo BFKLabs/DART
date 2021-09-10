@@ -22,6 +22,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
         tabCR1
         tabCR2
         jTable
+        jPanel
         
         % temprary tree setup objects
         hMovT
@@ -47,7 +48,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
     % class methods
     methods
         % class constructor
-        function obj = OpenSolnFileTab(baseObj)                                            
+        function obj = OpenSolnFileTab(baseObj)
             
             % field initialisations
             obj.baseObj = baseObj;
@@ -215,10 +216,12 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 % attempts to retrieves the row/column indices
                 iRow = get(evnt,'FirstRow');
                 iCol = get(evnt,'Column');
+                
+                % if the row/column indices are infeasible, then exit                
                 if (iRow < 0) || (iCol < 0)
-                    % if the row/column indices are infeasible, then exit
                     return
                 end
+                
             catch
                 % if there was an error, then exit
                 return
@@ -230,10 +233,13 @@ classdef OpenSolnFileTab < dynamicprops & handle
             
             % determines if the new string is valid and feasible
             if (iRow+1) > size(tabData,1)
-                % case is the experiment has not been loaded
-                mStr = sprintf(['It isn''t possible to set the name ',...
-                                'for an experiment that is not loaded.']);
-                waitfor(msgbox(mStr,'Experiment Naming Error','modal'))
+                % if the row index is infeasible then exit
+                return
+                
+%                 % case is the experiment has not been loaded
+%                 mStr = sprintf(['It isn''t possible to set the name ',...
+%                                 'for an experiment that is not loaded.']);
+%                 waitfor(msgbox(mStr,'Experiment Naming Error','modal'))
 
             elseif strcmp(nwStr,tabData{iRow+1,iCol+1})
                 % case is the string name has not changed
@@ -367,11 +373,11 @@ classdef OpenSolnFileTab < dynamicprops & handle
             
             % creates the java table object
             jScroll = findjobj(hTableI);
-            [jScroll, hContainer] = javacomponent(jScroll,[],hPanelI);
+            [jScrollP, hContainer] = javacomponent(jScroll,[],hPanelI);
             set(hContainer,'Units','Pixels','Position',tPos)
 
             % creates the java table model
-            obj.jTable = jScroll.getViewport.getView;
+            obj.jTable = jScrollP.getViewport.getView;
             jTableMod = javax.swing.table.DefaultTableModel(tabData,hdrStr);
             obj.jTable.setModel(jTableMod);
 
@@ -426,6 +432,9 @@ classdef OpenSolnFileTab < dynamicprops & handle
             obj.jTable.getTableHeader().setBackground(gridCol);
             obj.jTable.setGridColor(gridCol);
             obj.jTable.setShowGrid(true);
+            
+            % retrieves the expt info panel java object
+            obj.jPanel = findjobj(hPanelI);
 
             % disables the resizing
             jTableHdr = obj.jTable.getTableHeader(); 
@@ -440,7 +449,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
         end        
         
         % --- updates the solution file/added experiments array
-        function updateExptInfoTable(obj)
+        function updateExptInfoTable(obj,hLoad)
 
             % other initialisations            
             obj.tableUpdate = true;            
@@ -478,14 +487,18 @@ classdef OpenSolnFileTab < dynamicprops & handle
             obj.resetColumnWidths()
 
             % repaints the table
-            obj.jTable.repaint();
+            obj.jPanel.repaint();
+            obj.jTable.repaint();            
 
             % flag that the table update is complete
             pause(0.05)
             obj.tableUpdate = false;
 
+            % deletes the loadbar
+            if exist('hLoad','var'); delete(hLoad); end
+            
             % outputs any message to screen (if they exist)
-            if ~isempty(mStr)            
+            if ~isempty(mStr)                
                 waitfor(msgbox(mStr,'Repeated File Names','modal'))
             end
 
@@ -499,13 +512,13 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 return
             end
 
+            % sets the table update flag to on
+            obj.tableUpdate = true;            
+            
             % object retrieval
             handles = obj.hGUI;
             hTable = handles.tableExptInfo;
             jTableMod = obj.jTable.getModel();
-
-            % sets the table update flag to on
-            obj.tableUpdate = true;
 
             % removes the table selection
             removeTableSelection(hTable)
@@ -520,6 +533,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             end
 
             % repaints the table
+            obj.jPanel.repaint;
             obj.jTable.repaint;
             pause(0.05);
 
@@ -549,7 +563,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
         % --- updates the experiment information fields
         function updateGroupTableProps(obj)
 
-            % retrieves the solution file information struct 
+            % retrieves the solution file information struct
             % (for the current expt)
             handles = obj.hGUI;
             sInfoNw = obj.sInfo{obj.iExp};
@@ -591,7 +605,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % sets the group name table properties
             cEdit = setGroup(length(cHdr),size(cHdr));
             set(handles.tableGroupNames,'Data',Data,'ColumnName',cHdr,...
-                              'ColumnEditable',cEdit,'ColumnWidth',cWid)
+                              'ColumnEditable',cEdit,'ColumnWidth',cWid,...
+                              'Enable','on')
             setObjVisibility(handles.tableGroupNames,'on')
             autoResizeTableColumns(handles.tableGroupNames)
 
@@ -1045,11 +1060,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
 
             % closes the progress bar
             hh.closeProgBar()
-            hh = [];
-            
-            % sets the full tab group enabled properties (if it exists)
-            obj.nExp = length(obj.sInfo);
-            obj.resetFullTabProps();
+            hh = [];            
             
             %
             if any(~isOK)
@@ -1077,24 +1088,31 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 % removes the directories which gave an error
                 mName = mName(isOK);
             end
+            
+            % creates a loadbar
+            hLoad = ProgressLoadbar('Updating Loaded Data Information...');
+            
+            % sets the full tab group enabled properties (if it exists)
+            obj.nExp = length(obj.sInfo);
+            obj.resetFullTabProps();            
 
             % recreates the explorer tree
             obj.createFileExplorerTree()
             if isempty(mName); return; end
 
+            % if loading files through the analysis gui, then update the
+            % experiment information for the other tabs
+            obj.baseObj.updateFullGUIExpt();
+                                  
             % updates the solution file/added experiments array
-            obj.updateExptInfoTable()                   
+            obj.updateExptInfoTable(hLoad)               
 
             % updates the added experiment objects
             setPanelProps(hPanelEx,'on');
             setObjEnable(handles.buttonClearAll,'on');
             set(handles.textExptCount,'string',num2str(obj.nExp),...
-                                      'enable','on')
-
-            % if loading files through the analysis gui, then update the
-            % experiment information for the other tabs
-            obj.baseObj.updateFullGUIExpt();
-                                  
+                                      'enable','on')                       
+            
             % updates the change flag
             obj.isChange = true;          
             
@@ -1158,7 +1176,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
             end
 
             % removes any excess rows
-            for i = max(obj.nExp,obj.nExpMax+1):obj.jTable.getRowCount
+            nRow0 = obj.jTable.getRowCount;
+            for i = max(obj.nExp+1,obj.nExpMax+1):nRow0
                 jTableMod.removeRow(obj.jTable.getRowCount-1)
             end
             
@@ -1172,12 +1191,17 @@ classdef OpenSolnFileTab < dynamicprops & handle
             obj.resetColumnWidths()
 
             % repaints the table
-            obj.jTable.repaint()
+            obj.jPanel.repaint()
+            obj.jTable.repaint()            
 
             % resets the table update flag
             pause(0.05);
             obj.tableUpdate = false;
 
+%             % updates the table cell selection
+%             iSelNw = min(iSel(end)+1,obj.nExp);
+%             setTableSelection(hTable,iSelNw);
+            
             % if loading files through the analysis gui, then update the
             % experiment information for the other tabs
             obj.baseObj.updateFullGUIExpt();
@@ -1294,8 +1318,13 @@ classdef OpenSolnFileTab < dynamicprops & handle
             obj.iExp = eventdata.Indices(1);
 
             % updates the group table
-            setObjEnable(handles.buttonClearExpt,1)
-            obj.updateGroupTableProps();            
+            if obj.iExp <= length(obj.sInfo)
+                setObjEnable(handles.buttonClearExpt,1)
+                obj.updateGroupTableProps();     
+            else
+                % otherwise, clear the table
+                set(obj.hGUI.tableGroupNames,'Data',[],'Visible','off');
+            end
             
         end        
         
@@ -1913,7 +1942,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                             setupType = 'Circle';
                         case 'GeneralR'
                             setupType = 'General Repeating';            
-                        case 'GeneralC'
+                        case {'GeneralC','General'}
                             setupType = 'General Custom';
                     end
                 end
@@ -1986,9 +2015,10 @@ classdef OpenSolnFileTab < dynamicprops & handle
                         [Ts,Tf] = deal(chStim.Ts,chStim.Tf);
                         
                         % updates the start/finish times
-                        ii = (Ts >= T0) & (Tf <= T1);
+                        ii = (Tf >= T0) & (Ts <= T1);
                         chStim.iStim = chStim.iStim(ii);
-                        [chStim.Ts,chStim.Tf] = deal(Ts(ii)-T0,Tf(ii)-T0);                         
+                        chStim.Ts = max(0,Ts(ii)-T0);
+                        chStim.Tf = min(T1,Tf(ii)-T0);                       
                         dStim = setStructField(dStim,chType{j},chStim);
                     end
                     

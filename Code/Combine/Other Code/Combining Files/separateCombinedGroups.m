@@ -17,9 +17,22 @@ iMov.xTube = num2cell(cell2mat(iMov.xTube(:)),2)';
 [iMov.iR,iMov.iC] = deal(cell2cell(iMov.iR)',cell2cell(iMov.iC)');
 
 % recalculates the row/column indices (from the region outer positions)
-xPos = cellfun(@(x)(sum(x([1,3]))),iMov.posO);
-iMov.nCol = find(diff(xPos)<0,1,'first');
-iMov.nRow = length(xPos)/iMov.nCol;
+if length(iMov.posO) == 1
+    % case is there is only one region
+    [iMov.nCol,iMov.nRow] = deal(1);
+else
+    % determines the first instance where the x-position of the regions is
+    % less than the previous
+    xPos = cellfun(@(x)(sum(x([1,3]))),iMov.posO);
+    i0 = find(diff(xPos)<1,1,'first');    
+    if isempty(i0)
+        % case is there is only one row
+        [iMov.nRow,iMov.nCol] = deal(1,length(iMov.posO));
+    else
+        % case is there are multiple rows
+        [iMov.nRow,iMov.nCol] = deal(length(xPos)/i0,i0);
+    end
+end
 
 % sets up the grouping index array
 [indG,iOfs] = deal(cell(length(iRT),1),0);

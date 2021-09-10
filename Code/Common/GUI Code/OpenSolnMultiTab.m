@@ -219,13 +219,15 @@ classdef OpenSolnMultiTab < dynamicprops & handle
             % --- CONTROL BUTTON INITIALISATION --- %
             % ------------------------------------- %
             
+            % initialisations
+            cdFile = 'ButtonCData.mat';
+            
             % object retrieval
             handles = obj.hGUI;
             hButtonUp = handles.buttonMoveUp;
             hButtonDown = handles.buttonMoveDown;              
 
-            % sets the button c-data values
-            cdFile = fullfile(mainProgDir,'Para Files','ButtonCData.mat');
+            % sets the button c-data values            
             if exist(cdFile,'file')
                 [A,nDS] = deal(load(cdFile),3); 
                 [Iup,Idown] = deal(A.cDataStr.Iup,A.cDataStr.Idown);
@@ -266,6 +268,9 @@ classdef OpenSolnMultiTab < dynamicprops & handle
             setTableSelection(hTable,iRow-2,0)
             pause(0.05);
 
+            % updates the change flag
+            obj.isChange = true;             
+            
             % resets the group lists
             obj.updateGroupLists()            
             
@@ -294,6 +299,9 @@ classdef OpenSolnMultiTab < dynamicprops & handle
             setTableSelection(hTable,iRow,0)
             pause(0.05);
 
+            % updates the change flag
+            obj.isChange = true;            
+            
             % resets the group lists
             obj.updateGroupLists()            
             
@@ -827,7 +835,7 @@ classdef OpenSolnMultiTab < dynamicprops & handle
             obj.tCol = num2cell(getAllGroupColours(nColG),2);
 
             % sets up the final name table data/background colours
-            DataN = obj.expandCellArray(obj.gNameU{iTabG},obj.nRow);
+            DataN = obj.expandCellArray(obj.gNameU{iTabG}(:),obj.nRow);
             bgColN = obj.expandCellArray...
                                 (obj.tCol(2:end),obj.nRow,obj.tCol{1});
 

@@ -298,18 +298,19 @@ for i = 1:nFile
     
     % sets the experiment solution data struct
     snTot = sInfo{i}.snTot;
-    ok = snTot.iMov.ok;    
-    
-    % reduces the arrays to remove any missing arrays
-    snTot.iMov.pInfo.gName = gName{i}(ok);
-    if ~isempty(snTot.Px); snTot.Px = snTot.Px(ok); end
-    if ~isempty(snTot.Py); snTot.Py = snTot.Py(ok); end            
+    ok = snTot.iMov.ok;              
     
     % sets the group to overall group linking indices
-    indL = cellfun(@(y)(find(strcmp(gName{i},y))),grpName,'un',0);       
+    gName{i}(~ok) = {''};
+    indL = cellfun(@(y)(find(strcmp(gName{i},y))),grpName,'un',0);
     
-    % removes any extraneous fields    
-    snTot = reduceExptSolnFiles(snTot,indL,grpName);        
+    % reduces the arrays to remove any missing arrays
+    snTot = reduceExptSolnFiles(snTot,indL,grpName);     
+%     snTot.iMov.pInfo.gName = gName{i}(ok);    
+    
+%     if ~isempty(snTot.Px); snTot.Px = snTot.Px(ok); end
+%     if ~isempty(snTot.Py); snTot.Py = snTot.Py(ok); end          
+    
 %     if isfield(snTot,'sName')        
 %         snTot = rmfield(snTot,'sName');
 %     end    
@@ -320,7 +321,7 @@ for i = 1:nFile
     
     % outputs the single combined solution file    
     tarFiles{i} = fullfile(tmpDir,[fName{i},'.ssol']);
-    if ~saveExptSolnFile(tmpDir,tarFiles{i},snTot,[],hProg)
+    if ~saveExptSolnFile(tmpDir,tarFiles{i},snTot,hProg)
         % otherwise, delete the solution files and exits 
         cellfun(@delete,tarFiles(1:(i-1)))
         return

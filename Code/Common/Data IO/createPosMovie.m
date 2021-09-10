@@ -81,9 +81,11 @@ else
 end
 
 % normalises the pixel values
+dX = pMap.xMax - pMap.xMin;
 Xmin = repmat(pMap.xMin,1,pMap.nFrame);
 Xmax = repmat(pMap.xMax,1,pMap.nFrame);
 P = roundP(pMap.pScale*(P - Xmin)./(Xmax - Xmin),1) + 1;
+P(dX==0,:) = 1;
 
 % calculates the new image stack for the current apparatus
 ok = setAppImageStack(mObj,P,mapInd,isPhi,h);

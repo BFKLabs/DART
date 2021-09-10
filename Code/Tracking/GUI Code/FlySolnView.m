@@ -863,8 +863,9 @@ for i = 1:iMov.pInfo.nGrp
     if iMov.is2D        
         fPos{i} = arrayfun(@(ir,ic)(fPos0{ic}{ir}),iRowG,iColG,'un',0)';        
     else
+        indG = sub2ind(size(iMov.pInfo.nFly),iRowG,iColG);
         iRegG = (iRowG-1)*iMov.pInfo.nCol + iColG;
-        nFly = iMov.pInfo.nFly(iRowG,iColG);
+        nFly = iMov.pInfo.nFly(indG);
         
         fPos{i} = cell2cell(arrayfun(@(i,n)...
                                     (fPos0{i}(1:n)),iRegG,nFly,'un',0),0);
