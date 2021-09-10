@@ -298,19 +298,18 @@ classdef FlyInfoGUI < handle
             [obj.nNaN,obj.tInact] = deal(zeros(nFly,nApp));
             nFrm = length(cell2mat(obj.snTot.T));
             
+            % sets the time bin
+            T = cell2mat(obj.snTot.T);
+            indB = detTimeBinIndices(T,obj.tBin);             
+            hasData = ~cellfun(@isempty,obj.snTot.Px);
+            
             % calculates the NaN counts/inactive times for each apparatus
-            for i = 1:nApp
+            for i = find(hasData(:))'
                 % updates the waitbar figure
                 if ~isempty(obj.hProp)
                     wStrNw = sprintf(['Calculating Combined Dataset ',...
                                       'Metrics (Region %i of %i)'],i,nApp);
                     obj.hProp.Update(1,wStrNw,0.7*(i/nApp));
-                end
-
-                % retrieves the position/distance travelled values    
-                if i == 1
-                    T = cell2mat(obj.snTot.T);
-                    indB = detTimeBinIndices(T,obj.tBin);    
                 end
 
                 % calculates the binned range values

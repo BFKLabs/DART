@@ -649,7 +649,7 @@ setObjEnable(handles.menuViewYData,snTot.iMov.is2D)
 setObjEnable(handles.menuViewXYData,snTot.iMov.is2D)
 
 % updates the position plot
-updatePosPlot(handles)
+updatePosPlot(handles,1)
 
 % initialises/resets the limit markers
 updateLimitMarkers(handles)
@@ -1601,7 +1601,7 @@ setPositionConstraintFcn(hLineS,fcn);
 hLineS.addNewPositionCallback(@(p)moveLimitMarker(p,guidata(hAx),Type));
 
 % --- updates the position plot --- %
-function updatePosPlot(handles)
+function updatePosPlot(handles,varargin)
 
 % data struct/object handle retrieval
 hAx = handles.axesImg;
@@ -1616,6 +1616,12 @@ sInfo = getCurrentExptInfo(hFig);
 snTot = sInfo.snTot;
 iMov = snTot.iMov;
 iApp = get(handles.popupAppPlot,'value');
+
+% updates the region popup indices
+if isempty(Px{iApp}) && (nargin == 2)
+    iApp = find(~cellfun(@isempty,Px),1,'first');
+    set(handles.popupAppPlot,'Value',iApp)    
+end
 
 % retrieves the ok flags
 ok = hGUIInfo.ok;
@@ -1972,7 +1978,7 @@ iMov = snTot.iMov;
 
 % if the region is rejected, then exit with a NaN value
 if isempty(Pz{iApp})
-    Z = NaN;
+    Z = [];
     return
 end
 
@@ -2050,13 +2056,16 @@ switch type
         % retrieves the region acceptance flag and grouping indices 
         flyok = hGUIInfo.ok;
         iGrp = getRegionGroupIndices(iMov,sInfo.gName);
-        Zgrp = cell(1,max(iGrp(:)));
         
-        % calculates the avg. velocity based on the grouping type          
+        % determnes the unique groupings comprising the expt
+        iGrpU = unique(iGrp(iGrp>0),'stable');        
+        
+        % calculates the avg. velocity based on the grouping type  
+        Zgrp = cell(1,length(iGrpU));
         [jGrp,okGrp] = deal(num2cell(iGrp,1),num2cell(flyok,1));
         for i = 1:length(Zgrp)
             Zgrp{i} = cell2mat(cellfun(@(x,j,ok)...
-                            (x(:,(j==i) & ok)),Pz,jGrp,okGrp,'un',0));
+                        (x(:,(j==iGrpU(i)) & ok)),Pz,jGrp,okGrp,'un',0));
             if isempty(Zgrp{i})
                 Zgrp{i} = NaN(size(Pz{1},1),1);
             else

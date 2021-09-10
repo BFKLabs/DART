@@ -24,7 +24,8 @@ else
     % sets the grouping indices
     if exist('appPara','var')
         % case is the region information is provided
-        [gNameU,~,iC] = unique(appPara.Name,'Stable');
+        ii = ~cellfun(@isempty,appPara.Name);
+        [gNameU,~,iC] = unique(appPara.Name(ii),'Stable');
         
         % sets the group indices
         if is2D

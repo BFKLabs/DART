@@ -432,25 +432,6 @@ if ok
         mStr = sprintf(['The output file name "%s" already exists in ',...
                         'the solution file list. Please retry using ',...
                         'a unique file name.'],exptName);
-    else
-        % determines if the output file/directory already exists
-        switch fExtn{iExp}
-            case {'.mat','.ssol'}
-                % case is an output file
-                fExist = exist(fFile{iExp},'file');
-            otherwise
-                % case is an output directory
-                fExist = exist(fFile{iExp},'dir');
-        end
-        
-        % if the file exists, then prompt the user if they wish to keep it
-        if fExist
-            qStr = sprintf(['The output file "%s" already exists.\n',...
-                            'Do you wish to overwrite the files?'],...
-                           exptName);
-            uChoice = questdlg(qStr,'Overwrite Files?','Yes','No','Yes');
-            ok = strcmp(uChoice,'Yes');
-        end
     end
 end
 
@@ -1435,7 +1416,7 @@ else
     % sets the grouping numbers for each region
     for i = 1:iMov.pInfo.nRow
         for j = 1:iMov.pInfo.nCol
-            k = (i-1)*iMov.pInfo.nRow + j;
+            k = (i-1)*iMov.pInfo.nCol + j;
             if iMov.ok(k)
                 % region is accepted, so set the grouping index number                
                 iMov.pInfo.iGrp(i,j) = iC(k);

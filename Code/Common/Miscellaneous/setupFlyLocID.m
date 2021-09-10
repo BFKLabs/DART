@@ -36,7 +36,7 @@ else
         if iGrpG == 0
             isOK = false;
         else
-            isOK = iMov.ok(iGrpG);
+            isOK = iMov.ok(i);
         end
         
         % updates the grouping flag
@@ -46,7 +46,8 @@ else
     end
     
     % determines the number of unique groupings
-    nGrp = length(unique(iGrp(iGrp>0)));
+    iGrpU = unique(iGrp(iGrp>0));
+    nGrp = length(iGrpU);
     
     % sets the configuration ID arrays based on the I/O type
     %  - Saving: data is combined for each specified group
@@ -57,7 +58,7 @@ else
 
         % loops through each group setting the row/column/fly indices
         for i = 1:nGrp
-            [iy,ix] = find(iGrp == i);
+            [iy,ix] = find(iGrp == iGrpU(i));
             cID{i} = [iRow(ix),iCol(ix),iy];
         end
     else
@@ -65,7 +66,7 @@ else
         cID = cell(size(iGrp,2),1);
         
         for i = 1:nGrp
-            [iy,ix] = find(iGrp == i);
+            [iy,ix] = find(iGrp == iGrpU(i));
             for iApp = unique(ix(:))'
                 ii = ix == iApp;
                 cID{iApp} = [iRow(ix(ii)),iCol(ix(ii)),iy(ii)];

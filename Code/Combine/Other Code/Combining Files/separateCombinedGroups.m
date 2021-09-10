@@ -72,44 +72,53 @@ if hasY
 end
 
 %
-[ii,jj] = deal(zeros(1,nReg),cell(1,nReg));
+[ii,jj] = deal(NaN(1,nReg),cell(1,nReg));
 for i = 1:nReg
     % sets the group/sub-group indices for the current region
-    ii(i) = find(cellfun(@(x)(any(x==i)),indG));
-    jj{i} = indG{ii(i)} == i;
-    
-    % sets the fly count for the current region
-    iRow = floor((i-1)/iMov.nCol)+1;
-    iCol = mod(i-1,iMov.nCol)+1;
-    iMov.nFly(iRow,iCol) = sum(jj{i});
-    
-    % resets the x position/mapping arrays
-    if hasX
-        snTot.Px{i} = Px{ii(i)}(:,jj{i});
-        snTot.pMapPx(i).xMin = pMapPx(ii(i)).xMin(jj{i});
-        snTot.pMapPx(i).xMax = pMapPx(ii(i)).xMax(jj{i});
+    iiNw = find(cellfun(@(x)(any(x==i)),indG));
+    if ~isempty(iiNw)
+        ii(i) = iiNw;
+        jj{i} = indG{ii(i)} == i;
+
+        % sets the fly count for the current region
+        iRow = floor((i-1)/iMov.nCol)+1;
+        iCol = mod(i-1,iMov.nCol)+1;
+        iMov.nFly(iRow,iCol) = sum(jj{i});
+
+        % resets the x position/mapping arrays
+        if hasX
+            snTot.Px{i} = Px{ii(i)}(:,jj{i});
+            snTot.pMapPx(i).xMin = pMapPx(ii(i)).xMin(jj{i});
+            snTot.pMapPx(i).xMax = pMapPx(ii(i)).xMax(jj{i});
+        end
+
+        % resets the y position/mapping arrays
+        if hasY
+            snTot.Py{i} = Py{ii(i)}(:,jj{i});
+            snTot.pMapPy(i).xMin = pMapPy(ii(i)).xMin(jj{i});
+            snTot.pMapPy(i).xMax = pMapPy(ii(i)).xMax(jj{i});
+        end
+
+        % resets the tube region vertical positioning
+        iMov.yTube{i} = yTube{ii(i)}(jj{i},:);
+        iMov.iRT{i} = iRT{ii(i)}(jj{i});
+        iMov.nTubeR(iRow,iCol) = sum(jj{i});
+        snTot.appPara.Name{i} = appPara.Name{ii(i)};
     end
-    
-    % resets the y position/mapping arrays
-    if hasY
-        snTot.Py{i} = Py{ii(i)}(:,jj{i});
-        snTot.pMapPy(i).xMin = pMapPy(ii(i)).xMin(jj{i});
-        snTot.pMapPy(i).xMax = pMapPy(ii(i)).xMax(jj{i});
-    end
-    
-    % resets the tube region vertical positioning
-    iMov.yTube{i} = yTube{ii(i)}(jj{i},:);
-    iMov.iRT{i} = iRT{ii(i)}(jj{i});
-    iMov.nTubeR(iRow,iCol) = sum(jj{i});
-    snTot.appPara.Name{i} = appPara.Name{ii(i)};
 end
 
 % resets the acceptance flags
 iMov.flyok = false(iMov.nTube,length(iMov.iR));
 iMov.ok = false(length(iMov.iR),1);
 for i = 1:length(ii)
-    iMov.flyok(1:sum(jj{i}),i) = flyok(jj{i},ii(i));
-    iMov.ok(i) = appPara.ok(ii(i));
+    if isnan(ii(i))
+        iMov.ok(i) = false;
+        iMov.flyok(:,i) = false;
+        snTot.appPara.Name{i} = '* REJECTED *';
+    else
+        iMov.flyok(1:sum(jj{i}),i) = flyok(jj{i},ii(i));
+        iMov.ok(i) = appPara.ok(ii(i));
+    end
 end
 
 % resets the sub-region data struct

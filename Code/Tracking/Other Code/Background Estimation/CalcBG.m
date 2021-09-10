@@ -1796,12 +1796,10 @@ classdef CalcBG < handle
             % --- HOUSE-KEEPING EXERCISES --- %
             % ------------------------------- %
             
-            % enables the manual tracking panel
-            obj.setManualObjProps('off')
-            
             % clears the table and disables the manual reselection panel
             set(obj.hGUI.tableFlyUpdate,'Data',[]);
-            setPanelProps(obj.hGUI.panelManualSelect,0);
+            obj.setManualObjProps('off')
+            obj.setManualObjProps('on')
             
             % updates the main image
             obj.updateMainImage()

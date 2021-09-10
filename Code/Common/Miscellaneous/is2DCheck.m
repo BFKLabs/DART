@@ -18,7 +18,9 @@ if isempty(iMov.xTube) || (nargin == 2)
     AR = cellfun(@(iC,iR)(mean...
                     (cellfun(@length,iR))/length(iC)),iMov.iCT,iMov.iRT);  
 else
-    AR = cellfun(@(x,y)(diff(x(1,:))/diff(y(1,:))),iMov.xTube,iMov.yTube);    
+    isOK = ~cellfun(@isempty,iMov.yTube);
+    [xT,yT] = deal(iMov.xTube(isOK),iMov.yTube(isOK));
+    AR = cellfun(@(x,y)(diff(x(1,:))/diff(y(1,:))),xT,yT);    
 end
 
 % determines if the new array is 2-dimensional
