@@ -34,6 +34,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
         nTab = 3;        
         nExpMax = 4;
         tableUpdate = false;
+        pathUpdate = true;
         
         % other class properties
         fExtn = {'.soln','.ssol','.msol'};                
@@ -321,27 +322,28 @@ classdef OpenSolnFileTab < dynamicprops & handle
             setObjEnable(hButtonAdd,canAdd)
             set(hButtonAdd,'BackGroundColor',bgCol{1+canAdd});
             
+            if obj.pathUpdate
+                % sets the new text label strings
+                if isempty(obj.sDir{obj.iTab})
+                    % case is no file explorer has been created
+                    txtStr = repmat({'N/A'},1,length(txtTag));  
+                    txtStrTT = '';
+                else
+                    % case is file explorer has been created 
+                    txtStr = {num2str(length(obj.sFile{obj.iTab})),...
+                              num2str(nSel),obj.sDir{obj.iTab}};
+                    txtStrTT = obj.sDir{obj.iTab};
+                end
 
-            % sets the new text label strings
-            if isempty(obj.sDir{obj.iTab})
-                % case is no file explorer has been created
-                txtStr = repmat({'N/A'},1,length(txtTag));  
-                txtStrTT = '';
-            else
-                % case is file explorer has been created 
-                txtStr = {num2str(length(obj.sFile{obj.iTab})),...
-                          num2str(nSel),obj.sDir{obj.iTab}};
-                txtStrTT = obj.sDir{obj.iTab};
+                % updates the object strings/properties
+                hTxt0 = findall(handles.panelSolnExplorer,'style','text');
+                cellfun(@(x,y)(set(findall...
+                                (hTxt0,'tag',x),'String',y)),txtTag,txtStr);
+                arrayfun(@(x)(setObjEnable...
+                                (x,~isempty(obj.sDir{obj.iTab}))),hTxt0)
+                set(handles.textRootDir,'tooltipstring',txtStrTT)   
             end
-
-            % updates the object strings/properties
-            hTxt0 = findall(handles.panelSolnExplorer,'style','text');
-            cellfun(@(x,y)(set(findall...
-                            (hTxt0,'tag',x),'String',y)),txtTag,txtStr);
-            arrayfun(@(x)(setObjEnable...
-                            (x,~isempty(obj.sDir{obj.iTab}))),hTxt0)
-            set(handles.textRootDir,'tooltipstring',txtStrTT)   
-        
+                
         end         
         
         % --- creates the experiment information table
@@ -739,7 +741,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             obj.sFile{obj.iTab} = sFileNw;
             obj.jMov{obj.iTab} = jMovNw;
             obj.jRoot{obj.iTab} = jRootNw;
-
+            
             % updates the file selection information
             obj.tableUpdateSel([],[])            
             
@@ -941,8 +943,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                     % other initialisations
                     nFile = length(sFileS);
                     wStr = {'Overall Progress',...
-                            'Loading Data File',...
-                            'Current File Progress'};
+                            'Loading Data File',};
                     if obj.iTab == 3
                         [wStr{end+1},mName] = deal('Data Output',[]);
                     else
@@ -1135,6 +1136,10 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 % if the user cancelled, then exit the function
                 return
             end
+            
+            % creates a loadbar
+            wStr = 'Updating Stored Experiment Information...';
+            hProg = ProgressLoadbar(wStr);
 
             % retrieves the currently selected table rows
             jTableMod = obj.jTable.getModel;
@@ -1196,7 +1201,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
 
             % resets the table update flag
             pause(0.05);
-            obj.tableUpdate = false;
+            obj.tableUpdate = false;            
 
 %             % updates the table cell selection
 %             iSelNw = min(iSel(end)+1,obj.nExp);
@@ -1204,20 +1209,21 @@ classdef OpenSolnFileTab < dynamicprops & handle
             
             % if loading files through the analysis gui, then update the
             % experiment information for the other tabs
+            hProg.StatusMessage = 'Resetting GUI Objects...';
             obj.baseObj.updateFullGUIExpt();
             
             % creates the explorer tree
-            iTab0 = obj.iTab;
-            for i = 1:length(obj.sDir)
+            obj.pathUpdate = false;
+            for i = obj.getResetIndexArray()
                 obj.iTab = i;
-                if ~isempty(obj.sDir{obj.iTab})
-                    obj.createFileExplorerTree();
-                    pause(0.05);
-                end 
+                obj.createFileExplorerTree();
+                pause(0.05);
             end
             
-            % resets the tab index
-            obj.iTab = iTab0;
+            % deletes the loadbar
+            obj.pathUpdate = true;
+            delete(hProg)
+            
         end
         
         % --- callback function for clicking buttonClearAll
@@ -1238,6 +1244,10 @@ classdef OpenSolnFileTab < dynamicprops & handle
                     return
                 end
             end
+            
+            % creates a loadbar
+            wStr = 'Clearing All Stored Data...';
+            hProg = ProgressLoadbar(wStr);            
 
             % resets the storage arrays
             obj.resetStorageArrays(0)
@@ -1254,20 +1264,25 @@ classdef OpenSolnFileTab < dynamicprops & handle
             obj.resetExptInfoTable();
 
             % creates the explorer trees for each file type
-            for i = 1:length(obj.sDir)
-                if ~isempty(obj.sDir{i})
-                    obj.iTab = i;
-                    obj.createFileExplorerTree();
-                end
+            obj.pathUpdate = false;
+            for i = obj.getResetIndexArray()
+                obj.iTab = i;
+                obj.createFileExplorerTree();
+                pause(0.05);
             end
 
             % if loading files through the analysis gui, then update the
             % experiment information for the other tabs
+            obj.pathUpdate = true;
+            hProg.StatusMessage = 'Resetting GUI Objects...';
             obj.baseObj.updateFullGUIExpt();
             
             % updates the tab index
             obj.iTab = iTab0;
             obj.isChange = true;
+            
+            % deletes the loadbar
+            delete(hProg)
             
         end
         
@@ -1381,6 +1396,11 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % resets the table background colours
             bgCol = obj.getTableBGColours(obj.sInfo{obj.iExp});
             set(hObject,'BackgroundColor',bgCol)
+            
+            % updates the group names on the other tabs
+            if obj.sType == 3
+                obj.baseObj.updateGroupNames(1);
+            end            
 
             % updates the change flag
             obj.isChange = true;
@@ -1725,6 +1745,18 @@ classdef OpenSolnFileTab < dynamicprops & handle
                     obj.jTabGrpF.setEnabledAt(2,obj.nExp>0);
                 end
             end            
+
+        end        
+        
+        % --- sets the explorer tree reset index array
+        function indReset = getResetIndexArray(obj)
+
+            % determines the valid solution file tab types
+            isOK = ~cellfun(@isempty,obj.sDir);
+            isOK(obj.iTab) = false;
+
+            % sets the final reset index array
+            indReset = [find(isOK);obj.iTab]';
 
         end        
         

@@ -168,6 +168,41 @@ classdef OpenSolnTab < handle
             
         end    
         
+        % --- updates the group names
+        function updateGroupNames(obj,iType)
+            
+            % updates the experiment names
+            switch iType
+                case 1
+                    % case is updating from the file open panel 
+
+                    % updates the group names
+                    for i = 1:length(obj.gName)
+                        obj.gName{i} = obj.sInfo{i}.gName;
+                    end                    
+                     
+                    % resets the final grouping name arrays
+                    obj.mltObj.resetFinalGroupNameArrays()                                      
+                    
+                    % resets the group lists
+                    obj.mltObj.updateGroupLists()        
+                    obj.mltObj.updateTableGroupNames() 
+                    
+                case 2
+                    % case is updating from the expt comparison panel
+                    
+                    % updates the group names
+                    for i = 1:length(obj.gName)
+                        obj.sInfo{i}.gName = obj.gName{i};
+                    end
+                    
+                    % updates the group table properties
+                    obj.fObj.updateGroupTableProps();
+                    
+            end
+            
+        end
+        
         % --- updates the experiment names on the other tabs (when altering
         %     an experiment name in 
         function updateExptNames(obj,iExp,iType)
@@ -183,7 +218,7 @@ classdef OpenSolnTab < handle
                     
                     % updates the experiment name within the table
                     obj.mltObj.tableUpdate = true;
-                    obj.mltObj.jTable.setValueAt(expFileCell,iExp-1,1);
+                    obj.mltObj.jTable.setValueAt(expFileCell,iExp-1,0);
                     obj.mltObj.jTable.repaint()
                     
                     % resets the group lists
@@ -201,7 +236,7 @@ classdef OpenSolnTab < handle
                     obj.fObj.jTable.setValueAt(expFileCell,iExp-1,0);
                     obj.fObj.jTable.repaint()
                     
-                    %
+                    % resets the experiment table background colour
                     obj.fObj.resetExptTableBGColour(0);
 %                     obj.fObj.updateGroupTableProps();   
                     

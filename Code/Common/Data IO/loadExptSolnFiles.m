@@ -45,6 +45,9 @@ if strContains(A{1},'TempOutput.mat')
     % --- NEW SOLUTION FILE FORMAT --- %
     % -------------------------------- %         
     
+    % updates the waitbar figure
+    h.Update(1+wOfs,'Loading Solution File...',0.5);
+    
     % case is the new solution file format
     X = load(A{1});
     snTot = X.snTot;
@@ -236,6 +239,9 @@ end
 % ------------------------------------- %
 % --- FINAL HOUSE-KEEPING EXERCISES --- %
 % ------------------------------------- %
+
+% updates the waitbar figure
+h.Update(1+wOfs,'Final House-Keeping Operations...',1.0);
 
 % separates the acceptance flags (if stored in a cell array)
 if iscell(snTot.iMov.flyok)

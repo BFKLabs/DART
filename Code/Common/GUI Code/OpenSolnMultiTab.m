@@ -105,7 +105,7 @@ classdef OpenSolnMultiTab < dynamicprops & handle
             end 
             
             % objects with cell edit callback functions
-            ceObj = {'tableFinalNames','tableLinkName'};
+            ceObj = {'tableFinalNames','tableLinkName','tableExptComp'};
             for i = 1:length(ceObj)
                 hObj = getStructField(obj.hGUI,ceObj{i});
                 cbFcn = eval(sprintf('@obj.%sCE',ceObj{i}));
@@ -430,7 +430,7 @@ classdef OpenSolnMultiTab < dynamicprops & handle
                         mStr = sprintf(['The group name "%s" already ',...
                                         'exists in group list.'],nwStr);
                     else
-                        % otherwise, append on the new name to the unique name list
+                        % otherwise, append on the new name to the list
                         obj.gNameU{iTabG}{end+1} = nwStr;
                     end
                 end
@@ -484,8 +484,14 @@ classdef OpenSolnMultiTab < dynamicprops & handle
 
                 % resets the group lists
                 obj.updateGroupLists()
+                
+                % updates the group names on the other tabs
+                if obj.sType == 3
+                    obj.baseObj.updateGroupNames(2);
+                end
+                
             else
-                % outputs the error message to screen (if there is an error message)
+                % outputs the error message to screen (if there is error)
                 if exist('mStr','var')
                     waitfor(msgbox(mStr,'Group Name Error','modal'))
                 end
@@ -529,10 +535,22 @@ classdef OpenSolnMultiTab < dynamicprops & handle
                 cFormN = [{' '};tabDataN(~strcmp(tabDataN,' '))];
                 bgColL = cellfun(@(x)...
                         (obj.tCol{strcmp(cFormN,x)}),tabData(:,2),'un',0);
-                set(hObject,'BackgroundColor',cell2mat(bgColL))      
+                set(hObject,'BackgroundColor',cell2mat(bgColL))  
+                
+                % updates the group names on the other tabs
+                if obj.sType == 3
+                    obj.baseObj.updateGroupNames(2);
+                end                
             end            
             
         end        
+        
+        % --- callback function for cell editting in tableLinkName
+        function tableExptCompCE(obj, hObject, eventdata)
+            
+            a = 1;
+            
+        end
         
         % ----------------------------------------- %
         % --- EXPERIMENTAL INFO TABLE FUNCTIONS --- %
