@@ -582,7 +582,8 @@ end
 function menuOpenTempData_Callback(hObject, eventdata, handles)
 
 % loads the data structs from the GUI
-iData = getappdata(handles.figFlyAnalysis,'iData');
+hFig = handles.figFlyAnalysis;
+iData = getappdata(hFig,'iData');
 dDir = iData.ProgDef.TempData;
 
 % prompts the user if they wish to continue. if not, then exit
@@ -612,8 +613,8 @@ try; close(h); end
 warning(wState);
 
 % retrieves the original data structs
-fName0 = getFinalDirString(getappdata(handles.figFlyAnalysis,'fNameFull'));
-sName0 = getappdata(handles.figFlyAnalysis,'sName');
+fName0 = getFinalDirString(getappdata(hFig,'fNameFull'));
+sName0 = getappdata(hFig,'sName');
 
 % check that the loaded data matches the solution file
 if ~strcmp(fName0,A.sData.fName)
@@ -637,8 +638,9 @@ end
 
 % matches up the analysis function/data values between the original and
 % currently loaded fields
-pData = getappdata(handles.figFlyAnalysis,'pData');
-plotD = getappdata(handles.figFlyAnalysis,'plotD');
+pData = getappdata(hFig,'pData');
+plotD = getappdata(hFig,'plotD');
+hPara = getappdata(hFig,'hPara');
 for i = 1:length(pData) 
     if ~isempty(pData{i}) && ~isempty(A.pData{i})      
         % retrieves the function names for the current function type
@@ -659,21 +661,22 @@ for i = 1:length(pData)
 end
 
 % resets the fields with the loaded data
-setappdata(handles.figFlyAnalysis,'sName',A.sData.sName)
-setappdata(handles.figFlyAnalysis,'fName',A.sData.fName)
-setappdata(handles.figFlyAnalysis,'gPara',A.gPara)
-setappdata(handles.figFlyAnalysis,'sPara',A.sPara)
-setappdata(handles.figFlyAnalysis,'plotD',plotD)
-setappdata(handles.figFlyAnalysis,'pData',pData)
+setappdata(hFig,'sName',A.sData.sName)
+setappdata(hFig,'fName',A.sData.fName)
+setappdata(hFig,'gPara',A.gPara)
+setappdata(hFig,'sPara',A.sPara)
+setappdata(hFig,'plotD',plotD)
+setappdata(hFig,'pData',pData)
 
 % sets the menu item enabled properties
 setObjEnable(handles.menuSaveTempData,'on')
 
 % resets the selecting indices
 [eInd,fInd,pInd] = getSelectedIndices(handles);
-if fInd > 0
-    hPara = getappdata(handles.figFlyAnalysis,'hPara');
-    setappdata(hPara,'pData',pData{pInd}{fInd,eInd}) 
+if fInd > 0    
+    % updates the parameter struct into the parameter gui
+    pObj = getappdata(hPara,'pObj');
+    pObj.updatePlotData(pData{pInd}{fInd,eInd})
 end
 
 % updates the figure with the new data
@@ -973,7 +976,8 @@ listPlotFunc_Callback(handles.listPlotFunc, '0', handles)
 % deletes the parameter GUI
 hPara = getappdata(handles.figFlyAnalysis,'hPara');
 if ~isempty(hPara)
-    setappdata(hPara,'pData',pData)
+    pObj = getappdata('hPara','pObj');
+    pObj.updatePlotData(pData);    
     resetRecalcObjProps(handles,'Yes')    
 end
 
@@ -1050,9 +1054,11 @@ setObjEnable(handles.menuSaveTempData,'off');
 if ~isempty(hPara)        
     % updates the parameter GUI data struct
     [eInd,fInd,pInd] = getSelectedIndices(handles);
-    if fInd > 0
+    if fInd > 0        
         resetRecalcObjProps(handles,'Yes')
-        setappdata(hPara,'pData',pData{pInd}{fInd,eInd})    
+        
+        pObj = getappdata(hPara,'pObj');
+        pObj.updatePlotData(pData{pInd}{fInd,eInd});
     else
         resetRecalcObjProps(handles,'No')
     end
@@ -1216,7 +1222,8 @@ if isSet
             hP = handles.panelPlot;            
             
             % retrieves the plot data struct
-            pDataNw = getappdata(hPara,'pData');
+            pObj = getappdata(hPara,'pObj');
+            pDataNw = pObj.pData;
             plotDNw = plotD{pInd}{fInd,eInd};
         else           
             % updates the subplot index
@@ -1349,11 +1356,12 @@ set(findobj(hPanel,'tag','subPanel','UserData',sInd),'HighlightColor','r');
 if ~isempty(hPara) && ~isa(eventdata,'char')  
     if all([eInd,fInd,pInd] > 0)
         % if so, then update the plotting data struct
-        sPara.pData{sInd0} = getappdata(hPara,'pData');
+        pObj = getappdata(hPara,'pObj');
+        sPara.pData{sInd0} = pObj.pData;
         setappdata(handles.figFlyAnalysis,'sPara',sPara);
 
-        % updates the plot data struct
-        pData{pInd}{fInd,eInd} = getappdata(hPara,'pData');
+        % updates the plot data struct        
+        pData{pInd}{fInd,eInd} = pObj.pData;
         setappdata(handles.figFlyAnalysis,'pData',pData);
     end        
 end
@@ -1389,7 +1397,8 @@ if ~isempty(sPara.pData{sInd}) && ~any(isnan(sPara.ind(sInd,:)))
         hPara = AnalysisPara(handles);
         setappdata(handles.figFlyAnalysis,'hPara',hPara);
     else
-        feval(getappdata(hPara,'initAnalysisGUI'),hPara,handles)
+        pObj = getappdata(hPara,'pObj');
+        pObj.initAnalysisGUI()
     end
 else
     % otherwise, remove the plot list
@@ -1426,7 +1435,8 @@ if (eIndex ~= get(hObject,'value')) || isa(eventdata,'char')
 
         % updates the parameter struct
         if fInd > 0
-            pDataOld = getappdata(hPara,'pData');
+            pObj = getappdata(hPara,'pObj');
+            pDataOld = pObj.pData;
             if pInd == 3
                 pData{pInd}{fInd,1} = pDataOld;
             else
@@ -1472,7 +1482,8 @@ if ~isa(eventdata,'char')
 
             % updates the corresponding parameter struct
             if fInd > 0
-                pDataOld = getappdata(hPara,'pData');
+                pObj = getappdata(hPara,'pObj');
+                pDataOld = pObj.pData;
                 pData{pIndex}{fInd,eInd} = pDataOld;
                 setappdata(handles.figFlyAnalysis,'pData',pData);
             end
@@ -1606,7 +1617,8 @@ if isShowPara
             % updates the parameter struct in the overall array
             if (fIndex > 0) && (str2double(eventdata) == 0)                 
                 % updates the 
-                pDataOld = getappdata(hPara,'pData');
+                pObj = getappdata(hPara,'pObj');
+                pDataOld = pObj.pData;
                 pData{pInd}{fIndex,eInd} = pDataOld;
                 setappdata(handles.figFlyAnalysis,'pData',pData);
             end
@@ -1625,8 +1637,15 @@ if isShowPara
                 setappdata(handles.figFlyAnalysis,'sPara',sPara);            
             end             
             
-            % reinitialises the function parameter struct            
-            feval(getappdata(hPara,'initAnalysisGUI'),hPara,handles,1)
+            % reinitialises the function parameter struct 
+            if ishandle(hPara)
+                pObj = getappdata(hPara,'pObj');
+                pObj.initAnalysisGUI();
+            else
+                hPara = AnalysisPara(handles);
+                setappdata(handles.figFlyAnalysis,'hPara',hPara);
+            end
+            
             pData = getappdata(handles.figFlyAnalysis,'pData');
         end
         
@@ -1751,22 +1770,23 @@ pause(0.05)
 setObjProps(handles,'inactive')
 
 % retrieves the function stack and solution file data
-gPara = getappdata(handles.figFlyAnalysis,'gPara');
-sPara = getappdata(handles.figFlyAnalysis,'sPara');
-plotD = getappdata(handles.figFlyAnalysis,'plotD');
-pData = getappdata(handles.figFlyAnalysis,'pData');
-pDataT = getappdata(handles.figFlyAnalysis,'pDataT');
-iData = getappdata(handles.figFlyAnalysis,'iData');
-snTot = getappdata(handles.figFlyAnalysis,'snTot');
-fcnStack = getappdata(handles.figFlyAnalysis,'fcnStack');
+hFig = handles.figFlyAnalysis;
+gPara = getappdata(hFig,'gPara');
+sPara = getappdata(hFig,'sPara');
+plotD = getappdata(hFig,'plotD');
+pData = getappdata(hFig,'pData');
+pDataT = getappdata(hFig,'pDataT');
+iData = getappdata(hFig,'iData');
+snTot = getappdata(hFig,'snTot');
+fcnStack = getappdata(hFig,'fcnStack');
 
 % retrieves the parameter GUI handle
-hPara = getappdata(handles.figFlyAnalysis,'hPara');
+hPara = getappdata(hFig,'hPara');
 try 
     guidata(hPara);
 catch
     hPara = AnalysisPara(handles);
-    setappdata(handles.figFlyAnalysis,'hPara',hPara);
+    setappdata(hFig,'hPara',hPara);
 end
 
 % memory allocation
@@ -1787,10 +1807,11 @@ hAx = initAxesObject(handles);
 % creates the plot data struct
 if isempty(pData{pInd}{fInd,eInd})
     pData{pInd}{fInd,eInd} = feval(fcnStack{fInd},snTot(1)); 
-    setappdata(handles.figFlyAnalysis,'pData',pData);
+    setappdata(hFig,'pData',pData);
 elseif ~isempty(hPara)
-    pData{pInd}{fInd,eInd} = getappdata(hPara,'pData');
-    setappdata(handles.figFlyAnalysis,'pData',pData);
+    pDataNw = feval(getappdata(hPara,'getPlotData'),hPara);
+    pData{pInd}{fInd,eInd} = pDataNw;
+    setappdata(hFig,'pData',pData);
 end
 
 % retrieves the necessary data structs 
@@ -1808,15 +1829,16 @@ try
             if pDataNw.hasSR
                 try
                     if ~isempty(pDataNw.sP(3).Para)
-                        initFcn = getappdata(hPara,'initAnalysisGUI');
-                        pDataNw = feval(initFcn,hPara,handles,1);
+                        pObj = getappdata(hPara,'pObj');
+                        pObj.initAnalysisGUI();
                         setObjVisibility(hPara,'off')
                     end
                 catch
                     return
                 end
             end
-            
+                        
+            % performs the function calculations
             plotDCalc = feval(pDataNw.cFcn,snTot,pDataNw,gPara); 
     end    
 catch err
@@ -1853,7 +1875,8 @@ end
 
 % sets focus to the main axis
 try
-    axes(hAx)
+    set(0,'CurrentFigure',hFig)
+    set(hFig,'CurrentAxes',hAx);
 catch
     % if there was an error then output an error and exit the function
     eStr = 'Error in initialising axes objects. Try recalculating.';
@@ -1878,13 +1901,14 @@ end
 
 % if the parameter GUI is open, then update the struct there as well
 if ~isempty(hPara)
-    setappdata(hPara,'pData',pDataNw)
+    pObj = getappdata(hPara,'pObj');
+    pObj.updatePlotData(pDataNw);
 end
 
 % updates the sub-plot parameters (if more than one subplot)
 if nReg > 1
     % retrieves the currently selected index
-    sInd = getappdata(handles.figFlyAnalysis,'sInd');    
+    sInd = getappdata(hFig,'sInd');    
 
     % updates the parameters
     sPara.ind(sInd,:) = [eInd,fInd,pInd];
@@ -1892,12 +1916,12 @@ if nReg > 1
     sPara.pData{sInd} = pDataNw;
     
     % updates the sub-plot data struct
-    setappdata(handles.figFlyAnalysis,'sPara',sPara);    
+    setappdata(hFig,'sPara',sPara);    
 end
 
 % updates the new parameter data struct into the total struct
 pData{pInd}{fInd,eInd} = pDataNw;
-setappdata(handles.figFlyAnalysis,'pData',pData);      
+setappdata(hFig,'pData',pData);      
 
 % sets the plot data into the main GUI
 setObjEnable(handles.menuUndock,'on')
@@ -1921,7 +1945,7 @@ setObjProps(handles,'on')
 
 % updates the plot data struct with the newly calculated values
 plotD{pInd}{fInd,eInd} = plotDNw;
-setappdata(handles.figFlyAnalysis,'plotD',plotD);  
+setappdata(hFig,'plotD',plotD);  
 
 % updates the listbox/popup menu colour strings
 resetExptListStrings(handles)
@@ -2148,34 +2172,18 @@ WPI = pPosO(3) - 2*dX;
 set(h.panelPlotFunc,'position',[dX,dY,WPI,HPF]);
 set(h.listPlotFunc,'position',[dX,YLF,WPI-2*dX,HLF]);
 
-% updates the button position
-pBut = get(h.buttonUpdateFigure,'position');
-pBut(2) = YLF+HLF+dY;
-set(h.buttonUpdateFigure,'position',pBut);
-
-%
-pTxt = get(h.textPlotType,'position');
-pTxt(2) = HPF - 47;
-set(h.textPlotType,'position',pTxt);
-
-%
-pPop = get(h.popupPlotType,'position');
-pPop(2) = HPF - 50;
-set(h.popupPlotType,'position',pPop);
+% resets the analysis scope object positions
+resetObjPos(h.buttonUpdateFigure,'bottom',YLF+HLF+dY);
+resetObjPos(h.textPlotType,'bottom',HPF - 47);
+resetObjPos(h.popupPlotType,'bottom',HPF - 50);
 
 % updates the experiment information panel position
+resetObjPos(h.panelExptInfo,'bottom',(3/2)*dY + HPF);
+
+% sets the other panel positions
 pPosE = get(h.panelExptInfo,'position');
-pPosE(2) = (3/2)*dY + HPF;
-set(h.panelExptInfo,'position',pPosE);
-
-% updates the solution file information panel position
-pPosS = get(h.panelSolnData,'position');
-pPosS(2) = sum(pPosE([2 4])) + dY/2;
-set(h.panelSolnData,'position',pPosS);
-
-% updates the outer panel position
-pPosO(4) = fPos(4) - 2*dY;
-set(h.panelOuter,'position',pPosO);
+resetObjPos(h.panelSolnData,'bottom',sum(pPosE([2 4])) + dY/2);
+resetObjPos(h.panelOuter,'Height',fPos(4) - 2*dY)
 
 % ------------------------------------------- %
 % --- PROGRAM DEFAULT DIRECTORY FUNCTIONS --- %

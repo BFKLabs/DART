@@ -88,9 +88,10 @@ if (size(sPara.pos,1) > 1)
     
     % deletes the loadbar 
     delete(h); pause(0.05);      
-elseif (~isempty(hPara))
+elseif ~isempty(hPara)
     % updates the plot figure
-    updatePlotFigure(hObject,getappdata(hPara,'pData'));
+    pData0 = feval(getappdata(hPara,'getPlotData'),hPara);
+    updatePlotFigure(hObject,pData0);
 end
     
 % Update handles structure
@@ -230,7 +231,8 @@ if size(sPara.pos,1) > 1
     
 elseif ~isempty(hPara)
     % updates the plot figure
-    updatePlotFigure(hGUI,getappdata(hPara,'pData'));
+    pData0 = feval(getappdata(hPara,'getPlotData'),hPara);
+    updatePlotFigure(hGUI,pData0);
 end
 
 % gives focus to the main Analysis GUI
@@ -420,21 +422,23 @@ if ((~isempty(sPara.pData{sInd0})) && (nargin == 2))
     % retrieves the experiment, function and plot indices
     ind = sPara.ind(sInd0,:);
     [eInd,fInd,pInd] = deal(ind(1),ind(2),ind(3));
+    pData0 = feval(getappdata(hPara,'getPlotData'),hPara);
 
     % if so, then update the plotting data struct
-    sPara.pData{sInd0} = getappdata(hPara,'pData');
+    sPara.pData{sInd0} = pData0;
     setappdata(handles.figUndockPlot,'sPara',sPara);
 
-    % updates the plot data struct
+    % updates the plot data struct    
     pData = getappdata(hGUI.figFlyAnalysis,'pData');
-    pData{pInd}{fInd,eInd} = getappdata(hPara,'pData');
+    pData{pInd}{fInd,eInd} = pData0;
     setappdata(hGUI.figFlyAnalysis,'pData',pData);
 end
 
 % updates the plot parameters (if a valid plot has been selected)
-if (~isempty(sPara.pData{sInd}))
+if ~isempty(sPara.pData{sInd})
     % sets the new selected indices
-    [lStr,fName] = deal(get(hGUI.listPlotFunc,'string'),sPara.pData{sInd}.Name);
+    fName = sPara.pData{sInd}.Name;
+    lStr = get(hGUI.listPlotFunc,'string');    
     fIndNw = find(cellfun(@(x)(any(strfind(x,fName))),lStr));  
 
     % if there is more than one match, then narrow them down    
@@ -450,12 +454,12 @@ if (~isempty(sPara.pData{sInd}))
     set(hGUI.listPlotFunc,'value',fIndNw)    
     
     % updates the parameter GUI
-    if (isempty(hPara))
+    if isempty(hPara)
         hPara = AnalysisPara(hGUI);
         setappdata(hGUI.figFlyAnalysis,'hPara',hPara);
         setappdata(handles.figUndockPlot,'hPara',hPara)
     else
-        feval(getappdata(hPara,'initAnalysisGUI'),hPara,hGUI)  
+        feval(getappdata(hPara,'initAnalysisGUI'),hPara)  
     end
 else
     % otherwise, remove the plot list

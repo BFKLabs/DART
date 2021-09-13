@@ -34,16 +34,17 @@ pause(0.05);
 
 % sets the input arguments
 hGUI = varargin{1};
+hFig = hGUI.figFlyAnalysis;
 
 % retrieves the data structs from the main GUI
-iProg = getappdata(hGUI.figFlyAnalysis,'iProg');
-hPara = getappdata(hGUI.figFlyAnalysis,'hPara');
-plotD = getappdata(hGUI.figFlyAnalysis,'plotD');
-snTot = getappdata(hGUI.figFlyAnalysis,'snTot');
-sName = getappdata(hGUI.figFlyAnalysis,'sName');
+iProg = getappdata(hFig,'iProg');
+hPara = getappdata(hFig,'hPara');
+plotD = getappdata(hFig,'plotD');
+snTot = getappdata(hFig,'snTot');
+sName = getappdata(hFig,'sName');
 
-% retrieves the plot data struct
-pData = getappdata(hPara,'pData');
+% retrieves the currently stored plot data
+pData = feval(getappdata(hPara,'getPlotData'),hPara);
 
 % retrieves the listbox selection indices from the main GUI
 T0 = snTot(1).iExpt.Timing.T0;
@@ -84,7 +85,7 @@ panelFileType_SelectionChangeFcn(handles.panelFileType, '1', handles)
 
 % Update handles structure and sets the main/parameter GUIs to be invisible
 setObjVisibility(hPara,'off')
-setObjVisibility(hGUI.figFlyAnalysis,'off')
+setObjVisibility(hFig,'off')
 guidata(hObject, handles);
 
 % UIWAIT makes OutputData wait for user response (see UIRESUME)

@@ -50,7 +50,9 @@ hPara = getappdata(hGUI,'hPara');
 plotD = getappdata(hGUI,'plotD');
 snTot = getappdata(hGUI,'snTot');
 sName = getappdata(hGUI,'sName');
-pData = getappdata(hPara,'pData');
+
+% retrieves the currently stored plot data
+pData = feval(getappdata(hPara,'getPlotData'),hPara);
 
 % Choose default command line output for DataOutput
 setObjVisibility(hPara,'off')

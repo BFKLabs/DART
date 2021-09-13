@@ -89,6 +89,7 @@ function checkGrpExpt_Callback(hObject, eventdata, handles)
 hFig = handles.figFuncComp;
 jRoot = getappdata(hFig,'jRoot');
 
+
 % updates the tree click function
 treeUpdateClick([], [], hFig, jRoot);
 

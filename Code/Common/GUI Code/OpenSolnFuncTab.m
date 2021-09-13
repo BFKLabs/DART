@@ -142,9 +142,16 @@ classdef OpenSolnFuncTab < dynamicprops & handle
         end            
         
         % --- callback function for clicking checkGrpExpt
-        function checkGrpExptCB(obj, ~, ~)
+        function checkGrpExptCB(obj, hObject, ~)
+            
+            % closes the filter (if open)
+            if get(obj.hGUI.toggleFuncFilter,'Value')
+                set(obj.hGUI.toggleFuncFilter,'Value',0)
+                obj.toggleFuncFilterCB(obj.hGUI.toggleFuncFilter)
+            end
            
             % updates the tree click function
+            setObjEnable(obj.hGUI.toggleFuncFilter,~get(hObject,'Value'));
             obj.treeUpdateClick([], []);            
             
         end    
