@@ -341,7 +341,6 @@ if ~isempty(h); delete(h); end
 
 % retrieves the original plot function list index/strings
 [~,fInd0,pInd] = getSelectedIndices(hGUIM);
-% lpStr = get(hGUIM.listPlotFunc,'string');
 
 % determines the selected 
 hSel = findobj(handles.panelImageType,'value',1);
@@ -424,13 +423,13 @@ for i = 1:N
         end
         
         % sets the other object values
-        iSelF = strcmp(fObj.fcnData(:,1),pData(i).Name);
         set(handles.checkOutputAll,'value',isOutAll);          
-        feval(selectFcn,hGUIM,fObj.Imap(iSelF,pInd));
+        feval(selectFcn,hGUIM,fObj.getFuncIndex(pData(i).Name));
     end
     
     % saves the figure
-    saveAnalysisFigure(handles,imgName{i},fExtn,pData(i),isPainters,fig,h,N>1)
+    saveAnalysisFigure...
+                (handles,imgName{i},fExtn,pData(i),isPainters,fig,h,N>1)
 end
 
 % closes the loadbar and deletes the temporary figure

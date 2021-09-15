@@ -411,8 +411,13 @@ sPara = getappdata(handles.figUndockPlot,'sPara');
 hPara = getappdata(handles.figUndockPlot,'hPara');
 
 % updates the subplot index
+fObj = getappdata(hGUI.figFlyAnalysis,'fObj');
 sInd0 = getappdata(hGUI.figFlyAnalysis,'sInd');
+selectFcn = getappdata(hGUIM.figFlyAnalysis,'setSelectedNode');
 setappdata(hGUI.figFlyAnalysis,'sInd',sInd)
+
+% retrieves the current plot scope index
+[~,~,pInd] = getSelectedIndices(hGUI);
 
 % resets the highlight panel colours
 hPanel = findall(handles.panelPlot,'tag','subPanel');
@@ -439,21 +444,12 @@ end
 % updates the plot parameters (if a valid plot has been selected)
 if ~isempty(sPara.pData{sInd})
     % sets the new selected indices
-    fName = sPara.pData{sInd}.Name;
-    lStr = get(hGUI.listPlotFunc,'string');    
-    fIndNw = find(cellfun(@(x)(any(strfind(x,fName))),lStr));  
-
-    % if there is more than one match, then narrow them down    
-    if (length(fIndNw) > 1)        
-        ii = cellfun(@(x)(strfind(x,'>')),lStr(fIndNw),'un',0);
-        jj = cellfun(@(x,y)(strcmp(x(y(end)+1:end),fName)),lStr(fIndNw),ii);
-        fIndNw = fIndNw(jj);
-    end    
+    fIndNw = fObj.getFuncIndex(sPara.pData{sInd}.Name);
     
     % update the popup menu/list values
     set(hGUI.popupExptIndex,'value',sPara.ind(sInd,1))
     set(hGUI.popupPlotType,'value',sPara.ind(sInd,3)) 
-    set(hGUI.listPlotFunc,'value',fIndNw)    
+    feval(selectFcn,hGUIM,fIndNw); 
     
     % updates the parameter GUI
     if isempty(hPara)

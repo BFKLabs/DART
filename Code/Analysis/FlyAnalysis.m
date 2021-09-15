@@ -1392,15 +1392,17 @@ popupSubInd_Callback(handles.popupSubInd, [], handles)
 function popupSubInd_Callback(hObject, eventdata, handles)
 
 % retrieves the sub-region data struct
-hPara = getappdata(handles.figFlyAnalysis,'hPara');
-sPara = getappdata(handles.figFlyAnalysis,'sPara');
-pData = getappdata(handles.figFlyAnalysis,'pData');
-sInd0 = getappdata(handles.figFlyAnalysis,'sInd');
+hFig = handles.figFlyAnalysis;
+hPara = getappdata(hFig,'hPara');
+sPara = getappdata(hFig,'sPara');
+pData = getappdata(hFig,'pData');
+sInd0 = getappdata(hFig,'sInd');
+fObj = getappdata(hFig,'fObj');
 
 % retrieves the selected index
 [lStr,iStr] = deal(get(hObject,'string'),get(hObject,'value'));
 sInd = str2double(lStr{iStr});
-setappdata(handles.figFlyAnalysis,'sInd',sInd)
+setappdata(hFig,'sInd',sInd)
 
 % resets the highlight panel colours
 hPanel = findall(handles.panelPlot,'tag','subPanel');
@@ -1414,31 +1416,18 @@ if ~isempty(hPara) && ~isa(eventdata,'char')
         % if so, then update the plotting data struct
         pObj = getappdata(hPara,'pObj');
         sPara.pData{sInd0} = pObj.pData;
-        setappdata(handles.figFlyAnalysis,'sPara',sPara);
+        setappdata(hFig,'sPara',sPara);
 
         % updates the plot data struct        
         pData{pInd}{fInd,eInd} = pObj.pData;
-        setappdata(handles.figFlyAnalysis,'pData',pData);
+        setappdata(hFig,'pData',pData);
     end        
 end
 
 % determines if the plot data has been set for the current sub-plot
 if ~isempty(sPara.pData{sInd}) && ~any(isnan(sPara.ind(sInd,:)))
     % sets the new selected indices
-    lStr = get(handles.listPlotFunc,'string');
-    fName = sPara.pData{sInd}.Name;
-    fIndNw = find(cellfun(@(x)(any(strfind(x,fName))),lStr)); 
-    
-    % if there is more than one match, then narrow them down    
-    if length(fIndNw) > 1       
-        % determines the end of the HTML-colour markers
-        ii = cellfun(@(x)(strfind(x,'>')),lStr(fIndNw),'un',0);
-        ii(cellfun(@isempty,ii)) = {0};
-
-        % determines the exact match
-        jj = cellfun(@(x,y)(strcmp(x(y(end)+1:end),fName)),lStr(fIndNw),ii);
-        fIndNw = fIndNw(jj);
-    end
+    fIndNw = fObj.getFuncIndex(sPara.pData{sInd}.Name);  
     
     % if so, then update the popup menu/list value 
     setObjEnable(handles.menuUndock,'on')
@@ -1446,21 +1435,21 @@ if ~isempty(sPara.pData{sInd}) && ~any(isnan(sPara.ind(sInd,:)))
     setObjEnable(handles.buttonUpdateFigure,'on')
     set(handles.popupExptIndex,'value',sPara.ind(sInd,1))
     set(handles.popupPlotType,'value',sPara.ind(sInd,3)) 
-    set(handles.listPlotFunc,'value',fIndNw)   
+    setSelectedNode(handles,fIndNw)
     
     % updates the parameter GUI
     if isempty(hPara)
         hPara = AnalysisPara(handles);
-        setappdata(handles.figFlyAnalysis,'hPara',hPara);
+        setappdata(hFig,'hPara',hPara);
     else
         pObj = getappdata(hPara,'pObj');
         pObj.initAnalysisGUI()
     end
 else
     % otherwise, remove the plot list
-    setObjEnable(handles.menuSaveData,'off')
-    set(handles.listPlotFunc,'value',1)  
+    setSelectedNode(handles)    
     setObjVisibility(hPara,'off'); 
+    setObjEnable(handles.menuSaveData,'off')
     
     % enables the undocking menu item
     if size(sPara.pos,1) == 1
@@ -2002,16 +1991,18 @@ set(h.panelPlot,'units','pixels','position',pPosPnw)
 % updates the plot listbox/panel position
 WPI = pPosO(3) - 2*dX;
 set(h.panelPlotFunc,'position',[dX,dY,WPI,HPF]);
-set(h.panelFuncList,'position',[dX,YLF+yOfs,WPI-2*dX,HLF]);
+set(h.panelFuncList,'position',[dX,YLF,WPI-2*dX,HLF]);
 
 % resets the analysis scope object positions
-yBot = YLF+HLF+yOfs+dY/2;
-resetObjPos(h.textFuncFilter,'bottom',yBot+3);
-resetObjPos(h.toggleFuncFilter,'bottom',yBot);
-resetObjPos(h.panelFuncFilter,'bottom',yBot-(pPosF(4)-1));
-resetObjPos(h.textPlotType,'bottom',yBot+yOfs+3);
-resetObjPos(h.popupPlotType,'bottom',yBot+yOfs);
-resetObjPos(h.buttonUpdateFigure,'bottom',YLF);
+yBot0 = YLF+HLF+dY/2;
+[yBot1,yBot2] = deal(yBot0+yOfs,yBot0+2*yOfs);
+
+resetObjPos(h.buttonUpdateFigure,'bottom',yBot0);
+resetObjPos(h.textFuncFilter,'bottom',yBot1+3);
+resetObjPos(h.toggleFuncFilter,'bottom',yBot1);
+resetObjPos(h.panelFuncFilter,'bottom',yBot1-(pPosF(4)-1));
+resetObjPos(h.textPlotType,'bottom',yBot2+3);
+resetObjPos(h.popupPlotType,'bottom',yBot2);
 
 % updates the experiment information panel position
 resetObjPos(h.panelExptInfo,'bottom',(3/2)*dY + HPF);
@@ -2167,6 +2158,10 @@ hPanel = handles.panelFuncList;
 fObj = getappdata(hFig,'fObj');
 plotD = getappdata(hFig,'plotD');
 
+% resets the experiment compatibility flags
+fScope = getAnalysisScopeFlag(hFig);
+fObj.detExptCompatibility(fScope);
+
 % retrieves the requirement fields for each feasible function
 rFld = fieldnames(fObj.rGrp);
 indS = find(any(fObj.cmpData,2));
@@ -2193,10 +2188,6 @@ end
 % determines the unique mappings
 indF = find(~any(isnan(Imap(:,iCol)),2));
 [ImapU,~,iC] = unique(Imap(indF,iCol),'rows');
-
-% resets the experiment compatibility flags
-fScope = getAnalysisScopeFlag(hFig);
-fObj.detExptCompatibility(fScope);
 
 % ------------------------------ %
 % --- EXPLORER TREE CREATION --- %
@@ -2621,13 +2612,17 @@ hTreeF = getappdata(hFig,'hTreeF');
 
 % retrieves the function id flags for each node
 hNodeL = getAllLeafNodes(hTreeF.getRoot);
-iFcnN = cellfun(@(x)(x.getUserObject),hNodeL);
 
 % updates the selected node
-hTreeF.setSelectedNode(hNodeL{iFcn==iFcnN});
-pause(0.05);
+if exist('iFcn','var')
+    iFcnN = cellfun(@(x)(x.getUserObject),hNodeL);
+    hTreeF.setSelectedNode(hNodeL{iFcn==iFcnN});
+else
+    hTreeF.setSelectedNode(hNodeL{1});
+end   
 
 % resets the update flag
+pause(0.05);
 isUpdating = false;
 
 % --- retrieves all leaf nodes from the explorer tree
@@ -2636,15 +2631,18 @@ function hNodeL = getAllLeafNodes(hNodeP)
 % memory allocation
 hNodeL = [];
 
-%
+% search for all leaf nodes for the current parent node
 for i = 1:hNodeP.getChildCount
-    %
+    % retrieves the next child node
     hNodeC = hNodeP.getChildAt(i-1);
     if hNodeC.isLeafNode
+        % if a leaf node, then store the node handle
         hNodeL = [hNodeL;{hNodeC}];
     else
+        % otherwise, search the children of the non-leaf node
         hNodeLNw = getAllLeafNodes(hNodeC);
         if ~isempty(hNodeLNw)
+            % if leaf nodes were found, then add them to the stored list
             hNodeL = [hNodeL;hNodeLNw(:)];
         end
     end

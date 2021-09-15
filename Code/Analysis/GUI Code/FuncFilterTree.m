@@ -579,6 +579,14 @@ classdef FuncFilterTree < handle
 
         end            
                         
+        % --- retrieves the matching function index
+        function fcnIndex = getFuncIndex(obj,fcnName)
+            
+            iSelF = strcmp(obj.fcnData(:,1),fcnName);
+            fcnIndex = obj.Imap(iSelF,pInd);           
+            
+        end
+        
     end
     
     % static class methods

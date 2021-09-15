@@ -674,7 +674,7 @@ classdef AnalysisParaClass < handle
             obj.setupParaObjects('Calc');
             
             % retrieves the GUI object width dimensions
-            obj.hasTab = ~cellfun(@isempty,obj.hTabG);
+            obj.hasTab = ~cellfun(@isempty,obj.hObj);
             wObj = cellfun(@(x)(retObjDimPos(x,3)),obj.hObj(1:2),'un',0);            
             
             % determines the maximum object widths over all objects/types
@@ -736,16 +736,19 @@ classdef AnalysisParaClass < handle
                 for i = 1:length(obj.hObj{3})
                     if isempty(obj.hObj{3}{i})               
                         switch (i)
-                            case (1) % deletes the time panel
+                            case (1) 
+                                % deletes the time panel
                                 setObjVisibility(h.panelTimePara,'off'); 
                                 hPosNw = get(h.panelTimePara,'position');
                                 dy0 = -(obj.pOfs+hPosNw(4));
                                 resetObjPos(h.panelSubPara,'bottom',dy0,1);
                                 
-                            case (2) % deletes the subplot panel
+                            case (2) 
+                                % deletes the subplot panel
                                 setObjVisibility(h.panelSubPara,'off'); 
                                 
-                            case (3) % deletes the subplot panel
+                            case (3) 
+                                % deletes the subplot panel
                                 setObjVisibility(h.panelStimResPara,'off');                                 
                         end
                     else
@@ -787,7 +790,7 @@ classdef AnalysisParaClass < handle
             [fPos,obj.yNew] = deal(get(obj.hFig,'Position'),obj.pOfs);
             Hfunc = 3*obj.hOfs2 + (3/2)*obj.pOfs;
             Hfig = (Hfunc + 2*obj.pOfs) + (sum(obj.HObjS)+sum(HObj)) + ...
-                                           sum(obj.hasTab)*obj.hTabOfs;
+                                          sum(obj.hasTab(1:2))*obj.hTabOfs;
 
             % recalculates the figure bottom location
             if (fPos(2) < obj.B0)        
@@ -829,22 +832,15 @@ classdef AnalysisParaClass < handle
                 obj.resetStimPanel();
             end
 
-            % -------------------------------- %            
-            % --- PLOTTING PARAMETER PANEL --- %
-            % -------------------------------- %
+            % -------------------------------------------- %            
+            % --- PLOTTING/CALCULATION PARAMETER PANEL --- %
+            % -------------------------------------------- %
             
             % resizes the plotting parameter panel
-            if HObj(2) > 0
-                obj.resetPlotPanel();
-            end
-
-            % ----------------------------------- %
-            % --- CALCULATION PARAMETER PANEL --- %
-            % ----------------------------------- %   
-            
-            % resizes the calculation parameter panel
-            if HObj(1) > 0
-               obj.resetCalcPanel(); 
+            for i = 2:-1:1
+                if HObj(i) > 0
+                    obj.resetParaPanel(obj.hPanel{i},i);
+                end
             end
             
             % ---------------------------------- %            
@@ -907,6 +903,7 @@ classdef AnalysisParaClass < handle
             hObjNw = obj.hObj{3}{1};   
             
             % resets the panel position                     
+            resetObjPos(h.panelTimePara,'bottom',obj.yNew)
             resetObjPos(h.panelTimePara,'width',obj.wObjNw)
             obj.yNew = obj.yNew + obj.HObjS(1);          
 
@@ -1068,52 +1065,27 @@ classdef AnalysisParaClass < handle
         end
         
         % --- resets the plotting parameter panel
-        function resetPlotPanel(obj)
+        function resetParaPanel(obj,hP,ind)
             
             % sets the new locations
-            h = guidata(obj.hFig);
-            HNew = obj.nPmx(2)*obj.hOfs + 3*obj.pOfs + ...
-                   obj.hTabOfs*(~isempty(obj.hTabG{2}));    
+            HNew = obj.nPmx(ind)*obj.hOfs + 3*obj.pOfs + ...
+                   obj.hTabOfs*(~isempty(obj.hTabG{ind}));    
 
             % resets the panel position
-            resetObjPos(h.panelPlotPara,'bottom',obj.yNew)
-            resetObjPos(h.panelPlotPara,'width',obj.wObjNw)
-            resetObjPos(h.panelPlotPara,'height',HNew)    
+            resetObjPos(hP,'bottom',obj.yNew)
+            resetObjPos(hP,'width',obj.wObjNw)
+            resetObjPos(hP,'height',HNew)    
 
             % resets the tab group position
-            if obj.hasTab(2)
+            if obj.hasTab(ind)
                 HnwG = HNew-(obj.hTabOfs-obj.dhTabOfs);
-                resetObjPos(obj.hTabG{2},'height',HnwG)  
+                resetObjPos(obj.hTabG{ind},'height',HnwG)  
             end
 
             % increment the vertical offset
             obj.yNew = obj.yNew + (HNew+obj.pOfs);                       
             
-        end
-        
-        % --- resets the plotting parameter panel
-        function resetCalcPanel(obj)
-            
-            % sets the new locations
-            h = guidata(obj.hFig);
-            HNew = obj.nPmx(1)*obj.hOfs + 3*obj.pOfs+ ...
-                   obj.hTabOfs*(~isempty(obj.hTabG{1}));   
-
-            % resets the panel position
-            resetObjPos(h.panelCalcPara,'bottom',obj.yNew)
-            resetObjPos(h.panelCalcPara,'width',obj.wObjNw)
-            resetObjPos(h.panelCalcPara,'height',HNew)
-
-            % resets the tab group position
-            if obj.hasTab(1)
-                HnwG = HNew-(obj.hTabOfs-obj.dhTabOfs);
-                resetObjPos(obj.hTabG{1},'height',HnwG)  
-            end
-
-            % increment the vertical offset
-            obj.yNew = obj.yNew + (HNew+obj.pOfs);                
-            
-        end
+        end        
         
         % ---------------------------------- %        
         % --- PARAMETER OBJECT FUNCTIONS --- %
@@ -1205,7 +1177,7 @@ classdef AnalysisParaClass < handle
                 end     
 
                 % sets the tab panel parent objects
-                isOn = setGroup(1:nTab,size(hTabP));
+                isOn = setGroup((1:nTab)',size(hTabP));
                 cellfun(@(x)(set(x,'Parent',obj.hTabG{iType})),hTabP(isOn))
                 cellfun(@(x)(set(x,'Parent',[])),hTabP(~isOn))                  
                 
