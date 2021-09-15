@@ -35,19 +35,20 @@ pause(0.05)
 
 % sets the input arguments
 hGUI = varargin{1};
-hPara = getappdata(hGUI.figFlyAnalysis,'hPara');
-sPara = getappdata(hGUI.figFlyAnalysis,'sPara');
+hFigM = hGUI.figFlyAnalysis;
+hPara = getappdata(hFigM,'hPara');
+sPara = getappdata(hFigM,'sPara');
 
 % sets the data structs into the GUI
 setappdata(hObject,'hGUI',hGUI)
 setappdata(hObject,'hPara',hPara)
 setappdata(hObject,'sPara',sPara)
-setappdata(hObject,'snTot',getappdata(hGUI.figFlyAnalysis,'snTot'))
-setappdata(hObject,'iProg',getappdata(hGUI.figFlyAnalysis,'iProg'))
+setappdata(hObject,'snTot',getappdata(hFigM,'snTot'))
+setappdata(hObject,'iProg',getappdata(hFigM,'iProg'))
 
 % retrieves the original plot panel/figure position vectors
 set(hGUI.panelPlot,'Units','pixels')
-fPos0 = get(hGUI.figFlyAnalysis,'Position');
+fPos0 = get(hFigM,'Position');
 pPos0 = get(hGUI.panelOuter,'Position');
 L0 = sum(pPos0([1 3])) + 10;
 W0 = fPos0(3) - (L0+10);
@@ -62,7 +63,7 @@ resetObjPos(hGUI.panelPlot,'width',1)
 
 % makes the figure invisible
 % setObjEnable(hGUI.menuUndock,'off');
-setObjVisibility(hGUI.figFlyAnalysis,'off'); 
+setObjVisibility(hFigM,'off'); 
 pause(0.05); 
 
 % resets the left/bottom locations of the GUI
@@ -70,7 +71,7 @@ resetObjPos(hObject,'left',fPos0(1)+L0+25)
 resetObjPos(hObject,'bottom',fPos0(2))
 
 % makes the figure visible again
-setappdata(hGUI.figFlyAnalysis,'hUndock',hObject)
+setappdata(hFigM,'hUndock',hObject)
 centreFigPosition(hObject);
 
 % if not docked (and showing GUIs) then create the plot panel objects
@@ -87,10 +88,12 @@ if (size(sPara.pos,1) > 1)
     subPlotSelect(handles,sInd,1)    
     
     % deletes the loadbar 
-    delete(h); pause(0.05);      
-elseif (~isempty(hPara))
+    delete(h); pause(0.05);   
+    
+elseif ~isempty(hPara)
     % updates the plot figure
-    updatePlotFigure(hObject,getappdata(hPara,'pData'));
+    pData0 = feval(getappdata(hPara,'getPlotData'),hPara);
+    updatePlotFigure(hObject,pData0);
 end
     
 % Update handles structure
@@ -230,7 +233,8 @@ if size(sPara.pos,1) > 1
     
 elseif ~isempty(hPara)
     % updates the plot figure
-    updatePlotFigure(hGUI,getappdata(hPara,'pData'));
+    pData0 = feval(getappdata(hPara,'getPlotData'),hPara);
+    updatePlotFigure(hGUI,pData0);
 end
 
 % gives focus to the main Analysis GUI
@@ -344,11 +348,11 @@ for i = find(iReg)
         [hAx,hLg,m,n] = resetPlotFontResize(hP,pDataNw);
 
         % resets the plot axis based on the number of subplots 
-        resetAxesPos(hAx,m,n);  
+        resetAxesPos(hAx,m,n);
 
         % determines if the plots axes need to be resized for legend
         % objects that are outside the plot regions            
-        if (~isempty(hLg))
+        if ~isempty(hLg)
             % determines if any legend objects are outside the axes
             isInAx = ~strcmp(get(hLg,'location'),'none');
             if (any(~isInAx))
@@ -407,8 +411,13 @@ sPara = getappdata(handles.figUndockPlot,'sPara');
 hPara = getappdata(handles.figUndockPlot,'hPara');
 
 % updates the subplot index
+fObj = getappdata(hGUI.figFlyAnalysis,'fObj');
 sInd0 = getappdata(hGUI.figFlyAnalysis,'sInd');
+selectFcn = getappdata(hGUIM.figFlyAnalysis,'setSelectedNode');
 setappdata(hGUI.figFlyAnalysis,'sInd',sInd)
+
+% retrieves the current plot scope index
+[~,~,pInd] = getSelectedIndices(hGUI);
 
 % resets the highlight panel colours
 hPanel = findall(handles.panelPlot,'tag','subPanel');
@@ -420,42 +429,35 @@ if ((~isempty(sPara.pData{sInd0})) && (nargin == 2))
     % retrieves the experiment, function and plot indices
     ind = sPara.ind(sInd0,:);
     [eInd,fInd,pInd] = deal(ind(1),ind(2),ind(3));
+    pData0 = feval(getappdata(hPara,'getPlotData'),hPara);
 
     % if so, then update the plotting data struct
-    sPara.pData{sInd0} = getappdata(hPara,'pData');
+    sPara.pData{sInd0} = pData0;
     setappdata(handles.figUndockPlot,'sPara',sPara);
 
-    % updates the plot data struct
+    % updates the plot data struct    
     pData = getappdata(hGUI.figFlyAnalysis,'pData');
-    pData{pInd}{fInd,eInd} = getappdata(hPara,'pData');
+    pData{pInd}{fInd,eInd} = pData0;
     setappdata(hGUI.figFlyAnalysis,'pData',pData);
 end
 
 % updates the plot parameters (if a valid plot has been selected)
-if (~isempty(sPara.pData{sInd}))
+if ~isempty(sPara.pData{sInd})
     % sets the new selected indices
-    [lStr,fName] = deal(get(hGUI.listPlotFunc,'string'),sPara.pData{sInd}.Name);
-    fIndNw = find(cellfun(@(x)(any(strfind(x,fName))),lStr));  
-
-    % if there is more than one match, then narrow them down    
-    if (length(fIndNw) > 1)        
-        ii = cellfun(@(x)(strfind(x,'>')),lStr(fIndNw),'un',0);
-        jj = cellfun(@(x,y)(strcmp(x(y(end)+1:end),fName)),lStr(fIndNw),ii);
-        fIndNw = fIndNw(jj);
-    end    
+    fIndNw = fObj.getFuncIndex(sPara.pData{sInd}.Name);
     
     % update the popup menu/list values
     set(hGUI.popupExptIndex,'value',sPara.ind(sInd,1))
     set(hGUI.popupPlotType,'value',sPara.ind(sInd,3)) 
-    set(hGUI.listPlotFunc,'value',fIndNw)    
+    feval(selectFcn,hGUIM,fIndNw); 
     
     % updates the parameter GUI
-    if (isempty(hPara))
+    if isempty(hPara)
         hPara = AnalysisPara(hGUI);
         setappdata(hGUI.figFlyAnalysis,'hPara',hPara);
         setappdata(handles.figUndockPlot,'hPara',hPara)
     else
-        feval(getappdata(hPara,'initAnalysisGUI'),hPara,hGUI)  
+        feval(getappdata(hPara,'initAnalysisGUI'),hPara)  
     end
 else
     % otherwise, remove the plot list

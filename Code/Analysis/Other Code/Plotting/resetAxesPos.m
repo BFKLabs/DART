@@ -5,7 +5,7 @@ function resetAxesPos(hAx,m,n,dOfs)
 if (nargin < 4); dOfs = [0 0.02*(m*n == 1)]; end
 
 % converts the axes handles into a cell array
-if (~iscell(hAx))
+if ~iscell(hAx)
     if (length(hAx) == 1)
         hAx = {hAx}; 
     else
@@ -24,7 +24,7 @@ axPosO = cell2mat(cellfun(@(x)(get(x(1),'OuterPosition')),hAx,'un',0));
 nAx = length(hAx{1});
 
 % ensures the axis array is the correct size
-if (numel(hAx) ~= m*n)
+if numel(hAx) ~= m*n
     hAx = [hAx(:);cell(m*n-numel(hAx),1)];
 end
 

@@ -1,5 +1,5 @@
 function varargout = FlyAnalysis(varargin)
-% Last Modified by GUIDE v2.5 26-Jul-2021 14:47:28
+% Last Modified by GUIDE v2.5 14-Sep-2021 21:53:34
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -24,8 +24,10 @@ end
 function FlyAnalysis_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % global variables
-global mainProgDir isDocked initDock regSz updateFlag canSelect isAnalysis
+global mainProgDir isDocked initDock regSz  
+global updateFlag canSelect isAnalysis isUpdating
 [isDocked,initDock,canSelect,isAnalysis] = deal(true);
+isUpdating = false;
 updateFlag = 2; pause(0.1); 
 
 % Choose default command line output for FlyAnalysis
@@ -104,6 +106,7 @@ setappdata(hObject,'clearAxesObject',@clearAxesObject)
 setappdata(hObject,'popupSubInd',@popupSubInd_Callback);
 setappdata(hObject,'axisClickCallback',@axisClickCallback);
 setappdata(hObject,'postSolnLoadFunc',@postSolnLoadFunc)
+setappdata(hObject,'setSelectedNode',@setSelectedNode)
 
 % initialises the gui object properties
 initGUIObjects(handles)
@@ -146,6 +149,13 @@ if ~isempty(hPara)
     setObjVisibility(hPara,0);
 end
 
+% closes the function filter (if open)
+hToggle = handles.toggleFuncFilter;
+if get(hToggle,'Value')
+    set(hToggle,'Value',false)
+    toggleFuncFilter_Callback(hToggle, [], handles)
+end
+
 % if there is currently loaded data, then combine the sInfo and snTot data
 % structs for the 
 if ~isempty(getappdata(hFig,'sInfo'))  
@@ -182,6 +192,7 @@ if ~exist('sInfoNw','var')
     % makes the gui visible again and exits the function
     setObjVisibility(hFig,'on');
     return
+    
 elseif isempty(sInfoNw)    
     % if all data was cleared, then reset the gui
     menuClearData_Callback(handles.menuClearData, [], handles)
@@ -200,7 +211,6 @@ h = ProgressLoadbar('Updating Analysis Information...');
 
 % makes the gui visible again
 tempSolnDataIO(handles,'remove')
-setObjVisibility(hFig,'on');
 
 % sets the experiment name strings
 sName = cellfun(@(x)(x.expFile),sInfoNw,'un',0);
@@ -209,12 +219,47 @@ setappdata(hFig,'sName',sName)
 setappdata(hFig,'sNameFull',sNameFull)
 setappdata(hFig,'LoadSuccess',true);
 
-% retrieve all the 
+% retrieves the stored data
+pDataT = getappdata(hFig,'pDataT');
+snTot = num2cell(getappdata(hFig,'snTot'));
+
+% retrieves the function filter class object
+fObj = getappdata(hFig,'fObj');
+if isempty(fObj)    
+    % creates the function filter
+    fObj = FuncFilterTree(hFig,snTot,pDataT);
+    fObj.setClassField('treeUpdateExtn',@updateFuncFilter);
+    setappdata(hFig,'fObj',fObj);
+end
+
+% sets up the loaded information and resets the gui objects
 setSolnInfo(handles)
 resetGUIObjects(guidata(hFig))
 
+% makes the main gui visible again
+setObjVisibility(hFig,'on');
+
 % attempts to close the loadbar
 try; close(h); end
+
+% --- function filter class update callback
+function updateFuncFilter()
+
+% retrieves the function filter class object
+hFig = findall(0,'tag','figFlyAnalysis');
+hPopup = findall(0,'tag','popupPlotType');
+fObj = getappdata(hFig,'fObj');
+
+% resets the experiment compatibility flags
+fScope = getAnalysisScopeFlag(hFig);
+fObj.detExptCompatibility(fScope);
+
+% resets the function list
+popupPlotType_Callback(hPopup, '1', guidata(hFig))
+
+% %
+% createFuncExplorerTree(guidata(hFig))
+% a = 1;
 
 % --- separates the solution file information data struct into
 %     its components (snTot is used for analysis)
@@ -582,7 +627,8 @@ end
 function menuOpenTempData_Callback(hObject, eventdata, handles)
 
 % loads the data structs from the GUI
-iData = getappdata(handles.figFlyAnalysis,'iData');
+hFig = handles.figFlyAnalysis;
+iData = getappdata(hFig,'iData');
 dDir = iData.ProgDef.TempData;
 
 % prompts the user if they wish to continue. if not, then exit
@@ -612,8 +658,8 @@ try; close(h); end
 warning(wState);
 
 % retrieves the original data structs
-fName0 = getFinalDirString(getappdata(handles.figFlyAnalysis,'fNameFull'));
-sName0 = getappdata(handles.figFlyAnalysis,'sName');
+fName0 = getFinalDirString(getappdata(hFig,'fNameFull'));
+sName0 = getappdata(hFig,'sName');
 
 % check that the loaded data matches the solution file
 if ~strcmp(fName0,A.sData.fName)
@@ -637,8 +683,9 @@ end
 
 % matches up the analysis function/data values between the original and
 % currently loaded fields
-pData = getappdata(handles.figFlyAnalysis,'pData');
-plotD = getappdata(handles.figFlyAnalysis,'plotD');
+pData = getappdata(hFig,'pData');
+plotD = getappdata(hFig,'plotD');
+hPara = getappdata(hFig,'hPara');
 for i = 1:length(pData) 
     if ~isempty(pData{i}) && ~isempty(A.pData{i})      
         % retrieves the function names for the current function type
@@ -659,21 +706,22 @@ for i = 1:length(pData)
 end
 
 % resets the fields with the loaded data
-setappdata(handles.figFlyAnalysis,'sName',A.sData.sName)
-setappdata(handles.figFlyAnalysis,'fName',A.sData.fName)
-setappdata(handles.figFlyAnalysis,'gPara',A.gPara)
-setappdata(handles.figFlyAnalysis,'sPara',A.sPara)
-setappdata(handles.figFlyAnalysis,'plotD',plotD)
-setappdata(handles.figFlyAnalysis,'pData',pData)
+setappdata(hFig,'sName',A.sData.sName)
+setappdata(hFig,'fName',A.sData.fName)
+setappdata(hFig,'gPara',A.gPara)
+setappdata(hFig,'sPara',A.sPara)
+setappdata(hFig,'plotD',plotD)
+setappdata(hFig,'pData',pData)
 
 % sets the menu item enabled properties
 setObjEnable(handles.menuSaveTempData,'on')
 
 % resets the selecting indices
 [eInd,fInd,pInd] = getSelectedIndices(handles);
-if fInd > 0
-    hPara = getappdata(handles.figFlyAnalysis,'hPara');
-    setappdata(hPara,'pData',pData{pInd}{fInd,eInd}) 
+if fInd > 0    
+    % updates the parameter struct into the parameter gui
+    pObj = getappdata(hPara,'pObj');
+    pObj.updatePlotData(pData{pInd}{fInd,eInd})
 end
 
 % updates the figure with the new data
@@ -968,12 +1016,15 @@ setObjEnable(hObject,'off')
 % updates the listbox/popup menu colour strings
 resetExptListStrings(handles)
 updateListColourStrings(handles,'func')
-listPlotFunc_Callback(handles.listPlotFunc, '0', handles)
+
+% resets the plot type
+popupPlotType_Callback(handles.popupPlotType, '1', handles)
 
 % deletes the parameter GUI
 hPara = getappdata(handles.figFlyAnalysis,'hPara');
 if ~isempty(hPara)
-    setappdata(hPara,'pData',pData)
+    pObj = getappdata(hPara,'pObj');
+    pObj.updatePlotData(pData);    
     resetRecalcObjProps(handles,'Yes')    
 end
 
@@ -994,6 +1045,9 @@ else
     resetAll = strcmp(eventdata,'All');
 end
 
+% creates a loadbar
+h = ProgressLoadbar('Resetting Loaded Experimental Data...');
+
 % retrieves the solution/subplot parameter structs
 hFig = handles.figFlyAnalysis;
 snTot = getappdata(hFig,'snTot');
@@ -1008,6 +1062,7 @@ end
     
 % rescans the analysis function directory
 if isempty(getappdata(hFig,'hPara'))
+    delete(h);
     return; 
 else
     scanPlotFuncDir(handles)
@@ -1039,7 +1094,9 @@ end
 % updates the listbox/popup menu colour strings
 resetExptListStrings(handles)
 updateListColourStrings(handles,'func')
-listPlotFunc_Callback(handles.listPlotFunc, '1', handles)
+
+% resets the plot type
+popupPlotType_Callback(handles.popupPlotType, '1', handles)
 
 % disables the listboxes
 setObjProps(handles,'on')
@@ -1050,13 +1107,18 @@ setObjEnable(handles.menuSaveTempData,'off');
 if ~isempty(hPara)        
     % updates the parameter GUI data struct
     [eInd,fInd,pInd] = getSelectedIndices(handles);
-    if fInd > 0
+    if fInd > 0        
         resetRecalcObjProps(handles,'Yes')
-        setappdata(hPara,'pData',pData{pInd}{fInd,eInd})    
+        
+        pObj = getappdata(hPara,'pObj');
+        pObj.updatePlotData(pData{pInd}{fInd,eInd});
     else
         resetRecalcObjProps(handles,'No')
     end
 end
+
+% deletes the loadbar
+delete(h);
 
 % -------------------------------------------------------------------------
 function menuUndock_Callback(hObject, eventdata, handles)
@@ -1216,7 +1278,8 @@ if isSet
             hP = handles.panelPlot;            
             
             % retrieves the plot data struct
-            pDataNw = getappdata(hPara,'pData');
+            pObj = getappdata(hPara,'pObj');
+            pDataNw = pObj.pData;
             plotDNw = plotD{pInd}{fInd,eInd};
         else           
             % updates the subplot index
@@ -1329,15 +1392,17 @@ popupSubInd_Callback(handles.popupSubInd, [], handles)
 function popupSubInd_Callback(hObject, eventdata, handles)
 
 % retrieves the sub-region data struct
-hPara = getappdata(handles.figFlyAnalysis,'hPara');
-sPara = getappdata(handles.figFlyAnalysis,'sPara');
-pData = getappdata(handles.figFlyAnalysis,'pData');
-sInd0 = getappdata(handles.figFlyAnalysis,'sInd');
+hFig = handles.figFlyAnalysis;
+hPara = getappdata(hFig,'hPara');
+sPara = getappdata(hFig,'sPara');
+pData = getappdata(hFig,'pData');
+sInd0 = getappdata(hFig,'sInd');
+fObj = getappdata(hFig,'fObj');
 
 % retrieves the selected index
 [lStr,iStr] = deal(get(hObject,'string'),get(hObject,'value'));
 sInd = str2double(lStr{iStr});
-setappdata(handles.figFlyAnalysis,'sInd',sInd)
+setappdata(hFig,'sInd',sInd)
 
 % resets the highlight panel colours
 hPanel = findall(handles.panelPlot,'tag','subPanel');
@@ -1349,32 +1414,20 @@ set(findobj(hPanel,'tag','subPanel','UserData',sInd),'HighlightColor','r');
 if ~isempty(hPara) && ~isa(eventdata,'char')  
     if all([eInd,fInd,pInd] > 0)
         % if so, then update the plotting data struct
-        sPara.pData{sInd0} = getappdata(hPara,'pData');
-        setappdata(handles.figFlyAnalysis,'sPara',sPara);
+        pObj = getappdata(hPara,'pObj');
+        sPara.pData{sInd0} = pObj.pData;
+        setappdata(hFig,'sPara',sPara);
 
-        % updates the plot data struct
-        pData{pInd}{fInd,eInd} = getappdata(hPara,'pData');
-        setappdata(handles.figFlyAnalysis,'pData',pData);
+        % updates the plot data struct        
+        pData{pInd}{fInd,eInd} = pObj.pData;
+        setappdata(hFig,'pData',pData);
     end        
 end
 
 % determines if the plot data has been set for the current sub-plot
 if ~isempty(sPara.pData{sInd}) && ~any(isnan(sPara.ind(sInd,:)))
     % sets the new selected indices
-    lStr = get(handles.listPlotFunc,'string');
-    fName = sPara.pData{sInd}.Name;
-    fIndNw = find(cellfun(@(x)(any(strfind(x,fName))),lStr)); 
-    
-    % if there is more than one match, then narrow them down    
-    if length(fIndNw) > 1       
-        % determines the end of the HTML-colour markers
-        ii = cellfun(@(x)(strfind(x,'>')),lStr(fIndNw),'un',0);
-        ii(cellfun(@isempty,ii)) = {0};
-
-        % determines the exact match
-        jj = cellfun(@(x,y)(strcmp(x(y(end)+1:end),fName)),lStr(fIndNw),ii);
-        fIndNw = fIndNw(jj);
-    end
+    fIndNw = fObj.getFuncIndex(sPara.pData{sInd}.Name);  
     
     % if so, then update the popup menu/list value 
     setObjEnable(handles.menuUndock,'on')
@@ -1382,20 +1435,21 @@ if ~isempty(sPara.pData{sInd}) && ~any(isnan(sPara.ind(sInd,:)))
     setObjEnable(handles.buttonUpdateFigure,'on')
     set(handles.popupExptIndex,'value',sPara.ind(sInd,1))
     set(handles.popupPlotType,'value',sPara.ind(sInd,3)) 
-    set(handles.listPlotFunc,'value',fIndNw)   
+    setSelectedNode(handles,fIndNw)
     
     % updates the parameter GUI
     if isempty(hPara)
         hPara = AnalysisPara(handles);
-        setappdata(handles.figFlyAnalysis,'hPara',hPara);
+        setappdata(hFig,'hPara',hPara);
     else
-        feval(getappdata(hPara,'initAnalysisGUI'),hPara,handles)
+        pObj = getappdata(hPara,'pObj');
+        pObj.initAnalysisGUI()
     end
 else
     % otherwise, remove the plot list
-    setObjEnable(handles.menuSaveData,'off')
-    set(handles.listPlotFunc,'value',1)  
+    setSelectedNode(handles)    
     setObjVisibility(hPara,'off'); 
+    setObjEnable(handles.menuSaveData,'off')
     
     % enables the undocking menu item
     if size(sPara.pos,1) == 1
@@ -1413,10 +1467,11 @@ end
 function popupExptIndex_Callback(hObject, eventdata, handles)
 
 % retrieves the solution struct and solution directory/file names
-hPara = getappdata(handles.figFlyAnalysis,'hPara');
-pData = getappdata(handles.figFlyAnalysis,'pData');
-snTot = getappdata(handles.figFlyAnalysis,'snTot');
-eIndex = getappdata(handles.figFlyAnalysis,'eIndex');
+hFig = handles.figFlyAnalysis;
+hPara = getappdata(hFig,'hPara');
+pData = getappdata(hFig,'pData');
+snTot = getappdata(hFig,'snTot');
+eIndex = getappdata(hFig,'eIndex');
 
 % check to see if the new experiment 
 if (eIndex ~= get(hObject,'value')) || isa(eventdata,'char')
@@ -1426,23 +1481,26 @@ if (eIndex ~= get(hObject,'value')) || isa(eventdata,'char')
 
         % updates the parameter struct
         if fInd > 0
-            pDataOld = getappdata(hPara,'pData');
+            pObj = getappdata(hPara,'pObj');
+            pDataOld = pObj.pData;
             if pInd == 3
                 pData{pInd}{fInd,1} = pDataOld;
             else
                 pData{pInd}{fInd,eIndex} = pDataOld;
             end
-            setappdata(handles.figFlyAnalysis,'pData',pData);    
+            
+            % updates the parameter struct
+            setappdata(hFig,'pData',pData);    
         end
     end
     
     % updates the experiment index and experiment information
-    setappdata(handles.figFlyAnalysis,'eIndex',get(hObject,'value'));
+    setappdata(hFig,'eIndex',get(hObject,'value'));
     setExptInfo(handles,snTot);         
     
     % resets the plotting function listbox
-    updateListColourStrings(handles,'func')
-    listPlotFunc_Callback(handles.listPlotFunc, '1', handles)          
+    popupPlotType_Callback(handles.popupPlotType, '1', handles)
+    treeSelectChng([], '1', handles)
 end   
     
 % ---------------------------------------- %
@@ -1453,15 +1511,12 @@ end
 function popupPlotType_Callback(hObject, eventdata, handles)
 
 % retrieves the plotting data type struct
-pData = getappdata(handles.figFlyAnalysis,'pData');
-pDataT = getappdata(handles.figFlyAnalysis,'pDataT');
-pIndex = getappdata(handles.figFlyAnalysis,'pIndex');
-hPara = getappdata(handles.figFlyAnalysis,'hPara');
-snTot = getappdata(handles.figFlyAnalysis,'snTot');
-gPara = getappdata(handles.figFlyAnalysis,'gPara');
-
-% other initialisations
-eStr = 'on';
+hFig = handles.figFlyAnalysis;
+pData = getappdata(hFig,'pData');
+pDataT = getappdata(hFig,'pDataT');
+pIndex = getappdata(hFig,'pIndex');
+hPara = getappdata(hFig,'hPara');
+snTot = getappdata(hFig,'snTot');
 
 % check to see if the new selection is unique
 if ~isa(eventdata,'char')
@@ -1472,14 +1527,15 @@ if ~isa(eventdata,'char')
 
             % updates the corresponding parameter struct
             if fInd > 0
-                pDataOld = getappdata(hPara,'pData');
+                pObj = getappdata(hPara,'pObj');
+                pDataOld = pObj.pData;
                 pData{pIndex}{fInd,eInd} = pDataOld;
-                setappdata(handles.figFlyAnalysis,'pData',pData);
+                setappdata(hFig,'pData',pData);
             end
         end
         
         % if so, updates the plotting function selected index
-        setappdata(handles.figFlyAnalysis,'pIndex',get(hObject,'value'));        
+        setappdata(hFig,'pIndex',get(hObject,'value'));        
     else
         % if the selected value is not unique, then exit the function
         return
@@ -1487,6 +1543,7 @@ if ~isa(eventdata,'char')
 end
    
 % retrieves the selected string
+eStr = 'on';
 lStr = cellstr(get(hObject,'string'));
 indNw = get(hObject,'value');
 
@@ -1507,234 +1564,37 @@ switch lStr{indNw}
         A = pDataT.Indiv;      
 end
 
-% check to see if the function stack is empty
-if isempty(A)
-    % if so, then disable the listbox
-    set(handles.listPlotFunc,'string',{' '},'value',1,'enable','inactive');
-else
-    % sets the new list strings        
-    fInd = min(get(handles.listPlotFunc,'value'),length(A)+1);
-    lStrNw = getListColourStrings(handles,getFuncListString(A),'Func');     
-    set(handles.listPlotFunc,'value',fInd)  
-    set(setObjEnable(handles.listPlotFunc,'on'),'string',lStrNw); 
-    pause(0.1);        
-    
-    % sets the function stack into the GUI
-    fcnStack = [{' '},field2cell(A,'fcn')];
-    setappdata(handles.figFlyAnalysis,'fcnStack',fcnStack);        
+% otherwise, update the function filter
+if ~isa(eventdata,'char')
+    fObj = getappdata(hFig,'fObj');
+    fScope = getAnalysisScopeFlag(hFig);
+    fObj.resetFuncFilter(snTot,pDataT,fScope);
+end
+
+% creates the explorer tree (if there are functions available)
+if ~isempty(A)    
+    createFuncExplorerTree(handles);           
 end
 
 % resets the experiment list strings
-resetExptListStrings(handles)       
-
-% updates the plotting function listbox 
+resetExptListStrings(handles,snTot)       
 setObjEnable(handles.popupExptIndex,eStr)
-listPlotFunc_Callback(handles.listPlotFunc, '1', handles)
 
-% --- Executes on selection change in listPlotFunc.
-function listPlotFunc_Callback(hObject, eventdata, handles)
+% --- Executes on button press in toggleFuncFilter.
+function toggleFuncFilter_Callback(hObject, eventdata, handles)
 
-% global variables
-global updateFlag
-updateFlag = 1;
+% object handles
+isOpen = get(hObject,'Value');
 
-% retrieves the parameter GUI handles
-sInd = getappdata(handles.figFlyAnalysis,'sInd');
-sPara = getappdata(handles.figFlyAnalysis,'sPara');
-plotD = getappdata(handles.figFlyAnalysis,'plotD');
-pData = getappdata(handles.figFlyAnalysis,'pData');
+% updates the funcion filter panel visibility            
+setObjVisibility(handles.panelFuncFilter,isOpen);
 
-% disables the listboxes
-setObjProps(handles,'inactive')
-[eInd,fIndNw,pInd,fIndNwT] = getSelectedIndices(handles);
-[isShowPara,eStr,nReg] = deal(fIndNw > 0,{'off','on'},size(sPara.pos,1));
-
-% sets the function description
-if isempty(fIndNwT)
-    % non-function field is not selected
-    set(handles.textFuncDesc,'string','');
-    if nReg == 1
-        setObjEnable(handles.menuUndock,'off')
-    end
+% updates the toggle button string
+if isOpen
+    set(hObject,'String','Close Analysis Function Filter')
 else
-    % sets the required object handles/data structs
-    eStrNw = eStr{1+(sign(fIndNwT) > 0)};
-    if isempty(pData{pInd}{abs(fIndNwT),eInd}.fDesc)
-        % function has no description
-        set(handles.textFuncDesc,'enable',eStrNw,...
-                    'string','<No Function Description Given>');
-    else
-        % otherwise, set the function description
-        set(handles.textFuncDesc,'enable',eStrNw,...
-                    'string',pData{pInd}{abs(fIndNwT),eInd}.fDesc);
-    end        
-end
-
-% sets the enabled properties of the update figure button (depending on
-% whether the user selected a valid list entry)
-if isShowPara
-    % enables the calculate/plot function button    
-    setObjEnable(handles.buttonUpdateFigure,'on')        
-    
-    % checks to see if the plot index has changed index
-    fIndex = getappdata(handles.figFlyAnalysis,'fIndex');
-    if (fIndex ~= fIndNw) || isa(eventdata,'char') || (nReg > 1)
-        % clears the plot axis and resets the data
-        if ~isa(eventdata,'char'); eventdata = '0'; end
-        clearAxesObject(handles)                       
-        
-        % creates the new parameter GUI
-        hPara = getappdata(handles.figFlyAnalysis,'hPara');
-        if isempty(hPara)
-            hPara = AnalysisPara(handles);
-            setappdata(handles.figFlyAnalysis,'hPara',hPara);
-            
-            % if there is more than one subplot, update the data values
-            if nReg > 1
-                % retrieves the currently selected index
-                sInd = getappdata(handles.figFlyAnalysis,'sInd');
-
-                % updates the parameters
-                sPara.ind(sInd,:) = [eInd,fIndNw,pInd];
-                sPara.pData{sInd} = pData{pInd}{fIndNw,eInd};
-                sPara.plotD{sInd} = plotD{pInd}{fIndNw,eInd};
-
-                % updates the sub-plot data struct
-                setappdata(handles.figFlyAnalysis,'sPara',sPara);            
-            end              
-        else
-            % updates the parameter struct in the overall array
-            if (fIndex > 0) && (str2double(eventdata) == 0)                 
-                % updates the 
-                pDataOld = getappdata(hPara,'pData');
-                pData{pInd}{fIndex,eInd} = pDataOld;
-                setappdata(handles.figFlyAnalysis,'pData',pData);
-            end
-            
-            % if there is more than one subplot, update the data values
-            if nReg > 1
-                % retrieves the currently selected index
-                sInd = getappdata(handles.figFlyAnalysis,'sInd');
-
-                % updates the parameters
-                sPara.ind(sInd,:) = [eInd,fIndNw,pInd];
-                sPara.pData{sInd} = pData{pInd}{fIndNw,eInd};
-                sPara.plotD{sInd} = plotD{pInd}{fIndNw,eInd};
-
-                % updates the sub-plot data struct
-                setappdata(handles.figFlyAnalysis,'sPara',sPara);            
-            end             
-            
-            % reinitialises the function parameter struct            
-            feval(getappdata(hPara,'initAnalysisGUI'),hPara,handles,1)
-            pData = getappdata(handles.figFlyAnalysis,'pData');
-        end
-        
-        % makes the parameter GUI         
-        setappdata(handles.figFlyAnalysis,'fIndex',fIndNw)
-    else
-        % if the selection was not unique, then exit the function
-        setObjProps(handles,'on')
-        return
-    end
-else
-    % clears the axes and resets the experiment listbox strings    
-    clearAxesObject(handles)    
-    
-    % disables the calculate/plot function button
-    resetRecalcObjProps(handles,'No')
-    setObjEnable(handles.buttonUpdateFigure,'off')        
-    setappdata(handles.figFlyAnalysis,'fIndex',0)
-    
-    hPara = getappdata(handles.figFlyAnalysis,'hPara');
-    setObjVisibility(hPara,'off');
-end
-
-% determines if there is any previous stored plotting values
-[eInd,fInd,pInd] = getSelectedIndices(handles);
-if all([eInd,fInd,pInd] > 0)
-    % enables/disables the hold menu item (depending on whether the
-    % hold flag is set to true)        
-    if ~isempty(plotD{pInd}{fInd,eInd})              
-        % if there is, then replot the data        
-        snTot = getappdata(handles.figFlyAnalysis,'snTot'); 
-        pDataNw = pData{pInd}{fInd,eInd};        
-                
-        % initialises axes and runs the plotting function
-        initAxesObject(handles);            
-        if pInd == 3
-            feval(pDataNw.pFcn,snTot,pDataNw,plotD{pInd}{fInd,eInd});           
-        else
-            feval(pDataNw.pFcn,reduceSolnAppPara(snTot(eInd)),...
-                                        pDataNw,plotD{pInd}{fInd,eInd});           
-        end                           
-        
-        % enables the listboxes/popup menus
-        setObjProps(handles,'on')
-        
-        % enables the clear plot menu item
-        setObjEnable(handles.menuUndock,'on')
-        setObjEnable(handles.menuClearPlot,'on')
-        setObjEnable(handles.menuZoom,'on')                
-        setObjEnable(handles.menuDataCursor,'on')                        
-        if isShowPara; setObjVisibility(hPara,'on'); end
-        
-        % if there are output data parameters, then enable the save menu
-        if isempty(pData{pInd}{fInd,eInd}.oP)
-            setObjEnable(handles.menuSaveData,'off'); 
-        elseif isempty(pData{pInd}{fInd,eInd}.oP.yVar)
-            setObjEnable(handles.menuSaveData,'off'); 
-        else
-            setObjEnable(handles.menuSaveData,'on');
-        end   
-        
-        % resets the flag
-        updateFlag = 0;               
-        
-        % exits the function
-        return
-    else
-        % otherwise, disable the menu items
-        setObjEnable(handles.menuZoom,'off')                
-        setObjEnable(handles.menuDataCursor,'off')   
-        
-        % enables the undocking menu item
-        if nReg == 1
-            setObjEnable(handles.menuUndock,'off')
-        end
-    end    
-else
-    % enables the undocking menu item
-    if nReg == 1
-        setObjEnable(handles.menuUndock,'off')
-    end    
-end
-
-% if there is more than one subplot, update the data values
-if nReg > 1
-    % retrieves the currently selected index
-    sInd = getappdata(handles.figFlyAnalysis,'sInd');
-
-    % updates the parameters
-    sPara.ind(sInd,:) = NaN;
-    sPara.plotD{sInd} = [];
-    sPara.pData{sInd} = [];
-
-    % updates the sub-plot data struct
-    setObjEnable(handles.menuUndock,any(~isnan(sPara.ind(:))))
-    setappdata(handles.figFlyAnalysis,'sPara',sPara);            
-end
-
-% enables the listboxes/popup menus
-setObjProps(handles,'on')
-
-% disables the clear plot menu item
-if isShowPara; setObjVisibility(hPara,'on'); end
-setObjEnable(handles.menuSaveData,'off')
-setObjEnable(handles.menuClearPlot,'off')
-
-% resets the flag
-updateFlag = 0;
+    set(hObject,'String','Open Analysis Function Filter')
+end  
     
 % --- Executes on button press in buttonUpdateFigure.
 function buttonUpdateFigure_Callback(hObject, eventdata, handles)
@@ -1751,22 +1611,23 @@ pause(0.05)
 setObjProps(handles,'inactive')
 
 % retrieves the function stack and solution file data
-gPara = getappdata(handles.figFlyAnalysis,'gPara');
-sPara = getappdata(handles.figFlyAnalysis,'sPara');
-plotD = getappdata(handles.figFlyAnalysis,'plotD');
-pData = getappdata(handles.figFlyAnalysis,'pData');
-pDataT = getappdata(handles.figFlyAnalysis,'pDataT');
-iData = getappdata(handles.figFlyAnalysis,'iData');
-snTot = getappdata(handles.figFlyAnalysis,'snTot');
-fcnStack = getappdata(handles.figFlyAnalysis,'fcnStack');
+hFig = handles.figFlyAnalysis;
+gPara = getappdata(hFig,'gPara');
+sPara = getappdata(hFig,'sPara');
+plotD = getappdata(hFig,'plotD');
+pData = getappdata(hFig,'pData');
+pDataT = getappdata(hFig,'pDataT');
+iData = getappdata(hFig,'iData');
+snTot = getappdata(hFig,'snTot');
+fcnStack = getappdata(hFig,'fcnStack');
 
 % retrieves the parameter GUI handle
-hPara = getappdata(handles.figFlyAnalysis,'hPara');
+hPara = getappdata(hFig,'hPara');
 try 
     guidata(hPara);
 catch
     hPara = AnalysisPara(handles);
-    setappdata(handles.figFlyAnalysis,'hPara',hPara);
+    setappdata(hFig,'hPara',hPara);
 end
 
 % memory allocation
@@ -1787,10 +1648,11 @@ hAx = initAxesObject(handles);
 % creates the plot data struct
 if isempty(pData{pInd}{fInd,eInd})
     pData{pInd}{fInd,eInd} = feval(fcnStack{fInd},snTot(1)); 
-    setappdata(handles.figFlyAnalysis,'pData',pData);
+    setappdata(hFig,'pData',pData);
 elseif ~isempty(hPara)
-    pData{pInd}{fInd,eInd} = getappdata(hPara,'pData');
-    setappdata(handles.figFlyAnalysis,'pData',pData);
+    pDataNw = feval(getappdata(hPara,'getPlotData'),hPara);
+    pData{pInd}{fInd,eInd} = pDataNw;
+    setappdata(hFig,'pData',pData);
 end
 
 % retrieves the necessary data structs 
@@ -1808,15 +1670,16 @@ try
             if pDataNw.hasSR
                 try
                     if ~isempty(pDataNw.sP(3).Para)
-                        initFcn = getappdata(hPara,'initAnalysisGUI');
-                        pDataNw = feval(initFcn,hPara,handles,1);
+                        pObj = getappdata(hPara,'pObj');
+                        pObj.initAnalysisGUI();
                         setObjVisibility(hPara,'off')
                     end
                 catch
                     return
                 end
             end
-            
+                        
+            % performs the function calculations
             plotDCalc = feval(pDataNw.cFcn,snTot,pDataNw,gPara); 
     end    
 catch err
@@ -1853,7 +1716,8 @@ end
 
 % sets focus to the main axis
 try
-    axes(hAx)
+    set(0,'CurrentFigure',hFig)
+    set(hFig,'CurrentAxes',hAx);
 catch
     % if there was an error then output an error and exit the function
     eStr = 'Error in initialising axes objects. Try recalculating.';
@@ -1878,13 +1742,14 @@ end
 
 % if the parameter GUI is open, then update the struct there as well
 if ~isempty(hPara)
-    setappdata(hPara,'pData',pDataNw)
+    pObj = getappdata(hPara,'pObj');
+    pObj.updatePlotData(pDataNw);
 end
 
 % updates the sub-plot parameters (if more than one subplot)
 if nReg > 1
     % retrieves the currently selected index
-    sInd = getappdata(handles.figFlyAnalysis,'sInd');    
+    sInd = getappdata(hFig,'sInd');    
 
     % updates the parameters
     sPara.ind(sInd,:) = [eInd,fInd,pInd];
@@ -1892,12 +1757,12 @@ if nReg > 1
     sPara.pData{sInd} = pDataNw;
     
     % updates the sub-plot data struct
-    setappdata(handles.figFlyAnalysis,'sPara',sPara);    
+    setappdata(hFig,'sPara',sPara);    
 end
 
 % updates the new parameter data struct into the total struct
 pData{pInd}{fInd,eInd} = pDataNw;
-setappdata(handles.figFlyAnalysis,'pData',pData);      
+setappdata(hFig,'pData',pData);      
 
 % sets the plot data into the main GUI
 setObjEnable(handles.menuUndock,'on')
@@ -1905,13 +1770,9 @@ setObjEnable(handles.menuClearPlot,'on')
 setObjEnable(handles.menuResetData,'on'); 
 setObjEnable(handles.menuSaveTempData,'on'); 
 
-if isempty(pDataNw.oP)
-    setObjEnable(handles.menuSaveData,'off')    
-elseif isempty(pDataNw.oP.yVar)
-    setObjEnable(handles.menuSaveData,'off')    
-else
-    setObjEnable(handles.menuSaveData,'on'); 
-end
+% sets the save data menu item
+isOn = ~(isempty(pDataNw.oP) || isempty(pDataNw.oP.yVar));
+setObjEnable(handles.menuSaveData,isOn); 
 
 % disables the listboxes
 setObjVisibility(hPara,'on')
@@ -1921,7 +1782,7 @@ setObjProps(handles,'on')
 
 % updates the plot data struct with the newly calculated values
 plotD{pInd}{fInd,eInd} = plotDNw;
-setappdata(handles.figFlyAnalysis,'plotD',plotD);  
+setappdata(hFig,'plotD',plotD);  
 
 % updates the listbox/popup menu colour strings
 resetExptListStrings(handles)
@@ -1979,19 +1840,6 @@ else
     
     % sets the program default data struct
     iData.ProgDef = ProgDefNew;
-end
-
-% -------------------------------- %
-% --- IMAGE PLOTTING FUNCTIONS --- %
-% -------------------------------- %
-
-% --- plots the metric graph to the image axis -------------------------- %
-function plotMetricGraph(handles,iData,fmtStr)
-
-% sets the GUI/format data structs (if not provided)
-if nargin == 1
-    iData = getappdata(handles.figFlyAnalysis,'iData');
-    fmtStr = iData.fmtStr;
 end
 
 % ------------------------------ %
@@ -2103,7 +1951,7 @@ hGG = findall(h,'type','annotation');
 if ~isempty(hGG); delete(hGG); end
     
 % --- initialises the object properties within the GUI 
-function initGUIObjects(handles,iData)
+function initGUIObjects(handles)
 
 % disables all the panels
 setPanelProps(handles.panelSolnData,'off')
@@ -2126,18 +1974,15 @@ setObjEnable(handles.menuUndock,'off')
 setObjEnable(handles.menuResetData,'off')
 setObjEnable(handles.menuSplitPlot,'off')
 
-% % sets up the Git menus
-% if exist('GitFunc','file')
-%     setupGitMenus(handles.figFlyAnalysis)
-% end
-
 % --- resizes the analysis GUI objects
 function resetFigSize(h,fPos)
 
 % sets the overall width/height of the figure
-[W0,H0,dY,dX] = deal(fPos(3),fPos(4),10,10);
-[HLF,YLF] = deal(H0 - 460,108);
-[pPosO,HPF] = deal(get(h.panelOuter,'position'),HLF + 200);
+[W0,H0,dY,dX,yOfs] = deal(fPos(3),fPos(4),10,10,30);
+[HLF,YLF] = deal(H0-475,105);
+
+pPosF = get(h.panelFuncFilter,'Position');
+[pPosO,HPF] = deal(get(h.panelOuter,'position'),HLF+220);
 
 % resets the plot panel dimensions
 pPosPnw = [sum(pPosO([1 3]))+dX,dY,(W0-(3*dX+pPosO(3))),(H0-2*dY)];
@@ -2146,36 +1991,26 @@ set(h.panelPlot,'units','pixels','position',pPosPnw)
 % updates the plot listbox/panel position
 WPI = pPosO(3) - 2*dX;
 set(h.panelPlotFunc,'position',[dX,dY,WPI,HPF]);
-set(h.listPlotFunc,'position',[dX,YLF,WPI-2*dX,HLF]);
+set(h.panelFuncList,'position',[dX,YLF,WPI-2*dX,HLF]);
 
-% updates the button position
-pBut = get(h.buttonUpdateFigure,'position');
-pBut(2) = YLF+HLF+dY;
-set(h.buttonUpdateFigure,'position',pBut);
+% resets the analysis scope object positions
+yBot0 = YLF+HLF+dY/2;
+[yBot1,yBot2] = deal(yBot0+yOfs,yBot0+2*yOfs);
 
-%
-pTxt = get(h.textPlotType,'position');
-pTxt(2) = HPF - 47;
-set(h.textPlotType,'position',pTxt);
-
-%
-pPop = get(h.popupPlotType,'position');
-pPop(2) = HPF - 50;
-set(h.popupPlotType,'position',pPop);
+resetObjPos(h.buttonUpdateFigure,'bottom',yBot0);
+resetObjPos(h.textFuncFilter,'bottom',yBot1+3);
+resetObjPos(h.toggleFuncFilter,'bottom',yBot1);
+resetObjPos(h.panelFuncFilter,'bottom',yBot1-(pPosF(4)-1));
+resetObjPos(h.textPlotType,'bottom',yBot2+3);
+resetObjPos(h.popupPlotType,'bottom',yBot2);
 
 % updates the experiment information panel position
+resetObjPos(h.panelExptInfo,'bottom',(3/2)*dY + HPF);
+
+% sets the other panel positions
 pPosE = get(h.panelExptInfo,'position');
-pPosE(2) = (3/2)*dY + HPF;
-set(h.panelExptInfo,'position',pPosE);
-
-% updates the solution file information panel position
-pPosS = get(h.panelSolnData,'position');
-pPosS(2) = sum(pPosE([2 4])) + dY/2;
-set(h.panelSolnData,'position',pPosS);
-
-% updates the outer panel position
-pPosO(4) = fPos(4) - 2*dY;
-set(h.panelOuter,'position',pPosO);
+resetObjPos(h.panelSolnData,'bottom',sum(pPosE([2 4])) + dY/2);
+resetObjPos(h.panelOuter,'Height',fPos(4) - 2*dY)
 
 % ------------------------------------------- %
 % --- PROGRAM DEFAULT DIRECTORY FUNCTIONS --- %
@@ -2307,6 +2142,512 @@ end
 ProgDef = a;
 save(progFile,'ProgDef');
 
+% ------------------------------ %
+% --- FUNCTION EXPLORER TREE --- %
+% ------------------------------ %
+
+% --- creates the function explorer tree
+function createFuncExplorerTree(handles)
+
+% initialisations
+hFig = handles.figFlyAnalysis;
+hPanel = handles.panelFuncList; 
+[eInd,~,pInd] = getSelectedIndices(handles);
+
+% field retrieval
+fObj = getappdata(hFig,'fObj');
+plotD = getappdata(hFig,'plotD');
+
+% resets the experiment compatibility flags
+fScope = getAnalysisScopeFlag(hFig);
+fObj.detExptCompatibility(fScope);
+
+% retrieves the requirement fields for each feasible function
+rFld = fieldnames(fObj.rGrp);
+indS = find(any(fObj.cmpData,2));
+X = fObj.fcnData(indS,3:end); 
+
+% retrieves the currently selected nodes
+sNode = fObj.getSelectedNodes();
+sFld = fieldnames(sNode);
+
+% loops through each of the feasible functions mapping them to their
+% location within the plot data struct
+[Imap,iCol] = deal(NaN(size(X)),zeros(length(sFld),1));
+for i = 1:length(sFld)
+    % retrieves the node field
+    iCol(i) = find(strcmp(rFld,sFld{i}))-1;
+    sNodeS = getStructField(sNode,sFld{i});
+    
+    % sets the mapping values
+    for k = 1:length(sNodeS)
+        Imap(strcmp(X(:,iCol(i)),sNodeS{k}),iCol(i)) = k;
+    end
+end
+
+% determines the unique mappings
+indF = find(~any(isnan(Imap(:,iCol)),2));
+[ImapU,~,iC] = unique(Imap(indF,iCol),'rows');
+
+% ------------------------------ %
+% --- EXPLORER TREE CREATION --- %
+% ------------------------------ %
+
+% initialisations
+dX = 10;
+pPos = get(hPanel,'Position');
+tPos = [dX*[1,1],pPos(3:4)-1.5*dX];
+fcnName = fObj.fcnData(indS,1);
+rootStr = setHTMLColourString('kb','Function List',1);
+
+% disables the update button
+[gCol,hButton] = deal((240/255)*[1 1 1],handles.buttonUpdateFigure);
+set(setObjEnable(hButton,'off'),'BackgroundColor',gCol)
+set(handles.textFuncDesc,'String','')
+
+% deletes any previous explorer trees
+hTree0 = findall(hPanel,'type','hgjavacomponent');
+if ~isempty(hTree0); delete(hTree0); end
+
+% Root node
+wState = warning('off');
+hRoot = uitreenode('v0', rootStr, rootStr, [], false);
+set(0,'CurrentFigure',hFig);
+warning(wState);
+
+% creates all the sub-parent/children nodes
+for i = 1:size(ImapU,1)
+    % creates the tree parent node
+    hNodeP = createTreeParent(hRoot,sNode,ImapU(i,:));
+    
+    % adds the leaf nodes for each of the functions
+    indC = indF(iC == i);
+    for j = 1:length(indC)
+        % retrieves the function name/index
+        fcnNameNw = fcnName{indC(j)};
+        iFcn = fObj.Imap(indS(indC(j)),pInd);
+        
+        % if there is plot data, then set the string to red
+        if all([pInd,iFcn,eInd] > 0)
+            if ~isempty(plotD{pInd}{iFcn,eInd})
+                fcnNameNw = setHTMLColourString('r',fcnNameNw,1);
+            end
+        end
+        
+        % creates the new tree node        
+        hNodeNw = uitreenode('v0',fcnNameNw,fcnNameNw,[],true);             
+        hNodeNw.setUserObject(iFcn);
+        hNodeP.add(hNodeNw);
+    end
+end
+
+% creates the tree object
+[hTreeF,hC] = uitree('v0','Root',hRoot,'position',tPos,...
+                     'SelectionChangeFcn',{@treeSelectChng,handles});
+set(hC,'Visible','off')
+set(hC,'Parent',hPanel,'visible','on')
+
+% hTreeF.expand(hRoot)
+expandExplorerTreeNodes(hTreeF)
+setappdata(hFig,'hTreeF',hTreeF)
+
+% ensures the function filter is always on top
+uistack(handles.panelFuncFilter,'top')
+
+% --- updates the parameter based on the selection
+function treeSelectChng(~, eventdata, handles)
+
+% global variables
+global updateFlag isUpdating
+
+% determines if the 
+if isUpdating
+    return
+else
+    updateFlag = 1;
+end
+
+% field retrieval
+hFig = handles.figFlyAnalysis;
+sPara = getappdata(hFig,'sPara');
+plotD = getappdata(hFig,'plotD');
+pData = getappdata(hFig,'pData');
+
+% disables the listboxes
+setObjProps(handles,'inactive')
+[eInd,fIndNw,pInd] = getSelectedIndices(handles);
+[isShowPara,nReg] = deal(fIndNw > 0,size(sPara.pos,1));
+
+% sets the function description
+if all([pInd,fIndNw,eInd] > 0)
+    % sets the required object handles/data structs
+    set(handles.textFuncDesc,'enable','on',...
+                    'string',pData{pInd}{fIndNw,eInd}.fDesc);        
+else
+    % non-function field is not selected
+    set(handles.textFuncDesc,'string','');
+    if nReg == 1
+        setObjEnable(handles.menuUndock,'off')
+    end
+end
+
+% retrieves the current node
+if isShowPara
+    % enables the calculate/plot function button    
+    setObjEnable(handles.buttonUpdateFigure,'on')        
+    
+    % checks to see if the plot index has changed index
+    fIndex = getappdata(hFig,'fIndex');
+    if (fIndex ~= fIndNw) || isa(eventdata,'char') || (nReg > 1)
+        % clears the plot axis and resets the data
+        if ~isa(eventdata,'char'); eventdata = '0'; end
+        clearAxesObject(handles)                       
+        
+        % creates the new parameter GUI
+        hPara = getappdata(hFig,'hPara');
+        if isempty(hPara)
+            hPara = AnalysisPara(handles);
+            setappdata(hFig,'hPara',hPara);
+            
+            % if there is more than one subplot, update the data values
+            if nReg > 1
+                % retrieves the currently selected index
+                sInd = getappdata(hFig,'sInd');
+
+                % updates the parameters
+                sPara.ind(sInd,:) = [eInd,fIndNw,pInd];
+                sPara.pData{sInd} = pData{pInd}{fIndNw,eInd};
+                sPara.plotD{sInd} = plotD{pInd}{fIndNw,eInd};
+
+                % updates the sub-plot data struct
+                setappdata(hFig,'sPara',sPara);            
+            end              
+        else
+            % updates the parameter struct in the overall array
+            if (fIndex > 0) && (str2double(eventdata) == 0)                 
+                % updates the 
+                pObj = getappdata(hPara,'pObj');
+                pDataOld = pObj.pData;
+                pData{pInd}{fIndex,eInd} = pDataOld;
+                setappdata(hFig,'pData',pData);
+            end
+            
+            % if there is more than one subplot, update the data values
+            if nReg > 1
+                % retrieves the currently selected index
+                sInd = getappdata(hFig,'sInd');
+
+                % updates the parameters
+                sPara.ind(sInd,:) = [eInd,fIndNw,pInd];
+                sPara.pData{sInd} = pData{pInd}{fIndNw,eInd};
+                sPara.plotD{sInd} = plotD{pInd}{fIndNw,eInd};
+
+                % updates the sub-plot data struct
+                setappdata(hFig,'sPara',sPara);            
+            end             
+            
+            % reinitialises the function parameter struct 
+            if ishandle(hPara)
+                % if the gui is valid, then re-initialise it
+                pObj = getappdata(hPara,'pObj');
+                pObj.initAnalysisGUI();
+            else
+                % if the gui is not valid, then recreate the gui
+                hPara = AnalysisPara(handles);
+                setappdata(hPara,'hPara',hPara);
+            end
+            
+            % retrieves the plotting data struct
+            pData = getappdata(hFig,'pData');
+        end
+        
+        % makes the parameter GUI         
+        setappdata(hFig,'fIndex',fIndNw)
+    else
+        % if the selection was not unique, then exit the function
+        setObjProps(handles,'on')
+        return
+    end
+    
+else
+    % clears the axes and resets the experiment listbox strings    
+    clearAxesObject(handles) 
+    
+    % disables the calculate/plot function button
+    resetRecalcObjProps(handles,'No')
+    setObjEnable(handles.buttonUpdateFigure,'off')        
+    setappdata(hFig,'fIndex',0)
+    
+    % makes the parameter figure invisible 
+    hPara = getappdata(hFig,'hPara');
+    setObjVisibility(hPara,'off');
+end
+
+% determines if there is any previous stored plotting values
+[eInd,fInd,pInd] = getSelectedIndices(handles);
+if all([eInd,fInd,pInd] > 0)
+    % enables/disables the hold menu item (depending on whether the
+    % hold flag is set to true)        
+    if ~isempty(plotD{pInd}{fInd,eInd})              
+        % if there is, then replot the data        
+        snTot = getappdata(hFig,'snTot'); 
+        pDataNw = pData{pInd}{fInd,eInd};        
+                
+        % initialises axes and runs the plotting function
+        initAxesObject(handles);            
+        if pInd == 3
+            feval(pDataNw.pFcn,snTot,pDataNw,plotD{pInd}{fInd,eInd});           
+        else
+            feval(pDataNw.pFcn,reduceSolnAppPara(snTot(eInd)),...
+                                        pDataNw,plotD{pInd}{fInd,eInd});           
+        end                           
+        
+        % enables the listboxes/popup menus
+        setObjProps(handles,'on')
+        
+        % enables the clear plot menu item
+        setObjEnable(handles.menuUndock,'on')
+        setObjEnable(handles.menuClearPlot,'on')
+        setObjEnable(handles.menuZoom,'on')                
+        setObjEnable(handles.menuDataCursor,'on')                        
+        if isShowPara; setObjVisibility(hPara,'on'); end
+        
+        % if there are output data parameters, then enable the save menu
+        if isempty(pData{pInd}{fInd,eInd}.oP)
+            setObjEnable(handles.menuSaveData,'off'); 
+        elseif isempty(pData{pInd}{fInd,eInd}.oP.yVar)
+            setObjEnable(handles.menuSaveData,'off'); 
+        else
+            setObjEnable(handles.menuSaveData,'on');
+        end   
+        
+        % resets the flag
+        updateFlag = 0;               
+        
+        % exits the function
+        return
+    else
+        % otherwise, disable the menu items
+        setObjEnable(handles.menuZoom,'off')                
+        setObjEnable(handles.menuDataCursor,'off')   
+        
+        % enables the undocking menu item
+        if nReg == 1
+            setObjEnable(handles.menuUndock,'off')
+        end
+    end    
+else
+    % enables the undocking menu item
+    if nReg == 1
+        setObjEnable(handles.menuUndock,'off')
+    end    
+end
+
+% if there is more than one subplot, update the data values
+if nReg > 1
+    % retrieves the currently selected index
+    sInd = getappdata(hFig,'sInd');
+
+    % updates the parameters
+    sPara.ind(sInd,:) = NaN;
+    sPara.plotD{sInd} = [];
+    sPara.pData{sInd} = [];
+
+    % updates the sub-plot data struct
+    setObjEnable(handles.menuUndock,any(~isnan(sPara.ind(:))))
+    setappdata(hFig,'sPara',sPara);            
+end
+
+% enables the listboxes/popup menus
+setObjProps(handles,'on')
+
+% disables the clear plot menu item
+if isShowPara; setObjVisibility(hPara,'on'); end
+setObjEnable(handles.menuSaveData,'off')
+setObjEnable(handles.menuClearPlot,'off')
+
+% resets the flag
+updateFlag = 0;
+
+% --- creates the tree parent node
+function hNodeP = createTreeParent(hNodeP,sNode,Imap)
+
+% initialisations
+fStr = fieldnames(sNode);
+
+% 
+for i = 1:length(Imap)   
+    % retrieves the struct field
+    isAdd = true;
+    fVal = getStructField(sNode,fStr{i});
+    
+    % determines if a new 
+    if hNodeP.getChildCount > 0
+        % retrieves the names of the children nodes
+        xiC = (1:hNodeP.getChildCount)' - 1;
+        hNodeC = arrayfun(@(x)(hNodeP.getChildAt(x)),xiC,'un',0);
+        nodeName = cellfun(@(x)(char(x.getUserObject)),hNodeC,'un',0);
+        
+        % determines if there is a match
+        hasC = strcmp(nodeName,fVal{Imap(i)});
+        if any(hasC)
+            % if so, then update the parent node
+            [hNodeP,isAdd] = deal(hNodeC{hasC},false);
+        end
+    end
+    
+    % creates the new tree node (if required)
+    if isAdd
+        % sets up the node string
+        nodeStr0 = getNodeString(fStr{i},fVal{Imap(i)});
+        nodeStr = setHTMLColourString('kb',nodeStr0,1);
+        
+        % creates the new node        
+        hNodeNw = uitreenode('v0',nodeStr,nodeStr,[],false);
+        hNodeNw.setUserObject(fVal{Imap(i)});
+        hNodeP.add(hNodeNw);
+        
+        % resets the parent node
+        hNodeP = hNodeNw;
+    end
+end
+
+% --- sets up the tree node string
+function nodeStr = getNodeString(fStr,fVal)
+
+switch fStr
+    case 'Dur'
+        % case is the duration requirement
+        switch fVal
+            case 'Short'
+                % case is short expts only
+                nodeStr = 'Short Experiment Functions';
+                
+            case 'Long'
+                % case is long expts only
+                nodeStr = 'Long Experiment Functions';
+                
+            case 'None'
+                % case is duration independent
+                nodeStr = 'Duration Independent Functions';
+        end
+        
+    case 'Shape'
+        % case is the experiment shape requirement
+        switch fVal
+            case '1D'
+                % case is 1D expts 
+                nodeStr = 'General 1D Functions';
+                
+            case '2D'
+                % case is 2D expts 
+                nodeStr = 'General 2D Functions';
+                
+            case '2D (Circle)'
+                % case is 2D Circle expts
+                nodeStr = '2D (Circle) Functions';
+                
+            case '2D (General)'
+                % case is 2D General shape expts 
+                nodeStr = '2D (General) Functions';
+                
+            case 'None'
+                % case is shape independent
+                nodeStr = 'Shape Independent Functions';
+        end        
+        
+    case 'Stim'
+        % case is the duration requirement
+        switch fVal
+            case 'Motor'
+                % case is motor stimuli expts
+                nodeStr = 'Motor Stimuli Functions';
+                
+            case 'Opto'
+                % case is opto stimuli expts
+                nodeStr = 'Opto Stimuli Functions';
+                
+            case 'None'
+                % case is stimuli independent expts
+                nodeStr = 'Stimuli Independent Functions';
+        end        
+        
+    case 'Spec'
+        % case is special experiments
+        switch fVal
+            case 'None'
+                % case is duration independent
+                nodeStr = 'Non-Speciality Functions';
+        end        
+        
+end
+
+% --- retrieves the explorer tree node for the iExp
+function expandExplorerTreeNodes(hTree)
+
+for i = 1:hTree.getRoot.getLeafCount
+    % sets the next node to search for
+    if i == 1
+        % case is from the root node
+        hNodeP = hTree.getRoot.getFirstLeaf;
+    else
+        % case is for the other nodes
+        hNodeP = hNodeP.getNextLeaf;
+    end
+    
+    % retrieves the selected node
+    hTree.expand(hNodeP.getParent);
+end
+
+% --- sets the selected node to function with user data, iFcn 
+function setSelectedNode(handles,iFcn)
+
+% global variables
+global isUpdating
+isUpdating = true;
+
+% object retrieval
+hFig = handles.figFlyAnalysis;
+hTreeF = getappdata(hFig,'hTreeF');
+
+% retrieves the function id flags for each node
+hNodeL = getAllLeafNodes(hTreeF.getRoot);
+
+% updates the selected node
+if exist('iFcn','var')
+    iFcnN = cellfun(@(x)(x.getUserObject),hNodeL);
+    hTreeF.setSelectedNode(hNodeL{iFcn==iFcnN});
+else
+    hTreeF.setSelectedNode(hNodeL{1});
+end   
+
+% resets the update flag
+pause(0.05);
+isUpdating = false;
+
+% --- retrieves all leaf nodes from the explorer tree
+function hNodeL = getAllLeafNodes(hNodeP)
+
+% memory allocation
+hNodeL = [];
+
+% search for all leaf nodes for the current parent node
+for i = 1:hNodeP.getChildCount
+    % retrieves the next child node
+    hNodeC = hNodeP.getChildAt(i-1);
+    if hNodeC.isLeafNode
+        % if a leaf node, then store the node handle
+        hNodeL = [hNodeL;{hNodeC}];
+    else
+        % otherwise, search the children of the non-leaf node
+        hNodeLNw = getAllLeafNodes(hNodeC);
+        if ~isempty(hNodeLNw)
+            % if leaf nodes were found, then add them to the stored list
+            hNodeL = [hNodeL;hNodeLNw(:)];
+        end
+    end
+end
+
 % ------------------------------- %
 % --- MISCELLANEOUS FUNCTIONS --- %
 % ------------------------------- %
@@ -2382,27 +2723,28 @@ global updateFlag
 updateFlag = 0;
 
 % retrieves the solution struct and solution directory/file names
+hFig = handles.figFlyAnalysis;
 if nargin == 1
-    snTot = getappdata(handles.figFlyAnalysis,'snTot');    
+    snTot = getappdata(hFig,'snTot');    
 else
     snTot = varargin{1};
 end
 
 % updates the experiment indices
-iData = getappdata(handles.figFlyAnalysis,'iData');    
+iData = getappdata(hFig,'iData');    
 iData.indExpt = true(length(snTot),1);
-setappdata(handles.figFlyAnalysis,'iData',iData)    
+setappdata(hFig,'iData',iData)    
 
 % initialises the experiment, function type and plotting function indices
-setappdata(handles.figFlyAnalysis,'eIndex',1)
-setappdata(handles.figFlyAnalysis,'fIndex',0)
+setappdata(hFig,'eIndex',1)
+setappdata(hFig,'fIndex',0)
 
 % resets the plot data structs
-setappdata(handles.figFlyAnalysis,'pData',resetPlotDataStructs(handles,1))
-setappdata(handles.figFlyAnalysis,'plotD',resetPlotDataStructs(handles))
+setappdata(hFig,'pData',resetPlotDataStructs(handles,1))
+setappdata(hFig,'plotD',resetPlotDataStructs(handles))
 
 % resets the popup menu items
-sName = getappdata(handles.figFlyAnalysis,'sName');
+sName = getappdata(hFig,'sName');
 sName = cellfun(@(x)(simpFileName(x,18)),sName,'un',0);
 set(handles.popupExptIndex,'string',sName,'value',1)
 
@@ -2433,20 +2775,21 @@ setObjVisibility(handles.popupSubInd,'off');
 % updates the plot type popup
 popupPlotType_Callback(handles.popupPlotType, '1', handles)
 
-% resets the experiment listbox strings 
-resetExptListStrings(handles,snTot)
+% % resets the experiment listbox strings 
+% resetExptListStrings(handles,snTot)
 
 % --- resets the experiment listbox strings 
 function resetExptListStrings(handles,snTot)
 
 % retrieves the solution struct (if not provided)
+hFig = handles.figFlyAnalysis;
 if nargin == 1
-    snTot = getappdata(handles.figFlyAnalysis,'snTot');
+    snTot = getappdata(hFig,'snTot');
 end
 
 % determines the currently selected plot type index value
 hPopup = handles.popupExptIndex;
-[eInd,~,pInd] = getSelectedIndices(handles);
+[~,~,pInd] = getSelectedIndices(handles);
 
 % re-enables the save menu item
 if pInd == 3
@@ -2458,7 +2801,7 @@ if pInd == 3
     setExptInfo(handles,[]);    
 else
     % retrieves the lists colour strings
-    [sName,sName0] = deal(getappdata(handles.figFlyAnalysis,'sName'));
+    sName = getappdata(hFig,'sName');
     sName = cellfun(@(x)(simpFileName(x,18)),sName,'un',0);
     sName = getListColourStrings(handles,sName,'Expt');         
     
@@ -2527,15 +2870,11 @@ end
 % the multi-combined or single combined solution files)
 setappdata(handles.figFlyAnalysis,'pIndex',length(lName))
 set(handles.popupPlotType,'string',lName,'value',length(lName))
-set(handles.listPlotFunc,'string',{' '},'value',1,'visible','on')
 set(handles.textFuncDesc,'string','','visible','on')
 set(handles.textFuncDescBack,'visible','on','backgroundcolor','k')
 
 % --- scans the plotting function directory for valid functions and places
 function scanPlotFuncDir(handles)
-
-% global variables
-global mainProgDir
 
 % scans the plotting function directory for any functions
 iProg = getappdata(handles.figFlyAnalysis,'iProg');
@@ -2592,14 +2931,6 @@ if isdeployed
             eStr = sprintf('%s => %s\n',eStr,fName{i}); 
         end  
     end
-    
-%     % if there are any issues, then output a warning to screen
-%     if ~isempty(eStr)
-%         eStr = sprintf(['%s\nIt is strongly suggested that you recompile ',...
-%                         'the executable to account for the missing files ',...
-%                         'and/or out of date analysis functions.\n'],eStr);
-%         waitfor(warndlg(eStr,'Analysis Function Issues','modal'))
-%     end
 else
     % sets the partial/full file names
     fName = field2cell(dir(fullfile(dDir,'*.m')),'name');
@@ -2644,7 +2975,7 @@ fNames = fieldnames(pDataT);
 for i = 1:length(fNames)
     A = eval(sprintf('pDataT.%s',fNames{i}));    
     [~,ii] = sortrows(setFuncTypeList(A));
-    eval(sprintf('pDataT.%s = A(ii);',fNames{i}));
+    pDataT = setStructField(pDataT,fNames{i},A(ii));
 end
 
 % updates the plotting function 
@@ -2736,19 +3067,48 @@ end
 
 % --- updates the list string, specified by type
 function updateListColourStrings(handles,type)
+ 
+% global variables
+global isUpdating
 
 % sets the list object to read (based on the type flag)
 switch type
-    case 'func' % case is for the analysis function list
-        hObj = handles.listPlotFunc;
-    case 'expt' % case is for the experiment selection list
+    case 'func' 
+        % case is for the analysis function list
+        
+        % field initialisation
+        hFig = handles.figFlyAnalysis;
+        hTreeF = getappdata(hFig,'hTreeF');
+        hNodeS = hTreeF.getSelectedNodes;
+        
+        % if no nodes are selected, then exit the function
+        if isempty(hNodeS); return; end
+        
+        % resets the node name
+        nodeStr = hNodeS(1).getName;
+        nodeStrNw = setHTMLColourString('r',nodeStr,1);
+        hNodeS(1).setName(nodeStrNw);
+        
+        % updates the experiment name
+        isUpdating = true;
+        hTreeF.repaint()
+        pause(0.05);
+        isUpdating = false;
+        
+        
+    case 'expt' 
+        % case is for the experiment selection list                
+        
+        % object handle retrieval
         hObj = handles.popupExptIndex;
+
+        % updates the list string
+        StrOld = get(hObj,'string');
+        Str = cellfun(@(x)(retHTMLColouredStrings(x)),StrOld,'un',0);
+        set(hObj,'string',getListColourStrings(handles,Str,type))        
 end
 
-% updates the list string
-StrOld = get(hObj,'string');
-Str = cellfun(@(x)(retHTMLColouredStrings(x)),StrOld,'un',0);
-set(hObj,'string',getListColourStrings(handles,Str,type))
+
     
 % --- converts the list strings, lStr, to coloured strings depending on A) 
 %     whether data has been calculated for the function/experiment, and B) 
@@ -2797,7 +3157,6 @@ lStrCol = setHTMLColourString(lCol,lStr);
 function setObjProps(handles,state,varargin)
 
 % enables the listboxes/popup menus
-setObjEnable(handles.listPlotFunc,state); 
 setObjEnable(handles.popupPlotType,state); 
 
 % checking against the plot type
@@ -2905,7 +3264,17 @@ c = struct('fSize',axisSize,'isBold',true);
 d = struct('x',x,'y',y,'xSm',[],'ySm',[],'yLim',[],'xLim',[]);
 fmtStr = struct('Title',a,'Label',b,'Axis',c,'Plt',d,'fID',fID);
 
-% 
+% sets up the smoothing filter vectors
 xi = 1:length(x);
 fmtStr.Plt.xSm = smooth(xi,fmtStr.Plt.x,iData.sSpan,'sgolay');
 fmtStr.Plt.ySm = smooth(xi,fmtStr.Plt.y,iData.sSpan,'sgolay'); 
+
+% --- retrieves the currently selected analysis scope flag
+function fScope = getAnalysisScopeFlag(hFig)
+
+% initialisations
+fScope0 = {'I','S','M'};
+[~,~,pInd] = getSelectedIndices(guidata(hFig));
+
+% returns the final string
+fScope = fScope0{pInd};

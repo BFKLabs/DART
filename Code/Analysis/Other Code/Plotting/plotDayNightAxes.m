@@ -35,6 +35,9 @@ kGrpD = cell2mat(getGroupIndex(isDay));
 IDN = 0.5*ones(Y,length(isDay),3);
 IDN(:,kGrpD,1:2) = fAlpha;
 IDN(:,kGrpD,3) = 0;
+
+% retrieves the current axes handle
+hAx = getCurrentAxesProp;
     
 % loops through all the subplot indices setting the day/night bands
 for j = 1:length(ind)
@@ -50,7 +53,7 @@ for j = 1:length(ind)
     end
 
     % plot the day-time bands
-    colormap(gca,'jet');
+    colormap(hAx,'jet');
     imagesc(IDN);   
-    set(gca,'box','on')    
+    set(hAx,'box','on')    
 end

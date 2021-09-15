@@ -36,13 +36,14 @@ iProg = getappdata(hGUI.figUndockPlot,'iProg');
 hPara = getappdata(hGUI.figUndockPlot,'hPara');
 hGUIM = getappdata(hGUI.figUndockPlot,'hGUI');
 
-% determines the number of apparatus    
-sPara = getappdata(hGUIM.figFlyAnalysis,'sPara');
-pData = getappdata(hGUIM.figFlyAnalysis,'pData');
-plotD = getappdata(hGUIM.figFlyAnalysis,'plotD');
+% determines the number of apparatus  
+hFigM = hGUIM.figFlyAnalysis;
+sPara = getappdata(hFigM,'sPara');
+pData = getappdata(hFigM,'pData');
+plotD = getappdata(hFigM,'plotD');
 
 % retrieves the plotting data struct
-pDataH = getappdata(getappdata(hGUI.figUndockPlot,'hPara'),'pData');
+pDataH = getStructField(getappdata(hPara,'pObj'),'pData');
 
 % determines which experiment/plot type has been selected, and determines
 % if there is more than one figure type selected
@@ -330,33 +331,38 @@ iProg = getappdata(handles.figSaveFig,'iProg');
 iPara = getappdata(handles.figSaveFig,'iPara');
 pData = getappdata(handles.figSaveFig,'pData');
 
+% retrieves the function class objects
+fObj = getappdata(hGUIM.figFlyAnalysis,'fObj');
+selectFcn = getappdata(hGUIM.figFlyAnalysis,'setSelectedNode');
+
 % removes any previous plot figures
-h = findall(0,'type','figure','tag','nwPlot');
-if (~isempty(h)); delete(h); end
+h = findall(0,'type','figure','tag','figOutputPlot');
+if ~isempty(h); delete(h); end
 
 % retrieves the original plot function list index/strings
-fInd0 = get(hGUIM.listPlotFunc,'value');
-lpStr = get(hGUIM.listPlotFunc,'string');
+[~,fInd0,pInd] = getSelectedIndices(hGUIM);
 
 % determines the selected 
 hSel = findobj(handles.panelImageType,'value',1);
 fExtn = get(hSel,'userdata');
-if (strcmp(fExtn,'epsp'))
+if strcmp(fExtn,'epsp')
     [fExtn,isPainters] = deal('eps',true);
 else
     isPainters = false;
 end
 
 % prompts the user for the output file name/directory
-if (length(pData) == 1)
-    if (strcmp(fExtn,'tiff'))
+if length(pData) == 1
+    if strcmp(fExtn,'tiff')
         uiStr = {'*.tiff;*.tif','Tagged Image File Format (*.tiff, *.tif)'};
     else
         uiStr = {['*.',fExtn],get(hSel,'string')};    
     end
-        
-    [fName,fDir,fIndex] = uiputfile(uiStr,'Save Analysis Figure',iProg.OutFig);
-    if (fIndex == 0)  
+       
+    % prompts the user for the output file name
+    tStr = 'Save Analysis Figure';
+    [fName,fDir,fIndex] = uiputfile(uiStr,tStr,iProg.OutFig);
+    if fIndex == 0  
         % if the user cancelled, then exit the function
         return
     else        
@@ -366,21 +372,21 @@ if (length(pData) == 1)
 else
     % sets the full output figure directory string
     fDir = getappdata(handles.figSaveFig,'fDir');
-    if (get(handles.checkNewDir,'value'))
+    if get(handles.checkNewDir,'value')
         fDir = fullfile(fDir,getappdata(handles.figSaveFig,'sDir'));
     end
         
     % if the output directory does not exist, then create it
-    if (~exist(fDir,'dir')); mkdir(fDir); end
+    if ~exist(fDir,'dir'); mkdir(fDir); end
     
     % sets the full image name strings and determines if any exist
     imgName = cellfun(@(x)(fullfile(fDir,[x,'.',fExtn])),...
                             field2cell(pData,'Name'),'un',0);    
-    if (any(cellfun(@(x)(exist(x,'file')),imgName)))
+    if any(cellfun(@(x)(exist(x,'file')),imgName))
         % if the solution file already exists, then 
         a = 'Image file(s) already exist. Do you wish to overwrite these files?';
         uChoice = questdlg(a,'Overwrite Solution File','Yes','No','Yes');            
-        if (~strcmp(uChoice,'Yes'))
+        if ~strcmp(uChoice,'Yes')
             return
         end
     end    
@@ -388,7 +394,8 @@ end
 
 % plots the analysis figure onto a temporary figure and updates the
 % dimensions to that specified by the user
-fig = hGUI.figUndockPlot; figPos = get(fig,'position');
+fig = hGUI.figUndockPlot; 
+figPos = get(fig,'position');
 resetObjPos(fig,'Width',iPara.W)
 resetObjPos(fig,'Height',iPara.H)
 
@@ -410,35 +417,40 @@ for i = 1:N
     if (N > 1)
         % enables the checkbox if there is more than one figure
         isOutAll = (pData(i).nApp > 1) && (pData(i).hasSR || isAllMet); 
-        if (isOutAll)
-            isOutAll = isOutAll && (~isempty(pData(i).sP(3).Para) || isAllMet);
+        if isOutAll
+            isOutAll = isOutAll && ...
+                    (~isempty(pData(i).sP(3).Para) || isAllMet);
         end
         
         % sets the other object values
-        iSelNw = find(~cellfun(@isempty,strfind(lpStr,pData(i).Name)));
-        set(handles.checkOutputAll,'value',isOutAll);        
-        set(hGUIM.listPlotFunc,'value',iSelNw);
+        set(handles.checkOutputAll,'value',isOutAll);          
+        feval(selectFcn,hGUIM,fObj.getFuncIndex(pData(i).Name));
     end
     
     % saves the figure
-    saveAnalysisFigure(handles,imgName{i},fExtn,pData(i),isPainters,fig,h,N>1)
+    saveAnalysisFigure...
+                (handles,imgName{i},fExtn,pData(i),isPainters,fig,h,N>1)
 end
 
 % closes the loadbar and deletes the temporary figure
-set(hGUIM.listPlotFunc,'value',fInd0);
+feval(selectFcn,hGUIM,fInd0);
 try; delete(h); end
 
 % makes the figure visible again
 set(fig,'position',figPos)
 
+% resets the current figure to the 
+set(0,'CurrentFigure',handles.figSaveFig)
+
 % --- saves the analysis figure(s) to file
-function saveAnalysisFigure(handles,imgName,fExtn,pData,isPainters,fig,h,forceUpdate)
+function saveAnalysisFigure...
+                (handles,imgName,fExtn,pData,isPainters,fig,h,forceUpdate)
 
 % global variables
 global isAllMet
 
-%
-if (strcmp(fExtn,'.pdf'))
+% sets the figure resolution (based on figure extension type)
+if strcmp(fExtn,'.pdf')
     figRes = '-r0';
 else
     figRes = '-r150';
@@ -457,8 +469,8 @@ catch
 end
 
 % sets the total number of figures to output
-if (isOutAll)
-    if (isAllMet)
+if isOutAll
+    if isAllMet
         % determines the plot metric list item
         ii = find(strcmp(field2cell(pData.pP,'Para'),'pMet') & ...
                   strcmp(field2cell(pData.pP,'Type'),'List'));
@@ -487,24 +499,26 @@ for i = 1:N
     end
     
     % if there is more than one graph, then reset the graph name
-    if (forceUpdate || strcmp(fExtn,'fig'))
+    if forceUpdate || strcmp(fExtn,'fig')
         % sets the new subplot indices        
-        if (isAllMet)
+        if isAllMet
             pData.pP(ii).Value{1,1} = i;
             if (N > 1)
                 [x,y,~] = fileparts(imgName0);
-                imgNameL = checkImageName(sprintf('%s (%s).%s',y,pData.pP(ii).Value{1,2}{i},fExtn));                                        
+                imgNameL = checkImageName(sprintf('%s (%s).%s',...
+                                    y,pData.pP(ii).Value{1,2}{i},fExtn));                                        
                 imgName = fullfile(x,imgNameL);
             end
         else
-            if (pData.hasSR)
+            if pData.hasSR
                 pData.sP(3).Lim.appInd = i;
             end                        
 
             % updates the image name and replots the figure
             if (N > 1)
                 [x,y,~] = fileparts(imgName0);
-                imgNameL = checkImageName(sprintf('%s (%s).%s',y,pData.appName{i},fExtn));                                        
+                imgNameL = checkImageName(sprintf('%s (%s).%s',...
+                                            y,pData.appName{i},fExtn));                                        
                 imgName = fullfile(x,imgNameL);
             end
         end
@@ -519,15 +533,15 @@ for i = 1:N
     end
     
     % outputs the figure based on the file extension        
-    if (~isempty(findobj(figNw,'type','axes')))
+    if ~isempty(findobj(figNw,'type','axes'))
         switch (fExtn)
             case ('eps') % case is an .eps image file
-                if (isPainters)
+                if isPainters
                     set(figNw,'Renderer','painters','RendererMode','manual');
                     hgexport(figNw,sprintf('%s.eps',imgName(1:(end-4))));            
                 else
                     % output the figure (dependent on OS type)    
-                    if (ispc)
+                    if ispc
                         export_fig(figNw,imgName,figRes);
 %                         print_eps(imgName, figNw)
                     else

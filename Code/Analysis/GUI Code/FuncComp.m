@@ -85,12 +85,9 @@ end
 % --- Executes on button press in checkGrpExpt.
 function checkGrpExpt_Callback(hObject, eventdata, handles)
 
-% initialisations
-hFig = handles.figFuncComp;
-jRoot = getappdata(hFig,'jRoot');
-
 % updates the tree click function
-treeUpdateClick([], [], hFig, jRoot);
+fcnObj = getappdata(handles.figFuncComp,'fcnObj'); 
+fcnObj.treeUpdateClick();
 
 % --- Executes on selection change in popupFuncSort.
 function popupFuncSort_Callback(hObject, eventdata, handles)
@@ -118,138 +115,13 @@ else
     resetFuncCompColours(hFig)    
 end
 
-% --- callback for updating selection of the function filter tree
-function treeUpdateClick(hObject, eventdata, hFig, jRoot)
-
-% java imports
-import javax.swing.RowFilter
-
-% global variables
-global isUpdating
-
-% if updating elsewhere, then exit
-if isUpdating; return; end
-
-% initialisation
-rGrp = getappdata(hFig,'reqGrp');
-jTable = getappdata(hFig,'jTable');
-hCheck = findall(hFig,'tag','checkGrpExpt');
-rFld = fieldnames(rGrp);
-
-% memory allocation
-cFiltTot = java.util.ArrayList;
-
-% determines if only the compatible functions are to be displayed
-if get(hCheck,'Value')
-    % if so, then create a regexp filter list for the "yes" cells
-    cFiltArr = java.util.ArrayList;
-    fcnData = getappdata(hFig,'fcnData');        
-    for i = 1:jTable.getColumnCount
-        j = size(fcnData,2)+(i+1); 
-        cFiltArr.add(RowFilter.regexFilter('Yes',j));
-    end
-    
-    % adds the compatibility filter to the total filter
-    cFiltTot.add(RowFilter.orFilter(cFiltArr));    
-end
-
-%
-for i = 1:jRoot.getChildCount
-    % retrieves the child node
-    jNodeC = jRoot.getChildAt(i-1);
-    nStr = char(jNodeC.getUserObject);
-    i0 = find(cellfun(@(x)(strContains(nStr,x)),rFld));
-    
-    % sets the filter field cell arrays
-    switch char(jNodeC.getSelectionState)
-        case 'mixed'
-            % retrieves the leaf node objects
-            xiC = 1:jNodeC.getChildCount;
-            jNodeL = arrayfun(@(x)(jNodeC.getChildAt(x-1)),xiC','un',0);
-            
-            % determines which of the leaf nodes have been selected
-            isSel = cellfun(@(x)(strcmp...
-                        (char(x.getSelectionState),'selected')),jNodeL);
-            fFld = cellfun(@(x)(x.getUserObject),jNodeL(isSel),'un',0);
-                    
-        otherwise
-            % case is either all or none are selected (use all in any case)
-            fFld = getStructField(rGrp,rFld{i0});
-    end  
-    
-    % creates the category filter array
-    cFiltArr = java.util.ArrayList;
-    for j = 1:length(fFld)
-        % loops through each requirement type setting the regex filters
-        if i0 == 1
-            % case is the analysis scope requirement
-            cFiltArr.add(RowFilter.regexFilter(fFld{j}(1),i0));
-        else
-            % case is the other filter types, so split the filter string
-            fFldSp = strsplit(fFld{j});
-            if length(fFldSp) == 1
-                % if the filter string is only one word, then create the
-                % filter using this string
-                cFiltArr.add(RowFilter.regexFilter(fFld{j},i0));
-            else
-                % otherwise, create an and filter from each of the word
-                cFiltSp = java.util.ArrayList;
-                for k = 1:length(fFldSp)
-                    cFiltSp.add(RowFilter.regexFilter(fFldSp{k},i0));
-                end
-                cFiltArr.add(RowFilter.andFilter(cFiltSp));
-            end
-        end
-    end
-    
-    % adds the category filter to the total filter
-    cFiltTot.add(RowFilter.orFilter(cFiltArr));
-end
-
-% resets the row sorter filter
-jRowSort = jTable.getRowSorter;
-jRowSort.setRowFilter(RowFilter.andFilter(cFiltTot))
-
-% resets the function compatibility colours
-resetFuncCompColours(hFig)
-
-% --- callback for expanding a tree node
-function treeExpandClick(hObject, eventdata, hFig)
-
-% global variables
-global isUpdating
-
-% flags that the tree is updating
-isUpdating = true;
-
-% resets the tree panel dimensions
-nwHeight = hObject.getMaximumSize.getHeight;
-resetTreePanelPos(hFig,nwHeight)
-pause(0.05);
-
-% flags that the tree is updating
-isUpdating = false;
-
-% --- callback for expanding a tree node
-function treeCollapseClick(hObject, eventdata, hFig)
-
-% global variables
-global isUpdating
-
-% flags that the tree is updating
-isUpdating = true;
-
-% resets the tree panel dimensions
-nwHeight = hObject.getMaximumSize.getHeight;
-resetTreePanelPos(hFig,nwHeight)
-pause(0.05);
-
-% flags that the tree is updating
-isUpdating = false;
-
 %-------------------------------------------------------------------------%
 %                             OTHER FUNCTIONS                             %
 %-------------------------------------------------------------------------%
+
+% --------------------------------------- %
+% --- OBJECT INITIALISATION FUNCTIONS --- %
+% --------------------------------------- %
 
 % --- initialises the GUI object properties
 function initObjProps(handles)
@@ -258,11 +130,14 @@ function initObjProps(handles)
 hFig = handles.figFuncComp;
 hPopup = handles.popupFuncSort;
 
+% initialises the function filter free
+fcnObj = FuncFilterTree(hFig,handles.checkGrpExpt);
+fcnObj.setClassField('treeUpdateExtn',{@resetFuncCompColours,hFig});
+setappdata(hFig,'fcnObj',fcnObj);
+
 % retrieves the function data
-setupExptInfo(handles)
 initFuncDepTable(handles);
 initFuncCellComp(handles);
-initFilterTree(handles);
 
 % resets the popup menu user data
 lStr = get(hPopup,'String');
@@ -285,11 +160,11 @@ jTable = getappdata(hFig,'jTable');
 tabCR1 = getappdata(hFig,'tabCR1');
 tabCR2 = getappdata(hFig,'tabCR2');
 cmpData = getappdata(hFig,'cmpData');
-fcnData = getappdata(hFig,'fcnData');
 tabData = getappdata(hFig,'tabData0');
+fcnObj = getappdata(hFig,'fcnObj');
 
 % other initialisations
-[nFunc,nHdr] = size(fcnData);
+[nFunc,nHdr] = size(fcnObj.fcnData);
 grayCol = getJavaCol(0.81,0.81,0.81);
 graylightCol = getJavaCol(0.9,0.9,0.9);
 cCol = {getJavaCol(1.0,0.5,0.5),getJavaCol(0.5,1.0,0.5)};
@@ -328,14 +203,14 @@ function initFuncDepTable(handles)
 hFig = handles.figFuncComp;
 hTable = handles.tableFuncComp;
 hPanel = handles.panelFuncComp;
-snTot = getappdata(hFig,'snTot');
+fcnObj = getappdata(hFig,'snTot');
 
 % other initialisations
 dX = 5;
 sGap = 2;
 expWid = 40;
 dPos = [2*dX,2*(dX+1)];
-nExp = length(snTot);  
+nExp = length(fcnObj.snTot);  
 sStr = {'No','Yes'};
 pPos = get(hPanel,'Position');
 reqWid = [55,55,70,60,60];
@@ -350,13 +225,10 @@ hdrStr = [{createTableHdrString({'Analysis Function Name'}),...
           createTableHdrString({'Duration'}),...
           createTableHdrString({'Shape'}),...
           createTableHdrString({'Stimuli'}),...          
-          createTableHdrString({'Special'}),' '},exptCol];
-      
-% sets up the required information fields
-fcnData = setupFuncReqInfo(handles);
-initReqGroups(hFig,fcnData)
+          createTableHdrString({'Special'}),' '},exptCol];      
 
 % retrieves the compatibility data
+fcnData = fcnObj.fcnData;
 cmpData = detExptCompatibility(handles);
 
 % sets up the function requirement information array
@@ -442,207 +314,9 @@ setappdata(hFig,'tabCR2',tabCR2)
 setappdata(hFig,'jTable',jTable)
 setappdata(hFig,'tabData0',tabData)
 
-% --- initialises the filter tree
-function initFilterTree(handles)
-
-% imports the checkbox tree
-import com.mathworks.mwswing.checkboxtree.*
-
-% parameters
-dX = 5;
-fldStr = {'Analysis Scope','Duration Requirements',...
-          'Region Shape Requirements','Stimuli Requirements',...
-          'Special Requirements'};
-
-% field retrieval
-hFig = handles.figFuncComp;
-hPanel = handles.panelFuncFilter;
-rGrp = getappdata(hFig,'reqGrp');
-rFld = fieldnames(rGrp);
-
-% creates the root node
-jRoot = DefaultCheckBoxNode('Function Requirement Categories');
-jRoot.setSelectionState(SelectionState.SELECTED);
-
-% creates all the requirement categories and their sub-nodes
-for i = 1:length(rFld)
-    % retrieves the sub 
-    rVal = getStructField(rGrp,rFld{i});
-    if length(rVal) > 1
-        % sets the requirement type node
-        jTreeR = DefaultCheckBoxNode(fldStr{i});
-        jRoot.add(jTreeR);
-        jTreeR.setSelectionState(SelectionState.SELECTED);    
-        
-        % adds on each sub-category for the requirements node
-        for j = 1:length(rVal)
-            jTreeSC = DefaultCheckBoxNode(rVal{j});
-            jTreeR.add(jTreeSC);
-            jTreeSC.setSelectionState(SelectionState.SELECTED);
-        end
-    end
-end
-
-% retrieves the object position
-objP = get(hPanel,'position');
-
-% creates the final tree explorer object
-jTree = com.mathworks.mwswing.MJTree(jRoot);
-jTreeCB = handle(CheckBoxTree(jTree.getModel),'CallbackProperties');
-jScrollPane = com.mathworks.mwswing.MJScrollPane(jTreeCB);
-
-% creates the scrollpane object
-wState = warning('off','all');
-[~,~] = javacomponent(jScrollPane,[dX-[1 0],objP(3:4)-2*dX],hPanel);
-warning(wState);
-
-% resets the cell renderer
-jTree.setEnabled(false)
-jTree.repaint;
-
-% sets the callback function for the mouse clicking of the tree structure
-set(jTreeCB,'MouseClickedCallback',{@treeUpdateClick,hFig,jRoot},...
-            'TreeCollapsedCallback',{@treeCollapseClick,hFig},...
-            'TreeExpandedCallback',{@treeExpandClick,hFig})        
-
-resetTreePanelPos(hFig,jTree.getMaximumSize.getHeight)                
-
-% sets the tree object into the gui
-setappdata(hFig,'jTree',jTree)
-setappdata(hFig,'jRoot',jRoot)       
-
-% --- initialises the requirement grouping information
-function initReqGroups(hFig,fcnData)
-
-% initialisations
-rGrp = struct();
-rType = {'Scope','Dur','Shape','Stim','Spec'};
-
-% retrieves the requirement information for each type
-for i = 1:length(rType)
-    switch rType{i}
-        case 'Scope'
-            rGrpNw = {'Individual','Single Expt','Multi Expt'}';
-            
-        otherwise
-            reqDataU = unique(fcnData(:,i+1));
-            ii = strcmp(reqDataU,'None');    
-            rGrpNw = [reqDataU(ii);reqDataU(~ii)];
-    end
-       
-    % appends the field to the data struct
-    rGrp = setStructField(rGrp,rType{i},rGrpNw);
-end
-
-% updates the requirement group info into the struct
-setappdata(hFig,'reqGrp',rGrp)
-setappdata(hFig,'fcnData',fcnData)
-
-% --- sets up the function requirement information
-function reqData = setupFuncReqInfo(handles)
-
-% initialisations
-nCol = 6;
-hFig = handles.figFuncComp;
-pData = getappdata(hFig,'pData');
-
-% retrieves the plotting function data (first expt only)
-pDataT = cell2cell(cellfun(@(x)(x(:,1)),pData,'un',0));
-
-% other initialisations
-reqData = cell(length(pDataT),nCol); 
-pFld = fieldnames(pDataT{1}.rI); 
-
-% sets the 
-for i = 1:length(pDataT)
-    % sets the experiment name
-    reqData{i,1} = pDataT{i}.Name; 
-    
-    % sets the other requirement fields
-    for j = 1:(length(pFld)-1)
-        reqData{i,j+1} = getStructField(pDataT{i}.rI,pFld{j}); 
-    end 
-end
-
-% determines the unique analysis functions
-[~,iB,~] = unique(reqData(:,1));
-reqData = reqData(iB,:);
-
-% --- sets up the function compatibility information
-function setupExptInfo(handles)
-
-% parameters
-nReq = 4;
-tLong = 12;
-
-% field retrieval
-hFig = handles.figFuncComp;
-snTot = getappdata(hFig,'snTot');
-
-% memory allocation
-nExp = length(snTot);
-fcnInfo = cell(nExp,nReq);
-
-% other initialisations
-expStr = {'1D','2D'};
-durStr = {'Short','Long'};
-[iMov,stimP] = field2cell(snTot,{'iMov','stimP'});
-
-% calculates the experiment duration in terms of hours
-Ts = arrayfun(@(x)(x.T{1}(1)),snTot);
-Tf = arrayfun(@(x)(x.T{end}(length(x.T{end}))),snTot);
-Texp = convertTime(Tf-Ts,'s','h');
-
-% sets the duration string
-fcnInfo(:,1) = arrayfun(@(x)(durStr{1+(x>tLong)}),Texp,'un',0);
-
-% for each of the experiments, strip out the important information fields
-% from the solution file data
-for iExp = 1:nExp
-    % experiment shape string
-    fcnInfo{iExp,2} = expStr{1+iMov{iExp}.is2D};
-    if ~isempty(iMov{iExp}.autoP)
-        fcnInfo{iExp,2} = sprintf('%s (%s)',...
-                    fcnInfo{iExp,2},iMov{iExp}.autoP.Type);
-    end
-    
-    % stimuli type string
-    if isempty(stimP{iExp})
-        fcnInfo{iExp,3} = 'None';
-    else
-        stimStr = fieldnames(stimP{iExp});
-        fcnInfo{iExp,3} = strjoin(stimStr,'/');
-    end
-    
-    % special type string (FINISH ME!)
-    fcnInfo{iExp,4} = 'None';    
-end
-
-% sets the experiment requirement information into the gui
-setappdata(hFig,'fcnInfo',fcnInfo);
-
-% --- resets the category tree dimensions
-function resetTreePanelPos(hFig,hghtTree0)
-
-% tree height offset (manual hack...)
-hghtTree = hghtTree0 + 2;
-
-% object retrieval
-handles = guidata(hFig);
-hPanel = handles.panelFuncFilter;
-hButton = handles.toggleFuncFilter;
-hTree = findall(hPanel,'type','hgjavacomponent');
-
-% other initialisations
-dX = 5;
-hghtPanel = hghtTree + 2*dX;
-bPos = getObjGlobalCoord(hButton);
-
-% ressets the tree/panel dimensions
-resetObjPos(hPanel,'Height',hghtPanel);
-resetObjPos(hPanel,'Bottom',bPos(2)-(hghtPanel+1))
-resetObjPos(hTree,'Height',hghtTree)
-resetObjPos(hTree,'Bottom',dX)
+% ------------------------------- %
+% --- MISCELLANEOUS FUNCTIONS --- %
+% ------------------------------- %
 
 % --- resets the function compatibility colours
 function resetFuncCompColours(hFig)
