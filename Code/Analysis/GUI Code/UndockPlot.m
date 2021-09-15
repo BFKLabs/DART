@@ -35,19 +35,20 @@ pause(0.05)
 
 % sets the input arguments
 hGUI = varargin{1};
-hPara = getappdata(hGUI.figFlyAnalysis,'hPara');
-sPara = getappdata(hGUI.figFlyAnalysis,'sPara');
+hFigM = hGUI.figFlyAnalysis;
+hPara = getappdata(hFigM,'hPara');
+sPara = getappdata(hFigM,'sPara');
 
 % sets the data structs into the GUI
 setappdata(hObject,'hGUI',hGUI)
 setappdata(hObject,'hPara',hPara)
 setappdata(hObject,'sPara',sPara)
-setappdata(hObject,'snTot',getappdata(hGUI.figFlyAnalysis,'snTot'))
-setappdata(hObject,'iProg',getappdata(hGUI.figFlyAnalysis,'iProg'))
+setappdata(hObject,'snTot',getappdata(hFigM,'snTot'))
+setappdata(hObject,'iProg',getappdata(hFigM,'iProg'))
 
 % retrieves the original plot panel/figure position vectors
 set(hGUI.panelPlot,'Units','pixels')
-fPos0 = get(hGUI.figFlyAnalysis,'Position');
+fPos0 = get(hFigM,'Position');
 pPos0 = get(hGUI.panelOuter,'Position');
 L0 = sum(pPos0([1 3])) + 10;
 W0 = fPos0(3) - (L0+10);
@@ -62,7 +63,7 @@ resetObjPos(hGUI.panelPlot,'width',1)
 
 % makes the figure invisible
 % setObjEnable(hGUI.menuUndock,'off');
-setObjVisibility(hGUI.figFlyAnalysis,'off'); 
+setObjVisibility(hFigM,'off'); 
 pause(0.05); 
 
 % resets the left/bottom locations of the GUI
@@ -70,7 +71,7 @@ resetObjPos(hObject,'left',fPos0(1)+L0+25)
 resetObjPos(hObject,'bottom',fPos0(2))
 
 % makes the figure visible again
-setappdata(hGUI.figFlyAnalysis,'hUndock',hObject)
+setappdata(hFigM,'hUndock',hObject)
 centreFigPosition(hObject);
 
 % if not docked (and showing GUIs) then create the plot panel objects
@@ -87,7 +88,8 @@ if (size(sPara.pos,1) > 1)
     subPlotSelect(handles,sInd,1)    
     
     % deletes the loadbar 
-    delete(h); pause(0.05);      
+    delete(h); pause(0.05);   
+    
 elseif ~isempty(hPara)
     % updates the plot figure
     pData0 = feval(getappdata(hPara,'getPlotData'),hPara);
@@ -346,11 +348,11 @@ for i = find(iReg)
         [hAx,hLg,m,n] = resetPlotFontResize(hP,pDataNw);
 
         % resets the plot axis based on the number of subplots 
-        resetAxesPos(hAx,m,n);  
+        resetAxesPos(hAx,m,n);
 
         % determines if the plots axes need to be resized for legend
         % objects that are outside the plot regions            
-        if (~isempty(hLg))
+        if ~isempty(hLg)
             % determines if any legend objects are outside the axes
             isInAx = ~strcmp(get(hLg,'location'),'none');
             if (any(~isInAx))

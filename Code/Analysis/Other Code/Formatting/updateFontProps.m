@@ -18,7 +18,7 @@ end
 if nargin < 3
     ind = 1;
 elseif (nargin == 4) && strcmp(Type,'Axis')
-    ind = get(gca,'UserData');
+    ind = getCurrentAxesProp('UserData');
 end 
 
 % retrieves the font struct field-names

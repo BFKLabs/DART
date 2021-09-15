@@ -3,6 +3,8 @@ function varargout = updatePlotFigure(hGUISub,pDataNw,varargin)
 
 % global variables
 global isDocked
+
+% initialisations
 varargout{1} = [];
 switch length(varargin)
     case (0)
@@ -19,9 +21,10 @@ else
 end
 
 % retrieves the subplot data struct
-plotD = getappdata(hGUI.figFlyAnalysis,'plotD');
-sPara = getappdata(hGUI.figFlyAnalysis,'sPara');
-hPara = getappdata(hGUI.figFlyAnalysis,'hPara');  
+hFig = hGUI.figFlyAnalysis;
+plotD = getappdata(hFig,'plotD');
+sPara = getappdata(hFig,'sPara');
+hPara = getappdata(hFig,'hPara');  
 nReg = size(sPara.pos,1);
 
 % ensures the parameter GUI is invisible
@@ -34,7 +37,7 @@ if nReg == 1
     plotDNw = plotD{pInd}{fInd,eInd};
 else
     % if multiple subplots, determine which subplots are valid
-    sInd = getappdata(hGUI.figFlyAnalysis,'sInd');    
+    sInd = getappdata(hFig,'sInd');    
     plotDNw = sPara.plotD{sInd};
     [eInd,pInd] = deal(sPara.ind(sInd,1),sPara.ind(sInd,3));    
 end    
@@ -50,7 +53,7 @@ if isempty(plotDNw)
 end
     
 % retrieves the axis update function and other struct/indices        
-snTot = getappdata(hGUI.figFlyAnalysis,'snTot'); 
+snTot = getappdata(hFig,'snTot'); 
     
 % sets the data for plotting
 if (pInd == 3)
@@ -63,45 +66,47 @@ end
 if (isDocked)
     hPanel = hGUI.panelPlot;
 else
-    hUndock = guidata(getappdata(hGUI.figFlyAnalysis,'hUndock'));
+    hUndock = guidata(getappdata(hFig,'hUndock'));
     hPanel = hUndock.panelPlot;    
 end
 
 % sets the plot axes (based on the number of input arguments)
-if (isOutput)
+if isOutput
     % case is for figure output
-    [fig,varargout{1}] = deal(figure('visible','off','units','pixels'));   
-
+    [fig,varargout{1}] = deal(figure('visible','off','units','pixels'));      
+    
     % retrieves the 
-    pPos = getPanelPosPix(hPanel);
-
+    pPos = getPanelPosPix(hPanel);    
+    
     % expands the figure and deletes the axis
-    expandFig(fig,pPos);
-    delete(gca)    
+    expandFig(fig,pPos);    
+    set(fig,'tag','figOutputPlot');
+    set(0,'CurrentFigure',fig)
+    axes(fig);
     
     % resets the units of the panel
-    if (nReg == 1)       
+    if nReg == 1     
         % rescales the font sizes
         fPos = get(fig,'position');
         pDataNw.pF = rescaleFontSize(pDataNw.pF,fPos(3)/pPos(3));             
         
         % clears the main GUI axis and re-plots the figure    
-        if (~isempty(iPlot))
+        if ~isempty(iPlot)
             pDataNw = feval(pDataNw.pFcn,snTotNw,pDataNw,plotDNw,iPlot);            
         else
             pDataNw = feval(pDataNw.pFcn,snTotNw,pDataNw,plotDNw);            
         end            
     else
-        % sets up the subplot panels
+        % sets up the subplot panels        
         setupSubplotPanels(hPanel,sPara)         
     end           
 else
     % case is for creating an analysis figure  
-    initAxesObject = getappdata(hGUI.figFlyAnalysis,'initAxesObject');
+    initAxesObject = getappdata(hFig,'initAxesObject');
     initAxesObject(hGUI);            
     
     % clears the main GUI axis and re-plots the figure    
-    if (~isempty(iPlot))
+    if ~isempty(iPlot)
         pDataNw = feval(pDataNw.pFcn,snTotNw,pDataNw,plotDNw,iPlot);            
     else
         pDataNw = feval(pDataNw.pFcn,snTotNw,pDataNw,plotDNw);            

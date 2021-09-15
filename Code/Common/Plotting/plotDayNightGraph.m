@@ -34,7 +34,7 @@ for j = 1:length(ind)
             hAx{j} = subplot(spInd);       
         end
     else
-        hAx{j} = gca;        
+        hAx{j} = getCurrentAxesProp;
     end
 
     % sets the axis properties

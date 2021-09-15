@@ -256,7 +256,8 @@ else
 end
 
 % plots the image
-hImage = findobj(gca,'type','image');
+hAx = getCurrentAxesProp;
+hImage = findobj(hAx,'type','image');
 if (isempty(hImage))
     if (size(img,3) == 1)
         imagesc(img); 
@@ -266,7 +267,7 @@ if (isempty(hImage))
     end
 
     %
-    set(gca,'xticklabel',[],'yticklabel',[],'xtick',[],'ytick',[]);
+    set(hAx,'xticklabel',[],'yticklabel',[],'xtick',[],'ytick',[]);
 else
     %
     if (size(img,3) == 1)
@@ -283,17 +284,17 @@ axis image
 function showMovie(p,hAx)
 
 %
-if (nargin == 1)
+if nargin == 1
     hAx = subplot(1,1,1);
 end
 
 %
-if (iscell(p{1}))
+if iscell(p{1})
     %
     ImgStack = p{1};
     
     %
-    switch (length(p))
+    switch length(p)
         case (1)
             ind = 1:length(ImgStack);
             tPause = 0.1;
@@ -309,7 +310,7 @@ else
     ImgStack = field2cell(p{1},p{2});
     
     %
-    switch (length(p))
+    switch length(p)
         case (2)
             ind = 1:length(ImgStack);
             tPause = 0.1;
@@ -331,7 +332,7 @@ for j = 1:nFrm
     i = ind(j);
     
     % updates the figure axis and title for the current frames
-    if (~isempty(ImgStack{i}))
+    if ~isempty(ImgStack{i})
         plotGraph('image',ImgStack{i},hAx);
         title(sprintf('Frame %i of %i',i,length(ImgStack)));
     end

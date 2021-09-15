@@ -122,6 +122,10 @@ classdef AnalysisParaClass < handle
                 pause(0.05);
             end
             
+            % deletes any axes objects on the parameter gui
+            hAx0 = findall(obj.hFig,'type','Axes');
+            if ~isempty(hAx0); delete(hAx0); end
+            
             % sets the panels for object removal           
             for i = 1:length(obj.hPanel)
                 switch obj.pStr{i}
@@ -564,7 +568,6 @@ classdef AnalysisParaClass < handle
             end                                  
             
             % disables the listboxes
-            setObjEnable(obj.hGUI.listPlotFunc,'inactive'); 
             setObjEnable(obj.hGUI.popupPlotType,'inactive'); 
             setObjEnable(obj.hGUI.popupExptIndex,'inactive'); 
 
@@ -580,7 +583,6 @@ classdef AnalysisParaClass < handle
             end
 
             % disables the listboxes
-            setObjEnable(obj.hGUI.listPlotFunc,'on'); 
             setObjEnable(obj.hGUI.popupPlotType,'on'); 
             setObjEnable(obj.hGUI.popupExptIndex,'on'); 
 
