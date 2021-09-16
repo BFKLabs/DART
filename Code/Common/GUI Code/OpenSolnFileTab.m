@@ -564,6 +564,9 @@ classdef OpenSolnFileTab < dynamicprops & handle
         
         % --- updates the experiment information fields
         function updateGroupTableProps(obj)
+            
+            % if there is no selection, then exit
+            if isempty(obj.iExp); return; end
 
             % retrieves the solution file information struct
             % (for the current expt)

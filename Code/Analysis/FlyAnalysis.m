@@ -21,7 +21,7 @@ end
 % End initialization code - DO NOT EDIT
 
 % --- Executes just before FlyAnalysis is made visible.
-function FlyAnalysis_OpeningFcn(hObject, eventdata, handles, varargin)
+function FlyAnalysis_OpeningFcn(hObject, ~, handles, varargin)
 
 % global variables
 global mainProgDir isDocked initDock regSz  
@@ -124,7 +124,7 @@ guidata(hObject, handles);
 % uiwait(handles.figFlyAnalysis);
 
 % --- Outputs from this function are returned to the command line.
-function varargout = FlyAnalysis_OutputFcn(hObject, eventdata, handles)
+function varargout = FlyAnalysis_OutputFcn(~, ~, handles)
 
 % Get default command line output from handles structure
 varargout{1} = handles.output;
@@ -138,7 +138,7 @@ varargout{1} = handles.output;
 % ------------------------------- %
 
 % -------------------------------------------------------------------------
-function loadExptSoln_Callback(hObject, eventdata, handles)
+function loadExptSoln_Callback(~, ~, handles)
 
 % field retrieval
 hFig = handles.figFlyAnalysis;
@@ -328,252 +328,7 @@ setappdata(hFig,'snTot',[])
 setappdata(hFig,'sInfo',sInfo)
 
 % -------------------------------------------------------------------------
-function menuOpenIndiv_Callback(hObject, eventdata, handles)
-
-% global variables
-global hh
-hh = [];
-
-% loads the data structs from the GUI
-hFig = handles.figFlyAnalysis;
-iData = getappdata(hFig,'iData');
-dDir = iData.ProgDef.DirSoln; n = length(dDir);
-
-% prompts the user for the solution file directory
-[fName,fDir,fIndex] = uigetfile({'*.soln','Solution Files (*.soln)'},...
-                        'Select The Video Solution Files',dDir,...
-                        'MultiSelect','on');
-if fIndex == 0
-    % if the user cancelled, then exit
-    return
-else
-    % ensures the filenames are in a cell array
-    if ~iscell(fName); fName = {fName}; end
-    
-    % determines the file indices
-    indFile = cellfun(@(x)(str2double(x(end-7:end-4))),fName);
-    if ~all(diff(indFile) == 1)
-        eStr = 'Error! Selected files are not all contiguous.';
-        waitfor(errordlg(eStr,'Video Solution File Error','modal'))
-        return
-        
-    else
-        % loads the summary file
-        A = importdata(fullfile(fDir,fName{1}),'-mat');
-        smFile = getSummaryFilePath(A.fData);
-        if ~exist(smFile,'file')
-            % attempts to get the summary file from the soln directory
-            smFile = getSummaryFilePath(struct('dir',fDir));
-            if ~exist(smFile,'file')
-                % if the summary file doesn't exist, then exit
-                eStr = ['Error! Associated video solution ',...
-                        'summary file is missing.'];
-                waitfor(errordlg(eStr,'Missing Summary File','modal'))
-                return
-            end
-        end
-            
-        % converts any character arrays to cell arrays        
-        if ~iscell(fName)
-            fName = {fName};
-        end        
-    end  
-end
-
-% if the user cancelled, then exit the function
-tempSolnDataIO(handles,'store') 
-
-% sets the files and combines the solution files
-sName = cellfun(@(x)(fullfile(fDir,x)),fName,'un',0);
-[snTot,iMov,eStr] = combineSolnFiles(sName,1);
-if isempty(snTot)
-    % if there was an error, then output this to screen
-    if ~isempty(eStr)
-        waitfor(msgbox(eStr,'Video Solution File Error','modal'))
-    end    
-    
-    % if the user cancelled, then exit the function
-    tempSolnDataIO(handles,'reload') 
-    return
-    
-else
-    % deletes the temporary solution data
-    tempSolnDataIO(handles,'remove')     
-    
-    % initialises the apparatus parameter struct
-    sName = getFinalDirString(fDir);
-    if ~iscell(sName); sName = {sName}; end
-    
-    % reduces the combined solution files
-    snTot.iMov = iMov;
-    snTot = reduceExptSolnFiles(snTot);
-    
-    % sets the solution file struct into the GUI    
-    setappdata(hFig,'snTot',snTot)
-    setappdata(hFig,'sName',sName)
-    setappdata(hFig,'iMov',iMov)
-end
-
-% removes the default directory component from the solution file path
-A = strfind(fDir,dDir);
-if ~isempty(A)
-    fDir = ['~',fDir((A+n):end)];
-end
-
-% sets the data fields
-setappdata(hFig,'sNameFull',{fDir})
-setSolnInfo(handles)
-resetGUIObjects(handles,snTot)
-       
-% -------------------------------------------------------------------------
-function menuOpenSingle_Callback(hObject, eventdata, handles)
-
-% loads the data structs from the GUI
-iData = getappdata(handles.figFlyAnalysis,'iData');
-[dDir,TempDir] = deal(iData.ProgDef.DirComb,iData.ProgDef.TempFile);
-n = length(dDir);
-
-% prompts the user for the solution file directory
-fModeStr = {'*.ssol;','Single Experimental Solution Files (*.ssol)'};
-[fName,fDir,fIndex] = uigetfile(fModeStr,...
-                        'Select Experimental Solution Files',dDir,...
-                        'MultiSelect','on');
-if fIndex == 0
-    % if the user cancelled, then exit
-    return
-else
-    % saves a copy of the currently loaded solution file data
-    tempSolnDataIO(handles,'store')
-    
-    % sets the solution file name
-    if iscell(fName)
-        % loads the combined solution file
-        sNameF = cellfun(@(x)(fullfile(fDir,x)),fName,'un',0);
-        [snTot,sName,ok] = loadMultiExptSolnFiles(TempDir,sNameF);
-        if ~ok
-            % if the user cancelled, then exit the function
-            tempSolnDataIO(handles,'reload')
-            return
-        else
-            % sets the solution file names (without extensions)
-            fName = [getFinalDirString(fDir),' (Multi)'];
-            sNameNw = cellfun(@(x)(getFileName(x)),sName,'un',0);            
-                        
-            % deletes the temporary solution data
-            tempSolnDataIO(handles,'remove')
-            
-            % updates the solution file names into the Analysis GUI
-            setappdata(handles.figFlyAnalysis,'sName',sNameNw)
-            setappdata(handles.figFlyAnalysis,'sNameFull',sNameF)
-            setappdata(handles.figFlyAnalysis,'fName',fName)                                    
-        end
-    else
-        % otherwise, only one file is to be loaded
-        sNameF = fullfile(fDir,fName);
-        [snTot,ok] = loadExptSolnFiles(iData.ProgDef.TempFile,sNameF,0);
-        if ~ok
-            % if the user cancelled, then exit the function
-            tempSolnDataIO(handles,'reload')            
-            return
-        else
-            % deletes the temporary solution data
-            tempSolnDataIO(handles,'remove')            
-            
-            % sets the solution file name (without extensions)
-            sNameNw = {[getFileName(sNameF),'.ssol']};
-            sNameF = {sNameF};
-            setappdata(handles.figFlyAnalysis,'sName',sNameNw)
-            
-            % reduces down the experimental solution file info
-            snTot = reduceExptSolnFiles(snTot);
-        end        
-    end
-end
-
-% resets the solution file names (to remove the default directory)
-A = cellfun(@(x)(strfind(x,dDir)),sNameF,'un',0);
-for i = 1:length(sNameF)
-    if ~isempty(A{i})
-        sNameF{i} = ['~',sNameF{i}((A{i}+n):end)];
-    end
-end
-
-% % reduces down the combined experiment solution files
-% for i = 1:length(snTot)
-%     snTot(i) = reduceExptSolnFiles(snTot(i));
-% end
-
-% ensures the solution file names are stored as a cell array
-if ~iscell(sNameF); sNameF = {sNameF}; end
-
-% sets the solution file struct into the GUI
-setappdata(handles.figFlyAnalysis,'snTot',snTot)    
-setappdata(handles.figFlyAnalysis,'sNameFull',sNameF)
-setappdata(handles.figFlyAnalysis,'fNameFull',getToolTipStrings(handles))
-
-% sets the data fields
-% setSolnInfo(handles,sType)
-resetGUIObjects(handles,snTot)
-
-% -------------------------------------------------------------------------
-function menuOpenMulti_Callback(hObject, eventdata, handles)
-
-% loads the data structs from the GUI
-iData = getappdata(handles.figFlyAnalysis,'iData');
-dDir = iData.ProgDef.DirComb; n = length(dDir);
-
-% prompts the user for the solution file directory
-fMode = {'*.msol;','Multi-Experimental Solution File (*.msol)'};
-[fName,fDir,fIndex] = uigetfile(fMode,'Set The Multi-Solution File',dDir);
-if fIndex == 0
-    % if the user cancelled, then exit
-    return
-else
-    % sets the solution file name
-    mName = fullfile(fDir,fName);    
-end
-
-% saves a copy of the currently loaded solution file data
-tempSolnDataIO(handles,'store')
-
-% loads the combined solution file
-[snTot,sName,ok] = loadMultiExptSolnFiles(iData.ProgDef.TempFile,mName);
-if ~ok
-    % if the user cancelled, then exit the function
-    tempSolnDataIO(handles,'reload') 
-    return
-else
-    % sets the solution file names (without extensions)
-    sNameNw = cellfun(@(x)(getFileName(x)),sName,'un',0);
-    
-    % deletes the temporary solution data
-    tempSolnDataIO(handles,'remove')   
-    
-    % reduces down the combined experiment solution files
-    for i = 1:length(snTot)
-        snTot(i) = reduceExptSolnFiles(snTot(i));
-    end
-    
-    % sets the solution file struct into the GUI
-    setappdata(handles.figFlyAnalysis,'snTot',snTot)    
-    setappdata(handles.figFlyAnalysis,'sName',sNameNw)    
-    setappdata(handles.figFlyAnalysis,'sNameFull',sName)    
-    setappdata(handles.figFlyAnalysis,'fName',fName)   
-    
-    % removes the default directory component from the solution file path
-    A = strfind(fDir,dDir);
-    if ~isempty(A)
-        mName = ['~',mName((A+n):end)];
-    end
-    setappdata(handles.figFlyAnalysis,'fNameFull',mName)    
-end        
-   
-% sets the data fields
-setSolnInfo(handles)
-resetGUIObjects(handles)
-
-% -------------------------------------------------------------------------
-function menuOpenSubConfig_Callback(hObject, eventdata, handles)
+function menuOpenSubConfig_Callback(~, ~, handles)
 
 % loads the data structs from the GUI
 iData = getappdata(handles.figFlyAnalysis,'iData');
@@ -624,7 +379,7 @@ else
 end
 
 % -------------------------------------------------------------------------
-function menuOpenTempData_Callback(hObject, eventdata, handles)
+function menuOpenTempData_Callback(~, ~, handles)
 
 % loads the data structs from the GUI
 hFig = handles.figFlyAnalysis;
@@ -733,7 +488,7 @@ popupExptIndex_Callback(handles.popupExptIndex, '1', handles)
 % ------------------------------ %
                     
 % -------------------------------------------------------------------------
-function menuSaveData_Callback(hObject, eventdata, handles)
+function menuSaveData_Callback(~, ~, handles)
 
 % deletes the data output figure (if it is open)
 hOut = findall(0,'tag','figDataOutput');
@@ -743,7 +498,7 @@ if ~isempty(hOut); delete(hOut); pause(0.05); end
 DataOutput(handles.figFlyAnalysis)
 
 % -------------------------------------------------------------------------
-function menuSaveStim_Callback(hObject, eventdata, handles)
+function menuSaveStim_Callback(~, ~, handles)
 
 % loads the data structs from the GUI
 iData = getappdata(handles.figFlyAnalysis,'iData');
@@ -809,7 +564,7 @@ switch fExtn
 end
 
 % -------------------------------------------------------------------------
-function menuSaveSubConfig_Callback(hObject, eventdata, handles)
+function menuSaveSubConfig_Callback(~, ~, handles)
 
 % loads the data structs from the GUI
 sPara = getappdata(handles.figFlyAnalysis,'sPara');
@@ -832,7 +587,7 @@ else
 end
     
 % -------------------------------------------------------------------------
-function menuSaveTempData_Callback(hObject, eventdata, handles)
+function menuSaveTempData_Callback(~, ~, handles)
 
 % loads the data structs from the GUI
 iData = getappdata(handles.figFlyAnalysis,'iData');
@@ -937,7 +692,7 @@ setObjEnable(handles.menuPlot,'off')
 setObjEnable(handles.menuGlobal,'off') 
 
 % -------------------------------------------------------------------------
-function menuProgPara_Callback(hObject, eventdata, handles)
+function menuProgPara_Callback(~, ~, handles)
 
 % runs the program default GUI
 hFig = handles.figFlyAnalysis;
@@ -951,7 +706,7 @@ if isSave
 end
 
 % -------------------------------------------------------------------------
-function menuExit_Callback(hObject, eventdata, handles)
+function menuExit_Callback(~, ~, handles)
 
 % prompts the user if they wish to close the tracking gui
 uChoice = questdlg('Are you sure want to close the Analysis GUI?',...
@@ -999,7 +754,7 @@ delete(handles.figFlyAnalysis)
 % -------------------------------- %
 
 % -------------------------------------------------------------------------
-function menuClearPlot_Callback(hObject, eventdata, handles)
+function menuClearPlot_Callback(hObject, ~, handles)
 
 % prompts the user if they want to clear the figure
 uChoice = questdlg('Are you sure you want to clear the Analysis figure?',...
@@ -1029,7 +784,7 @@ if ~isempty(hPara)
 end
 
 % -------------------------------------------------------------------------
-function menuResetData_Callback(hObject, eventdata, handles)
+function menuResetData_Callback(~, eventdata, handles)
 
 % prompts the user if they want to clear the figure
 if ~isa(eventdata,'char')
@@ -1121,13 +876,13 @@ end
 delete(h);
 
 % -------------------------------------------------------------------------
-function menuUndock_Callback(hObject, eventdata, handles)
+function menuUndock_Callback(~, ~, handles)
 
 % runs the plotting GUI
 UndockPlot(handles)
 
 % -------------------------------------------------------------------------
-function menuSplitPlot_Callback(hObject, eventdata, handles)
+function menuSplitPlot_Callback(~, ~, handles)
 
 % runs the axis splitting GUI
 SplitAxisRegions(handles)
@@ -1137,7 +892,7 @@ SplitAxisRegions(handles)
 % ----------------------------------- %
 
 % -------------------------------------------------------------------------
-function menuGlobalParameters_Callback(hObject, eventdata, handles)
+function menuGlobalParameters_Callback(~, ~, handles)
 
 % global variables
 global tDay
@@ -1156,7 +911,7 @@ if isChange
 end
 
 % --------------------------------------------------------------------
-function menuResetPara_Callback(hObject, eventdata, handles)
+function menuResetPara_Callback(~, ~, handles)
 
 % global variables
 global tDay mainProgDir
@@ -1180,7 +935,7 @@ end
 % ------------------------------ %
 
 % --------------------------------------------------------------------
-function menuZoom_ClickedCallback(hObject, eventdata, handles)
+function menuZoom_ClickedCallback(hObject, ~, ~)
 
 % toggles the zoom based on the button state
 if strcmp(get(hObject,'state'),'on')
@@ -1190,7 +945,7 @@ else
 end
 
 % --------------------------------------------------------------------
-function menuDataCursor_ClickedCallback(hObject, eventdata, handles)
+function menuDataCursor_ClickedCallback(hObject, ~, ~)
 
 % toggles the data cursor based on the button state
 if strcmp(get(hObject,'state'),'on')
@@ -1208,7 +963,7 @@ end
 % ------------------------------------- %
 
 % --- Executes when figFlyAnalysis is resized.
-function figFlyAnalysis_ResizeFcn(hObject, eventdata, handles)
+function figFlyAnalysis_ResizeFcn(hObject, ~, handles)
 
 % global variables
 global updateFlag uTime
@@ -1360,7 +1115,7 @@ updateFlag = 0;
 setappdata(hObject,'sInd',sInd0);
 
 % --- callback function when a sub-plot axes is clicked
-function axisClickCallback(hObject, eventdata)
+function axisClickCallback(hObject, ~)
 
 % global variable
 global canSelect
@@ -1581,7 +1336,7 @@ resetExptListStrings(handles,snTot)
 setObjEnable(handles.popupExptIndex,eStr)
 
 % --- Executes on button press in toggleFuncFilter.
-function toggleFuncFilter_Callback(hObject, eventdata, handles)
+function toggleFuncFilter_Callback(hObject, ~, handles)
 
 % object handles
 isOpen = get(hObject,'Value');
@@ -1597,7 +1352,7 @@ else
 end  
     
 % --- Executes on button press in buttonUpdateFigure.
-function buttonUpdateFigure_Callback(hObject, eventdata, handles)
+function buttonUpdateFigure_Callback(~, ~, handles)
 
 % global variables
 global canSelect
@@ -1656,7 +1411,7 @@ elseif ~isempty(hPara)
 end
 
 % retrieves the necessary data structs 
-[pDataNw,plotDNw] = deal(pData{pInd}{fInd,eInd},plotD{pInd}{fInd,eInd});
+pDataNw = pData{pInd}{fInd,eInd};
 setObjVisibility(hPara,'off')
 
 % runs the analysis function
@@ -1702,7 +1457,7 @@ if isempty(plotDCalc)
 else
     % otherwise, overwrite the struct to the new one 
     pDataNw = resetPlottingData(handles,pDataNw);    
-    [plotDNw,isAdd] = deal({plotDCalc},true);
+    plotDNw = {plotDCalc};
 end
 
 % appends the new string to the legend string array
