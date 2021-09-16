@@ -391,7 +391,7 @@ classdef AdaptorInfoClass < handle
             end                
             
             % if so, initialise the DAC/serial object listbox 
-            isS = strcmp(obj.objDAQ.dType,'Serial');
+            isS = strcmp(obj.objDAQ.dType(:,1),'Serial');
             obj.nChMax = 2*(1+isS);
             obj.vStrDAQ = cell(length(isS),1);
 
@@ -646,7 +646,7 @@ classdef AdaptorInfoClass < handle
 
             % retrieves the new value and determines if it is valid
             nwVal = str2double(get(hObject,'string'));
-            if chkEditValue(nwVal,[0 obj.nChMx(iCh)],1)
+            if chkEditValue(nwVal,[0 obj.nChMax(iCh)],1)
                 % sets the new value if valid
                 obj.nCh(iCh) = nwVal;
 
