@@ -50,7 +50,17 @@ if isOK
                     handles = varargin{1};
                     setappdata(handles.figExptSetup,'spixObj',pkgObj);                
                 end
-            end        
+            end 
+            
+        case 'ExtnDevices' 
+            % case is the custom signal object
+            try
+                % creates the class object and updates within the GUI
+                pkgObj = feval('ExtnDevices');
+                if ~pkgObj.ok
+                    pkgObj = [];              
+                end
+            end                
 
         case 'RTTrack'
             % case is real-time tracking object

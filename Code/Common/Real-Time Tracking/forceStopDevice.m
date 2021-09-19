@@ -5,20 +5,20 @@ function forceStopDevice(hGUI)
 [rtD,rtP] = deal(getappdata(hGUI,'rtD'),getappdata(hGUI,'rtP'));
 
 % determines if any devices are on. if they are, then turn them off
-if (~isempty(rtP.Stim)) && (~isempty(rtD))
-    if (strcmp(rtP.Stim.sType,'Cont'))
+if ~isempty(rtP.Stim) && ~isempty(rtD)
+    if strcmp(rtP.Stim.sType,'Cont')
         % initialisations
         iStim = getappdata(hGUI,'iStim');
         dInfo = getappdata(hGUI,'objDACInfo');
-        isDAC = any(strcmp(dInfo.dType,'DAC'));
+        isSer = any(strcmp(dInfo.dType,'Serial'));
 
         % turns off any devices that are on
-        if (isfield(dInfo,'Control'))
+        if isfield(dInfo,'Control')
             hS = dInfo.Control;
             for i = 1:size(rtD.sStatus,1)
-                if (rtD.sStatus(i,2) == 1)
+                if rtD.sStatus(i,2) == 1
                     % stops the device based on the type
-                    if (isDAC)
+                    if isSer
                         % case is for a DAC device
                         iChG = find(iStim.ID(:,1) == iStim.ID(i,1));
                         updateStimChannels(hS{iStim.ID(i,1)},0,1,rtD,iChG) 

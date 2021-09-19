@@ -38,12 +38,15 @@ classdef StimObj < handle
         tStim
         cEvent
         iEvent
+        
+        % other boolean fields
+        isExtnDAC
     end
     
     % class methods
     methods
         % class constructor
-        function obj = StimObj(hS,xySig,dT,stType,sType,hasIMAQ)
+        function obj = StimObj(hS,xySig,dT,stType,sType,hasIMAQ,isExtnDAC)
             
             % sets the important fields
             obj.hS = hS;
@@ -58,6 +61,11 @@ classdef StimObj < handle
                 obj.hasIMAQ = hasIMAQ;
             else
                 obj.hasIMAQ = false;
+            end
+            
+            % sets the external device flag
+            if exist('isExtnDAC','var')
+                obj.isExtnDAC = isExtnDAC;
             end
 
             % calculates the global channel ID's
@@ -100,28 +108,30 @@ classdef StimObj < handle
         
         % --- initialises the stimuli timer objects
         function setupTimerObj(obj)
-        
-            % creates the stimuli timer
-            if obj.isRT
-                % case is a real-time tracking experiment
-                obj.hTimer = timer('StartFcn',@(h,e)obj.serialStart,...
-                                   'TimerFcn',@(h,e)obj.serialTimer,...
-                                   'StopFcn',@(h,e)obj.serialStopRT);
-            else
-                % case is another stimuli type
-                obj.hTimer = timer('StartFcn',@(h,e)obj.serialStart,...
-                                   'TimerFcn',@(h,e)obj.serialTimer);
-            end
-
+            
             % updates the other timer parameters
-            set(obj.hTimer,'Period',max(obj.dT),'tag','hTimerExpt',...
-                           'ExecutionMode','FixedRate')
+            obj.hTimer = timer('Period',max(obj.dT),'tag','hTimerExpt',...
+                               'ExecutionMode','FixedRate');
 
             % memory allocation for stimuli time-stamps
             if strcmp(obj.stType,'Expt')
                 obj.tStampS = arrayfun(@(x)(NaN(x,1)),obj.nCountD,'un',0);
+            end            
+            
+            % sets the timer callback functions (non-external devices only)
+            if ~obj.isExtnDAC
+                % creates the stimuli timer
+                if obj.isRT
+                    % case is a real-time tracking experiment
+                    set(obj.hTimer,'StartFcn',@(h,e)obj.serialStart,...
+                                   'TimerFcn',@(h,e)obj.serialTimer,...
+                                   'StopFcn',@(h,e)obj.serialStopRT);
+                else
+                    % case is another stimuli type
+                    set(obj.hTimer,'StartFcn',@(h,e)obj.serialStart,...
+                                   'TimerFcn',@(h,e)obj.serialTimer);
+                end
             end
-        
         end        
         
         % --- start callback function

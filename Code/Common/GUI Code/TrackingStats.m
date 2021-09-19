@@ -53,15 +53,15 @@ setappdata(hObject,'isTrack',strcmp(get(hGUI,'tag'),'figFlyTrack'))
 
 % determines if the connected device is an DAQ device
 dInfo = getappdata(hGUI,'objDACInfo');
-if (isempty(dInfo))
-    setappdata(hObject,'isDAC',false)
+if isempty(dInfo)
+    setappdata(hObject,'isSer',false)
 else
-    setappdata(hObject,'isDAC',any(strcmp(dInfo.dType,'DAC')))
+    setappdata(hObject,'isSer',any(strcmp(dInfo.dType,'Serial')))
 end
 
 % deletes any old objects
 hObjOld = findobj(handles.panelTrackStats);
-if (~isempty(hObjOld))
+if ~isempty(hObjOld)
     delete(hObjOld(hObjOld ~= handles.panelTrackStats))
 end
 

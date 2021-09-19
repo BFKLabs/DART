@@ -51,7 +51,7 @@ if ~isempty(hTrack)
     
     % retrieves the update function
     uFunc = getappdata(hTrack,'uFunc');
-    isDAC = getappdata(hTrack,'isDAC');              
+    isSer = getappdata(hTrack,'isSer');              
     
     % retrieves the parameter structs
     [rtD,rtP] = deal(getappdata(hGUI,'rtD'),getappdata(hGUI,'rtP'));           
@@ -351,7 +351,7 @@ if ~isempty(hTrack)
                 
                 % stimulates the specified channel (not for testing)
                 if ~isTest
-                    if isDAC
+                    if isSer
                         % case is for a DAC device
                         iChG = find(iStim.ID(:,1) == ID(i,1));
                         updateStimChannels(hS{ID(i,1)},yAmp,1,rtD,iChG)                        
@@ -370,7 +370,7 @@ if ~isempty(hTrack)
             Ys = rtP.Stim.sFix.Ysig;            
             
             % sets up the run flags (DAC device only)
-            if isDAC; isRun = false(length(objDRT),1); end
+            if isSer; isRun = false(length(objDRT),1); end
             
             % sets up the serial device for each stimuli event
             objS = cell(length(indS),1);
@@ -379,7 +379,7 @@ if ~isempty(hTrack)
                 rtD.sStatus(indS(i),2) = 1;                       
                 if ~isTest
                     % sets up the channel properties for running
-                    if isDAC
+                    if isSer
                         % case is for a DAC device                        
                         Ts = rtP.Stim.sFix.Tsig;
                         iChG = find(iStim.ID(:,1) == iStim.ID(indS(i),1));
@@ -404,7 +404,7 @@ if ~isempty(hTrack)
 
             % runs each stimuli event (non-test only)
             if ~isTest
-                if isDAC
+                if isSer
                     % case is for a DAC device 
                     runTimedDevice(objDRT(isRun)); 
                 else
@@ -434,7 +434,7 @@ if ~isempty(hTrack)
                 
                 % turns off the channel
                 if ~isTest
-                    if isDAC
+                    if isSer
                         % case is a DAC device  
                         yAmp = rtP.Stim.oPara.vMax;
                         iChG = find(iStim.ID(:,1) == ID(i,1));

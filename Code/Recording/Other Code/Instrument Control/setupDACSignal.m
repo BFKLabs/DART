@@ -8,7 +8,7 @@ nCh = length(sTrainC(1).chName);
 [xySig,xySigF] = deal(cell(nCh,2),cell(nDev,1));
 
 for j = 1:nTrain
-    %
+    % retrieves the block information for the current train
     blkInfo = sTrainC(j).blkInfo;
     nBlk = length(blkInfo);
 

@@ -9,6 +9,9 @@ classdef AdaptorInfoClass < handle
         iType
         reqdConfig           
         
+        % external device objects
+        extnObj
+        
         % device class objects
         iStim
         objDAQ
@@ -47,6 +50,7 @@ classdef AdaptorInfoClass < handle
         hasDAQ
         hasIMAQ = true; 
         onlyDAQ        
+        vStr = {'Motor','Opto'};
         
     end
 
@@ -101,7 +105,10 @@ classdef AdaptorInfoClass < handle
             
             % retrieves the maximum screen dimensions
             scrSz = get(0,'Screensize');
-            [obj.Wmax,obj.Hmax] = deal(scrSz(3),scrSz(4));                        
+            [obj.Wmax,obj.Hmax] = deal(scrSz(3),scrSz(4));   
+            
+            % external device initialisations
+            obj.extnObj = feval('runExternPackage','ExtnDevices');
             
         end
         
@@ -391,7 +398,7 @@ classdef AdaptorInfoClass < handle
             end                
             
             % if so, initialise the DAC/serial object listbox 
-            isS = strcmp(obj.objDAQ.dType(:,1),'Serial');
+            isS = strcmp(obj.objDAQ.dType,'Serial');
             obj.nChMax = 2*(1+isS);
             obj.vStrDAQ = cell(length(isS),1);
 
@@ -434,8 +441,8 @@ classdef AdaptorInfoClass < handle
                 set(handles.listDACObj,'value',obj.objDAQ.vSelDAQ)
                 for i = 1:length(obj.objDAQ.vSelDAQ)
                     j = obj.objDAQ.vSelDAQ(i);
-                    hEdit = findobj(handles.panelDACObj...
-                                            ,'style','edit','UserData',j);
+                    hEdit = findobj(handles.panelDACObj,...
+                                            'style','edit','UserData',j);
                     if isnan(nChannel(j))
                         obj.setEditProp(j,'opto')
                     else
@@ -831,72 +838,22 @@ classdef AdaptorInfoClass < handle
 
             % initialisations
             [hasDevice,sStr] = deal(false,A.sDev);
-
-            % determines the dac types
-            if verLessThan('matlab','9.2')
-                dStr = {'mcc','nidaq'};
-            else
-                % retrieves the installation information
-                [dStr,dInfo] = getInstalledDeviceVendors(1); 
-
-                % clears the screen (executable only)
-                if isdeployed
-                    pause(0.05);
-                    clc
-                end
-            end
-
-            % memory allocation
             daqInfo = obj.initDAQInfoStruct();
-
-            % attempts to detect/open the DAQ devices
-            for i = 1:length(dStr)
-                if verLessThan('matlab','9.2')
-                    try
-                        % attempts to find the mcc devices
-                        dInfo = daqhwinfo(dStr{i});
-                        isOK = ~cellfun(@isempty,...
-                                        dInfo.ObjectConstructorName(:,2));
-
-                        % determines if the devices can be constructed
-                        if ~isempty(isOK)
-                            if any(isOK)
-                                % if so, then append the instrument info 
-                                % into the struct
-                                hasDevice = true;
-                                daqInfo = obj.appendDAQInfo...
-                                                (daqInfo,dInfo,isOK);
-                            end
-                        end
-                    end
-                else
-                    % sets the object constructor array
-                    hasDevice = true;
-                    dVTemp = get(dInfo(i),'Vendor');
-                    ssObj = get(dInfo(i),'Subsystems');                    
-                    ssType = arrayfun(@(x)...
-                                    (get(x,'SubsystemType')),ssObj,'un',0);
-                    ssObj = ssObj(strcmp(ssType,'AnalogOutput'));        
-
-                    % sets the sub-system data struct
-                    mType = get(ssObj,'DefaultMeasurementType');
-                    ssStr = struct('ID',get(dInfo(i),'ID'),...
-                                   'chName',[],'mType',mType);
-                    ssStr.chName = get(ssObj,'ChannelNames');                   
-                    objCon = {get(dInfo(i),'ID'),dStr{i},ssStr};
-
-                    % appends the data to the data struct        
-                    [daqInfo.dType,daqInfo.sType] = deal({'DAC','Motor'});
-                    daqInfo.Control = [daqInfo.Control;cell(1)];
-                    daqInfo.BoardNames = ...
-                            [daqInfo.BoardNames;{get(dVTemp,'FullName')}];
-                    daqInfo.InstalledBoardIds = ...
-                            [daqInfo.InstalledBoardIds,{1}];
-                    daqInfo.ObjectConstructorName = ...
-                            [daqInfo.ObjectConstructorName;objCon];
-                end
+            
+            % --------------------------------- %
+            % --- EXTERNAL DEVICE DETECTION --- %
+            % --------------------------------- %   
+            
+            % determines the external devices (if available)
+            if ~isempty(obj.extnObj)
+                daqInfo = obj.extnObj.detectExtnDevices(daqInfo); 
+                hasDevice = ~isempty(obj.extnObj.devStr);
             end
 
+            % -------------------------------------- %
+            % --- BFKLAB SERIAL DEVICE DETECTION --- %
+            % -------------------------------------- %
+            
             % closes and deletes any open serial ports
             hh = instrfind();
             if ~isempty(hh)
@@ -907,10 +864,9 @@ classdef AdaptorInfoClass < handle
             % if there are any valid devices then retrieve their details
             pStr = findSerialPort(sStr);
             if ~isempty(pStr)
-                % sets the object details    
-                vStr = {'Motor','Opto'};
-                daqInfo = appendSerialInfo(daqInfo,pStr,vStr);  
-                hasDevice = ~isempty(daqInfo.Control);
+                % sets the object details                    
+                daqInfo = appendSerialInfo(daqInfo,pStr,obj.vStr);  
+                hasDevice = ~isempty(daqInfo.Control) || hasDevice;
             end        
         end
         
@@ -978,28 +934,7 @@ classdef AdaptorInfoClass < handle
     end
     
     % static class methods
-    methods (Static)
-        
-        % --- appends the new DAQ information to the data struct
-        function A = appendDAQInfo(A,Anw,isOK)
-
-            % sets the new boardname strings
-            bNameNw = cellfun(@(x)(sprintf('%s - %s',Anw.AdaptorName,x)),...
-                                    Anw.BoardNames(isOK),'un',0);
-
-            % appends the required fields
-            A.ObjectConstructorName = [A.ObjectConstructorName;...
-                                       Anw.ObjectConstructorName(isOK,:)];
-            A.InstalledBoardIds = [A.InstalledBoardIds,...
-                                   Anw.InstalledBoardIds(isOK)];
-            A.BoardNames = [A.BoardNames,bNameNw];
-
-            % creates spaces for the other fields
-            A.dType = [A.dType,repmat({'DAC'},1,sum(isOK))];
-            A.sType = [A.sType,repmat({'Motor'},1,sum(isOK))];
-            A.Control = [A.Control,cell(1,sum(isOK))];
-
-        end
+    methods (Static)        
         
         % --- initialises the daq information structs
         function objDAQInfo = initDAQInfoStruct()

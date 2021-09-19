@@ -9,9 +9,10 @@ if (nargin == 2); ind = find(strcmp(objDAQ.dType,'DAC')); end
 
 % sets the sampling rate fields (if not provided)
 if verLessThan('matlab','9.2')
-    if (length(sRate) > 1)
-        if (length(sRate) ~= length(ind))
-            eStr = 'Error! Incorrect sampling rate array applied to DAC devices.';
+    if length(sRate) > 1
+        if length(sRate) ~= length(ind)
+            eStr = ['Error! Incorrect sampling rate array ',...
+                    'applied to DAC devices.'];
             waitfor(errordlg(eStr,'Incorrect Sample Rate','modal'))
             objDAC = [];
             return
@@ -22,13 +23,13 @@ if verLessThan('matlab','9.2')
     end
 else
     % resets the daq devices
-    daq.reset;
+    daqreset;
 end
     
 % sets the important fields
-nChannel = objDAQ.nChannel(ind);
 vStrDAQ = objDAQ.vStrDAQ(ind);
 iChannel = objDAQ.iChannel(ind);
+nChannel = objDAQ.nChannel(ind);
 
 % memory allocation
 objDAC = cell(length(ind),1);
@@ -36,8 +37,9 @@ objDAC = cell(length(ind),1);
 % otherwise, set the video object to the user selection
 for i = 1:length(ind)
     % creates the motor object
-    if (isempty(objDAQ.ObjectConstructorName{ind(i),2}))
-        eStr = sprintf('Warning! The adaptor "%s" is not connected!',vStrDAQ{i});
+    if isempty(objDAQ.ObjectConstructorName{ind(i),2})
+        eStr = sprintf('Warning! The adaptor "%s" is not connected!',...
+                        vStrDAQ{i});
         waitfor(warndlg(eStr,'Missing DAC Adaptor','modal'));
     else
         % otherwise, evaluate the object constructor name string
@@ -45,24 +47,15 @@ for i = 1:length(ind)
         iCh = 1:nChannel(i);
         
         % sets up the device based on the matlab release
-        if (verLessThan('matlab','9.2'))
-            % case is the older device handling code
-            objDAC{i} = eval(objDAQ.ObjectConstructorName{j,2});
+        dID = objDAQ.ObjectConstructorName{j,2};
+        ssStr = objDAQ.ObjectConstructorName{j,3};
+        objDAC{i} = daq.createSession(dID);
             
-            % adds a channel to the motor object and set the properties
-            addchannel(objDAC{i}, iChannel{i}(iCh));
-            set(objDAC{i},'TriggerType','Immediate','SampleRate',sRate(i));    
-        else
-            % case is the newer device handling code            
-            dID = objDAQ.ObjectConstructorName{j,2};
-            ssStr = objDAQ.ObjectConstructorName{j,3};
-            objDAC{i} = daq.createSession(dID);
-            
-            % adds a channel to the motor object and set the properties
-            wState = warning('off','all');
-            objDAC{i}.addAnalogOutputChannel(ssStr.ID,ssStr.chName(iCh),ssStr.mType);
-            warning(wState)
-        end                                 
+        % adds a channel to the motor object and set the properties
+        wState = warning('off','all');
+        objDAC{i}.addAnalogOutputChannel...
+                            (ssStr.ID,ssStr.chName(iCh),ssStr.mType);
+        warning(wState)                               
     end
 end
 

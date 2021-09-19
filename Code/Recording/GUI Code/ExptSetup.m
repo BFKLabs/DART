@@ -85,12 +85,16 @@ switch infoObj.exType
         % retrives the device types from the device information struct
         devType = infoObj.objDAQ.sType;
         nCh = infoObj.objDAQ.nChannel;
+        extnObj = feval('runExternPackage','ExtnDevices');
 
         % sets the device channel counts
         infoObj.iStim.nChannel(1:length(nCh)) = nCh;
         
         % updates the opto menu gui properties
-        setRecordGUIProps(handles,'InitOptoMenuItems')        
+        setRecordGUIProps(handles,'InitOptoMenuItems') 
+        
+        % sets the external device class object
+        setappdata(hObject,'extnObj',extnObj);
 
 end
 
@@ -525,16 +529,20 @@ if resetStimTrain
     end        
 end    
 
-% sets the short-term protocol units to seconds
-for i = 1:length(sTrain.S)
-    sTrain.S{i}.tDurU = 's';
-end
+if ~isempty(sTrain)
+    % sets the short-term protocol units to seconds
+    if ~isempty(sTrain.S)
+        for i = 1:length(sTrain.S)
+            sTrain.S{i}.tDurU = 's';
+        end
+    end
 
-% ensures that the short-term stimuli duration units are set to seconds
-if ~isempty(sTrain.Ex)
-    for i = 1:length(sTrain.Ex.sType)
-        if strContains(sTrain.Ex.sType{i},'Short-Term')
-            sTrain.Ex.sTrain(i).tDurU = 's';
+    % ensures that the short-term stimuli duration units are set to seconds
+    if ~isempty(sTrain.Ex)
+        for i = 1:length(sTrain.Ex.sType)
+            if strContains(sTrain.Ex.sType{i},'Short-Term')
+                sTrain.Ex.sTrain(i).tDurU = 's';
+            end
         end
     end
 end
@@ -2606,9 +2614,9 @@ end
 hFig = handles.figExptSetup;
 
 % retrieves the parameter data struct
-hMain = getappdata(hFig,'hMain');
 chInfo = getappdata(hFig,'chInfo');
 infoObj = getappdata(hFig,'infoObj');
+extnObj = getappdata(hFig,'extnObj');
 
 % retrieves the current stimuli train information
 sTrainC = getStimTrainInfo(handles);
@@ -2619,51 +2627,48 @@ sTrainC = getStimTrainInfo(handles);
 
 % sets up the signals for the devices 
 iStim = infoObj.iStim;
+objDAQ = infoObj.objDAQ; 
 sRate = field2cell(iStim.oPara,'sRate',1);
 xySig = setupDACSignal(sTrainC,chInfo,1./sRate);
 iDev = find(cellfun(@(x)(~all(cellfun(@isempty,x(:,1)))),xySig));
 
-% retrieves the important fields (based on whether testing or not)
-if isempty(hMain)
-    % test case
-    nDev = length(xySig);
-    isDAC = false(nDev,1);
-    sRate = 50*ones(nDev,1);  
-    objDAQ = [];
+% sets the sample rate for the device(s)
+if max(iDev) > length(iStim.oPara)
+    sRate = iStim.oPara(iDev(1)).sRate*ones(length(iDev),1);
 else
-    % proper case
-    objDAQ = infoObj.objDAQ;    
-    isDAC = strcmp(objDAQ.dType(iDev),'DAC');
+    sRate = field2cell(iStim.oPara(iDev),'sRate',1);
+end
+
+% determines if the serial 
+if any(strcmp(objDAQ.dType(iDev),'Serial'))
+    % if so, set up the serial controller devices
+    objDev = {setupSerialDevice(objDAQ,'Test',xySig(iDev),sRate,iDev)}; 
     
-    % sets the sample rate for the device(s)
-    if max(iDev) > length(iStim.oPara)
-        sRate = iStim.oPara(iDev(1)).sRate*ones(length(iDev),1);
+else
+    % creates a loadbar
+    h = ProgressLoadbar('Setting Up External Devices...');
+    
+    % creates the external device timer objects    
+    if isempty(extnObj)
+        % if there was an error, then set an empty array
+        objDev = {[]};
     else
-        sRate = field2cell(iStim.oPara(iDev),'sRate',1);
+        % setsup the external devices for the stimuli test
+        extnObj.setupExtnDeviceTest(objDAQ,xySig,iDev)
+        objDev = {extnObj.objD};        
     end
-    
-    % initialisations
-    nDev = sum(isDAC) + any(~isDAC);       
-end
 
-% memory allocation
-objDev = cell(nDev,1); 
-
-% determines if there are any DAC devices being tested
-if any(isDAC)
-    % if so, create the DAC objects
-    objDev(isDAC) = createDACObjects(objDAQ,sRate(iD),iD);
-    
-    % sets up and runs the device (if objects are valid)    
-    if (~isempty(objDev)) 
-        objDev(isDAC) = setupDACDevice(objDev(isDAC),'Test',YYtot(isDAC));                                                    
-    end    
-end
-
-% if so, set up the serial controller devices
-if any(~isDAC)
-    objDev{sum(isDAC)+1} = setupSerialDevice(...
-                                objDAQ,'Test',xySig(iDev),sRate,iDev);   
+    % closes the loadbar
+    delete(h); 
+    if isempty(objDev{1})
+        % if there was in error in setup, then output an error to screen
+        eStr = 'There was an error in detecting the external devices.';
+        waitfor(msgbox(eStr,'Device Setup Error','modal'))
+        
+        % resets the toggle button properties
+        set(hObject,'string','Test Stimuli Train','Value',0);   
+        return
+    end
 end
 
 % ------------------------ %
@@ -3383,6 +3388,7 @@ end
 if strcmp(devType{1},'RecordOnly')
     % if recording only, then no need to set the channel info array
     chInfo = [];
+    
 else
     % otherwise, setup the device type strings
     [devTypeT,isFound] = deal(devType,false(nDev,1));
