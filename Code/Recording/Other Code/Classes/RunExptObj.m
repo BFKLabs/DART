@@ -12,6 +12,7 @@ classdef RunExptObj < handle
         objDev  
         objDRT
         spixObj
+        extnObj
                 
         % data structs/timers
         iExpt
@@ -98,7 +99,7 @@ classdef RunExptObj < handle
             infoObj = getappdata(obj.hMain,'infoObj');
             obj.hasDAQ = infoObj.hasDAQ;
             obj.hasIMAQ = infoObj.hasIMAQ;
-            obj.objIMAQ = infoObj.objIMAQ;                
+            obj.objIMAQ = infoObj.objIMAQ;               
             
             %
             switch obj.vidType
@@ -111,7 +112,8 @@ classdef RunExptObj < handle
                     % retrieves the stimuli/experiment data structs 
                     obj.hExptF = hExptF;   
                     iExpt0 = getappdata(obj.hExptF,'iExpt');                    
-                    obj.sTrain = getappdata(obj.hExptF,'sTrain'); 
+                    obj.sTrain = getappdata(obj.hExptF,'sTrain');
+                    obj.extnObj = getappdata(obj.hExptF,'extnObj');
                     obj.iStim = infoObj.iStim;
                     
                     % sets the other fields
@@ -156,8 +158,12 @@ classdef RunExptObj < handle
         % --- initialises the experiment object
         function initExptObjFields(obj)
             
+            % creates a loadbar            
+            h = ProgressLoadbar('Initialising Experiment Objects...');
+            
             % initialises the camera properties (if recording)
             if obj.hasIMAQ
+                h.StatusMessage = 'Initialising Camera Properties...';                
                 obj.initCameraProperties();
             end
             
@@ -179,43 +185,53 @@ classdef RunExptObj < handle
             if ~isempty(obj.sTrain)
                 % sets the DAC device flags
                 obj.hasDAC = any(strcmp(obj.objDAQ.dType{1},'DAC'));
+                
+                % sets up the stimuli signals for the experiment
                 if ~obj.isRT
-                    % sets up the stimuli signals for the experiment
+                    h.StatusMessage = 'Setting Up Stimuli Signals...';
                     obj.setupExptStimSignals(); 
                 end
             end     
 
             % creates the experiment progress summary GUI
+            h.StatusMessage = 'Setting Up Experiment Progress Dialog...';
             obj.hProg = ExptProgress(obj); 
-            pause(0.05)            
+            pause(0.05)
+            
+            % resets the loadbar to be on top
+            figure(h.Control)
 
             % sets the video parameter structs
             if ~isempty(obj.ExptSig)
+                % updates the progress bar
+                h.StatusMessage = 'Setting Up Stimuli Devices...';
+                
                 % initialisations and array dimensioning                
                 ID = field2cell(obj.ExptSig,'ID',1);                
-                isD = strcmp(obj.objDAQ.dType(unique(ID(:,1))),'DAC');
+                isS = strcmp(obj.objDAQ.dType(unique(ID(:,1))),'Serial');
                 nCh = size(unique(ID,'rows'),1);
 
                 % memory allocations
-                nDAC = sum(isD);
-                nCont = nDAC + any(~isD);
+                nCont = 1;
                 obj.nCountD = zeros(nCh,1);
                 obj.objDev = cell(nCont,1);                   
 
-                % sets up the DAC devices (if any)
-                if any(isD)
-                    % memory allocation
-                    objDACT = createDACObjects(obj.objDAQ,50);        
-                    if ~isempty(objDACT)
-                        obj.objDev(isD) = setupDACDevice(...
-                                    objDACT,'Expt',obj.ExptSig,obj.hProg);        
-                    end                
-                end
-
-                % sets up the serial devices (if any)
-                if any(~isD)
-                    obj.objDev{nDAC+1} = setupSerialDevice(...
-                                obj.objDAQ,'Expt',obj,find(~isD));         
+                % sets up the stimuli devices 
+                if any(isS)     
+                    % case is serial stimuli devices
+                    obj.objDev{1} = setupSerialDevice(...
+                                obj.objDAQ,'Expt',obj,find(isS));                    
+                else
+                    % case is external stimuli devices
+                    obj.extnObj.setupExtnDeviceExpt(obj,find(~isS));
+                    obj.objDev{1} = obj.extnObj.objD;
+                    
+%                     % case is external devices
+%                     objDACT = createDACObjects(obj.objDAQ,50);        
+%                     if ~isempty(objDACT)
+%                         obj.objDev(isD) = setupDACDevice(...
+%                                     objDACT,'Expt',obj.ExptSig,obj.hProg);        
+%                     end
                 end    
 
                 % sets the stimuli flags for each device
@@ -228,9 +244,12 @@ classdef RunExptObj < handle
 
             % updates the fields of the progress-bar gui
             setappdata(obj.hProg,'sFunc',@obj.saveSummaryFile);
-            setappdata(obj.hProg,'iExpt',obj.iExpt)            
+            setappdata(obj.hProg,'iExpt',obj.iExpt)   
+            
+            % deletes the progressbar
+            try; delete(h); end
 
-            % initalises the countdown/experiment timers
+            % initalises the countdown/experiment timers            
             obj.initExptTimer();
             obj.initCDownTimer();
             obj.saveSummaryFile();
@@ -590,14 +609,14 @@ classdef RunExptObj < handle
             if ~isempty(obj.sTrain)
                 if ~isempty(obj.sTrain.Ex)
                     if obj.hasDAC
-                        obj.resetDACDevice()    
-                    end                                                   
-
-                    % stops any of the serial devices
-                    isS = cellfun(@(x)(isa(x,'StimObj')),obj.objDev);
-                    for i = find(isS(:)')
-                        obj.objDev{i}.stopAllDevices();
-                    end                    
+                        daqreset 
+                    else
+                        % stops any of the serial devices
+                        isS = cellfun(@(x)(isa(x,'StimObj')),obj.objDev);
+                        for i = find(isS(:)')
+                            obj.objDev{i}.stopAllDevices();
+                        end                         
+                    end                                                                      
                 end      
             end
 
@@ -1149,54 +1168,22 @@ classdef RunExptObj < handle
         
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %
-        % ------------------------------- %       
-
-        % --- resets the DAC device
-        function resetDACDevice(obj)
-
-            if verLessThan('matlab','9.2')
-                % determines the DAC types         
-                for i = 1:length(obj.objDev)
-                    % zeros the DAC device and deletes it
-                    if isa(obj.objDev{i},'analogoutput')
-                        while 1
-                            try
-                                % attempts to reset the DAC with zeros
-                                putdata(obj.objDev{i},...
-                                    zeros(1,obj.iStim.nChannel(i)));                                                
-                                start(obj.objDev{i});                            
-
-                                % exits the loop
-                                break
-                            catch ME
-                                % if there was an error, then pause for 
-                                % a short time...
-                                pause(0.05)
-                            end
-                        end
-
-                        % deletes the DAC object
-                        delete(obj.objDev{i})
-                    end
-                end                
-            else
-                % resets the dac devices
-                daq.reset;
-            end        
-        
-        end        
+        % ------------------------------- %          
         
         % --- force stops any serial devices
         function forceStopDevices(obj)
                    
             % initialisations and array dimensioning                
             ID = field2cell(obj.ExptSig,'ID',1);                
-            isD = strcmp(obj.objDAQ.dType(unique(ID(:,1))),'DAC');        
+            isS = strcmp(obj.objDAQ.dType(unique(ID(:,1))),'Serial');        
 
             % function only applies to serial devices
-            if any(~isD)
+            if any(isS)
                 % for each serial device, write zero signals to the devices
-                obj.objDev{end}.forceStopDevices()            
+                obj.objDev{1}.forceStopDevices()   
+            else
+                % finish me!
+                
             end
         
         end

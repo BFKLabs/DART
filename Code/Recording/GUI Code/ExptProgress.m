@@ -49,6 +49,7 @@ setappdata(hObject,'hBut',handles.buttonAbort);
 
 % Update handles structure
 guidata(hObject, handles);
+setObjVisibility(hObject,'off')
 
 % UIWAIT makes ExptProgress wait for user response (see UIRESUME)
 % uiwait(handles.figExptProg);
