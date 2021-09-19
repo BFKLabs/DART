@@ -133,20 +133,20 @@ X0 = 10;
 hGUI = getappdata(handles.figDevicePara,'hGUI');
 [iStim,dInfo] = deal(getappdata(hGUI,'iStim'),getappdata(hGUI,'objDAQ'));
 [nDACObj,oPara] = deal(length(iStim.oPara),iStim.oPara);
-[isDAC,cWid] = deal(~strcmp(dInfo.dType,'Serial'),{106,106,126});
+[isSer,cWid] = deal(strcmp(dInfo.dType,'Serial'),{106,106,126});
 cName = {'Min Voltage (V)','Max Voltage (V)','Sample Rate (Hz)'};
 
 % sets the data values for each 
-Data = cell(nDACObj,2+isDAC);
+Data = cell(nDACObj,2+isSer);
 for i = 1:nDACObj
     Data(i,1:2) = num2cell([oPara(i).vMin oPara(i).vMax]);
-    if (isDAC); Data{i,3} = oPara(i).sRate; end
+    if (isSer); Data{i,3} = oPara(i).sRate; end
 end
 
 % sets the table row names
 rowName = cellfun(@(x)(sprintf('Device #%i',x)),...
                             num2cell(1:nDACObj)','un',false);
-tPos = [X0*[1 1],(100+sum(cell2mat(cWid(1:(2+isDAC))))),(H0T+nDACObj*HWT)];
+tPos = [X0*[1 1],(100+sum(cell2mat(cWid(1:(2+isSer))))),(H0T+nDACObj*HWT)];
 pPos = [X0*[1 1],tPos(3:4)+2*X0];   
 
 % sets the table data
@@ -154,8 +154,8 @@ resetObjPos(handles.figDevicePara,'width',pPos(3)+2*X0)
 resetObjPos(handles.figDevicePara,'height',pPos(4)+2*X0)
 set(handles.panelStimDevice,'position',pPos)
 set(handles.tableDevicePara,'Data',Data,'RowName',rowName,...
-                'ColumnWidth',cWid(1:(2+isDAC)),'Position',tPos,...
-                'ColumnName',cName(1:(2+isDAC)))
+                'ColumnWidth',cWid(1:(2+isSer)),'Position',tPos,...
+                'ColumnName',cName(1:(2+isSer)))
                         
 % resizes the table                        
 autoResizeTableColumns(handles.tableDevicePara);                        

@@ -2,13 +2,13 @@
 function objDAC = setupDACDeviceNew(objDACT,dacType,varargin)
 
 % global variables
-global nMaxD hSumm isError isRT
+global nMaxD hSumm isError
 
 % sets the dac device properties based on the setup type
-switch (dacType)
+switch dacType
     case ('Test') % case is testing the DAC devices
         % sets the input arguments
-        YYtot = varargin{1};
+        xySig = varargin{1};
                 
         % memory allocation
         [objDAC,nDAC] = deal(cell(1,length(objDACT)),length(objDACT));                
@@ -23,7 +23,7 @@ switch (dacType)
             end
             
             % determines the details of when there is an event change            
-            [yChng,tChng] = detEventChange(YYtot{i},1/sRate);
+            [yChng,tChng] = detEventChange(xySig{i},1/sRate);
             
             % sets the timer callback functions
             fcnS = {@dacStart,objDACT{i},yChng};

@@ -3,7 +3,7 @@ function [dStr,varargout] = getInstalledDeviceVendors(varargin)
 
 try
     % determines the currently detected vendors
-    dVendor = daq.getVendors;    
+    dVendor = daqvendorlist;    
 catch
     % clears the screen of the error message
     pause(0.05); 
@@ -29,7 +29,7 @@ end
 % removes any non-operational devices
 if (nargin == 1)
     % removes the non-operational devices
-    [dStr,fStr,dInfo] = deal(dStr(isOper),fStr(isOper),daq.getDevices);        
+    [dStr,fStr,dInfo] = deal(dStr(isOper),fStr(isOper),daqlist);        
     if (isempty(dInfo))
         % sets the final function outputs 
         [dStr,varargout{1}] = deal([],[]);        
