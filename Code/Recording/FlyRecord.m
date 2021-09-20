@@ -253,7 +253,9 @@ if isequal(fldNamesNw,fldNames)
                 case ('FrameRate')
                     set(srcObjNw,fldNames{i},srcObjNw.FrameRate)
                 otherwise
-                    set(srcObjNw,fldNames{i},pVal0{i})
+                    try
+                        set(srcObjNw,fldNames{i},pVal0{i})
+                    end
             end
         end
     end

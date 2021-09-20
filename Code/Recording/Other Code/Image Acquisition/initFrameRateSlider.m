@@ -25,5 +25,11 @@ end
 
 % sets the slider properties
 fRateNum = max(min(fRateNum,fpsLimR(2)),fpsLimR(1));
-set(hSlider,'Min',fpsLimR(1),'Max',fpsLimR(2),'Value',fRateNum,...
-            'SliderStep',(pW/diff(fpsLimR))*[1,1]);    
+if diff(fpsLimR) == 0
+    dS = 1e-6;
+    set(hSlider,'Min',fpsLimR(1),'Max',fpsLimR(1)+dS,'Value',fRateNum,...
+                'SliderStep',dS*[1,1],'enable','off');       
+else
+    set(hSlider,'Min',fpsLimR(1),'Max',fpsLimR(2),'Value',fRateNum,...
+                'SliderStep',(pW/diff(fpsLimR))*[1,1],'enable','on');    
+end

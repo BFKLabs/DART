@@ -575,10 +575,15 @@ classdef AdaptorInfoClass < handle
             end
 
             % updates the drop-down box
-            if ~isa(eventdata,'char')
+            if ~isa(eventdata,'char')                
+                % sets the video resolution/format strings
+                popStr = obj.sFormat{obj.vSelIMAQ};
+                
+                % updates the object properties
                 setObjEnable(handles.textVidResolution,'on')
-                set(handles.popupVidResolution,'string',...
-                           obj.sFormat{obj.vSelIMAQ},'enable','on','max',1)
+                set(handles.popupVidResolution,'string',popStr,'max',1)
+                setObjEnable(handles.popupVidResolution,length(popStr)>1)
+                
                 if obj.sInd(obj.vSelIMAQ) > 0
                     % updates the selection
                     iResNew = obj.sInd(obj.vSelIMAQ);
@@ -823,6 +828,12 @@ classdef AdaptorInfoClass < handle
                                 (str2double(x{3}) <= obj.Hmax),sFormatS);
                         sFormat{i} = A(isFeas);
                     end
+                elseif any(strContains(A,'Mono8'))
+                    % removes any non Mono8 fields
+                    A = A(:);
+                    hasMono = strContains(A,'Mono');
+                    isMono8 = strContains(A,'Mono8');
+                    sFormat{i} = [A(~hasMono);A(isMono8)];
                 else
                     sFormat{i} = A(:);
                 end

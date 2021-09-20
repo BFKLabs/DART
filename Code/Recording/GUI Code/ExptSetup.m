@@ -4804,6 +4804,7 @@ if infoObj.hasIMAQ
         % case is a variable frame rate camera
         initFrameRateSlider(hSlider,srcObj,fRateNum)
         sliderFrmRate_Callback(hSlider, [], handles) 
+        setObjVisibility(hPopup,'off')
     else
         % case is a fixed frame rate camera
         iSel = find(strcmp(fRate,num2str(iExpt.Video.FPS)));  
@@ -4856,7 +4857,6 @@ if infoObj.hasIMAQ
     end        
     
     % sets the object visibility flags
-    setObjVisibility(hPopup,~isVarFPS)
     setObjVisibility(hTxt,isVarFPS)
     setObjVisibility(hSlider,isVarFPS)    
 else

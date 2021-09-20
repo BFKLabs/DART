@@ -12,6 +12,8 @@ A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
 objDAQ = objDAQ0;
 if isempty(objDAQ)
     return    
+elseif isempty(objDAQ.dType)
+    return    
 end
 
 % sets the selection indices (if not provided)
