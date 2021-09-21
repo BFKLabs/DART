@@ -286,6 +286,9 @@ classdef OpenSolnFuncTab < dynamicprops & handle
         %     adding/remove loaded experiments)
         function updateFuncDepTable(obj)
             
+            % if no experiments are loaded, then exit
+            if obj.nExp == 0; return; end
+            
             % field retrieval
             jTableMod = obj.jTable.getModel();
             jTableMod.fireTableStructureChanged()

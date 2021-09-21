@@ -245,7 +245,10 @@ h.Update(1+wOfs,'Final House-Keeping Operations...',1.0);
 
 % separates the acceptance flags (if stored in a cell array)
 if iscell(snTot.iMov.flyok)
-    snTot.iMov.flyok = splitAcceptanceFlags(snTot);
+    % separates the multi-experiment group names
+    gName = separateMultiExptGroupNames(snTot);       
+    snTot.iMov.pInfo.gName = gName;        
+    snTot = splitAcceptanceFlags(snTot);
 end
 
 % determines if the configuration ID flags need to be reset
@@ -267,7 +270,8 @@ if sepData
     
     % resets the configuration ID flags (if required)
     if resetID
-        snTot.cID = setupFlyLocID(snTot.iMov);
+        snTot.cID = setupFlyLocID(snTot.iMov);        
+        snTot.iMov.ok = ~cellfun(@isempty,snTot.cID);
     end
 end
 

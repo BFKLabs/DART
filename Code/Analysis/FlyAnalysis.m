@@ -314,7 +314,7 @@ for i = 1:length(sInfo)
     snTot{i}.iMov.pInfo.gName = gName;
     
     % converts the data value arrays for the new format files
-    snTot{i}.iMov.flyok = splitAcceptanceFlags(snTot{i});
+    snTot{i} = splitAcceptanceFlags(snTot{i});
     sInfo{i}.snTot = convertDataArrays(snTot{i});
     sInfo{i}.snTot.iMov = reduceRegionInfo(sInfo{i}.snTot.iMov);  
     sInfo{i}.gName = gName;

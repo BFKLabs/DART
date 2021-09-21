@@ -9,11 +9,17 @@ if iMov.is2D
     iGrp = iMov.pInfo.iGrp;
     
     % sets the group numbers and group indices
-    [gNameU,~,iC] = unique(iMov.pInfo.gName,'Stable');
-    nGrp = length(gNameU);  
-    
-    % loops through each group setting the row/column/group indices
+    if isSave
+        [~,~,iC] = unique(iMov.pInfo.gName,'Stable');
+    else
+        iC = 1:length(iMov.pInfo.gName);
+    end
+        
+    % memory allocation
+    nGrp = max(iC);  
     cID = cell(nGrp,1);
+
+    % loops through each group setting the row/column/group indices    
     for i = 1:length(iC)
         [iy,ix] = find(iGrp==i);
         cID{iC(i)} = [cID{iC(i)};[iy,ix,i*ones(length(ix),1)]];

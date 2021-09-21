@@ -206,7 +206,7 @@ grpName = grpName(hasG);
 % loops through each of the loaded 
 for i = 1:length(sInfo)
     % sets the group to overall group linking indices
-    indL = cellfun(@(y)(find(strcmp(gName{i},y))),grpName,'un',0);       
+    indL = cellfun(@(y)(find(strcmp(gName{i},y))),grpName,'un',0);        
     
     % removes any extraneous fields    
     sInfo{i}.snTot = reduceExptSolnFiles(sInfo{i}.snTot,indL,grpName);

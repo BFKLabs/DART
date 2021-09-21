@@ -62,15 +62,19 @@ for i = 1:nApp
 
             % reduces down the x-location scale values
             if ~isempty(snTot.pMapPx)                
-                pMapX(i).xMin = cell2mat(field2cell(snTot.pMapPx(ii),'xMin'));
-                pMapX(i).xMax = cell2mat(field2cell(snTot.pMapPx(ii),'xMax'));
+                pMapX(i).xMin = ...
+                        cell2mat(field2cell(snTot.pMapPx(ii),'xMin'));
+                pMapX(i).xMax = ...
+                        cell2mat(field2cell(snTot.pMapPx(ii),'xMax'));
             end
             
             % reduces down the y-location scale values
             if ~isempty(snTot.pMapPy)
                 if (i == 1); pMapY = repmat(snTot.pMapPy(1),nApp,1); end
-                pMapY(i).xMin = cell2mat(field2cell(snTot.pMapPy(iNw),'xMin'));
-                pMapY(i).xMax = cell2mat(field2cell(snTot.pMapPy(iNw),'xMax'));        
+                pMapY(i).xMin = ...
+                        cell2mat(field2cell(snTot.pMapPy(iNw),'xMin'));
+                pMapY(i).xMax = ...
+                        cell2mat(field2cell(snTot.pMapPy(iNw),'xMax'));        
             end
 
             % reduces down the sub-region acceptance flags

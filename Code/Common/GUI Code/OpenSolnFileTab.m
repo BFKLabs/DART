@@ -1051,9 +1051,9 @@ classdef OpenSolnFileTab < dynamicprops & handle
                             snTotNw(j).iMov = ...
                                         reduceRegionInfo(snTotNw(j).iMov);
                                     
-                            % separates the multi-experiment group names
-                            gName = separateMultiExptGroupNames(snTotNw(j)); 
-                            snTotNw(j).iMov.pInfo.gName = gName;
+%                             % separates the multi-experiment group names
+%                             gName = separateMultiExptGroupNames(snTotNw(j)); 
+%                             snTotNw(j).iMov.pInfo.gName = gName;
                         end
 
                         % case is a group of multiexperiment solution files

@@ -563,6 +563,9 @@ for i = 1:N
                             ['Ensure that the image file is closed ',...
                              'and the filename is valid.']};
                     waitfor(errordlg(eStr,'Figure Output Error','modal'))
+                    
+                    % REMOVE ME
+                    fprintf('Error = %s\n',ME.message);
                 end
         end
     end
