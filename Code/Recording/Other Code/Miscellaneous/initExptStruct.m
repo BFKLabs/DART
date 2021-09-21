@@ -32,9 +32,16 @@ Video = struct('nCount',[],'Ts',[],'Tf',[],'FPS',5,...
 
 % sets the sub-struct fields
 if ~isempty(objIMAQ)
+    % sets the camera frame rate
     [fRate,~,iSel] = detCameraFrameRate(getselectedsource(objIMAQ),[]);
-    Video.FPS = fRate(iSel);          
-end           
+    Video.FPS = fRate(iSel); 
+    
+    % sets the camera specific properties
+    switch get(obj.objIMAQ,'Name')
+        case 'Logitech Webcam Pro 9000'
+            Timing.Tp = 10;
+    end
+end 
            
 % final struct initialisation
 iExpt = struct('Info',Info,'Timing',Timing,'Video',Video);

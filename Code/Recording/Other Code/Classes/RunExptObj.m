@@ -110,13 +110,15 @@ classdef RunExptObj < handle
                     isRTExpt = varargin{3};                     
             
                     % retrieves the stimuli/experiment data structs 
-                    obj.hExptF = hExptF;   
-                    iExpt0 = getappdata(obj.hExptF,'iExpt');                    
+                    obj.hExptF = hExptF;                                       
                     obj.sTrain = getappdata(obj.hExptF,'sTrain');
                     obj.extnObj = getappdata(obj.hExptF,'extnObj');
-                    obj.iStim = infoObj.iStim;
+                    
+                    % sets up the experiment data struct
+                    iExpt0 = obj.getExptDataStruct();                
                     
                     % sets the other fields
+                    obj.iStim = infoObj.iStim;
                     [obj.iExpt,obj.iExpt0] = deal(iExpt0);    
                     [obj.isRT,obj.isRTB] = deal(isRTExpt,isRTBatch); 
                     
@@ -424,6 +426,14 @@ classdef RunExptObj < handle
                 obj.isConvert = strcmp(uChoice,'Yes');
             end     
             
+        end        
+        
+        % --- retrieves the experiment data struct
+        function iExpt = getExptDataStruct(obj)
+
+            % retrieve experiment data struct
+            iExpt = getappdata(obj.hExptF,'iExpt');              
+
         end        
         
         % ----------------------------------------------- %        
