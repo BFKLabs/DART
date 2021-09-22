@@ -37,7 +37,7 @@ if ~isempty(objIMAQ)
     Video.FPS = fRate(iSel); 
     
     % sets the camera specific properties
-    switch get(obj.objIMAQ,'Name')
+    switch get(objIMAQ,'Name')
         case 'Logitech Webcam Pro 9000'
             Timing.Tp = 10;
     end
