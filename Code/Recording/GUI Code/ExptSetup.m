@@ -415,7 +415,11 @@ set(handles.radioFixedStartTime,'Value',iExpt.Timing.fixedT0)
 panelExptStartTime_SelectionChangedFcn(hPanel, '1', handles)
 
 % initialises the GUI object properties
+pType0 = getappdata(hFig,'pType');
 initObjProps(handles,devType,nCh,false)
+
+% resets the selected tab 
+tabSelected(findall(hFig,'Title',pType0), [], handles)
 
 % -------------------------------------------------------------------------
 function menuOpenProto_Callback(hObject, eventdata, handles)
@@ -556,7 +560,11 @@ setappdata(hFig,'sTrain',sTrain)
 setappdata(hFig,'infoObj',infoObj)
 
 % initialises the object properties
+pType0 = getappdata(hFig,'pType');
 initObjProps(handles,dType(:)',nCh,false)
+
+% resets the selected tab 
+tabSelected(findall(hFig,'Title',pType0), [], handles)
 
 % -------------------------------------------------------------------------
 function menuSaveProto_Callback(hObject, eventdata, handles)
@@ -2630,17 +2638,19 @@ iStim = infoObj.iStim;
 objDAQ = infoObj.objDAQ; 
 sRate = field2cell(iStim.oPara,'sRate',1);
 xySig = setupDACSignal(sTrainC,chInfo,1./sRate);
+
+% determines the unique device indices
 iDev = find(cellfun(@(x)(~all(cellfun(@isempty,x(:,1)))),xySig));
 
 % sets the sample rate for the device(s)
 if max(iDev) > length(iStim.oPara)
-    sRate = iStim.oPara(iDev(1)).sRate*ones(length(iDev),1);
+    sRate = iStim.oPara(1).sRate*ones(length(iDev),1);
 else
     sRate = field2cell(iStim.oPara(iDev),'sRate',1);
 end
 
 % determines if the serial 
-if any(strcmp(objDAQ.dType(iDev),'Serial'))
+if any(strcmp(objDAQ.dType{iDev(1)},'Serial'))
     % if so, set up the serial controller devices
     objDev = {setupSerialDevice(objDAQ,'Test',xySig(iDev),sRate,iDev)}; 
     
@@ -3293,7 +3303,7 @@ hasStim = true;
 hasVid = ~strcmp(infoObj.exType,'StimOnly');
 nDev = length(devType);
 eStr = {'off','on'};
-devType = devType(:);
+devType = cellfun(@(x)(removeDeviceTypeNumbers(x)),devType(:),'un',0);
 
 % string arrays
 dType = {'Info','S','L','Ex'};  
@@ -3337,6 +3347,7 @@ else
     % initialises the axes limits 
     tDurExp = vec2time(iExpt.Timing.Texp,iExpt.Timing.TexpU);
     tLim = [sParaS.tDur,sParaL.tDur,tDurExp];
+    pType0 = getappdata(hFig,'pType');
     
     % updates the axes time limits using the train
     if ~isempty(sTrain)
@@ -3353,15 +3364,19 @@ else
         end
     end
     
-    % ensures any clear all buttons are run (if they are enabled)
+    % ensures any clear all buttons are run (if they are enabled)    
     for i = 2:3
-        hBut = getProtoObj(hFig,'buttonClearAll',dType{i});
+        % retrieves the clear all button object handle
         setappdata(hFig,'pType',tStr{i});
-        
+        hBut = getProtoObj(hFig,'buttonClearAll',dType{i});
         if strcmp(get(hBut,'Enable'),'on')
+            % if enabled, then clear all
             buttonClearAll(hBut, '1', handles)
         end
     end
+    
+    % resets the original protocol type
+    setappdata(hFig,'pType',pType0);
 end
 
 % calculates the axes global coordinates
@@ -4127,13 +4142,14 @@ axTIns = get(hAx,'TightInset');
 xTxt = xLim(1) - diff(xLim)*(axTIns(1)+3*tHght/4)/axPos(3);
 
 % memory allocation
-nDev = chInfo{end,1};
+sIDU = unique(cell2mat(chInfo(:,1)));
+nDev = length(sIDU);
 hText = zeros(nDev,1);
 
 % inserts the text label for each device
 for i = 1:nDev
     % determines the match and new 
-    iMatch = find(sID==i);
+    iMatch = find(sID==sIDU(i));
     devType = chInfo{size(chInfo,1)-(iMatch(1)-1),3};
     
     % creates the text object
@@ -7533,9 +7549,9 @@ if nargin == 3
 
                     % updates the signal block trace time-scale                       
                     hSigObj = uData{indFcn('hSigObj')};                        
-                    xS = arrayfun(@(x,pdx)(get(x,'xdata')-tMlt*...
+                    xS = arrayfun(@(x,pdx)(tMlt*get(x,'xdata')-tMlt*...
                                 (pdx+rPos0(1))),hSigObj,hDX,'un',0);
-                    cellfun(@(x,xs,dx)(set(x,'xdata',tMlt*xs+dx+rPos(1))),...
+                    cellfun(@(x,xs,dx)(set(x,'xdata',xs+dx+rPos(1))),...
                                 num2cell(hSigObj),xS,num2cell(hDX*tMlt))    
                 end
             end
@@ -7935,8 +7951,10 @@ else
     % determines the unique groupings, and from this determines if each
     % stimuli device is included in the analysis
     ii = cellfun(@(x)(find(strcmp(chInfo(:,2),x{1}) & ...
-                 strcmp(chInfo(:,3),x{2}))),num2cell(chInfoBlk,2));    
-    hasAllStim = length(unique(cell2mat(chInfo(ii,1)))) == chInfo{end,1};
+                 strcmp(chInfo(:,3),x{2}))),num2cell(chInfoBlk,2)); 
+             
+    nDev = length(unique(cell2mat(chInfo(:,1))));
+    hasAllStim = length(unique(cell2mat(chInfo(ii,1)))) == nDev;
 end
 
 % --- updates the experimental protocol parameter fields

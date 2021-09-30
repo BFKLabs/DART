@@ -107,7 +107,7 @@ h = ProgressLoadbar('Establishing Image Acquisition Device Connection...');
 % ----------------------------------------------- %
 
 % creates the image acquistion objects
-if infoObj.hasIMAQ
+if infoObj.hasIMAQ && isempty(infoObj.reqdConfig)
     infoObj = connectIMAQDevice(handles,infoObj);
 end
 
@@ -347,10 +347,14 @@ try
     end
 end
 
+% sets the channel count array (removes non-selected items)
+nCh = infoObj.nCh;
+nCh(~setGroup(infoObj.vSelDAQ(:),size(nCh))) = 0;
+
 % sets the DAC object information
 infoObj.objDAQ.iChannel = arrayfun(@(x)...
                 ((1:x)-1),infoObj.nCh(infoObj.vSelDAQ),'un',0)'; 
 infoObj.objDAQ.vSelDAQ = infoObj.vSelDAQ;
-infoObj.objDAQ.nChannel = infoObj.nCh;    
+infoObj.objDAQ.nChannel = nCh;    
 infoObj.objDAQ.vStrDAQ = infoObj.vStrDAQ;    
 infoObj.objDAQ.sRate = 50*ones(length(infoObj.vStrDAQ),1);   

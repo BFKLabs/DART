@@ -209,8 +209,10 @@ classdef RunExptObj < handle
                 h.StatusMessage = 'Setting Up Stimuli Devices...';
                 
                 % initialisations and array dimensioning                
-                ID = field2cell(obj.ExptSig,'ID',1);                
-                isS = strcmp(obj.objDAQ.dType(unique(ID(:,1))),'Serial');
+                ID = field2cell(obj.ExptSig,'ID',1);  
+                
+                [~,~,iC] = unique(ID(:,1));
+                isS = strcmp(obj.objDAQ.dType(unique(iC)),'Serial');
                 nCh = size(unique(ID,'rows'),1);
 
                 % memory allocations
@@ -1153,25 +1155,27 @@ classdef RunExptObj < handle
 
             % stores the information for each device
             for i = 1:nDev
-                % sets the signal data
-                obj.ExptSig(i).XY = xySigF{i};
+                if ~isempty(xySigF{i})
+                    % sets the signal data
+                    obj.ExptSig(i).XY = xySigF{i};
 
-                % retrieves channel ID flags for each device stimuli 
-                ii = find(~cellfun(@isempty,xySigF{i}(:,1)));
-                iChID = cell2mat(arrayfun(@(x)...
+                    % retrieves channel ID flags for each device stimuli 
+                    ii = find(~cellfun(@isempty,xySigF{i}(:,1)));
+                    iChID = cell2mat(arrayfun(@(x)...
                             (x*ones(length(xySigF{i}{x,1}),1)),ii,'un',0));
 
-                % retrieves the start/end values of each sub-signal and  
-                % sorts them in chronological order
-                tStim = cell2mat(cellfun(@(y)...
-                                (cell2mat(cellfun(@(x)(x([1,end])'),...
-                                 y,'un',0))),xySigF{i}(ii,1),'un',0));
-                [~,iS] = sort(tStim(:,1));    
+                    % retrieves the start/end values of each sub-signal and  
+                    % sorts them in chronological order
+                    tStim = cell2mat(cellfun(@(y)...
+                                    (cell2mat(cellfun(@(x)(x([1,end])'),...
+                                     y,'un',0))),xySigF{i}(ii,1),'un',0));
+                    [~,iS] = sort(tStim(:,1));    
 
-                % sets the final start/finish times and the ID flags
-                obj.ExptSig(i).Ts = tStim(iS,1);
-                obj.ExptSig(i).Tf = tStim(iS,2);
-                obj.ExptSig(i).ID = [i*ones(length(iChID),1),iChID(iS)];
+                    % sets the final start/finish times and the ID flags
+                    obj.ExptSig(i).Ts = tStim(iS,1);
+                    obj.ExptSig(i).Tf = tStim(iS,2);
+                    obj.ExptSig(i).ID = [i*ones(length(iChID),1),iChID(iS)];
+                end
             end
         
         end

@@ -159,13 +159,18 @@ classdef AdaptorInfoClass < handle
                 obj.objDAQ = getappdata(obj.hFigM,'objDAQ');
                 
                 % sets the previous device selections
-                if ~isempty(obj.objDAQ)
+                if isempty(obj.objDAQ)
+                    % case is there no previous information
+                    obj.nCh = zeros(obj.nDAQMax,1); 
+                else
+                    % otherwise, retrieve the previous info
                     obj.vSelDAQ = obj.objDAQ.vSelDAQ;
+                    obj.nCh = obj.objDAQ.nChannel;              
                 end
                 
                 % determines the criteria properties
-                [crStr,crCol] = obj.detCriteriaProps(obj.reqdConfig,...
-                                                     obj.objDAQ);                    
+                [crStr,crCol] = obj.detCriteriaProps(obj.objDAQ.sType,...
+                                                     obj.nCh);                    
                 
                 % initialisations and setting of the input arguments
                 Hpanel = obj.dY + (2+obj.nDAQMin)*obj.Htext;  
@@ -173,7 +178,7 @@ classdef AdaptorInfoClass < handle
                 HpO = cell2mat(retObjDimPos({hPanelOuter},4));                              
 
                 % sets up the min USB device channel strings
-                hTextL = findobj(hPanelDAQe,'style','text');
+                hTextL = findobj(hPanelDAQReqd,'style','text');
                 for k = 1:length(hTextL)
                     % retrieves the dimensions of the header text object
                     hTextC = findobj(hTextL,'UserData',k);
@@ -212,7 +217,7 @@ classdef AdaptorInfoClass < handle
 
                         % creates the min channel text string label
                         tPos = [tPosC(1),obj.dY+(j-1)*obj.Htext,tPosC(3:4)];
-                        uicontrol('Parent',hPanel, 'Style', 'text',...
+                        uicontrol('Parent',hPanelDAQReqd,'Style','text',...
                                   'String',txtStr,'FontUnits','pixels',...
                                   'HorizontalAlignment','center',...
                                   'UserData',[i,k],'Position',tPos,...
@@ -239,7 +244,7 @@ classdef AdaptorInfoClass < handle
                 pPos = get(hPanelDAQ,'position');
                 dHO = HpO - (sum(pPos([2 4])) + obj.dY);
                 resetObjPos(hPanelOuter,'height',-dHO,1)                
-                resetObjPos(hObject,'height',-dHO,1)  
+                resetObjPos(obj.hFig,'height',-dHO,1)  
                 
                 % readjusts the control button locations and properties 
                 setObjEnable(hButtonC,all(strcmp(crStr,'All')))
@@ -250,6 +255,9 @@ classdef AdaptorInfoClass < handle
                 % and readjusts the GUI
                 Hpanel0 = cell2mat(retObjDimPos({hPanelDAQReqd},4));
                 delete(hPanelDAQReqd)
+                
+                % memory allocation
+                obj.nCh = zeros(obj.nDAQMax,1);                 
 
                 % readjusts the location of the figure/GUI panels
                 dYnw = Hpanel0 + 10;
@@ -257,31 +265,22 @@ classdef AdaptorInfoClass < handle
                 resetObjPos(hPanelOuter,'height',-dYnw,1)
                 resetObjPos(hPanelExpt,'bottom',-dYnw,1)
                 resetObjPos(hPanelIMAQ,'bottom',-dYnw,1)
-                resetObjPos(hPanelDAQ,'bottom',-dYnw,1)    
+                resetObjPos(hPanelDAQ,'bottom',-dYnw,1)                               
             end
-
-            % sets up the channel count array/button properties
-            obj.nCh = zeros(obj.nDAQMax,1);
-            if obj.isSet
-                if ~isempty(obj.objDAQ)
-                    obj.nCh(obj.objDAQ.vSelDAQ) = ...
-                            obj.objDAQ.nChannel(obj.objDAQ.vSelDAQ);
+            
+            % sets the stimulus struct
+            if obj.isInit
+                % resets all the image/data acquisition objects
+                try
+                    daqreset; 
+                    pause(0.1); 
                 end
+
+                % sets the exit button string
+                set(handles.buttonExit,'String','Exit Program')
             else
-                % sets the stimulus struct
-                if obj.isInit
-                    % resets all the image/data acquisition objects
-                    try
-                        daqreset; 
-                        pause(0.1); 
-                    end
-
-                    % sets the exit button string
-                    set(handles.buttonExit,'String','Exit Program')
-                else
-                    % case is the gui is not being initialised
-                    set(handles.buttonExit,'string','Cancel');        
-                end
+                % case is the gui is not being initialised
+                set(handles.buttonExit,'string','Cancel');        
             end            
             
         end
@@ -436,25 +435,25 @@ classdef AdaptorInfoClass < handle
             obj.nDAQMax = min(obj.nDAQMax,length(obj.vStrDAQ));
             obj.initChannelEdit();    
             
+            % sets the name strings within the list box
+            set(handles.listDACObj,'String',obj.vStrDAQ,'value',[])              
+            
             % sets the list/channel values (if adaptors have been set)
-            if obj.isSet
-                set(handles.listDACObj,'value',obj.objDAQ.vSelDAQ)
-                for i = 1:length(obj.objDAQ.vSelDAQ)
-                    j = obj.objDAQ.vSelDAQ(i);
+            if obj.onlyDAQ
+                set(handles.listDACObj,'value',obj.vSelDAQ)
+                for i = 1:length(obj.vSelDAQ)
+                    j = obj.vSelDAQ(i);
                     hEdit = findobj(handles.panelDACObj,...
                                             'style','edit','UserData',j);
-                    if isnan(nChannel(j))
+                    if isnan(obj.nCh(j))
                         obj.setEditProp(j,'opto')
                     else
-                        nChStr = num2str(nChannel(j));
+                        nChStr = num2str(obj.nCh(j));
                         set(hEdit,'backgroundcolor','w','enable','on',...
                                   'ForegroundColor','k','string',nChStr)
                     end
                 end
-            end            
-
-            % sets the name strings within the list box
-            set(handles.listDACObj,'String',obj.vStrDAQ,'value',[])         
+            end                 
             
         end   
 
@@ -516,17 +515,17 @@ classdef AdaptorInfoClass < handle
             % sets the experiment radio buttons based
             setObjEnable(handles.radioRecordStim,obj.hasDAQ && obj.hasIMAQ)
             setObjEnable(handles.radioRecordOnly,obj.hasIMAQ)
-            setObjEnable(handles.radioStimOnly,obj.hasDAQ)
-
-            % sets the radio button of the first valid experiment type
-            if obj.hasIMAQ
-                set(handles.radioRecordOnly,'value',1)
-            else
-                set(handles.radioStimOnly,'value',1)
-            end    
+            setObjEnable(handles.radioStimOnly,obj.hasDAQ)   
             
             % runs the panel selection change update function
             if ~obj.onlyDAQ
+                % sets the radio button of the first valid experiment type
+                if obj.hasIMAQ 
+                    set(handles.radioRecordOnly,'value',1)
+                else
+                    set(handles.radioStimOnly,'value',1)
+                end                 
+                
                 obj.panelExptTypeSC(handles.panelExptType, '1')
             end
             
@@ -626,7 +625,7 @@ classdef AdaptorInfoClass < handle
             % determines if it is feasible for the user to connect
             if obj.onlyDAQ
                 % updates the requirement strings (for DAQ only)
-                obj.updateReqdStrings(handles)
+                obj.updateReqdStrings()
             else
                 % determines if the data/image acquisition objects are
                 % selected from the list
@@ -767,35 +766,49 @@ classdef AdaptorInfoClass < handle
                 case 0
                     % case is the device channel type/count is not provided
                     nChD = obj.objDAQ.nChannel;
-                    sTypeD = obj.objDAQ.sType(obj.objDAQ.vSelDAC);
+                    sTypeD = obj.objDAQ.sType;
 
                 case 2
                     % case is the device channel type/count is provided
                     [sTypeD,nChD] = deal(varargin{1},varargin{2});
             end
 
-            % retrieves the device name/channel counts
-            isFound = false(length(sTypeD),1);
-
             % for each required device, determine if a matching device 
             % already exists. if so, update the criteria string/colours
+            sTypeC = obj.reqdConfig.dType;
             for i = 1:nDev
-                isMatch = strcmp(sTypeD(:),...
-                                obj.reqdConfig.dType{i}) & ~isFound(:);
-                if any(isMatch)
+                % 
+                indM = find(strcmp(sTypeD,sTypeC{i}));
+                if any(indM)
+                    % determines the index in the reqd stimuli device list
+                    % that the current reqd device matches
+                    iDevC = sum(strcmp(sTypeC(1:i),sTypeC{i}));                    
+                    if iDevC > length(indM)
+                        % if the device index exceeds the number of
+                        % attached devices, then set a false flag
+                        isMatch = false;
+                    else
+                        % otherwise, determine if the correct device has
+                        % been selected
+                        isMatch = any(obj.vSelDAQ == indM(iDevC));
+                    end
+                else
+                    % no matching devices
+                    isMatch = false;
+                end
+                
+                if isMatch
                     % sets the row flag and updates the criteria flag
                     crStr{i} = 'Device';
-                    iRow = find(isMatch,1,'first');
-                    isFound(iRow) = true;
 
                     % determines if the channel count is correct
-                    switch sTypeD{iRow}
+                    switch sTypeD{i}
                         case 'Opto'
                             % case is the opto device (fixed channel count)
                             okD = true;
                         otherwise
                             % case is some other device type
-                            okD = nChD(iRow) >= obj.reqdConfig.nCh(i);
+                            okD = nChD(i) >= obj.reqdConfig.nCh(i);
                     end
 
                     % updates the criteria strings/colours (if met)
@@ -890,9 +903,7 @@ classdef AdaptorInfoClass < handle
             hPanel = handles.panelUSBRequire;
 
             % determines the criteria properties
-            iSelDAQ = obj.vSelDAQ;
-            [crStr,crCol] = obj.detCriteriaProps(...
-                            obj.objDAQ.sType(iSelDAQ),obj.nCh(iSelDAQ));
+            [crStr,crCol] = obj.detCriteriaProps(obj.objDAQ.sType,obj.nCh);
 
             % updates the criteria colours/strings for each required device
             for i = 1:length(crStr)
@@ -945,7 +956,7 @@ classdef AdaptorInfoClass < handle
     end
     
     % static class methods
-    methods (Static)        
+    methods (Static)
         
         % --- initialises the daq information structs
         function objDAQInfo = initDAQInfoStruct()

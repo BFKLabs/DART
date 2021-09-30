@@ -82,19 +82,20 @@ global mainProgDir
 
 % updates the program default file
 ProgDefNw = getappdata(handles.figProgDef,'ProgDef');
-hDART = getappdata(handles.figProgDef,'hDART');
+hDART = findall(0,'tag','figDART');
+hh = guidata(hDART);
 
 % determines if the program defaults have been set
 progFile = fullfile(mainProgDir,'Para Files','ProgDef.mat');
-if (isempty(hDART))
+if isempty(hDART)
     % if running from command-line, update the local parameter file    
     ProgDef = ProgDefNw;   
 else
     % updates the default directory defaults file
-    ProgDefFull = getappdata(hDART.figDART,'ProgDef');    
+    ProgDefFull = getappdata(hDART,'ProgDef');    
     ProgDefFull.Recording = ProgDefNw;
-    setappdata(hDART.figDART,'ProgDef',ProgDefFull)    
-    set(hDART.buttonFlyRecord,'UserData',ProgDefNw)
+    setappdata(hDART,'ProgDef',ProgDefFull)    
+    set(hh.buttonFlyRecord,'UserData',ProgDefNw)
     
     % otherwise, update the full program preference data struct/file    
     ProgDef = ProgDefFull;   

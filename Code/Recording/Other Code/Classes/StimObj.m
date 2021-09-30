@@ -40,7 +40,7 @@ classdef StimObj < handle
         iEvent
         
         % other boolean fields
-        isExtnDAC
+        isExtnDAC = false;
     end
     
     % class methods

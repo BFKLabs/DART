@@ -1,9 +1,10 @@
 % --- retrieves the channel colour array
-function chCol = getChannelCol(devType,nCh)
+function chCol = getChannelCol(devType0,nCh)
 
 % memory allocation
 nDev = length(nCh);
 chCol = cell(nDev,1);
+devType = cellfun(@(x)(removeDeviceTypeNumbers(x)),devType0,'un',0);
 
 % sets the colour array based on type
 for i = 1:nDev

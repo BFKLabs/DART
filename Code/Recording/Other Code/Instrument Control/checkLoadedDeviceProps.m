@@ -74,7 +74,7 @@ else
     N = nCh(strContains(devType,'Motor'));
     NL = nChL(strContains(devTypeL,'Motor'));
     isOK = cell2mat(arrayfun(@(n)(n<=N(:)'),NL,'un',0));    
-    updateDev = ~all(any(isOK,2));
+    updateDev = ~all(any(isOK,2)) || (sum(any(isOK,1))<length(NL));
 end
                     
 % prompts the user for the correct device configuration (if required)
@@ -98,7 +98,12 @@ if updateDev
             return
         else
             % updates the device information struct into the main GUI
-            setappdata(hFigUpdate,'objDAQ0',objDAQNw)        
+            setappdata(hFigUpdate,'objDAQ',objDAQNw)
+            setappdata(hFigUpdate,'objDAQ0',objDAQNw)
+            
+            % updates the object information data struct
+            infoObj.objDAQ = objDAQNw;
+            setappdata(hFig,'infoObj',infoObj)
         end
     end
 end
@@ -197,4 +202,4 @@ reqdCFig = struct('dType',[],'nCh',nChL,'nDev',length(nChL));
 % sets the device type names
 reqdCFig.dType = cellfun(@(x)(regexp(x,'[\w]+','match','once')),...
                               devTypeL,'un',0);
-redqCFig.nCh(strContains(reqdCFig.dType,'Opto')) = NaN; 
+reqdCFig.nCh(strContains(reqdCFig.dType,'Opto')) = NaN; 
