@@ -67,6 +67,7 @@ setappdata(hObject,'vidTimer',[])
 
 % ensures the background detection panel is invisible
 setObjVisibility(handles.menuEstBG,'off')
+setObjVisibility(handles.menuFileBG,'off')
 setObjVisibility(handles.panelBGDetect,'off')
 
 % ----------------------------------------------------------- %
@@ -2315,10 +2316,18 @@ for i = 1:length(hTube)
 
             % sets the tube region patch based on the detection type 
             switch Type
-                case {'GeneralR','Circle'}
-                    % case is the circle/repeating general patterns
+                case 'GeneralR'
+                    % case is the repeating general patterns
                     xTube = iMov.autoP.X0(j,iCol) + iMov.autoP.XC - xOfs;
-                    yTube = iMov.autoP.Y0(j,iCol) + iMov.autoP.YC - yOfs;                                       
+                    yTube = iMov.autoP.Y0(j,iCol) + iMov.autoP.YC - yOfs;     
+                    
+                case 'Circle'
+                    % calculates the circle coordinates
+                    [XC,YC] = calcCircleCoords(iMov.autoP,j,iCol);
+                    
+                    % case is the circle/repeating general patterns
+                    xTube = iMov.autoP.X0(j,iCol) + XC - xOfs;
+                    yTube = iMov.autoP.Y0(j,iCol) + YC - yOfs;                       
                 
                 otherwise
                     % case is for the other detection types
@@ -3812,13 +3821,13 @@ end
 
 % Sub-Movie Data Struct
 iMov = struct('pos',[1 1 1 1],'posG',[],'Ibg',[],'ddD',[],...
-              'nRow',[],'nCol',[],...                            
+              'nRow',[],'nCol',[],'nPath',trkP.nPath,...                            
               'nTube',[],'nTubeR',[],'nFly',[],'nFlyR',[],...              
               'iR',[],'iC',[],'iRT',[],'iCT',[],'xTube',[],'yTube',[],...
               'sgP',[],'Status',[],'tempName',[],'autoP',[],'bgP',[],...
               'isSet',false,'ok',true,'tempSet',false,'isOpt',false,...
               'useRot',false,'rotPhi',90,'calcPhi',false,'sepCol',false,...
-              'vGrp',[],'sRate',5,'nDS',1,'nPath',trkP.nPath);           
+              'vGrp',[],'sRate',5,'nDS',1,'mShape','Rect');           
 iMov.sgP = iData.sgP;          
           
 % --- sets the experimental parameters struct/field values --- %
@@ -4044,10 +4053,15 @@ end
 
 % calculate the minimum distances between the lines and the mouse position
 [xD,yD] = deal(get(axObj,'xData'),get(axObj,'yData'));
-D = cellfun(@(x,y)(calcMinPointDist(x,y,mPos(1,1:2))),xD,yD);
-if all(isnan(D))
+if ~iscell(xD)
     % no valid values, so exit
     return
+else
+    D = cellfun(@(x,y)(calcMinPointDist(x,y,mPos(1,1:2))),xD,yD);
+    if all(isnan(D))
+        % no valid values, so exit
+        return
+    end
 end
 
 % if the line object with the minimum distance from the point is less than
@@ -4061,27 +4075,3 @@ end
 function Dmin = calcMinPointDist(x,y,mP)
 
 Dmin = min(sqrt((x-mP(1)).^2 + (y-mP(2)).^2));
-
-% isHover = false(length(axObj),1);
-% 
-% % determines the objects that the mouse is currently hovering over
-% for i = 1:length(isHover)
-%     switch get(axObj(i),'Type')
-%         case 'patch'
-%             [xD,yD] = deal(get(axObj(i),'xData'),get(axObj(i),'yData'));
-%             isHover(i) = (prod(sign(xD(2:3)-mPos(1,1))) == -1) && ...
-%                 (prod(sign(yD(1:2)-mPos(1,2))) == -1);
-%             
-%         case 'hggroup'
-%             hP = findobj(axObj(i),'type','patch');
-%             [xD0,yD0] = deal(get(hP,'xData'),get(hP,'yData'));
-%             [xD,yD] = deal([min(xD0),max(xD0)],[min(yD0),max(yD0)]);
-%             
-%             isHover(i) = (prod(sign(xD-mPos(1,1))) == -1) && ...
-%                 (prod(sign(yD-mPos(1,2))) == -1);
-%             
-%     end
-% end
-% 
-% % returns the objects which are being hovered over
-% hHover = axObj(isHover);

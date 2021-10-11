@@ -2,7 +2,9 @@
 function Ixc = calcXCorr(IT,I,D,varargin)
 
 %
-D = ceil((size(IT) - 1)/2);
+if ~exist('D','var')
+    D = ceil((size(IT) - 1)/2);
+end
 
 % calculates the x/y-direction gradient cross-correlation
 Iex = padarray(I,D,'replicate','both');

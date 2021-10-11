@@ -424,25 +424,25 @@ switch (typeStr)
     % --------------------------------- %           
 
     case ('PreWindowSplit') % case is before splitting the window  
-        % retrieves the video group indices
-        vGrp = getVidGroupIndices(iMov);
-        if isempty(vGrp)
-            % no group indices have been set, so use the first frame
-            cFrm = iData.Frm0;
-        else
-            cFrm = vGrp(1,1);
-        end
-        
-        % if the current frame doesn't match, update the data struct
-        if iData.cFrm ~= cFrm
-            set(handles.frmCountEdit,'string',num2str(cFrm))
-            setappdata(hFig,'iData',iData)
-        end
-        
-        % updates the image
-        set(handles.movCountEdit,'string','1')
-        ImgNw = getDispImage(iData,iMov,cFrm,isSub,handles); 
-        dispImage(handles,ImgNw,1)    
+%         % retrieves the video group indices
+%         vGrp = getVidGroupIndices(iMov);
+%         if isempty(vGrp)
+%             % no group indices have been set, so use the first frame
+%             cFrm = iData.Frm0;
+%         else
+%             cFrm = vGrp(1,1);
+%         end
+%         
+%         % if the current frame doesn't match, update the data struct
+%         if iData.cFrm ~= cFrm
+%             set(handles.frmCountEdit,'string',num2str(cFrm))
+%             setappdata(hFig,'iData',iData)
+%         end
+%         
+%         % updates the image
+%         set(handles.movCountEdit,'string','1')
+%         ImgNw = getDispImage(iData,iMov,cFrm,isSub,handles); 
+%         dispImage(handles,ImgNw,1)    
         
     case ('PostWindowSplit') % case is after splitting the window        
         % enables the movie selection buttons

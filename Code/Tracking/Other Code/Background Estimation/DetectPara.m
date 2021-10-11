@@ -131,7 +131,7 @@ classdef DetectPara
 
                 case 'pMulti' % case is multi object detection parameters
 
-                    bgP = struct();        
+                    bgP = struct('szFilt',8,'pwFilt',3,'isFixed',true);        
             end        
         end
     

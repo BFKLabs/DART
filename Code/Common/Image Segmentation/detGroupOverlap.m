@@ -2,7 +2,7 @@
 function [kGrp,Bnw] = detGroupOverlap(B,Bx)
 
 %
-if (isequal(size(B),size(Bx)))
+if isequal(size(B),size(Bx))
     iGrp = find(Bx);
 else
     iGrp = sub2ind(size(B),Bx(:,2),Bx(:,1));

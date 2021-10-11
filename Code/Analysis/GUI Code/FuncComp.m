@@ -241,7 +241,7 @@ tabData = [fcnData,repmat({' '},nFunc,1),...
 
 % creates the java table object
 jScroll = findjobj(hTable);
-[jScroll, hContainer] = javacomponent(jScroll, [], hPanel);
+[jScroll, hContainer] = createJavaComponent(jScroll, [], hPanel);
 set(hContainer,'Units','Pixels','Position',[dX*[1,1],pPos(3:4)-dPos])
 
 % creates the java table model

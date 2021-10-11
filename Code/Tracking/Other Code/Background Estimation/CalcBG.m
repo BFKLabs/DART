@@ -140,6 +140,11 @@ classdef CalcBG < handle
                 obj.menuFlyAccRej(hh.menuFlyAccRej, [])
             end
             
+            % makes the tracking menu item invisible again
+            if isprop(obj.trkObj,'hMenuM')
+                obj.trkObj.closeBG();                
+            end
+            
             % makes the main tracking gui invisible
             setObjVisibility(obj.hFig,'off'); pause(0.05);
             
@@ -838,6 +843,7 @@ classdef CalcBG < handle
             end
 
             % updates the main GUI image axis
+            set(obj.hFig,'CurrentAxes',obj.hAx);
             dispImage(hgui,Inw,1); pause(0.05);
 
             % updates and closes the waitbar
@@ -845,6 +851,11 @@ classdef CalcBG < handle
                 waitbar(1,h,'Image Update Complete');
                 close(h);
             end
+            
+            % makes the tracking menu item invisible again
+            if isprop(obj.trkObj,'hMenuM')
+                obj.trkObj.updateImageAxes();
+            end            
             
         end
         
@@ -873,7 +884,10 @@ classdef CalcBG < handle
             for iApp = 1:length(imov.iR)
                 % retrieves the position values
                 if obj.isMTrk
-                    % updates the marker locations
+                    % 
+                    if isempty(fpos); return; end
+                    
+                    % updates the marker locations                    
                     fPosNw = fpos{iApp,iFrm};
                     [iCol,~,iRow] = getRegionIndices(obj.iMov,iApp);
                     set(obj.hMark{iApp}{1},'xdata',fPosNw(:,1),...
@@ -980,9 +994,13 @@ classdef CalcBG < handle
                 if ~isempty(obj.fPos)
                     % boolean flags
                     isLoVar = vP == 1;
-                    isHiVar = vP == 3;
-                    hasBG = isLoVar || ~isempty(obj.iMov.IbgT);    
-
+                    isHiVar = vP == 3;                    
+                    
+                    hasBG = isLoVar;
+                    if isfield(obj.iMov,'IbgT')
+                        hasBG = hasBG || ~isempty(obj.iMov.IbgT);    
+                    end
+                        
                     % sets the enabled properties of the radio buttons                                        
                     setObjEnable(hgui.radioRes,hasBG)  
                     setObjEnable(hgui.radioBackEst,isLoVar)
@@ -1058,6 +1076,7 @@ classdef CalcBG < handle
 
             % turns off the normal mode menu items
             setObjVisibility(obj.hGUI.menuEstBG,openBG)
+            setObjVisibility(obj.hGUI.menuFileBG,openBG)
 
             % determines if the git-menu item is present
             hGitP = findall(obj.hGUI.figFlyTrack,'tag','hGitP');
@@ -1226,9 +1245,10 @@ classdef CalcBG < handle
 
             % updates the parameter struct   
             obj.iMov = imov;
+            obj.iPara.cFrm = 1;
             obj.frameSet = true;
-            [obj.isAllUpdate,obj.hasUpdated] = deal(true,false);
-            [obj.iPara.cFrm,obj.iPara.cPhase] = deal(1,1);
+            obj.iPara.cPhase = find(imov.vPhase<3,1,'first');
+            [obj.isAllUpdate,obj.hasUpdated] = deal(true,false);            
             obj.iPara.nFrm = length(simgs(1).iFrm);
 
             % enables the image display properties
@@ -1258,7 +1278,7 @@ classdef CalcBG < handle
                 else
                     obj.ImgFrm = Img{1}(1);
                 end
-            end
+            end                  
             
             % disables the manual tracking panel
             obj.setManualObjProps('off')
@@ -1272,6 +1292,11 @@ classdef CalcBG < handle
             obj.iData = idata;
             obj.fPos = [];                        
 
+            % runs the post video phase update
+            if isprop(obj.trkObj,'hMenuM')
+                obj.trkObj.postVideoPhaseUpdate();
+            end                  
+            
             % updates the main image axes
             set(hgui.radioNormal,'value',1)
             obj.setButtonProps('Phase')
@@ -2157,16 +2182,16 @@ classdef CalcBG < handle
                 ImnF = cellfun(@(x)(nanmean(x(:))),obj.iMov.Ibg{iPhase}');
             else
                 return
-            end                        
+            end                           
             
-            % equalises the histograms (if required)
-            isOK = abs(ImnF - ILmn) < pTolEq;
-            if any(~isOK)
-                for i = find(~isOK(:)')
-                    Iref = uint8(obj.ImgFrm{iPhase}(iR{i},iC{i}));
-                    IL{i} = double(imhistmatch(uint8(IL{i}),Iref));
-                end
-            end
+%             % equalises the histograms (if required)
+%             isOK = abs(ImnF - ILmn) < pTolEq;
+%             if any(~isOK)
+%                 for i = find(~isOK(:)')
+%                     Iref = uint8(obj.ImgFrm{iPhase}(iR{i},iC{i}));
+%                     IL{i} = double(imhistmatch(uint8(IL{i}),Iref));
+%                 end
+%             end
             
         end                
 

@@ -256,9 +256,7 @@ jCheckBoxTree = handle(CheckBoxTree(jTree.getModel),'CallbackProperties');
 jScrollPane = com.mathworks.mwswing.MJScrollPane(jCheckBoxTree);
 
 % creates the final tree explorer object
-wState = warning('off','all');
-[~,~] = javacomponent(jScrollPane,[dX*[1 1],objP(3:4)-2*dX],hObj);
-warning(wState);
+[~,~] = createJavaComponent(jScrollPane,[dX*[1 1],objP(3:4)-2*dX],hObj);
 
 % sets the callback function for the mouse clicking of the tree structure
 cFunc = @(jCheckBoxTree,e)DirTree('tableUpdate',jCheckBoxTree,e); 

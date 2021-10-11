@@ -936,7 +936,7 @@ classdef OpenSolnMultiTab < dynamicprops & handle
 
             % creates the java table object
             jScroll = findjobj(hTableEx);
-            [jScroll, hContainer] = javacomponent(jScroll, [], hPanelEx);
+            [jScroll, hContainer] = createJavaComponent(jScroll, [], hPanelEx);
             
             if obj.isSaving
                 set(hContainer,'Units','Normalized','Position',[0,0,1,1])

@@ -350,6 +350,7 @@ while cont
         jFrm = iFrm + [-1,0];
         iPhase = arrayfun(@(x)(find(iMov.iPhase(:,1)<=x,1,'last')),jFrm);
          
+        isOK(iFrm) = false;        
         if all(iMov.vPhase(iPhase) < 3)        
             % retrieves the global images for the surrounding frames               
             Img = arrayfun(@(x)(getDispImage...
@@ -362,8 +363,7 @@ while cont
                                     
             % determines if the next frame needs to be fixed         
             fixNext = compFrameRes(ImgR0,[X(jFrm),Y(jFrm)],pR);
-            [ImgR,iFrmU] = deal(ImgR0{1+fixNext},jFrm(1+fixNext));
-            isOK(iFrm) = false;
+            [ImgR,iFrmU] = deal(ImgR0{1+fixNext},jFrm(1+fixNext));            
             
             % calculates the 
             if fixNext

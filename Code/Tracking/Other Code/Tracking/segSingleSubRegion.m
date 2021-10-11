@@ -27,7 +27,7 @@ for iFrm = 1:nFrm
     % retrieves the previous frame coordinate array and from this
     % extrapolates the blobs location
     fPosPr = getPrevFramePos(fPosPr0,fPosF,iFrm,nFrmPr);    
-    fPosEx = extrapBlobPos(fPosPr);    
+    fPosEx = extrapBlobPos(fPosPr);        
     
     % determines the location of the blob on the current frame  
     if isempty(iGrp{iFrm})
@@ -56,7 +56,11 @@ for iFrm = 1:nFrm
             % otherwise, calculate the distance between the extrapolated
             % coordinates and the blobs on the current frame
             DpEx = pdist2(fPosEx,fP)';
-            Z = ((IRT{iFrm}(iGrpFrm)/pTolT{iFrm}).^hZ)./(1+(DpEx/dTol)).^2;            
+            pTolTnw = (1+pTolT{iFrm});
+            Z = ((IRT{iFrm}(iGrpFrm)/pTolTnw).^hZ)./(1+(DpEx/dTol)).^2;            
+                        
+            %
+            Z(isnan(Z) | isinf(Z)) = 0;
             [~,imx] = max(Z);
 
             % updates the blob indices/residual value for the frame
@@ -118,7 +122,11 @@ else
     [~, zf] = filter(-[0 a(2:end)], 1, x);
 
     % calculates the extrapolated signal value
-    xExt = filter([0 0], -a, 0, zf);
+    if any(isnan(zf))
+        xExt = nanmean(x);
+    else
+        xExt = filter([0 0], -a, 0, zf);
+    end
 end
 
 % --- retrieves the previous frame positions 

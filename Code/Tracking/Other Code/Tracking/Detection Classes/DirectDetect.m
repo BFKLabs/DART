@@ -11,7 +11,7 @@ classdef DirectDetect < handle
         
         % boolean/scalar flags
         is2D
-	iFrm
+        iFrm
         wOfs = 1;
         hasProg = false;
         calcOK = true;
@@ -896,7 +896,7 @@ classdef DirectDetect < handle
             sz = size(Iapp{1});
             nFly = length(fPos0{1});
             del = getSubImageDim(obj);
-            Ngrp = cellfun(@(x)(size(x,1)),fPos0{1}(:));
+            Ngrp = cellfun(@(x)(sum(~isnan(x(:,1)))),fPos0{1}(:));
             fok = obj.iMov.flyok(:,iApp);
             xiF = (1:nFly)';
             
@@ -946,6 +946,10 @@ classdef DirectDetect < handle
                 fPosR = [fPosX(isOK),fPosY(isOK)];
                 xi = num2cell(Bmap{1}(sub2ind(sz,fPosR(:,2),fPosR(:,1))));
                 
+                % ensures the global index array 
+                indGT = NaN(length(isOK),2);
+                indGT(ii,:) = indG0;                
+                
                 % retrieves the sub-regions                                
                 IsubR = obj.getSubImage(IappR,fPosR,del,0);
                 ImapR = obj.getSubImage(Bmap{1},fPosR,del,0);
@@ -956,7 +960,7 @@ classdef DirectDetect < handle
                 IsubMx = cellfun(@(x)(x(del+1,del+1)),IsubR); 
                 
                 % sets up the sub-region to global index array
-                indG = [indG0(isOK,1),(1:size(fPosR,1))'];
+                indG = [indGT(isOK,1),(1:size(fPosR,1))'];
                 indSR = arrayfun(@(x)...
                     (indG(indG(:,1)==x,2)),xiF,'un',0);
                 iBestPr = indG(:,2);

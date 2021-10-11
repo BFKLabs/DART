@@ -1,5 +1,5 @@
 function varargout = RegionConfig(varargin)
-% Last Modified by GUIDE v2.5 01-Jun-2021 03:55:45
+% Last Modified by GUIDE v2.5 28-Sep-2021 17:03:22
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -64,6 +64,11 @@ elseif isempty(iMov.bgP)
     iMov.bgP = bgP;
 end
 
+% sets the manual region shape flag (if not set)
+if ~isfield(iMov,'mShape')
+    iMov.mShape = 'Rect';
+end
+
 % determines if the user is using multi-fly tracking
 isMTrk = detMltTrkStatus(iMov);
 
@@ -116,13 +121,28 @@ if isSet
     [setRegions,is2Dset] = deal(true,is2DCheck(iMov));
     if is2Dset                
         if ~isempty(iMov.autoP)
-            % plots the circle regions on the main GUI axes
-            setRegions = false;
-            plotRegionOutlines(handles,iMov,1)
-            setPatternMenuCheck(handles)      
-            
-            % sets the use automatic detection flag
-            useAuto = true;
+            % initialises the isAuto flag (if not set already)
+            if ~isfield(iMov.autoP,'isAuto')
+                iMov.autoP.isAuto = true;
+            end
+                        
+            if iMov.autoP.isAuto
+                % plots the circle regions on the main GUI axes
+                setRegions = false;
+                plotRegionOutlines(handles,iMov,1)
+                setPatternMenuCheck(handles)      
+
+                % sets the use automatic detection flag
+                useAuto = true;
+            else
+                % sets the default region type
+                mType = iMov.autoP.Type(1:4);                
+                hMenu0 = findall(handles.menuRegionShape,'type','uimenu');
+                
+                % turns off/on the correct markers
+                arrayfun(@(x)(set(x,'Checked','off')),hMenu0);
+                set(findall(hMenu0,'tag',mType),'Checked','on');
+            end
         end          
     end    
     
@@ -131,6 +151,7 @@ if isSet
     setMenuCheck(handles.menuShowInner,~iData.is2D);
     setMenuCheck(handles.menuShowRegion,iData.is2D);
     setObjEnable(handles.menuView,iMov.isSet)
+    setObjEnable(handles.menuSplitRegion,iMov.isSet)
     
     % draw the sub-region division figures (if not auto-detecting)
     if setRegions           
@@ -141,7 +162,7 @@ if isSet
     uistack(hObject,'top')      
 else
     % otherwise, initialise the data struct
-    iData = initDataStruct();
+    iData = initDataStruct(iMov);
 end
 
 % sets the function handles into the gui
@@ -156,7 +177,11 @@ setappdata(hObject,'resetSubRegionDataStruct',@resetSubRegionDataStruct)
 if isMTrk
     % only use the 1D setup for multi-tracking
     [iData.is2D,iData.isFixed] = deal(false,true);
-    
+    if ~isSet
+        iMov.bgP.pMulti.isFixed = true;
+        setappdata(hObject,'iMov',iMov)
+    end
+        
     % updates the text label
     hEdit = findall(handles.panel1D,'UserData','nFlyMx');
     set(hEdit,'string','Fixed Region Fly Count: ')
@@ -397,7 +422,7 @@ setappdata(hFig,'iMov',iMov);
 deleteSubRegions(handles)
 
 % resets the data struct and the object properties
-setappdata(hFig,'iData',initDataStruct)
+setappdata(hFig,'iData',initDataStruct(iMov))
 initObjProps(handles,false)
 
 % -------------------------------------------------------------------------
@@ -627,6 +652,69 @@ function menuDetGeneralCust_Callback(hObject, eventdata, handles)
 % FINISH ME!
 showUnderDevelopmentMsg()
 
+% ------------------------------- %
+% --- REGION SHAPE MENU ITEMS --- %
+% ------------------------------- %
+
+% --- toggles the shape menu check items
+function toggleShapeMenuCheck(hMenu)
+
+% determines the currently selected menu item
+hMenu0 = findall(get(hMenu,'Parent'),'Checked','on');
+
+% toggles the menu check item
+set(hMenu0,'Checked','off');
+set(hMenu,'Checked','on');
+
+% --------------------------------------------------------------------
+function menuShapeRect_Callback(hObject, eventdata, handles)
+
+% initialisations
+hFig = handles.figRegionSetup;
+
+% toggles the shape menu check items
+toggleShapeMenuCheck(hObject)
+
+% updates the shape flag
+iMov = getappdata(hFig,'iMov');
+iMov.mShape = 'Rect';
+setappdata(hFig,'iMov',iMov)
+
+% --------------------------------------------------------------------
+function menuShapeCirc_Callback(hObject, eventdata, handles)
+
+% initialisations
+hFig = handles.figRegionSetup;
+
+% toggles the shape menu check items
+toggleShapeMenuCheck(hObject)
+
+% updates the shape flag
+iMov = getappdata(hFig,'iMov');
+iMov.mShape = 'Circ';
+setappdata(hFig,'iMov',iMov)
+
+% --------------------------------------------------------------------
+function menuShapePoly_Callback(hObject, eventdata, handles)
+
+% initialisations
+hFig = handles.figRegionSetup;
+
+% toggles the shape menu check items
+toggleShapeMenuCheck(hObject)
+
+% updates the shape flag
+iMov = getappdata(hFig,'iMov');
+iMov.mShape = 'Poly';
+setappdata(hFig,'iMov',iMov)
+
+% --------------------------------------------------------------------
+function menuSplitRegion_Callback(hObject, eventdata, handles)
+
+% splits the sub-region
+hFig = handles.figRegionSetup;
+setappdata(hFig,'srObj',SplitSubRegion(hFig));
+
 %-------------------------------------------------------------------------%
 %                         OTHER CALLBACK FUNCTIONS                        %
 %-------------------------------------------------------------------------%
@@ -660,11 +748,14 @@ hFig = handles.figRegionSetup;
 iMov = getappdata(hFig,'iMov');
 iData = getappdata(hFig,'iData');
 showInner = ~useAuto && ~iData.is2D;
+isMltTrk = detMltTrkStatus(iMov);
 
 % sets the menu item enabled properties
 setObjEnable(handles.menuReset,iMov.isSet);
 setObjEnable(handles.menuView,iMov.isSet);
 setObjEnable(handles.menuAutoPlace,iMov.isSet);
+setObjEnable(handles.menuSplitRegion,iMov.isSet);
+setObjEnable(handles.menuRegionShape,iData.is2D || isMltTrk);
 
 % if the regions are not set, then exit
 if ~iMov.isSet; return; end
@@ -851,6 +942,22 @@ setDataSubStruct(handles,pInfo);
 if get(hTable,'UserData') == 1
     updateRegionInfoTable(handles)
 end
+
+% --- Executes on button press in checkVarFlyCount.
+function checkVarFlyCount_Callback(hObject, eventdata, handles)
+
+% determines if variable fly count is being used
+isVar = get(hObject,'Value');
+hFig = handles.figRegionSetup;
+
+% updates the multi-tracking 
+iMov = getappdata(hFig,'iMov');
+iMov.bgP.pMulti.isFixed = ~isVar;
+setappdata(hFig,'iMov',iMov);
+
+% sets the object enabled properties
+setObjEnable(handles.editSRCount,~isVar);
+setObjEnable(handles.buttonUpdate,iMov.isSet)
 
 % ------------------------------------------ %
 % --- 1D SETUP SPECIFIC OBJECT CALLBACKS --- %
@@ -1078,7 +1185,7 @@ end
 % sets the final sub-region dimensions into the data struct
 iMov = setSubRegionDim(iMov,hGUI);
 if ~isa(eventdata,'char')
-    [iMov.autoP,isChange] = deal([],true);    
+    isChange = true;    
     setObjEnable(hObject,'off');
 end
 
@@ -1119,7 +1226,7 @@ end
 % resets the tube count/use flags (multi-fly tracking only)
 if detMltTrkStatus(iMov)
     % case is 
-    if isempty(iMov.nFlyR) || ~iMov.dTube  
+    if isempty(iMov.nFlyR)
         pInfo = getRegionDataStructs(iMov);
         iMov.nTubeR = ones(iMov.nRow,iMov.nCol);
         iMov.nFlyR = pInfo.nFly;        
@@ -1150,6 +1257,7 @@ hAx = hGUI.imgAxes;
 hold(hAx,'on')
 
 % sets the region position vectors
+is2DSetup = iMov.is2D;
 [rPosS,nApp] = deal(iMov.pos,numel(iMov.pos));
 
 % ------------------------------ %
@@ -1269,6 +1377,9 @@ else
     col = 'gmy';    
 end
 
+% memory allocation
+pPos = cell(nApp,1);
+
 % sets the inner rectangle objects for all apparatus
 for i = 1:nApp
     % sets the row/column indices
@@ -1293,35 +1404,92 @@ for i = 1:nApp
     
     % retrieves the new fly count index
     nTubeNw = getSRCount(iMov,i);
+    indCol = mod(i-1,length(col))+1;  
+    xTubeS0 = rPosS{i}(1)+[0 rPosS{i}(3)];
+    xTubeS = repmat(xTubeS0,nTubeNw-1,1)';
     
     % sets the proportional height/width values
     pX(i) = (iMov.pos{i}(1)-iMov.posO{i}(1))/iMov.posO{i}(3);
     pY(i) = (iMov.pos{i}(2)-iMov.posO{i}(2))/iMov.posO{i}(4);
     pW(i) = iMov.pos{i}(3)/iMov.posO{i}(3);
-    pH(i) = iMov.pos{i}(4)/iMov.posO{i}(4);
+    pH(i) = iMov.pos{i}(4)/iMov.posO{i}(4);   
     
     % creates the new rectangle object
-    hROI = imrect(hAx,iMov.pos{i});
-    indCol = mod(i-1,length(col))+1;    
-    
-    % disables the bottom line of the imrect object
-    set(hROI,'tag','hInner','UserData',i);
-    setObjVisibility(findobj(hROI,'tag','bottom line'),'off');
+    if is2DSetup
+        % calculates the vertical tube region coordinates
+        xiN = num2cell(1:nTubeNw)';
+        yTube0 = linspace(rPosS{i}(2),sum(rPosS{i}([2,4])),nTubeNw+1)';
+        yTubeS = num2cell([yTube0(1:end-1),yTube0(2:end)],2);
+        
+        % calculates the sub-region outline coordinates
+        pPos{i} = cellfun(@(x)([xTubeS0(1)+xGap,x(1)+yGap,...
+                     diff(xTubeS0)-2*xGap,diff(x)-2*yGap]),yTubeS,'un',0);
+        
+        % case is 2D setup expt
+        switch iMov.mShape
+            case 'Rect'
+                % case is using rectangular shapes
+                cFcnType = 'imrect';
+                hROI = cellfun(@(x)(imrect(hAx,x)),pPos{i},'un',0);
+                
+            case 'Circ'
+                % case is using circular shapes
+                cFcnType = 'imellipse';
+                
+                % creates the circle objects
+                hROI = cell(length(pPos{i}),1);
+                for j = 1:length(pPos{i})
+                    % resets the position of the circle object
+                    [szObj,p0] = deal(pPos{i}{j}(3:4),pPos{i}{j}(1:2));                    
+                    pPos{i}{j}(3:4) = min(szObj); 
+                    pPos{i}{j}(1) = p0(1)+(szObj(1)-pPos{i}{j}(3))/2;
+                    pPos{i}{j}(2) = p0(2)+(szObj(2)-pPos{i}{j}(4))/2;
+                    
+                    % creates the circle object
+                    hROI{j} = imellipse(hAx,pPos{i}{j});
+                    setFixedAspectRatioMode(hROI{j},true);
+                end
+        end        
+        
+        % updates the ROI object properties
+        cellfun(@(h,x)(set(h,'tag','hInner','UserData',[i,x])),hROI,xiN);
+        
+        % if moveable, then set the position callback function
+        for j = 1:length(hROI)
+            api = iptgetapi(hROI{j});
+            api.setColor(col(indCol));
+            api.addNewPositionCallback(@roiCallback2D);            
+            
+            % sets the constraint region for the inner regions
+            fcn = makeConstrainToRectFcn(cFcnType,xLimS,yTubeS{j});
+            api.setPositionConstraintFcn(fcn);             
+        end
+        
+        % resets the axes properties
+        set(hAx,'Layer','Bottom','SortMethod','childorder')
+        
+    else
+        % case is 1D setup expt
+        hROI = imrect(hAx,iMov.pos{i});          
 
-    % if moveable, then set the position callback function
-    api = iptgetapi(hROI);
-    api.setColor(col(indCol));
-    api.addNewPositionCallback(@roiCallback);   
-    
-    % sets the constraint region for the inner regions
-    fcn = makeConstrainToRectFcn('imrect',xLimS,yLimS);
-    api.setPositionConstraintFcn(fcn); 
-    
-    % creates the individual tube markers
-    xTubeS = repmat(rPosS{i}(1)+[0 rPosS{i}(3)],nTubeNw-1,1)';
-    yTubeS = rPosS{i}(2) + (rPosS{i}(4)/nTubeNw)*(1:(nTubeNw-1));
-    plot(hAx,xTubeS,repmat(yTubeS,2,1),[col(indCol),'--'],'tag',...
-                    sprintf('hTubeEdge%i',i),'UserData','hTube');     
+        % disables the bottom line of the imrect object
+        set(hROI,'tag','hInner','UserData',i);
+        setObjVisibility(findobj(hROI,'tag','bottom line'),'off');
+
+        % if moveable, then set the position callback function
+        api = iptgetapi(hROI);
+        api.setColor(col(indCol));
+        api.addNewPositionCallback(@roiCallback);   
+
+        % sets the constraint region for the inner regions
+        fcn = makeConstrainToRectFcn('imrect',xLimS,yLimS);
+        api.setPositionConstraintFcn(fcn); 
+
+        % creates the individual tube markers        
+        yTubeS = rPosS{i}(2) + (rPosS{i}(4)/nTubeNw)*(1:(nTubeNw-1));            
+        plot(hAx,xTubeS,repmat(yTubeS,2,1),[col(indCol),'--'],'tag',...
+                        sprintf('hTubeEdge%i',i),'UserData','hTube');     
+    end
 end
 
 % turns the axis hold off
@@ -1399,8 +1567,42 @@ hFig = handles.figRegionSetup;
 hPanelConfig = handles.panelRegionConfig;
 
 % initialisations
-tStr = {'1D Setup','2D Setup'};
+iMov = getappdata(hFig,'iMov');
 iData = getappdata(hFig,'iData');
+isMltTrk = detMltTrkStatus(iMov);
+
+% sets the tab titles
+if isMltTrk
+    % case is for multi-tracking
+    tStr = {'Region Setup'};
+    set(handles.textSRCount,'String','Max Fly Count Per Region: ');
+    
+    % resets the GUI objects
+    dY = 20;
+    hPanel = findall(handles.panel1D,'type','uipanel');
+    arrayfun(@(x)(resetObjPos(x,'Bottom',-dY,1)),hPanel)
+    
+    % resets the parameter object dimensions
+    hObj = findall(handles.panelConfigInfo1D);
+    hObj = hObj(~strcmp(get(hObj,'Type'),'uipanel'));
+    resetObjPos(handles.panelConfigInfo1D,'Height',dY,1)
+    arrayfun(@(x)(resetObjPos(x,'Bottom',dY,1)),hObj)    
+    
+    % sets the fixed fly count flag
+    if isfield(iMov.bgP.pMulti,'isFixed')
+        isFixed = iMov.bgP.pMulti.isFixed;
+    else
+        [isFixed,iMov.bgP.pMulti.isFixed] = deal(true);
+    end
+    
+    % sets the variable fly count flag
+    set(handles.checkVarFlyCount,'Value',~isFixed)
+    setObjEnable(handles.editSRCount,isFixed)
+    
+else
+    % case is for normal tracking
+    tStr = {'1D Setup','2D Setup'};
+end
 
 % -------------------------------- %    
 % --- TAB GROUP INITIALISATION --- %
@@ -1449,8 +1651,18 @@ end
 % if the regions have already been set, then disable the tab for the setup
 % type that is not being used
 if iData.isFixed
-    jTabGrp.setEnabledAt(~iData.is2D,0)
-    set(hTabGrp,'SelectedTab',hTab{1+iData.is2D})
+    % sets the update tab index
+    if isMltTrk
+        % case is multi-tracking
+        iTab = 1;        
+    else
+        % case is normal tracking
+        iTab = 1+iData.is2D;
+        jTabGrp.setEnabledAt(~iData.is2D,0)
+    end    
+    
+    % sets the selected tab
+    set(hTabGrp,'SelectedTab',hTab{iTab})
 else
     arrayfun(@(x)(jTabGrp.setEnabledAt(x-1,1)),1:length(tStr))
 end
@@ -2040,7 +2252,7 @@ end
 % ------------------------------- %
 
 % --- initialises the data struct
-function iData = initDataStruct()
+function iData = initDataStruct(iMov)
 
 % parameters
 nFlyMx = 10;
@@ -2062,6 +2274,13 @@ function iData = convertDataStruct(iMov)
 % data struct initialisations
 is2D = is2DCheck(iMov);
 [D1,D2] = getRegionDataStructs(iMov);
+
+% resets the arrays 
+if detMltTrkStatus(iMov)
+    [D1,D2] = deal(D2,[]);
+end
+
+% sets the final data struct
 iData = struct('D1',D1,'D2',D2,'is2D',is2D,'isFixed',true);
 
 % --- retrieves the data sub struct (dependent on the setup type)
@@ -2167,13 +2386,101 @@ setObjEnable(handles.buttonUpdate,'on')
 % resets the flag to false
 isUpdating = false;
 
+% --- the callback function for moving the 2D inner tube regions
+function roiCallback2D(rPos)
+
+% retrieves the sub-region data object
+hFig = findall(0,'tag','figRegionSetup');
+srObj = getappdata(hFig,'srObj');
+
+% retrieves the object handle
+hROI = get(gco,'Parent');
+uData = get(hROI,'UserData');
+
+% enables the update button
+hh = guidata(findall(0,'tag','figRegionSetup'));
+setObjEnable(hh.buttonUpdate,1)
+
+% add in code here to update region coordinates
+%  - fill out autoP field
+
+% determines if running the callback function is valid
+if isempty(srObj)
+    % sub-region struct has not been set, so exit
+    return
+elseif ~srObj.isOpen
+    % sub-region GUI is closed, so exit
+    return
+end
+
+% retrieves the marker line objects 
+hMarkR = srObj.hMarkR{uData(2),uData(1)};
+
+% initialisation
+srObj.isUpdating = true;
+
+% updates the marker object positions
+switch srObj.mShape
+    case 'Rect'
+        % case is rectangular regions
+
+        % rectangle parameters
+        [p0nw,W,H] = deal(rPos(1:2),rPos(3),rPos(4));  
+        
+        % sets up the constraint function
+        [xLim,yLim] = deal(p0nw(1)+[0,W],p0nw(2)+[0,H]);
+        fcn = makeConstrainToRectFcn('imline',xLim,yLim);
+
+        % resets the vertical marker lines
+        pWid = W*cumsum(srObj.pWid{uData(2),uData(1)});         
+        for i = find(~cellfun(@isempty,hMarkR(:,1)))'
+            % recalculates the new position of the markers
+            pNw = [(p0nw(1)+pWid(i)*[1;1]),(p0nw(2)+H*[0;1])];
+            
+            % resets the object properties
+            hAPI = iptgetapi(hMarkR{i,1});              
+            hAPI.setPosition(pNw);  
+            hAPI.setPositionConstraintFcn(fcn);   
+        end
+        
+        % resets the horizontal marker lines
+        pHght = H*cumsum(srObj.pHght{uData(2),uData(1)}); 
+        for i = find(~cellfun(@isempty,hMarkR(:,2)))'
+            % recalculates the new position of the markers
+            pNw = [(p0nw(1)+W*[0;1]),(p0nw(2)+pHght(i)*[1;1])];
+            
+            % resets the object properties
+            hAPI = iptgetapi(hMarkR{i,2});
+            hAPI.setPosition(pNw);            
+            hAPI.setPositionConstraintFcn(fcn);            
+        end
+            
+    case 'Circ'
+        % case is circular regions
+        
+        % circle parameters
+        Rnw = rPos(3)/2;
+        p0nw = rPos(1:2)+Rnw;
+        
+        % resets the marker line objects
+        phiP = srObj.pPhi{uData(2),uData(1)};
+        for i = 1:length(hMarkR)
+            hAPIR = iptgetapi(hMarkR{i});  
+            pNw = [p0nw;(p0nw+Rnw*[cos(phiP(i)),sin(phiP(i))])];
+            hAPIR.setPosition(pNw);            
+        end
+end
+
+% resets the update flag
+srObj.isUpdating = false;
+
 % --- the callback function for moving the inner tube regions
 function roiCallback(rPos)
 
 % global variables
 global iAppInner isUpdating pX pY pW pH
 
-% global variables
+% initialisations
 hFig = findall(0,'tag','figRegionSetup');
 iMov = getappdata(hFig,'iMov');
 handles = guidata(hFig);
@@ -2562,7 +2869,7 @@ hAx = hGUI.imgAxes;
 [xLim,yLim] = deal(get(hAx,'xlim'),get(hAx,'ylim'));
 
 % sets the 2D flag and sub-region info fields
-[iMov.is2D,iMov.pInfo] = deal(iData.is2D,pInfo);
+[iMov.is2D,iMov.pInfo] = deal(is2DCheck(iMov),pInfo);
 
 % sets the subplot variables (based on the inputs)
 [pG,del] = deal(iMov.posG,5);

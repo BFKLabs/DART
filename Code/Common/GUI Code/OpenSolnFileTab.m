@@ -375,7 +375,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             
             % creates the java table object
             jScroll = findjobj(hTableI);
-            [jScrollP, hContainer] = javacomponent(jScroll,[],hPanelI);
+            [jScrollP, hContainer] = createJavaComponent(jScroll,[],hPanelI);
             set(hContainer,'Units','Pixels','Position',tPos)
 
             % creates the java table model
@@ -834,10 +834,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
             jScrollPane = com.mathworks.mwswing.MJScrollPane(jTreeCB);
 
             % creates the scrollpane object
-            wState = warning('off','all');
             tPos = [dX*[1 1],objP(3:4)-2*dX];
-            [~,~] = javacomponent(jScrollPane,tPos,hObj);
-            warning(wState);
+            [~,~] = createJavaComponent(jScrollPane,tPos,hObj);
 
             % sets the callback function for the mouse clicking of 
             % the tree structure

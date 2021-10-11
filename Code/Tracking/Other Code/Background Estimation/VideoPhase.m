@@ -57,7 +57,7 @@ classdef VideoPhase < handle
         function runPhaseDetect(obj)
             
             % parameters
-            dtFrm = 150;
+            dtFrm = 100;
             dnFrm = dtFrm*(obj.iData.exP.FPS/obj.iMov.sRate);                
             
             % ---------------------------------- %
@@ -70,7 +70,17 @@ classdef VideoPhase < handle
             
             % calculates the initial inter-frame metrics/groupings  
             nFrm = 1+ceil(nFrmTot/dnFrm);
-            iFrm = roundP(linspace(1,nFrmTot,nFrm)');                        
+            iFrm = roundP(linspace(1,nFrmTot,nFrm)');    
+            
+%             % keep looping until a valid first
+%             while 1
+%                 Imn = obj.calcFrameMetrics(iFrm(1));
+%                 if (Imn < obj.pTolHi) || (Imn < obj.pTolLo)
+%                     iFrm(1) = iFrm(1) + 1;
+%                 else
+%                     break
+%                 end
+%             end
             
             % --------------------------------- %
             % ---- INITIAL PHASE DETECTION ---- %
@@ -97,6 +107,11 @@ classdef VideoPhase < handle
                     iGrp(end,2) = iFrm(i+1);           
                     
                 else        
+                    %
+                    if i == 8
+                        a = 1;
+                    end
+                    
                     % otherwise, determine the new phase limits
                     iGrpNw = detPhaseLimits(obj,iFrmG); 
 
@@ -175,13 +190,22 @@ classdef VideoPhase < handle
         function reducePhaseTypes(obj,iGrp)
 
             % parameters
+            nC = 1;
             dnFrmMin = 25;              % minimum frame        
-            pTolPerc = 0.25;
+%             pTolPerc = 0.25;
+            pTolPerc = 0.5;
             pTolRng = 0.25*256;         % pixel range tolerange
 
+%             % if using region splitting, then use all split regions 
+%             if isfield(obj.iMov,'srData')
+%                 if ~isempty(obj.iMov.srData)
+%                     nC = size(obj.iMov.srData.indG,1);
+%                 end
+%             end
+            
             % converts the cell arrays to a numerical array
             nGrp = size(iGrp,1);
-            vPhaseF = zeros(nGrp,1);
+            vPhaseF = zeros(nGrp,nC);
 
             for i = 1:nGrp
                 % retrieves the non-sparse frames for the current group
@@ -306,8 +330,26 @@ classdef VideoPhase < handle
                 Img{j} = double(...
                             getDispImage(obj.iData,obj.iMov,iFrm(j),0));
                 if ~isFull
-                    Img{j} = cellfun(@(ir,ic)(Img{j}(ir,ic)),...
+                    % case is sub-images are to be used
+                    useRegions = true;
+                    if isfield(obj.iMov,'srData')
+                        if ~isempty(obj.iMov.srData)
+                            % flag the images don't need to be broken down
+                            % by region (split regions are to be used)
+                            if j == 1
+                                useRegions = false;
+                                iGrp = cell2cell(obj.iMov.srData.iGrp(:));
+                                Img{j} = cellfun...
+                                            (@(x)(Img{j}(x)),iGrp,'un',0);
+                            end
+                        end
+                    end
+                        
+                    %
+                    if useRegions
+                        Img{j} = cellfun(@(ir,ic)(Img{j}(ir,ic)),...
                                     obj.iMov.iR,obj.iMov.iC,'un',0)';
+                    end
                 end
             end
 
@@ -363,7 +405,14 @@ classdef VideoPhase < handle
         function initPhaseDetectPara(obj)
             
             % memory allocation
-            nApp = length(obj.iMov.iR);            
+            nApp = length(obj.iMov.iR);
+            if isfield(obj.iMov,'srData')
+                if ~isempty(obj.iMov.srData)
+                    nApp = length(cell2cell(obj.iMov.srData.iGrp(:)));
+                end
+            end
+            
+            %
             obj.isCheck = false(obj.iData.nFrm,1);
             [obj.Zrng,obj.Zmu] = deal(sparse(nApp,obj.iData.nFrm));     
             [obj.pZHi,obj.pZLo] = deal(sparse(nApp,obj.iData.nFrm));  

@@ -144,12 +144,11 @@ classdef SingleTrackInit < SingleTrack
             % sets the feasible phases (low and high variance only)
             okPh = obj.iMov.vPhase < 3;
             
-            % calculates the final total background images            
-            fObjBG = obj.fObj(obj.iMov.vPhase < 3);
-            IbgT0 = cell2cell...
-                        (cellfun(@(x)(x.iMov.IbgT),fObjBG(okPh),'un',0));
+            % calculates the final total background images
+            IbgT0 = cell2cell(cellfun(@(x)...
+                        (x.iMov.IbgT),obj.fObj(okPh),'un',0));
             IbgTF = cellfun(@(x)(...
-                        calcImageStackFcn(x)),num2cell(IbgT0,1),'un',0);                                
+                        calcImageStackFcn(x)),num2cell(IbgT0,1),'un',0);
                 
             % retrieves the object sizes (for each phase)
             szObj = cellfun(@(x)(x.szObj),obj.fObj(okPh),'un',0);
@@ -893,7 +892,7 @@ classdef SingleTrackInit < SingleTrack
             pW = 0.5;    
             xTol = 3;
             nGrpMx = 5*(1+obj.is2D);  
-            pEdgeTol = 0.25;
+            pEdgeTol = 0.50;
             
             % array dimensioning
             sz = size(dImgQ{1});

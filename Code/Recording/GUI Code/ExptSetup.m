@@ -3490,8 +3490,7 @@ if isInit
     end
 
     % retrieves the table group java object
-    jTab = findjobj(hTabGrp);
-    jTab = jTab(arrayfun(@(x)(strContains(class(x),'MJTabbedPane')),jTab));
+    jTab = getTabGroupJavaObj(hTabGrp);
 
     % updates the objects into the GUI
     setappdata(hFig,'jTab',jTab)

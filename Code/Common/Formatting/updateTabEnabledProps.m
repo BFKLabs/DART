@@ -23,9 +23,7 @@ if ~iscell(hTab); hTab = num2cell(hTab); end
 % retrieves the table java object
 jTabG = getappdata(hTabG,'UserData');       
 if isempty(jTabG) % if it doesn't exist, then retrieve it
-    jH = findjobj(hTabG);
-    jTabG = jH(cellfun(@(x)(isa(x,['javahandle_withcallbacks.',...
-                'com.mathworks.mwswing.MJTabbedPane'])),num2cell(jH)));
+    jTabG = getTabGroupJavaObj(hTabG);
     setappdata(hTabG,'UserData',jTabG)
     
     % retrieves the current axes parent

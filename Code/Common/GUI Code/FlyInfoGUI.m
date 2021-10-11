@@ -158,6 +158,9 @@ classdef FlyInfoGUI < handle
         function DataArr = setupDataArray(obj, DataArr)
             
             %
+            if ~isfield(obj.snTot,'cID'); return; end
+            
+            %
             szArr = size(DataArr);
             pC0 = cell2mat(obj.snTot.cID(:));
             
@@ -220,11 +223,7 @@ classdef FlyInfoGUI < handle
                                         obj.rTable.getTableHeader());                                                
                                     
             % retrieves the matlab handle
-            wStr = warning('off','all');
-            [~, hContainer] = javacomponent(jSP, [], obj.hPanelV);
-            warning(wStr);     
-            
-            % updates the progress bar            
+            [~, hContainer] = createJavaComponent(jSP, [], obj.hPanelV);                 
             
             % determines the overall maximum table width
             tFont = jTableH.getTableHeader.getFont();

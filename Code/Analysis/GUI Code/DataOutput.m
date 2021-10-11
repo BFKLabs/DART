@@ -669,25 +669,25 @@ iData.tData.iSel(iData.cTab) = iSelT;
 setappdata(handles.figDataOutput,'iData',iData)
 
 % sets the index of the radio button that was 
-[eStr,eInd] = deal({'off','on'},num2cell(zeros(1,3)));
+eInd = num2cell(zeros(1,3));
 if (iSel == 1)
     % case is the statistical tests
     eInd{1} = 1;
     
     % updates the data alignment panel properties
     iPara = iData.tData.iPara{iData.cTab}{1};
-    setPanelProps(handles.panelDataAlign,eStr{1+(length(iPara{1})>1)})    
+    setPanelProps(handles.panelDataAlign,length(iPara{1})>1)    
 else
     % case is the data metrics
     eInd(2:3) = {1};
 end    
 
-%
+% updates the checkbox properties
 updateCheckboxProps(handles,iSelT)
 
 % updates the current sheet tab
 hP = {handles.panelStatTest,handles.panelMetricData,handles.panelMetricInfo};
-try; cellfun(@(x,y)(setPanelProps(x,eStr{1+y})),hP,eInd); end
+try; cellfun(@(x,y)(setPanelProps(x,y)),hP,eInd); end
 setTimeUnitObjProps(handles,iSelT-1)
 updateOrderList(handles);
 
@@ -2386,7 +2386,7 @@ if ~isempty(hSP0); delete(hSP0); end
 
 % Draw table in scroll pane
 jSP = javaObjectEDT('javax.swing.JScrollPane', jTab);
-[jSP, hC] = javacomponent(jSP, [], handles.panelDataOuter);
+[jSP, hC] = createJavaComponent(jSP, [], handles.panelDataOuter);
 set(hC,'Position',tPos,'tag','hSP','UserData',cTab)
 jSP.setViewportView(jTab);
 
@@ -2837,16 +2837,12 @@ function initGUIJavaObjects(handles)
 % initialisations
 hFig = handles.figDataOutput;
 
-% retrieves all the tab groups from the 
+% sets the java object into the tab group 
 hTabG = findall(hFig,'type','uitabgroup');
 for i = 1:length(hTabG)
     % retrieves the tabbed pane object from the tab group
-    jH = findjobj(hTabG(i));
-    jHT = jH(cellfun(@(x)(isa(x,['javahandle_withcallbacks.',...
-                'com.mathworks.mwswing.MJTabbedPane'])),num2cell(jH)));
-
-    % sets the java object into the tab group
-    setappdata(hTabG(i),'UserData',jHT)        
+    jTabG = getTabGroupJavaObj(hTabG(i));
+    setappdata(hTabG(i),'UserData',jTabG)        
 end
 
 % --- updates the metric order selection buttons
@@ -3013,9 +3009,6 @@ checkOtherFormat(handles.checkSepByApp,'1')
 
 % --- sets the time unit object properties
 function setTimeUnitObjProps(handles,mSel)
-
-% initialisations
-eStr = {'off','on'};
 
 % determines if the values are the population/individual signals
 if (any(mSel == [4 5]))

@@ -155,7 +155,7 @@ phi = linspace(0,2*pi,101)';
 [pDel,nApp] = deal(3,iMov.nRow*iMov.nCol);
 [iMov.isSet,iMov.ok] = deal(true,true(iMov.nRow*iMov.nCol,1));
 
-% sets up the automatic detection parameteres
+% sets up the automatic detection parameters
 iMov.autoP = struct('X0',X,'Y0',Y,'XC',R*cos(phi),'YC',R*sin(phi),...
                     'B',[],'R',R,'Type','Circle');
 iMov.autoP.B = cell(nApp,1);

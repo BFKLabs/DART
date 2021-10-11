@@ -302,9 +302,7 @@ if isDD
         setObjEnable(hTabP{iSelBG},'off'); 
     catch        
         % case is the generation 2 tab objects
-        jTab = findjobj(hTabG);
-        jTab = jTab(arrayfun(@(x)(...
-                        strContains(class(x),'MJTabbedPane')),jTab));                      
+        jTab = getTabGroupJavaObj(hTabG);                             
         jTab.setEnabledAt(iSelBG-1,0)
     end
 end

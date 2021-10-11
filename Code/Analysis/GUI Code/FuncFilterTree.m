@@ -239,10 +239,8 @@ classdef FuncFilterTree < handle
             obj.jSP = com.mathworks.mwswing.MJScrollPane(jTreeCB);
             
             % creates the scrollpane object
-            wState = warning('off','all');
             tPos = [obj.dX-[1 0],objP(3:4)-2*obj.dX];
-            [~,~] = javacomponent(obj.jSP,tPos,obj.hPanel);
-            warning(wState);
+            [~,~] = createJavaComponent(obj.jSP,tPos,obj.hPanel);
 
             % resets the cell renderer
             obj.jTree.setEnabled(false)

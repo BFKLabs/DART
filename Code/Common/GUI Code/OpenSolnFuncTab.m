@@ -225,7 +225,7 @@ classdef OpenSolnFuncTab < dynamicprops & handle
             % creates the java table object
             jScroll = findjobj(hTable);
             tPos = [dX*[1,1],pPos(3:4)-dPos];
-            [jScroll, hContainer] = javacomponent(jScroll, [], hPanel);
+            [jScroll, hContainer] = createJavaComponent(jScroll, [], hPanel);
             set(hContainer,'Units','Pixels','Position',tPos)
 
             % creates the java table model
