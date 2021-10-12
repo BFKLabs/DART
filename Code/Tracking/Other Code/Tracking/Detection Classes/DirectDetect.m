@@ -2280,9 +2280,9 @@ classdef DirectDetect < handle
             for i = 1:size(fP,1)
                 ii = find(DMx(i,:) < dTolC);
                 if isempty(ii)
-                    % no close matches so remove the coordinate
-                    fP(i,:) = NaN;
-                else
+%                     % no close matches so remove the coordinate
+%                     fP(i,:) = NaN;
+%                 else
                     % otherwise, if there are ambiguous points then 
                     % calcula
                     if length(ii) > 1

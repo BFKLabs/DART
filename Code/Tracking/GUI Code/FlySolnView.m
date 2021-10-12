@@ -75,6 +75,9 @@ setappdata(hObject,'initFunc',@initPlotObjects)
 initMenuObjects(handles)
 initPlotObjects(handles)
 
+% centres the figure in the middle of the screen
+centreFigPosition(hObject);
+
 % resizes the 
 % set(hObject,'ResizeFcn',{@figFlySolnView_ResizeFcn,guidata(hObject)});
 % resetFigSize(guidata(hObject),getFinalResizePos(hObject,500,400))
@@ -615,9 +618,6 @@ if nargin == 1
     hMenu = findobj(handles.menuPlotMetrics,'type','uimenu','UserData',0);
     menuSelectUpdate(hMenu, '1', handles)
 end
-
-% centres the figure in the middle of the screen
-centreFigPosition(hFig);
 
 % resets the object property units
 resetObjProps(hFig,'Units','Normalized')
