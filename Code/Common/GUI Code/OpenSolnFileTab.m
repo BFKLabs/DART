@@ -1061,7 +1061,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             end
 
             % closes the progress bar
-            hh.closeProgBar()
+            try; hh.closeProgBar(); end
             hh = [];            
             
             %
@@ -1822,7 +1822,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % loops through all the feasible directories (folders with 
             % only 1 Summary file) determining if the multi-files expts 
             % are named correctly
-            isOK = nSumm == 1;
+            isOK = nSumm <= 1;
             for i = find(nSumm(:)' == 1)
                 if length(sFileD{i}) > 1
                     % retrieves the names of the files in the directory

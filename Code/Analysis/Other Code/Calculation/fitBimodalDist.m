@@ -54,23 +54,32 @@ fOpt = fitoptions('method','NonlinearLeastSquares','Lower',xL,...
 % if sum(ii) < 3
 %     [pExp,G] = fit(x,y,g,fOpt); 
 % else
-    [pExp,G] = fit(x(ii),y(ii),g,fOpt); 
+    
 % end
 
 % calculates the fitted values
-Yfit = calcFittedValues(g,pExp,x);
+if sum(ii) < 3
+    % case is there is not enough data points for data fitting
+    Yfit = zeros(size(x));
+    p = struct('R2',0,'mu',NaN,'sigma',NaN,'A',NaN);
+else
+    % calculates the fitted values
+    [pExp,G] = fit(x(ii),y(ii),g,fOpt); 
+    Yfit = calcFittedValues(g,pExp,x);
 
-% retrieves the coefficient values and confidence intervals
-try
-    [pp,ppS] = deal(coeffvalues(pExp),diff(confint(pExp),[],1)/(2*1.96));
-catch
-    [pp,ppS] = deal(NaN(1,3));
-end
+    % retrieves the coefficient values and confidence intervals
+    try
+        pW = 2*1.96;
+        [pp,ppS] = deal(coeffvalues(pExp),diff(confint(pExp),[],1)/pW);
+    catch
+        [pp,ppS] = deal(NaN(1,3));
+    end
 
-% sets the fitted values into the output data struct
-[p,fStr] = deal(struct('R2',G.rsquare),fieldnames(pExp));
-for i = 1:length(fStr)   
-    eval(sprintf('p.%s = zeros(1,2);',fStr{i}));
-    eval(sprintf('p.%s(1) = pp(i);',fStr{i}));
-    eval(sprintf('p.%s(2) = ppS(i);',fStr{i}));
+    % sets the fitted values into the output data struct
+    [p,fStr] = deal(struct('R2',G.rsquare),fieldnames(pExp));
+    for i = 1:length(fStr)   
+        p = setStructField(p,fStr{i},zeros(1,2));
+        eval(sprintf('p.%s(1) = pp(i);',fStr{i}));
+        eval(sprintf('p.%s(2) = ppS(i);',fStr{i}));
+    end
 end

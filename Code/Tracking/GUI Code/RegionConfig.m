@@ -2869,7 +2869,7 @@ hAx = hGUI.imgAxes;
 [xLim,yLim] = deal(get(hAx,'xlim'),get(hAx,'ylim'));
 
 % sets the 2D flag and sub-region info fields
-[iMov.is2D,iMov.pInfo] = deal(is2DCheck(iMov),pInfo);
+[iMov.pInfo,iMov.is2D] = deal(pInfo,iData.is2D);
 
 % sets the subplot variables (based on the inputs)
 [pG,del] = deal(iMov.posG,5);

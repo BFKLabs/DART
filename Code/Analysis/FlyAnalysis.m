@@ -1746,7 +1746,12 @@ set(h.panelPlot,'units','pixels','position',pPosPnw)
 % updates the plot listbox/panel position
 WPI = pPosO(3) - 2*dX;
 set(h.panelPlotFunc,'position',[dX,dY,WPI,HPF]);
-set(h.panelFuncList,'position',[dX,YLF,WPI-2*dX,HLF]);
+
+% resizes the function list panel + objects
+pPosF = [dX,YLF,WPI-2*dX,HLF];
+hTree = findall(h.panelFuncList,'type','hgjavacomponent');
+set(h.panelFuncList,'position',pPosF);
+set(hTree,'Position',[dX*[1,1],pPosF(3:4)-2*dX])
 
 % resets the analysis scope object positions
 yBot0 = YLF+HLF+dY/2;

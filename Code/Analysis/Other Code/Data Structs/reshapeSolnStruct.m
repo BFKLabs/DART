@@ -38,6 +38,12 @@ snTot.stimP = reshapeStimuliTiming(snTot,Tofs);
 %     the time array, T, is reset to the start/finish indices (indS/indF)
 function [Tnw,Tofs] = reshapeTimeArrays(T,indS,indF,varargin)
 
+% if there is no data, then exit
+if isempty(T)
+    [Tnw,Tofs] = deal([],0);
+    return
+end
+
 % resets the time arrays and ensures the first/last array is set correctly
 if indS(1) == indF(1)
     % start/finish index is within a single time vector

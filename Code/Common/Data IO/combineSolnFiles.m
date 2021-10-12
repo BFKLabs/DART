@@ -8,6 +8,7 @@ global hh hDay
 if ~exist('isReduce','var'); isReduce = false; end
 
 % parameters and initialisations
+tOfs = 0;
 eStr = [];
 calcPhi = false;
 updateSumm = false;
@@ -191,13 +192,24 @@ if exist(smFile,'file')
         iExpt.Info.Type = 'RecordStim';
     end    
     
-else
-    % otherwise, set an empty time-stamp array
-    [tStampS,tStampV,T0,iExpt,stimP,sTrainEx] = deal([]); 
+    % determines the overall file count
+    nFile = min(length(sFile),length(tStampV));    
+    
+else    
+    % otherwise, set an empty time-stamp array    
+    [tStampS,tStampV,T0,stimP,sTrainEx] = deal([]);
+        
+    %
+    nFile = length(sFile);    
+    [xi,tNow] = deal(1:nFile,clock());
+    
+    % sets up the experiment data struct
+    Info = struct('Type','RecordOnly');
+    Timing = struct('T0',[tNow(1:2),[0,12,0,0]]);    
+    iExpt = struct('Timing',Timing,'Info',Info);
 end
     
 % memory allocation
-nFile = min(length(sFile),length(tStampV));
 isOK = true(nFile,1);
 sgP = struct('sRate',[],'fRate',[],'sFac',[]);
 snTot = orderfields(struct('T',[],'Px',[],'Py',[],'Phi',[],'AxR',[],...
@@ -210,7 +222,7 @@ snTot = orderfields(struct('T',[],'Px',[],'Py',[],'Phi',[],'AxR',[],...
 % sub-struct memory allocation    
 initData = true;
 [snTot.T,Px,Py] = deal(cell(nFile,1)); 
-if ~isempty(sData); snTot.sData = sData; end
+if exist('sData','var'); snTot.sData = sData; end
    
 % retrieves the waitbar figure properties
 if ~isempty(hh)
