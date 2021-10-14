@@ -2296,7 +2296,9 @@ classdef DirectDetect < handle
                     end
 
                     % updates the coordinates
-                    fP(i,:) = [xMx(ii),yMx(ii)];
+                    if ~isempty(ii)
+                        fP(i,:) = [xMx(ii),yMx(ii)];
+                    end
                 end
             end        
         

@@ -34,12 +34,12 @@ end
 for i = 1:length(hTab)
     % disables a tab if all objects are disabled
     hChild = get(hTab{i},'Children');
-    if (~isempty(hChild)) && (~isempty(jTabG))
+    if ~isempty(hChild) && ~isempty(jTabG)
         isEnable = any(strcmp(get(hChild,'enable'),'on'));              
         try
-            jTabG.setEnabledAt(get(hTab{i},'UserData')-1,isEnable)        
+            jTabG(i).setEnabledAt(get(hTab{i},'UserData')-1,isEnable)        
         catch ME
-            if (~strcmp(ME.identifier,'MATLAB:Java:GenericException'))
+            if ~strcmp(ME.identifier,'MATLAB:Java:GenericException')
                 rethrow(ME)
             end
         end

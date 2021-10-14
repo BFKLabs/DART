@@ -2037,6 +2037,10 @@ pData = getappdata(hFig,'pData');
 setObjProps(handles,'inactive')
 [eInd,fIndNw,pInd] = getSelectedIndices(handles);
 [isShowPara,nReg] = deal(fIndNw > 0,size(sPara.pos,1));
+hTree = findall(handles.panelFuncList,'type','hgjavacomponent');
+
+% disables the tree object
+setObjEnable(hTree,'off');
 
 % sets the function description
 if all([pInd,fIndNw,eInd] > 0)
@@ -2220,6 +2224,7 @@ end
 
 % enables the listboxes/popup menus
 setObjProps(handles,'on')
+setObjEnable(hTree,'on');
 
 % disables the clear plot menu item
 if isShowPara; setObjVisibility(hPara,'on'); end
