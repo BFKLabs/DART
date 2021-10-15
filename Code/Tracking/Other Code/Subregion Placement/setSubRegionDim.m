@@ -91,7 +91,7 @@ else
         nTube = getSRCount(iMov,j);
 
         % sets the location of the 
-        hAPI = iptgetapi(hSubW(j)); 
+        hAPI = iptgetapi(hSubW(i)); 
         iMov.pos{j} = hAPI.getPosition();
 
         % sets the positional vector    
