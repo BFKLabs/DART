@@ -1590,11 +1590,9 @@ tPos = [dX*[1,1]+pPos(1:2),pPos(3:4)-1.5*dX];
 removeAddedFolders()
 
 % Root node
-wState = warning('off');
-hRoot = uitreenode('v0', rStr, rStr, [], false);
+hRoot = createUITreeNode(rStr, rStr, [], false);
 hRoot.setUserObject(fDirRoot);
 set(0,'CurrentFigure',hFig);
-warning(wState);
 
 % sets the file/folder icons
 Ifile = getIconImagePath(hFig,'File');
@@ -1610,15 +1608,18 @@ for i = 1:length(fDir)
     end
     
     % adds in the experiment name leaf node
-    hNodeL = uitreenode('v0',fName{i},fName{i},Ifile,true);
+    hNodeL = createUITreeNode(fName{i},fName{i},Ifile,true);
     hNodeL.setUserObject(i);
     hNodeP.add(hNodeL);
 end
 
 % creates the tree object
-hTree = uitree('v0','parent',hPanel,'Root',hRoot,'position',tPos,...
-               'SelectionChangeFcn',{@treeSelectChng,hFig});
+wState = warning('off','all');
+hTree = uitree('v0','Root',hRoot,'parent',hPanel,'position',tPos,...
+                    'SelectionChangeFcn',{@treeSelectChng,hFig});
 hTree.expand(hRoot)
+warning(wState);
+
 setappdata(hFig,'hTree',hTree)
 expandExplorerTreeNodes(hFig);
 
@@ -1754,7 +1755,7 @@ switch Type
         end        
 
         % adds in the leaf node
-        hNodeL = uitreenode('v0',fName{iExp},fName{iExp},Ifile,true);
+        hNodeL = createUITreeNode(fName{iExp},fName{iExp},Ifile,true);
         hNodeL.setUserObject(iExp);
         hP{end}.add(hNodeL);
 
@@ -1827,7 +1828,7 @@ end
 if isAdd && ~isempty(nName)
     % adds a new node to the tree
     hNodeP.setAllowsChildren(true);
-    hNodeNw = uitreenode('v0',nName,nName,Iicon,false);
+    hNodeNw = createUITreeNode(nName,nName,Iicon,false);
     hNodeP.add(hNodeNw);   
 
     % retrieves the full path of the new node

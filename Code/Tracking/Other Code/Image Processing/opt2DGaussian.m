@@ -7,7 +7,7 @@ opt = optimset('display','none','tolX',1e-6,'TolFun',1e-6);
 % calculates the weighted mean image
 % pW = pLim/min(pLim);
 % X0 = cellfun(@(p,x)(p*x),num2cell(pW(:)),Isub(:),'un',0);
-I0 = min(0,calcImageStackFcn(Isub,'mean'));
+I0 = max(0,calcImageStackFcn(Isub,'mean'));
 
 % determines the largest contour surrounding the frame centre-point
 Pc = splitContourLevels(I0,20);

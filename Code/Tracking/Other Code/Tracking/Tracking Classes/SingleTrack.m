@@ -1,6 +1,10 @@
 classdef SingleTrack < Track
     
     properties
+        % common fields
+        hS
+        Dtol
+        
         % frame count
         nFrmPr = 10;
     end
@@ -60,7 +64,18 @@ classdef SingleTrack < Track
                                         
             end     
             
-            %
+        	% other parameters                         
+            obj.Dtol = 5;                
+            
+            % sets the image filter
+            [bgP,obj.hS] = deal(obj.iMov.bgP.pSingle,[]);
+            if isfield(bgP,'hSz')
+                if bgP.useFilt
+                    obj.hS = fspecial('disk',bgP.hSz);
+                end
+            end
+            
+            % updates the ok flags
             if isfield(obj.iMov,'pInfo')
                 obj.iMov.flyok(obj.iMov.pInfo.iGrp == 0) = false;
             end
@@ -73,12 +88,12 @@ classdef SingleTrack < Track
             for i = 1:length(sInd)
                 switch sInd(i)
                     case 1
-                        % case is residual detection calculations
-                        obj.fObj{i} = ResidualDetect(obj.iMov,obj.hProg);
+                        % case is low variance calculations
+                        obj.fObj{i} = LVPhaseTrack(obj.iMov,obj.hProg);
                         
                     case 2
-                        % case is direct detection calculations
-                        obj.fObj{i} = DirectDetect(obj.iMov,obj.hProg);   
+                        % case is high variance calculations
+                        obj.fObj{i} = HVPhaseTrack(obj.iMov,obj.hProg);   
                         
                     case 3
                         % case is manual correction updates
@@ -93,23 +108,22 @@ classdef SingleTrack < Track
         end              
               
         % --- retrieves the important data from the previous phase
-        function prData = getPrevPhaseData(obj,fObjPr,iFrm)            
+        function prData = getPrevPhaseData(obj,fObjPr,iFrm)
 
             % data struct memory allocation
             prData = struct('fPosT',[],'fPos',[],'nFrmPr',obj.nFrmPr,...
-                            'IbgT',[],'iStatus',[],'iStatusF',[]);
+                            'iStatus',[],'iStatusF',[]);
 
             % sets the data from the previous phase   
-            prData.fPos = fObjPr.fPos(:,end); 
-            prData.IbgT = obj.iMov.IbgT;            
+            prData.fPos = fObjPr.fPos(:,end);       
             
             % retrieves the status flags (based on tracking object type)
             switch class(fObjPr)
-                case 'ResidualDetect'
+                case 'LVPhaseTrack'
                     % case is a residual tracking object
                     prData.iStatus = obj.iMov.Status;
                     
-                case 'DirectDetect'
+                case 'HVPhaseTrack'
                     % case is a direct detection tracking object
                     prData.iStatus = num2cell(fObjPr.iStatus,1);
                     
@@ -128,7 +142,7 @@ classdef SingleTrack < Track
                         (x(indT,:)),y,'un',0)),obj.pData.fPosL,'un',0);  
             end
 
-        end  
+        end         
         
     end    
     

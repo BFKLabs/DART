@@ -27,6 +27,11 @@ switch fType
         Ifcn = nanvar(Ic,[],3);   
         
     case 'sum'
-        Ifcn = nansum(Ic,3);           
+        Ifcn = nansum(Ic,3);      
+        
+    case 'weighted-sum'
+        pW = num2cell(varargin{1}); 
+        Ic = cellfun(@(x,y)(x.*y),pW(:),I(:),'un',0);        
+        Ifcn = calcImageStackFcn(Ic,'sum');
         
 end

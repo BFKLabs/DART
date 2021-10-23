@@ -203,6 +203,12 @@ try; close(hLoad); end
 % centres the gui to the middle of the string
 centreFigPosition(hObject);
 
+% turns off all warnings and makes the gui visible (prevents warning message)
+wState = warning('off','all');
+setObjVisibility(hObject,'on');
+pause(0.05);
+warning(wState)
+
 % Update handles structure
 guidata(hObject, handles);
 

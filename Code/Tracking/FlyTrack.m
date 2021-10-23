@@ -1665,10 +1665,16 @@ function resetFigSize(h,fPos)
 % sets the overall width/height of the figure
 [W0,H0,dY,dX,axP] = deal(fPos(3),fPos(4),10,10,zeros(1,4));
 
+% resets the panel based on the type being viewed
+[hPanelO,hPanelBG] = deal(h.panelOuter,h.panelBGDetect);
+[pPanelO,pPanelBG] = deal(get(hPanelO,'Position'),get(hPanelBG,'Position'));
+
 if strcmp(get(h.panelOuter,'Visible'),'on')
-    pPosO = get(h.panelOuter,'position');
+    % case is running in tracking mode
+    pPosO = pPanelO;    
 else
-    pPosO = get(h.panelBGDetect,'position');
+    % case is running in initial detection mode
+    pPosO = pPanelBG;
 end
 
 % updates the image panel dimensions
@@ -1676,8 +1682,9 @@ pPosPnw = [sum(pPosO([1 3]))+dX,dY,(W0-(3*dX+pPosO(3))),(H0-2*dY)];
 set(h.panelImg,'units','pixels','position',pPosPnw)
 
 % updates the outer position bottom location
-pPosO(2) = H0 - (pPosO(4)+dY);
-set(h.panelOuter,'position',pPosO);
+[pPanelO(2),pPanelBG(2)] = deal(H0 - (pPosO(4)+dY));
+set(h.panelOuter,'position',pPanelO);
+set(h.panelBGDetect,'position',pPanelBG);
 
 % resets the axis/label fontsizes
 hAx = findall(h.panelImg,'type','axes');

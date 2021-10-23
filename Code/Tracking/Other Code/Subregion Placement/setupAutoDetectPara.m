@@ -72,7 +72,7 @@ switch iMov.mShape
             % sets the region binary image
             for j = 1:length(X)
                 [dXB,dYB] = deal(XB-(X(j)-pOfs(1)),YB-(Y(j)-pOfs(2)));
-                Bnw = sqrt(dXB.^2 + dYB.^2) <= R(i);
+                Bnw = sqrt(dXB.^2 + dYB.^2) <= R(j);
                 autoP.B{i} = autoP.B{i} | Bnw;
             end
                 

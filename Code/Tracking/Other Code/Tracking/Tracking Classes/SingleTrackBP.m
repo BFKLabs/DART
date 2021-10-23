@@ -626,15 +626,9 @@ classdef SingleTrackBP < handle
                     return
                 end
                 
-                % updates the acceptance flags
-                if all(obj.iMov.vPhase == 4)
-                    % if all invalid, then flag the video
-                    % as being invalid
-                    obj.bData(iDir).movOK(iFile) = 0;
-
-                elseif iFile > 1
-                    % ensures the sub-region data struct 
-                    % reflects the previous solution file
+                % ensures the sub-region data struct reflects the previous 
+                % solution file
+                if iFile > 1
                     obj.bData(iDir).movOK(iFile) = ...
                                         1 - 2*any(obj.iMov.vPhase == 4);  
                     obj.realignSubRegionData();

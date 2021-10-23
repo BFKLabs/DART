@@ -542,7 +542,9 @@ for i = 1:N
                 else
                     % output the figure (dependent on OS type)    
                     if ispc
+                        wState = warning('off','all');
                         export_fig(figNw,imgName,figRes);
+                        warning(wState);
 %                         print_eps(imgName, figNw)
                     else
                         print('-depsc2',figRes,imgName) 
@@ -556,7 +558,10 @@ for i = 1:N
             otherwise % case is the other image types            
                 try
                     % NOTE - increase resolution to desired amount here...                    
+                    wState = warning('off','all');
                     export_fig(figNw,imgName,figRes);
+                    warning(wState);
+                    
                 catch ME
                     eStr = {sprintf('Error outputting the image file:\n\n');...
                             sprintf(' => %s\n',imgName);...

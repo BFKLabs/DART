@@ -1970,10 +1970,8 @@ hTree0 = findall(hPanel,'type','hgjavacomponent');
 if ~isempty(hTree0); delete(hTree0); end
 
 % Root node
-wState = warning('off');
-hRoot = uitreenode('v0', rootStr, rootStr, [], false);
+hRoot = createUITreeNode(rootStr, rootStr, [], false);
 set(0,'CurrentFigure',hFig);
-warning(wState);
 
 % creates all the sub-parent/children nodes
 for i = 1:size(ImapU,1)
@@ -1994,18 +1992,20 @@ for i = 1:size(ImapU,1)
             end
         end
         
-        % creates the new tree node        
-        hNodeNw = uitreenode('v0',fcnNameNw,fcnNameNw,[],true);             
+        % creates the new tree node  
+        hNodeNw = createUITreeNode(fcnNameNw,fcnNameNw,[],true);             
         hNodeNw.setUserObject(iFcn);
         hNodeP.add(hNodeNw);
     end
 end
 
 % creates the tree object
+wState = warning('off','all');
 [hTreeF,hC] = uitree('v0','Root',hRoot,'position',tPos,...
                      'SelectionChangeFcn',{@treeSelectChng,handles});
 set(hC,'Visible','off')
 set(hC,'Parent',hPanel,'visible','on')
+warning(wState);
 
 % hTreeF.expand(hRoot)
 expandExplorerTreeNodes(hTreeF)
@@ -2267,8 +2267,8 @@ for i = 1:length(Imap)
         nodeStr0 = getNodeString(fStr{i},fVal{Imap(i)});
         nodeStr = setHTMLColourString('kb',nodeStr0,1);
         
-        % creates the new node        
-        hNodeNw = uitreenode('v0',nodeStr,nodeStr,[],false);
+        % creates the new node      
+        hNodeNw = createUITreeNode(nodeStr,nodeStr,[],false);
         hNodeNw.setUserObject(fVal{Imap(i)});
         hNodeP.add(hNodeNw);
         

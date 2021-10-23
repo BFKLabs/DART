@@ -89,9 +89,9 @@ function editParaUpdate(hEdit, eventdata, h)
 
 % retrieves the important data structs
 hFig = h.figStartPoint;
-iDataS = getappdata(hFig,'iDataS');
+isTrk = getappdata(hFig,'isTrk');
 trkObj = getappdata(hFig,'trkObj');
-iFrm0 = getappdata(h.figStartPoint,'iFrm0');
+[iDataS,iData0] = deal(getappdata(hFig,'iDataS'));
 
 % retrieves the parameter limits (based on type)
 pStr = get(hEdit,'UserData');
@@ -100,43 +100,46 @@ switch pStr
         nwLim = [1,trkObj.iPhase0];        
         
     case 'Stack' % case is the start stack
-        nwLim = [1,trkObj.pData.nCount(iDataS.Phase)];
+        nwLim = [1,trkObj.nCountS(iDataS.Phase)];
         
     case 'Frame' % case is the start frame
-        nwLim = [1,iFrm0];
+        nwLim = [1,length(isTrk)];
         
 end
+
+% resets the lower limit if the upper limit is zero
+if nwLim(2) == 0; nwLim(1) = 0; end
 
 % determines if the new value is 
 nwVal = str2double(get(hEdit,'string'));
 if chkEditValue(nwVal,nwLim,true)
     % if so, then update the parameter struct
-    eval(sprintf('iDataS.%s = nwVal;',pStr));
-    
-%     % calculates the new frame index
-%     FrameNw = calcFrameIndex(h,iDataS.Phase,iDataS.Stack);
-%     if FrameNw > iFrm0
-%         % if the frame index is infeasible, then output an error to screen
-%         eStr = sprintf(['The entered phase/stack configuration has a ',...
-%                         'frame index (%i) that exeeds the number of ',...
-%                         'tracked frames (%i)'],FrameNw,iFrm0);
-%         waitfor(msgbox(eStr,'Infeasible Phase/Stack Indices','modal'))
-%         
-%         % reset the parameter to the last valid value and exits
-%         set(hEdit,'string',num2str(eval(sprintf('iDataS0.%s',pStr))))
-%         return
-%     end
+    eval(sprintf('iDataS.%s = nwVal;',pStr));   
     
     % updates the other fields based on the parameter being altered
     switch pStr
         case 'Frame' % case is the frame index
-            [iDataS.Phase,iDataS.Stack] = calcPhaseIndex(h,nwVal);
-            set(h.editPhase,'string',num2str(iDataS.Phase))
-            set(h.editStack,'string',num2str(iDataS.Stack))
+            % determines if the selected frame has been tracked
+            if ~isTrk(nwVal)
+                % if not, output an error to screen
+                eStr = sprintf(['Error! The selected frame has not ',...
+                                'yet been tracked.\nTry again with ',...
+                                'an untracked frame index.']);
+                waitfor(msgbox(eStr,'Invalid Frame Index','modal'))
+                
+                % resets to the last valid value and exits
+                set(hEdit,'string',num2str(iData0.Frame)) 
+                return
+            else            
+                % otherwise, update the phase/stack fields
+                [iDataS.Phase,iDataS.Stack] = calcPhaseIndex(h,nwVal);
+                set(h.editPhase,'string',num2str(iDataS.Phase))
+                set(h.editStack,'string',num2str(iDataS.Stack))
+            end
             
         case 'Phase' % case is the phase index
             % resets the stack index 
-            nCount = trkObj.pData.nCount(iDataS.Phase);
+            nCount = trkObj.nCountS(iDataS.Phase);
             if iDataS.Stack > nCount
                 iDataS.Stack = nCount;
                 set(h.editStack,'string',num2str(iDataS.Stack))                
@@ -213,8 +216,14 @@ for i = 1:length(fStr)
 end
 
 % updates the phase count string
-nCount = trkObj.pData.nCount(iDataS.Phase);
+nCount = trkObj.nCountS(iDataS.Phase);
 set(handles.textPhaseCount,'string',num2str(nCount))
+
+% determines the first feasible region/sub-region
+iApp0 = find(trkObj.iMov.ok,1,'first');
+iTube0 = find(trkObj.iMov.flyok(:,iApp0),1,'first');
+setappdata(hFig,'isTrk',~isnan(trkObj.pData.fPos{iApp0}{iTube0}(:,1)));
+
 
 % runs the start point selection callback function
 panelStartPoint_SelectionChangedFcn(handles.panelStartPoint, '1', handles)
@@ -224,7 +233,7 @@ function iDataS = initDataStruct(handles,trkObj)
 
 % calculates the frame index
 iPhase0 = trkObj.iPhase0;
-iStack0 = trkObj.pData.nCount(iPhase0);
+iStack0 = trkObj.nCountS(iPhase0);
 iFrm0 = calcFrameIndex(handles,iPhase0,iStack0);
 
 % sets up the data struct
@@ -240,7 +249,8 @@ trkObj = getappdata(handles.figStartPoint,'trkObj');
 nFrmMx = size(trkObj.pData.fPos{1}{1},1);
 
 % calculates the start frame index
-iFrm0 = min(nFrmMx,trkObj.iMov.iPhase(iPhase0,1) + (iStack0-1)*nFrmS);
+jPhase = trkObj.iPhaseS(iPhase0);
+iFrm0 = min(nFrmMx,trkObj.iMov.iPhase(jPhase,1)+nFrmS*iStack0);
 
 % --- calculates the phase/stack indices (from the frame index)
 function [iPhase0,iStack0] = calcPhaseIndex(handles,iFrm0)
@@ -250,5 +260,10 @@ nFrmS = getappdata(handles.figStartPoint,'nFrmS');
 trkObj = getappdata(handles.figStartPoint,'trkObj');
 
 % calculates the phase/stack indices
-iPhase0 = find(iFrm0 <= trkObj.iMov.iPhase(:,2),1,'first');
-iStack0 = ceil((iFrm0-trkObj.iMov.iPhase(iPhase0,1))/nFrmS);
+iPhase0 = find(cellfun(@(x)(any(x==iFrm0)),trkObj.iFrmG(trkObj.iPhaseS)));
+iPhaseS0 = trkObj.iPhaseS(iPhase0);
+iStack0 = ceil((iFrm0-trkObj.iMov.iPhase(iPhaseS0,1))/nFrmS);
+
+% updates the phase count string
+nCount = trkObj.nCountS(iPhase0);
+set(handles.textPhaseCount,'string',num2str(nCount))

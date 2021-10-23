@@ -2025,6 +2025,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
         
             % sets the start/finish times
             [T0,T1] = deal(snTot.T{1}(1),snTot.T{end}(end));
+            T0 = roundP(T0,0.001);
             
             % resets the start time of the experiment
             dN = datenum(snTot.iExpt.Timing.T0);            

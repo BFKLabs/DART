@@ -122,7 +122,7 @@ classdef Track < handle
             
             % determines the algorithm type (direct detect or BG subtract)
             obj.isDD = isDirectDetect(obj.iMov);
-            obj.is2D = is2DCheck(obj.iMov);        
+            obj.is2D = is2DCheck(obj.iMov);
         
         end
             

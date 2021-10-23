@@ -16,7 +16,7 @@ classdef VideoPhase < handle
         pW = 0.70;        
         pTolPhase = 5;
         pTolHi = 236;  
-        pTolLo = 20;  
+        pTolLo = 35;  
         
         % calculated object class fields
         NGrp
@@ -106,12 +106,7 @@ classdef VideoPhase < handle
                     % if so, then append the solution to the previous        
                     iGrp(end,2) = iFrm(i+1);           
                     
-                else        
-                    %
-                    if i == 8
-                        a = 1;
-                    end
-                    
+                else
                     % otherwise, determine the new phase limits
                     iGrpNw = detPhaseLimits(obj,iFrmG); 
 
@@ -156,9 +151,20 @@ classdef VideoPhase < handle
                 % determines if any differences are less than tolerance
                 isTol = dImn < obj.pTolPhase;
                 if ~any(isTol)
-                    % if not then analyse the new groupings separately 
-                    iGrpF = [obj.detPhaseLimits([iFrm(1),iFrmNw]);...
-                             obj.detPhaseLimits([iFrmNw,iFrm(2)])];
+                    % 
+                    if diff(iFrm) == 2
+                        % case is there is a phase within the phase
+                        iGrpF = [[iFrm(1),iFrmNw];[iFrmNw,iFrm(2)]];
+                    else
+                        %
+                        iGrpLoF = obj.detPhaseLimits([iFrm(1),iFrmNw]);
+                        iGrpHiF = obj.detPhaseLimits([iFrmNw,iFrm(2)]);
+                        
+                        % if not then analyse the new groupings separately 
+                        iGrpF = [iGrpLoF;iGrpHiF];
+                    end
+                    
+                    % exits the loop
                     break
                 else
                     % otherwise, replace the frame/mean values of the limit 
@@ -294,7 +300,7 @@ classdef VideoPhase < handle
         end        
         
         % --- calculates the frame metrics for the frame(s) in iFrm
-        function Imn = calcFrameMetrics(obj,iFrm)            
+        function [Imn,I] = calcFrameMetrics(obj,iFrm)            
 
             % reads the image stacks and calculates the mean/range 
             I = num2cell(obj.readImgStack(iFrm,false),1);

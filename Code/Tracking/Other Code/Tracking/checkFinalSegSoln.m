@@ -6,20 +6,22 @@ global wOfs
 if isempty(wOfs); wOfs = 1; end
 
 % object field retrieval
-[handles,iData] = deal(obj.hGUI,obj.iData);
 [pData,iMov,h] = deal(obj.pData,obj.iMov,obj.hProg);
-
-% array dimensionsing and parameters
-wStr = 'Final Segmentation Check';
-[nApp,ok] = deal(length(pData.fPos),true);
 
 % if there are no valid phases, then exit
 if all(iMov.vPhase == 3)
     return
 end
 
+% array dimensionsing and parameters
+wStr = 'Final Segmentation Check';
+[nApp,ok] = deal(length(obj.pData.fPos),true);
+
+% calculates all the metric probabilities (over all regions/frames)
+ZPos = calcAllMetricProb(obj);
+
 % loops through all the frames/sub-regions determining if there is an issue
-for i = 1:nApp
+for i = find(iMov.ok(:)')
     % updates the waitbar figure
     if ~isempty(h)
         wStrNw = sprintf('%s (Region %i of %i)',wStr,i,nApp);
@@ -30,35 +32,28 @@ for i = 1:nApp
         end
     end
     
-    % only check if the apparatus is not rejected
-    if iMov.ok(i)
-        nTube = getSRCount(iMov,i);
-        for j = 1:nTube
-            % updates the waitbar figure
-            if ~isempty(h)
-                wStrNw = sprintf('%s (Sub-Region %i of %i)',wStr,j,nTube);
-                h.Update(wOfs+2,wStrNw,j/nTube);
-                h.Update(wOfs+3,'Inter-Frame Distance Check',0);
-            end
-            
-            % only check if the sub-region is not rejected
-            if iMov.flyok(j,i)
-                % checks the location data for NaN frames 
-                [iMov,pData] = frameNaNCheck(handles,iData,pData,iMov,i,j);
-                                               
-                % calculates inter-frame distance travelled by the object
-                if iMov.Status{i}(j) == 1
-                    [pData,ok] = ...
-                        frameDistCheck(handles,iData,pData,iMov,i,j,h);
-                else
-                    [pData,ok] = ...
-                        framePosCheck(obj,handles,iData,pData,iMov,i,j,h);                    
-                end
-                        
-                % if the user cancelled, then exit
-                if ~ok; return; end
-            end
+    nTube = getSRCount(iMov,i);
+    for j = find(iMov.flyok(:,i)')
+        if ~isempty(h)
+            % updates the waitbar figure (if available)
+            wStrNw = sprintf('%s (Sub-Region %i of %i)',wStr,j,nTube);
+            h.Update(wOfs+2,wStrNw,j/nTube);
+            h.Update(wOfs+3,'Inter-Frame Distance Check',0);
         end
+
+        % checks the location data for NaN frames 
+        ZPosSR = ZPos{i}(:,j);
+        [iMov,pData] = frameNaNCheck(obj,iMov,pData,i,j);
+
+        % calculates inter-frame distance travelled by the object
+        if iMov.Status{i}(j) == 1
+            [pData,ok] = frameDistCheck(obj,pData,iMov,ZPosSR,i,j);
+        else
+            [pData,ok] = framePosCheck(obj,pData,iMov,ZPosSR,i,j);                    
+        end
+
+        % if the user cancelled, then exit
+        if ~ok; return; end
     end
 end
 
@@ -67,10 +62,13 @@ end
 %-------------------------------------------------------------------------%
 
 % --- checks the position data for any NaN frames
-function [iMov,pData] = frameNaNCheck(handles,iData,pData,iMov,iApp,iTube)
+function [iMov,pData] = frameNaNCheck(obj,iMov,pData,iApp,iTube)
 
 % global variables
 global Nsz
+
+% field retrieval
+[handles,iData] = deal(obj.hGUI,obj.iData);
 
 % determines the frame count for the current video
 [iTube0,iApp0] = find(iMov.flyok,1,'first');
@@ -89,7 +87,7 @@ for i = find(iMov.vPhase >= 3)'
 end
 
 % determines all the NaN position values
-if (any(ii == 1))
+if any(ii == 1)
     % determines the groupings of NaN values, and the
     % lengths of these groups
     if (all(ii == 1))
@@ -170,23 +168,228 @@ if (any(ii == 1))
     end
 end
 
-%
-function [pData,ok] = ...
-                   framePosCheck(obj,handles,iData,pData,iMov,iApp,iTube,h)
+% --- checks the position data for any large jumps in location
+function [pData,ok] = frameDistCheck(obj,pData,iMov,ZPos,iApp,iTube)
 
 % global variables
 global wOfs
 
 % parameters
-mTol = 0.05;
-hG = fspecial('gaussian',3,1);
+dN = 3;
+[zPrTol,zPrMin] = deal(0.02,0.1);
+
+% field retrieval
+[is2D,cont] = deal(is2DCheck(iMov),true);
+[wStr,ok] = deal('Inter-Frame Distance Check',true);
+[handles,iData,h] = deal(obj.hGUI,obj.iData,obj.hProg);
+T = iData.Tv(roundP(1:iMov.sRate:length(iData.Tv)));
+
+% sets the x/y coordinates
+[X,Y] = deal(pData.fPosL{iApp}{iTube}(:,1),pData.fPosL{iApp}{iTube}(:,2));
+
+% calculates the position offset
+nFrm = length(X);
+i0 = find(~isnan(X),1,'first');
+pOfs = repmat(pData.fPos{iApp}{iTube}(i0,:)-[X(i0),Y(i0)],length(T),1);
+
+% determines if there are any low metric probability frames
+isLowPr = ZPos < zPrTol;
+if any(isLowPr) && ~is2D
+    % if so, then determine if the tracking has been conducted properly
+    
+    % calculates the coordinate extent of the feasible frames    
+    isOK = ZPos > zPrMin;
+    dXTol = obj.iMov.szObj(1)/2;
+    
+    if any(isOK)
+        xExt = [min(X(isOK)),max(X(isOK))];
+        yExt = [min(Y(isOK)),max(Y(isOK))];    
+
+        % for each low metric probability frame group, determine the side at
+        % which the object "hides". reset the coordinates to that extent
+        iGrp = getGroupIndex(isLowPr);
+        for i = 1:length(iGrp)
+            % determines the first feasible neighbouring index
+            if iGrp{i}(1) == 1
+                % case is the following point is feasible
+                iPr = iGrp{i}(end)+1;
+            else
+                % case is the previous point is feasible
+                iPr = iGrp{i}(1)-1;
+            end
+
+            % determines the side the surrounding point is closest to, and 
+            dX = max(0,[X(iPr)-xExt(1),xExt(2)-X(iPr)]);
+            iSide = argMin(dX);
+
+            if dX(iSide) < dXTol
+                [X(iGrp{i}),Y(iGrp{i})] = deal(xExt(iSide),mean(yExt));
+            elseif (iGrp{i}(1) == 1) || (iGrp{i}(end) == nFrm)
+                [X(iGrp{i}),Y(iGrp{i})] = deal(xExt(iSide),mean(yExt));
+            else
+                xiS = iGrp{i}([1,end]) + [-1,1];
+                dXS = [(X(xiS)-xExt(1)),(xExt(2)-X(xiS))];
+
+                if all(dXS(:) > dXTol)
+                    % sets the interpolation index array
+                    xi = [max(1,(iGrp{i}(1)-dN)):(iGrp{i}(1)-1),...
+                         (iGrp{i}(end)+1):min(nFrm,(iGrp{i}(end)+dN))];
+                    xi = xi(~isLowPr(xi) & ~isnan(X(xi)));
+
+                    % interpolates the missing x/y coordinates
+                    X(iGrp{i}) = roundP(interp1(xi,X(xi),iGrp{i},'pchip'));
+                    Y(iGrp{i}) = roundP(interp1(xi,Y(xi),iGrp{i},'pchip')); 
+                else
+                    [X(iGrp{i}),Y(iGrp{i})] = deal(xExt(iSide),mean(yExt));
+                end
+
+                % updates the flags
+                isLowPr(iGrp{i}) = false;
+            end
+        end
+    else
+        % if there is only low probability values, then is probably fixed
+        % in location (see locations to be median of coordinates)
+        [X(:),Y(:)] = deal(nanmedian(X),nanmedian(Y));
+    end
+end
+
+% % sets the tube row indices and the position offset
+% [iR,iC,iRT] = deal(iMov.iR{iApp},iMov.iC{iApp},iMov.iRT{iApp}{iTube});
+% [iRL,FPS] = deal(iR(iRT),nanmedian(1./diff(T)));
+% 
+% % calculates the distance tolerance dependent on the tracking algorithm
+% if isfield(iMov,'szObj')
+%     if is2D
+%         dTol = 2*sqrt(prod(iMov.szObj))/FPS;        
+%     else
+%         dTol = 2*iMov.szObj(1)/FPS;
+%     end
+% 
+% elseif isfield(iMov,'xcP')
+%     % case is the svm tracking algorithm 
+%     dTol = 4*sqrt(1+is2D)*detApproxSize(iMov.xcP)/FPS;    
+%     
+% else
+%     % case is the direct detection tracking algorithm
+%     if isColGroup(iMov)
+%         % case is column grouping
+%         dX = diff(iMov.iCT{iApp}{iTube}([1 end]));
+%         dY = diff(iMov.iRT{iApp}([1 end]));        
+%     else
+%         % case is row grouping
+%         dX = diff(iMov.iCT{iApp}([1 end]));
+%         dY = diff(iMov.iRT{iApp}{iTube}([1 end]));
+%     end
+% 
+%     % sets the overall distance tolerance
+%     dTol = (2/3)*sqrt(dX^2 + dY^2)/FPS;
+% end
+% 
+% % ensures the time vector is the same length as the position vector
+% if (length(T) > length(X)); T = T(1:length(X)); end
+% 
+% % retrieves the exclusion binary
+% % [isOK,iFrm0] = deal(true(length(T),1),-1);
+% [isOK,iFrm0,nFrm] = deal(~isnan(X),-1,length(T));
+% sz = [length(iRL),length(iMov.iC{iApp})];
+% hG = fspecial('gaussian',5,2);
+% Bw = usimage(double(getExclusionBin(iMov,sz,iApp,iTube)),sz);
+% 
+% 
+% % calculates the next-frame position estimates
+% [Xest,Yest] = deal(setupExtrapSig(X),setupExtrapSig(Y));
+% 
+% % keep looping while there are anomalous frames
+% while cont
+%     % calculates the estimated x-positions of the object
+%     dD = sqrt((X-Xest).^2 + (Y-Yest).^2);        
+%     
+%     % determines the first point where the discrepancy is outside tolerance
+%     iFrm = find((dD.*isOK) > dTol,1,'first');    
+%     if isempty(iFrm)
+%         % if there are no such points, then exit the loop
+%         cont = false;
+%         
+%     elseif (iFrm <= iFrm0) || (iFrm == 1)
+%         % if this is a repeat, then flag this frame
+%         isOK(iFrm) = false;
+%         
+%     else
+%         % updates the waitbar figure
+%         if ~isempty(h)
+%             wStrNw = sprintf('%s (Frame %i of %i)',wStr,iFrm,nFrm);
+%             if h.Update(wOfs+3,wStrNw,iFrm/nFrm)
+%                 % if the user cancelled, then exit the function
+%                 ok = false; 
+%                 return
+%             end
+%         end              
+%         
+%         % sets the surrounding frames (and the phase indices)
+%         jFrm = iFrm + [-1,0];
+%         iPhase = arrayfun(@(x)(find(iMov.iPhase(:,1)<=x,1,'last')),jFrm);
+%          
+%         isOK(iFrm) = false;        
+%         if all(iMov.vPhase(iPhase) < 3)        
+%             % retrieves the global images for the surrounding frames               
+%             Img = arrayfun(@(x)(getDispImage...
+%                                 (iData,iMov,x,0,handles)),jFrm,'un',0);            
+%             ImgL = cellfun(@(x)(double(x(iRL,iC))),Img,'un',0);
+% 
+%             % sets up the residual image stack  
+%             [ImgR0,pR] = setupResidualImages...
+%                                         (iMov,ImgL,iPhase,iApp,iTube,hG);
+%                                     
+%             % determines if the next frame needs to be fixed         
+%             fixNext = compFrameRes(ImgR0,[X(jFrm),Y(jFrm)],pR);
+%             [ImgR,iFrmU] = deal(ImgR0{1+fixNext},jFrm(1+fixNext));            
+%             
+%             % calculates the 
+%             if fixNext
+%                 pEst = [Xest(iFrmU),Yest(iFrmU)];
+%             else
+%                 pEst = [extrapSignalRev(X,iFrmU),extrapSignalRev(Y,iFrmU)];
+%             end
+%             
+%             % calculates the distance between the maxima & estimated points 
+%             iPmx = find(imregionalmax(ImgR).*Bw);
+%             [yPmx,xPmx] = ind2sub(sz,iPmx);
+%             Dest = pdist2(pEst,[xPmx,yPmx])';
+% 
+%             % determines the maxima which is most likely to be the closest 
+%             % to the estimated coordinates
+%             iMx = argMax(dTol*(ImgR(iPmx).^2)./(1+Dest));
+%             [X(iFrmU),Y(iFrmU)] = deal(xPmx(iMx),yPmx(iMx));
+% 
+%             % recalculates the estimated values
+%             [Xest,Yest] = deal(setupExtrapSig(X),setupExtrapSig(Y));
+%         end
+%     end
+% end
+ 
+% updates the waitbar figure
+h.Update(wOfs+3,sprintf('%s (100%% Complete)',wStr),1);
+
+% updates the positions into the overall positonal data struct
+pData.fPosL{iApp}{iTube} = [X,Y];
+pData.fPos{iApp}{iTube} = pData.fPosL{iApp}{iTube} + pOfs;
+
+% --- checks the position data for static objects
+function [pData,ok] = framePosCheck(obj,pData,iMov,ZPos,iApp,iTube)
+
+% global variables
+global wOfs
+
+% field retrieval
+[handles,iData,h] = deal(obj.hGUI,obj.iData,obj.hProg);
 
 % other initialistions
+mTol = 0.05;
 [wStr,ok,cont] = deal('Inter-Frame Distance Check',true,true);
 [iR,iRT,iC] = deal(iMov.iR{iApp},iMov.iRT{iApp}{iTube},iMov.iC{iApp});
 [X,Y] = deal(pData.fPosL{iApp}{iTube}(:,1),pData.fPosL{iApp}{iTube}(:,2));
 [is2D,isOK] = deal(is2DCheck(iMov),true(length(X),1));
-h0 = getMedBLSize(iMov);
 
 % if all values are NaN's, then exit
 if all(isnan(X))
@@ -202,7 +405,7 @@ if isfield(iMov,'szObj')
     end        
 end
 
-% ensures the time vector is the same length as the position vector
+% calculates the distance between the coordinates and the median point
 fPosMn = [nanmedian(X),nanmedian(Y)];
 if is2D
     dPos = sqrt((X-fPosMn(1)).^2 + (Y-fPosMn(2)).^2);
@@ -210,7 +413,11 @@ else
     dPos = abs(X-fPosMn(1));
 end
 
-%
+% sets up the distance the masks
+BD = bwdist(setGroup(roundP(fPosMn),[length(iRT),length(iC)])) <= dTol;
+
+% if there are a large number of mistracked flies, then reset all of the
+% coordinates to be the median location
 if mean(dPos > dTol) > mTol
     [X(:),Y(:)] = deal(X(1),Y(1));
     cont = false;
@@ -236,14 +443,17 @@ while cont
         end
     end  
         
-    % calculates the 
-    Img = double(getDispImage(iData,iMov,iFrm,false,handles));  
-    ImgMd = removeImageMedianBL(Img,1,is2D,h0);
+    % retrieves the image for the frame
+    Img = double(getDispImage(iData,iMov,iFrm,false,handles)); 
+    if ~isempty(obj.hS); Img = imfilter(Img,obj.hS); end
 
-    ImgR = imfilter(ImgMd(iR(iRT),iC)-iMov.IbgT{iApp}(iRT,:),hG);    
+    % calculates the residual image
+    ImgL = Img(iR(iRT),iC);
+    IxcL = calcXCorrStack(obj.iMov,ImgL,obj.hS).*(1-normImg(ImgL)).*BD;       
     
-    % calculates the like hidden object position
-    [X(iFrm),Y(iFrm)] = calcHiddenObjPos(ImgR,fPosMn,dTol);
+    % calculates the new coordinates
+    pNw = getMaxCoord(IxcL);
+    [X(iFrm),Y(iFrm)] = deal(pNw(1),pNw(2));
     isOK(iFrm) = false;
 end
 
@@ -258,226 +468,98 @@ pOfs = repmat(pData.fPos{iApp}{iTube}(i0,:)-[X(i0),Y(i0)],length(X),1);
 pData.fPosL{iApp}{iTube} = [X,Y];
 pData.fPos{iApp}{iTube} = pData.fPosL{iApp}{iTube} + pOfs;
 
-% --- checks the position data for any large jumps in location
-function [pData,ok] = frameDistCheck(handles,iData,pData,iMov,iApp,iTube,h)
+% --------------------------------------- %
+% --- METRIC PROBABILITY CALCULATIONS --- %
+% --------------------------------------- %
 
-% global variables
-global wOfs
-
-% parameters and memory allocation
-[wStr,ok] = deal('Inter-Frame Distance Check',true);
-[is2D,cont] = deal(is2DCheck(iMov),true);
-[X,Y] = deal(pData.fPosL{iApp}{iTube}(:,1),pData.fPosL{iApp}{iTube}(:,2));
-
-% sets the tube row indices and the position offset
-T = iData.Tv(roundP(1:iMov.sRate:length(iData.Tv)));
-[iR,iC,iRT] = deal(iMov.iR{iApp},iMov.iC{iApp},iMov.iRT{iApp}{iTube});
-iRL = iR(iRT);
-FPS = nanmedian(1./diff(T));
-
-% calculates the distance tolerance dependent on the tracking algorithm
-if isfield(iMov,'xcP')
-    % case is the svm tracking algorithm 
-    dTol = 4*sqrt(1+is2D)*detApproxSize(iMov.xcP)/FPS;
-
-elseif isfield(iMov,'szObj')
-    if is2D
-        dTol = 4*sqrt(2)*sqrt(prod(iMov.szObj))/FPS;        
-    else
-        dTol = 4*iMov.szObj(1)/FPS;
-    end
-
-else
-    % case is the direct detection tracking algorithm
-    if isColGroup(iMov)
-        % case is column grouping
-        dX = diff(iMov.iCT{iApp}{iTube}([1 end]));
-        dY = diff(iMov.iRT{iApp}([1 end]));        
-    else
-        % case is row grouping
-        dX = diff(iMov.iCT{iApp}([1 end]));
-        dY = diff(iMov.iRT{iApp}{iTube}([1 end]));
-    end
-
-    % sets the overall distance tolerance
-    dTol = (2/3)*sqrt(dX^2 + dY^2)/FPS;
-end
-
-% ensures the time vector is the same length as the position vector
-if (length(T) > length(X)); T = T(1:length(X)); end
-
-% retrieves the exclusion binary
-% [isOK,iFrm0] = deal(true(length(T),1),-1);
-[isOK,iFrm0,nFrm] = deal(~isnan(X),-1,length(T));
-sz = [length(iRL),length(iMov.iC{iApp})];
-hG = fspecial('gaussian',5,2);
-Bw = usimage(double(getExclusionBin(iMov,sz,iApp,iTube)),sz);
-
-% calculates the position offset
-i0 = find(~isnan(X),1,'first');
-pOfs = repmat(pData.fPos{iApp}{iTube}(i0,:)-[X(i0),Y(i0)],length(T),1);
-
-% calculates the next-frame position estimates
-[Xest,Yest] = deal(setupExtrapSig(X),setupExtrapSig(Y));
-
-% keep looping while there are anomalous frames
-while cont
-    % calculates the estimated x-positions of the object
-    dD = sqrt((X-Xest).^2 + (Y-Yest).^2);        
-    
-    % determines the first point where the discrepancy is outside tolerance
-    iFrm = find((dD.*isOK) > dTol,1,'first');    
-    if isempty(iFrm)
-        % if there are no such points, then exit the loop
-        cont = false;
-        
-    elseif (iFrm <= iFrm0) || (iFrm == 1)
-        % if this is a repeat, then flag this frame
-        isOK(iFrm) = false;
-        
-    else
-        % updates the waitbar figure
-        if ~isempty(h)
-            wStrNw = sprintf('%s (Frame %i of %i)',wStr,iFrm,nFrm);
-            if h.Update(wOfs+3,wStrNw,iFrm/nFrm)
-                % if the user cancelled, then exit the function
-                ok = false; 
-                return
-            end
-        end              
-        
-        % sets the surrounding frames (and the phase indices)
-        jFrm = iFrm + [-1,0];
-        iPhase = arrayfun(@(x)(find(iMov.iPhase(:,1)<=x,1,'last')),jFrm);
-         
-        isOK(iFrm) = false;        
-        if all(iMov.vPhase(iPhase) < 3)        
-            % retrieves the global images for the surrounding frames               
-            Img = arrayfun(@(x)(getDispImage...
-                                (iData,iMov,x,0,handles)),jFrm,'un',0);            
-            ImgL = cellfun(@(x)(double(x(iRL,iC))),Img,'un',0);
-
-            % sets up the residual image stack  
-            [ImgR0,pR] = setupResidualImages...
-                                        (iMov,ImgL,iPhase,iApp,iTube,hG);
-                                    
-            % determines if the next frame needs to be fixed         
-            fixNext = compFrameRes(ImgR0,[X(jFrm),Y(jFrm)],pR);
-            [ImgR,iFrmU] = deal(ImgR0{1+fixNext},jFrm(1+fixNext));            
-            
-            % calculates the 
-            if fixNext
-                pEst = [Xest(iFrmU),Yest(iFrmU)];
-            else
-                pEst = [extrapSignalRev(X,iFrmU),extrapSignalRev(Y,iFrmU)];
-            end
-            
-            % calculates the distance between the maxima & estimated points 
-            iPmx = find(imregionalmax(ImgR).*Bw);
-            [yPmx,xPmx] = ind2sub(sz,iPmx);
-            Dest = pdist2(pEst,[xPmx,yPmx])';
-
-            % determines the maxima which is most likely to be the closest 
-            % to the estimated coordinates
-            iMx = argMax(dTol*(ImgR(iPmx).^2)./(1+Dest));
-            [X(iFrmU),Y(iFrmU)] = deal(xPmx(iMx),yPmx(iMx));
-
-            % recalculates the estimated values
-            [Xest,Yest] = deal(setupExtrapSig(X),setupExtrapSig(Y));
-        end
-    end
-end
-
-% updates the waitbar figure
-h.Update(wOfs+3,sprintf('%s (100%% Complete)',wStr),1);
-
-% updates the positions into the overall positonal data struct
-pData.fPosL{iApp}{iTube} = [X,Y];
-pData.fPos{iApp}{iTube} = pData.fPosL{iApp}{iTube} + pOfs;
-
-% --- sets up the residual image stack
-function [ImgR0,pR] = setupResidualImages(iMov,ImgL,iPhase,iApp,iTube,hG)
-
-% sets the row indices
-iRT = iMov.iRT{iApp}{iTube};
+% --- calculates the cross-correlation images for the image stack, Img
+function Ixc = calcXCorrStack(iMov,Img,hS)
 
 % memory allocation
-switch max(iMov.vPhase(iPhase))
-    case 1
-        % case is a low variance phase
-        pR = iMov.pBG{iApp}(iTube);
-        
-        IbgL = iMov.Ibg{iPhase(1)}{iApp}(iRT,:);  
-        ImgR0 = cellfun(@(x)(imfilter(IbgL-x,hG)),ImgL,'un',0);
+tP = iMov.tPara;
 
-    case 2
-        % case is a high variance phase
-        pR = NaN;
-        
-        h0 = ceil(getMedBLSize(iMov)*2);
-        ImgR0 = cellfun(@(x)...
-                (max(0,removeImageMedianBL(x,false,true,h0))),ImgL,'un',0);                              
+% calculates the original cross-correlation image
+[Gx,Gy] = imgradientxy(Img);
+Ixc0 = max(0,calcXCorr(tP.GxT,Gx) + calcXCorr(tP.GyT,Gy));
+
+% calculates the final x-correlation mask
+if isempty(hS)
+    Ixc = Ixc0/2;
+else
+    Ixc = imfilter(Ixc0,hS)/2;
 end
 
-% --- extrapolates the signal
-function xExt = extrapSignalRev(x,iFrm)
+% --- calculates the metric probabilities over all frames
+function ZPos = calcAllMetricProb(obj)
 
-% sets the interpolation array
-nP = max(1,min(5,length(x)-(iFrm+1)));
-xP = flip(x((iFrm+1):(iFrm+nP)));
+% memory allocation
+nFrm = size(obj.pData.fPos{1}{1},1);
+IPos = cell2cell(obj.pData.IPos)';
+ZPos = arrayfun(@(n)(NaN(nFrm,n)),obj.nTube(:)','un',0);
 
-% calculates the extrapolated coordinates
-if length(xP) == 1
-    % case is there is only one value
-    xExt = xP(1);
+% loops through each phase calculating the metric probabilities
+for i = 1:obj.nPhase
+    % sets the frame indices
+    setValues = true;
+    indF = obj.iMov.iPhase(i,1):obj.iMov.iPhase(i,2);
     
-elseif range(xP) == 0
-    % if the range of the array is zero
-    xExt = xP(1);
-    
-else
-    % sets up the filter
-    a = arburg(xP,length(xP)-1);    
-    if any(isnan(a))
-        % if there are any NaN coefficients, then return the mean locations
-        xExt = nanmean(xP);
-    else
-        % otherwise, calculate the extrapolated signal value
-        [~, zf] = filter(-[0 a(2:end)], 1, xP);
-        xExt = filter([0 0], -a, 0, zf);
-    end
-end
-
-% --- 
-function fixNext = compFrameRes(ImgR,pFrm,pR)
-
-%
-prTol = 0.5;
-
-%
-iP = sub2ind(size(ImgR{1}),pFrm(:,2),pFrm(:,1));
-ImgRP = max(0,cellfun(@(I,x)(I(x)-median(I(:))),ImgR(:),num2cell(iP(:))));
-
-%
-if isnan(pR)
-    %
-    fixNext = argMax(ImgRP) == 1;
-else
-    %
-    isOK = ImgRP > pR;
-    switch sum(isOK)
-        case 0
-            fixNext = ImgRP(1)/ImgRP(2) > prTol;
-            
+    % groups the data values
+    switch obj.iMov.vPhase(i)
         case 1
-            fixNext = isOK(1);
+            % case is a low-variance phase
+            iStat = obj.iMov.StatusF{i};
+            [isStat,isMove] = deal(iStat==2,iStat==1);
+            
+            % calculates the metrics for the 
+            ZPosNw = cell(size(IPos));
+            ZPosNw(isMove) = calcGroupMetricProb(IPos(isMove),indF);            
+            ZPosNw(isStat) = calcGroupMetricProb(IPos(isStat),indF);
             
         case 2
-            fixNext = true;
+            % case is a high-variance phase
+            ZPosNw = calcGroupMetricProb(IPos,indF);
+            
+        otherwise
+            % case is an untrackable phase type
+            setValues = false;
+            
+    end
+    
+    % updates the values within the final array if low/high variance phase
+    if setValues
+        for j = 1:size(IPos,1)
+            for k = 1:size(IPos,2)
+                ZPos{k}(indF,j) = ZPosNw{j,k};
+            end
+        end 
     end
 end
 
-% 
+% --- calculates the metric for a given group
+function ZPos = calcGroupMetricProb(IPos,indF)
+
+% calculates the mean/std deviation of the group metric values
+IPosT = cell2mat(cellfun(@(x)(x(indF,1)),IPos,'un',0));
+[pMu,pSD] = deal(nanmean(IPosT(:)),nanstd(IPosT(:)));
+
+% calculates the normal cdf values
+ZPos = cellfun(@(x)(normcdf(x(indF,1),pMu,pSD)),IPos,'un',0);
+
+% ----------------------- %
+% --- OTHER FUNCTIONS --- %
+% ----------------------- %
+
+% --- calculates the signal CWT
+function Pcwt = calcSignalCWT(X)
+
+% sets the row summation indices
+iR = 1:15;
+
+% calculates the cwt and sums the power spectrums for the high-freq rows
+Y = cwt(X-mean(X));
+Pcwt = nanmean(abs(Y(iR,:)),1);
+
+% --- sets up the extrapolation signal
 function y = setupExtrapSig(x,nPts)
 
 % number of points for which to extrapolate

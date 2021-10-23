@@ -217,10 +217,10 @@ classdef FlyInfoGUI < handle
             
             % Draw table in scroll pane
             jTableH = handle(obj.jTable,'Callbackproperties');
-            jSP = javaObjectEDT('javax.swing.JScrollPane',jTableH);            
+            jSP = javaObjectEDT('javax.swing.JScrollPane',jTableH);
             jSP.setRowHeaderView(obj.rTable);
             jSP.setCorner(jSP.UPPER_LEFT_CORNER,...
-                                        obj.rTable.getTableHeader());                                                
+                                        obj.rTable.getTableHeader());
                                     
             % retrieves the matlab handle
             [~, hContainer] = createJavaComponent(jSP, [], obj.hPanelV);                 

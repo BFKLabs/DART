@@ -107,7 +107,7 @@ h.Update(1,'Determining Initial Circle Centre Estimate',0.25);
 
 % parameters
 mTol = 0.25;
-sTol = 0.995;
+sTol = 0.9975;
 sz = size(I);
 NC = prod(dim);
 Type = {'dark','bright'};
@@ -117,9 +117,21 @@ Type = {'dark','bright'};
 % --- INITIAL CIRCLE CENTRE DETECTION --- %
 % --------------------------------------- %
 
+%
+pTol = 0.05;
+
+%
+Itmp = 255*normImg(removeImageMedianBL(I,1,1));
+[Imn,Isd] = deal(nanmean(Itmp(:)),nanstd(Itmp(:)));
+
+%
+ZI = normcdf(Itmp,Imn,Isd);
+BZ = (ZI >= pTol) & (ZI <= (1-pTol));
+Itmp(~BZ) = nanmedian(Itmp(BZ));
+
 % calculate the circle regions using the object polarity type, Type
 for i = 1:length(Type)
-    [pC0{i},R0{i},M0{i}] = imfindcircles(I,rTol,'Method',...
+    [pC0{i},R0{i},M0{i}] = imfindcircles(Itmp,rTol,'Method',...
                 'TwoStage','ObjectPolarity',Type{i},'Sensitivity',sTol);
 end
 
@@ -141,7 +153,8 @@ Rmax0 = max(R0);
 % ------------------------------------ %
 
 % initialisations
-II = {I,IBL};
+% II = {I,IBL};
+II = {Itmp,IBL};
 Ixc = cell(length(II),1);
 
 % sets up the xcorr template image
