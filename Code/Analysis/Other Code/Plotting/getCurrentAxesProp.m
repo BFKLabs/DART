@@ -1,5 +1,5 @@
 % --- retrieves the current analysis axes property
-function hObj = getCurrentAxesProp(pStr)
+function [hObj,hFig] = getCurrentAxesProp(pStr)
 
 % determines if the figure is valid
 validFig = {'figOutputPlot','figUndockPlot','figFlyAnalysis'};

@@ -37,7 +37,7 @@ for i = 1:length(hTab)
     if ~isempty(hChild) && ~isempty(jTabG)
         isEnable = any(strcmp(get(hChild,'enable'),'on'));              
         try
-            jTabG(i).setEnabledAt(get(hTab{i},'UserData')-1,isEnable)        
+            jTabG.setEnabledAt(get(hTab{i},'UserData')-1,isEnable)        
         catch ME
             if ~strcmp(ME.identifier,'MATLAB:Java:GenericException')
                 rethrow(ME)

@@ -63,5 +63,6 @@ for i = 1:length(iGrp)
     [xFill,yFill] = deal([XsigNw;XsigNw(end:-1:1)],[YL;YU(end:-1:1)]);
 
     % creates the fill object    
-    fill(xFill,yFill,col,'facealpha',fAlpha,'linestyle','none','parent',hAx);
+    hFill = fill(xFill,yFill,col,'facealpha',fAlpha,'linestyle','none');
+    set(hFill,'parent',hAx)
 end
