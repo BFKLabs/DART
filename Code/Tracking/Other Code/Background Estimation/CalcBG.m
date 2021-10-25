@@ -1,4 +1,5 @@
 classdef CalcBG < handle
+    
     % class properties
     properties
         % input argument objects
@@ -107,7 +108,7 @@ classdef CalcBG < handle
             
             % stops the camera (if running)
             if obj.isCalib
-                infoObj = getappdata(obj.hFig,'infoObj');  
+                infoObj = get(obj.hFig,'infoObj');  
                 if strcmp(get(infoObj.objIMAQ,'Running'),'off')
                     start(infoObj.objIMAQ); pause(0.05); 
                 end                
@@ -160,15 +161,15 @@ classdef CalcBG < handle
             if obj.isChange
                 % updates the fields in the tracking GUI
                 isMovChange = true;
-                setappdata(obj.hFig,'pData',[])
-                setappdata(obj.hFig,'iMov',obj.iMov) 
+                set(obj.hFig,'pData',[])
+                set(obj.hFig,'iMov',obj.iMov) 
                 
 %                 % initialises the plot markers
-%                 markerFcn = getappdata(obj.hFig,'initMarkerPlots');
+%                 markerFcn = get(obj.hFig,'initMarkerPlots');
 %                 markerFcn(hgui,1); pause(0.01); 
             else
                 % otherwise, reset to the original sub-region data struct
-                setappdata(obj.hFig,'iMov',obj.iMov0)                        
+                set(obj.hFig,'iMov',obj.iMov0)                        
             end                
 
             % closes the statistics information GUI (if open)
@@ -179,13 +180,13 @@ classdef CalcBG < handle
             % update axes with the original image (non-calibrating only)
             if obj.isCalib
                 % stops the camera (if running)
-                infoObj = getappdata(obj.hFig,'infoObj'); 
+                infoObj = get(obj.hFig,'infoObj'); 
                 if strcmp(get(infoObj.objIMAQ,'Running'),'on')
                     stop(infoObj.objIMAQ); pause(0.05); 
                 end
                 
             else
-                dispFcn = getappdata(obj.hFig,'dispImage');
+                dispFcn = get(obj.hFig,'dispImage');
                 dispFcn(hgui,obj.ImgFrm0,1)
             end                           
 
@@ -252,7 +253,7 @@ classdef CalcBG < handle
             obj.checkTubeRegions(obj.hGUI.checkTubeRegions, [])
 
             % turns on the local viewing panel
-            chkFunc = getappdata(obj.hFig,'checkLocalView_Callback');
+            chkFunc = get(obj.hFig,'checkLocalView_Callback');
             chkFunc(obj.hGUI.checkLocalView, 1, obj.hGUI)
 
             % updates the axis colour limit
@@ -270,7 +271,7 @@ classdef CalcBG < handle
             
             % toggles the normal/background estimate panel visibilities
             obj.resetGUIDimensions(false)
-            setappdata(obj.hGUI.figFlyTrack,'bgObj',obj)
+            set(obj.hGUI.figFlyTrack,'bgObj',obj)
                                    
             % sets the menu item visibiity properties
             setObjVisibility(hgui.panelBGDetect,'off') 
@@ -431,8 +432,8 @@ classdef CalcBG < handle
             hgui = obj.hGUI;
             
             % retrieves the sub-region/program data structs
-            [obj.iMov,obj.iMov0] = deal(getappdata(obj.hFig,'iMov'));
-            obj.iData = getappdata(obj.hFig,'iData');   
+            [obj.iMov,obj.iMov0] = deal(get(obj.hFig,'iMov'));
+            obj.iData = get(obj.hFig,'iData');   
             obj.iPara = obj.initParaStruct(10); 
             obj.is2D = is2DCheck(obj.iMov);
             obj.isMTrk = detMltTrkStatus(obj.iMov);
@@ -461,7 +462,7 @@ classdef CalcBG < handle
             end
             
             % sets the calibration field
-            obj.trkObj.setClassField('isCalib',obj.isCalib);
+            set(obj.trkObj,'isCalib',obj.isCalib);
             
             % initial main gui properties
             obj.ok0 = obj.iMov.flyok;
@@ -571,8 +572,8 @@ classdef CalcBG < handle
                 % determines if the class object has location values
                 if ~isempty(obj.fPos)                    
                     % retrieves the positional data from the main gui
-                    pData = getappdata(obj.hGUI.figFlyTrack,'pData');
-                    if ~isempty(pData)                    
+                    pData0 = get(obj.hGUI.figFlyTrack,'pData');
+                    if ~isempty(pData0)                    
                         % if there is positional data, then store the
                         % position values for the 1st frame of each phase                                                
                         iFrmL = obj.iMov.iPhase(:,1);
@@ -588,7 +589,7 @@ classdef CalcBG < handle
                             % retrieves the position data 
                             obj.fPos{i} = cellfun(@(y,dy)(dy+cell2mat(...
                                     cellfun(@(x)(x(iFrmL(i),:)),y(:),...
-                                    'un',0))),pData.fPos(:),yOfs,'un',0);
+                                    'un',0))),pData0.fPos(:),yOfs,'un',0);
                         end    
                     end
                 end
@@ -751,7 +752,7 @@ classdef CalcBG < handle
             hS = fspecial('disk',bgP.hSz);            
             
             % retrieves the data structs/function handles from the main GUI     
-            dispImage = getappdata(hgui.figFlyTrack,'dispImage');            
+            dispImage = get(hgui.figFlyTrack,'dispImage');            
 
             % sets the table java object (if GUI is visible and handle not set)
             if obj.isVisible
@@ -1326,7 +1327,7 @@ classdef CalcBG < handle
             % retrieves the normal image
             if obj.isCalib
                 % retrieves the camera the required number of snapshots
-                infoObj = getappdata(obj.hFig,'infoObj');    
+                infoObj = get(obj.hFig,'infoObj');    
                 
                 % prompts the user for the video capture information
                 frmPara = CapturePara();
@@ -1706,7 +1707,7 @@ classdef CalcBG < handle
 
             % retrieves the tube show check callback function
             hgui = obj.hGUI;
-            cFunc = getappdata(hgui.figFlyTrack,'checkShowTube_Callback');
+            cFunc = get(hgui.figFlyTrack,'checkShowTube_Callback');
 
             % updates the tubes visibility
             cFunc(hgui.checkShowTube,num2str(get(hObject,'value')),hgui)
@@ -1785,7 +1786,7 @@ classdef CalcBG < handle
             
             % sets the image array (if calibrating only)
             if obj.isCalib
-                obj.trkObj.setClassField('Img0',obj.ImgC)
+                set(obj.trkObj,'Img0',obj.ImgC)
             end
 
             % creates the waitbar figure
@@ -1823,7 +1824,7 @@ classdef CalcBG < handle
                 obj.Ibg = cell(length(imov.vPhase),1);   
                 
                 % updates the sub-region data struct in the main gui
-                setappdata(obj.hGUI.figFlyTrack,'iMov',imov)
+                set(obj.hGUI.figFlyTrack,'iMov',imov)
                 
                 % likely/potential object locations
                 obj.fPos = obj.trkObj.fPosG;
@@ -2328,7 +2329,7 @@ classdef CalcBG < handle
             mP = roundP(get(obj.hAx,'CurrentPoint'));
 
             % determines if the mouse is over any sub-regions
-            hTube = cell2cell(getappdata(obj.hFig,'hTube'));
+            hTube = cell2cell(get(obj.hFig,'hTube'));
             P = cellfun(@(x)([get(x,'xdata'),...
                               get(x,'ydata')]),hTube(:),'un',0);            
             
@@ -2506,6 +2507,7 @@ classdef CalcBG < handle
     
     end
     
+    % static class methods
     methods (Static)
     
         % --- function that initialises the parameter struct
@@ -2517,4 +2519,5 @@ classdef CalcBG < handle
         end        
     
     end
+    
 end

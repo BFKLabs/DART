@@ -10,10 +10,11 @@ if isempty(pData)
 end
 
 % sets the default parameters
+hFig = handles.figFlyTrack;
 if ~exist('forceUpdate','var'); forceUpdate = false; end
 
 % retrieves the sub-region data struct
-iMov = getappdata(handles.figFlyTrack,'iMov');
+iMov = get(hFig,'iMov');
 if ~iMov.isSet; return; end
 
 % other initialisations
@@ -21,7 +22,7 @@ if ~iMov.isSet; return; end
 pltLV = get(handles.checkLocalView,'value');
 
 % retrieves the 
-getMarkerProps = getappdata(handles.figFlyTrack,'getMarkerProps');
+getMarkerProps = get(hFig,'getMarkerProps');
 if isCalib || forceUpdate
     isManualReseg = false;
 else

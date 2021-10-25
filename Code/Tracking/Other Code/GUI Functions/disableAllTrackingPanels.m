@@ -33,7 +33,7 @@ end
 set(hGUI.checkReject,'value',0)
 set(hGUI.checkShowMark,'value',0)
 if ishandle(hGUI.checkShowAngle); set(hGUI.checkShowAngle,'value',0); end
-if ~isCalib; feval(getappdata(hGUI.figFlyTrack,'dispImage'),hGUI); end
+if ~isCalib; feval(get(hGUI.figFlyTrack,'dispImage'),hGUI); end
 
 % updates the GUI properties
 hProp0 = getHandleSnapshot(hGUI);

@@ -63,7 +63,7 @@ if ~frameSet
             end
             
             % retrieves the current image frame
-            mObj = getappdata(handles.figFlyTrack,'mObj');
+            mObj = get(handles.figFlyTrack,'mObj');
             if cFrmT > mObj.NumberOfFrames
                 Img = [];
                 return
@@ -82,7 +82,7 @@ if ~frameSet
             end
             
             % retrieves the current image frame
-            mObj = getappdata(handles.figFlyTrack,'mObj');
+            mObj = get(handles.figFlyTrack,'mObj');
             Img = mObj.getFrame(cFrmT-1);
             if size(Img,3) == 3
                 Img = rgb2gray(Img);

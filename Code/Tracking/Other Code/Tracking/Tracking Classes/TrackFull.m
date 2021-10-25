@@ -133,8 +133,8 @@ classdef TrackFull < Track
             end
             
             % updates the data structs into the main GUI
-            setappdata(obj.hFig,'iMov',obj.iMov);
-            setappdata(obj.hFig,'pData',obj.pData);
+            set(obj.hFig,'iMov',obj.iMov);
+            set(obj.hFig,'pData',obj.pData);
             
         end  
         
@@ -220,11 +220,8 @@ classdef TrackFull < Track
             end
             
             % sets the tracking object properties
-            obj.fObj{iPhase}.setClassField('iMov',obj.iMov);
-            obj.fObj{iPhase}.setClassField('wOfs',wOfsNw);
-            obj.fObj{iPhase}.setClassField('hProg',obj.hProg);
-            obj.fObj{iPhase}.setClassField('iPh',iPhase); 
-            obj.fObj{iPhase}.setClassField('vPh',vPh);
+            set(obj.fObj{iPhase},'iMov',obj.iMov,'wOfs',wOfsNw,...
+                                 'hProg',obj.hProg,'iPh',iPhase,'vPh',vPh);
 
             % sets the phase dependent fields
             switch obj.iMov.vPhase(iPhase)
@@ -251,7 +248,7 @@ classdef TrackFull < Track
                     pInt = struct('fPos',[],'iFrm',i2);
                     pInt.fPos = cellfun(@(x)(cellfun(@(y)...
                            (y(i2,:)),x,'un',0)),obj.pData.fPosL,'un',0);
-                    obj.fObj{iPhase}.setClassField('pInt',pInt);
+                    set(obj.fObj{iPhase},'pInt',pInt);
             end            
             
             % ------------------------------ %
@@ -282,9 +279,8 @@ classdef TrackFull < Track
                 end
                 
                 % updates the tracking object class fields                
-                obj.fObj{iPhase}.setClassField('Img',Img);                
-                obj.fObj{iPhase}.setClassField('prData',prDataPh);    
-                obj.fObj{iPhase}.setClassField('iFrmR',obj.sProg.iFrmR{i});
+                set(obj.fObj{iPhase},'Img',Img,'prData',prDataPh,...
+                                     'iFrmR',obj.sProg.iFrmR{i});
                                     
                 % runs the direct detection algorithm
                 obj.fObj{iPhase}.runDetectionAlgo();   
@@ -352,7 +348,7 @@ classdef TrackFull < Track
             
             % updates the stack count and the positional data struct
             obj.pData.nCount(iPhase) = iStack;
-            setappdata(obj.hFig,'pData',obj.pData);
+            set(obj.hFig,'pData',obj.pData);
             
             % stores the data from the last frame (used for next stack)
             if iStack <= nStack
@@ -365,16 +361,15 @@ classdef TrackFull < Track
         function updateTrackingGUI(obj,iStack)
             
             % retrieves the solution tracking GUI
-            hSolnT = getappdata(obj.hFig,'hSolnT');
+            hSolnT = get(obj.hFig,'hSolnT');
             if ~isempty(hSolnT)
                 % if it does exist, then update it
                 try
                     % attempts to updates the solution view GUI
-                    uFunc = getappdata(hSolnT,'updateFunc');
-                    uFunc(guidata(hSolnT),obj.pData)
+                    hSolnT.updateFunc(guidata(hSolnT));
                 catch
                     % if there was an error, then reset the GUI handle
-                    setappdata(obj.hFig,'hSolnT',[])   
+                    set(obj.hFig,'hSolnT',[])   
                 end
 
                 % sets the new frame
@@ -448,12 +443,12 @@ classdef TrackFull < Track
             % loads the progress data file            
             pFile = fullfile(obj.tDir,'Progress.mat');
             A = load(pFile); obj.sProg = A.sProg;
-            B = load(getParaFileName('ProgPara.mat'));
             
             % sets the frames that are to be removed
+            nFrmS = getFrameStackSize();
             Brmv = false(length(obj.pData.IPos{1}{1}),1);
             Brmv(cell2mat(obj.iFrmG(xiS)')) = true;
-            Brmv(obj.iFrmG{jPhase}((indS(2)*B.trkP.nFrmS+1):end)) = true;
+            Brmv(obj.iFrmG{jPhase}((indS(2)*nFrmS+1):end)) = true;
             
             % resets the positional arrays
             for i = 1:length(obj.pData.fPos)
@@ -479,8 +474,7 @@ classdef TrackFull < Track
         function setupPosDataStructFull(obj)
 
             % loads the global analysis parameters 
-            A = load(getParaFileName('ProgPara.mat'));
-            nFrmS = A.trkP.nFrmS;
+            nFrmS = getFrameStackSize();
 
             % array length indexing
             nFrm = diff(obj.iMov.iPhase,[],2) + 1;
@@ -512,15 +506,12 @@ classdef TrackFull < Track
         
         % --- resets the segmentation progress struct --- %
         function resetProgressStruct(obj,iPhase)
-
-            % loads the parameters from the program parameter file
-            A = load(getParaFileName('ProgPara.mat'));
-
-            % sets the phase indices            
+            
+            % sets the phase indices  
+            NN = getFrameStackSize();
             pInd = obj.iMov.iPhase(iPhase,:);
 
-            % retrieves the frame stack size
-            NN = A.trkP.nFrmS;
+            % retrieves the frame stack size            
             nFrm = diff(pInd) + 1;
             nStack = ceil(nFrm/NN);
 
@@ -589,7 +580,7 @@ classdef TrackFull < Track
             obj.tDir = obj.iData.ProgDef.TempFile;     
             
             % function handles
-            obj.dispImage = getappdata(obj.hFig,'dispImage');
+            obj.dispImage = get(obj.hFig,'dispImage');
             
             % creates the progress bar (if not already set)
             if isempty(obj.hProg) || ~obj.hasProg
@@ -616,15 +607,14 @@ classdef TrackFull < Track
             
             % if the solution tracking GUI is open, then reset the 
             % update function       
-            hSolnT = getappdata(obj.hFig,'hSolnT');
+            hSolnT = get(obj.hFig,'hSolnT');
             if ~isempty(hSolnT)
                 try
                     % attempts to updates the solution view GUI
-                    uFunc = getappdata(hSolnT,'updateFunc');
-                    uFunc(guidata(hSolnT),obj.pData)
+                    hSolnT.updateFunc(guidata(hSolnT));
                 catch
                     % if there was an error, then reset the GUI handle
-                    setappdata(obj.hFig,'hSolnT',[])   
+                    set(obj.hFig,'hSolnT',[])   
                 end
             end                
             
@@ -638,7 +628,7 @@ classdef TrackFull < Track
                 
                 % loads the global analysis parameters 
                 pPara = load(getParaFileName('ProgPara.mat'));
-                nFrmS = pPara.trkP.nFrmS;
+                nFrmS = getFrameStackSize();
                 
                 %
                 jPhase = obj.iPhaseS(obj.iPhase0);
@@ -678,6 +668,11 @@ classdef TrackFull < Track
             % initialisations
             updateFrame = false;
             
+            % sets the phase frame index groups
+            xiPh = num2cell(obj.iMov.iPhase,2);
+            [~,obj.iPhaseS] = sort(obj.iMov.vPhase);
+            obj.iFrmG = cellfun(@(x)(x(1):x(2)),xiPh,'un',0);            
+            
             % determines if the positional data struct exists
             if isempty(obj.pData)
                 % if not, then initialise
@@ -693,12 +688,7 @@ classdef TrackFull < Track
                 % determines the first feasible region/sub-region
                 iApp0 = find(obj.iMov.ok,1,'first');
                 iTube0 = find(obj.iMov.flyok(:,iApp0),1,'first');
-                fPosT = obj.pData.fPos{iApp0}{iTube0};
-                
-                % determines the phase 
-                xiPh = num2cell(obj.iMov.iPhase,2);
-                [~,obj.iPhaseS] = sort(obj.iMov.vPhase);
-                obj.iFrmG = cellfun(@(x)(x(1):x(2)),xiPh,'un',0);
+                fPosT = obj.pData.fPos{iApp0}{iTube0};                
 
                 % retrieves the index of the last segmented frame
                 isTrk = ~isnan(fPosT(:,1));
@@ -858,7 +848,7 @@ classdef TrackFull < Track
             % updates the frame (if required)
             if updateFrame
                 % updates the frame selection properties
-                setappdata(obj.hGUI.figFlyTrack,'pData',obj.pData);
+                set(obj.hGUI.figFlyTrack,'pData',obj.pData);
                 setTrackGUIProps(obj.hGUI,'UpdateFrameSelection'); 
                 
                 % updates the display image

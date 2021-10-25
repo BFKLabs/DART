@@ -35,36 +35,39 @@ hGUI = varargin{1};
 % parameters
 Dtol0 = 10;
 
+% initialises the object properties
+pFldStr = {'jTabD','jTabN','jObjD','jObjN','cjTab','chTab',...
+           'nNaN','Dfrm','Dtol','hGUI'};
+initObjPropFields(hObject,pFldStr);
+
 % sets the diagnostic metrics from the solution view GUI
-setappdata(hObject,'nNaN',getappdata(hGUI.figFlySolnView,'nNaN'));
-setappdata(hObject,'Dfrm',getappdata(hGUI.figFlySolnView,'Dfrm'));
-setappdata(hObject,'Dtol',Dtol0);
-setappdata(hObject,'hGUI',hGUI);
+hFigM = hGUI.output;
+set(hObject,'nNaN',hFigM.nNaN,'Dfrm',hFigM.Dfrm,'Dtol',Dtol0,'hGUI',hGUI);
 
 % sets the GUI object properties
 setObjEnable(handles.buttonGoto,'off')
 set(handles.editFrmDist,'string',num2str(Dtol0))
-
-% initialises the table positions
-hasNaN = updateNaNTable(handles);
-hasD = updateDistTable(handles);
-centreFigPosition(hObject);
 
 % sets the figure to be visible
 setObjVisibility(hGUI.figFlySolnView,'off')
 setObjVisibility(hObject,'on'); 
 pause(0.05);
 
+% initialises the table positions
+hasNaN = updateNaNTable(handles);
+hasD = updateDistTable(handles);
+centreFigPosition(hObject);
+
 % retrieves the distance table java objects (if created)
-if (hasD)
-    setappdata(hObject,'jObjD',findjobj(handles.tableFrmDist)); 
-    setappdata(hObject,'jTabD',getJavaTable(handles.tableFrmDist)); 
+if hasD
+    set(hObject,'jObjD',findjobj(handles.tableFrmDist)); 
+    set(hObject,'jTabD',getJavaTable(handles.tableFrmDist)); 
 end         
 
 % retrieves the NaN frame table java objects (if created)
-if (hasNaN)
-    setappdata(hObject,'jObjN',findjobj(handles.tableNaNCount)); 
-    setappdata(hObject,'jTabN',getJavaTable(handles.tableNaNCount)); 
+if hasNaN
+    set(hObject,'jObjN',findjobj(handles.tableNaNCount)); 
+    set(hObject,'jTabN',getJavaTable(handles.tableNaNCount)); 
 end
 
 % UIWAIT makes SolnDiagCheck wait for user response (see UIRESUME)
@@ -88,13 +91,13 @@ function editFrmDist_Callback(hObject, eventdata, handles)
 
 % check to see if the new value is valid
 nwVal = str2double(get(hObject,'string'));
-if (chkEditValue(nwVal,[10 inf],0))
+if chkEditValue(nwVal,[10 inf],0)
     % if so, then update the value into the GUI
-    setappdata(handles.figDiagCheck,'Dtol',nwVal)
+    set(handles.output,'Dtol',nwVal)
     updateDistTable(handles);
 else
     % otherwise, reset the editbox to the original value
-    set(hObject,'string',num2str(getappdata(handles.figDiagCheck,'Dtol')))
+    set(hObject,'string',num2str(get(handles.output,'Dtol')))
 end
 
 % --- TABLE SELECTION CALLBACK FUNCTIONS --- %
@@ -104,14 +107,14 @@ end
 function tableNaNCount_CellSelectionCallback(hObject, eventdata, handles)
 
 % if the indices are empty, then exit
-if (isempty(eventdata.Indices)); return; end
+if isempty(eventdata.Indices); return; end
 
 % retrieves the java object handles
-jTabD = getappdata(handles.figDiagCheck,'jTabD');
-jTabN = getappdata(handles.figDiagCheck,'jTabN');
+jTabD = get(handles.output,'jTabD');
+jTabN = get(handles.output,'jTabN');
 
 % removes the table selection for the other table
-if (~isempty(jTabD))
+if ~isempty(jTabD)
     jTabD.changeSelection(-1,-1, false, false);
 end
 
@@ -119,21 +122,20 @@ end
 setObjEnable(handles.buttonGoto',any(eventdata.Indices(2) == [4,5]))
 
 % sets the current table handle
-setappdata(handles.figDiagCheck,'cjTab',jTabN);
-setappdata(handles.figDiagCheck,'chTab',hObject);
+set(handles.output,'cjTab',jTabN,'chTab',hObject);
 
 % --- Executes when selected cell(s) is changed in tableFrmDist.
 function tableFrmDist_CellSelectionCallback(hObject, eventdata, handles)
 
 % if the indices are empty, then exit
-if (isempty(eventdata.Indices)); return; end
+if isempty(eventdata.Indices); return; end
 
 % retrieves the java object handles
-jTabD = getappdata(handles.figDiagCheck,'jTabD');
-jTabN = getappdata(handles.figDiagCheck,'jTabN');
+jTabD = get(handles.output,'jTabD');
+jTabN = get(handles.output,'jTabN');
 
 % removes the table selection for the other table
-if (~isempty(jTabN))
+if ~isempty(jTabN)
     jTabN.changeSelection(-1,-1, false, false);
 end
 
@@ -141,8 +143,7 @@ end
 setObjEnable(handles.buttonGoto,eventdata.Indices(2) == 4)
 
 % sets the current table handle
-setappdata(handles.figDiagCheck,'cjTab',jTabD);
-setappdata(handles.figDiagCheck,'chTab',hObject);
+set(handles.output,'cjTab',jTabD,'chTab',hObject);
 
 % --- PROGRAM CONTROL BUTTONS --- %
 % ------------------------------- %
@@ -151,12 +152,12 @@ setappdata(handles.figDiagCheck,'chTab',hObject);
 function buttonGoto_Callback(hObject, eventdata, handles)
 
 % retrieves the main GUI object handles
-hGUI = getappdata(handles.figDiagCheck,'hGUI');
-hGUIM = getappdata(hGUI.figFlySolnView,'hGUI');
+hGUI = get(handles.output,'hGUI');
+hGUIM = get(hGUI.figFlySolnView,'hGUI');
 
 % retrieves the selected row/column indices
-jTab = getappdata(handles.figDiagCheck,'cjTab');
-hTab = getappdata(handles.figDiagCheck,'chTab');
+jTab = get(handles.output,'cjTab');
+hTab = get(handles.output,'chTab');
 [row,col] = deal(jTab.getSelectedRows+1,jTab.getSelectedColumns+1);
 
 % retrieves the table data and updates the frame counter
@@ -164,17 +165,17 @@ Data = get(hTab,'Data');
 set(hGUIM.frmCountEdit,'string',num2str(Data{row,col}));
 
 % updates the main figure
-feval(getappdata(hGUIM.figFlyTrack,'dispImage'),hGUIM);
+feval(get(hGUIM.figFlyTrack,'dispImage'),hGUIM);
 setObjEnable(hObject,'off')
 
 % --- Executes on button press in buttonClose.
 function buttonClose_Callback(hObject, eventdata, handles)
 
 % retrieves the solution viewing GUI handles
-hGUI = getappdata(handles.figDiagCheck,'hGUI');
+hGUI = get(handles.output,'hGUI');
 
 % deletes the GUI and makes the GUI visible again
-delete(handles.figDiagCheck)
+delete(handles.output)
 setObjVisibility(hGUI.figFlySolnView,'on');
 
 %-------------------------------------------------------------------------%
@@ -188,8 +189,8 @@ setObjVisibility(hGUI.figFlySolnView,'on');
 function hasD = updateDistTable(handles)
 
 % retrieves the relevant data arrays/values
-Dfrm = getappdata(handles.figDiagCheck,'Dfrm');
-Dtol = getappdata(handles.figDiagCheck,'Dtol');
+Dfrm = get(handles.output,'Dfrm');
+Dtol = get(handles.output,'Dtol');
 
 % retrievesw the NaN panel/table and figure position vectors
 pPos = get(handles.panelFrmDist,'position');
@@ -275,8 +276,8 @@ setObjVisibility(handles.figDiagCheck,'on')
 function hasNaN = updateNaNTable(handles)
 
 % retrieves the relevant data arrays/values
-nNaN = getappdata(handles.figDiagCheck,'nNaN');
-jObj = getappdata(handles.figDiagCheck,'jObjN');
+nNaN = get(handles.output,'nNaN');
+jObj = get(handles.output,'jObjN');
 
 % retrievesw the NaN panel/table and figure position vectors
 pPos = get(handles.panelNaNCount,'position');
@@ -319,7 +320,7 @@ else
     
     % resets the table properties
     set(handles.tableNaNCount,'visible','on','Data',Data,...
-                'position',tPos,'columnwidth',getCWid(jObj,tPos(3),nGrp))
+                'position',tPos,'columnwidth',getCWid(tPos(3),nGrp))
     autoResizeTableColumns(handles.tableNaNCount);            
 end
 

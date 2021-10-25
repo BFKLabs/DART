@@ -1,4 +1,4 @@
-classdef Track < handle
+classdef Track < matlab.mixin.SetGet
     
     % class properties
     properties
@@ -44,45 +44,7 @@ classdef Track < handle
             obj.iData = iData;   
             obj.isMulti = isMulti;
             
-        end
-        
-        % --------------------------------- %
-        % --- CLASS FIELD I/O FUNCTIONS --- %
-        % --------------------------------- %         
-        
-        % --- sets class field for the field string(s) given in pStr
-        function setClassField(obj,pStr,pVal)
-            
-            % ensures the field strings are in a cell array
-            if ~iscell(pStr); pStr = {pStr}; end
-            
-            % combines the field string
-            fStr = 'obj';
-            for i = 1:length(pStr)
-                fStr = sprintf('%s.%s',fStr,pStr{i});
-            end
-            
-            % updates the field value
-            eval(sprintf('%s = pVal;',fStr));
-            
-        end
-        
-        % --- sets class field for the field string(s) given in pStr
-        function pVal = getClassField(obj,pStr)
-            
-            % ensures the field strings are in a cell array
-            if ~iscell(pStr); pStr = {pStr}; end
-            
-            % combines the field string
-            fStr = 'obj';
-            for i = 1:length(pStr)
-                fStr = sprintf('%s.%s',fStr,pStr{i});
-            end
-            
-            % retrieves the field value
-            pVal = eval(fStr);
-            
-        end    
+        end       
         
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %

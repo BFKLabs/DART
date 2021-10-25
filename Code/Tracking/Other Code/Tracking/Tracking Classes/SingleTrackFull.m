@@ -26,7 +26,7 @@ classdef SingleTrackFull < TrackFull & SingleTrack
             obj.hGUI = hGUI;
             obj.iMov = iMov;
             obj.pData = pData;
-            obj.hFig = hGUI.figFlyTrack;        
+            obj.hFig = hGUI.output;        
             
             % starts the video tracking
             obj.segEntireVideoFull();

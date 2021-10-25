@@ -1,4 +1,4 @@
-classdef LVPhaseTrack < handle
+classdef LVPhaseTrack < matlab.mixin.SetGet
    
     % class properties
     properties
@@ -38,10 +38,11 @@ classdef LVPhaseTrack < handle
         axR
         NszB
         
-        % temporary object fields
+        % temporary object fields        
         IR      
         y0      
         hS
+        nI
         dTol
         pTolPh = 5;
         
@@ -112,8 +113,7 @@ classdef LVPhaseTrack < handle
         function segmentRegions(obj,iApp)
                         
             % initialisations
-            imov = obj.iMov;
-            iRT = imov.iRT{iApp};           
+            imov = obj.iMov;                   
             y0L = [zeros(obj.nTube(iApp),1),obj.y0{iApp}(:)];
             
             % retrieves the global row/column indices
@@ -138,21 +138,29 @@ classdef LVPhaseTrack < handle
             end            
             
             % sets up the region image stack
-            [ImgL,ImgBG] = obj.setupRegionImageStack(iApp);             
+            [ImgL,ImgBG] = obj.setupRegionImageStack(iApp);            
+            [iRT,iCT] = obj.getSubRegionIndices(iApp,size(ImgBG,2));            
             
             % segments the location for each feasible sub-region
             for iTube = find(fok(:)')
                 % sets the sub-region image stack
                 pOfs = [0,0];
                 reduceImg = false;
-                ImgSR = cellfun(@(x)(x(iRT{iTube},:)),ImgL,'un',0);
+                ImgSR = cellfun(@(x)(x(iRT{iTube},iCT)),ImgL,'un',0);
                 
                 % sets up the residual image stack                        
-                ImgBGL = ImgBG(iRT{iTube},:);
+                ImgBGL = ImgBG(iRT{iTube},iCT);
                 ImgSeg = obj.setupResidualStack(ImgSR,ImgBGL);  
                 
                 % segments the image stack
                 [fP0nw,IP0nw] = obj.segSubRegion(ImgSeg,pOfs,reduceImg);
+                if obj.nI > 0
+                    % if the image is interpolated, then performed a
+                    % refined image search
+                    yOfs = y0L(iTube,:);
+                    [fP0nw,IP0nw] = ...
+                                obj.refinedImgSeg(ImgL,ImgBG,fP0nw,yOfs);
+                end
                 
                 % sets the metric/position values
                 for j = 1:obj.nImg
@@ -184,12 +192,53 @@ classdef LVPhaseTrack < handle
            
         end 
         
+        % --- 
+        function [fP,IP] = refinedImgSeg(obj,ImgL,ImgBG,fP0,pOfs)
+            
+            % memory allocation            
+            [W,szL] = deal(2*obj.nI,size(ImgBG));
+            [fP,IP] = deal(NaN(obj.nImg,2),NaN(obj.nImg,1));
+            fPT = 1 + obj.nI*(1 + 2*(fP0-1)) + repmat(pOfs,length(ImgL),1);
+            
+            % determines the coordinates from the refined image
+            for i = 1:obj.nImg
+                % sets up the sub-image surrounding the point
+                iRP = max(1,fPT(i,2)-W):min(szL(1),fPT(i,2)+W);
+                iCP = max(1,fPT(i,1)-W):min(szL(2),fPT(i,1)+W);                   
+                IRP = ImgBG(iRP,iCP)-ImgL{i}(iRP,iCP);
+                
+                % retrieves the coordinates of the maxima
+                pMaxP = getMaxCoord(IRP);
+                IP(i) = IRP(pMaxP(2),pMaxP(1));
+                fP(i,:) = (pMaxP-1) + [iCP(1),iRP(1)] - pOfs;
+            end
+                
+        end
+        
+        % --- retrieves the sub-region indices
+        function [iRT,iCT] = getSubRegionIndices(obj,iApp,nCol)
+            
+            % sets the row/column indices
+            [iRT,iCT] = deal(obj.iMov.iRT{iApp},1:nCol);
+            
+            % interpolates the images (if large)
+            if obj.nI > 0
+                iCT = (obj.nI+1):(2*obj.nI):nCol;
+                iRT = cellfun(@(x)(x((obj.nI+1):2*obj.nI:end)),iRT,'un',0);
+            end
+            
+        end        
+        
         % --- reduces the image stack to the neighbourhood surrounding 
         %     the location, fP0
-        function [ImgL,pOfs] = reduceImageStack(obj,Img,fP0)
+        function [ImgL,pOfs] = reduceImageStack(obj,Img,fP0,W)
             
-            % initialisations
-            W = max(21,max(obj.iMov.szObj));
+            % sets the image neighbourhood
+            if exist('W','var')
+                W = max(21,max(obj.iMov.szObj));
+            end
+            
+            % initialisations            
             [szL,N] = deal(size(Img{1}),1+(W-1)/2);
             
             % sets up the feasible row/column indices
@@ -296,45 +345,7 @@ classdef LVPhaseTrack < handle
             Bw = getExclusionBin(obj.iMov,[length(iR),length(iC)],iApp);
             [ImgBG,ImgL] = deal(ImgBG.*Bw,cellfun(@(I)(I.*Bw),ImgL,'un',0));
             
-        end        
-        
-        % --------------------------------- %
-        % --- CLASS FIELD I/O FUNCTIONS --- %
-        % --------------------------------- %
-        
-        % --- sets class field for the field string(s) given in pStr
-        function setClassField(obj,pStr,pVal)
-            
-            % ensures the field strings are in a cell array
-            if ~iscell(pStr); pStr = {pStr}; end
-            
-            % combines the field string
-            fStr = 'obj';
-            for i = 1:length(pStr)
-                fStr = sprintf('%s.%s',fStr,pStr{i});
-            end
-            
-            % updates the field value
-            eval(sprintf('%s = pVal;',fStr));
-            
-        end
-        
-        % --- sets class field for the field string(s) given in pStr
-        function pVal = getClassField(obj,pStr)
-            
-            % ensures the field strings are in a cell array
-            if ~iscell(pStr); pStr = {pStr}; end
-            
-            % combines the field string
-            fStr = 'obj';
-            for i = 1:length(pStr)
-                fStr = sprintf('%s.%s',fStr,pStr{i});
-            end
-            
-            % retrieves the field value
-            pVal = eval(fStr);
-            
-        end       
+        end                    
         
         % -------------------------- %
         % --- PLOTTING FUNCTIONS --- %

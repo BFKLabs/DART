@@ -30,7 +30,7 @@ handles.output = hObject;
 hGUI = varargin{1};
 
 % loads the required structs/data objects
-iData = getappdata(hGUI.figFlyTrack,'iData');
+iData = get(hGUI.figFlyTrack,'iData');
 
 % sets the data structs into the GUI
 setappdata(hObject,'hGUI',hGUI);

@@ -56,14 +56,12 @@ global isMovChange isDetecting isBatch isCalib isRTPChange
 [isMovChange,isDetecting,isBatch,isRTPChange] = deal(false);
 [szDel,bufData,pAR] = deal(5,[],2);
 
-% data struct initialisations
-setappdata(hObject,'pData',[]);
-setappdata(hObject,'hSolnT',[])
-setappdata(hObject,'hTube',[]);
-setappdata(hObject,'hMark',[]);
-setappdata(hObject,'hDir',[]);
-setappdata(hObject,'hMainGUI',[])
-setappdata(hObject,'vidTimer',[])
+% initialses the custom property field string
+pFldStr = {'pData','hSolnT','hTube','hMark','hDir','hMainGUI','mObj',...
+           'vidTimer','hGUIOpen','reopenGUI','cType','infoObj',...
+           'isText','iMov','rtP','rtD','iData','ppDef','frmBuffer',...
+           'bgObj','prObj','objDACInfo','iStim','hTT','pColF','isTest'};
+initObjPropFields(hObject,pFldStr);
 
 % ensures the background detection panel is invisible
 setObjVisibility(handles.menuEstBG,'off')
@@ -81,15 +79,14 @@ cType = 0;
 switch length(varargin) 
     case 0 
         % case is running full program from command line
-        [ProgDefNew,mainProgDir] = deal([],pwd);            
-        setappdata(hObject,'hGUIOpen',[])
+        [ProgDefNew,mainProgDir] = deal([],pwd);
         
     case 1 
         % case is running the program from DART main
         
         % sets the input argument and the open GUI (makes invisible)
         hDART = varargin{1};
-        setappdata(hObject,'hGUIOpen','figDART')                
+        set(hObject,'hGUIOpen','figDART')                
                 
         % retrieves the program default struct
         ProgDefNew = getappdata(hDART.figDART,'ProgDefNew');
@@ -101,16 +98,15 @@ switch length(varargin)
         if isempty(hGUI)
             % if handle struct is empty, flag that the directories need to
             % be added (i.e., running test calibration from command line)
-            [reopenGUI,ProgDefNew] = deal(false,[]);            
-            setappdata(hObject,'hGUIOpen',[])    
+            [hObject.reopenGUI,ProgDefNew] = deal(false,[]);
             
         else
             % otherwise, case is running the calibration through the
             % recording GUI
             
             % sets the input argument and the open GUI (makes invisible)
-            reopenGUI = true;  
-            setappdata(hObject,'hGUIOpen','figFlyRecord') 
+            hObject.reopenGUI = true;  
+            set(hObject,'hGUIOpen','figFlyRecord') 
 
             % closes the GUI (if running calibration from Fly Record GUI
             setObjVisibility(hGUI.figFlyRecord,'off');
@@ -121,10 +117,7 @@ switch length(varargin)
             catch
                 ProgDefNew = [];
             end
-        end                    
-                        
-        % sets the GUI re-opening flag
-        setappdata(hObject,'reopenGUI',reopenGUI)
+        end
         
     otherwise % case is any other number of input arguments
         % displays an error message
@@ -138,10 +131,10 @@ switch length(varargin)
 end
 
 % updates the calibration type
-setappdata(hObject,'cType',cType)        
+set(hObject,'cType',cType)        
 
 % adds the ImageSeg/image processing code directories
-if isempty(getappdata(hObject,'hGUIOpen'))
+if isempty(hObject.hGUIOpen)
     wState = warning('off','all');
     updateSubDirectories(fullfile(mainProgDir,'GUI Code'),'add')
     updateSubDirectories(fullfile(mainProgDir,'Other Code'),'add')
@@ -157,41 +150,40 @@ if nargin < 2
 end
 
 % initialisation of the program data struct
-iData = initDataStruct(handles,ProgDefNew);
-calcAxesGlobalCoords(handles)
+hObject.iData = initDataStruct(handles,ProgDefNew);
+hObject.ppDef = hObject.iData.ProgDef;
 
-% sets the data structs into the GUI
-setappdata(hObject,'iData',iData);
-setappdata(hObject,'PPDef',iData.ProgDef);
+% initialises the axes properties
+calcAxesGlobalCoords(handles)
 set(handles.imgAxes,'DrawMode','fast');
 
 % sets all the functions
-setappdata(hObject,'dispImage',@dispImage);
-setappdata(hObject,'checkFixRatio_Callback',@checkFixRatio_Callback);
-setappdata(hObject,'setupDivisionFigure',@setupDivisionFigure);
-setappdata(hObject,'removeDivisionFigure',@removeDivisionFigure);
-setappdata(hObject,'deleteAllMarkers',@deleteAllMarkers);
-setappdata(hObject,'initMarkerPlots',@initMarkerPlots);
-setappdata(hObject,'checkShowTube_Callback',@checkShowTube_Callback);
-setappdata(hObject,'menuViewProgress_Callback',@menuViewProgress_Callback);
-setappdata(hObject,'menuOpenSoln_Callback',@menuOpenSoln_Callback);
-setappdata(hObject,'menuVideoFeed_Callback',@menuVideoFeed_Callback)
-setappdata(hObject,'menuRTTrack',@menuRTTrack_Callback)
-setappdata(hObject,'checkLocalView_Callback',@checkLocalView_Callback)
-setappdata(hObject,'checkSubRegions_Callback',@checkSubRegions_Callback)
-setappdata(hObject,'checkShowMark_Callback',@checkShowMark_Callback)
-setappdata(hObject,'checkShowAngle_Callback',@checkShowAngle_Callback)
-setappdata(hObject,'getMarkerProps',@getMarkerProps)
-setappdata(hObject,'FirstButtonCallback',@FirstButtonCallback)
-setappdata(hObject,'LastButtonCallback',@LastButtonCallback)
-setappdata(hObject,'PrevButtonCallback',@PrevButtonCallback)
-setappdata(hObject,'NextButtonCallback',@NextButtonCallback)
-setappdata(hObject,'CountEditCallback',@CountEditCallback)
-setappdata(hObject,'ImageParaCallback',@ImageParaCallback)
-setappdata(hObject,'updateAllPlotMarkers',@updateAllPlotMarkers)
-setappdata(hObject,'updateVideoFeedImage',@updateVideoFeedImage)
-setappdata(hObject,'postWindowSplit',@postWindowSplit)
-setappdata(hObject,'menuOptSize_Callback',@menuOptSize_Callback)
+addObjProps(hObject,'dispImage',@dispImage,...
+            'checkFixRatio_Callback',@checkFixRatio_Callback,...
+            'setupDivisionFigure',@setupDivisionFigure,...
+            'removeDivisionFigure',@removeDivisionFigure,...
+            'deleteAllMarkers',@deleteAllMarkers,...
+            'initMarkerPlots',@initMarkerPlots,...
+            'checkShowTube_Callback',@checkShowTube_Callback,...
+            'menuViewProgress_Callback',@menuViewProgress_Callback,...
+            'menuOpenSoln_Callback',@menuOpenSoln_Callback,...
+            'menuVideoFeed_Callback',@menuVideoFeed_Callback,...
+            'menuRTTrack',@menuRTTrack_Callback,...
+            'checkLocalView_Callback',@checkLocalView_Callback,...
+            'checkSubRegions_Callback',@checkSubRegions_Callback,...
+            'checkShowMark_Callback',@checkShowMark_Callback,...
+            'checkShowAngle_Callback',@checkShowAngle_Callback,...
+            'getMarkerProps',@getMarkerProps,...
+            'FirstButtonCallback',@FirstButtonCallback,...
+            'LastButtonCallback',@LastButtonCallback,...
+            'PrevButtonCallback',@PrevButtonCallback,...
+            'NextButtonCallback',@NextButtonCallback,...
+            'CountEditCallback',@CountEditCallback,...
+            'ImageParaCallback',@ImageParaCallback,...
+            'updateAllPlotMarkers',@updateAllPlotMarkers,...
+            'updateVideoFeedImage',@updateVideoFeedImage,...
+            'postWindowSplit',@postWindowSplit,...
+            'menuOptSize_Callback',@menuOptSize_Callback)
 
 % runs the fixed ratio callback function
 checkFixRatio_Callback(handles.checkFixRatio, 1, handles)
@@ -217,14 +209,8 @@ setGUIFontSize(handles)
 switch length(varargin)
     case {0,1} 
         % case is the normal tracking (0 input for command-line, 1 thru DART)        
-        isCalib = false;
-        iMov = initMovStruct(iData);
-        
-        % sets the data structs/flags
-        setappdata(hObject,'infoObj',[])
-        setappdata(hObject,'isTest',false)                
-        setappdata(hObject,'iMov',iMov);
-        setappdata(hObject,'rtP',[]);
+        [isCalib,hObject.isTest] = deal(false);
+        hObject.iMov = initMovStruct(hObject.iData);
         
         % initialises the GUI properties
         handles = setTrackGUIProps(handles,'InitGUI'); pause(0.01);
@@ -240,7 +226,7 @@ switch length(varargin)
         
         % creates a loadbar
         h = ProgressLoadbar('Initialising Video Calibration GUI...');        
-        figPos0 = get(handles.figFlyTrack,'position');
+        figPos0 = get(handles.output,'position');
         pPos0 = get(handles.panelImg,'position');
         axPos0 = get(handles.imgAxes,'position');
         
@@ -249,9 +235,9 @@ switch length(varargin)
         setObjVisibility(hMainGUI,'off'); pause(0.01);                
         
         % stops the camera (if running)
-        infoObj = getappdata(hMainGUI,'infoObj');       
-        if isrunning(infoObj.objIMAQ)
-            stop(infoObj.objIMAQ); pause(0.1);
+        hObject.infoObj = getappdata(hMainGUI,'infoObj');       
+        if isrunning(hObject.infoObj.objIMAQ)
+            stop(hObject.infoObj.objIMAQ); pause(0.1);
         end         
         
 %         % retrieves/sets/updates the scale factor
@@ -277,13 +263,15 @@ switch length(varargin)
 %         end                        
 
         % sets the sub-movie data struct
-        iMov = getappdata(hMainGUI,'iMov');
-        if isempty(iMov)
+        hObject.iMov = getappdata(hMainGUI,'iMov');
+        if isempty(hObject.iMov)
             % struct has not been set, so initialise
-            iMov = initMovStruct(iData);            
-        end       
-                % sets the camera logging mode to memory
-        set(infoObj.objIMAQ,'LoggingMode','Memory');
+            hObject.iMov = initMovStruct(hObject.iData);            
+        end
+        
+        % sets the camera logging mode to memory
+        get(hFig.infoObj.objIMAQ,'LoggingMode','Memory');
+        
         while 1
             try
                 % starts the camera                        
@@ -303,14 +291,7 @@ switch length(varargin)
         if detIfRotImage(iMov); iData.sz = flip(iData.sz); end
                        
         % sets the image size vector/string
-        nwStr = sprintf('%i %s %i',iData.sz(1),char(215),iData.sz(2)); 
-        
-        % sets the data structs/flags
-        setappdata(hObject,'infoObj',infoObj)
-        setappdata(hObject,'hMainGUI',hMainGUI)
-        setappdata(hObject,'isTest',false)        
-        setappdata(hObject,'iData',iData)         
-        setappdata(hObject,'iMov',iMov)  
+        nwStr = sprintf('%i %s %i',iData.sz(1),char(215),iData.sz(2));         
         
         % runs the resize function
         if detIfRotImage(iMov)
@@ -322,8 +303,7 @@ switch length(varargin)
         set(handles.textFrameSizeS,'string',nwStr)    
         
         % creates the preview object
-        prObj = VideoPreview(hObject,0);
-        setappdata(hObject,'prObj',prObj)                 
+        hObject.prObj = VideoPreview(hObject,0);                
 end
 
 % sets the figure resize function
@@ -344,7 +324,7 @@ if isCalib
 %     initVideoTimer(handles); pause(0.01);
     
     % initialises the plot markers (if the sub-regions have been set)
-    if iMov.isSet
+    if hObject.iMov.isSet
         setObjEnable(handles.checkShowTube,'on');
         initMarkerPlots(handles,1); pause(0.01)  
     end         
@@ -378,10 +358,14 @@ varargout{1} = handles.output;
 function figFlyTrack_WindowButtonMotionFcn(hObject, eventdata, handles)
 
 % object handles
-hFig = handles.figFlyTrack;
+if isfield(handles,'output')
+    hFig = handles.output;
+    iMov = hFig.iMov;
+else
+    return
+end
 
 % exit if not multi-tracking
-iMov = getappdata(hFig,'iMov');
 if ~iMov.isSet
     return    
 elseif ~detMltTrkStatus(iMov)
@@ -391,9 +375,6 @@ end
 % Modify mouse pointer over axes
 mPos = get(hFig,'CurrentPoint');
 if isOverAxes(mPos)
-    % retrieves the tooltip string handle
-    hTT = getappdata(hFig,'hTT');
-    
     % determines the plot object the mouse is currently hovering over   
     hPlot = findHoverPlotObj(handles);    
     if ~isempty(hPlot) && get(handles.checkShowMark,'Value')
@@ -401,33 +382,30 @@ if isOverAxes(mPos)
         uData = get(hPlot,'UserData');        
         flyStr = sprintf('Fly #%i',uData(2));
         
-        % 
-        hAx = handles.imgAxes;
+        % retrieves the current mouse coordinates
+        hAx = handles.imgAxes;        
         mP = get(hAx,'CurrentPoint');        
         
         % determines if the tooltip string marker has been created        
-        if isempty(hTT)
+        if isempty(hFig.hTT)
             % if there is no tooltip marker, then create one
-            hTT = createTooltipMarker(hAx,mP(1,1:2),flyStr);
-            setappdata(hFig,'hTT',hTT)
+            hFig.hTT = createTooltipMarker(hAx,mP(1,1:2),flyStr);
         else
             try
                 % updates the tooltip string
-                setObjVisibility(hTT,'on');
-                set(hTT,'Position',mP(1,:),'String',flyStr);
+                setObjVisibility(hFig.hTT,'on');
+                set(hFig.hTT,'Position',mP(1,:),'String',flyStr);
             catch
                 % if there was an error, then recreate it
-                try; delete(hTT); end
-                hTT = createTooltipMarker(hAx,mP(1,1:2),flyStr);
-                setappdata(hFig,'hTT',hTT)
+                try; delete(hFig.hTT); end
+                hFig.hTT = createTooltipMarker(hAx,mP(1,1:2),flyStr);
             end
         end
         
     else
         % otherwise, set the tooltip to be invisible (if it exists)
-        hTT = getappdata(hFig,'hTT');
-        if ~isempty(hTT)
-            setObjVisibility(hTT,'off');
+        if ~isempty(hFig.hTT)
+            setObjVisibility(hFig.hTT,'off');
         end
         
     end
@@ -456,15 +434,14 @@ function ok = menuOpenMovie_Callback(hObject, eventdata, handles)
 % global variables
 global isBatch isCalib axPos0 pPos0 figPos0
 
-% loads the data struct
-iMov = getappdata(handles.figFlyTrack,'iMov');
-cType = getappdata(handles.figFlyTrack,'cType');
-vidTimer = getappdata(handles.figFlyTrack,'vidTimer');
-[iData0,iData] = deal(getappdata(handles.figFlyTrack,'iData'));
-hProp0 = getHandleSnapshot(handles);
-    
-% parameters
+% initialisations
 ok = 1;
+
+% loads the data struct
+hFig = handles.output;
+[iData0,iData] = deal(get(hFig,'iData'));
+[iMov,vidTimer] = deal(get(hFig,'iMov'),get(hFig,'vidTimer'));
+hProp0 = getHandleSnapshot(handles);
 
 % sets the solution/movie load flags
 if isstruct(eventdata)
@@ -546,7 +523,7 @@ if setMovie
                     end
                     
                     [iMov.ok(:),iMov.flyok(:)] = deal(true);
-                    setappdata(handles.figFlyTrack,'iMov',iMov);                    
+                    set(handles.output,'iMov',iMov);                    
 
                     % deletes any progress file that may already exist
                     tDir = iData0.ProgDef.TempFile;
@@ -571,11 +548,8 @@ if setMovie
             [iMov.vGrp,iData.sfData] = deal([]);
             [iData.stimP,iData.sTrainEx,iData.exP.sFac] = deal([],[],1);                                                               
             
-            
             % resets the movie sub-movie data struct
-            setappdata(handles.figFlyTrack,'pData',[]);
-            setappdata(handles.figFlyTrack,'iMov',iMov);   
-            setappdata(handles.figFlyTrack,'iData',iData) 
+            set(handles.output,'pData',[],'iMov',iMov,'iData',iData) 
         end
                 
         % resets the scale factor value to 1 again
@@ -655,7 +629,7 @@ end
 
 % % resets the snapshot data struct
 % if cType > 0
-%     setappdata(handles.figFlyTrack,'fPosNew',[])
+%     set(handles.output,'fPosNew',[])
 % end
 
 % loads the image stack. if the user cancelled, then reupdate the image
@@ -663,10 +637,10 @@ end
 if loadImgData(handles, ldData.name, ldData.dir, setMovie, isSolnLoad)
     % if not loading the solution file but the sub-region struct is set, 
     % then reset the progress data struct       
-    iMov = getappdata(handles.figFlyTrack,'iMov');    
+    iMov = get(handles.output,'iMov');    
+    set(handles.output,'bgObj',CalcBG(handles))
     set(findobj(handles.panelAppInfo,'style','checkbox'),'value',0)
     set(findall(handles.panelFlyDetect,'style','checkbox'),'value',0);
-    setappdata(handles.figFlyTrack,'bgObj',CalcBG(handles))
     
     % enables the menu items
     setObjEnable(handles.menuOptSize,'on')
@@ -683,7 +657,7 @@ if loadImgData(handles, ldData.name, ldData.dir, setMovie, isSolnLoad)
         menuVideoFeed_Callback(handles.menuVideoFeed, [], handles)  
     end
         
-%         figPos0 = get(handles.figFlyTrack,'position');
+%         figPos0 = get(handles.output,'position');
 %         pPos0 = get(handles.panelImg,'position');
 %         axPos0 = get(handles.imgAxes,'position');
 %     end    
@@ -700,9 +674,8 @@ if loadImgData(handles, ldData.name, ldData.dir, setMovie, isSolnLoad)
         % resets the progress struct (if the sub-regions have been set)
         if iMov.isSet
             % resets the sub-region data struct
-            iData = getappdata(handles.figFlyTrack,'iData');
-            iMov = resetProgressStruct(iData,iMov); 
-            setappdata(handles.figFlyTrack,'iMov',iMov);
+            iMov = resetProgressStruct(handles.iData,iMov); 
+            set(handles.output,'iMov',iMov);
         end
     end    
     
@@ -716,8 +689,8 @@ else
     % resets the data struct (from the original loaded above)
     if ~isSolnLoad
         % resets the solution file directory data and the object properties
-        setappdata(handles.figFlyTrack,'iData',iData0);          
-        resetHandleSnapshot(hProp0,handles.figFlyTrack);
+        set(handles.output,'iData',iData0);          
+        resetHandleSnapshot(hProp0,hFig);
     end      
 end
 
@@ -733,7 +706,8 @@ if isa(eventdata,'matlab.ui.eventdata.ActionData')
 end
 
 % retrieves the image data/mesh structs
-[iData0,iData] = deal(getappdata(handles.figFlyTrack,'iData'));
+hFig = handles.output;
+[iData0,iData] = deal(get(hFig,'iData'));
 hProp0 = getHandleSnapshot(handles); 
 
 % sets the 
@@ -774,7 +748,7 @@ end
 
 % retrieves the sub-structs from the solution file
 iMov = solnData.iMov;
-setappdata(handles.figFlyTrack,'iMov',iMov)
+set(handles.output,'iMov',iMov)
 
 % sets the fly positional data struct depending whether it is empty or not
 if isfield(solnData,'pData')
@@ -821,18 +795,18 @@ setObjEnable(handles.menuStimInfo,detIfHasStim(iData.stimP))
 iData.fData = solnData.fData;
 [iData.exP,iData.Frm0] = deal(solnData.exP,solnData.Frm0);
 [iData.cMov,iData.nMov] = deal(1,iMov.nRow*iMov.nCol);
-setappdata(handles.figFlyTrack,'iData',iData)
+set(handles.output,'iData',iData)
 
 % attempts to open the movie file
 if menuOpenMovie_Callback(handles.menuOpenMovie,solnData.fData,handles)
     % resets the progress data struct
-    iMov = getappdata(handles.figFlyTrack,'iMov');
-    iData = getappdata(handles.figFlyTrack,'iData');
+    iMov = get(hFig,'iMov');
+    iData = get(hFig,'iData');
     
     % updates the initial frame
     iData.Frm0 = solnData.Frm0;
     if ~isempty(pData); iData.nFrm = nFrm; end
-    setappdata(handles.figFlyTrack,'iData',iData);    
+    set(hFig,'iData',iData);    
     
     % deletes all the current markers (if any)
     deleteAllMarkers(handles)
@@ -850,11 +824,11 @@ if menuOpenMovie_Callback(handles.menuOpenMovie,solnData.fData,handles)
     if iMov.isSet    
         % updates the program data struct
         iMov = resetProgressStruct(iData,iMov);
-        setappdata(handles.figFlyTrack,'iMov',iMov);                  
+        set(handles.output,'iMov',iMov);                  
     end
     
     % updates the sub-data structs into the main GUI        
-    setappdata(handles.figFlyTrack,'pData',pData)
+    set(handles.output,'pData',pData)
         
     % sets the marker check box values to off
     set(handles.checkShowTube,'value',0)
@@ -874,8 +848,8 @@ if menuOpenMovie_Callback(handles.menuOpenMovie,solnData.fData,handles)
     end
 else
     % resets the solution file directory data and the object properties
-    setappdata(handles.figFlyTrack,'iData',iData0);          
-    resetHandleSnapshot(hProp0,handles.figFlyTrack);    
+    set(handles.output,'iData',iData0);          
+    resetHandleSnapshot(hProp0,hFig);    
 end
 
 % closes the loadbar (for opening solution file directly only)
@@ -891,7 +865,8 @@ end
 function menuSaveSoln_Callback(hObject, eventdata, handles)
 
 % retrieves the image data/mesh structs
-[iData,a] = deal(getappdata(handles.figFlyTrack,'iData'),1);
+hFig = handles.output;
+[iData,a] = deal(get(hFig,'iData'),1);
 
 % sets the output file name
 if isfield(iData,'sfData')
@@ -910,8 +885,8 @@ else
 end
 
 % prompts the user for the movie filename
-[fName, fDir, fIndex] = uiputfile({'*.soln','Solution Files (*.soln)'},...
-                            'Save Solution File',dStr);
+[fName,fDir,fIndex] = uiputfile({'*.soln','Solution Files (*.soln)'},...
+                                 'Save Solution File',dStr);
 if fIndex == 0
     % if the user cancelled, then exit the function
     return
@@ -921,12 +896,11 @@ else
     save(fullfile(fDir,fName),'a')
     iData.sfData = dir(fullfile(fDir,fName));
     iData.sfData.dir = fDir;
-    setappdata(handles.figFlyTrack,'iData',iData);
+    set(hFig,'iData',iData);
 end
 
 % retrieves the other data structs from the main GUI
-pData = getappdata(handles.figFlyTrack,'pData');
-iMov = getappdata(handles.figFlyTrack,'iMov');
+[pData,iMov] = deal(get(hFig,'pData'),get(hFig,'iMov'));
 
 % resets the sub-movie fields
 [iMov.tempSet,iMov.tempName] = deal(false,[]);
@@ -948,19 +922,18 @@ try; close(h); end
 function menuConvertVideo_Callback(hObject, eventdata, handles)
 
 % runs the video conversion GUI
-iData = getappdata(handles.figFlyTrack,'iData');
-ConvertVideo(iData.ProgDef);
+ConvertVideo(handles.output.iData.ProgDef);
 
 % -------------------------------------------------------------------------
 function menuProgPara_Callback(hObject, eventdata, handles)
 
 % runs the program default GUI
-iData = getappdata(handles.figFlyTrack,'iData');
-[iData.ProgDef,isSave] = ProgParaTrack(handles.figFlyTrack,iData.ProgDef);
+iData = get(handles.output,'iData');
+[iData.ProgDef,isSave] = ProgParaTrack(handles,iData.ProgDef);
 
 % updates the data struct if the user specifed changes
 if isSave
-    setappdata(handles.figFlyTrack,'iData',iData);
+    set(handles.output,'iData',iData);
 end
 
 % -------------------------------------------------------------------------
@@ -969,16 +942,15 @@ function menuExit_Callback(hObject, eventdata, handles)
 % global variables
 global isCalib isMovChange mainProgDir bufData isRTPChange
 
-%
-hFig = handles.figFlyTrack;
-isTest = getappdata(hFig,'isTest');
+% initialiations
+hFig = handles.output;
 
 % stop the video timer (if calibrating)
 if isCalib
     % retrieves the required data structs
-    rtP = getappdata(hFig,'rtP');
-    iMov = getappdata(hFig,'iMov');    
-%     cType = getappdata(hFig,'cType');    
+    rtP = get(hFig,'rtP');
+    iMov = get(hFig,'iMov');    
+%     cType = get(hFig,'cType');    
     
     % stops the video object
     if strcmp(get(handles.menuVideoFeed,'checked'),'on')
@@ -991,14 +963,14 @@ uChoice = questdlg('Are you sure you want to close the Tracking GUI?',...
                      'Close Tracking GUI?','Yes','No','Yes');
 if strcmp(uChoice,'Yes')  
     % removes the added directories (non-DART mode only)
-    hGUIOpen = getappdata(hFig,'hGUIOpen');
-    reopenGUI = getappdata(hFig,'reopenGUI');   
+    hGUIOpen = get(hFig,'hGUIOpen');
+    reopenGUI = get(hFig,'reopenGUI');   
     
     % prompts the user if they want to update the sub-region data struct
     % (only if it has been set). if so, then update in the base workspace
     if isCalib
         % retrieves the recording GUI handle
-        hMain = getappdata(hFig,'hMainGUI');
+        hMain = get(hFig,'hMainGUI');
         
         % if there was a change, prompt the user if they wish to keep the
         % changes
@@ -1016,15 +988,13 @@ if strcmp(uChoice,'Yes')
                 
         % if the user set a valid background image, then enable the
         % tracking toggle button and menu item (otherwise, disable)
-        rtObj = getappdata(hFig,'rtObj');
-        if ~isempty(rtObj)
-            rtObj.trackGUIClose()
+        if ~isempty(hFig.rtObj)
+            hFig.rtObj.trackGUIClose()
         end
         
-        % determines if the tracking GUI is open (delete if so)
-        hTrack = getappdata(hFig,'hTrack');            
-        if ~isempty(hTrack)
-            try; delete(hTrack); end
+        % determines if the tracking GUI is open (delete if so)            
+        if ~isempty(hFig.hTrack)
+            try; delete(hFig.hTrack); end
         end
         
         % determines if the analysis option GUI is open (delete if so)
@@ -1035,11 +1005,10 @@ if strcmp(uChoice,'Yes')
         
         % if running the camera object, then stop it and reset the logging
         % mode flags
-        if ~isTest                    
+        if ~hFig.isTest                    
             % stops the camera and resets the disklogging properties
-            infoObj = getappdata(hFig,'infoObj');
-            stop(infoObj.objIMAQ)
-            set(infoObj.objIMAQ,'LoggingMode','Disk');                        
+            stop(hFig.infoObj.objIMAQ)
+            set(hFig.infoObj.objIMAQ,'LoggingMode','Disk');                        
         end 
         
         % retrieves the full DART program default struct directory
@@ -1057,9 +1026,8 @@ if strcmp(uChoice,'Yes')
     end
     
     % deletes the solution progress tracking GUI (if it exists)
-    hSolnT = getappdata(hFig,'hSolnT');
-    if ~isempty(hSolnT)
-        try; delete(hSolnT); end
+    if ~isempty(hFig.hSolnT)
+        try; delete(hFig.hSolnT); end
     end
     
     % stop and deletes the data buffering timer objects
@@ -1127,8 +1095,8 @@ if strcmp(get(hObject,'checked'),'off')
     if ~isempty(hPrev); delete(hPrev); end
     
     % creates the solution tracking GUI   
-    setappdata(handles.figFlyTrack,'hSolnT',FlySolnView(handles));
-    iMov = getappdata(handles.figFlyTrack,'iMov');
+    set(handles.output,'hSolnT',FlySolnView(handles));
+    iMov = get(handles.output,'iMov');
     
     % closes the loadbar    
     try; close(h); end
@@ -1148,12 +1116,12 @@ if strcmp(get(hObject,'checked'),'off')
 else
     % attempts to delete the solution tracking GUI
     try
-        delete(getappdata(handles.figFlyTrack,'hSolnT'))
+        delete(handles.output.hSolnT)
     end    
     
     % removes the check and GUI handle
     set(hObject,'checked','off')
-    setappdata(handles.figFlyTrack,'hSolnT',[])
+    set(handles.output,'hSolnT',[])
     
     % if detecting, then remove the show marker
     if isDetecting || isBatch
@@ -1175,7 +1143,7 @@ function menuWinsplit_Callback(hObject, eventdata, handles)
 global isCalib
 
 % resets the current axes 
-set(handles.figFlyTrack,'CurrentAxes',handles.imgAxes)
+set(handles.output,'CurrentAxes',handles.imgAxes)
 hProp0 = getHandleSnapshot(handles);
 
 % stop the video timer (if calibrating)
@@ -1197,8 +1165,8 @@ global isCalib isMovChange
 
 % sets the axes focus to the main axis and removes the division figure (if
 % already been shown)
-hFig = handles.figFlyTrack;
-iData = getappdata(hFig,'iData');
+hFig = handles.output;
+iData = get(hFig,'iData');
 
 % determines if the user set the sub-windows
 if isChange           
@@ -1208,14 +1176,14 @@ if isChange
     % otherwise, reset the sub-image stack progress structs
     if isCalib      
         % creates the background object 
-        setappdata(hFig,'bgObj',CalcBG(handles))
+        set(handles.output,'bgObj',CalcBG(handles))
         
 %         % retrieves the calibration type
-%         cType = getappdata(hFig,'cType');         
+%         cType = get(hFig,'cType');         
 %         if cType == 1
 %             % if calibrating, and is 2D arena, then update the experiment
 %             % location reference field to a 2D value        
-%             rtP = getappdata(hFig,'rtP'); 
+%             rtP = get(hFig,'rtP'); 
 %             if is2DCheck(iMov)
 %                 rtP.indSC.ExLoc.pRef = 'Centre'; 
 %             end
@@ -1233,7 +1201,7 @@ if isChange
 %             % updates the real-time parameter struct
 %             iMov.calcPhi = false;
 %             rtP.combG = getCombSubRegionIndices(iMov,rtP);
-%             setappdata(hFig,'rtP',rtP)
+%             set(handles.output,'rtP',rtP)
 % 
 %             % enables the real-time parameter menu item
 %             setObjEnable(handles.menuRTPara,'on')            
@@ -1265,9 +1233,7 @@ if isChange
     iData.nMov = iMov.nRow*iMov.nCol;
             
     % updates the data structs within the GUI
-    setappdata(hFig,'iMov',iMov);                           
-    setappdata(hFig,'iData',iData);    
-    setappdata(hFig,'pData',[]);
+    set(handles.output,'iMov',iMov,'iData',iData,'pData',[]);
     
     % updates the object properties
     if isCalib
@@ -1276,7 +1242,7 @@ if isChange
         setObjEnable(handles.buttonDetectBackground,'on')
         
         % re-initialises the data structs
-        setappdata(hFig,'fPosNew',[])
+        set(handles.output,'fPosNew',[])
                 
         % complete clears the axis
         isMovChange = true;
@@ -1351,12 +1317,12 @@ end
 function menuSplitVideo_Callback(hObject, eventdata, handles)
 
 % runs the video splitting GUI
-[vGrp,isChange] = VideoSplit(handles.figFlyTrack);
+hFig = handles.output;
+[vGrp,isChange] = VideoSplit(hFig);
+
+% if there was a change, then update the program data struct
 if isChange
-    % if there was a change, then update the program data struct
-    iMov = getappdata(handles.figFlyTrack,'iMov');
-    iMov.vGrp = vGrp;
-    setappdata(handles.figFlyTrack,'iMov',iMov)
+    hFig.iMov.vGrp = vGrp;
 end
 
 % -------------------------------------------------------------------------
@@ -1376,7 +1342,7 @@ function menuAnalyOpt_Callback(hObject, eventdata, handles)
 % end
 
 % runs the tracking analysis options
-AnalyOpt(handles.figFlyTrack)
+AnalyOpt(handles.output)
 
 % ----------------------- %
 % --- VIEW MENU ITEMS --- %
@@ -1389,15 +1355,12 @@ function menuOptSize_Callback(hObject, eventdata, handles)
 global updateFlag
 
 % initialisations
-[Y0,hFig] = deal(10,handles.figFlyTrack);
-iData = getappdata(hFig,'iData');
-
-%
+[Y0,hFig] = deal(10,handles.output);
 fPos = get(hFig,'position');
 pPos = get(handles.panelOuter,'position');
 
 % recalculates the 
-pAR = iData.sz(2)/iData.sz(1);
+pAR = hFig.iData.sz(2)/hFig.iData.sz(1);
 pPosAx = [Y0+sum(pPos([1,3])),Y0,ceil(pAR*pPos(4)),pPos(4)];
 
 % recalculates the figure width/height
@@ -1426,9 +1389,9 @@ global updateFlag
 updateFlag = 2;
 
 % initialisations
-hFig = handles.figFlyTrack;
+hFig = handles.output;
 
-%
+% retrieves the java-frame object
 wState = warning('off','all');
 jFrame = get(handle(hFig),'JavaFrame');
 jFrame.setMaximized(true);
@@ -1437,7 +1400,7 @@ jFrame.setMaximized(true);
 fPos = get(hFig,'Position');
 resetFigSize(handles,fPos)
 
-%
+% resets the warnings
 warning(wState);
 updateFlag = 0;
 
@@ -1447,7 +1410,7 @@ function menuAllowResize_Callback(hObject, eventdata, handles)
 % initialisations
 vStr = {'off','on'};
 isChecked = strcmp(get(hObject,'Checked'),'on');
-iData = getappdata(handles.figFlyTrack,'iData');
+iData = get(handles.output,'iData');
 
 % resets the menu iterm properties
 set(hObject,'Checked',vStr{~isChecked+1})
@@ -1455,7 +1418,7 @@ setObjEnable(handles.menuMaxSize,~isChecked)
 setObjEnable(handles.menuOptSize,~isChecked && isfield(iData,'sz'))
 
 % resets the resize flag
-set(handles.figFlyTrack,'Resize',vStr{~isChecked+1})
+set(handles.output,'Resize',vStr{~isChecked+1})
 
 % --------------------------- %
 % --- ANALYSIS MENU ITEMS --- %
@@ -1465,11 +1428,12 @@ set(handles.figFlyTrack,'Resize',vStr{~isChecked+1})
 function menuVideoFeed_Callback(hObject, eventdata, handles)
 
 % retrieves the video timer object
-prObj = getappdata(handles.figFlyTrack,'prObj');
-% iMov = getappdata(handles.figFlyTrack,'iMov');
-% cType = getappdata(handles.figFlyTrack,'cType');
-% isTest = getappdata(handles.figFlyTrack,'isTest');
-% vidTimer = getappdata(handles.figFlyTrack,'vidTimer');
+hFig = handles.output;
+prObj = get(hFig,'prObj');
+% iMov = get(hFig,'iMov');
+% cType = get(hFig,'cType');
+% isTest = get(hFig,'isTest');
+% vidTimer = get(hFig,'vidTimer');
 
 % toggles the video object start/stop status
 if strcmp(get(hObject,'checked'),'on')
@@ -1480,10 +1444,9 @@ if strcmp(get(hObject,'checked'),'on')
     set(hObject,'checked','off')        
     setObjEnable(handles.menuVideoProps,1)    
     
-    % if the tracking GUI is open, then delete it
-    hTrack = getappdata(handles.figFlyTrack,'hTrack');
-    if ~isempty(hTrack)
-        try; delete(hTrack); end
+    % if the tracking GUI is open, then delete it    
+    if ~isempty(hFig.hTrack)
+        try; delete(hFig.hTrack); end
     end     
     
 %     % if the RT tracking is running, then stop it
@@ -1512,11 +1475,8 @@ end
 % -------------------------------------------------------------------------
 function menuVideoProps_Callback(hObject, eventdata, handles)
 
-% retrieves the video timer object
-hMainGUI = getappdata(handles.figFlyTrack,'hMainGUI');
-
 % runs the video parameter sub-GUI
-VideoPara(guidata(hMainGUI))
+VideoPara(guidata(handles.output.hMainGUI))
 
 % -------------------------------------------------------------------------
 function menuRTTrack_Callback(hObject, eventdata, handles)
@@ -1525,11 +1485,12 @@ function menuRTTrack_Callback(hObject, eventdata, handles)
 global is2D tLastFeed stimTS iEventS tRTStart objDRT
 
 % retrieves the sub-region data and re-initialises the position data struct
-rtP = getappdata(handles.figFlyTrack,'rtP');
-rtD = getappdata(handles.figFlyTrack,'rtD');
-iMov = getappdata(handles.figFlyTrack,'iMov');
-iStim = getappdata(handles.figFlyTrack,'iStim');
-dInfo = getappdata(handles.figFlyTrack,'objDACInfo');
+hFig = handles.output;
+rtP = get(hFig,'rtP');
+rtD = get(hFig,'rtD');
+iMov = get(hFig,'iMov');
+iStim = get(hFig,'iStim');
+dInfo = get(hFig,'objDACInfo');
 isChecked = strcmp(get(hObject,'checked'),'on');
 
 % determines what dimensionality the experimental regions are
@@ -1538,10 +1499,9 @@ is2D = is2DCheck(iMov);
 % updates the properties based on the menu's check mark status
 if isChecked    
     % deletes the tracking stats GUI (if it tracking was being performed)
-    hTrack = getappdata(handles.figFlyTrack,'hTrack');
-    if ~isempty(hTrack)
-        setappdata(handles.figFlyTrack,'hTrack',[])
-        try; delete(hTrack); end
+    if ~isempty(hFig.hTrack)        
+        try; delete(hFig.hTrack); end
+        set(hFig,'hTrack',[])
     end     
     
     % removes the check mark from the menu item
@@ -1553,10 +1513,10 @@ if isChecked
     % resets the fly position array to NaNs
     nTube = getSRCountMax(iMov);
     fPosNaN = repmat({NaN(nTube,2)},1,length(iMov.iR));
-    setappdata(handles.figFlyTrack,'fPosNew',fPosNaN);
+    set(handles.output,'fPosNew',fPosNaN);
         
     % check to see that the devices have all been turned off correctly
-    forceStopDevice(handles.figFlyTrack)
+    forceStopDevice(handles.output)
         
     % deletes any experiment location markers (if any)
     hExLoc = findall(handles.imgAxes,'tag','hExLoc');
@@ -1589,7 +1549,7 @@ else
     end
     
     % sets the show marker checkbox to true        
-    setappdata(handles.figFlyTrack,'rtD',initRTDataStruct(iMov,rtP))
+    set(handles.output,'rtD',initRTDataStruct(iMov,rtP))
     
     % updates the properties of the other GUI objects
     setObjEnable(handles.editScaleFactor,'off')
@@ -1598,9 +1558,9 @@ else
     set(handles.menuRTTrack,'checked','on')
     
     % opens the real-time tracking stats GUI
-    hTrack = TrackingStats(handles.figFlyTrack);
-    setappdata(handles.figFlyTrack,'hTrack',hTrack); 
-    set(handles.figFlyTrack,'CurrentAxes',handles.imgAxes);            
+    set(handles.output,'hTrack',TrackingStats(handles.output))
+    set(hFig,'CurrentAxes',handles.imgAxes);
+    
 end  
 
 % -------------------------------------------------------------------------
@@ -1612,7 +1572,7 @@ if strcmp(get(handles.menuVideoFeed,'checked'),'on')
 end
 
 % runs the real-time tracking parameter GUI
-TrackingPara(handles.figFlyTrack)
+TrackingPara(handles.output)
 
 %-------------------------------------------------------------------------%
 %                        OBJECT CALLBACK FUNCTIONS                        %
@@ -1717,9 +1677,7 @@ end
 function stopMovie(handles)
 
 % updates the frame index with the current frame
-iData = getappdata(handles.figFlyTrack,'iData');
-iData.cFrm = str2double(get(handles.frmCountEdit,'string'));
-setappdata(handles.figFlyTrack,'iData',iData)
+handles.iData.cFrm = str2double(get(handles.frmCountEdit,'string'));
 
 % sets the visibility statuses of the play/stop buttons
 setTrackGUIProps(handles,'StopMovie')
@@ -1737,7 +1695,7 @@ function checkSubRegions_Callback(hObject, eventdata, handles)
 % sets/removes division figure based on checkbox value
 if get(hObject,'value')
     % setting check box, so create division figure
-    iMov = getappdata(handles.figFlyTrack,'iMov');
+    iMov = get(handles.output,'iMov');
     setupDivisionFigure(iMov,handles,true);
 else
     % unsetting check box, so remove division figure
@@ -1781,8 +1739,8 @@ end
 % updates the image axis
 if ~updateTube
     % retrieves the tube/fly location marker handle arrays
-    hMark = getappdata(handles.figFlyTrack,'hMark');
-    hTube = getappdata(handles.figFlyTrack,'hTube');
+    hMark = get(handles.output,'hMark');
+    hTube = get(handles.output,'hTube');
 
     % makes the tube/fly location markers invisible
     for i = 1:length(hMark)
@@ -1791,8 +1749,8 @@ if ~updateTube
             cellfun(@(x)(setObjVisibility(x,'off')),hTube{i});
         catch
             initMarkerPlots(handles,1);
-            hMark = getappdata(handles.figFlyTrack,'hMark');
-            hTube = getappdata(handles.figFlyTrack,'hTube');            
+            hMark = get(handles.output,'hMark');
+            hTube = get(handles.output,'hTube');            
         end
     end
 end
@@ -1804,9 +1762,9 @@ function checkReject_Callback(hObject, eventdata, handles)
 global isCalib
 
 % retrieves the data struct
-hFig = handles.figFlyTrack;
-iData = getappdata(hFig,'iData');
-iMov = getappdata(hFig,'iMov');
+hFig = handles.output;
+iData = get(hFig,'iData');
+iMov = get(hFig,'iMov');
 
 % updates the ok flags within the sub-region data struct
 iMov.ok(iData.cMov) = ~get(hObject,'value');
@@ -1818,10 +1776,9 @@ if all(~iMov.ok)
     set(hObject,'value',0)
 else
     % updates the movie flag and updates the GUI properties
-    setappdata(handles.figFlyTrack,'iMov',iMov);
-    if isCalib
-        infoObj = getappdata(hFig,'infoObj');    
-        updateVideoFeedImage(hFig,infoObj.objIMAQ) 
+    set(handles.output,'iMov',iMov);
+    if isCalib    
+        updateVideoFeedImage(hFig,hFig.infoObj.objIMAQ) 
         checkShowTube_Callback(handles.checkShowTube, 1, handles)
     else
         setTrackGUIProps(handles,'CheckReject');        
@@ -1836,15 +1793,14 @@ end
 function editFrameStep_Callback(hObject, eventdata, handles)
 
 % retrieves the image data struct
-iData = getappdata(handles.figFlyTrack,'iData');
+hFig = handles.output;
 nwVal = str2double(get(hObject,'string'));
 
 % checks to see if the new value is valid
-if chkEditValue(nwVal,[1 iData.nFrm],1)
-    iData.cStp = nwVal;
-    setappdata(handles.figFlyTrack,'iData',iData);
+if chkEditValue(nwVal,[1 hFig.iData.nFrm],1)
+    hFig.iData.cStp = nwVal;
 else
-    set(hObject,'string',num2str(iData.cStp));
+    set(hObject,'string',num2str(hFig.iData.cStp));
 end
 
 % --- callback function for the first frame/sub-movie button --------------
@@ -1854,10 +1810,8 @@ function FirstButtonCallback(hObject, eventdata, handles)
 global isCalib
 
 % sets the GUI figure handle
-hFig = handles.figFlyTrack;
-    
-% retrieves the image data struct
-iData = getappdata(hFig,'iData');
+hFig = handles.output;
+iData = get(hFig,'iData');
 
 % updates the frame/sub-movie index
 switch get(hObject,'UserData')
@@ -1869,13 +1823,12 @@ switch get(hObject,'UserData')
         
     case 'Sub' % case is the sub-movie
         [hObj,pStr] = deal(handles.movCountEdit,'cMov');
-        iMov = getappdata(handles.figFlyTrack,'iMov');
-        set(handles.checkReject,'value',~iMov.ok(1));        
+        set(handles.checkReject,'value',~hFig.iMov.ok(1));        
 end
 
 % updates the data struct with the new value
-eval(sprintf('iData.%s = 1;',pStr));
-setappdata(hFig,'iData',iData);
+iData = setStructField(iData,pStr,1);
+set(hFig,'iData',iData);
 
 % sets the gui properties
 switch get(hObject,'UserData')        
@@ -1894,9 +1847,8 @@ end
 
 % updates the edit box value and the image axis
 set(hObj,'string','1');
-if isCalib
-    infoObj = getappdata(hFig,'infoObj');    
-    updateVideoFeedImage(hFig,infoObj.objIMAQ) 
+if isCalib   
+    updateVideoFeedImage(hFig,hFig.infoObj.objIMAQ) 
 else
     dispImage(handles)
 end
@@ -1908,10 +1860,8 @@ function LastButtonCallback(hObject, eventdata, handles, varargin)
 global isCalib
 
 % sets the GUI figure handle
-hFig = handles.figFlyTrack;
-    
-% retrieves the image data struct
-iData = getappdata(hFig,'iData');
+hFig = handles.output;
+iData = get(hFig,'iData');
 
 % updates the frame/sub-movie index
 switch get(hObject,'UserData')
@@ -1926,14 +1876,13 @@ switch get(hObject,'UserData')
     case 'Sub' % case is the sub-movie
         hObj = handles.movCountEdit;        
         [nwVal,pStr] = deal(iData.nMov,'cMov');
-        iMov = getappdata(handles.figFlyTrack,'iMov');
-        set(handles.checkReject,'value',~iMov.ok(nwVal)); 
+        set(handles.checkReject,'value',~hFig.iMov.ok(nwVal)); 
                 
 end
 
 % updates the data struct with the new value
-eval(sprintf('iData.%s = %i;',pStr,nwVal));
-setappdata(hFig,'iData',iData);
+iData = setStructField(iData,pStr,nwVal);
+set(hFig,'iData',iData);
 
 % sets the gui properties
 switch get(hObject,'UserData')      
@@ -1954,8 +1903,7 @@ end
 % updates the edit box value and the image axis
 set(hObj,'string',num2str(nwVal));
 if isCalib
-    infoObj = getappdata(hFig,'infoObj');    
-    updateVideoFeedImage(hFig,infoObj.objIMAQ) 
+    updateVideoFeedImage(hFig,hFig.infoObj.objIMAQ) 
 else
     dispImage(handles)
 end
@@ -1967,10 +1915,8 @@ function PrevButtonCallback(hObject, eventdata, handles)
 global isCalib
 
 % % sets the GUI figure handle
-hFig = handles.figFlyTrack;
-    
-% retrieves the image data struct
-iData = getappdata(hFig,'iData');
+hFig = handles.output;
+iData = get(hFig,'iData');
 
 % updates the frame/sub-movie index
 switch get(hObject,'UserData')
@@ -1991,8 +1937,8 @@ end
 nwVal = str2double(get(hObj,'string'));
 if nwVal > 1
     % updates the data struct with the new value
-    eval(sprintf('iData.%s = max(1,%i);',pStr,nwVal-cStp));
-    setappdata(hFig,'iData',iData);    
+    iData = setStructField(iData,pStr,max(1,nwVal-cStp));
+    set(handles.output,'iData',iData);    
     
     % sets the gui properties
     switch get(hObject,'UserData')      
@@ -2005,18 +1951,15 @@ if nwVal > 1
             setTrackGUIProps(handles,'UpdateFrameSelection',iData.cFrm)
             
         case 'Sub' % case is the sub-movie
-            iMov = getappdata(handles.figFlyTrack,'iMov');
-            set(handles.checkReject,'value',~iMov.ok(iData.cMov));
-            
+            set(handles.checkReject,'value',~hFig.iMov.ok(iData.cMov));            
             setTrackGUIProps(handles,'UpdateMovieSelection')
             checkShowTube_Callback(handles.checkShowTube,1,handles)
     end   
     
     % updates the edit box value and the image axis
     set(hObj,'string',num2str(nwVal-cStp));
-    if isCalib
-        infoObj = getappdata(hFig,'infoObj');    
-        updateVideoFeedImage(hFig,infoObj.objIMAQ) 
+    if isCalib  
+        updateVideoFeedImage(hFig,hFig.infoObj.objIMAQ) 
     else
         dispImage(handles)
     end
@@ -2033,10 +1976,8 @@ function NextButtonCallback(hObject, eventdata, handles, varargin)
 global isCalib 
 
 % % sets the GUI figure handle
-hFig = handles.figFlyTrack;
-    
-% retrieves the image data struct
-iData = getappdata(hFig,'iData');
+hFig = handles.output;
+iData = get(hFig,'iData');
 
 % updates the frame/sub-movie index
 switch get(hObject,'UserData')
@@ -2060,8 +2001,8 @@ end
 nwVal = str2double(get(hObj,'string'));
 if nwVal < mxVal
     % updates the data struct with the new value
-    eval(sprintf('iData.%s = %i;',pStr,nwVal+cStp));
-    setappdata(hFig,'iData',iData);    
+    iData = setStructField(iData,pStr,nwVal+cStp);
+    set(handles.output,'iData',iData);    
     
     % sets the gui properties
     switch get(hObject,'UserData')       
@@ -2074,8 +2015,7 @@ if nwVal < mxVal
             setTrackGUIProps(varargin{1},'UpdateFrameSelection',iData.cFrm)
     
         case 'Sub' % case is the sub-movie
-            iMov = getappdata(handles.figFlyTrack,'iMov');
-            set(handles.checkReject,'value',~iMov.ok(iData.cMov));          
+            set(handles.checkReject,'value',~hFig.iMov.ok(iData.cMov));          
             setTrackGUIProps(handles,'UpdateMovieSelection')
             checkShowTube_Callback(handles.checkShowTube,1,handles)
         
@@ -2084,8 +2024,7 @@ if nwVal < mxVal
     % updates the edit box value and the image axis
     set(hObj,'string',num2str(nwVal+cStp));
     if isCalib
-        infoObj = getappdata(hFig,'infoObj');    
-        updateVideoFeedImage(hFig,infoObj.objIMAQ) 
+        updateVideoFeedImage(hFig,hFig.infoObj.objIMAQ) 
     else
         dispImage(handles)
     end
@@ -2101,22 +2040,19 @@ function CountEditCallback(hObject, eventdata, handles, varargin)
 % global variables
 global isCalib
 
-% % sets the GUI figure handle
-hFig = handles.figFlyTrack;
-
 % retrieves the image data struct
-iData = getappdata(hFig,'iData');
+hFig = handles.output;
+iData = get(hFig,'iData');
 nwVal = str2double(get(hObject,'string'));
 
 % detetermines the parameter limits
 switch get(hObject,'UserData')       
     case {'Frame','DD'} % case is the movie frame
-        [pStr,nwLim] = deal('iData.cFrm',[1,iData.nFrm]);
+        [pStr,nwLim] = deal('cFrm',[1,iData.nFrm]);
 
     case 'Sub' % case is the sub-movie
-        iMov = getappdata(handles.figFlyTrack,'iMov');
-        [pStr,nwLim] = deal('iData.cMov',[1,iData.nMov]);
-        set(handles.checkReject,'value',~iMov.ok(iData.cMov));        
+        [pStr,nwLim] = deal('cMov',[1,iData.nMov]);
+        set(handles.checkReject,'value',~hFig.iMov.ok(iData.cMov));        
 end
 
 % updates the frame/sub-movie index
@@ -2132,8 +2068,8 @@ end
 % checks to see if the new value is valid
 if isValid
     % if so, then updates the counter and the image frame
-    eval(sprintf('%s = nwVal;',pStr));
-    setappdata(hFig,'iData',iData);
+    iData = setStructField(iData,pStr,nwVal);
+    set(handles.output,'iData',iData);
     
     % sets the gui properties    
     switch get(hObject,'UserData')      
@@ -2173,24 +2109,21 @@ function editScaleFactor_Callback(hObject, eventdata, handles)
 global isCalib isRTPChange
 
 % loads the data struct
-iData = getappdata(handles.figFlyTrack,'iData');
+hFig = handles.output;
 
 % check to see if the new value is valid
 nwVal = str2double(get(hObject,'string'));
 if chkEditValue(nwVal,[0 inf],0)
     % if all good, update the number of tube rows
-    iData.exP.sFac = nwVal;
-    setappdata(handles.figFlyTrack,'iData',iData)
+    hFig.iData.exP.sFac = nwVal;
     
     % updates the scale factor in the real-time tracking parameters
     if isCalib
-        rtP = getappdata(handles.figFlyTrack,'rtP');
-        [rtP.trkP.sFac,isRTPChange] = deal(nwVal,true);
-        setappdata(handles.figFlyTrack,'rtP',rtP)
+        [hFig.rtP.trkP.sFac,isRTPChange] = deal(nwVal,true);
     end
 else
     % otherwise, revert back to the previous value
-    set(hObject,'string',num2str(iData.exP.sFac))
+    set(hObject,'string',num2str(hFig.iData.exP.sFac))
 end
 
 % --- Executes on button press in textScaleFactor -------------------------
@@ -2199,22 +2132,23 @@ function textScaleFactor_Callback(hObject, eventdata, handles)
 % global variables
 global isCalib
 
+% initialisations
+hFig = handles.output;
+
 % stop the video timer (if calibrating)
 if isCalib
-    vidTimer = getappdata(handles.figFlyTrack,'vidTimer');
     setObjEnable(handles.menuRTTrack,'off')
-    stop(vidTimer)
+    stop(hFig.vidTimer)
 end
 
 % runs the scale factor sub-GUI
 ScaleFactor(handles)
 
 % restarts the video timer (if calibrating and video feed on)
-if isCalib 
-    [iMov,eStr] = deal(getappdata(handles.figFlyTrack,'iMov'),{'off','on'});
-    setObjEnable(handles.menuRTTrack,eStr{1+iMov.isSet})
+if isCalib     
+    setObjEnable(handles.menuRTTrack,hFig.iMov.isSet)
     if strcmp(get(handles.menuVideoFeed,'checked'),'on')   
-        start(vidTimer)
+        start(hFig.vidTimer)
     end
 end   
 
@@ -2228,16 +2162,19 @@ function checkShowTube_Callback(hObject, eventdata, handles)
 % global variables
 global szDel
 
+% initialisations
+hFig = handles.output;
+
 % retrieves the sub-region struct
 if ~isa(eventdata,'char')
     showUpdate = ~isa(eventdata,'double');
-    iMov = getappdata(handles.figFlyTrack,'iMov');
+    iMov = get(hFig,'iMov');
 else
     showUpdate = false;
     if isfield(handles,'iMov')
         iMov = handles.iMov;
     else
-        iMov = getappdata(handles.figFlyTrack,'iMov');
+        iMov = hFig.iMov;
     end
 end
 
@@ -2249,8 +2186,8 @@ end
 
 % retrieves the tube struct arrays
 Type = getDetectionType(iMov);
-iData = getappdata(handles.figFlyTrack,'iData');
-hTube = getappdata(handles.figFlyTrack,'hTube');
+iData = get(hFig,'iData');
+hTube = get(hFig,'hTube');
 [ii,jj,mlt] = deal([1 2 2 1],[1 1 2 2],1);
 isLocalView = get(handles.checkLocalView,'value');
 
@@ -2264,10 +2201,10 @@ else
     ind = 1:length(hTube);
 end
 
-%
+% resets the tube regions (if they are invalid)
 if ~ishandle(hTube{1}{1})
     initMarkerPlots(handles,get(hObject,'Value'))
-    hTube = getappdata(handles.figFlyTrack,'hTube');
+    hTube = get(hFig,'hTube');
 end
 
 % sets the tube visibility strings
@@ -2355,7 +2292,7 @@ for i = 1:length(hTube)
             catch
                 % if there was an error, reinitalise
                 initMarkerPlots(handles,1)
-                hTube = getappdata(handles.figFlyTrack,'hTube');
+                hTube = get(hFig,'hTube');
 
                 % updates the tube location
                 set(hTube{i}{j},'xdata',xTube,'ydata',yTube,'FaceAlpha',...
@@ -2382,24 +2319,22 @@ function checkShowMark_Callback(hObject, eventdata, handles)
 global isCalib
 
 % object retrieval
-hFig = handles.figFlyTrack;
+hFig = handles.output;
 
 % updates the image axes
 if isCalib
     if isfield(handles,'menuRTTrack')
         if ~strcmp(get(handles.menuRTTrack,'checked'),'on')
-            infoObj = getappdata(hFig,'infoObj');
-            updateVideoFeedImage(hFig,infoObj.objIMAQ)  
+            updateVideoFeedImage(hFig,hFig.infoObj.objIMAQ)  
         end
     else
         % updates the plot markers
-        iMov = getappdata(hFig,'iMov');
-        updateAllPlotMarkers(handles,iMov,true)
+        updateAllPlotMarkers(handles,hFig.iMov,true)
     end
 else
     % initialisations
     isOn = get(hObject,'Value');
-    hMark = getappdata(hFig,'hMark');
+    hMark = get(handles.output,'hMark');
                   
     try
         % attempts to update the marker visibility
@@ -2417,7 +2352,7 @@ function checkShowAngle_Callback(hObject, eventdata, handles)
 
 % initialisations
 isOn = get(hObject,'Value');
-hDir = getappdata(handles.figFlyTrack,'hDir');
+hDir = get(handles.output,'hDir');
 
 try
     % attempts to update the marker visibility
@@ -2434,6 +2369,9 @@ function buttonDetectBackground_Callback(hObject, eventdata, handles)
 
 % global variables
 global isCalib
+
+% field retrieval
+hFig = handles.output;
 
 % disables the local view and the tube showing checkboxes
 set(handles.checkLocalView,'value',0);
@@ -2465,8 +2403,8 @@ if isCalib
     end    
     
     % creates the background object 
-    if isempty(getappdata(handles.figFlyTrack,'bgObj'))
-        setappdata(hObject,'bgObj',CalcBG(handles)) 
+    if isempty(handles.output.bgObj)
+        set(handles.output,'bgObj',CalcBG(handles)) 
     end
 else
     % removes the soln progress GUI (if it is on)
@@ -2476,8 +2414,7 @@ else
 end
 
 % case is the running the background subtraction GUI
-bgObj = getappdata(handles.figFlyTrack,'bgObj');
-bgObj.openBGAnalysis();
+hFig.bgObj.openBGAnalysis();
 
 % --- Executes on button press in buttonDetectFly.
 function buttonDetectFly_Callback(hObject, eventdata, handles)
@@ -2486,10 +2423,10 @@ function buttonDetectFly_Callback(hObject, eventdata, handles)
 hProp0 = getHandleSnapshot(handles);
 
 % loads the data struct
-hFig = handles.figFlyTrack;
-iData = getappdata(hFig,'iData');
-iMov = getappdata(hFig,'iMov');
-pData = getappdata(hFig,'pData');
+hFig = handles.output;
+iData = get(hFig,'iData');
+iMov = get(hFig,'iMov');
+pData = get(hFig,'pData');
 
 % creates the tracking object based on the tracking type
 if detMltTrkStatus(iMov)
@@ -2511,8 +2448,8 @@ trkObj.segEntireVideo(handles,iMov,pData);
 % (re)sets the initial plot markers    
 if ~isempty(pData)   
     % updates the sub-region/positional data structs
-    setappdata(hFig,'iMov',iMov);
-    setappdata(hFig,'pData',pData);    
+    set(handles.output,'iMov',iMov);
+    set(handles.output,'pData',pData);    
     
     % (re)sets the initial plot 
     initMarkerPlots(handles,1);       
@@ -2524,8 +2461,7 @@ if ~isempty(pData)
     if isempty(cFrm); cFrm = 1; end   
     
     % updates the current frame
-    iData.cFrm = cFrm;
-    setappdata(handles.figFlyTrack,'iData',iData)
+    hFig.iData.cFrm = cFrm;
     set(handles.frmCountEdit,'string',num2str(cFrm))    
     
     % sets the GUI properties           
@@ -2596,9 +2532,10 @@ function dispImage(handles,varargin)
 global isCalib isBatch 
 
 % retrieves the image data struct
-iData = getappdata(handles.figFlyTrack,'iData');
-iMov = getappdata(handles.figFlyTrack,'iMov');
 hAx = handles.imgAxes;
+hFig = handles.output;
+iMov = get(hFig,'iMov');
+iData = get(hFig,'iData');
 
 % updates the frame selection object properties
 if ishandle(handles.frmCountEdit)
@@ -2691,7 +2628,7 @@ end
 % --------------------------- %
 
 % retrieves the marker handles
-hMark = getappdata(handles.figFlyTrack,'hMark');
+hMark = get(handles.output,'hMark');
 
 % determines if the marker objects are valid
 if isempty(hMark)
@@ -2717,10 +2654,9 @@ function updateAllPlotMarkers(handles,iMov,hasImg)
 global isCalib
 
 % retrieves the important data arrays/structs
-hDir = getappdata(handles.figFlyTrack,'hDir');
-hMark = getappdata(handles.figFlyTrack,'hMark');
-pData = getappdata(handles.figFlyTrack,'pData');
-% cType = getappdata(handles.figFlyTrack,'cType');
+hFig = handles.output;
+hDir = get(hFig,'hDir');
+% cType = get(hFig,'cType');
 
 % determines if the location/orientation markers are to be plotted
 pltLocT = get(handles.checkShowMark,'value') && hasImg;
@@ -2731,29 +2667,27 @@ else
 end
 
 % array indexing & parameters
-nApp = length(hMark);
+nApp = length(hFig.hMark);
 if isCalib
-    fPosTmp = getappdata(handles.figFlyTrack,'fPosNew');
-    if isempty(fPosTmp); return; end        
+    if isempty(hFig.fPosTmp); return; end        
 end
 
 % sets the markers for all flies
-if ~isempty(hMark)    
+if ~isempty(hFig.hMark)    
     for i = 1:nApp
         % if the markers have been deleted then re-initialise them
-        if (i == 1) && ~ishandle(hMark{i}{1})
-            initMarkerPlots(handles,1)   
-            hMark = getappdata(handles.figFlyTrack,'hMark');
+        if (i == 1) && ~ishandle(hFig.hMark{i}{1})
+            initMarkerPlots(handles,1)
         end
         
         % sets the plot location marker flag for the current apparatus
         [pltLoc,pltAng] = deal(pltLocT&&iMov.ok(i),pltAngT&&iMov.ok(i));
         if isCalib       
-            updateIndivMarker(handles,hMark{i},...
-                                hDir{i},fPosTmp,i,pltLoc,pltAng,true)                     
+            updateIndivMarker(handles,hFig.hMark{i},...
+                                hDir{i},hFig.fPosTmp,i,pltLoc,pltAng,true)                     
         else
-            updateIndivMarker(handles,hMark{i},...
-                                hDir{i},pData,i,pltLoc,pltAng) 
+            updateIndivMarker(handles,hFig.hMark{i},...
+                                hDir{i},hFig.pData,i,pltLoc,pltAng) 
         end        
     end
 end
@@ -2766,8 +2700,9 @@ function isComplete = showMovie(handles)
 global bufData playVideo
 
 % retrieves the image data struct
-iData = getappdata(handles.figFlyTrack,'iData');
-iMov = getappdata(handles.figFlyTrack,'iMov');
+hFig = handles.output;
+iData = get(hFig,'iData');
+iMov = get(hFig,'iMov');
 
 % retrieves the current frame index
 isComplete = true;
@@ -2775,7 +2710,7 @@ iFrm = str2double(get(handles.frmCountEdit,'string'));
 cStp = str2double(get(handles.editFrameStep,'string'));
 
 % displays the image to the image figure
-set(handles.figFlyTrack,'CurrentAxes',handles.imgAxes)
+set(handles.output,'CurrentAxes',handles.imgAxes)
 jCheck = findjobj(handles.toggleVideo);
 
 % loops through all the images frames in the movie displaying to screen
@@ -2818,7 +2753,8 @@ function initMarkerPlots(handles,varargin)
 global yDelG 
 
 % retrieves the sub-movie data struct
-iMov = getappdata(handles.figFlyTrack,'iMov');
+hFig = handles.output;
+iMov = get(hFig,'iMov');
 if isempty(iMov.yTube); return; end
 
 % sets the marker sizes and linewidths
@@ -2864,7 +2800,7 @@ end
 
 % sets focus to the image axis
 hAx = handles.imgAxes;
-set(handles.figFlyTrack,'CurrentAxes',hAx)
+set(handles.output,'CurrentAxes',hAx)
 deleteAllMarkers(handles)
 
 % sets the visibilty flag
@@ -2936,12 +2872,12 @@ for i = 1:nApp
         % determines if separate colours are being used
         if iMov.sepCol
             % if so, retrieve the stored colours
-            pColF = getappdata(handles.figFlyTrack,'pColF');
+            pColF = get(handles.output,'pColF');
             if j > length(pColF)
                 % if there is sufficient colours, then reset the array
                 nMark = length(hMark{i});
                 pColF = num2cell(distinguishable_colors(nMark,'w'),2);
-                setappdata(handles.figFlyTrack,'pColF',pColF)
+                set(handles.output,'pColF',pColF)
             end        
             
             % retrieves the colour
@@ -2966,16 +2902,14 @@ cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOnD)),x)),hDir)
 hold(hAx,'off')
 
 % resets the marker array
-setappdata(handles.figFlyTrack,'hMark',hMark);
-setappdata(handles.figFlyTrack,'hTube',hTube);
-setappdata(handles.figFlyTrack,'hDir',hDir);
+[hFig.hMark,hFig.hTube,hFig.hDir] = deal(hMark,hTube,hDir);
 
 % --- deletes all the image plot markers
 function deleteAllMarkers(handles)
 
 % retrieves the sub-movie data struct
-hMark = getappdata(handles.figFlyTrack,'hMark');
-if isempty(hMark)
+hFig = handles.output;
+if isempty(hFig.hMark)
     % if the sub-movies have not been set, then exit the function
     return
 end
@@ -2996,9 +2930,7 @@ for i = 1:length(hMark)
 end
     
 % resets the tube/marker handle arrays
-setappdata(handles.figFlyTrack,'hMark',[]);
-setappdata(handles.figFlyTrack,'hTube',[]);
-setappdata(handles.figFlyTrack,'hDir',[]);
+[hFig.hMark,hFig.hTube,hFig.hDir] = deal([]);
 
 % ------------------------------------------ %
 % --- SUB-WINDOW/EXCLUSION ROI FUNCTIONS --- %
@@ -3211,7 +3143,8 @@ if isempty(iMov.autoP)
 
             % retrieves the line
             hLineNw = findobj(hLine,'UserData',[i,j]);  
-            set(hLineNw,'xData',xPltH(j+(0:1)),'yData',yPltH*[1 1],'Visible','on');
+            set(hLineNw,'xData',xPltH(j+(0:1)),...
+                        'yData',yPltH*[1 1],'Visible','on');
         end
     end
 
@@ -3508,7 +3441,7 @@ else
     switch uChoice
         case 'Manually'
             % user chose to setup manually, so load the ProgDef sub-GUI
-            ProgDef = ProgParaTrack(handles.figFlyTrack,[],1);            
+            ProgDef = ProgParaTrack(handles.output,[],1);            
         case 'Automatically'
             % user chose to setup automatically then create the directories
             ProgDef = setupAutoDir(progDir,progFile);
@@ -3563,7 +3496,7 @@ end
 if any(~isExist)
     % runs the program default sub-ImageSeg
     if nargin == 1
-        ProgDef = ProgParaTrack(handles.figFlyTrack,ProgDef,1);    
+        ProgDef = ProgParaTrack(handles.output,ProgDef,1);    
     end
 end
 
@@ -3611,7 +3544,7 @@ bufData = struct('fDel',30,'indS',[],'I',[],'imgExe',imgExe,'isUpdate',[],...
                  'canUpdate',false,'changeArray',false);
 
 % sets the temporary file name             
-iData = getappdata(handles.figFlyTrack,'iData');             
+iData = get(handles.output,'iData');             
 bufData.tmpFile = fullfile(iData.ProgDef.TempFile,'Frame Stack.mat');
 
 % memory allocation for the arrays             
@@ -3645,8 +3578,9 @@ if any(bufData.isUpdate(ii)) && bufData.canUpdate
     [indStack,fDel] = deal(bufData.indStack,bufData.fDel);
     
     % sets the sub-movie and program data structs
-    iMov = getappdata(handles.figFlyTrack,'iMov');
-    iData = getappdata(handles.figFlyTrack,'iData');    
+    hFig = handles.output;
+    iMov = get(hFig,'iMov');
+    iData = get(hFig,'iData');    
     outDir = iData.ProgDef.TempFile;
     
     % sets the start     
@@ -3850,7 +3784,7 @@ a = fieldnames(exP);
 for i = 1:length(a)
     % retrieves the edit box that belongs to the field name, and sets its
     % value
-    hEdit = findobj(handles.figFlyTrack,'UserData',a{i});
+    hEdit = findobj(handles.output,'UserData',a{i});
     set(hEdit,'string',num2str(eval(sprintf('exP.%s',a{i}))))
 end 
 
@@ -3866,8 +3800,7 @@ global vFrm
 if nargin == 1; isStart = true; end
 
 % determines whether whether the calibration is a test
-hFig = handles.figFlyTrack;
-isTest = getappdata(hFig,'isTest');
+isTest = get(handles.output,'isTest');
 
 % retrieves all the previous video timer objects
 hTimer = timerfind; 
@@ -3903,7 +3836,7 @@ set(vidTimer,'Period',0.5,'ExecutionMode','FixedRate',...
            'TasksToExecute',inf);
        
 % includes the timer object within the GUI
-setappdata(handles.figFlyTrack,'vidTimer',vidTimer)
+set(handles.output,'vidTimer',vidTimer)
 if isStart; start(vidTimer); end
 
 % --- the experiment timer callback function       
@@ -3917,7 +3850,7 @@ vFrm = 1;
 function stopVideoFcn(obj, event, handles, objIMAQ, isTest)
 
 % updates the video feed
-updateVideoFeedImage(handles.figFlyTrack,objIMAQ) 
+updateVideoFeedImage(handles.output,objIMAQ) 
 
 % --- the experiment timer callback function       
 function timerVideoFcn(obj, event, handles, objIMAQ, isTest)
@@ -3928,14 +3861,13 @@ global vFrm
 % increments the video frame index (if running test)
 % set(handles.frmCountEdit,'string',num2str(vFrm))
 if isTest
-    iData = getappdata(handles.figFlyTrack,'iData');
-    vFrm = mod(vFrm-1,iData.nFrm) + 1;    
+    vFrm = mod(vFrm-1,handles.output.iData.nFrm) + 1;    
 else
     vFrm = vFrm + 1;        
 end
 
 % updates the image axes
-updateVideoFeedImage(handles.figFlyTrack,objIMAQ) 
+updateVideoFeedImage(handles.output,objIMAQ) 
 
 % ------------------------------- %
 % --- MISCELLANEOUS FUNCTIONS --- %

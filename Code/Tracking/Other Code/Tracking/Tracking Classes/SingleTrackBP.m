@@ -1,4 +1,4 @@
-classdef SingleTrackBP < handle
+classdef SingleTrackBP < matlab.mixin.SetGet
     
     % class properties
     properties
@@ -67,10 +67,10 @@ classdef SingleTrackBP < handle
             obj.isRestart = isRestart;            
             
             % other object handles
-            obj.hFig = hGUI.figFlyTrack;
-            obj.iMov = getappdata(obj.hFig,'iMov');
-            obj.iData = getappdata(obj.hFig,'iData');
-            obj.pData = getappdata(obj.hFig,'pData');            
+            obj.hFig = hGUI.output;
+            obj.iMov = get(obj.hFig,'iMov');
+            obj.iData = get(obj.hFig,'iData');
+            obj.pData = get(obj.hFig,'pData');            
             
             % function handle retrieval
             obj.initFuncObj();  
@@ -471,7 +471,7 @@ classdef SingleTrackBP < handle
             % clears the major class fields from the tracking objects
             fldStr = {'iMov','iMov0','iData0','pData0','p0Pr'};
             for i = 1:length(fldStr)
-                obj.setClassField(fldStr{i},[]);
+                set(obj,fldStr{i},[]);
             end            
             
 %             % outputs to screen any videos that were invalid
@@ -507,7 +507,7 @@ classdef SingleTrackBP < handle
             if strContains(obj.iMov.bgP.algoType,'single')
                 % case is single object tracking
                 trkObjF = SingleTrackFull(obj.iData);                 
-                trkObjF.setClassField('wOfs',1+obj.isMultiBatch);
+                set(trkObjF,'wOfs',1+obj.isMultiBatch);
                                 
             else
                 % case is single object tracking                
@@ -516,11 +516,9 @@ classdef SingleTrackBP < handle
             end
             
             % sets the common tracking object fields
-            trkObjF.setClassField('hProg',obj.hProg);                
-            trkObjF.setClassField('hasProg',true);   
-            trkObjF.setClassField('isBatch',true);   
-            trkObjF.setClassField('isMultiBatch',obj.isMultiBatch);  
-            trkObjF.setClassField('prData',prData); 
+            set(trkObjF,'hProg',obj.hProg,'hasProg',true,...
+                        'isBatch',true,'prData',prData,...
+                        'isMultiBatch',obj.isMultiBatch); 
                         
             try
                 % segments the entire video
@@ -605,9 +603,8 @@ classdef SingleTrackBP < handle
                 % initialises the initial tracking object
                 if strContains(obj.iMov.bgP.algoType,'single')
                     % case is tracking single objects
-                    trkObjI = SingleTrackInit(obj.iData);                
-                    trkObjI.setClassField('wOfsL',1+obj.isMultiBatch); 
-                    trkObjI.setClassField('isBatch',true); 
+                    trkObjI = SingleTrackInit(obj.iData);    
+                    set(trkObjI,'wOfsL',1+obj.isMultiBatch,'isBatch',true); 
                     
                 else
                     % case is tracking multiple objects
@@ -616,7 +613,7 @@ classdef SingleTrackBP < handle
                 end                                                       
                 
                 % runs the initial tracking/background estimate
-                trkObjI.setClassField('prData0',prData);
+                set(trkObjI,'prData0',prData);
                 trkObjI.calcInitEstimate(obj.iMov,obj.hProg);                
 
                 % if the user cancelled, then exit                
@@ -642,7 +639,7 @@ classdef SingleTrackBP < handle
             
             % initialises the plot markers to their current status
             if obj.bData(iDir).movOK(iFile) ~= 0
-                setappdata(obj.hFig,'iMov',obj.iMov);
+                set(obj.hFig,'iMov',obj.iMov);
                 obj.initMarkerPlots(obj.hGUI,1)
             end         
             
@@ -760,8 +757,8 @@ classdef SingleTrackBP < handle
             obj.dispImage(obj.hGUI)                    
             
             % retrieves the important data struct from the tracking GUI
-            obj.pData0 = getappdata(obj.hFig,'pData');
-            obj.iMov = getappdata(obj.hFig,'iMov');                        
+            obj.pData0 = get(obj.hFig,'pData');
+            obj.iMov = get(obj.hFig,'iMov');                        
             
             % if the solution tracking GUI is open then reset it
             hTrack = findall(0,'tag','figFlySolnView');
@@ -772,16 +769,15 @@ classdef SingleTrackBP < handle
                     
                     % attempts to updates the solution view GUI
                     set(obj.hGUI.checkShowMark,'value',0)
-                    setappdata(hTrack,'pData',[])
-                    iFunc = getappdata(hTrack,'initFunc');
-                    iFunc(guidata(hTrack),1)
+                    set(hTrack,'pData',[])
+                    hTrack.initFunc(guidata(hTrack),1)
                     
                     % pause to refresh
                     pause(0.05);
                     
                 catch
                     % if there was an error, then reset the GUI handle
-                    setappdata(obj.hFig,'hSolnT',[])   
+                    set(obj.hFig,'hSolnT',[])   
                 end        
             end                              
             
@@ -917,7 +913,7 @@ classdef SingleTrackBP < handle
         function initFuncObj(obj)
             
             % function handle strings
-            fldStr = fieldnames(getappdata(obj.hFig));
+            fldStr = fieldnames(get(obj.hFig));
             fcnStr = {'initMarkerPlots','checkShowTube','checkShowMark',...
                       'menuViewProgress','menuOpenSoln','dispImage'};
                   
@@ -927,8 +923,8 @@ classdef SingleTrackBP < handle
                 indM = strContains(fldStr,fcnStr{i});
                 
                 % sets the function handle into the class object
-                fcnHandle = getappdata(obj.hFig,fldStr{indM});
-                obj.setClassField(fcnStr{i},fcnHandle);                
+                fcnHandle = get(obj.hFig,fldStr{indM});
+                set(obj,fcnStr{i},fcnHandle);                
             end
             
         end
@@ -1168,25 +1164,7 @@ classdef SingleTrackBP < handle
                     
                 end
             end
-        end
-        
-        % ------------------------------------ %
-        % ---- CLASS OBJECT I/O FUNCTIONS ---- %
-        % ------------------------------------ %
-        
-        % --- gets the class field values, pStr
-        function pVal = getClassField(obj,pStr)
-            
-            pVal = eval(sprintf('obj.%s;',pStr));
-            
-        end
-        
-        % --- sets the class field, pStr, with the value pVal
-        function setClassField(obj,pStr,pVal)
-            
-            eval(sprintf('obj.%s = pVal;',pStr));
-            
-        end
+        end        
         
         % --------------------------------- %        
         % ---- DATA FILE I/O FUNCTIONS ---- %

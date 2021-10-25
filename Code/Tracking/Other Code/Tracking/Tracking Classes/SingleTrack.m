@@ -89,7 +89,8 @@ classdef SingleTrack < Track
                 switch sInd(i)
                     case 1
                         % case is low variance calculations
-                        obj.fObj{i} = LVPhaseTrack(obj.iMov,obj.hProg);
+                        obj.fObj{i} = LVPhaseTrack(obj.iMov,obj.hProg); 
+                        obj.fObj{i}.nI = floor(max(obj.iData.sz)/1000);
                         
                     case 2
                         % case is high variance calculations

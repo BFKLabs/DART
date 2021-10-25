@@ -1,4 +1,4 @@
-classdef FuncFilterTree < handle
+classdef FuncFilterTree < matlab.mixin.SetGet
     
     % class properties
     properties
@@ -387,24 +387,6 @@ classdef FuncFilterTree < handle
 
             % flags that the tree is updating
             obj.isUpdating = false;            
-            
-        end
-
-        % ----------------------- %
-        % --- OTHER FUNCTIONS --- %
-        % ----------------------- %
-
-        % --- retrieves the class field
-        function setClassField(obj,fldStr,val)
-            
-            setStructField(obj,fldStr,val);
-            
-        end        
-        
-        % --- retrieves the class field
-        function val = getClassField(obj,fldStr)
-            
-            val = getStructField(obj,fldStr);
             
         end
         

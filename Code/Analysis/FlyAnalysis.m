@@ -228,7 +228,7 @@ fObj = getappdata(hFig,'fObj');
 if isempty(fObj)    
     % creates the function filter
     fObj = FuncFilterTree(hFig,snTot,pDataT);
-    fObj.setClassField('treeUpdateExtn',@updateFuncFilter);
+    set(fObj,'treeUpdateExtn',@updateFuncFilter);
     setappdata(hFig,'fObj',fObj);
 end
 

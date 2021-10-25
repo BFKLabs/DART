@@ -45,8 +45,10 @@ A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
 bgP = A.bgP;
 
 % sets the input arguments into the gui
-setappdata(hObject,'hGUI',hGUI)
-setappdata(hObject,'hPropTrack0',hPropTrack0)
+pFldStr = {'hDiff','iMov','iMov0','isMTrk','iData','hSelP','hProp0',...
+           'infoObj','cmObj','hTabGrp','jTabGrp','hTab','srObj'};
+initObjPropFields(hObject,pFldStr);
+addObjProps(hObject,'hGUI',hGUI,'hPropTrack0',hPropTrack0)
 
 % ---------------------------------------- %
 % --- FIELD & PROPERTY INITIALISATIONS --- %
@@ -54,7 +56,7 @@ setappdata(hObject,'hPropTrack0',hPropTrack0)
 
 % sets the data structs into the GUI
 hFig = hGUI.figFlyTrack;
-iMov = getappdata(hFig,'iMov');
+iMov = get(hFig,'iMov');
 
 % sets the background parameter struct (if not set)
 isSet = iMov.isSet;
@@ -74,7 +76,7 @@ isMTrk = detMltTrkStatus(iMov);
 
 % sets the frame size (if calibrating for the RT-Tracking/Calibration)
 if isCalib
-    infoObj = getappdata(hFig,'infoObj');
+    infoObj = get(hFig,'infoObj');
     if isa(infoObj.objIMAQ,'cell')
         % case is the testing form of the gui
         frmSz0 = size(infoObj.objIMAQ{1});
@@ -85,19 +87,13 @@ if isCalib
     end
 
     % sets the image acquisition object into the GUI
-    setappdata(hObject,'infoObj',infoObj);
+    set(hObject,'infoObj',infoObj);
 end
 
 % updates the GUI font-sizes and disables all tracking panels
 % setGUIFontSize(handles)
 hProp0 = disableAllTrackingPanels(hGUI,1);
-setappdata(hObject,'hProp0',hProp0)
-
-% sets the important arrays/functions handles into the GUI 
-setappdata(hObject,'hDiff',[])
-setappdata(hObject,'iMov',iMov)
-setappdata(hObject,'iMov0',iMov)
-setappdata(hObject,'isMTrk',isMTrk)
+set(hObject,'hProp0',hProp0,'iMov',iMov,'iMov0',iMov,'isMTrk',isMTrk)
 
 % ---------------------------------------- %
 % --- FIELD & PROPERTY INITIALISATIONS --- %
@@ -106,37 +102,36 @@ setappdata(hObject,'isMTrk',isMTrk)
 % converts/initialises the gui data struct from the sub-region data struct
 if isSet
     % case is the sub-region data struct has already been set up
-    iData = convertDataStruct(iMov);
-    setappdata(hObject,'iData',iData);
+    hObject.iData = convertDataStruct(iMov);
     
     % if the binary mask field (for the 2D circle automatic placement) has 
     % not been set in iMov, then set the field and mark a change
-    if ~isfield(iMov,'autoP'); iMov.autoP = []; end    
+    if ~isfield(hObject.iMov,'autoP'); hObject.iMov.autoP = []; end    
     
     % if the movie has already been set, then set the window properties and
     % disable the set button
     setObjEnable(handles.buttonSetRegions,'on')        
     
     % sets the fields based on the 
-    [setRegions,is2Dset] = deal(true,is2DCheck(iMov));
+    [setRegions,is2Dset] = deal(true,is2DCheck(hObject.iMov));
     if is2Dset                
-        if ~isempty(iMov.autoP)
+        if ~isempty(hObject.iMov.autoP)
             % initialises the isAuto flag (if not set already)
-            if ~isfield(iMov.autoP,'isAuto')
-                iMov.autoP.isAuto = true;
+            if ~isfield(hObject.iMov.autoP,'isAuto')
+                hObject.iMov.autoP.isAuto = true;
             end
                         
-            if iMov.autoP.isAuto
+            if hObject.iMov.autoP.isAuto
                 % plots the circle regions on the main GUI axes
                 setRegions = false;
-                plotRegionOutlines(handles,iMov,1)
+                plotRegionOutlines(handles,hObject.iMov,1)
                 setPatternMenuCheck(handles)      
 
                 % sets the use automatic detection flag
                 useAuto = true;
             else
                 % sets the default region type
-                mType = iMov.autoP.Type(1:4);                
+                mType = hObject.iMov.autoP.Type(1:4);                
                 hMenu0 = findall(handles.menuRegionShape,'type','uimenu');
                 
                 % turns off/on the correct markers
@@ -148,47 +143,43 @@ if isSet
     
     % sets the other object properties
     setMenuCheck(handles.menuUseAuto,useAuto);
-    setMenuCheck(handles.menuShowInner,~iData.is2D);
-    setMenuCheck(handles.menuShowRegion,iData.is2D);
-    setObjEnable(handles.menuView,iMov.isSet)
-    setObjEnable(handles.menuSplitRegion,iMov.isSet)
+    setMenuCheck(handles.menuShowInner,~hObject.iData.is2D);
+    setMenuCheck(handles.menuShowRegion,hObject.iData.is2D);
+    setObjEnable(handles.menuView,hObject.iMov.isSet)
+    setObjEnable(handles.menuSplitRegion,hObject.iMov.isSet)
     
     % draw the sub-region division figures (if not auto-detecting)
     if setRegions           
-        setupSubRegions(handles,iMov,true);
+        setupSubRegions(handles,hObject.iMov,true);
     end
     
     % sets the GUI to the top
     uistack(hObject,'top')      
 else
     % otherwise, initialise the data struct
-    iData = initDataStruct(iMov);
+    hObject.iData = initDataStruct(iMov);
 end
 
 % sets the function handles into the gui
-setappdata(hObject,'resetMovQuest',@resetMovQuest)
-setappdata(hObject,'resetSubRegionDataStruct',@resetSubRegionDataStruct)
+addObjProps(hObject,'resetMovQuest',@resetMovQuest,...
+                    'resetSubRegionDataStruct',@resetSubRegionDataStruct)
 
 % ---------------------------------- %
 % --- OBJECT & DATA STRUCT SETUP --- %
 % ---------------------------------- %
 
 % if multi-tracking, reset some of the object text strings
-if isMTrk
+if hObject.isMTrk
     % only use the 1D setup for multi-tracking
-    [iData.is2D,iData.isFixed] = deal(false,true);
+    [hObject.iData.is2D,hObject.iData.isFixed] = deal(false,true);
     if ~isSet
-        iMov.bgP.pMulti.isFixed = true;
-        setappdata(hObject,'iMov',iMov)
+        hObject.iMov.bgP.pMulti.isFixed = true;
     end
         
     % updates the text label
     hEdit = findall(handles.panel1D,'UserData','nFlyMx');
     set(hEdit,'string','Fixed Region Fly Count: ')
 end
-
-% initialises the gui fields
-setappdata(hObject,'iData',iData)
 
 % initialises the object properties
 initObjProps(handles,true);
@@ -278,15 +269,14 @@ global p0 isMouseDown isMenuOpen
 % initialisations
 hAx = handles.axesConfig;
 mPos = get(hFig,'CurrentPoint');
-iData = getappdata(hFig,'iData');
-cmObj = getappdata(hFig,'cmObj');
+iData = get(hFig,'iData');
+cmObj = get(hFig,'cmObj');
 
 % determines if the mouse is over the axis
 if isOverAxes(mPos) && iData.is2D
-    %
+    % retrieves the current selection type
     sType = get(hFig,'SelectionType');
-    isCustomGrp = get(handles.radioCustomGroup,'value');
-    
+    isCustomGrp = get(handles.radioCustomGroup,'value');    
     if strcmp(sType,'alt')
         % sets up the 
         pInfo = getDataSubStruct(handles,1);
@@ -353,7 +343,7 @@ if isMouseDown
     
 elseif isMenuOpen
     % initialisations
-    cmObj = getappdata(hFig,'cmObj');
+    cmObj = get(hFig,'cmObj');
     
     % determines if the mouse is over the menu    
     if isOverAxes(get(hFig,'CurrentPoint'))
@@ -417,18 +407,14 @@ end
 
 % object handles
 useAuto = false;
-hFig = handles.figRegionSetup;
-
-% resets the region set flag
-iMov = getappdata(hFig,'iMov');
-iMov.isSet = false;
-setappdata(hFig,'iMov',iMov);
+hFig = handles.output;
+hFig.iMov.isSet = false;
 
 % removes the sub-regions
 deleteSubRegions(handles)
 
 % resets the data struct and the object properties
-setappdata(hFig,'iData',initDataStruct(iMov))
+set(hFig,'iData',initDataStruct(hFig.iMov))
 initObjProps(handles,false)
 
 % -------------------------------------------------------------------------
@@ -457,11 +443,11 @@ if strcmp(get(handles.buttonUpdate,'enable'),'on')
 end
 
 % loads the movie struct
-hFig = handles.figRegionSetup;
-hGUI = getappdata(hFig,'hGUI');
-iMov = getappdata(hFig,'iMov');
-hProp0 = getappdata(hFig,'hProp0');
-hPropTrack0 = getappdata(hFig,'hPropTrack0');
+hFig = handles.output;
+hGUI = get(hFig,'hGUI');
+iMov = get(hFig,'iMov');
+hProp0 = get(hFig,'hProp0');
+hPropTrack0 = get(hFig,'hPropTrack0');
 
 % deletes the sub-regions from tracking gui axes
 deleteSubRegions(handles)
@@ -474,7 +460,7 @@ if ~isempty(hGUI)
     resetHandleSnapshot(hProp0)
 
     % runs the post window split function
-    postWindowSplit = getappdata(hGUI.figFlyTrack,'postWindowSplit');
+    postWindowSplit = get(hGUI.figFlyTrack,'postWindowSplit');
     postWindowSplit(hGUI,iMov,hPropTrack0,isChange)
 end
 
@@ -489,8 +475,8 @@ delete(hFig)
 function menuShowInner_Callback(hObject, eventdata, handles)
 
 % initialisations
-hFig = handles.figRegionSetup;
-hGUI = getappdata(hFig,'hGUI');
+hFig = handles.output;
+hGUI = get(hFig,'hGUI');
 
 % toggles the menu item
 toggleMenuCheck(hObject)
@@ -531,9 +517,9 @@ global useAuto isChange
 isChange = true;
 
 % retrieves the main GUI handle data struct
-hFig = handles.figRegionSetup;
-iMov = getappdata(hFig,'iMov');
-iData = getappdata(hFig,'iData');
+hFig = handles.output;
+iMov = get(hFig,'iMov');
+iData = get(hFig,'iData');
 
 % performs the action based on the menu item checked status 
 useAuto = strcmp(get(hObject,'checked'),'off');
@@ -675,51 +661,36 @@ set(hMenu,'Checked','on');
 % --------------------------------------------------------------------
 function menuShapeRect_Callback(hObject, eventdata, handles)
 
-% initialisations
-hFig = handles.figRegionSetup;
-
 % toggles the shape menu check items
 toggleShapeMenuCheck(hObject)
 
 % updates the shape flag
-iMov = getappdata(hFig,'iMov');
-iMov.mShape = 'Rect';
-setappdata(hFig,'iMov',iMov)
+handles.output.iMov.mShape = 'Rect';
 
 % --------------------------------------------------------------------
 function menuShapeCirc_Callback(hObject, eventdata, handles)
 
-% initialisations
-hFig = handles.figRegionSetup;
-
 % toggles the shape menu check items
 toggleShapeMenuCheck(hObject)
 
 % updates the shape flag
-iMov = getappdata(hFig,'iMov');
-iMov.mShape = 'Circ';
-setappdata(hFig,'iMov',iMov)
+handles.output.iMov.mShape = 'Circ';
 
 % --------------------------------------------------------------------
 function menuShapePoly_Callback(hObject, eventdata, handles)
 
-% initialisations
-hFig = handles.figRegionSetup;
-
 % toggles the shape menu check items
 toggleShapeMenuCheck(hObject)
 
 % updates the shape flag
-iMov = getappdata(hFig,'iMov');
-iMov.mShape = 'Poly';
-setappdata(hFig,'iMov',iMov)
+handles.output.iMov.mShape = 'Poly';
 
 % --------------------------------------------------------------------
 function menuSplitRegion_Callback(hObject, eventdata, handles)
 
 % splits the sub-region
-hFig = handles.figRegionSetup;
-setappdata(hFig,'srObj',SplitSubRegion(hFig));
+hFig = handles.output;
+set(hFig,'srObj',SplitSubRegion(hFig));
 
 %-------------------------------------------------------------------------%
 %                         OTHER CALLBACK FUNCTIONS                        %
@@ -728,14 +699,9 @@ setappdata(hFig,'srObj',SplitSubRegion(hFig));
 % --- callback function for selecting the protocol tabs
 function tabSelected(hObj, ~, handles)
 
-% initialisations
-hFig = handles.figRegionSetup;
-iData = getappdata(hFig,'iData');
-
 % updates the 2D selection flag
 hTabSel = get(get(hObj,'Parent'),'SelectedTab');
-iData.is2D = strcmp(get(hTabSel,'Title'),'2D Setup');
-setappdata(hFig,'iData',iData)
+handles.output.iData.is2D = strcmp(get(hTabSel,'Title'),'2D Setup');
 
 % updates the menu item properties
 updateMenuItemProps(handles)
@@ -750,9 +716,9 @@ function updateMenuItemProps(handles)
 global useAuto
 
 % initialisations
-hFig = handles.figRegionSetup;
-iMov = getappdata(hFig,'iMov');
-iData = getappdata(hFig,'iData');
+hFig = handles.output;
+iMov = get(hFig,'iMov');
+iData = get(hFig,'iData');
 showInner = ~useAuto && ~iData.is2D;
 isMltTrk = detMltTrkStatus(iMov);
 
@@ -785,12 +751,12 @@ function editParaUpdate(hObj, ~, handles)
 
 % initialisations
 [eVal,pMlt] = deal([]);
-hFig = handles.figRegionSetup;
-iData = getappdata(hFig,'iData');
+hFig = handles.output;
+iData = get(hFig,'iData');
 pInfo = getDataSubStruct(handles);
 nwVal = str2double(get(hObj,'String'));
 
-% iMov = getappdata(hFig,'iMov');
+% iMov = get(hFig,'iMov');
 % isMTrk = detMltTrkStatus(iMov);
 
 % determines if the grid row/column multiplier needs to be taken into
@@ -912,7 +878,8 @@ end
 % initialisations
 iSel = eventdata.Indices;
 nwVal = eventdata.NewData;
-pInfo = getDataSubStruct(handles); 
+hFig = handles.output;
+pInfo = getDataSubStruct(handles);
 
 % determines if the new name is unique
 isOther = ~setGroup(iSel(1),[length(pInfo.gName),1]);
@@ -934,14 +901,13 @@ else
     pInfo.gName{iSel(1)} = nwVal;
     
     % updates the menu label
-    iData = getappdata(handles.figRegionSetup,'iData');
-    if iData.is2D
-        cmObj = getappdata(handles.figRegionSetup,'cmObj');
-        cmObj.setMenuLabel(iSel(1),nwVal);
+    if hFig.iData.is2D
+        hFig.cmObj.setMenuLabel(iSel(1),nwVal);
     end
 end
 
 % updates the sub-struct
+setObjEnable(handles.buttonUpdate,1)
 setDataSubStruct(handles,pInfo);
 
 % updates the table column format (1D only)
@@ -954,16 +920,14 @@ function checkVarFlyCount_Callback(hObject, eventdata, handles)
 
 % determines if variable fly count is being used
 isVar = get(hObject,'Value');
-hFig = handles.figRegionSetup;
+hFig = handles.output;
 
 % updates the multi-tracking 
-iMov = getappdata(hFig,'iMov');
-iMov.bgP.pMulti.isFixed = ~isVar;
-setappdata(hFig,'iMov',iMov);
+hFig.iMov.bgP.pMulti.isFixed = ~isVar;
 
 % sets the object enabled properties
 setObjEnable(handles.editSRCount,~isVar);
-setObjEnable(handles.buttonUpdate,iMov.isSet)
+setObjEnable(handles.buttonUpdate,hFig.iMov.isSet)
 
 % ------------------------------------------ %
 % --- 1D SETUP SPECIFIC OBJECT CALLBACKS --- %
@@ -992,7 +956,7 @@ switch iSel(2)
         % case is updating the sub-region count
         if chkEditValue(nwVal,[1,pInfo.nFlyMx],1)
             % if the value is valid, then update the field
-            pInfo.nFly(iRG,iCG) = nwVal;
+            pInfo.nFly(iRG,iCG) = nwVal;            
         else
             % otherwise, reset to the previous valid value
             tData{iSel(1),iSel(2)} = eventdata.PreviousData;
@@ -1013,6 +977,7 @@ switch iSel(2)
 end
 
 % updates the data struct into the gui
+setObjEnable(handles.buttonUpdate,1)
 setDataSubStruct(handles,pInfo,false);
 
 % resets the configuration axes
@@ -1103,6 +1068,7 @@ if ~ischar(eventdata)
         end
         
         % updates the data sub-struct
+        setObjEnable(handles.buttonUpdate,1)
         setDataSubStruct(handles,pInfo)
     end
     
@@ -1122,9 +1088,9 @@ global useAuto
 
 % retrieves the main GUI and sub-image region data structs
 useAuto = false;
-hFig = handles.figRegionSetup;
-hGUI = getappdata(hFig,'hGUI');
-iMov = getappdata(hFig,'iMov');
+hFig = handles.output;
+hGUI = get(hFig,'hGUI');
+iMov = get(hFig,'iMov');
 
 % deletes the automatically detected circular regions (if any present)
 hOut = findall(hGUI.imgAxes,'tag','hOuter');
@@ -1162,7 +1128,7 @@ setObjEnable(handles.buttonUpdate,'on');
 uistack(hFig,'top')
 
 % updates the data struct into the GUI
-setappdata(hFig,'iMov',iMov);
+set(hFig,'iMov',iMov);
 updateMenuItemProps(handles);
 
 % --- Executes on button press in buttonUpdate.
@@ -1172,9 +1138,9 @@ function buttonUpdate_Callback(hObject, eventdata, handles)
 global isChange useAuto
 
 % retrieves the main gui handles and sub-movie data struct
-hFig = handles.figRegionSetup;
-hGUI = getappdata(hFig,'hGUI');
-iMov = getappdata(hFig,'iMov');
+hFig = handles.output;
+hGUI = get(hFig,'hGUI');
+iMov = get(hFig,'iMov');
 
 % removes the x-correlation parameter struct (if it exists)
 iMov.Ibg = [];
@@ -1184,7 +1150,7 @@ end
 
 % if using the automatic detection, disable the button and exit
 if strcmp(get(handles.menuUseAuto,'checked'),'on') || useAuto
-    setappdata(hFig,'iMov',iMov)
+    set(hFig,'iMov',iMov)
     setObjEnable(hObject,'off'); return
 end
 
@@ -1196,7 +1162,8 @@ if ~isa(eventdata,'char')
 end
 
 % resets the sub-movie data struct
-setappdata(hFig,'iMov',iMov)
+iMov.pInfo = getDataSubStruct(handles);
+set(hFig,'iMov',iMov)
 
 %-------------------------------------------------------------------------%
 %                       SUB-REGION OUTLINE FUNCTIONS                      %
@@ -1226,7 +1193,7 @@ else
     iMov = initSubPlotStruct(handles,iMov);
     
     % resets the sub-movie data struct
-    setappdata(handles.figRegionSetup,'iMov',iMov)    
+    set(handles.output,'iMov',iMov)    
 end
 
 % resets the tube count/use flags (multi-fly tracking only)
@@ -1257,8 +1224,8 @@ global xGap yGap pX pY pH pW
 [pX,pY,pH,pW] = deal(zeros(iMov.nCol*iMov.nRow,1));
 
 % retrieves the GUI objects
-hFig = handles.figRegionSetup;
-hGUI = getappdata(hFig,'hGUI');
+hFig = handles.output;
+hGUI = get(hFig,'hGUI');
 hAx = hGUI.imgAxes;
 hold(hAx,'on')
 
@@ -1505,7 +1472,7 @@ hold(hAx,'off')
 function deleteSubRegions(handles)
 
 % retrieves the GUI objects
-hGUI = getappdata(handles.figRegionSetup,'hGUI');
+hGUI = get(handles.output,'hGUI');
 if isempty(hGUI); return; end
 
 % removes all the division marker objects
@@ -1524,7 +1491,7 @@ delete(findobj(hAx,'UserData','hTube'));
 function rPos = setupMainFrameRect(handles,iMov)
 
 % retrieves the GUI objects
-hGUI = getappdata(handles.figRegionSetup,'hGUI');
+hGUI = get(handles.output,'hGUI');
 hAx = hGUI.imgAxes;
 
 % ------------------------------------ %
@@ -1569,12 +1536,12 @@ function initObjProps(handles,isInit)
 
 % object handle retrieval
 hAx = handles.axesConfig;
-hFig = handles.figRegionSetup;
+hFig = handles.output;
 hPanelConfig = handles.panelRegionConfig;
 
 % initialisations
-iMov = getappdata(hFig,'iMov');
-iData = getappdata(hFig,'iData');
+iMov = get(hFig,'iMov');
+iData = get(hFig,'iData');
 isMltTrk = detMltTrkStatus(iMov);
 
 % sets the tab titles
@@ -1643,17 +1610,17 @@ if isInit
     jTabGrp = getTabGroupJavaObj(hTabGrp); 
     
     % updates the object arrays into the gui
-    setappdata(hFig,'hTab',hTab);
-    setappdata(hFig,'hTabGrp',hTabGrp);
-    setappdata(hFig,'jTabGrp',jTabGrp);
+    set(hFig,'hTab',hTab);
+    set(hFig,'hTabGrp',hTabGrp);
+    set(hFig,'jTabGrp',jTabGrp);
     
 else
     % otherwise, retrieve the table group java object handle
-    hTab = getappdata(hFig,'hTab');
-    hTabGrp = getappdata(hFig,'hTabGrp');
-    jTabGrp = getappdata(hFig,'jTabGrp');
+    hTab = get(hFig,'hTab');
+    hTabGrp = get(hFig,'hTabGrp');
+    jTabGrp = get(hFig,'jTabGrp');
 end
-    
+
 % if the regions have already been set, then disable the tab for the setup
 % type that is not being used
 if iData.isFixed
@@ -1748,12 +1715,12 @@ if ~isempty(iData.D2)
     set(handles.popupCurrentGroup,'String',pStr,'Value',2) 
     
     % creates the context menu
-    cmObj = getappdata(hFig,'cmObj');
+    cmObj = get(hFig,'cmObj');
     if isempty(cmObj)
         cmObj = AxesContextMenu(hFig,hAx,pStr);
         cmObj.setMenuParent(handles.panelAxesConfig);
         cmObj.setCallbackFcn(@updateGroupSelection);
-        setappdata(hFig,'cmObj',cmObj); 
+        set(hFig,'cmObj',cmObj); 
     else        
         cmObj.updateMenuLabels(pStr);        
     end
@@ -1816,15 +1783,14 @@ function updateGroupNameTable(handles)
 
 % initialisations
 updateInfo = false;
-hFig = handles.figRegionSetup;
-iData = getappdata(hFig,'iData');
+hFig = handles.output;
+iData = get(hFig,'iData');
 pInfo = getDataSubStruct(handles);
 hTable = findall(hFig,'tag',sprintf('tableGroupNames%iD',1+iData.is2D));
 
 % disable the menu highlight (2D only)
 if iData.is2D
-    cmObj = getappdata(hFig,'cmObj');
-    cmObj.setMenuHighlight(cmObj.iSel,0);
+    hFig.cmObj.setMenuHighlight(hFig.cmObj.iSel,0);
 end
 
 % adds/removes from the group name array
@@ -1860,8 +1826,7 @@ if updateInfo
         set(handles.popupCurrentGroup,'String',pStr,'Value',iSel)
         
         % creates the context menu
-        cmObj = getappdata(hFig,'cmObj');
-        cmObj.updateMenuLabels(pStr);         
+        hFig.cmObj.updateMenuLabels(pStr);         
     else
         % otherwise, update the region table information
         updateRegionInfoTable(handles)
@@ -1885,7 +1850,7 @@ pInfo = getDataSubStruct(handles,1);
 sz = size(pInfo.iGrp);
 
 % retrieves the axes handle
-hGUI = getappdata(hFig,'hGUI');
+hGUI = get(hFig,'hGUI');
 hAx = hGUI.imgAxes;
 
 % retrieves the patch colours
@@ -2000,12 +1965,12 @@ setObjEnable(handles.buttonSetRegions,canSet)
 function setPatternMenuCheck(handles,Type)
 
 % initialisations
-hFig = handles.figRegionSetup;
-iData = getappdata(hFig,'iData');
+hFig = handles.output;
+iData = get(hFig,'iData');
 
 % sets the default input arguments
 if ~exist('Type','var')
-    Type = getDetectionType(getappdata(hFig,'iMov'));
+    Type = getDetectionType(hFig.iMov);
 end
 
 % sets the parent menu item
@@ -2042,10 +2007,10 @@ function resetConfigAxes(handles)
 
 % initialisations
 hAx = handles.axesConfig;
-hFig = handles.figRegionSetup;
-iMov = getappdata(hFig,'iMov');
-hGUI = getappdata(hFig,'hGUI');
-iData = getappdata(hFig,'iData');
+hFig = handles.output;
+iMov = get(hFig,'iMov');
+hGUI = get(hFig,'hGUI');
+iData = get(hFig,'iData');
 pInfo = getDataSubStruct(handles);
 pCol = getAllGroupColours(length(pInfo.gName));
 isMTrk = detMltTrkStatus(iMov);
@@ -2229,7 +2194,7 @@ switch fType
         % creates the patch object
         hSelP = patch(xx(ii),yy(jj),pCol,'Parent',hAx,'tag','hSelP',...
                                  'LineWidth',lWid,'FaceAlpha',fAlpha);
-        setappdata(hFig,'hSelP',hSelP);
+        set(hFig,'hSelP',hSelP);
         
     case 'update'
         % calculates the new coordinates
@@ -2238,7 +2203,7 @@ switch fType
         yy = [min(pNw(2),p0(2))-1,max(pNw(2),p0(2))];
         
         % updates the patch coordinates
-        hSelP = getappdata(hFig,'hSelP');
+        hSelP = get(hFig,'hSelP');
         try
             set(hSelP,'xData',xx(ii),'yData',yy(jj))
         catch
@@ -2293,21 +2258,21 @@ iData = struct('D1',D1,'D2',D2,'is2D',is2D,'isFixed',true);
 function [pInfo,is2D] = getDataSubStruct(handles,is2D)
 
 % retrieves the data struct
-iData = getappdata(handles.figRegionSetup,'iData');
+hFig = handles.output;
 
 % sets the 2d flag (if not already given)
 if ~exist('is2D','var')    
-    is2D = iData.is2D;
+    is2D = hFig.iData.is2D;
 end
 
 % retrieves the sub-struct (depending if the setup dimensionality is given)
-pInfo = eval(sprintf('iData.D%i',1+is2D));
+pInfo = getStructField(hFig.iData,sprintf('D%i',1+is2D));
 
 % --- updates the data sub struct (dependent on the setup type)
 function setDataSubStruct(handles,pInfo,is2D)
 
 % retrieves the data struct
-iData = getappdata(handles.figRegionSetup,'iData');
+iData = get(handles.output,'iData');
 
 % updates the sub-struct (depending if the setup dimensionality is given)
 if exist('is2D','var')
@@ -2317,7 +2282,7 @@ else
 end
     
 % resets the entire data struct into the gui
-setappdata(handles.figRegionSetup,'iData',iData)
+set(handles.output,'iData',iData)
 
 % --------------------------------- %
 % --- OBJECT CALLBACK FUNCTIONS --- %
@@ -2332,8 +2297,8 @@ isUpdating = true;
 
 % retrieves the sub-region data struct
 hFig = findall(0,'tag','figRegionSetup');
-iMov = getappdata(hFig,'iMov');
-hGUIH = getappdata(hFig,'hGUI');
+iMov = get(hFig,'iMov');
+hGUIH = get(hFig,'hGUI');
 handles = guidata(hFig);
 
 % retrieves the object handle and the index of the line
@@ -2381,8 +2346,8 @@ iVL = get(get(gco,'parent'),'UserData');
 
 % retrieves the sub-region data struct
 hFig = findall(0,'tag','figRegionSetup');
-iMov = getappdata(hFig,'iMov');
-hGUIH = getappdata(hFig,'hGUI');
+iMov = get(hFig,'iMov');
+hGUIH = get(hFig,'hGUI');
 handles = guidata(hFig);
 
 % updates the position of the inner regions
@@ -2397,7 +2362,7 @@ function roiCallback2D(rPos)
 
 % retrieves the sub-region data object
 hFig = findall(0,'tag','figRegionSetup');
-srObj = getappdata(hFig,'srObj');
+srObj = get(hFig,'srObj');
 
 % retrieves the object handle
 hROI = get(gco,'Parent');
@@ -2488,7 +2453,7 @@ global iAppInner isUpdating pX pY pW pH
 
 % initialisations
 hFig = findall(0,'tag','figRegionSetup');
-iMov = getappdata(hFig,'iMov');
+iMov = get(hFig,'iMov');
 handles = guidata(hFig);
 
 % sets the apparatus index
@@ -2516,8 +2481,8 @@ end
 % if not updating, then reset the proportional dimensions
 if ~isUpdating
     % retrieves the sub-region data struct
-    iMov = getappdata(hFig,'iMov');
-    hGUIH = getappdata(hFig,'hGUI');
+    iMov = get(hFig,'iMov');
+    hGUIH = get(hFig,'hGUI');
     
     % sets the row/column indices
     iRow = floor((iApp-1)/iMov.nCol) + 1;
@@ -2754,13 +2719,13 @@ end
 function plotRegionOutlines(handles,iMov,forceUpdate)
 
 % initialisations
-hFig = handles.figRegionSetup;
-hGUI = getappdata(hFig,'hGUI');
+hFig = handles.output;
+hGUI = get(hFig,'hGUI');
 hAx = hGUI.imgAxes;
 
 % retrieves the sub-region and main GUI handles data struct
 if ~exist('forceUpdate','var'); forceUpdate = false; end
-if ~exist('iMov','var'); iMov = getappdata(hFig,'iMov'); end
+if ~exist('iMov','var'); iMov = get(hFig,'iMov'); end
 
 % sets the circle visibility based on the checked status
 hOut = findall(hAx,'tag','hOuter');
@@ -2865,9 +2830,9 @@ hold(hAx,'off');
 function iMov = initSubPlotStruct(handles,iMov)
 
 % retrieves the main GUI handle struct
-hFig = handles.figRegionSetup;
-hGUI = getappdata(hFig,'hGUI');
-iData = getappdata(hFig,'iData');
+hFig = handles.output;
+hGUI = get(hFig,'hGUI');
+iData = get(hFig,'iData');
 pInfo = getDataSubStruct(handles);
 
 % retrieves the axis limits
@@ -2982,13 +2947,13 @@ function postAutoDetectUpdate(handles,iMov0,iMovNw,isUpdate)
 global isChange
 
 % initialisation
-hFig = handles.figRegionSetup;
+hFig = handles.output;
 
 % determines if the user decided to update or not
 if isUpdate
     % if the user updated the solution, then update the data struct
     isChange = true;
-    setappdata(hFig,'iMov',iMovNw);
+    set(hFig,'iMov',iMovNw);
 
     % updates the menu properties
     setMenuCheck(setObjEnable(handles.menuUseAuto,'on'),'on')
@@ -3029,10 +2994,9 @@ if ~strcmp(uChoice,'Yes')
 end        
 
 % retrieves the original sub-region data struct
-hFig = handles.figRegionSetup;
-hGUI = getappdata(hFig,'hGUI');
-iMov0 = getappdata(hFig,'iMov');
-iData = getappdata(hFig,'iData');
+hFig = handles.output;
+hGUI = get(hFig,'hGUI');
+iMov0 = get(hFig,'iMov');
 
 % retrieves the main image axes image
 I = get(findobj(get(hGUI.imgAxes,'children'),'type','image'),'cdata');
@@ -3043,9 +3007,9 @@ if isempty(iMov0.iR)
     buttonUpdate_Callback(handles.buttonUpdate, '1', handles)
 
     % retrieves the sub-region data struct and 
-    iMov = getappdata(hFig,'iMov');
+    iMov = get(hFig,'iMov');
     if isfield(iMov,'autoP'); iMov = rmfield(iMov,'autoP'); end
-    setappdata(hFig,'iMov',iMov0);
+    set(hFig,'iMov',iMov0);
 else
     % otherwise set the original to be the test data struct
     iMov = iMov0; clear iMov0
@@ -3069,12 +3033,12 @@ global isCalib
 % memory allocation
 nFrm = 11;
 I = cell(nFrm,1);
-hFig = handles.figRegionSetup;
+hFig = handles.output;
 
 % retrieves the initial image stack
 if isCalib
     % case is the user is calibrating the camera
-    infoObj = getappdata(hFig,'infoObj');
+    infoObj = get(hFig,'infoObj');
     for i = 1:nFrm
         I{i} = getsnapshot(infoObj.objIMAQ);
         pause(1);
@@ -3082,7 +3046,7 @@ if isCalib
     
 else
     % retrieves the tracking data struct
-    iData = getappdata(hGUI.figFlyTrack,'iData');
+    iData = get(hGUI.figFlyTrack,'iData');
     
     % case is the tracking from a video
     xi = roundP(linspace(1,iData.nFrm,nFrm));

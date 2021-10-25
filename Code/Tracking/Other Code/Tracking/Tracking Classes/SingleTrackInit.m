@@ -22,6 +22,7 @@ classdef SingleTrackInit < SingleTrack
         pData       
         useP
         indFrm
+        useFilt
         prData0 = [];
         
         % parameters
@@ -87,9 +88,9 @@ classdef SingleTrackInit < SingleTrack
                 
                 % retrieves the use filter flag
                 if isfield(obj.iMov.bgP.pSingle,'useFilt')
-                    useFilt = obj.iMov.bgP.pSingle.useFilt;
+                    obj.useFilt = obj.iMov.bgP.pSingle.useFilt;
                 else
-                    useFilt = false;
+                    obj.useFilt = false;
                 end
 
                 % reads the initial images            
@@ -107,7 +108,7 @@ classdef SingleTrackInit < SingleTrack
 
                         % reads the image stack for phase frame indices
                         obj.Img{i} = obj.getImageStack(obj.indFrm{i});                         
-                        if useFilt
+                        if obj.useFilt
                             obj.Img{i} = cellfun(@(x)...
                                 (imfilter(x,obj.hS)),obj.Img{i},'un',0);
                         end
@@ -239,7 +240,8 @@ classdef SingleTrackInit < SingleTrack
         
             % sorts the phases by type (low var phases first)
             nPh = length(obj.iMov.vPhase);
-            [~,iSort] = sort(obj.iMov.vPhase(:));
+            indPh = [obj.iMov.vPhase,diff(obj.iMov.iPhase,[],2)];
+            [~,iSort] = sortrows(indPh,[1,2],{'ascend' 'descend'});
             
             % segments the phases (from low to high variance phases)
             for j = 1:nPh
@@ -314,7 +316,7 @@ classdef SingleTrackInit < SingleTrack
             % performs the phase house-keeping exercises
             obj.phaseHouseKeeping(iPh);
             
-        end        
+        end      
         
         % --- tracks the moving blobs from the residual image stack, IR
         function detectMovingBlobs(obj,I,IR,iPh)
@@ -363,7 +365,7 @@ classdef SingleTrackInit < SingleTrack
                 
                 % scales the maxima by the median pixel intensity
                 Imn = cellfun(@(x)(nanmedian(x(:))),IRL);
-                pIR = (pIR-Imn)./Imn;
+                pIR = (pIR-Imn)./max(1,Imn);
 
             end
            
@@ -413,7 +415,7 @@ classdef SingleTrackInit < SingleTrack
         end
         
         % --- sets up the blob template images
-        function setupBlobTemplate(obj,I,iPh)            
+        function setupBlobTemplate(obj,I,iPh)
             
             % if the user cancelled, then exit
             if ~obj.calcOK; return; end              
@@ -446,8 +448,20 @@ classdef SingleTrackInit < SingleTrack
             
             % if the number of residual points is low, and there is
             % previous template data, then use that instead
-            if mean(obj.useP(:)) < 0.1 && ~isempty(obj.iMov.tPara)
-                obj.tPara{iPh} = obj.iMov.tPara;
+            if mean(obj.useP(:)) < 0.1
+                resetPara = true;
+                if isfield(obj.iMov,'tPara') && ~isempty(obj.iMov.tPara)
+                    [obj.tPara{iPh},resetPara] = deal(obj.iMov.tPara,0);                    
+                end
+                
+                % if the parameter reset is required, then use the template
+                % from the other images
+                if resetPara
+                    Itemp = setupWeightedTemplateImage(obj);
+                    [GxT,GyT] = imgradientxy(Itemp,'sobel');
+                    obj.tPara{iPh} = ...
+                            struct('Itemp',Itemp,'GxT',GxT,'GyT',GyT);
+                end
                 
                 % updates the progressbar and exits
                 obj.hProg.Update(3+obj.wOfsL,'Region Analysis Complete',1);
@@ -510,7 +524,7 @@ classdef SingleTrackInit < SingleTrack
             if any(~obj.useP(:))
                 % retrieves the template x/y gradient masks
                 [GxT,GyT] = deal(obj.tPara{iPh}.GxT,obj.tPara{iPh}.GyT); 
-                obj.iMov.szObj = obj.calcObjShape();
+                obj.iMov.szObj = obj.calcObjShape(obj.tPara{iPh}.Itemp);
                 
                 % loops through each of the probable stationary regions 
                 % determining the most likely blob objects 
@@ -897,7 +911,7 @@ classdef SingleTrackInit < SingleTrack
         function Itemp = setupWeightedTemplateImage(obj)
             
             % determines the low variance phases
-            isLoV = obj.iMov.vPhase == 1;     
+            isLoV = (obj.iMov.vPhase == 1) & ~cellfun(@isempty,obj.tPara);
             
             % calculates a weighted sum of the existing templates
             N = cellfun(@length,obj.indFrm(isLoV));

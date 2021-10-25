@@ -132,7 +132,7 @@ hPopup = handles.popupFuncSort;
 
 % initialises the function filter free
 fcnObj = FuncFilterTree(hFig,handles.checkGrpExpt);
-fcnObj.setClassField('treeUpdateExtn',{@resetFuncCompColours,hFig});
+set(fcnObj,'treeUpdateExtn',{@resetFuncCompColours,hFig});
 setappdata(hFig,'fcnObj',fcnObj);
 
 % retrieves the function data

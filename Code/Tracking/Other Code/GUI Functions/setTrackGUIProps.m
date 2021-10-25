@@ -14,27 +14,24 @@ else
     hFig = handles.figFlyTrack;
 end
 
-% retrieves the important data structs
-iData = getappdata(hFig,'iData');
-
 % determines if the sub-image is being viewed
 isSub = get(handles.checkLocalView,'value');
 
-%
-iMov = getappdata(hFig,'iMov');
-iSoln = getappdata(hFig,'iSoln');
-pData = getappdata(hFig,'pData');
-cType = getappdata(hFig,'cType');
-isTest = getappdata(hFig,'isTest');
+% retrieves the fields
+iMov = get(hFig,'iMov');
+iData = get(hFig,'iData');
+pData = get(hFig,'pData');
+cType = get(hFig,'cType');
+isTest = get(hFig,'isTest');
 
 % retrieves the gui functions
-dispImage = getappdata(hFig,'dispImage');
-deleteAllMarkers = getappdata(hFig,'deleteAllMarkers');
-removeDivisionFigure = getappdata(hFig,'removeDivisionFigure');
-initMarkerPlots = getappdata(hFig,'initMarkerPlots');
-checkShowTube_Callback = getappdata(hFig,'checkShowTube_Callback');
-checkShowMark_Callback = getappdata(hFig,'checkShowMark_Callback');
-FirstButtonCallback = getappdata(hFig,'FirstButtonCallback');
+dispImage = get(hFig,'dispImage');
+deleteAllMarkers = get(hFig,'deleteAllMarkers');
+removeDivisionFigure = get(hFig,'removeDivisionFigure');
+initMarkerPlots = get(hFig,'initMarkerPlots');
+checkShowTube_Callback = get(hFig,'checkShowTube_Callback');
+checkShowMark_Callback = get(hFig,'checkShowMark_Callback');
+FirstButtonCallback = get(hFig,'FirstButtonCallback');
     
 % sets the object properties based on the type string
 switch (typeStr)
@@ -93,7 +90,7 @@ switch (typeStr)
             set(handles.textFrameSizeS,'string','N/A')                   
         else
             % retrieves the video resolution
-            infoObj = getappdata(handles.figFlyTrack,'infoObj');
+            infoObj = get(hFig,'infoObj');
             vRes = getVideoResolution(infoObj.objIMAQ);
             vStr = sprintf('%i %s %i',vRes(2),char(215),vRes(2));
             
@@ -170,7 +167,7 @@ switch (typeStr)
         
         % updates the movie count
         iData.nMov = iMov.nRow*iMov.nCol*iMov.isSet;
-        setappdata(hFig,'iData',iData);
+        set(hFig,'iData',iData);
         
         % enables/disables the appropriate GUI objects
         setAxesEnable(handles,'on',[1 2])                
@@ -178,7 +175,7 @@ switch (typeStr)
         setObjEnable(handles.editScaleFactor,'on')
         
         % if testing, then set the frame count edit box to inactive        
-        if (getappdata(hFig,'isTest'))
+        if get(hFig,'isTest')
             setObjEnable(handles.frmCountEdit,'inactive')
         end        
         
@@ -222,8 +219,7 @@ switch (typeStr)
                 
         % resets the status flag 
         iData.Status = 0;        
-        setappdata(hFig,'iData',iData);
-        setappdata(hFig,'pData',[]);
+        set(handles.output,'iData',iData,'pData',[]);
         
         % clears the sub-regions
         setMovEnable(handles,'off')
@@ -299,7 +295,7 @@ switch (typeStr)
         end
         
         % updates the program data struct 
-        setappdata(hFig,'iData',iData)
+        set(hFig,'iData',iData)
         
     case ('PostSolnLoadBP') % case is before opening a solution file                               
         % determines if the positional data has been determined
@@ -323,7 +319,7 @@ switch (typeStr)
         [iData.cFrm,iData.cMov] = deal(1);
         set(handles.frmCountEdit,'string',num2str(iData.cFrm))
         set(handles.movCountEdit,'string',num2str(iData.cMov))
-        setappdata(hFig,'iData',iData)        
+        set(hFig,'iData',iData)        
         
     % --- PRE/POST IMAGE SEGMENTATION --- %
     % ----------------------------------- %    
@@ -393,7 +389,7 @@ switch (typeStr)
         
         % resets the status flag 
         iData.Status = 2;
-        setappdata(hFig,'iData',iData);                
+        set(hFig,'iData',iData);                
         
         % updates the image 
         dispImage(handles)
@@ -436,7 +432,7 @@ switch (typeStr)
 %         % if the current frame doesn't match, update the data struct
 %         if iData.cFrm ~= cFrm
 %             set(handles.frmCountEdit,'string',num2str(cFrm))
-%             setappdata(hFig,'iData',iData)
+%             set(hFig,'iData',iData)
 %         end
 %         
 %         % updates the image
@@ -458,8 +454,7 @@ switch (typeStr)
             % resets the status flag 
             iData.Status = 0;
             setDetectEnable(handles,'off',[2 3 5])
-            setappdata(hFig,'iData',iData);
-            setappdata(hFig,'pData',[]);        
+            set(hFig,'iData',iData,'pData',[]);        
         end                
         
     case ('PostWindowSplitCalib') % case is after splitting the window          
@@ -570,7 +565,7 @@ switch (typeStr)
             
         else
             % initialisations
-            markerFcn = getappdata(hFigM,'checkShowMark_Callback');
+            markerFcn = get(hFig,'checkShowMark_Callback');
             setObjEnable(handles.buttonUseCurrent,'off')
             
             % determines if the current frame is the analysed frame
@@ -833,7 +828,7 @@ end
 function setSubMovEnable(handles,varargin)
 
 % loads the sub-movie
-iMov = getappdata(handles.figFlyTrack,'iMov');
+iMov = get(handles.output,'iMov');
 if (iMov.isSet && (nargin == 1))
     % sets the sub-movie properties strings
     setObjEnable(handles.textRowCountL,'on')

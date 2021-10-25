@@ -1,4 +1,5 @@
-classdef ProgBar < handle
+classdef ProgBar < matlab.mixin.SetGet
+    
     % class properties
     properties
         % main object properties
@@ -192,20 +193,6 @@ classdef ProgBar < handle
             set(obj.hObj(ind).wImg,'cdata',obj.wImg);
             set(obj.hObj(ind).wStr,'string',wStrNw)
             drawnow;                        
-            
-        end
-        
-        % --- gets the class field values, pStr
-        function pVal = getClassField(obj,pStr)
-            
-            pVal = eval(sprintf('obj.%s;',pStr));
-            
-        end
-        
-        % --- sets the class field, pStr, with the value pVal
-        function setClassField(obj,pStr,pVal)
-            
-            eval(sprintf('obj.%s = pVal;',pStr));
             
         end
         

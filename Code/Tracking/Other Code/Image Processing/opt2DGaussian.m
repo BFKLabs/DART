@@ -24,7 +24,7 @@ if isempty(pOpt0)
     I(isnan(I)) = nanmedian(I(:));
     Ymd = nanmedian(I(:));
     Yamp = nanmax(I(:)) - nanmin(I(:));
-    pOpt0 =  [   Ymd,  Yamp,  0.1, 0.1];
+    pOpt0 =  [   Ymd,  Yamp,  1, 1];
 end
 
 % sets up the x/y coordinate values
@@ -32,8 +32,8 @@ D = floor(size(I,1)/2);
 [X,Y] = meshgrid(-D:D);
 
 % parameters
-pLB = [-255.0,-255.0,   0.0,  0.0];
-pUB = [ 255.0, 255.0,  25.0, 25.0];
+pLB = [-255.0,-255.0, 0.0, 0.0];
+pUB = [ 255.0, 255.0, 5.0, 5.0];
 
 % runs the optimiation can returns the optimal template
 pOptF = lsqnonlin(@optFunc,pOpt0,pLB,pUB,opt,I,X,Y,1-normImg(I));

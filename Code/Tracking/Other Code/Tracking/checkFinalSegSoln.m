@@ -189,8 +189,6 @@ T = iData.Tv(roundP(1:iMov.sRate:length(iData.Tv)));
 
 % calculates the position offset
 nFrm = length(X);
-i0 = find(~isnan(X),1,'first');
-pOfs = repmat(pData.fPos{iApp}{iTube}(i0,:)-[X(i0),Y(i0)],length(T),1);
 
 % determines if there are any low metric probability frames
 isLowPr = ZPos < zPrTol;
@@ -253,123 +251,13 @@ if any(isLowPr) && ~is2D
         [X(:),Y(:)] = deal(nanmedian(X),nanmedian(Y));
     end
 end
-
-% % sets the tube row indices and the position offset
-% [iR,iC,iRT] = deal(iMov.iR{iApp},iMov.iC{iApp},iMov.iRT{iApp}{iTube});
-% [iRL,FPS] = deal(iR(iRT),nanmedian(1./diff(T)));
-% 
-% % calculates the distance tolerance dependent on the tracking algorithm
-% if isfield(iMov,'szObj')
-%     if is2D
-%         dTol = 2*sqrt(prod(iMov.szObj))/FPS;        
-%     else
-%         dTol = 2*iMov.szObj(1)/FPS;
-%     end
-% 
-% elseif isfield(iMov,'xcP')
-%     % case is the svm tracking algorithm 
-%     dTol = 4*sqrt(1+is2D)*detApproxSize(iMov.xcP)/FPS;    
-%     
-% else
-%     % case is the direct detection tracking algorithm
-%     if isColGroup(iMov)
-%         % case is column grouping
-%         dX = diff(iMov.iCT{iApp}{iTube}([1 end]));
-%         dY = diff(iMov.iRT{iApp}([1 end]));        
-%     else
-%         % case is row grouping
-%         dX = diff(iMov.iCT{iApp}([1 end]));
-%         dY = diff(iMov.iRT{iApp}{iTube}([1 end]));
-%     end
-% 
-%     % sets the overall distance tolerance
-%     dTol = (2/3)*sqrt(dX^2 + dY^2)/FPS;
-% end
-% 
-% % ensures the time vector is the same length as the position vector
-% if (length(T) > length(X)); T = T(1:length(X)); end
-% 
-% % retrieves the exclusion binary
-% % [isOK,iFrm0] = deal(true(length(T),1),-1);
-% [isOK,iFrm0,nFrm] = deal(~isnan(X),-1,length(T));
-% sz = [length(iRL),length(iMov.iC{iApp})];
-% hG = fspecial('gaussian',5,2);
-% Bw = usimage(double(getExclusionBin(iMov,sz,iApp,iTube)),sz);
-% 
-% 
-% % calculates the next-frame position estimates
-% [Xest,Yest] = deal(setupExtrapSig(X),setupExtrapSig(Y));
-% 
-% % keep looping while there are anomalous frames
-% while cont
-%     % calculates the estimated x-positions of the object
-%     dD = sqrt((X-Xest).^2 + (Y-Yest).^2);        
-%     
-%     % determines the first point where the discrepancy is outside tolerance
-%     iFrm = find((dD.*isOK) > dTol,1,'first');    
-%     if isempty(iFrm)
-%         % if there are no such points, then exit the loop
-%         cont = false;
-%         
-%     elseif (iFrm <= iFrm0) || (iFrm == 1)
-%         % if this is a repeat, then flag this frame
-%         isOK(iFrm) = false;
-%         
-%     else
-%         % updates the waitbar figure
-%         if ~isempty(h)
-%             wStrNw = sprintf('%s (Frame %i of %i)',wStr,iFrm,nFrm);
-%             if h.Update(wOfs+3,wStrNw,iFrm/nFrm)
-%                 % if the user cancelled, then exit the function
-%                 ok = false; 
-%                 return
-%             end
-%         end              
-%         
-%         % sets the surrounding frames (and the phase indices)
-%         jFrm = iFrm + [-1,0];
-%         iPhase = arrayfun(@(x)(find(iMov.iPhase(:,1)<=x,1,'last')),jFrm);
-%          
-%         isOK(iFrm) = false;        
-%         if all(iMov.vPhase(iPhase) < 3)        
-%             % retrieves the global images for the surrounding frames               
-%             Img = arrayfun(@(x)(getDispImage...
-%                                 (iData,iMov,x,0,handles)),jFrm,'un',0);            
-%             ImgL = cellfun(@(x)(double(x(iRL,iC))),Img,'un',0);
-% 
-%             % sets up the residual image stack  
-%             [ImgR0,pR] = setupResidualImages...
-%                                         (iMov,ImgL,iPhase,iApp,iTube,hG);
-%                                     
-%             % determines if the next frame needs to be fixed         
-%             fixNext = compFrameRes(ImgR0,[X(jFrm),Y(jFrm)],pR);
-%             [ImgR,iFrmU] = deal(ImgR0{1+fixNext},jFrm(1+fixNext));            
-%             
-%             % calculates the 
-%             if fixNext
-%                 pEst = [Xest(iFrmU),Yest(iFrmU)];
-%             else
-%                 pEst = [extrapSignalRev(X,iFrmU),extrapSignalRev(Y,iFrmU)];
-%             end
-%             
-%             % calculates the distance between the maxima & estimated points 
-%             iPmx = find(imregionalmax(ImgR).*Bw);
-%             [yPmx,xPmx] = ind2sub(sz,iPmx);
-%             Dest = pdist2(pEst,[xPmx,yPmx])';
-% 
-%             % determines the maxima which is most likely to be the closest 
-%             % to the estimated coordinates
-%             iMx = argMax(dTol*(ImgR(iPmx).^2)./(1+Dest));
-%             [X(iFrmU),Y(iFrmU)] = deal(xPmx(iMx),yPmx(iMx));
-% 
-%             % recalculates the estimated values
-%             [Xest,Yest] = deal(setupExtrapSig(X),setupExtrapSig(Y));
-%         end
-%     end
-% end
  
 % updates the waitbar figure
 h.Update(wOfs+3,sprintf('%s (100%% Complete)',wStr),1);
+
+% sets the local-to-global position offset
+i0 = find(~isnan(X),1,'first');
+pOfs = repmat(pData.fPos{iApp}{iTube}(i0,:)-[X(i0),Y(i0)],length(X),1);
 
 % updates the positions into the overall positonal data struct
 pData.fPosL{iApp}{iTube} = [X,Y];

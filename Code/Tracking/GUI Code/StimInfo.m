@@ -31,8 +31,8 @@ hGUI = varargin{1};
 setappdata(hObject,'hGUI',hGUI);
 
 % retrieves the data struct from the main GUI
-iMov = getappdata(hGUI.figFlyTrack,'iMov');
-iData = getappdata(hGUI.figFlyTrack,'iData');
+iMov = get(hGUI.figFlyTrack,'iMov');
+iData = get(hGUI.figFlyTrack,'iData');
 
 % if there is no stimuli information, then exit the GUI
 if isempty(iData.stimP)
@@ -142,13 +142,13 @@ function buttonStartFrame_Callback(hObject, eventdata, handles)
 
 % retrieves the display image function
 hGUI = getappdata(handles.figStimInfo,'hGUI');
-iData = getappdata(hGUI.figFlyTrack,'iData');
-dispImage = getappdata(hGUI.figFlyTrack,'dispImage');
+iData = get(hGUI.figFlyTrack,'iData');
+dispImage = get(hGUI.figFlyTrack,'dispImage');
 
 % updates the frame counter
 set(hGUI.frmCountEdit,'string',get(handles.textStartFrame,'string'));
 iData.cFrm = str2double(get(handles.textStartFrame,'string'));
-setappdata(hGUI.figFlyTrack,'iData',iData)
+set(hGUI.figFlyTrack,'iData',iData)
 
 % updates the main image axis
 axes(hGUI.imgAxes)
@@ -164,13 +164,13 @@ function buttonFinishFrame_Callback(hObject, eventdata, handles)
 
 % retrieves the display image function
 hGUI = getappdata(handles.figStimInfo,'hGUI');
-iData = getappdata(hGUI.figFlyTrack,'iData');
-dispImage = getappdata(hGUI.figFlyTrack,'dispImage');
+iData = get(hGUI.figFlyTrack,'iData');
+dispImage = get(hGUI.figFlyTrack,'dispImage');
 
 % updates the frame counter
 set(hGUI.frmCountEdit,'string',get(handles.textFinishFrame,'string'));
 iData.cFrm = str2double(get(handles.textFinishFrame,'string'));
-setappdata(hGUI.figFlyTrack,'iData',iData)
+set(hGUI.figFlyTrack,'iData',iData)
 
 % updates the main image axis
 axes(hGUI.imgAxes)

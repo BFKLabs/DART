@@ -6,12 +6,12 @@ global szDel szDelX szDelY
 sz = size(Img);
 
 % retrieves the sub-region data struct
-iMov = getappdata(handles.figFlyTrack,'iMov');
+iMov = get(handles.figFlyTrack,'iMov');
 
 % retrieves the current sub-group index
 iApp = str2double(get(handles.movCountEdit,'string'));
 if isnan(iApp)
-    iData = getappdata(handles.figFlyTrack,'iData');
+    iData = get(handles.figFlyTrack,'iData');
     iApp = iData.cMov;
     
     set(handles.movCountEdit,'string',iApp)

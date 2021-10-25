@@ -1,8 +1,5 @@
 % --- resets the segmentation progress struct --- %
-function iMov = resetProgressStruct(iData,iMov,solnChk,iPhase)          
-
-% loads the global analysis parameters from the program parameter file
-A = load(getParaFileName('ProgPara.mat'));
+function iMov = resetProgressStruct(iData,iMov,solnChk,iPhase) 
 
 % sets the solution check flag to false (if not checking solution)
 if (nargin < 3); solnChk = false; end
@@ -12,15 +9,12 @@ if nargin < 4
     pInd = [1 iData.nFrm];
 else
     pInd = iMov.iPhase(iPhase,:);
-end
-        
-% retrieves the frame stack size
-NN = A.trkP.nFrmS;
+end       
 
 % sets the number of frames
 nFrm = diff(pInd) + 1;
 % nFrmS = iMov.sRate.*floor(NN./iMov.sRate);  % number of frames to be read per image stack
-nFrmS = NN;                                 % number of frames to be read per image stack
+nFrmS = getFrameStackSize;                  % number of frames to be read per image stack
 nFrmT = (iMov.sRate*nFrm);                  % the total number frames (full and sampled)
 nFrmR = iMov.sRate*ceil(nFrmS/iMov.sRate);  % number of total movie frames to be read per image stack
 nStackS = ceil(nFrm/nFrmS);                 % number of sub-image stacks

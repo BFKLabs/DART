@@ -1,4 +1,5 @@
 classdef OpenSolnFuncTab < dynamicprops & handle
+    
     % class properties
     properties 
         
@@ -88,8 +89,7 @@ classdef OpenSolnFuncTab < dynamicprops & handle
 %             obj.initFilterTree();
             
             % updates the function object fields
-            obj.objFcn.setClassField('jTable',obj.jTable);
-            obj.objFcn.setClassField('treeUpdateExtn',cbFcn);
+            set(obj.objFcn,'jTable',obj.jTable,'treeUpdateExtn',cbFcn);
             
             % resets the popup menu user data
             lStr = get(hPopup,'String');

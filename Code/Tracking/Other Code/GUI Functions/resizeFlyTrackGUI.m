@@ -5,8 +5,7 @@ dX = 10;
 
 % if the image size is not provided, then retrieve the current
 if ~exist('szImg','var')
-    iData = getappdata(hFig,'iData');
-    szImg = iData.sz;
+    szImg = hFig.iData.sz;
 end
 
 % initialisations

@@ -30,21 +30,20 @@ handles.output = hObject;
 guidata(hObject, handles);
 
 % resets the object font sizes
-[hGUI,ProgDef] = deal(varargin{1},varargin{2});
 setGUIFontSize(handles)
 
-% sets the program preference struct. if it is empty, then
-if (strcmp(get(hGUI,'tag'),'figFlyRecord'))
-    % if running from fly-record, then retrieve the running directory
-    setappdata(hObject,'hDART',[])
-else
-    % otherwise, 
-    setappdata(hObject,'hDART',getappdata(hGUI,'hGUIOpen'))
+% initialises the object fields
+[hGUI,ProgDef] = deal(varargin{1},varargin{2});
+addObjProps(hObject,'hGUI',hGUI,'ProgDef',ProgDef,'hDART',[]);
+
+% sets the program preference struct
+if ~strcmp(get(hGUI.output,'tag'),'figFlyRecord')     
+    set(hObject,'hDART',get(hGUI.output,'hGUIOpen'))
 end
 
 % if the default struct has not be set, then re-initialise
 if isempty(ProgDef)
-    ProgDef = struct('DirMov',[],'DirSoln',[],'TempFile',[]);
+    hObject.ProgDef = struct('DirMov',[],'DirSoln',[],'TempFile',[]);
 end
 
 % sets the cancel enable properties based on whether update is being forced
@@ -55,11 +54,8 @@ setObjEnable(handles.buttonUpdate,'off')
 setObjEnable(handles.buttonReset,'off')
 
 % initialises the GUI objects
-initDefButton(handles,ProgDef)
+initDefButton(handles,hObject.ProgDef)
 centreFigPosition(hObject);
-
-% sets the program preference struct into the GUI
-setappdata(hObject,'ProgDef',ProgDef);
 
 % UIWAIT makes ProgParaTrack wait for user response (see UIRESUME)
 set(hObject,'WindowStyle','modal');
@@ -86,13 +82,13 @@ function buttonReset_Callback(hObject, eventdata, handles)
 global mainProgDir
 
 % updates the program default file
-ProgDefNw = getappdata(handles.figProgDef,'ProgDef');
-hDART = getappdata(handles.figProgDef,'hDART');
+hDART = get(handles.output,'hDART');
+ProgDefNw = get(handles.output,'ProgDef');
 
 % updates the program default file (depending on whether the program is
 % being from the command line or through DART)
 progFile = fullfile(mainProgDir,'Para Files','ProgDef.mat');  
-if (isempty(hDART))
+if isempty(hDART)
     % if running from command-line, update the local parameter file    
     ProgDef = ProgDefNw;
 else
@@ -119,7 +115,7 @@ function buttonUpdate_Callback(hObject, eventdata, handles)
 
 % global variables
 global isSave ProgDef
-[isSave,ProgDef] = deal(1,getappdata(handles.figProgDef,'ProgDef'));
+[isSave,ProgDef] = deal(1,handles.output.ProgDef);
 
 % closes the figure
 delete(handles.figProgDef)
@@ -132,7 +128,7 @@ global isSave ProgDef
 [isSave,ProgDef] = deal(0,[]);
 
 % closes the figure
-delete(handles.figProgDef)
+delete(handles.output)
 
 %-------------------------------------------------------------------------%
 %                             OTHER FUNCTIONS                             %
@@ -142,7 +138,7 @@ delete(handles.figProgDef)
 function initDefButton(handles,ProgDef)
 
 % sets the variable tag strings
-wStr = [{'DirMov'};{'DirSoln'};{'TempFile'}];
+wStr = {'DirMov';'DirSoln';'TempFile'};
 
 % sets the call back function for all the GUI buttons
 for i = 1:length(wStr)
@@ -182,16 +178,16 @@ function setDefDir(hObject, eventdata, handles)
 
 % retrieves the default directory corresponding to the current object
 wStr = get(hObject,'UserData');
-ProgDef = getappdata(handles.figProgDef,'ProgDef');
-dDir = eval(sprintf('ProgDef.%s;',wStr));
+ProgDef = get(handles.output,'ProgDef');
+dDir = getStructField(ProgDef,wStr);
 
 % prompts the user for the new default directory
 dirName = uigetdir(dDir,'Set The Default Path');
 if dirName ~= 0
     % otherwise, update the directory string names
     hEdit = sprintf('handles.edit%s',wStr);
-    eval(sprintf('ProgDef.%s = ''%s'';',wStr,dirName))    
-    setappdata(handles.figProgDef,'ProgDef',ProgDef);
+    ProgDef = setStructField(ProgDef,wStr,dirName);
+    set(handles.output,'ProgDef',ProgDef);
        
     % resets the enabled properties of the buttons
     set(eval(hEdit),'string',['  ',dirName])

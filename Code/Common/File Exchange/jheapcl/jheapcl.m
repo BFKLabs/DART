@@ -1,13 +1,7 @@
-function [] = jheapcl(verbose)
+function jheapcl()
 
-if nargin < 1
-    verbose = 0;
-end
-
-org.dt.matlab.utilities.JavaMemoryCleaner.clear(verbose)
-
-% Use this for silent cleanup
-% org.dt.matlab.utilities.JavaMemoryCleaner.clear(1)
-
-% Decomment this for verbose cleanup
-% org.dt.matlab.utilities.JavaMemoryCleaner.clear(1)
+rm = javax.swing.RepaintManager.currentManager([]);
+dim = rm.getDoubleBufferMaximumSize();
+rm.setDoubleBufferMaximumSize(java.awt.Dimension(0,0));  % clear
+rm.setDoubleBufferMaximumSize(dim);  %restore original dim
+java.lang.System.gc();  % garbage-collect

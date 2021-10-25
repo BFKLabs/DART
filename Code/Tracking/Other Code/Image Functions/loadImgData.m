@@ -6,12 +6,11 @@ function [ok,iData] = loadImgData(...
 global isBatch bufData frmSz0
 
 % object handles
-hFig = handles.figFlyTrack;
+hFig = handles.output;
 
 % retrieves the program/sub-image stack data struct
 if nargin < 6
-    iData = getappdata(hFig,'iData');
-    iMov = getappdata(hFig,'iMov');
+    [iData,iMov] = deal(hFig.iData,hFig.iMov);
 end
     
 % sets the GUI properties after loading the image (if not batch processing)
@@ -22,7 +21,6 @@ end
 
 % initialisations
 [ok,Frm0,T0] = deal(1,1,0);
-cType = getappdata(hFig,'cType');
 eStr0 = 'Error! Video appears to be corrupted. Suggest deleting file.';
 
 % sets the full movie file name
@@ -70,7 +68,7 @@ end
 [wState,isVidObj] = deal(warning('off','all'),true);
 switch fExtn
     case {'.mj2','.mov','.mp4'}
-        setappdata(hFig,'mObj',mObj)
+        hFig.mObj = mObj;
         iData.exP.FPS = mObj.FrameRate;
         iData.sz = [mObj.Height mObj.Width];   
         iData.nFrmT = mObj.NumberOfFrames;
@@ -87,7 +85,7 @@ switch fExtn
         end
         
     case '.mkv'
-        setappdata(hFig,'mObj',mObj)        
+        hFig.mObj = mObj;        
         iData.nFrmT = mObj.numberOfFrames;
         
         % reads in a small sub-set of images (to determine size/frame rate)
@@ -224,13 +222,13 @@ elseif iData.nFrmT > length(iData.Tv)
 end
 
 % sets the movie sample rate (if opening movie only)
-if cType > 0
+if hFig.cType > 0
     [iMov.sRate,Frm0] = deal(roundP(iData.exP.FPS),1);
-    setappdata(hFig,'iMov',iMov)   
+    set(hFig,'iMov',iMov)   
     
 elseif (setMovie && ~isSolnLoad) && ~isBatch  
     [iMov.sRate,Frm0] = SampleRate(iData);
-    setappdata(hFig,'iMov',iMov)
+    set(hFig,'iMov',iMov)   
 end
 
 % sets the initial frame (if not set)
@@ -282,9 +280,7 @@ iData.isOpen = true;
 [iData.cFrm,iData.cStp] = deal(1);
 iData.fData = dir(fStr);
 iData.fData.dir = fDir;
-
-% updates the program data struct
-setappdata(hFig,'iData',iData);
+set(hFig,'iData',iData);
 
 % resizes the gui
 resizeFlyTrackGUI(hFig)
@@ -322,10 +318,14 @@ if ~isBatch
     setTrackGUIProps(handles,'PostImageLoad')
     
     % sets the GUI properties after loading the image
-    checkFcn = getappdata(hFig,'checkFixRatio_Callback');
-    checkFcn(handles.checkFixRatio, [], handles)
+    hFig.checkFixRatio_Callback(handles.checkFixRatio, [], handles)
     
 else
     % sets the GUI properties after loading the image
     setTrackGUIProps(handles,'PostImageLoadBatch')
+end
+
+% retrieves the program/sub-image stack data struct
+if nargin < 6
+    [hFig.iData,hFig.iMov] = deal(iData,iMov);
 end

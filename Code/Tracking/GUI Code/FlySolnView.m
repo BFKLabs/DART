@@ -37,21 +37,21 @@ handles.output = hObject;
 hGUI = varargin{1};
 
 % determines if the video is 2D or not
-iMov = getappdata(hGUI.figFlyTrack,'iMov');
-is2D = is2DCheck(iMov) || detMltTrkStatus(iMov);
-iData = getappdata(hGUI.figFlyTrack,'iData');
+iMov = get(hGUI.output,'iMov');
+iData = get(hGUI.output,'iData');
 
-% sets the objects into the GUI
-setappdata(hObject,'hGUI',hGUI)
-setappdata(hObject,'iMov',iMov)
-setappdata(hObject,'iData',iData)
-setappdata(hObject,'nNan',[])
-setappdata(hObject,'Dfrm',[])
-setappdata(hObject,'sFac',iData.exP.sFac)
-setappdata(hObject,'pData',getappdata(hGUI.figFlyTrack,'pData'));
+% initialises the custom object properties
+addObjProps(hObject,'hGUI',hGUI,'iMov',iMov,'iData',iData,'T',[],...
+                    'sFac',iData.exP.sFac,'vType',[],'nNaN',[],...
+                    'Dfrm',[],'tTick0',[],'tTickLbl0',[]);
+                                
+% sets the functions that are to be used outside the GUI
+addObjProps(hObject,'updateFunc',@updatePlotObjects,...
+                    'initFunc',@initPlotObjects)                
 
 % sets the number of frame read per image stack
-nFrmRS = detStackFrmCount(getappdata(hGUI.figFlyTrack,'pData'));
+nFrmRS = getFrameStackSize();
+is2D = is2DCheck(hObject.iMov) || detMltTrkStatus(hObject.iMov);
 
 % if detecting, then don't allow the data tool
 if isDetecting
@@ -61,15 +61,11 @@ end
 % sets the view type
 if is2D   
     set(handles.menuViewXY,'checked','on');
-    setappdata(hObject,'vType',[1 1])
+    set(hObject,'vType',[1 1])
 else
     setObjEnable(handles.menuPlotData,'off')
-    setappdata(hObject,'vType',[1 0])
+    set(hObject,'vType',[1 0])
 end
-
-% sets the functions that are to be used outside the GUI
-setappdata(hObject,'updateFunc',@updatePlotObjects)
-setappdata(hObject,'initFunc',@initPlotObjects)
 
 % initialises the menu and plot objects
 initMenuObjects(handles)
@@ -132,25 +128,25 @@ end
 function uiDataTool_ClickedCallback(hObject, eventdata, handles)
 
 % toggles the zoom
-switch (get(hObject,'state'))
+switch get(hObject,'state')
     case ('on') % case is the data tool is turned on        
         % sets the mouse-motion function
         wmFunc = @(hObject,e)FlySolnView('resetMarkerLine',hObject,[],handles); 
-        set(handles.figFlySolnView,'WindowButtonMotionFcn',wmFunc)                                        
+        set(handles.output,'WindowButtonMotionFcn',wmFunc)                                        
         
         % sets the button-down function
         bdFunc = {@updateMainFrame,handles}; 
-        set(handles.figFlySolnView,'WindowButtonDownFcn',bdFunc)                                                
+        set(handles.output,'WindowButtonDownFcn',bdFunc)                                                
         
     case ('off') % case is the data tool is turned off
         % disables the relevant objects
-        set(handles.figFlySolnView,'WindowButtonMotionFcn',[])                                
-        setObjVisibility(findobj(handles.figFlySolnView,'tag','hMark'),0)
-        setObjVisibility(findobj(handles.figFlySolnView,'tag','hText'),0)
+        set(handles.output,'WindowButtonMotionFcn',[])                                
+        setObjVisibility(findobj(handles.output,'tag','hMark'),0)
+        setObjVisibility(findobj(handles.output,'tag','hText'),0)
         
         % sets the window button function (not for zooming function
         if ~isa(eventdata,'char')
-            set(handles.figFlySolnView,'WindowButtonDownFcn',[])
+            set(handles.output,'WindowButtonDownFcn',[])
         end
 end
 
@@ -166,9 +162,7 @@ end
 function menuDiagCheck_Callback(hObject, eventdata, handles)
 
 % calculates the NaN count/inter-frame displacement 
-[nNaN,Dfrm] = calcDiagnosticValue(handles);    
-setappdata(handles.figFlySolnView,'nNaN',nNaN)
-setappdata(handles.figFlySolnView,'Dfrm',Dfrm)
+[handles.output.nNaN,handles.output.Dfrm] = calcDiagnosticValue(handles);
 
 % runs the solution diagnostic check
 SolnDiagCheck(handles)
@@ -177,15 +171,14 @@ SolnDiagCheck(handles)
 function menuClose_Callback(hObject, eventdata, handles)
 
 % retrieves the tracking GUI handles and the related GUI object handles
-hGUIH = getappdata(handles.figFlySolnView,'hGUI');
-hGUI = hGUIH.figFlyTrack;
+hGUI = get(handles.output,'hGUI');
+hFigM = hGUI.output;
 
 % closes the GUI through the calling GUI
-menuViewProgress_Callback = getappdata(hGUI,'menuViewProgress_Callback');
-menuViewProgress_Callback(hGUIH.menuViewProgress,[],hGUIH)
+hFigM.menuViewProgress_Callback(hGUI.menuViewProgress,[],hGUI)
 
 % sets the tracking GUI on top
-uistack(hGUI,'top')
+uistack(hFigM,'top')
 
 % -------------------------------- %
 % --- POSITION DATA MENU ITEMS --- %
@@ -195,7 +188,7 @@ uistack(hGUI,'top')
 function menuTime_Callback(hObject, eventdata, handles)
 
 % resets the check labels
-if (strcmp(get(hObject,'checked'),'on'))
+if strcmp(get(hObject,'checked'),'on')
     % item already checked, so exit function
     return
 else
@@ -205,18 +198,18 @@ else
 end
 
 % retrieves the axes handle and time vector
-hAx = findall(handles.figFlySolnView,'type','axes');
+hAx = findall(handles.output,'type','axes');
 set(findall(hAx,'tag','hXLbl'),'string','Time (min)')
 
 % updates the ticklabel
-set(hAx,'xtick',getappdata(handles.figFlySolnView,'tTick0'))
-set(hAx,'xTickLabel',getappdata(handles.figFlySolnView,'tTickLbl0'))
+set(hAx,'xtick',get(handles.output,'tTick0'))
+set(hAx,'xTickLabel',get(handles.output,'tTickLbl0'))
 
 % -------------------------------------------------------------------------
 function menuFrmIndex_Callback(hObject, eventdata, handles)
 
 % resets the check labels
-if (strcmp(get(hObject,'checked'),'on'))
+if strcmp(get(hObject,'checked'),'on')
     % item already checked, so exit function
     return
 else
@@ -230,8 +223,8 @@ hAx = handles.axesImg;
 set(findall(hAx,'tag','hXLbl'),'string','Frame Index')
 
 % retrieves the original x-axis tick labels
-T = getappdata(handles.figFlySolnView,'T');
-tTick0 = getappdata(handles.figFlySolnView,'tTick0');
+T = get(handles.output,'T');
+tTick0 = get(handles.output,'tTick0');
 
 % reset the tick label values
 dTLbl = [50 100 200 500 1000 1500 2000 2500 5000];
@@ -275,7 +268,7 @@ isChecked = strcmp(get(hObject,'Checked'),'on');
 % object handles
 hPanelI = handles.panelImg;
 hPanelS = handles.panelStim;
-hFig = handles.figFlySolnView;
+hFig = handles.output;
 
 % updates the object properties
 set(hObject,'Checked',eStr{2-isChecked})
@@ -387,10 +380,9 @@ set(hAx,'Units','Pixels','Position',axPos);
 function initMenuObjects(handles)
 
 % retrieves the fly positional data struct
-hGUI = getappdata(handles.figFlySolnView,'hGUI');
-iMov = getappdata(hGUI.figFlyTrack,'iMov');
+hGUI = get(handles.output,'hGUI');
+pData = hGUI.output.pData;
 hMenu = handles.menuPlotMetrics;
-pData = getappdata(handles.figFlySolnView,'pData');
 
 % sets the menu enable string
 if isempty(pData)
@@ -403,7 +395,7 @@ end
 setObjEnable(handles.menuDiagCheck,mStr)
 
 % creates the new apparatus markers
-for i = 1:length(iMov.iR)
+for i = 1:length(hGUI.output.iMov.iR)
     % creates the new menu item
     hMenuNw = uimenu(hMenu,'Label',sprintf('Region %i Location',i)); 
     
@@ -428,7 +420,7 @@ global is2D
 % ------------------------------------------- %
 
 % object handle retrieval
-hFig = handles.figFlySolnView;
+hFig = handles.output;
 hAxI = handles.axesImg;
 
 % clears the image axis
@@ -436,9 +428,9 @@ cla(hAxI)
 axis(hAxI,'on')
 
 % retrieves the fly positonal data struct
-hGUI = getappdata(hFig,'hGUI');
-iMov = getappdata(hGUI.figFlyTrack,'iMov');
-iData = getappdata(hGUI.figFlyTrack,'iData');
+hGUI = get(hFig,'hGUI');
+iMov = get(hGUI.output,'iMov');
+iData = get(hGUI.output,'iData');
 
 % sets the fly count (based on tracking type)
 isMTrk = detMltTrkStatus(iMov);
@@ -456,7 +448,7 @@ nApp = length(iMov.iR);
 NN = max(nFly,nApp);
 
 % sets up the time labels
-setappdata(hFig,'T',T)
+set(hFig,'T',T)
 
 % retrieves the font-sizes
 [axSz,lblSz,tSz] = detSolnViewFontSizes(handles);
@@ -570,8 +562,7 @@ if isInit
 end
 
 % sets the original tick mark/labels
-setappdata(handles.figFlySolnView,'tTick0',get(hAxI,'xTick'))
-setappdata(handles.figFlySolnView,'tTickLbl0',get(hAxI,'xTickLabel'))    
+set(hFig,'tTick0',get(hAxI,'xTick'),'tTickLbl0',get(hAxI,'xTickLabel'))    
     
 % -------------------------------------- %
 % --- STIMULI MARKER INITIALISATIONS --- %
@@ -636,28 +627,27 @@ set(hMenuPr,'checked','off')
 set(hMenu,'checked','on')
 
 % sets the view type to the specified
-setappdata(handles.figFlySolnView,'vType',vType)
+set(handles.output,'vType',vType)
 
 % updates the plot object
 updatePlotObjects(handles)
 
 % --- initialises the solution file information --- %
-function updatePlotObjects(handles,pData)
+function updatePlotObjects(handles)
 
 % global variables
 global is2D
 
-% retrieves the fly position data (if not provided)
-if nargin == 1
-    pData = getappdata(handles.figFlySolnView,'pData');
-end
+% retrieves the positional data
+hGUI = get(handles.output,'hGUI');
+pData = hGUI.output.pData;
 
 % retrieves the font-sizes
 [~,lblSz,~] = detSolnViewFontSizes(handles);
 
 % retrieves the objects from the GUI
-iMov = getappdata(handles.figFlySolnView,'iMov');
-vType = getappdata(handles.figFlySolnView,'vType');
+iMov = get(handles.output,'iMov');
+vType = get(handles.output,'vType');
 
 % if there is no data, then exit the function
 hMenu = findobj(handles.menuPlotMetrics,'type','uimenu');
@@ -682,7 +672,7 @@ hMenu = findobj(handles.menuPlotMetrics,'type','uimenu','checked','on');
 setObjEnable(handles.menuYData,iApp~=0)
 
 % retrieves the fly positonal data struct
-[T,Tmlt] = deal(getappdata(handles.figFlySolnView,'T'),1/60);
+[T,Tmlt] = deal(get(handles.output,'T'),1/60);
 [pDel,nApp] = deal(diff(get(hAx,'xlim'))*0.001,pData.nApp);
 
 % retrieves the menu item handles
@@ -842,11 +832,6 @@ end
 xLim = [-pDel max(get(hAx,'xlim'))];
 set(hAx,'yticklabel',yStr,'ytick',yTick,'xlim',xLim);
 
-% updates the positional data struct (if provided)
-if nargin == 2
-    setappdata(handles.figFlySolnView,'pData',pData);
-end
-
 % --- groups the position values (2D expt only)
 function fPos = groupPosValues(iMov,fPos0)
 
@@ -917,13 +902,13 @@ cPos = get(hAx,'CurrentPoint'); mP = cPos(1,1:2);
 % only update if the mouse-click was within the image axes
 if (isInAxes(handles,mP))
     % determines the frame that is currently selected
-    T = getappdata(handles.figFlySolnView,'T');
+    T = get(handles.output,'T');
     [~,iFrm] = min(abs(T/60-mP(1)));    
 
     % updates the main image frame
-    hGUI = getappdata(handles.figFlySolnView,'hGUI');    
+    hGUI = get(handles.output,'hGUI');    
     set(hGUI.frmCountEdit,'string',num2str(iFrm))
-    feval(getappdata(hGUI.figFlyTrack,'dispImage'),hGUI)
+    feval(hGUI.output.dispImage,hGUI)
 end
 
 % ----------------------------------------------- %
@@ -937,10 +922,13 @@ function [nNaN,Dfrm] = calcDiagnosticValue(handles)
 global nFrmRS
 
 % retrieves the position data struct
-iMov = getappdata(handles.figFlySolnView,'iMov');
-iData = getappdata(handles.figFlySolnView,'iData');
-pData = getappdata(handles.figFlySolnView,'pData');
-sFac = getappdata(handles.figFlySolnView,'sFac');
+hFig = handles.output;
+iMov = get(hFig,'iMov');
+iData = get(hFig,'iData');
+sFac = get(hFig,'sFac');
+
+% retrieves the positional data array
+pData = hFig.hGUI.output.pData;
 
 % determines the first non-rejected sub-region
 [j0,i0] = find(iMov.flyok,1,'first');
@@ -960,9 +948,8 @@ if (isnan(nFrmRS))
 elseif (all(cellfun(@all,frmOK)))
     ii = 1:nFrm;
 else
-    jj = find(cellfun(@any,frmOK),1,'last');
-    iGrp = getGroupIndex(frmOK{jj});
-    ii = 1:(iGrp{1}(end)*nFrmRS);
+    jj = find(~isnan(pData.fPos{i0}{j0}(:,1)),1,'last');
+    ii = 1:jj;
 end
 
 % memory allocation
@@ -1016,19 +1003,17 @@ end
 function T = setupTimeVector(handles)
 
 % retrieves the sub-region and fly position data structs
-hGUI = getappdata(handles.figFlySolnView,'hGUI');
-iMov = getappdata(hGUI.figFlyTrack,'iMov');
-iData = getappdata(hGUI.figFlyTrack,'iData');
-pData = getappdata(hGUI.figFlyTrack,'pData');
+hGUI = get(handles.output,'hGUI');
+[iData,iMov] = deal(hGUI.output.iData,hGUI.output.iMov);
 
 % sets the time vector
 T = iData.Tv(1:iMov.sRate:length(iData.Tv));
 T = T(:) - T(1);
 
 % resets the time vector to match position data (if given)
-if (hasPosData(pData))
-    nFrmT = size(pData.fPos{1}{1},1);
-    if (nFrmT < length(T))
+if hasPosData(hGUI.output.pData)
+    nFrmT = size(hGUI.output.pData.fPos{1}{1},1);
+    if nFrmT < length(T)
         T = T(1:nFrmT);
     else
         dT = mean(diff(T));
@@ -1044,9 +1029,9 @@ end
 function resetMarkerLine(hObject, eventdata, handles)
 
 % retrieves the current mouse point
-T = getappdata(handles.figFlySolnView,'T');
-pData = getappdata(handles.figFlySolnView,'pData');
-iMov = getappdata(handles.figFlySolnView,'iMov');
+hFig = handles.output;
+T = get(hFig,'T');
+iMov = get(hFig,'iMov');
 
 % sets the current x/y location of the mouse
 hAx = handles.axesImg;
@@ -1055,7 +1040,7 @@ cPos = get(hAx,'CurrentPoint'); mP = cPos(1,1:2);
 [hMark,hText] = deal(findobj(hAx,'tag','hMark'),findobj(hAx,'tag','hText'));
 
 % updates the marker line visibility
-if (isInAxes(handles,mP))
+if isInAxes(handles,mP)
     % cursor is inside axes, so turn on marker line
     set(hMark,'xData',mP(1)*[1 1],'yData',get(hAx,'ylim'),'visible','on')
     
@@ -1078,8 +1063,9 @@ end
 function isIn = isInAxes(handles,mP)
 
 % retrieves the position data struct
-pData = getappdata(handles.figFlySolnView,'pData');
-T = getappdata(handles.figFlySolnView,'T');
+hFig = handles.output;
+T = get(hFig,'T');
+pData = hFig.output.pData;
 
 % determines the maximum extent
 iApp = get(findobj(handles.menuPlotMetrics,'checked','on'),'UserData');

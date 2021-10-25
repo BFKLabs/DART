@@ -38,10 +38,8 @@ centreFigPosition(hObject);
 iData = struct('Lm',1,'Lp',0);
 setObjEnable(handles.buttonUpdate,'off')
 
-% sets the struct into the sub-GUI
-setappdata(hObject,'hGUI',hGUI)
-setappdata(hObject,'iData',iData)
-setappdata(hObject,'hProp0',hProp0)
+% adds the object properties
+addObjProps(hObject,'hGUI',hGUI,'iData',iData,'hProp0',hProp0);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -63,28 +61,28 @@ varargout{1} = [];
 function editScaleLength_Callback(hObject, eventdata, handles)
 
 % retrieves the new value
-nwVal = str2double(get(hObject,'string'));
-iData = getappdata(handles.figScaleFactor,'iData');
+hFig = handles.figScaleFactor;
 
 % determines if the new value is valid
-if (chkEditValue(nwVal,[0 inf],0))
+nwVal = str2double(get(hObject,'string'));
+if chkEditValue(nwVal,[0 inf],0)
     % updates the data struct with the new values
-    iData.Lm = nwVal;
-    setappdata(handles.figScaleFactor,'iData',iData);
+    hFig.iData.Lm = nwVal;
     
     % updates the data length
-    calcNewLength(handles,iData);
+    calcNewLength(handles);
     setObjEnable(handles.buttonUpdate,'on');
 else
     % otherwise, reset the last valid value
-    set(hObject,'string',num2str(iData.Lm));
+    set(hObject,'string',num2str(hFig.iData.Lm));
 end
 
 % --- Executes on button press in buttonSet.
 function buttonSet_Callback(hObject, eventdata, handles)
 
 % sets focus to the main image axes
-hGUI = getappdata(handles.figScaleFactor,'hGUI');
+hFig = handles.figScaleFactor;
+hGUI = get(hFig,'hGUI');
 axes(hGUI.imgAxes)
 
 % creates a new line object
@@ -115,22 +113,21 @@ function buttonUpdate_Callback(hObject, eventdata, handles)
 global isCalib isRTPChange
 
 % retrieves the main GUI handles and sub-GUI data struct
-hGUI = getappdata(handles.figScaleFactor,'hGUI');
-iData = getappdata(handles.figScaleFactor,'iData');
+hFig = handles.figScaleFactor;
+hGUI = get(hFig,'hGUI');
+iData = get(hFig,'iData');
 
 % calculates the scale factor and updates the scale factor values
 sFac = calcScaleFactor(iData);
 
 % updates the scale factor value in the main GUI axes
-iDataMain = getappdata(hGUI.figFlyTrack,'iData');
+iDataMain = get(hGUI.figFlyTrack,'iData');
 iDataMain.exP.sFac = sFac;
-setappdata(hGUI.figFlyTrack,'iData',iDataMain);
+set(hGUI.figFlyTrack,'iData',iDataMain);
 
 % updates the scale factor in the real-time tracking parameters
-if (isCalib)
-    rtP = getappdata(hGUI.figFlyTrack,'rtP');
-    [rtP.trkP.sFac,isRTPChange] = deal(sFac,true);
-    setappdata(hGUI.figFlyTrack,'rtP',rtP)
+if isCalib
+    [hGUI.figFlyTrack.rtP.trkP.sFac,isRTPChange] = deal(sFac,true);
 end
 
 % disables the update button
@@ -141,8 +138,9 @@ set(hGUI.editScaleFactor,'string',num2str(sFac))
 function buttonClose_Callback(hObject, eventdata, handles)
 
 % removes the scale marker from the main GUI axes
-hGUI = getappdata(handles.figScaleFactor,'hGUI');
-hProp0 = getappdata(handles.figScaleFactor,'hProp0');
+hFig = handles.figScaleFactor;
+hGUI = get(hFig,'hGUI');
+hProp0 = get(hFig,'hProp0');
 hScale = findobj(hGUI.imgAxes,'Tag','hScale');
 delete(hScale);
 
@@ -164,7 +162,7 @@ resetHandleSnapshot(hProp0)
 set(hGUI.editScaleFactor,'string',nwStr)
 
 % closes the scale factor sub-GUI
-delete(handles.figScaleFactor)
+delete(hFig)
 
 %-------------------------------------------------------------------------%
 %                             OTHER FUNCTIONS                             %
@@ -174,25 +172,27 @@ delete(handles.figScaleFactor)
 function moveScaleMarker(p,handles)
 
 % updates the marker line distance
-iData = getappdata(handles.figScaleFactor,'iData');
-iData.Lp = sqrt(sum(diff(p,1).^2));
-setappdata(handles.figScaleFactor,'iData',iData);
+hFig = handles.figScaleFactor;
+hFig.iData.Lp = sqrt(sum(diff(p,1).^2));
 
 % updates the marker length string
-calcNewLength(handles,iData);
+calcNewLength(handles);
 setObjEnable(handles.buttonUpdate,'on')
 
 % --- calculates and sets the new scale factor length --- %
-function sFac = calcNewLength(handles,iData)
+function sFac = calcNewLength(handles)
+
+% field retrieval
+hFig = handles.figScaleFactor;
 
 % sets the scale factor depending if the scale length has been set
-if (iData.Lp == 0)
+if hFig.iData.Lp == 0
     % if the data length has not been set, then set value as NaN
     sFac = NaN;
     set(handles.textScaleFactor,'string','N/A')
 else
     % otherwise, calculate the value and update the scale factor string
-    sFac = calcScaleFactor(iData);
+    sFac = calcScaleFactor(hFig.iData);
     set(handles.textScaleFactor,'string',num2str(sFac))    
 end
 

@@ -33,7 +33,7 @@ A = load(getParaFileName('ProgPara.mat'));
 
 % sets the data structs into the GUI
 setappdata(hObject,'trkObj',trkObj)
-setappdata(hObject,'nFrmS',A.trkP.nFrmS)
+setappdata(hObject,'nFrmS',getFrameStackSize)
 setappdata(hObject,'iDataS',initDataStruct(handles,trkObj))
 
 % initialises the object properties

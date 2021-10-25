@@ -41,8 +41,7 @@ end
 
 % retrieves the sub-image data struct
 hGUI = varargin{1};
-iMov = getappdata(hGUI,'iMov');
-iData = getappdata(hGUI,'iData');
+iMov = get(hGUI,'iMov');
 
 % flags whether the background parameter struct needs to be reset
 if ~isfield(iMov,'bgP')
@@ -85,11 +84,9 @@ else
     end
 end
 
-% sets the data structs into the GUI
-setappdata(hObject,'hGUI',hGUI)
-setappdata(hObject,'trkP0',trkP)
-setappdata(hObject,'trkP',trkP)
-setappdata(hObject,'iMov',iMov)
+% adds the property fields to the figure
+addObjProps(hObject,'hGUI',hGUI,'trkP',trkP,'trkP0',trkP,'iMov',iMov,...
+                    'Img0',[]);
 
 % initialises the GUI object fields
 initParaEditBox(handles)
@@ -124,7 +121,7 @@ end
 if isCalib
     hGUIH = guidata(hGUI);
     Img0 = double(get(findobj(hGUIH.imgAxes,'type','Image'),'CData'));
-    setappdata(hObject,'Img0',getRotatedImage(iMov,Img0,1))
+    set(hObject,'Img0',getRotatedImage(iMov,Img0,1))
 end
 
 % Update handles structure
@@ -154,10 +151,11 @@ function editSegPara(hObject, eventdata, handles)
 global frmSz0 isCalib 
 
 % retrieves the segmentation parameters
-hFig = handles.figAnalyOpt;
-hGUI = getappdata(hFig,'hGUI');
-iMov = getappdata(hFig,'iMov');
-trkP = getappdata(hFig,'trkP');
+hFig = handles.output;
+hGUI = get(hFig,'hGUI');
+iMov = get(hFig,'iMov');
+trkP = get(hFig,'trkP');
+
 uD = get(hObject,'UserData');
 isTrk = ~isfield(iMov,uD{1}) || strcmp(uD{1},'nPath');
 
@@ -180,14 +178,14 @@ if chkEditValue(nwVal,nwLim,isInt)
     % enables the update button
     setObjEnable(handles.buttonUpdate,'on')
     if isTrk
-        setappdata(hFig,'trkP',trkP)
+        set(hFig,'trkP',trkP)
     else
-        setappdata(hFig,'iMov',iMov)
+        set(hFig,'iMov',iMov)
         if strcmp(uD{1},'rotPhi')
             % retains a copy of the original sub-region data struct from
             % the main Fly Tracking GUI
-            iMov0 = getappdata(hGUI,'iMov');
-            setappdata(hGUI,'iMov',iMov)
+            iMov0 = get(hGUI,'iMov');
+            set(hGUI,'iMov',iMov)
 
             % updates the frame size
             if detIfRotImage(iMov)
@@ -208,14 +206,14 @@ if chkEditValue(nwVal,nwLim,isInt)
             % runs the image update function and reset the sub-region data
             % struct
             if isCalib
-                Img0 = getRotatedImage(iMov,getappdata(hFig,'Img0'));
-                feval(getappdata(hGUI,'dispImage'),guidata(hGUI),Img0,1) 
+                Img0 = getRotatedImage(iMov,get(hFig,'Img0'));
+                feval(hGUI.dispImage,guidata(hGUI),Img0,1) 
             else
-                feval(getappdata(hGUI,'dispImage'),guidata(hGUI)) 
+                feval(hGUI.dispImage,guidata(hGUI)) 
             end
                 
             resizeFlyTrackGUI(hGUI,frmSz)
-            setappdata(hGUI,'iMov',iMov0);
+            set(hGUI,'iMov',iMov0);
         end
     end
 else
@@ -227,9 +225,9 @@ end
 function checkCalcAngle_Callback(hObject, eventdata, handles)
 
 % retrieves the relevant data structs
-hGUI = getappdata(handles.figAnalyOpt,'hGUI');
-iMov = getappdata(hGUI,'iMov');
-pData = getappdata(hGUI,'pData');
+hGUI = get(handles.output,'hGUI');
+iMov = get(hGUI,'iMov');
+pData = get(hGUI,'pData');
 hGUIH = guidata(hGUI);
 
 %
@@ -251,7 +249,7 @@ if get(hObject,'value')
             % removes the markers (if they are visible)
             if get(hGUIH.checkShowMark,'value')
                 set(hGUIH.checkShowMark,'value',0)  
-                showMarkFcn = getappdata(hGUI,'checkShowMark_Callback');            
+                showMarkFcn = get(hGUI,'checkShowMark_Callback');            
                 showMarkFcn([],[],hGUIH)
             end
             
@@ -287,7 +285,7 @@ else
             % removes the markers (if they are visible)
             if (get(hGUIH.checkShowAngle,'value'))
                 set(hGUIH.checkShowAngle,'value',0)  
-                showAngleFcn = getappdata(hGUI,'checkShowAngle_Callback');            
+                showAngleFcn = get(hGUI,'checkShowAngle_Callback');            
                 showAngleFcn([],[],hGUIH)
             end            
             
@@ -301,14 +299,11 @@ else
 end
     
 % updates the boolean field
-trkP = getappdata(handles.figAnalyOpt,'trkP');
-trkP.calcPhi = get(hObject,'value');
-setappdata(handles.figAnalyOpt,'trkP',trkP);
+handles.output.trkP.calcPhi = get(hObject,'value');
 
 % updates the orientation angle calculation flag
 iMov.calcPhi = get(hObject,'value');
-setappdata(hGUI,'iMov',iMov)
-setappdata(hGUI,'pData',pData)
+set(hGUI,'iMov',iMov,'pData',pData)
 
 % enables the update button
 setObjEnable(handles.buttonUpdate,'on')
@@ -320,27 +315,27 @@ function checkUseRot_Callback(hObject, eventdata, handles)
 global frmSz0 isCalib
 
 % retrieves the display function handle
-hFig = handles.figAnalyOpt;
-hGUI = getappdata(hFig,'hGUI');
-iMov = getappdata(hFig,'iMov');
-iMovH = getappdata(hGUI,'iMov');
-iData = getappdata(hGUI,'iData');
-pData = getappdata(hGUI,'pData');
+hFig = handles.output;
+hGUI = get(hFig,'hGUI');
+iMov = get(hFig,'iMov');
+iMovH = get(hGUI,'iMov');
+iData = get(hGUI,'iData');
+pData = get(hGUI,'pData');
 
 % retrieves the main GUI handles
 hGUIH = guidata(hGUI);
-sFunc = getappdata(hGUI,'setupDivisionFigure');
-cFunc = getappdata(hGUI,'checkShowTube_Callback');
+sFunc = hGUI.setupDivisionFigure;
+cFunc = hGUI.checkShowTube_Callback;
 
 % parameters
 [ii,is2D] = deal([2 1 4 3],is2DCheck(iMov));
 
 % removes the division figure
-feval(getappdata(hGUI,'removeDivisionFigure'),hGUIH.imgAxes)
+feval(get(hGUI,'removeDivisionFigure'),hGUIH.imgAxes)
 
 % sets the rotation flag value
 iMov.useRot = get(hObject,'value');
-setappdata(hFig,'iMov',iMov);
+set(hFig,'iMov',iMov);
 setPanelProps(handles.panelRotPara,iMov.useRot);
 
 % if the guide markers are present, then remove them
@@ -545,20 +540,19 @@ if ~isempty(pData)
     end
     
     % updates the position data struct
-    setappdata(hGUI,'pData',pData);
+    set(hGUI,'pData',pData);
 end
 
 % updates the data struct
 iData.sz = frmSz;
-setappdata(hGUI,'iData',iData);
-setappdata(hGUI,'iMov',iMov);
+set(hGUI,'iData',iData,'iMov',iMov);
 
 % updates the frame size string
 [m,n] = deal(iData.sz(1),iData.sz(2));
 set(hGUIH.textFrameSizeS,'string',sprintf('%i %s %i',m,char(215),n));
 
 %
-initFcn = getappdata(hGUI,'initMarkerPlots');
+initFcn = get(hGUI,'initMarkerPlots');
 if get(hGUIH.checkSubRegions,'value')
     feval(initFcn,hGUIH)
 else
@@ -567,10 +561,10 @@ end
 
 % updates the main image
 if isCalib
-    Img0 = getRotatedImage(iMov,getappdata(hFig,'Img0'));
-    feval(getappdata(hGUI,'dispImage'),hGUIH,Img0,1)
+    Img0 = getRotatedImage(iMov,get(hFig,'Img0'));
+    feval(hGUI.dispImage,hGUIH,Img0,1)
 else
-    feval(getappdata(hGUI,'dispImage'),hGUIH)
+    feval(hGUI.dispImage,hGUIH)
 end
 
 % shows the sub-regions (if the checkbox is selected)
@@ -588,14 +582,14 @@ setObjEnable(handles.buttonUpdate,'on')
 
 % resizes the tracking GUI objects
 resizeFlyTrackGUI(hGUI,frmSz)
-setappdata(hGUI,'iMov',iMovH);
+set(hGUI,'iMov',iMovH);
 
 % --- Executes on button press in buttonAngleGuide.
 function buttonAngleGuide_Callback(hObject, eventdata, handles)
 
 % retrieves the main axes handle
-hFig = handles.figAnalyOpt;
-hGUI = getappdata(hFig,'hGUI');
+hFig = handles.output;
+hGUI = get(hFig,'hGUI');
 hAx = findall(hGUI,'type','axes');
 
 % adds/removes the guide markers based on the toggle button value
@@ -619,9 +613,7 @@ uList = get(hObject,'UserData');
 algoType = uList{get(hObject,'Value')};
 
 % sets the algorithm type popup list index
-iMov = getappdata(handles.figAnalyOpt,'iMov');
-iMov.bgP.algoType = algoType;
-setappdata(handles.figAnalyOpt,'iMov',iMov)
+handles.output.iMov.bgP.algoType = algoType;
 
 % sets the enabled properties of the separation checkbox (only valid if the
 % user is using multi-tracking)
@@ -646,7 +638,7 @@ else
 end
 
 % retrieves the segmentation parameters
-trkP = getappdata(handles.figAnalyOpt,'trkP');
+trkP = get(handles.output,'trkP');
 cStr = {'pNC','pMov','pStat','pRej'};
 
 % prompts the user for the new colour
@@ -678,7 +670,7 @@ if (length(nwCol) > 1)
 
         % updates the parameter struct
         setObjEnable(handles.buttonUpdate,'on')
-        setappdata(handles.figAnalyOpt,'trkP',trkP)
+        set(handles.output,'trkP',trkP)
     end
 end
 
@@ -694,7 +686,7 @@ else
 end
 
 % retrieves the segmentation parameters
-trkP = getappdata(handles.figAnalyOpt,'trkP');
+trkP = get(handles.output,'trkP');
 [cStr,fStr] = deal({'pNC','pMov','pStat','pRej'},{'','','pMark','mSz'});
 
 % sets the parameter string (based on the operating system)
@@ -733,15 +725,13 @@ end
 
 % updates the parameter struct
 setObjEnable(handles.buttonUpdate,'on')
-setappdata(handles.figAnalyOpt,'trkP',trkP)
+set(handles.output,'trkP',trkP)
 
 % --- Executes on button press in checkSepColours.
 function checkSepColours_Callback(hObject, eventdata, handles)
 
 % updates the separation colour flag
-iMov = getappdata(handles.figAnalyOpt,'iMov');
-iMov.sepCol = get(hObject,'value');
-setappdata(handles.figAnalyOpt,'iMov',iMov)
+handles.output.iMov.sepCol = get(hObject,'value');
 
 % enables the update button
 setObjEnable(handles.buttonUpdate,'on')
@@ -757,15 +747,15 @@ function buttonUpdate_Callback(hObject, eventdata, handles)
 global mainProgDir resetPData
 
 % retrieves the main GUI handle and closed loop parameter structs 
-trkP = getappdata(handles.figAnalyOpt,'trkP');
-iMov = getappdata(handles.figAnalyOpt,'iMov');
-hGUI = getappdata(handles.figAnalyOpt,'hGUI');
+hFig = handles.output;
+trkP = get(hFig,'trkP');
+iMov = get(hFig,'iMov');
+hGUI = get(hFig,'hGUI');
 
 % retrieves the plot marker update function handle
-dispImage = getappdata(hGUI,'dispImage');
-deleteAllMarkers = getappdata(hGUI,'deleteAllMarkers');
-initMarkerPlots = getappdata(hGUI,'initMarkerPlots');
-updateAllPlotMarkers = getappdata(hGUI,'updateAllPlotMarkers');
+deleteAllMarkers = get(hGUI,'deleteAllMarkers');
+initMarkerPlots = get(hGUI,'initMarkerPlots');
+updateAllPlotMarkers = get(hGUI,'updateAllPlotMarkers');
 
 % removes the video phase field (if resetting and is set)
 if resetPData
@@ -776,19 +766,19 @@ end
 
 % updates the sub-region data struct into the main GUI
 iMov.nPath = trkP.nPath;
-setappdata(hGUI,'iMov',iMov)
+set(hGUI,'iMov',iMov)
 
 % retrieves the function handles    
 hGUIH = guidata(hGUI);
 
 % if the positional data needs to be updated, then prompt the user one more
 % time if they still want to update the parameters. if not, then exit
-if resetPData && ~isempty(getappdata(hGUI,'pData'))
+if resetPData && ~isempty(get(hGUI,'pData'))
     uChoice = questdlg(['The action will clear any stored position data. ',...
                         'Do you still want to continue updating?'],...
                         'Continue Parameter Update?','Yes','No','Yes');
     if strcmp(uChoice,'Yes')
-        setappdata(hGUI,'pData',[])
+        set(hGUI,'pData',[])
         setObjEnable(hGUIH.checkShowMark,'off')             
     else
         return
@@ -836,10 +826,10 @@ if strcmp(get(handles.buttonUpdate,'enable'),'on')
             buttonUpdate_Callback(handles.buttonUpdate, '1', handles) 
             
         case ('No') % case is the user to not update the parameters
-            hFig = handles.figAnalyOpt;
-            hGUI = getappdata(hFig,'hGUI');
-            iMov = getappdata(hGUI,'iMov');
-            setappdata(hFig,'iMov',iMov)
+            hFig = handles.output;
+            hGUI = get(hFig,'hGUI');
+            iMov = get(hGUI,'iMov');
+            set(hFig,'iMov',iMov)
                         
             % resets the main GUI image
             set(handles.checkUseRot,'Value',iMov.useRot);
@@ -851,7 +841,7 @@ if strcmp(get(handles.buttonUpdate,'enable'),'on')
 end
 
 % removes any guide markers
-hGUI = getappdata(handles.figAnalyOpt,'hGUI');
+hGUI = get(handles.output,'hGUI');
 removeGuideMarkers(findall(hGUI,'type','axes'))
 
 % closes the GUI
@@ -869,18 +859,18 @@ delete(handles.figAnalyOpt)
 function initParaEditBox(handles)
 
 % retrieves the segmentation parameters
-iMov = getappdata(handles.figAnalyOpt,'iMov');
-trkP = getappdata(handles.figAnalyOpt,'trkP');
+iMov = get(handles.output,'iMov');
+trkP = get(handles.output,'trkP');
       
 % sets the properties for all the parameter edit boxes 
-hEdit = findall(handles.figAnalyOpt,'style','edit');
+hEdit = findall(handles.output,'style','edit');
 for i = 1:length(hEdit)
     % resets the parameter values and callback function
     uD = get(hEdit(i),'UserData');
     if isfield(iMov,uD{1})
-        pVal = eval(sprintf('iMov.%s',uD{1}));
+        pVal = getStructField(iMov,uD{1});
     else
-        pVal = eval(sprintf('trkP.%s',uD{1}));
+        pVal = getStructField(trkP,uD{1});
     end
     
     % sets the editbox parameter value/callback function
@@ -892,7 +882,7 @@ end
 function initAlgoType(handles)
 
 % retrieves the segmentation parameters
-iMov = getappdata(handles.figAnalyOpt,'iMov');
+iMov = get(handles.output,'iMov');
 
 % sets the algorithm type popup list index
 uList = get(handles.popupAlgoType,'UserData');
@@ -903,7 +893,7 @@ set(handles.popupAlgoType,'value',iSel)
 function initTablePara(handles)
 
 % retrieves the segmentation parameters
-trkP = getappdata(handles.figAnalyOpt,'trkP');
+trkP = get(handles.output,'trkP');
 [cStr,fStr] = deal({'pNC','pMov','pStat','pRej'},{'pCol','pMark','mSz'});
 
 % sets the marker name/symbol
