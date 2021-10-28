@@ -146,7 +146,7 @@ classdef VideoPhase < handle
 
                 % calculates the sub-image stack mean and calculates the
                 % difference with the current frame limit values    
-                dImn = mean(abs(ImnPr-repmat(ImnNw,1,2)),1);
+                dImn = mean(abs(ImnPr-repmat(ImnNw(:),1,2)),1);
 
                 % determines if any differences are less than tolerance
                 isTol = dImn < obj.pTolPhase;
@@ -353,8 +353,27 @@ classdef VideoPhase < handle
                         
                     %
                     if useRegions
-                        Img{j} = cellfun(@(ir,ic)(Img{j}(ir,ic)),...
-                                    obj.iMov.iR,obj.iMov.iC,'un',0)';
+                        if isempty(obj.iMov.iR)
+                            % retrieves the current region outlines
+                            pPosO = getCurrentRegionOutlines(obj.iMov);
+                            
+                            % if the regions are not set, then use an
+                            % estimate from the region outlines
+                            szL = size(Img{j});
+                            iR = cellfun(@(p)(max(1,floor(p(2))):...
+                                    min(szL(1),ceil(sum(p([2,4]))))),...
+                                    pPosO,'un',0)';
+                            iC = cellfun(@(p)(max(1,floor(p(1))):...
+                                    min(szL(2),ceil(sum(p([1,3]))))),...
+                                    pPosO,'un',0)';                                
+                        else
+                            % otherwise, use the row/column indices
+                            [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);
+                        end
+                        
+                        % retrieves the region images
+                        Img{j} = cellfun(@(ir,ic)...
+                                        (Img{j}(ir,ic)),iR,iC,'un',0)';
                     end
                 end
             end
@@ -363,7 +382,7 @@ classdef VideoPhase < handle
             if ~isFull
                 Img = cell2cell(Img,0);
             end
-        end         
+        end                 
         
         % ---  reads the image frames for all phases
         function [Img,sImg] = readPhaseFrames(obj)
@@ -411,7 +430,7 @@ classdef VideoPhase < handle
         function initPhaseDetectPara(obj)
             
             % memory allocation
-            nApp = length(obj.iMov.iR);
+            nApp = length(obj.iMov.pos);
             if isfield(obj.iMov,'srData')
                 if ~isempty(obj.iMov.srData)
                     nApp = length(cell2cell(obj.iMov.srData.iGrp(:)));

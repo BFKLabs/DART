@@ -2,7 +2,7 @@
 function nSubV = getSRCountVec(iMov)
 
 % calculates the max sub-region count over all regions
-[nApp,nSub] = deal(length(iMov.iR),getSRCount(iMov));
+[nApp,nSub] = deal(length(iMov.pos),getSRCount(iMov));
 if numel(nSub) ~= nApp
     nSubV = nanmax(nSub(:))*ones(nApp,1);
 else

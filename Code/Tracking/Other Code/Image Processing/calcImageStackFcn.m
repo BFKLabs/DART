@@ -4,7 +4,8 @@ function Ifcn = calcImageStackFcn(I,fType,varargin)
 if ~exist('fType','var'); fType = 'mean'; end
 
 % reshapes the array into a numerical array
-Ic = cell2mat(reshape(I,[1,1,length(I)]));
+isOK = ~cellfun(@isempty,I);
+Ic = cell2mat(reshape(I(isOK),[1,1,sum(isOK(:))]));
 
 % runs the function based on the type
 switch fType

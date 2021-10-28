@@ -61,7 +61,7 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
             % array dimensioning
             obj.nApp = length(obj.iMov.iR);
             obj.nTube = getSRCountVec(obj.iMov);
-            obj.is2D = is2DCheck(obj.iMov);
+            obj.is2D = obj.iMov.is2D;
             
             % sets the tube-region offsets
             obj.y0 = cell(obj.nApp,1);

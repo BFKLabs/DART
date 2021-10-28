@@ -1,5 +1,5 @@
 function varargout = RegionConfig(varargin)
-% Last Modified by GUIDE v2.5 28-Sep-2021 17:03:22
+% Last Modified by GUIDE v2.5 27-Oct-2021 22:34:13
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -46,7 +46,7 @@ bgP = A.bgP;
 
 % sets the input arguments into the gui
 pFldStr = {'hDiff','iMov','iMov0','isMTrk','iData','hSelP','hProp0',...
-           'infoObj','cmObj','hTabGrp','jTabGrp','hTab','srObj'};
+           'infoObj','cmObj','hTabGrp','jTabGrp','hTab','srObj','phObj'};
 initObjPropFields(hObject,pFldStr);
 addObjProps(hObject,'hGUI',hGUI,'hPropTrack0',hPropTrack0)
 
@@ -162,7 +162,8 @@ end
 
 % sets the function handles into the gui
 addObjProps(hObject,'resetMovQuest',@resetMovQuest,...
-                    'resetSubRegionDataStruct',@resetSubRegionDataStruct)
+                    'resetSubRegionDataStruct',@resetSubRegionDataStruct,...
+                    'setupSubRegions',@setupSubRegions)
 
 % ---------------------------------- %
 % --- OBJECT & DATA STRUCT SETUP --- %
@@ -449,6 +450,9 @@ iMov = get(hFig,'iMov');
 hProp0 = get(hFig,'hProp0');
 hPropTrack0 = get(hFig,'hPropTrack0');
 
+% makes the gui invisible
+setObjVisibility(hFig,'off');
+
 % deletes the sub-regions from tracking gui axes
 deleteSubRegions(handles)
 if ~isempty(hGUI)
@@ -546,6 +550,59 @@ updateMenuItemProps(handles)
 
 % makes the Window Splitting GUI visible again
 uistack(hFig,'top')  
+
+% ----------------------------------------- %
+% --- 1D AUTOMATIC DETECTION MENU ITEMS --- %
+% ----------------------------------------- %
+
+% --------------------------------------------------------------------
+function menuDetGrid_Callback(hObject, eventdata, handles)
+
+% field retrieval
+hFig = handles.output;
+iMov0 = get(hFig,'iMov');
+
+% % retrieves the current sub-region configuration
+% hFig.iMov = setSubRegionDim(hFig.iMov,hGUI);
+
+% opens the grid detection tracking parameter gui
+gridObj = GridDetect(hFig);
+if gridObj.iFlag == 3
+    % if the user cancelled, then exit
+    setupSubRegions(handles,hFig.iMov,true);
+    return
+end
+
+% keep looping until either the user quits or accepts the result
+while 1
+    % runs the 1D auto-detection algorithm
+    [iMovNw,trkObj] = detGridRegions(hFig);
+    if isempty(iMovNw)
+        % if user cancelled then exit the loop after closing para gui  
+        set(hFig,'iMov',iMov0)
+        setupSubRegions(handles,iMov0,true);
+        gridObj.closeGUI();
+        return
+    end
+
+    % allow user to reset location of regions (either up or down) or 
+    % redo the region calculations
+    gridObj.checkDetectedSoln(iMovNw,trkObj);
+    switch gridObj.iFlag
+        case 2
+            % case is the user continued
+            break
+            
+        case 3
+            % case is the user cancelled
+            setupSubRegions(handles,hFig.iMov,true);
+            return
+    end
+end
+    
+% set the final sub-region information into the gui
+set(hFig,'iMov',gridObj.iMov);
+setupSubRegions(handles,hFig.iMov,true);
 
 % ----------------------------------------- %
 % --- 2D AUTOMATIC DETECTION MENU ITEMS --- %
@@ -1170,10 +1227,11 @@ set(hFig,'iMov',iMov)
 %-------------------------------------------------------------------------%
 
 % --- sets up the sub-regions 
-function iMov = setupSubRegions(handles,iMov,isSet)
+function iMov = setupSubRegions(handles,iMov,isSet,isAutoDetect)
 
 % sets the setup flag
-if (nargin < 3); isSet = false; end
+if ~exist('isSet','var'); isSet = false; end
+if ~exist('isAutoDetect','var'); isAutoDetect = false; end
 
 % removes any previous sub-regions
 deleteSubRegions(handles)
@@ -1207,13 +1265,16 @@ if detMltTrkStatus(iMov)
 end
 
 % removes any previous markers and updates
-iMov = createSubRegions(handles,iMov,isSet);
+iMov = createSubRegions(handles,iMov,isSet,isAutoDetect);
 
 % --- creates the subplot regions and line objects
-function iMov = createSubRegions(handles,iMov,isSet)
+function iMov = createSubRegions(handles,iMov,isSet,isAutoDetect)
 
 % global variables
 global xGap yGap pX pY pH pW
+
+% sets the setup flag
+if ~exist('isAutoDetect','var'); isAutoDetect = false; end
 
 % ------------------------------------------- %
 % --- INITIALISATIONS & MEMORY ALLOCATION --- %
@@ -1367,7 +1428,7 @@ for i = 1:nApp
     if isSet
         [ix,iy] = deal([1 1 2 2],[1 2 2 1]);
         hFill = fill(xLimS(ix),yLimS(iy),'r','facealpha',0,'tag',...
-                     'hFillROI','linestyle','none','parent',hAx);
+                 'hFillROI','linestyle','none','parent',hAx,'UserData',i);
                  
         % if the region is rejected, then set the facecolour to red
         if ~iMov.ok(i)
@@ -1452,11 +1513,21 @@ for i = 1:nApp
         % if moveable, then set the position callback function
         api = iptgetapi(hROI);
         api.setColor(col(indCol));
-        api.addNewPositionCallback(@roiCallback);   
-
-        % sets the constraint region for the inner regions
-        fcn = makeConstrainToRectFcn('imrect',xLimS,yLimS);
-        api.setPositionConstraintFcn(fcn); 
+        
+        if isAutoDetect        
+            % retrieves the marker object handles
+            hObj = findall(hROI);            
+            isM = strContains(get(hObj,'Tag'),'marker');
+            
+            % turns off the object visibility/hit-test
+            set(hObj,'hittest','off')
+            setObjVisibility(hObj(isM),0)
+        else
+            % sets the constraint region for the inner regions
+            api.addNewPositionCallback(@roiCallback);   
+            fcn = makeConstrainToRectFcn('imrect',xLimS,yLimS);
+            api.setPositionConstraintFcn(fcn); 
+        end
 
         % creates the individual tube markers        
         yTubeS = rPosS{i}(2) + (rPosS{i}(4)/nTubeNw)*(1:(nTubeNw-1));            

@@ -11,21 +11,21 @@ hGUIF = hGUI.figFlyTrack;
 % remove the local view (if set)
 if get(hGUI.checkLocalView,'value')
     set(hGUI.checkLocalView,'value',0)
-    feval(getappdata(hGUIF,'checkLocalView_Callback'),...
+    feval(get(hGUIF,'checkLocalView_Callback'),...
                                         hGUI.checkLocalView,[],hGUI)
 end
 
 % remove the sub-regions (if set)
 if get(hGUI.checkSubRegions,'value')
     set(hGUI.checkSubRegions,'value',0)
-    feval(getappdata(hGUIF,'checkSubRegions_Callback'),...
+    feval(get(hGUIF,'checkSubRegions_Callback'),...
                                         hGUI.checkSubRegions,[],hGUI)    
 end
 
 % remove the tube-regions (if set)
 if get(hGUI.checkShowTube,'value')
     set(hGUI.checkShowTube,'value',0)
-    feval(getappdata(hGUIF,'checkShowTube_Callback'),...
+    feval(get(hGUIF,'checkShowTube_Callback'),...
                                         hGUI.checkShowTube,1,hGUI)    
 end
 

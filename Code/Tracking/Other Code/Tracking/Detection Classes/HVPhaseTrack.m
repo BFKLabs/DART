@@ -97,7 +97,7 @@ classdef HVPhaseTrack < matlab.mixin.SetGet
             obj.nApp = length(iMov.iR);
             obj.nTube = getSRCountVec(iMov);
             obj.nImg = length(obj.Img);
-            obj.is2D = is2DCheck(obj.iMov);
+            obj.is2D = obj.iMov.is2D;
             
             % sets the tube-region offsets
             obj.y0 = cell(obj.nApp,1);

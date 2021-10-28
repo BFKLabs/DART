@@ -39,7 +39,7 @@ classdef SingleTrack < Track
                     
                 case 'InitEstimate'
                     % case is the initial background estimation
-                    sInd = 2*ones(1+(obj.nPhase-1)*(~obj.isDD),1);
+                    sInd = ones(1+(obj.nPhase-1)*(~obj.isDD),1);
                     [obj.isBGCalc,obj.isManual] = deal(~obj.isDD,false);  
                     
                     % updates the sub-region data struct phase information

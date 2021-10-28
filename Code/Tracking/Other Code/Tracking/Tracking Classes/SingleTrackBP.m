@@ -668,16 +668,17 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             % runs the phase detection solver            
             obj.hProg.Update(iLvl,'Determining Video Phases...',0);
             phObj.runPhaseDetect();
-
-            % updates the sub-image data struct with the phase information
-            obj.iMov.iPhase = phObj.iPhase;
-            obj.iMov.vPhase = phObj.vPhase;      
-            obj.iMov.ImnF = phObj.ImnF;
             
             % expands the waitbar figure again
             if obj.hProg.Update(iLvl,'Phase Detection Complete!',1)
                 obj.calcOK = false;
             else
+                % updates the sub-image data struct with the phase info
+                obj.iMov.iPhase = phObj.iPhase;
+                obj.iMov.vPhase = phObj.vPhase;      
+                obj.iMov.ImnF = phObj.ImnF;                
+
+                % expands the progressbar
                 obj.hProg.expandProgBar(dLvl);
             end
 
