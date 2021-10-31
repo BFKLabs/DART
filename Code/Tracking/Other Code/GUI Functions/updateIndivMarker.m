@@ -1,16 +1,20 @@
 % --- updates the location of a single fly marker --- %
-function updateIndivMarker(handles,hMark,...
-                            hDir,pData,ind,pltLoc,pltAng,forceUpdate) 
+function updateIndivMarker(handles,pData,ind,pltLoc,pltAng,forceUpdate) 
 
 % global variables
 global isCalib szDelX szDelY
+
+% retrieves the marker object handles
+hFig = handles.figFlyTrack;
+[hMark,hDir] = deal(hFig.hMark{ind},hFig.hDir{ind});
 if isempty(pData)
+    % if there is no data, then set the markers to be invisible
     setObjVisibility(hMark,'off');
+    setObjVisibility(hDir,'off');
     return
 end
 
 % sets the default parameters
-hFig = handles.figFlyTrack;
 if ~exist('forceUpdate','var'); forceUpdate = false; end
 
 % retrieves the sub-region data struct
@@ -33,8 +37,16 @@ else
     cFrm = max(1,cFrm0-(iMov.nPath-1)):cFrm0;
 end
 
+% retrieves the sub-region count
 cMov = str2double(get(handles.movCountEdit,'string'));
 [nFly,isCG] = deal(length(hMark),isColGroup(iMov));
+
+% calculates the frame offset
+if strcmp(get(handles.menuCorrectTrans,'Checked'),'on')
+    dpOfs = zeros(nFly,2);
+else
+    dpOfs = repmat(getFrameOffset(iMov,cFrm),nFly,1);
+end
 
 % sets the global/local coordinates and the y-offset 
 if pltLV
@@ -42,7 +54,7 @@ if pltLV
 %     yOfs = (iMov.iRT{ind(1)}{1}(1)-1); 
     if isCalib || forceUpdate
         pOfs = [(iMov.iC{ind(1)}(1)-1) (iMov.iR{ind(1)}(1)-1)];            
-        fPosL = pData{ind(1)} - repmat(pOfs,nFly,1);
+        fPosL = pData{ind(1)} - repmat(pOfs,nFly,1) + dpOfs;
         
     else                   
         fPosL = cellfun(@(x)(x(cFrm,:)),pData.fPosL{ind(1)},'un',0);               
@@ -54,13 +66,14 @@ if pltLV
                 (repmat([0,x(1)-1],length(cFrm),1)),iMov.iRT{ind},'un',0);                                
         end
         
-        % 
-        fPosL = cellfun(@(x,p)(x+p),fPosL,pOfs','un',0);
+        % sets the final local coordinates
+        dpOfs = num2cell(dpOfs,2);
+        fPosL = cellfun(@(x,p,dp)(x+p+dp),fPosL,pOfs',dpOfs','un',0);
     end        
 else
     % sets the global/local fly locations
     if isCalib || forceUpdate 
-        fPos = pData{ind(1)};
+        fPos = pData{ind(1)} + dpOfs;
     else
         % sets the global/local coordinates and the y-offset 
         
@@ -72,7 +85,7 @@ else
         end
         
         % adds on the positional offset
-        fPos = cellfun(@(x)(x+pOfs),fPos,'un',0);
+        fPos = cellfun(@(x)(x+pOfs+dpOfs(1,:)),fPos,'un',0);
     end
 end
 

@@ -120,7 +120,11 @@ end
 % end
 
 % rotates the image (if required)
-Img = getRotatedImage(iMov,Img);
+if isempty(Img)
+    Img = NaN(getCurrentImageDim());
+else
+    Img = getRotatedImage(iMov,Img);
+end
 
 % if iMov.rot90; Img = rot90(Img,-1); end
 

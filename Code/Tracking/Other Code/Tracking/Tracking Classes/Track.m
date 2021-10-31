@@ -61,11 +61,12 @@ classdef Track < matlab.mixin.SetGet
         end           
         
         % --- reads the images for the frame indices given in iFrm
-        function Img = getImageStack(obj,iFrm,varargin)
+        function [Img,isOK] = getImageStack(obj,iFrm,varargin)
             
             % retrieves the images for all frames in the array, iFrm
             Img = arrayfun(@(x)(double(...
-                      getDispImage(obj.iData,obj.iMov,x,0))),iFrm,'un',0);
+                      getDispImage(obj.iData,obj.iMov,x,0))),iFrm,'un',0);                  
+            isOK = ~cellfun(@(x)(all(isnan(x(:)))),Img);
                   
             % if requested, return the first cell array element
             if nargin == 3; Img = Img{1}; end

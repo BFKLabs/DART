@@ -68,6 +68,7 @@ classdef CalcBG < handle
         pData
         iFrm    
         statsObj
+        dpOfs
         
     end
     
@@ -260,7 +261,7 @@ classdef CalcBG < handle
             set(obj.hGUI.imgAxes,'CLimMode','Auto')
             
             % sets the pre-background detection properties
-            setTrackGUIProps(obj.hGUI,'PostTubeDetect',obj.isChange);                                   
+            setTrackGUIProps(obj.hGUI,'PostTubeDetect',obj.isChange);
             
             % clears the class fields
             obj.clearClassFields()
@@ -486,7 +487,7 @@ classdef CalcBG < handle
                 BgrpT0{i} = bwmorph(bwmorph(Btmp,'dilate'),'remove');
             end            
             
-            % initialises the global parameter fields 
+            % initialises the other class fields 
             obj.hManual = [];
             [obj.iSel,obj.BgrpT] = deal([1,1],BgrpT0);
             [obj.isChange,obj.frameSet] = deal(false);
@@ -504,8 +505,7 @@ classdef CalcBG < handle
             imov = obj.iMov;
             
             % other initialisations
-            eStr = {'off','on'};
-            nPhase = length(obj.iMov.vPhase);
+            eStr = {'off','on'};            
             cHdr = {'Phase','Frame','Region','Sub-Region'};
 
             % sets the pre-background detection properties
@@ -521,6 +521,7 @@ classdef CalcBG < handle
             setPanelProps(hgui.panelFrameSelect,'off')
             setPanelProps(hgui.panelManualSelect,'off')
             setObjEnable(hgui.buttonUpdateEst,'off')
+            set(hgui.menuCorrectTrans,'Checked','off')
 
             % updates the table position
             tPos = get(hgui.tableFlyUpdate,'position');
@@ -538,6 +539,11 @@ classdef CalcBG < handle
             
             % determines if the background has been calculated
             if ~initDetectCompleted(imov)
+                % if the translation info field is not set, then create one
+                if ~isfield(obj.iMov,'dpInfo')
+                    obj.iMov.dpInfo = [];
+                end                
+                
                 % if not, disable the frame selection panels
                 setPanelProps(hgui.panelImageType,'off')
                 setObjEnable(hgui.checkFlyMarkers,'off')
@@ -559,6 +565,7 @@ classdef CalcBG < handle
 
             else
                 % sets the frame index arrays
+                nPhase = length(obj.iMov.vPhase);
                 obj.indFrm = getPhaseFrameIndices...
                                             (obj.iMov,obj.trkObj.nFrmR);                
 
@@ -568,6 +575,13 @@ classdef CalcBG < handle
                 set(hgui.textCurrentFrame,'string',iFrm0)        
                 set(setObjEnable(hgui.checkFlyMarkers,'on'),'value',1) 
                 setObjEnable(hgui.menuShowStats,'on');
+                
+                % sets up the 
+                if isfield(obj.iMov,'dpInfo')
+                    obj.dpOfs = obj.setupFrameOffset();
+                else
+                    [obj.iMov.dpInfo,obj.dpOfs] = deal(cell(nPhase,1));
+                end
                 
                 % determines if the class object has location values
                 if ~isempty(obj.fPos)                    
@@ -610,6 +624,22 @@ classdef CalcBG < handle
                 obj.setButtonProps('Phase')
                 obj.setButtonProps('Frame')
             end            
+            
+        end
+        
+        % --- sets up the frame offset array
+        function dpOfs = setupFrameOffset(obj)
+           
+            % memory allocation
+            dpInfo = obj.iMov.dpInfo;
+            dpOfs = cell(length(obj.iMov.vPhase),1);
+            
+            % for each phase that has offset information, calculate the 
+            if ~isempty(dpInfo)
+                for i = find(obj.iMov.vPhase(:) == 1)'
+                    dpOfs{i} = calcFrameOffset(dpInfo,obj.indFrm{i});
+                end
+            end
             
         end
         
@@ -682,8 +712,17 @@ classdef CalcBG < handle
             % case is the background has been calculated
             if ~isempty(obj.iMov.Ibg)
                 if ~isempty(obj.iMov.Ibg{obj.iPara.cPhase})
-                    popStrNw = {'Background (Raw)';'Background (Filled)';...
-                                'Residual (Raw)';'Residual (Filled)'};
+                    if isempty(obj.trkObj.IbgT0)
+                        popStrNw = {'Background';...
+                                    'Residual'};
+                    else
+                        popStrNw = {'Background (Raw)';...
+                                    'Background (Filled)';...
+                                    'Residual (Raw)';...
+                                    'Residual (Filled)'};                 
+                    end
+                            
+                    % adds the strings to array
                     popStr = [popStr;popStrNw(:)];
                 end
             end
@@ -788,6 +827,14 @@ classdef CalcBG < handle
             iFrmS = obj.indFrm{iPhase}(ipara.cFrm);
             Img0 = double(getDispImage(idata,imov,iFrmS,false));                        
             
+            % shifts the image (if required)
+            if ~isempty(obj.dpOfs)
+                if ~isempty(obj.dpOfs{iPhase})
+                    dP = obj.dpOfs{iPhase}(ipara.cFrm,:);
+                    Img0 = calcImgTranslate(Img0,dP);
+                end
+            end
+            
             % sets the image            
             switch imgType
                 case 'Raw Image'
@@ -798,7 +845,8 @@ classdef CalcBG < handle
                     % case is the filtered image frame 
                     Inw = imfilter(Img0,hS);    
 
-                case {'Background (Raw)',...
+                case {'Background',...
+                      'Background (Raw)',...
                       'Background (Filled)'} 
                     % case is the background estimate                    
 
@@ -825,7 +873,8 @@ classdef CalcBG < handle
                         Inw = createCompositeImage(Img0,imov,IbgI); 
                     end   
                     
-                case {'Residual (Raw)',...
+                case {'Residual',...
+                      'Residual (Raw)',...
                       'Residual (Filled)'}
                     % case is the raw residual image
 
@@ -885,6 +934,7 @@ classdef CalcBG < handle
                     tPara = obj.iMov.tPara;                    
                     [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);    
                     isNormal = strContains(imgType,'Normal');
+                    Img0(isnan(Img0)) = nanmedian(Img0(:));
                     
                     % applies the image filter (if used)
                     if bgP.useFilt
@@ -1346,7 +1396,7 @@ classdef CalcBG < handle
 
                 % sets the sub-image struct
                 ipara.nFrm0 = length(Img);
-
+    
                 % sets the image stack
                 imov.vPhase = 1;
                 imov.iPhase = [1,ipara.nFrm0];
@@ -1751,8 +1801,8 @@ classdef CalcBG < handle
 
             % progressbar strings
             wStr = {'Reading Initial Image Stack',...
-                    'Image Baseline Subtraction',...
-                    'Tracking Moving Objects'};    
+                    'Tracking Moving Objects',...
+                    'Tracking Stationary Objects'};    
             if obj.isMTrk
                 wStr{end} = 'Background Image Estimation';
             end
@@ -1820,8 +1870,9 @@ classdef CalcBG < handle
                 % if segmentation was successful, then update the 
                 % sub-image data struct   
                 obj.ok0 = imov.flyok;
-                obj.iMov = imov;
-                obj.Ibg = cell(length(imov.vPhase),1);   
+                obj.iMov = imov;                
+                obj.Ibg = cell(length(imov.vPhase),1);    
+                obj.iMov.dpInfo = obj.trkObj.dpInfo;
                 
                 % updates the sub-region data struct in the main gui
                 set(obj.hGUI.figFlyTrack,'iMov',imov)
@@ -1830,6 +1881,7 @@ classdef CalcBG < handle
                 obj.fPos = obj.trkObj.fPosG;
                 obj.pStats = obj.trkObj.pStats;
                 obj.pData = obj.trkObj.pData;
+                obj.dpOfs = obj.trkObj.dpOfs;                
 
                 % updates the list box properties but clears the list
                 setObjEnable(hObj,'off');

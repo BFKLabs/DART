@@ -125,17 +125,17 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
             fP0 = repmat({NaN(nTubeR,2)},1,obj.nImg);
             IP0 = repmat({NaN(nTubeR,1)},1,obj.nImg);
             
-            % sets the previous stack location data
-            if isempty(obj.prData)
-                % no previous data, so use empty values
-                fPr = cell(obj.nTube(iApp),1);
-            elseif ~isfield(obj.prData,'fPosPr')
-                % no previous data, so use empty values
-                fPr = cell(obj.nTube(iApp),1);                
-            else
-                % otherwise, use the previous values
-                fPr = obj.prData.fPosPr{iApp}(:);
-            end            
+%             % sets the previous stack location data
+%             if isempty(obj.prData)
+%                 % no previous data, so use empty values
+%                 fPr = cell(obj.nTube(iApp),1);
+%             elseif ~isfield(obj.prData,'fPosPr')
+%                 % no previous data, so use empty values
+%                 fPr = cell(obj.nTube(iApp),1);                
+%             else
+%                 % otherwise, use the previous values
+%                 fPr = obj.prData.fPosPr{iApp}(:);
+%             end            
             
             % sets up the region image stack
             [ImgL,ImgBG] = obj.setupRegionImageStack(iApp);            
@@ -285,15 +285,17 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
                     [fP(i,:),IP(i)] = deal([xP,yP]+pOfs,Img{i}(iPnw));
                 else
                     % case is there are more than one prominent object
-                    [iGrp,pC] = getGroupIndex(Img{i}>=pTolB,'Centroid');                    
-                    A = cellfun(@length,iGrp)/obj.dTol;
-                    Z = cellfun(@(x)(mean(Img{i}(x))),iGrp).*A;
-                    
-                    % determines the most likely object, and stores the 
-                    % coordinates and peak pixel value
-                    iMx = argMax(Z);
-                    fP(i,:) = max(1,roundP(pC(iMx,:))) + pOfs;
-                    IP(i) = max(Img{i}(iGrp{iMx}));
+                    [iGrp,pC] = getGroupIndex(Img{i}>=pTolB,'Centroid');
+                    if ~isempty(iGrp)
+                        A = cellfun(@length,iGrp)/obj.dTol;
+                        Z = cellfun(@(x)(mean(Img{i}(x))),iGrp).*A;
+
+                        % determines the most likely object, and stores the 
+                        % coordinates and peak pixel value
+                        iMx = argMax(Z);
+                        fP(i,:) = max(1,roundP(pC(iMx,:))) + pOfs;
+                        IP(i) = max(Img{i}(iGrp{iMx}));
+                    end
                     
                 end
             end
@@ -302,16 +304,7 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
         
         % ----------------------- %
         % --- OLDER FUNCTIONS --- %
-        % ----------------------- %
-        
-        % --- segments a sub-region with a stationary object
-        function [fP,IP] = segStatObj(obj,Img,fPr)
-            
-            % memory allocation
-            nFrm = length(Img);
-            [fP,IP] = deal(NaN(nFrm,2),NaN(nFrm,1));     
-            
-        end
+        % ----------------------- %        
         
         % --- sets up the image stack for the region index, iApp
         function [ImgL,ImgBG] = setupRegionImageStack(obj,iApp)

@@ -272,11 +272,16 @@ classdef TrackFull < Track
                 end  
                 
                 % retrieves & sets the new image stack 
-                Img = obj.getImageStack(obj.sProg.iFrmR{i});
+                iFrmR = obj.sProg.iFrmR{i};
+                Img = obj.getImageStack(iFrmR);
+                
+                % applies the image filter (if required)
                 if ~isempty(obj.hS)
-                    % applies the image filter (if set)
                     Img = cellfun(@(x)(imfilter(x,obj.hS)),Img,'un',0);
                 end
+                
+                % applies the image offset (if shift detected)
+                Img = obj.applyImageOffset(Img,iFrmR);
                 
                 % updates the tracking object class fields                
                 set(obj.fObj{iPhase},'Img',Img,'prData',prDataPh,...
@@ -400,6 +405,25 @@ classdef TrackFull < Track
             end  
             
         end   
+        
+        % --- applies the image offset
+        function Img = applyImageOffset(obj,Img,iFrmR)
+            
+            % determines if there is any valid translation information
+            if ~isfield(obj.iMov,'dpInfo')
+                % case is older format file (no translation)
+                return
+            elseif isempty(obj.iMov.dpInfo)
+                % case is there is no translation
+                return
+            end
+            
+            % calculates and applied the image offset
+            dpOfs = calcFrameOffset(obj.iMov.dpInfo,iFrmR);
+            Img = cellfun(@(I,dp)(calcImgTranslate(I,dp)),...
+                                        Img,num2cell(dpOfs,2)','un',0);
+            
+        end
         
         % ---------------------------------------- %
         % ---- POSITION DATA STRUCT FUNCTIONS ---- %

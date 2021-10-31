@@ -19,7 +19,7 @@ isF = nFrmPh == 1;
 
 % for the remaining phases, split up the 
 if any(~isF)
-    nFrm(~isF) = min(3,nFrmP(~isF));
+    nFrm(~isF) = nanmax(3,nFrmP(~isF));
 end
 
 % sets the final frame index arrays for each phase

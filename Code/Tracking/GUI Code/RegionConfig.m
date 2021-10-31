@@ -163,7 +163,9 @@ end
 % sets the function handles into the gui
 addObjProps(hObject,'resetMovQuest',@resetMovQuest,...
                     'resetSubRegionDataStruct',@resetSubRegionDataStruct,...
-                    'setupSubRegions',@setupSubRegions)
+                    'setupSubRegions',@setupSubRegions,...
+                    'roiCallback',@roiCallback,...
+                    'deleteSubRegions',@deleteSubRegions)
 
 % ---------------------------------- %
 % --- OBJECT & DATA STRUCT SETUP --- %
@@ -562,8 +564,8 @@ function menuDetGrid_Callback(hObject, eventdata, handles)
 hFig = handles.output;
 iMov0 = get(hFig,'iMov');
 
-% % retrieves the current sub-region configuration
-% hFig.iMov = setSubRegionDim(hFig.iMov,hGUI);
+% if the field does exist, then ensure it is correct
+hFig.iMov.bgP = DetectPara.resetDetectParaStruct(hFig.iMov.bgP);
 
 % opens the grid detection tracking parameter gui
 gridObj = GridDetect(hFig);
@@ -574,7 +576,8 @@ if gridObj.iFlag == 3
 end
 
 % keep looping until either the user quits or accepts the result
-while 1
+cont = gridObj.iFlag == 1;
+while cont
     % runs the 1D auto-detection algorithm
     [iMovNw,trkObj] = detGridRegions(hFig);
     if isempty(iMovNw)
@@ -591,7 +594,7 @@ while 1
     switch gridObj.iFlag
         case 2
             % case is the user continued
-            break
+            cont = false;
             
         case 3
             % case is the user cancelled
@@ -602,7 +605,14 @@ end
     
 % set the final sub-region information into the gui
 set(hFig,'iMov',gridObj.iMov);
+
+% creates a progress loadbar
+h = ProgressLoadbar('Setting Final Region Configuration'); 
+pause(0.05);
+
+% sets up the sub-regions for the final time (delete loadbar)
 setupSubRegions(handles,hFig.iMov,true);
+delete(h)
 
 % ----------------------------------------- %
 % --- 2D AUTOMATIC DETECTION MENU ITEMS --- %
@@ -2517,7 +2527,7 @@ end
 srObj.isUpdating = false;
 
 % --- the callback function for moving the inner tube regions
-function roiCallback(rPos)
+function roiCallback(rPos,iApp)
 
 % global variables
 global iAppInner isUpdating pX pY pW pH
@@ -2528,16 +2538,19 @@ iMov = get(hFig,'iMov');
 handles = guidata(hFig);
 
 % sets the apparatus index
-iApp = get(get(gco,'Parent'),'UserData');
-if (iscell(iApp)) || (length(iApp) ~= 1)
-    iApp = iAppInner; 
+if ~exist('iApp','var')
+    iApp = get(get(gco,'Parent'),'UserData');
+    if (iscell(iApp)) || (length(iApp) ~= 1)
+        iApp = iAppInner; 
+    end
 end
 
 % retrieves the sub-region data struct
 nTube = getSRCount(iMov,iApp);
 
 % resets the locations of the flies
-hTube = findobj(gca,'tag',sprintf('hTubeEdge%i',iApp));
+hAx = findall(findobj(0,'tag','figFlyTrack'),'type','axes');
+hTube = findobj(hAx,'tag',sprintf('hTubeEdge%i',iApp));
 dY = diff(rPos(2)+[0 rPos(4)])/nTube;
 
 % sets the x/y locations of the tube sub-regions

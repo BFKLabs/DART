@@ -943,7 +943,7 @@ if ~isdeployed
         % determines if any of these figures are open
         if isFound
             % if so, then output an error to screen
-            setObjVisibility(handles.figDART,'visible',0); pause(0.05)
+            setObjVisibility(handles.figDART,0); pause(0.05)
             eStr = 'Error! A DART session is already running!';
             waitfor(errordlg(eStr,'DART Initialisation Error','modal'))
             

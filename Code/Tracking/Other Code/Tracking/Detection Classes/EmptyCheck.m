@@ -61,8 +61,8 @@ classdef EmptyCheck < handle
             tData = [tData0,num2cell(obj.isEmpty)];
             cForm = {'numeric','numeric','numeric','logical'};
             
-            %
-            hTube0 = getappdata(findall(0,'tag','figFlyTrack'),'hTube');
+            % retrieves the tube object handles
+            hTube0 = get(findall(0,'tag','figFlyTrack'),'hTube');
             obj.hTube = cellfun(@(x)(hTube0{x{1}}{x{2}}),...
                                         num2cell(tData0(:,1:2),2),'un',0);
             cellfun(@(x)(setObjVisibility(x,'on')),obj.hTube)

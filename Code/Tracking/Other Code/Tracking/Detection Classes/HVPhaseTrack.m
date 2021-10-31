@@ -120,7 +120,7 @@ classdef HVPhaseTrack < matlab.mixin.SetGet
         % ---------------------------- %
         
         % --- runs the main detection algorithm
-        function runDetectionAlgo(obj)            
+        function runDetectionAlgo(obj)
             
             % field updates and other initialisations
             obj.nImg = length(obj.Img);
@@ -295,7 +295,7 @@ classdef HVPhaseTrack < matlab.mixin.SetGet
         end              
         
         % --- segments a sub-region with a moving object
-        function [fP,IP] = segSubRegion(obj,Img,pEst)            
+        function [fP,IP] = segSubRegion(obj,Img,pEst)
             
             % memory allocation
             pW = 0.75;

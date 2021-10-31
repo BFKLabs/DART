@@ -74,8 +74,12 @@ classdef SingleTrackFull < TrackFull & SingleTrack
             
             % runs the hi-variance phase segmentation
             if obj.calcOK
-                obj.segHiVarPhase();   
-            end
+                obj.segHiVarPhase();  
+                
+                % updates the main GUI fields
+                set(obj.hFig,'iMov',obj.iMov)
+                set(obj.hFig,'pData',obj.pData)                
+            end                        
             
         end
            

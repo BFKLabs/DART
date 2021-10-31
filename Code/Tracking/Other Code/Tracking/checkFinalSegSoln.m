@@ -222,8 +222,12 @@ if any(isLowPr) && ~is2D
 
             if dX(iSide) < dXTol
                 [X(iGrp{i}),Y(iGrp{i})] = deal(xExt(iSide),mean(yExt));
-            elseif (iGrp{i}(1) == 1) || (iGrp{i}(end) == nFrm)
+            elseif (iGrp{i}(1) == 1)
                 [X(iGrp{i}),Y(iGrp{i})] = deal(xExt(iSide),mean(yExt));
+            elseif (iGrp{i}(end) == nFrm)
+                if abs(diff(X(nFrm)-X(iPr))) > dXTol
+                    [X(iGrp{i}),Y(iGrp{i})] = deal(xExt(iSide),mean(yExt));
+                end
             else
                 xiS = iGrp{i}([1,end]) + [-1,1];
                 dXS = [(X(xiS)-xExt(1)),(xExt(2)-X(xiS))];
@@ -333,14 +337,24 @@ while cont
         
     % retrieves the image for the frame
     Img = double(getDispImage(iData,iMov,iFrm,false,handles)); 
-    if ~isempty(obj.hS); Img = imfilter(Img,obj.hS); end
+    if all(isnan(Img(:)))
+        % if the image is invalid, then use the previous frame coords
+        pNw = [X(iFrm-1),Y(iFrm-1)];
+    else
+        % otherwise, apply the filter/transition offset
+        if ~isempty(obj.hS); Img = imfilter(Img,obj.hS); end
+        Img = applyImgOffset(Img,iMov,iFrm);
 
-    % calculates the residual image
-    ImgL = Img(iR(iRT),iC);
-    IxcL = calcXCorrStack(obj.iMov,ImgL,obj.hS).*(1-normImg(ImgL)).*BD;       
+        % calculates the adjust x-correlation image
+        ImgL = Img(iR(iRT),iC);    
+        ImgLN = (1-normImg(ImgL));
+        IxcL = calcXCorrStack(obj.iMov,ImgL,obj.hS).*ImgLN.*BD; 
+        
+        % calculates the most likely coordinates from the sub-image
+        pNw = getMaxCoord(IxcL);
+    end
     
-    % calculates the new coordinates
-    pNw = getMaxCoord(IxcL);
+    % calculates the new coordinates    
     [X(iFrm),Y(iFrm)] = deal(pNw(1),pNw(2));
     isOK(iFrm) = false;
 end
@@ -366,8 +380,12 @@ function Ixc = calcXCorrStack(iMov,Img,hS)
 % memory allocation
 tP = iMov.tPara;
 
-% calculates the original cross-correlation image
+% calculates the image gradient
 [Gx,Gy] = imgradientxy(Img);
+B = isnan(Gx) | isnan(Gy);
+[Gx(B),Gy(B)] = deal(0);
+
+% calculates the gradient cross-correlation image
 Ixc0 = max(0,calcXCorr(tP.GxT,Gx) + calcXCorr(tP.GyT,Gy));
 
 % calculates the final x-correlation mask

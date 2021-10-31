@@ -446,6 +446,9 @@ classdef InitTrackStats < handle
                 obj.Data(iSR,iCol+1) = obj.setValueStr(yMin);
                 obj.Data(iSR,iCol+2) = obj.setValueStr(yMax);
                 obj.Data(iSR,iCol+3) = obj.setValueStr(yMean);
+                
+                % removes any rejected regions
+                obj.Data(~obj.bgObj.iMov.flyok(:,iApp),:) = {'---'};
             end
             
             % retrieves the background colours
@@ -477,7 +480,7 @@ classdef InitTrackStats < handle
             end
 
             % combines the column headers into a single cell array
-            cHdr0 = cell2cell(colHdr);
+            cHdr0 = cell2cell(colHdr(:)',0);
             
             % sets the final column header 
             obj.cHdr = [{createTableHdrString({'Overall','Min'}),...
@@ -497,6 +500,9 @@ classdef InitTrackStats < handle
             obj.Data(iSR,2) = obj.setValueStr(yMax);
             obj.Data(iSR,3) = obj.setValueStr(yMean);
             obj.Data(iSR,5:end) = obj.setValueStr(yMet);
+            
+            % removes any rejected regions
+            obj.Data(~obj.bgObj.iMov.flyok(:,iApp),:) = {'---'};            
             
             % retrieves the background colours
             obj.bgCol = cellfun(@(x)(obj.getCellColour(x)),obj.Data,'un',0);

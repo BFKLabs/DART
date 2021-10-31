@@ -32,6 +32,9 @@ initMarkerPlots = get(hFig,'initMarkerPlots');
 checkShowTube_Callback = get(hFig,'checkShowTube_Callback');
 checkShowMark_Callback = get(hFig,'checkShowMark_Callback');
 FirstButtonCallback = get(hFig,'FirstButtonCallback');
+
+% other initialisations
+eStr = {'off','on'};
     
 % sets the object properties based on the type string
 switch (typeStr)
@@ -225,17 +228,16 @@ switch (typeStr)
         setMovEnable(handles,'off')
         setSubMovEnable(handles);                       
         
-        % displays the first image frame to the plot axes
-        set(handles.checkFixRatio,'value',0)
-        set(handles.checkFixRatio,'value',1)        
-        
-
+        % sets the other object properties
+        set(handles.checkFixRatio,'value',1)                
     	set(setObjEnable(handles.frmCountEdit,'on'),...
                             'string',num2str(iData.cFrm)); 
     	set(setObjEnable(handles.editFrameRate,'inactive'),...
                             'string',num2str(roundP(iData.exP.FPS,0.01)))
+    	set(handles.frmCountEdit,'string','1');                         
     	set(setObjEnable(handles.editFrameStep,'on'),...
                             'string',num2str(iData.cStp))
+        set(setObjEnable(handles.menuCorrectTrans,'off'),'checked','off')
     	setObjEnable(handles.textFrameStep,'on')
         setObjEnable(handles.menuWinsplit,'on')
         
@@ -320,19 +322,24 @@ switch (typeStr)
         set(handles.frmCountEdit,'string',num2str(iData.cFrm))
         set(handles.movCountEdit,'string',num2str(iData.cMov))
         set(hFig,'iData',iData)        
-        
+    
+    % ----------------------------------- % 
     % --- PRE/POST IMAGE SEGMENTATION --- %
     % ----------------------------------- %    
     
-    case ('PreTubeDetect') % case is before detecting the tube regions
+    case ('PreTubeDetect') 
+        % case is before detecting the tube regions
+        
         % ensures the 
         set(handles.checkLocalView,'value',0)
         set(setObjEnable(handles.checkShowTube,'off'),'value',0)
         set(setObjEnable(handles.checkShowMark,'off'),'value',0)
         set(setObjEnable(handles.checkShowAngle,'off'),'value',0)
+        set(setObjEnable(handles.menuCorrectTrans,'off'),'checked','off')
         setDetectEnable(handles,'off')         
             
-    case ('PostTubeDetect') % case is after detecting the tube regions
+    case ('PostTubeDetect') 
+        % case is after detecting the tube regions
         
         % resets the show tube checkbox and enables save soln menu item
         if isCalib
@@ -353,9 +360,12 @@ switch (typeStr)
             % sets the frame to the initial frame & and enable the batch
             % processing menu item
             setObjEnable(handles.menuBatchProcess,'on')            
-            set(handles.frmCountEdit,'string',num2str(iData.cFrm))                
+            set(handles.frmCountEdit,'string',num2str(iData.cFrm))   
+            
+            % sets the image correction menu flag
+            updateCTMenu(handles,iMov);
         end                           
-
+        
     case ('PreFlyDetect') % case is after detecting the fly locations 
         % turns off the tube regions
         if get(handles.checkShowMark,'Value')
@@ -365,10 +375,7 @@ switch (typeStr)
         end
         
         % enables the tube region outline markers                            
-        if strcmp(get(handles.menuViewProgress,'checked'),'on')
-            set(handles.checkShowMark,'value',1)
-            
-        else       
+        if strcmp(get(handles.menuViewProgress,'checked'),'off')                 
             ImgNw = getDispImage(iData,iMov,iData.cFrm,isSub);
             dispImage(handles,ImgNw,1)       
         end               
@@ -377,7 +384,7 @@ switch (typeStr)
         setObjEnable(handles.menuFile,'off')
         setObjEnable(handles.toggleVideo,'off');
         setMenuEnable(handles,'on',3)
-        setMenuEnable(handles,'off',[4 6 7])
+        setMenuEnable(handles,'off',[4 6 7 8])
         
     case ('PostFlyDetect') % case is after detecting the fly locations 
         
@@ -446,7 +453,7 @@ switch (typeStr)
         setMovEnable(handles,'on');
         setMenuEnable(handles,'on',1:2)                 
         setDetectEnable(handles,'on',[1 4])
-        set(handles.checkShowTube,'value',1)                           
+        set(handles.checkShowTube,'value',1)         
         
         % disables all the metric marker check boxes and the metric
         % calculations button (i.e., the solution has been reinitialised)
@@ -945,7 +952,7 @@ function setMenuEnable(handles,state,ind)
 % sets the object tag strings
 objStr = {'menuSaveMovie','menuSaveSoln','menuViewProgress',...
           'menuWinsplit','menuVideoFeed','menuBatchProcess',...
-          'menuManualReseg','menuSplitVideo'};
+          'menuManualReseg','menuSplitVideo','menuCorrectTrans'};
 
 % sets all the indices (if none are provided)
 if (nargin == 2)
@@ -957,7 +964,12 @@ for i = 1:length(ind)
     % sets the object enabled properties
     if (isfield(handles,objStr{ind(i)}))
         hObj = eval(sprintf('handles.%s',objStr{ind(i)}));
-        setObjEnable(hObj,state)
+        setObjEnable(hObj,state);
+        
+        % removes the check (if disabling)
+        if strcmp(state,'off')
+            set(hObj,'Checked','off')
+        end
     end
 end
 
@@ -1209,3 +1221,17 @@ for i = 1:length(hEdit)
     set(hObj,'Callback',cbFcn);
 end
 
+% --- updates the correct translation menu item enabled properties
+function updateCTMenu(handles,iMov)
+
+% initialisations
+[chkStr,hasTrans] = deal({'off','on'},false);
+
+% determines if the there are any translation phases
+if isfield(iMov,'dpInfo') && ~isempty(iMov.dpInfo)
+    hasTrans = ~isempty(iMov.dpInfo);
+end
+
+% updates the translation correction menu flag
+hMenuCT = handles.menuCorrectTrans;
+set(setObjEnable(hMenuCT,hasTrans),'Checked',chkStr{1+hasTrans})

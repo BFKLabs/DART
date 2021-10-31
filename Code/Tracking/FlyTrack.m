@@ -1349,6 +1349,22 @@ AnalyOpt(handles.output)
 % ----------------------- %
 
 % -------------------------------------------------------------------------
+function menuCorrectTrans_Callback(hObject, eventdata, handles)
+
+switch get(hObject,'Checked')
+    case 'off'
+        % case is turning off the image correction
+        set(hObject,'Checked','on')
+        
+    case 'on'
+        % case is turning off the image correction
+        set(hObject,'Checked','off')
+end
+
+% updates the image
+dispImage(handles);
+
+% -------------------------------------------------------------------------
 function menuOptSize_Callback(hObject, eventdata, handles)
 
 % global variables
@@ -2092,7 +2108,7 @@ if isValid
     end
 else
     % resets the edit box string to the last valid value
-    set(hObject,'string',num2str(eval(pStr)))
+    set(hObject,'string',num2str(getStructField(iData,pStr)))
     if strcmp(get(hObject,'UserData'),'tag')
         set(handles.frmCountEdit,'string',num2str(eval(pStr)))
     end
@@ -2335,16 +2351,28 @@ else
     % initialisations
     isOn = get(hObject,'Value');
     hMark = get(handles.output,'hMark');
-                  
+    
+    % if using local image, only turn on markers for that region
+    if get(handles.checkLocalView,'Value')
+        hMarkOff = hMark(~setGroup(hFig.iData.cMov,size(hMark)));
+        hMark = hMark(hFig.iData.cMov);
+    end
+    
     try
         % attempts to update the marker visibility
         cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOn)),x)),hMark)
+        
     catch
         % if there was an error, recreate the markers and set their
         % visibility
         initMarkerPlots(handles);
-        cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOn)),x)),hMark)
+        cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOn)),x)),hMark)        
     end
+    
+    % turns off any markers (local view only)
+    if exist('hMarkOff','var')
+        cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,0)),x)),hMarkOff)
+    end    
 end
     
 % --- Executes on button press in checkShowAngle.
@@ -2566,7 +2594,12 @@ switch nargin
         
     otherwise % case is a normal image update
         isSub = get(handles.checkLocalView,'value');
-        ImgNw = getDispImage(iData,iMov,cFrm,isSub,handles);        
+        ImgNw = getDispImage(iData,iMov,cFrm,isSub,handles); 
+        
+        % applies the image correction (if required)
+        if strcmp(get(handles.menuCorrectTrans,'Checked'),'on')
+            ImgNw = applyImgOffset(ImgNw,iMov,cFrm);
+        end
 end
         
 % updates the frame selection properties
@@ -2655,7 +2688,6 @@ global isCalib
 
 % retrieves the important data arrays/structs
 hFig = handles.output;
-hDir = get(hFig,'hDir');
 % cType = get(hFig,'cType');
 
 % determines if the location/orientation markers are to be plotted
@@ -2683,11 +2715,9 @@ if ~isempty(hFig.hMark)
         % sets the plot location marker flag for the current apparatus
         [pltLoc,pltAng] = deal(pltLocT&&iMov.ok(i),pltAngT&&iMov.ok(i));
         if isCalib       
-            updateIndivMarker(handles,hFig.hMark{i},...
-                                hDir{i},hFig.fPosTmp,i,pltLoc,pltAng,true)                     
+            updateIndivMarker(handles,hFig.fPosTmp,i,pltLoc,pltAng,1)                     
         else
-            updateIndivMarker(handles,hFig.hMark{i},...
-                                hDir{i},hFig.pData,i,pltLoc,pltAng) 
+            updateIndivMarker(handles,hFig.pData,i,pltLoc,pltAng) 
         end        
     end
 end
@@ -3768,7 +3798,7 @@ iMov = struct('pos',[1 1 1 1],'posG',[],'Ibg',[],'ddD',[],...
               'sgP',[],'Status',[],'tempName',[],'autoP',[],'bgP',[],...
               'isSet',false,'ok',true,'tempSet',false,'isOpt',false,...
               'useRot',false,'rotPhi',90,'calcPhi',false,'sepCol',false,...
-              'vGrp',[],'sRate',5,'nDS',1,'mShape','Rect');           
+              'vGrp',[],'sRate',5,'nDS',1,'mShape','Rect','dpInfo',[]);           
 iMov.sgP = iData.sgP;          
           
 % --- sets the experimental parameters struct/field values --- %

@@ -51,7 +51,8 @@ classdef FlyInfoGUI < handle
             if ~exist('snTot','var')
                 % case is running the gui from the background estimation
                 obj.iMov = hGUI.iMov;
-                obj.hFigMain = obj.hGUI.hFig;                
+                obj.hFigMain = obj.hGUI.hFig;    
+                
             else
                 % case is running the gui through the data combining gui
                 obj.hFigMain = hGUI.figFlyCombine;
@@ -442,7 +443,7 @@ classdef FlyInfoGUI < handle
 
                 % retrieves the tube show check callback function 
                 cFuncStr = 'checkShowTube_Callback';
-                cFunc = getappdata(hGUIM.figFlyTrack,cFuncStr);
+                cFunc = get(hGUIM.figFlyTrack,cFuncStr);
                 cFunc2 = get(hGUIM.checkFlyMarkers,'Callback');
 
                 % updates the tubes visibility

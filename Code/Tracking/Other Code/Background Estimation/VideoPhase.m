@@ -26,6 +26,7 @@ classdef VideoPhase < handle
         xiH
         Zmn
         Zsd
+        pPosO
         
         % other arrays
         isCheck
@@ -326,7 +327,7 @@ classdef VideoPhase < handle
 
             % sets the default input arguments
             if ~exist('iFrm','var'); iFrm = obj.iFrm0; end
-            if ~exist('isFull','var'); isFull = true; end
+            if ~exist('isFull','var'); isFull = true; end                       
             
             % memory allocation
             Img = cell(length(iFrm),1);
@@ -353,19 +354,16 @@ classdef VideoPhase < handle
                         
                     %
                     if useRegions
-                        if isempty(obj.iMov.iR)
-                            % retrieves the current region outlines
-                            pPosO = getCurrentRegionOutlines(obj.iMov);
-                            
+                        if isempty(obj.iMov.iR)                            
                             % if the regions are not set, then use an
                             % estimate from the region outlines
                             szL = size(Img{j});
                             iR = cellfun(@(p)(max(1,floor(p(2))):...
                                     min(szL(1),ceil(sum(p([2,4]))))),...
-                                    pPosO,'un',0)';
+                                    obj.pPosO,'un',0)';
                             iC = cellfun(@(p)(max(1,floor(p(1))):...
                                     min(szL(2),ceil(sum(p([1,3]))))),...
-                                    pPosO,'un',0)';                                
+                                    obj.pPosO,'un',0)';                                
                         else
                             % otherwise, use the row/column indices
                             [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);
@@ -452,7 +450,12 @@ classdef VideoPhase < handle
                     nwVal = getFieldValue(pPhase,pFld{i});
                     obj = setFieldValue(obj,pFld{i},nwVal);
                 end
-            end                          
+            end    
+            
+            % retrieves the current region outlines
+            if isempty(obj.iMov.iR) 
+                obj.pPosO = getCurrentRegionOutlines(obj.iMov);  
+            end
             
         end            
         

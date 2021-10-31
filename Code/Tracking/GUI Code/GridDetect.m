@@ -3,6 +3,7 @@ classdef GridDetect < matlab.mixin.SetGet
     % class properties
     properties
         % main class objects
+        hAx
         hFig
         hFigM
         trkObj
@@ -22,6 +23,7 @@ classdef GridDetect < matlab.mixin.SetGet
         hTxtD
         hEditD
         hButD
+        hSelS
         
         % control button object handles
         hPanelC
@@ -46,8 +48,9 @@ classdef GridDetect < matlab.mixin.SetGet
         hghtPanelD = 90;
         
         % other fields
+        isSet
         iFlag = 1;
-        iSelS = [1,1];
+        iSelS = [1,1];        
         
     end
     
@@ -74,9 +77,13 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % retrieves the main image
             hFigTrk = findall(0,'tag','figFlyTrack');
-            hAx = findall(hFigTrk,'type','axes');
-            obj.hImg = findall(hAx,'type','image');
+            obj.hAx = findall(hFigTrk,'type','axes');
+            obj.hImg = findall(obj.hAx,'type','image');
             obj.Img0 = double(get(obj.hImg,'CData'));
+            
+            % sets the region set flag
+            obj.iMov = obj.hFigM.iMov;
+            obj.isSet = ~isempty(obj.iMov.iR);
             
             % -------------------- %
             % --- FIGURE SETUP --- %
@@ -118,8 +125,8 @@ classdef GridDetect < matlab.mixin.SetGet
                             'UserData',i,'ForegroundColor','k');
             end                                       
                                        
-            % disables the panel
-            setPanelProps(obj.hButC{2},'off');
+            % disables the continue button
+            setObjEnable(obj.hButC{2},'off');
             
             % --------------------------------------- %
             % --- DETECTION PARAMETER PANEL SETUP --- %
@@ -185,7 +192,7 @@ classdef GridDetect < matlab.mixin.SetGet
                     'HorizontalAlignment','left');
                      
             % disables the panel (if the regions are not set)
-            setPanelProps(obj.hPanelD,~isempty(obj.hFigM.iMov.iR));
+            setPanelProps(obj.hPanelD,obj.isSet);
                 
             % ----------------------------- %
             % --- PARAMETER PANEL SETUP --- %
@@ -228,13 +235,20 @@ classdef GridDetect < matlab.mixin.SetGet
             % --- HOUSE-KEEPING --- %
             % --------------------- %                  
                 
+            % updates the move button enabled properties
+            obj.updateMoveEnableProps();            
+            
             % makes the gui visible
             setObjVisibility(obj.hFig,1);
-            obj.useFilter(obj.hCheckF,[])
+            obj.useFilter(obj.hCheckF,[])                        
             
-%             % sets up the sub-regions
-%             setupRegionFcn = obj.hFigM.setupSubRegions;
-%             setupRegionFcn(guidata(obj.hFigM),obj.hFigM.iMov,true,true);              
+            % sets up the sub-regions
+            setupRegionFcn = obj.hFigM.setupSubRegions;
+            setupRegionFcn(guidata(obj.hFigM),obj.iMov,1,1);
+            
+            % turns on the region highlight
+            obj.hSelS = findobj(obj.hAx,'tag','hInner','UserData',1);
+            if obj.isSet; obj.setRegionHighlight('on'); end
             
             % resumes the figure
             uiwait(obj.hFig);                
@@ -299,10 +313,11 @@ classdef GridDetect < matlab.mixin.SetGet
             % determines if the new value is valid
             if chkEditValue(nwVal,nwLim,1)
                 % if so, update the selection value
-                obj.iSelS(iType) = nwVal;
+                obj.iSelS(iType) = nwVal;                 
                 
-                % updates the selection regions?
-                % updates the move up/down buttons?
+                % updates the move button enabled properties
+                obj.updateRegionHighlight();
+                obj.updateMoveEnableProps();
                 
             else
                 % otherwise, reset to the previous valid value
@@ -312,19 +327,40 @@ classdef GridDetect < matlab.mixin.SetGet
         end
         
         % --- region move up/down button callback function
-        function moveButton(obj,hObj,evnt)
-                        
-            % updates the selection regions?
-            % updates the move up/down buttons?         
+        function moveButton(obj,hObj,~)
             
-        end
+            % initialisations
+            iMov0 = obj.iMov;
+            iApp = obj.getRegionIndex();            
+            
+            % calculates the change in the vertical location
+            yDir = 3 - 2*get(hObj,'UserData');
+            dY = roundP(median(cellfun(@length,iMov0.iRT{iApp})));
+            obj.iMov.pos{iApp}(2) = obj.iMov.pos{iApp}(2) + yDir*dY;
+            
+            % updates the region grid position vector
+            hInner = findall(obj.hAx,'tag','hInner','UserData',iApp);
+            hAPI = iptgetapi(hInner);
+            hAPI.setPosition(obj.iMov.pos{iApp});
+            
+            % updates the ROI coordinates
+            obj.hFigM.roiCallback(obj.iMov.pos{iApp},iApp);
+            
+            % updates the move button enabled properties
+            setObjEnable(obj.hButC{2},'on')
+            obj.updateMoveEnableProps();
+            
+        end        
         
         % --- automatic detection callback function
-        function detectButton(obj,hObj,evnt)
+        function detectButton(obj,hObj,~)
             
             % resumes the figure
             obj.iFlag = get(hObj,'UserData');
-            setObjVisibility(obj.hFig,'off');                                  
+            setObjVisibility(obj.hFig,'off');  
+            
+            % turns off the selection
+            obj.setRegionHighlight('off');            
             
             % disables the button            
             setObjEnable(hObj,false);        
@@ -333,7 +369,7 @@ classdef GridDetect < matlab.mixin.SetGet
         end        
             
         % --- continue callback function
-        function contButton(obj,hObj,evnt)
+        function contButton(obj,hObj,~)
             
             % flag that the calculations were successful
             obj.iFlag = get(hObj,'UserData');
@@ -343,7 +379,7 @@ classdef GridDetect < matlab.mixin.SetGet
         end
             
         % --- cancel callback function
-        function cancelButton(obj,hObj,evnt)
+        function cancelButton(obj,hObj,~)
             
             % flag that the calculations were unsuccessful
             obj.iFlag = get(hObj,'UserData');
@@ -355,9 +391,14 @@ classdef GridDetect < matlab.mixin.SetGet
         % --- performs the post detection check
         function checkDetectedSoln(obj,iMovNw,trkObjNw)
             
+            % creates a progress loadbar
+            h = ProgressLoadbar('Setting Final Region Configuration'); 
+            pause(0.05);
+            
             % sets the incoming fields
+            obj.isSet = true;
             [obj.trkObj,obj.iMov] = deal(trkObjNw,iMovNw);
-            tPer = nanmedian(trkObjNw.tPerS);
+            tPer = roundP(nanmedian(trkObjNw.tPerS));
             
             % enables the detection parameter panel and continue button
             setPanelProps(obj.hPanelD,'on');
@@ -368,12 +409,22 @@ classdef GridDetect < matlab.mixin.SetGet
             setupRegionFcn = obj.hFigM.setupSubRegions;
             setupRegionFcn(guidata(obj.hFigM),iMovNw,true,true);     
             
-            % removes the hit-test of the inner regions
-            hAx = findall(obj.hFigM,'type','axes');
-            hInner = findall(hAx,'tag','hInner');
+            % removes the hit-test of the inner regions            
+            hInner = findall(obj.hAx,'tag','hInner');
             if ~isempty(hInner)
                 arrayfun(@(x)(set(findall(x),'HitTest','off')),hInner)
             end
+            
+            % finds the new inner region object and turns on the highlight
+            iApp = obj.getRegionIndex();
+            obj.hSelS = findobj(obj.hAx,'tag','hInner','UserData',iApp);
+            obj.setRegionHighlight('on');  
+            
+            % updates the move button enabled properties
+            obj.updateMoveEnableProps();
+            
+            % deletes the loadbar
+            delete(h);
             
             % pauses the process
             setObjVisibility(obj.hFig,'on');
@@ -383,7 +434,65 @@ classdef GridDetect < matlab.mixin.SetGet
         
         % ----------------------- %
         % --- OTHER FUNCTIONS --- %
-        % ----------------------- %
+        % ----------------------- % 
+        
+        % --- updates the region highlight
+        function updateRegionHighlight(obj)
+            
+            % retrieves the index of the region
+            iApp = obj.getRegionIndex();
+            
+            % if there is an existing selected region, then disable it
+            if ~isempty(obj.hSelS)
+                obj.setRegionHighlight('off');
+            end
+            
+            % finds the new inner region object and turns on the highlight
+            obj.hSelS = findobj(obj.hAx,'tag','hInner','UserData',iApp);
+            obj.setRegionHighlight('on');
+            
+        end        
+        
+        % --- updates the region highlight
+        function setRegionHighlight(obj,state)
+            
+            % if there is no selection then exit
+            if isempty(obj.hSelS); return; end
+            
+            % sets the highlight size
+            switch state
+                case 'on'
+                    lSize = 3;
+                case 'off'
+                    lSize = 1;
+            end
+            
+            % updates the linewidth
+            hLine = findall(obj.hSelS,'tag','wing line');
+            set(hLine,'LineWidth',lSize)
+            
+        end
+        
+        % updates the move button enabled properties
+        function updateMoveEnableProps(obj) 
+            
+            % if the regions are not set, then exit
+            if ~obj.isSet; return; end
+            
+            % retrieves the current region position
+            iApp = obj.getRegionIndex;
+            pos = obj.iMov.pos{iApp};
+            posO = obj.iMov.posO{iApp};
+            
+            % calculates the offset
+            posO(1:2) = max(0,posO(1:2));
+            dY = roundP(median(cellfun(@length,obj.iMov.iRT{iApp})));
+            
+            % updates the button enabled properties
+            setObjEnable(obj.hButD{1},sum(posO([2,4]))-sum(pos([2,4]))>dY);
+            setObjEnable(obj.hButD{2},(pos(2)-posO(2))>dY);            
+            
+        end        
         
         % --- gets the background filter parameter filter
         function pVal = getFiltPara(obj,pFld)
@@ -402,6 +511,9 @@ classdef GridDetect < matlab.mixin.SetGet
         
         % --- function that closes the gui 
         function closeGUI(obj)
+            
+            % turns off the selection
+            obj.setRegionHighlight('off');
             
             % deletes the gui
             obj.updateMainImage(1);
@@ -428,6 +540,13 @@ classdef GridDetect < matlab.mixin.SetGet
             set(obj.hImg,'CData',ImgNw);
             
         end
+        
+        % --- retrieves the current region index
+        function iApp = getRegionIndex(obj)
+            
+            iApp = (obj.iSelS(1)-1)*obj.iMov.pInfo.nCol + obj.iSelS(2);
+            
+        end        
         
     end
     
