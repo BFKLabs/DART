@@ -2,7 +2,6 @@ function posO = getCurrentRegionOutlines(iMov)
 
 % memory allocation
 pG = iMov.posG;
-frmSz = getCurrentImageDim();
 [nRow,nCol] = deal(iMov.pInfo.nRow,iMov.pInfo.nCol);
 H = zeros(nRow,nCol);
 
@@ -32,9 +31,18 @@ iHL = cell2mat(arrayfun(@(x)(get(x,'UserData')),hHL,'un',0));
 
 % sets the region heights
 for i = 1:nCol
-    ii = iHL(:,2) == i;
-    yL0 = [pG(2),cellfun(@(x)(x(1,2)),hPos(ii))',sum(pG([2,4]))];
-    H(:,i) = diff(yL0);
+    % sets the coordinates of the horizontal markers
+    if isempty(iHL)
+        % if there are no markers, then use an empty array
+        yHL = [];
+    else
+        % otherwise, retrieve the coordinates of these markers
+        ii = iHL(:,2) == i;
+        yHL = cellfun(@(x)(x(1,2)),hPos(ii))';
+    end
+    
+    % sets the height arrays
+    H(:,i) = diff([pG(2),yHL,sum(pG([2,4]))]);
 end
 
 % calculates the outline coordinates of each regions
@@ -49,7 +57,6 @@ end
 
 % sets the final outline positional vector array
 posO = arr2vec(posO')';
-a = 1;
 
 % --- retrieves the line positions
 function lPos = getLinePos(hLine)

@@ -25,6 +25,7 @@ classdef SingleTrackInit < SingleTrack
         yTube
         xTube
         posO
+        nTubeBest
         
         % other important fields
         i0        
@@ -50,7 +51,7 @@ classdef SingleTrackInit < SingleTrack
         % parameters
         pW = 0.5;
         nFilt = 50;
-        usePTol = 0.5;
+        usePTol = 0.2;
         pTolShape = 0.1; 
         pTolStat = 0.35;
         pTile = 90;
@@ -84,6 +85,7 @@ classdef SingleTrackInit < SingleTrack
             nFrm = cellfun(@length,obj.Img);
             wStr0 = {'Checking Phase Image Translation';...
                      'Calculating Image Translation'};
+            obj.nTubeBest = obj.nTube;
             
             % phase dependent object memory allocation
             A = cell(nPh,1);           
@@ -515,7 +517,7 @@ classdef SingleTrackInit < SingleTrack
             
             % sets up the residual image stacks for each region             
             IRL = cellfun(@(x,y)(cellfun...
-                        (@(z)(z(x,y)),IR,'un',0)),obj.iRG,obj.iCG,'un',0);
+                        (@(z)(z(x,y)),IR,'un',0)),obj.iRG,obj.iCG,'un',0);            
             
             % attempts to calculate the coordinates of the moving objects            
             for iApp = 1:nApp
@@ -604,7 +606,7 @@ classdef SingleTrackInit < SingleTrack
             obj.hProg.Update(2+obj.wOfsL,wStrNw,0.75); 
             obj.hProg.Update(3+obj.wOfsL,'Analysing Sub-Region',0);
             
-            % memory allocation          
+            % memory allocation
             fP0 = obj.fPos0{1};
             [nApp,nFrm] = size(fP0);  
             nTube = getSRCount(obj.iMov)';
@@ -636,7 +638,7 @@ classdef SingleTrackInit < SingleTrack
                 % calculates the image stack maximum
                 obj.ImaxS{iApp} = max(calcImageStackFcn(IxcL,'max'),[],2);
                 
-                % calculates the stationary object tolerances
+                % calculates the stationary object tolerances                
                 Imx = nanmax(obj.ImaxS{iApp});
                 Imn = nanmin(obj.ImaxS{iApp});
                 obj.pTolS(iApp) = obj.pW*(Imx+Imn);                               
@@ -716,9 +718,12 @@ classdef SingleTrackInit < SingleTrack
                 [Qmn,Qsd] = deal(mean(QTot),std(QTot));
                 B = normcdf(QTot,Qmn,Qsd) > obj.QTotMin;
                 
-                % calculates the x-extent of the tube regions                
-                fPTot = cell2mat(obj.fPos{1}(iApp,:)');                
-                obj.xTube{iApp} = [min(fPTot(B,1)),max(fPTot(B,1))] + xDel;            
+                % calculates the x-extent of the tube regions
+                W = size(IL{1},2);
+                fPTot = cell2mat(obj.fPos{1}(iApp,:)');
+                obj.xTube{iApp} = [max(1,min(fPTot(B,1)) + xDel(1)),...
+                                   min(W,max(fPTot(B,1)) + xDel(2))];                                   
+%                 obj.xTube{iApp} = [min(fPTot(B,1)),max(fPTot(B,1))] + xDel;            
             end
             
         end        
@@ -726,30 +731,36 @@ classdef SingleTrackInit < SingleTrack
         % --- optimises the sub-region placement positions
         function yTube = optSubRegionPos(obj,iApp)
            
-            % field retrieval
-            [tPer,Imax] = deal(obj.tPerS(iApp),smooth(obj.ImaxS{iApp}));
-            xi0 = roundP(1:tPer:((obj.nTube(iApp)+1)*tPer)); 
-            xi = (1:length(Imax))';
+            % initialisations
+            [tPer,nT] = deal(obj.tPerS(iApp),obj.nTube(iApp));  
+            ImaxR0 = normImg(max(0,obj.ImaxR{iApp}));
+            QT = smooth(sqrt(ImaxR0.^2 + obj.ImaxS{iApp}.^2));
             
-            % memory allocation
-            N = length(Imax) - xi0(end);
-            Q = zeros(N,1);
-            QT = smooth(obj.ImaxR{iApp}).*smooth(obj.ImaxS{iApp});
+            % determines the signal peaks (remove peaks at the extremes)
+            [yPk,tPk] = findpeaks(QT,'MinPeakDistance',floor(0.75*tPer));
+            ii = (tPk > tPer/4) & (tPk < (length(ImaxR0)-tPer/4));
+            [tPk,yPk] = deal(tPk(ii),yPk(ii));
             
-            % calculates the grid offset object function values
-            for i = 1:N
-                % sets up the distance mask
-                xiN = xi0 + (i-1);
-                D = bwdist(setGroup(xiN,size(obj.ImaxS{iApp})));
-                D((xi < xiN(1)) | (xi > xiN(end))) = 0;
+            % determines the peaks of the objective function signal            
+            if length(tPk) > nT
+                % if there are more peaks than sub-regions, then determine
+                % which grouping is most likely
+                [dyOfs,xiP] = deal(0:(length(tPk)-nT),(1:nT)');
+                QTs = arrayfun(@(dy)(sum(yPk(xiP+dy))),dyOfs(:));                
                 
-                % calculates the objective function value
-                Q(i) = sum(D.*QT);
+                % reduces the peak count to make the sub-region count
+                dyOpt = dyOfs(argMax(QTs));
+                tPk = tPk(xiP+dyOpt);
+                
+            elseif length(tPk) < nT
+                % if there are more sub-regions than peaks, then reset the
+                % peak count but flag that the region could be incorrect
+                [obj.nTubeBest(iApp),nT] = deal(length(tPk));
             end
-            
-            % calculates the tube vertical offset locations
-            iMx = argMax(Q);
-            yTube = (iMx-1) + xi0(:);
+
+            % sets the final tube region vertical coordinates
+            xi0 = roundP(1:tPer:((nT+1)*tPer));
+            yTube = (tPk(1)-roundP(tPer/2))+xi0';
             
         end
         
@@ -1052,6 +1063,10 @@ classdef SingleTrackInit < SingleTrack
                 end
             end
             
+            % removes the image median
+%             IR = cellfun(@(x,y)(max(0,x-nanmedian(x(:)))),IR,'un',0);
+            IR = cellfun(@(x,y)(max(0,x)),IR,'un',0);
+            
         end        
         
         % --- tracks the moving blobs from the residual image stack, IR
@@ -1158,6 +1173,7 @@ classdef SingleTrackInit < SingleTrack
             
             % parameters and memory allocation
             dN = 20;
+            usePTolMn = 0.1;
             fP = obj.fPosL{iPh};
             Isub = cell(size(fP));
             [nApp,nFrm] = size(fP);
@@ -1179,12 +1195,12 @@ classdef SingleTrackInit < SingleTrack
             
             % calculates the cdf probabilities for the point residuals
             [obj.pQ0{iPh},pQ] = deal(cell2mat(cellfun(@(x)...
-                                        (max(x/Zmx,[],2)),pP,'un',0)'));
+                                    (nanmedian(x/Zmx,2)),pP,'un',0)'));
             obj.useP = pQ > obj.usePTol;    
             
             % if the number of residual points is low, and there is
             % previous template data, then use that instead
-            if mean(obj.useP(:)) < 0.1
+            if mean(obj.useP(:)) < usePTolMn
                 resetPara = true;
                 if isfield(obj.iMov,'tPara') && ~isempty(obj.iMov.tPara)
                     [obj.tPara{iPh},resetPara] = deal(obj.iMov.tPara,0);                    
@@ -1683,9 +1699,9 @@ classdef SingleTrackInit < SingleTrack
                     
                     % updates the status flags
                     obj.iMov.flyok(iTube,iApp) = false;
-                    for j = 1:length(obj.iMov.StatusF)
-                        obj.iMov.StatusF{j}(iTube,iApp) = 3;
-                    end
+%                     for j = 1:length(obj.iMov.StatusF)
+%                         obj.iMov.StatusF{j}(iTube,iApp) = 3;
+%                     end
                     
                     % if all sub-regions are rejected, then reject the
                     % whole region 

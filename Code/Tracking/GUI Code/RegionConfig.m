@@ -561,6 +561,7 @@ uistack(hFig,'top')
 function menuDetGrid_Callback(hObject, eventdata, handles)
 
 % field retrieval
+isUpdate = false;
 hFig = handles.output;
 iMov0 = get(hFig,'iMov');
 
@@ -594,24 +595,25 @@ while cont
     switch gridObj.iFlag
         case 2
             % case is the user continued
-            cont = false;
+            [cont,isUpdate] = deal(false,true);
             
         case 3
             % case is the user cancelled
-            setupSubRegions(handles,hFig.iMov,true);
-            return
+            break
     end
 end
-    
-% set the final sub-region information into the gui
-set(hFig,'iMov',gridObj.iMov);
 
 % creates a progress loadbar
 h = ProgressLoadbar('Setting Final Region Configuration'); 
 pause(0.05);
 
+% updates the sub-regions (if updating)
+if isUpdate
+    setupSubRegions(handles,gridObj.iMov,true);
+end
+
 % sets up the sub-regions for the final time (delete loadbar)
-setupSubRegions(handles,hFig.iMov,true);
+postAutoDetectUpdate(handles,iMov0,gridObj.iMov,isUpdate)
 delete(h)
 
 % ----------------------------------------- %
@@ -1572,15 +1574,17 @@ delete(findobj(hAx,'UserData','hTube'));
 function rPos = setupMainFrameRect(handles,iMov)
 
 % retrieves the GUI objects
+isInit = nargin == 1;
 hGUI = get(handles.output,'hGUI');
 hAx = hGUI.imgAxes;
+szFrm = getCurrentImageDim;
 
 % ------------------------------------ %
 % --- OUTER RECTANGLE OBJECT SETUP --- %
 % ------------------------------------ %
 
 % updates the position of the outside rectangle 
-if nargin == 1
+if isInit
     hROI = imrect(hAx);    
 else
     hROI = imrect(hAx,iMov.posG);
@@ -1593,7 +1597,17 @@ setObjVisibility(findobj(hROI,'tag','bottom line'),'off');
 % if moveable, then set the position callback function
 api = iptgetapi(hROI);
 api.setColor('r');
-rPos = api.getPosition();
+rPos0 = deal(api.getPosition());
+
+% determines if the outer region is feasible
+xL = min(max(1,[rPos0(1),sum(rPos0([1,3]))]),(szFrm(2)-1));
+yL = min(max(1,[rPos0(2),sum(rPos0([2,4]))]),(szFrm(1)-1));
+rPos = [xL(1),yL(1),[(xL(2)-xL(1)),(yL(2)-yL(1))]+1];
+
+% resets the region if there is a change in size
+if ~isequal(rPos,rPos0)
+    api.setPosition(rPos);
+end
 
 % force the imrect object to be fixed
 setResizable(hROI,false);

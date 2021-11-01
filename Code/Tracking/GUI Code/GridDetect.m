@@ -85,6 +85,10 @@ classdef GridDetect < matlab.mixin.SetGet
             obj.iMov = obj.hFigM.iMov;
             obj.isSet = ~isempty(obj.iMov.iR);
             
+            % deletes any existing grid detection guis
+            hFigPr = findall(0,'tag','figGridDetect');
+            if ~isempty(hFigPr); delete(hFigPr); end
+            
             % -------------------- %
             % --- FIGURE SETUP --- %
             % -------------------- %
@@ -94,7 +98,7 @@ classdef GridDetect < matlab.mixin.SetGet
             fPos = [200*[1,1],obj.widPanel+2*obj.dX,hghtFig];
             
             % creates the objects
-            obj.hFig = figure('Position',fPos,'tag','figSplitSubRegion',...
+            obj.hFig = figure('Position',fPos,'tag','figGridDetect',...
                               'MenuBar','None','Toolbar','None',...
                               'Name','1D Grid Detection','Resize','off',...
                               'NumberTitle','off','Visible','off');                        

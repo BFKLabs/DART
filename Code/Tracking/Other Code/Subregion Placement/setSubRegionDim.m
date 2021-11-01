@@ -13,11 +13,11 @@ iMov.isSet = true;
 is2DSetup = iMov.is2D;
 frmSz = getCurrentImageDim(hGUI.figFlyTrack);
         
-% retrieves the 
+% retrieves the indices of the region objects
 hSubW = findobj(hGUI.imgAxes,'tag','hInner');
 iSubW = cell2mat(arrayfun(@(x)(get(x,'UserData')),hSubW,'un',0));
 
-% 
+% creates the sub-regions based on the experiment assay type
 if is2DSetup
     % --------------------------- %
     % --- 2D EXPERIMENT SETUP --- %
@@ -114,4 +114,3 @@ else
                     floor(x(2)))),num2cell(iMov.yTube{j},2),'un',0);            
     end    
 end
-    

@@ -1731,7 +1731,7 @@ classdef CalcBG < handle
 
                 % if the stats gui is open, then close it
                 if ~isempty(obj.statsObj)
-                    obj.menuShowStats(hgui.menuShowStats,[]);
+                    obj.menuShowStats(obj.hGUI.menuShowStats,[]);
                     setObjEnable(obj.menuShowStats,'off');
                 end                
                 

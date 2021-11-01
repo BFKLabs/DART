@@ -3982,10 +3982,9 @@ else
     end
     
     % sets the facecolour and marker colour, type and size
-    fAlpha = 0.1*(1 + (Status~=1));    
-    pMark = eval(sprintf('mPara.%s.pMark',cStr{Status+1}));
-    mSz = eval(sprintf('mPara.%s.mSz',cStr{Status+1}));  
-    pCol = eval(sprintf('mPara.%s.pCol',cStr{Status+1}));
+    fAlpha = 0.1*(1 + (Status~=1));   
+    mParaFld = getStructField(mPara,cStr{1+Status});
+    [pMark,mSz,pCol] = deal(mParaFld.pMark,mParaFld.mSz,mParaFld.pCol);
 end
 
 % --- calculates the coordinates of the axes with respect to the global

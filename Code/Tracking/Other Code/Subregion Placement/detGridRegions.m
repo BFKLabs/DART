@@ -81,22 +81,27 @@ for i = 1:length(iMov.pos)
     
     % sets the region outlne coordinate vector
     pOfs = [trkObj.iCG{i}(1),trkObj.iRG{i}(1)]-1;
-    iMov.pos{i} = [pOfs+[xT{i}(1),yT{i}(1)]-1,W,H];
+    iMov.pos{i} = [pOfs+[xT{i}(1),yT{i}(1)],W,H];
     
     % tube-region x/y coordinate arrays
     iMov.xTube{i} = dxT;
     iMov.yTube{i} = [dyT(1:end-1),dyT(2:end)];
     
-    % sets the region row/column indices    
-    iMov.iR{i} = max(1,ceil(yT{i}(1))):min(frmSz(1),floor(yT{i}(end)));
-    iMov.iC{i} = max(1,ceil(xT{i}(1))):min(frmSz(2),floor(xT{i}(end)));
+    % sets the region row/column indices   
+    [x0,y0] = deal(iMov.pos{i}(1),iMov.pos{i}(2));
+    iMov.iR{i} = max(1,ceil(y0+dyT(1))):min(frmSz(1),floor(y0+dyT(end)));
+    iMov.iC{i} = max(1,ceil(x0+dxT(1))):min(frmSz(1),floor(x0+dxT(end)));
     
     % sets the sub-region row/column indices
     iMov.iCT{i} = 1:length(iMov.iC{i});
-    iMov.iRT{i} = cellfun(@(x)(max(1,ceil(x(1))):min(iMov.iR{i}(end),...
+    iMov.iRT{i} = cellfun(@(x)(max(1,ceil(x(1))):min(length(iMov.iR{i}),...
                 floor(x(2)))),num2cell(iMov.yTube{i},2),'un',0);     
 end
     
+% re-initialises the status flags
+nTube = getSRCountVec(iMov)';
+iMov.Status = arrayfun(@(x)(NaN(x,1)),arr2vec(nTube),'un',0);
+
 % ------------------------------- %
 % --- HOUSE-KEEPING EXERCISES --- %
 % ------------------------------- %
