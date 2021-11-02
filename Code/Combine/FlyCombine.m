@@ -1,5 +1,5 @@
 function varargout = FlyCombine(varargin)
-% Last Modified by GUIDE v2.5 19-Jul-2021 12:05:20
+% Last Modified by GUIDE v2.5 02-Nov-2021 21:47:05
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -473,6 +473,11 @@ updateExptInfoFields(handles,sInfo)
 updatePlotObjects(handles,sInfo)
 updateGroupInfo(handles,sInfo)
 
+% resets the marker
+hPanelF = handles.panelFinishTime;
+hPopup = findall(hPanelF,'Style','popupmenu','UserData',1);
+popupTimeVal(hPopup, [], handles)
+
 % makes the GUI visible
 updateFlag = 0;
 setObjVisibility(hGUIInfo.hFig,'on');
@@ -689,6 +694,7 @@ setObjVisibility(handles.menuOrientAngle,isfield(sInfo.snTot,'Phi'))
 % enables all the expt information panels
 setPanelProps(handles.panelSolnData,'on');
 setPanelProps(handles.panelExptInfo,'on');
+setPanelProps(handles.panelExptDur,'on');
 
 % --- updates the apparatus name table panel --- %
 function updateGroupInfo(handles,sInfo)
@@ -722,12 +728,13 @@ else
 end
 
 % sets the initial time location properties
-initTimeLocationProps(handles,handles.panelStartTime,sInfo.expInfo.T0vec)
-initTimeLocationProps(handles,handles.panelFinishTime,sInfo.expInfo.Tfvec)
+initTimeLocationProps(handles,handles.panelStartTime,sInfo.iPara.Ts)
+initTimeLocationProps(handles,handles.panelFinishTime,sInfo.iPara.Tf)
+initExptDurProps(handles,handles.panelExptDur,sInfo);
 
 % retrieves the height of the popup object
 pApp = get(handles.popupAppPlot,'position'); 
-pPos = get(handles.panelFinishTime,'position');
+pPosD = get(handles.panelExptDur,'position');
 pPosT = get(handles.panelAppInfo,'position');
 
 % updates the group name table information
@@ -747,7 +754,7 @@ nAppF = min(size(Data,1),nAppMx);
 
 % sets the final table/panel position vectors
 pAppF = [X0 0 (tPos(3)+2*X0) (tPos(4)+4*Y0+Hpop)];
-pAppF(2) = pPos(2) - (pAppF(4) + Y0);
+pAppF(2) = pPosD(2) - (pAppF(4) + Y0);
 set(handles.panelAppInfo,'Position',pAppF)
 
 % moves the apparatus text/popup objects
@@ -757,7 +764,6 @@ resetObjPos(handles.popupAppPlot,'bottom',2*Y0+tPos(4)-3)
 
 % resets all the panel bottom locations
 dH = (pPosT(4)-pAppF(4));
-
 hPanel = [findobj(handles.panelOuter,'type','uipanel');...
           findobj(handles.panelOuter,'type','uibuttongroup')];
 resetObjPos(handles.panelOuter,'height',-dH,1)
@@ -769,7 +775,7 @@ for i = 1:length(hPanel)
     end
 end
 
-%
+% resets the dimensions of the objects
 resetObjPos(hTabGrp,'Height',-dH,1)
 resetObjPos(handles.panelOuter,'Bottom',-dH,1);
 resetObjPos(handles.panelExptOuter,'Height',-dH,1);
@@ -1018,7 +1024,11 @@ switch iType
     case (4) % case is the hours was selected
         % recalculates the hour
         hAMPM = findobj(hPanel,'UserData',1,'Style','PopupMenu');
-        T0(iType) = 12*(get(hAMPM,'Value')-1) + iSel;
+        if iSel == 12
+            T0(iType) = 12*(get(hAMPM,'Value')-1);
+        else
+            T0(iType) = 12*(get(hAMPM,'Value')-1) + iSel;
+        end
                 
     case (5) % case is the minutes was selected
         % updates the value
@@ -1027,7 +1037,14 @@ switch iType
     otherwise % case is the AM/PM popup
         % resets the hour value based on the AM/PM popup                
         hHour = findobj(hPanel,'UserData',4,'Style','PopupMenu');
-        T0(4) = get(hHour,'Value') + 12*(iSel-1);
+        hVal = get(hHour,'Value');
+        
+        % updates the hour value
+        if hVal == 12
+            T0(4) = 12*(iSel-1);
+        else
+            T0(4) = hVal + 12*(iSel-1);
+        end
 end
 
 % resets the panel marker
@@ -1078,6 +1095,98 @@ else
         resetLimitMarker(handles.axesImg,dTS0*[1 1]*Tmlt,'Finish')
     end
 end
+
+% --- Executes on editing the experiment duration editboxes
+function editExptDur(hObject, eventdata, handles)
+
+% retrieves the currently selected solution file data
+hFig = handles.figFlyCombine;
+hPanelF = handles.panelFinishTime;
+iType = get(hObject,'UserData');
+sInfo = getCurrentExptInfo(hFig);
+iPara = sInfo.iPara;
+
+% sets the parameter limits
+switch iType
+    case {1,2}
+        % case is the minutes/seconds
+        nwLim = [0,60];
+   
+    otherwise
+        % case is the days/hours
+        nwLim = [0,inf];
+end
+
+% determines if the new value is valid
+nwVal = str2double(get(hObject,'String'));
+[ok,eStr] = chkEditValue(nwVal,nwLim,1);
+
+% determines if new value is valid
+if ok
+    % determines if the new experiment duration is valid
+    iParaNw = updateFinalTimeVec(handles,iPara);
+    if chkExptDur(iParaNw)
+        % updates the data struct with the new value and exits
+        sInfo.iPara = iParaNw;
+        updateCurrentExptInfo(hFig,sInfo)
+        
+        % updates the final experiment time and plot markers
+        resetPopupFields(hPanelF,sInfo.iPara.Tf)        
+        hPopup = findall(hPanelF,'Style','popupmenu','UserData',1);
+        popupTimeVal(hPopup, [], handles)
+        
+        % exits the function
+        return
+    else
+        % otherwise, create the error string
+        maxFeasDur = vec2str(getMaxExptDur(sInfo));
+        currExptDur = vec2str(getCurrentExptDur(iParaNw));
+        eStr = sprintf(['Error! The entered experiment duration is ',...
+                        'not feasible:\n\n %s Entered Duration = %s',...
+                        '\n %s Feasible Duration = %s'],char(8594),...
+                        currExptDur,char(8594),maxFeasDur);
+    end
+end
+
+% outputs the error message to screen
+waitfor(msgbox(eStr,'Invalid Experiment Duration','modal'))
+
+% otherwise, reset to the previous value
+tExpt0 = getCurrentExptDur(sInfo.iPara);
+set(hObject,'string',num2str(tExpt0(iType)));
+
+% --- determines if the current experiment configuration is feasible
+function isFeas = chkExptDur(iPara)
+
+isFeas = etime(iPara.Tf0,iPara.Tf) >= 0;
+
+% --- updates the final time vector with the current information
+function iPara = updateFinalTimeVec(handles,iPara)
+
+% retrieves the current expt duration (as displayed)
+tExpt = getCurrentEditDur(handles);
+
+% updates the experiment finish time vector
+Ts = datenum(iPara.Ts);
+iPara.Tf = datevec(addtodate(Ts,vec2sec(tExpt),'s'));
+
+% --- retrieves the current experiment duration (as displayed)
+function tExpt = getCurrentEditDur(handles)
+
+% retrieves the object handles
+tExpt = zeros(1,4);
+hPanelD = handles.panelExptDur;
+
+% retrieves the values from the time editboxes
+for i = 1:length(tExpt)
+    hEdit = findall(hPanelD,'Style','Edit','UserData',i);
+    tExpt(i) = str2double(get(hEdit,'String'));
+end
+
+% --- retrieves the current maximum experiment duration (in vector form)
+function tExptMax = getMaxExptDur(sInfo)
+
+tExptMax = sec2vec(sInfo.tDur-etime(sInfo.iPara.Ts,sInfo.iPara.Ts0));
 
 % --- start/finish limit marker callback function --- %
 function moveLimitMarker(pNew,handles,Type,varargin)
@@ -1175,8 +1284,7 @@ switch Type
         % re-calculates the finish marker lower limit
         TvecNw = sInfo.iPara.Tf; 
         TvecNw(5) = TvecNw(5) - 1;
-        Ts0 = sInfo.snTot.iExpt.Timing.T0;
-        
+        Ts0 = sInfo.snTot.iExpt.Timing.T0;        
         xLim0 = calcTimeDifference(sInfo.iPara.Ts0,Ts0)*Tmlt;
         xLimNew = calcTimeDifference(TvecNw,sInfo.iPara.Ts0)*Tmlt + xLim0;           
         
@@ -1185,10 +1293,21 @@ switch Type
         resetPopupFields(handles.panelFinishTime,sInfo.iPara.Tf)
 end
 
-% updates the experiment durations
-[~,~,tStr] = calcTimeDifference(sInfo.iPara.Tf,sInfo.iPara.Ts);
-textDur = sprintf('%s Days, %s Hours, %s Mins',tStr{1},tStr{2},tStr{3});
-set(handles.textSolnDur,'string',textDur)
+% updates the experiment duration
+resetExptDurFields(handles.panelExptDur,sInfo);
+
+% --- resets the experiment duration fields
+function resetExptDurFields(hPanelD,sInfo)
+
+% calculates the experiment duration
+tExpt = getCurrentExptDur(sInfo.iPara);
+
+% sets the properties for each of the editboxes
+for i = 1:length(tExpt)       
+    % sets the callback function
+    hEdit = findall(hPanelD,'UserData',i,'Style','Edit');
+    set(hEdit,'String',num2str(tExpt(i))) 
+end
 
 % --- resets the popup field values --- %
 function resetPopupFields(hPanel,Tvec)
@@ -1484,6 +1603,34 @@ setObjEnable(handles.menuSaveExpt,'off')
 setObjEnable(handles.menuClearData,'off')
 
 % --- initialises the experimental start object properties --- %
+function initExptDurProps(handles,hPanel,sInfo)
+
+% retrieves the current experiment information (if not provided)
+if ~exist('sInfo','var')
+    sInfo = getCurrentExptInfo(handles.figFlyCombine);
+end
+
+% sets the enabled flags for each time field
+tExptFull = sec2vec(sInfo.tDur);
+isOn = true(size(tExptFull));
+for i = 1:length(tExptFull)
+    if tExptFull(i) == 0
+        isOn(i) = false;
+    else
+        break
+    end
+end
+
+% sets the properties for each of the editboxes
+tExpt = getCurrentExptDur(sInfo.iPara);
+for i = 1:length(tExpt)
+    % sets the callback function
+    hEdit = findall(hPanel,'UserData',i,'Style','Edit');
+    set(hEdit,'Callback',{@editExptDur,handles},'String',num2str(tExpt(i))) 
+    setObjEnable(hEdit,isOn(i))
+end
+
+% --- initialises the experimental start object properties --- %
 function initTimeLocationProps(handles,hPanel,Tvec)
 
 % initialises the start month
@@ -1514,7 +1661,7 @@ set(hMin,'String',minStr,'Value',Tvec(5)+1);
 
 % initalises the AM/PM string
 hAMPM = findobj(hPanel,'UserData',1,'Style','popup');                
-set(hAMPM,'String',[{'AM'};{'PM'}],'Value',(Tvec(4)>12)+1,'UserData',1);
+set(hAMPM,'String',[{'AM'};{'PM'}],'Value',(Tvec(4)>=12)+1,'UserData',1);
                        
 % initalises all the start time popup object properties
 for i = 1:5
@@ -1834,11 +1981,13 @@ function resetFigSize(h,fPos)
 showStim = strcmp(get(h.panelStim,'Visible'),'on');
 pPosO = get(h.panelExptOuter,'position');
 
-%
+% sets the panel stimuli height (depending on whether being displayed)
 if showStim
+    % stimuli panel is being displayed
     pPosS = get(h.panelStim,'position');
     axHghtS = pPosS(4);
 else
+    % stimuli panel is not being displayed
     axHghtS = 0;
 end
 
@@ -2252,3 +2401,8 @@ else
     % case is a 1D experiment
     nRowMx = max(numel(iMov.pInfo.iGrp),size(iMov.flyok,1));
 end
+
+% --- retrieves the current experiment duration
+function tExpt = getCurrentExptDur(iPara)
+
+tExpt = sec2vec(etime(iPara.Tf,iPara.Ts));

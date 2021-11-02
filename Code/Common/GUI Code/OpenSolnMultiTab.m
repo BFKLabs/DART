@@ -927,7 +927,6 @@ classdef OpenSolnMultiTab < dynamicprops & handle
             % other intialisations  
             obj.nHdr = length(hdrStr);
             if obj.nExp > obj.nExpMax
-                % other intialisations
                 cWid = (cWid - 20/length(cWid));
             end              
                   
@@ -936,7 +935,8 @@ classdef OpenSolnMultiTab < dynamicprops & handle
 
             % creates the java table object
             jScroll = findjobj(hTableEx);
-            [jScroll, hContainer] = createJavaComponent(jScroll, [], hPanelEx);
+            [jScroll, hContainer] = ...
+                            createJavaComponent(jScroll,[],hPanelEx);
             
             if obj.isSaving
                 set(hContainer,'Units','Normalized','Position',[0,0,1,1])

@@ -2,12 +2,12 @@
 function T = vec2sec(V)
 
 % check to see the vector is of the correct dimensions (4 columns)
-if (size(V,2) ~= 4)
+if size(V,2) ~= 4
     % if not, then 
     [eStr,T] = deal('Error! Time array must be have 4 columns.',[]);
     waitfor(errordlg(eStr,'Invalid Time Format','modal'))
     return
-elseif (any(V(:)) < 0)
+elseif any(V(:) < 0)
     % if not, then 
     [eStr,T] = deal('Error! Time vector can''t have negative values.',[]);
     waitfor(errordlg(eStr,'Invalid Time Format','modal'))

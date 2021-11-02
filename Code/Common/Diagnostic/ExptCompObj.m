@@ -177,8 +177,9 @@ classdef ExptCompObj < handle
                             end
                             
                         case 6
-                            % case is the expt duration 
-                            expData0(iExp,iHdr,:) = {sInfo{iExp}.tDurS};                            
+                            % case is the expt duration
+                            durStr = obj.getDurationString(sInfo{iExp});
+                            expData0(iExp,iHdr,:) = {durStr};                            
                     end    
                 end
                 
@@ -251,6 +252,35 @@ classdef ExptCompObj < handle
             obj.iSel(iChk) = chkVal;
             
         end
+        
+    end
+    
+    methods (Static)
+        
+        % --- retrieves the expt duration string
+        function durStr = getDurationString(sInfo)
+            
+            % calculates the duration of the experiment
+            iPara = sInfo.iPara;
+            tExptS = sec2vec(etime(iPara.Tf,iPara.Ts));
+            
+            % removes the day field (if less than one day)
+            if (tExptS(4) == 0); tExptS = tExptS(2:end); end
+            
+            % sets the duration strings for each time field
+            durStr0 = cell(1,length(tExptS));
+            for i = 1:length(tExptS)
+                if tExptS(i) < 10
+                    durStr0{i} = sprintf('0%i',tExptS(i));
+                else
+                    durStr0{i} = num2str(tExptS(i));
+                end
+            end
+            
+            % sets the final string
+            durStr = strjoin(durStr0,':');
+            
+        end        
         
     end
     

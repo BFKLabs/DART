@@ -1990,6 +1990,10 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 regConfig = sprintf('%i x %i Assay (Max Count = %i)',...
                         iMov.pInfo.nRow,iMov.pInfo.nCol,iMov.pInfo.nFlyMx);
             end
+            
+            % removes any sub-second values
+            T0vec(end) = roundP(T0vec(end));
+            Tfvec(end) = roundP(Tfvec(end));
 
             % sets the experiment information fields
             expInfo = struct('ExptType',eCase,'ExptDur',TstrTot,...

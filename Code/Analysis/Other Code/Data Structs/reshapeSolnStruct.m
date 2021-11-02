@@ -100,6 +100,7 @@ for i = 1:length(devStr)
                 % if so, then reduce down the start/finish times
                 chP(k).Ts = max(chP(k).Ts(ii),0);
                 chP(k).Tf = min(chP(k).Tf(ii),T{end}(end));
+                chP(k).iStim = chP(k).iStim(ii);
             end
         end
         
