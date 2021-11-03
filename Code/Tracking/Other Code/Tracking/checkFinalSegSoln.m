@@ -176,7 +176,7 @@ global wOfs
 
 % parameters
 dN = 3;
-[zPrTol,zPrMin] = deal(0.02,0.1);
+[zPrTol,zPrMin] = deal(0.05,0.1);
 
 % field retrieval
 [is2D,cont] = deal(is2DCheck(iMov),true);
@@ -186,6 +186,10 @@ T = iData.Tv(roundP(1:iMov.sRate:length(iData.Tv)));
 
 % sets the x/y coordinates
 [X,Y] = deal(pData.fPosL{iApp}{iTube}(:,1),pData.fPosL{iApp}{iTube}(:,2));
+
+% sets the local-to-global position offset
+i0 = find(~isnan(X),1,'first');
+pOfs = repmat(pData.fPos{iApp}{iTube}(i0,:)-[X(i0),Y(i0)],length(X),1);
 
 % calculates the position offset
 nFrm = length(X);
@@ -258,10 +262,6 @@ end
  
 % updates the waitbar figure
 h.Update(wOfs+3,sprintf('%s (100%% Complete)',wStr),1);
-
-% sets the local-to-global position offset
-i0 = find(~isnan(X),1,'first');
-pOfs = repmat(pData.fPos{iApp}{iTube}(i0,:)-[X(i0),Y(i0)],length(X),1);
 
 % updates the positions into the overall positonal data struct
 pData.fPosL{iApp}{iTube} = [X,Y];

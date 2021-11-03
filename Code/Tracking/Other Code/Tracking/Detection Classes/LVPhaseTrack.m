@@ -192,7 +192,7 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
            
         end 
         
-        % --- 
+        % --- calculates the refined coordinates from original scale image
         function [fP,IP] = refinedImgSeg(obj,ImgL,ImgBG,fP0,pOfs)
             
             % memory allocation            
@@ -514,16 +514,29 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
             
         end       
         
+        % --- sets up the residual image stack
+        function IR = setupResidualStack(obj,Img,ImgBG)
+            
+            % calculates the image stack residual
+            IR = cellfun(@(x)(ImgBG-x),Img,'un',0);
+            
+            % removes any NaN values from the image
+            if ~isempty(obj.iMov.dpInfo)
+                % removes any NaN pixels or pixels at the frame edge          
+                for i = 1:length(IR)
+                    B = bwmorph(isnan(IR{i}),'dilate',1+obj.nI);
+                    IR{i}(B) = 0;
+                end
+            end       
+            
+            % removes the image median
+            IR = cellfun(@(x,y)(max(0,x)),IR,'un',0);            
+            
+        end        
+        
     end
     
     methods(Static)
-        
-        % --- sets up the residual image stack
-        function ImgR = setupResidualStack(Img,ImgBG)
-            
-            ImgR = cellfun(@(x)(ImgBG-x),Img,'un',0);
-            
-        end        
         
         % --- calculates the locations of the objects for each sub-region
         function fPos = segSubRegions(IRL,pTol,fPr,fok,dTol,Nsz)

@@ -127,6 +127,7 @@ classdef CalcBG < handle
             
             % makes the main gui visible again
             setObjVisibility(obj.hFig,'on');   
+            obj.isVisible = true;
             obj.updateManualTrackTable()
             
         end        
@@ -272,6 +273,7 @@ classdef CalcBG < handle
             
             % toggles the normal/background estimate panel visibilities
             obj.resetGUIDimensions(false)
+            obj.isVisible = false;
             set(obj.hGUI.figFlyTrack,'bgObj',obj)
                                    
             % sets the menu item visibiity properties
@@ -580,7 +582,7 @@ classdef CalcBG < handle
                 if isfield(obj.iMov,'dpInfo')
                     obj.dpOfs = obj.setupFrameOffset();
                 else
-                    [obj.iMov.dpInfo,obj.dpOfs] = deal(cell(nPhase,1));
+                    [obj.iMov.dpInfo,obj.dpOfs] = deal([],cell(nPhase,1));
                 end
                 
                 % determines if the class object has location values
@@ -589,8 +591,7 @@ classdef CalcBG < handle
                     pData0 = get(obj.hGUI.figFlyTrack,'pData');
                     if ~isempty(pData0)                    
                         % if there is positional data, then store the
-                        % position values for the 1st frame of each phase                                                
-                        iFrmL = obj.iMov.iPhase(:,1);
+                        % position values for the 1st frame of each phase
                         obj.fPos = cell(nPhase,1);
                         
                         % calculates the region vertical offsets
@@ -601,9 +602,15 @@ classdef CalcBG < handle
                         % memory allocation                        
                         for i = 1:nPhase
                             % retrieves the position data 
-                            obj.fPos{i} = cellfun(@(y,dy)(dy+cell2mat(...
-                                    cellfun(@(x)(x(iFrmL(i),:)),y(:),...
+                            iFrmNw = obj.indFrm{i};
+                            obj.fPos{i} = cell(obj.nApp,length(iFrmNw));
+                            
+                            for j = 1:length(iFrmNw)                            
+                                obj.fPos{i}(:,j) = ...
+                                    cellfun(@(y,dy)(dy+cell2mat(...
+                                    cellfun(@(x)(x(iFrmNw(j),:)),y(:),...
                                     'un',0))),pData0.fPos(:),yOfs,'un',0);
+                            end
                         end    
                     end
                 end
@@ -1907,7 +1914,6 @@ classdef CalcBG < handle
                 obj.initPotentialPlotMarkers()
                 
                 % updates the object markers
-                obj.updateObjMarkers()
                 obj.checkFlyMarkers(obj.hGUI.checkFlyMarkers, [])
                 obj.updateMainImage()
                 
@@ -2132,7 +2138,7 @@ classdef CalcBG < handle
                 IL = cellfun(@(x)(x(iRL,iCL)),fObj.Img(iFrmNw),'un',0);
             else
                 % case is for a high-variance phase
-                IL = cellfun(@(x)(x(iRL,iCL)),fObj.ImgMd(iFrmNw),'un',0);
+                IL = cellfun(@(x)(x(iRL,iCL)),fObj.Img(iFrmNw),'un',0);
             end
             
             % sets the marker x/y coordinates            

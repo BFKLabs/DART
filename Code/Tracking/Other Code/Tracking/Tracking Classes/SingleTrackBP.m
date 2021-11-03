@@ -484,14 +484,13 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         function prData = storePrevData(obj)
 
             % memory allocation
-            prData = struct('fPos',[],'IbgT',[],'iStatus',[],'iStatusF',[]);            
+            prData = struct('fPos',[],'iStatus',[],'iStatusF',[]);            
             
             % stores the final location data
             prData.fPos = cellfun(@(x)(cell2mat(cellfun(@(y)...
                         (y(end,:)),x(:),'un',0))),obj.pData.fPos,'un',0);
                     
             % sets the other fields
-            prData.IbgT = obj.iMov.IbgT;
             prData.iStatus = obj.iMov.Status;
             prData.iStatusF = obj.iMov.StatusF;            
             
@@ -560,7 +559,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             
             % initialisations
             xOfs = cellfun(@(x)(x(1)-1),obj.iMov.iC);
-            prData = struct('fPos',[],'IbgT',[],'iStatus',[]);            
+            prData = struct('fPos',[],'iStatus',[],'iMov',[]);            
             
             % retrieves the full file name of the solution file
             sFilePr = obj.getSolnFileName(iDir,iFile);
@@ -578,9 +577,9 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             end
             
             % retrieves the previous solution file data
-            prData.IbgT = obj.iMov.IbgT;
             prData.iStatus = obj.iMov.Status;
             prData.iStatusF = obj.iMov.StatusF{end};
+            prData.iMov = sData.iMov;
             
         end
         
@@ -1516,4 +1515,3 @@ classdef SingleTrackBP < matlab.mixin.SetGet
     end
    
 end
-    

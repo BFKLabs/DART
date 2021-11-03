@@ -255,7 +255,8 @@ switch (typeStr)
             deleteAllMarkers(handles)
         end          
         
-    case ('PostSolnLoad') % case is before opening a solution file                               
+    case ('PostSolnLoad') % case is before opening a solution file    
+        
         % determines if the positional data has been determined
         if varargin{1}        
             % turns all the menu items
@@ -288,6 +289,9 @@ switch (typeStr)
             % otherwise, initialise the plot markers
             initMarkerPlots(handles,1)            
         end
+        
+        % updates the translation correction menu item
+        updateCTMenu(handles,iMov);     
         
         % sets the frame/movie count
         if ishandle(handles.frmCountEdit)

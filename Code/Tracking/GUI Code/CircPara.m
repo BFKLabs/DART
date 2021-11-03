@@ -29,6 +29,10 @@ handles.output = hObject;
 % global variables
 global hQ R
 
+% initialses the custom property field string
+pFldStr = {'hGUI','iMov','X','Y'};
+initObjPropFields(hObject,pFldStr);
+
 % sets the input variables
 hGUI = varargin{1};
 iMov = varargin{2};
@@ -38,10 +42,10 @@ R = varargin{5};
 hQ = varargin{6};
 
 % sets the input variables/data structs into the GUI
-setappdata(handles.figCircPara,'hGUI',hGUI)
-setappdata(handles.figCircPara,'iMov',iMov)
-setappdata(handles.figCircPara,'X',X)
-setappdata(handles.figCircPara,'Y',Y)
+set(hObject,'hGUI',hGUI)
+set(hObject,'iMov',iMov)
+set(hObject,'X',X)
+set(hObject,'Y',Y)
 
 % sets the editbox string and button enabled properties
 set(handles.editCircRad,'string',num2str(R))
@@ -122,8 +126,9 @@ function buttonRecalcCirc_Callback(hObject, eventdata, handles)
 global uChoice iMov
 
 % retrieves the main GUI axes handle data struct
-hGUI = getappdata(handles.figCircPara,'hGUI');
-hGUIM = getappdata(hGUI.output,'hGUI');
+hFig = handles.output;
+hGUI = get(hFig,'hGUI');
+hGUIM = get(hGUI.output,'hGUI');
 
 % retrieves the main GUI handles data struct
 hOut = findall(hGUIM.imgAxes,'tag','hOuter');
@@ -131,7 +136,7 @@ if ~isempty(hOut); setObjVisibility(hOut,'off'); end
 
 % sets the user choice and closes the window
 [uChoice,iMov] = deal('Recalc',[]); 
-delete(handles.figCircPara) 
+delete(hFig) 
 
 % --- Executes on button press in buttonCont.
 function buttonCont_Callback(hObject, eventdata, handles)
@@ -140,13 +145,14 @@ function buttonCont_Callback(hObject, eventdata, handles)
 global uChoice iMov R 
 
 % retrieves the sub-image data struct and circle centre X/Y coordinates
-X = getappdata(handles.figCircPara,'X');
-Y = getappdata(handles.figCircPara,'Y');
-iMov = getappdata(handles.figCircPara,'iMov');
-hGUI = getappdata(handles.figCircPara,'hGUI');
+hFig = handles.output;
+X = get(hFig,'X');
+Y = get(hFig,'Y');
+iMov = get(hFig,'iMov');
+hGUI = get(hFig,'hGUI');
 
 % retrieves the main GUI axes image
-hGUIM = getappdata(hGUI.output,'hGUI');
+hGUIM = get(hGUI.output,'hGUI');
 I = get(findobj(get(hGUIM.imgAxes,'children'),'type','image'),'cdata');
 
 % other initalisations
@@ -236,8 +242,8 @@ function buttonCancel_Callback(hObject, eventdata, handles)
 global uChoice iMov
 
 % retrieves the main GUI axes handle data struct
-hGUI = getappdata(handles.figCircPara,'hGUI');
-hGUIM = getappdata(hGUI.output,'hGUI');
+hGUI = get(handles.output,'hGUI');
+hGUIM = get(hGUI.output,'hGUI');
 
 % retrieves the main GUI handles data struct
 hOut = findall(hGUIM.imgAxes,'tag','hOuter');
@@ -258,13 +264,14 @@ function plotCircleRegions(handles)
 global R
 
 % retrieves the X/Y coordinates of the circles
-X = getappdata(handles.figCircPara,'X');
-Y = getappdata(handles.figCircPara,'Y');
-iMov = getappdata(handles.figCircPara,'iMov');
-hGUI = getappdata(handles.figCircPara,'hGUI');
+hFig = handles.output;
+X = get(hFig,'X');
+Y = get(hFig,'Y');
+iMov = get(hFig,'iMov');
+hGUI = get(hFig,'hGUI');
 
 % retrieves the main GUI handles data struct
-hGUIM = getappdata(hGUI.output,'hGUI');
+hGUIM = get(hGUI.output,'hGUI');
 hAx = hGUIM.imgAxes;
 
 % other initialisations

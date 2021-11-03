@@ -23,6 +23,7 @@ classdef TrackFull < Track
         wStr         
         
         % boolean/flag fields
+        nI = 0;
         hasProg = false;
         isMultiBatch = false;
         solnChk = false;
@@ -420,8 +421,18 @@ classdef TrackFull < Track
             
             % calculates and applied the image offset
             dpOfs = calcFrameOffset(obj.iMov.dpInfo,iFrmR);
-            Img = cellfun(@(I,dp)(calcImgTranslate(I,dp)),...
-                                        Img,num2cell(dpOfs,2)','un',0);
+            if all(dpOfs == 0)
+                return
+            else
+                Img = cellfun(@(I,dp)(calcImgTranslate(I,dp)),...
+                                        Img,num2cell(dpOfs,2)','un',0);  
+            end
+                                
+            % removes any regions surrounding the 
+            for i = 1:length(Img)
+                B = bwmorph(isnan(Img{i}),'dilate',1+obj.nI);
+                Img{i}(B) = NaN;
+            end
             
         end
         
@@ -601,7 +612,11 @@ classdef TrackFull < Track
             % other flag initialisations
             obj.calcOK = true;
             obj.is2D = is2DCheck(obj.iMov);
-            obj.tDir = obj.iData.ProgDef.TempFile;     
+            obj.tDir = obj.iData.ProgDef.TempFile; 
+            
+            % sets the interpolation value
+            iLV0 = find(obj.iMov.iPhase==1,1,'first');
+            obj.nI = obj.fObj{iLV0}.nI;
             
             % function handles
             obj.dispImage = get(obj.hFig,'dispImage');

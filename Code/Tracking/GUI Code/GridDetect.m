@@ -335,12 +335,14 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % initialisations
             iMov0 = obj.iMov;
-            iApp = obj.getRegionIndex();            
+            iApp = obj.getRegionIndex();     
+            yMax = obj.iMov.posO{iApp}(4);
             
             % calculates the change in the vertical location
             yDir = 3 - 2*get(hObj,'UserData');
             dY = roundP(median(cellfun(@length,iMov0.iRT{iApp})));
-            obj.iMov.pos{iApp}(2) = obj.iMov.pos{iApp}(2) + yDir*dY;
+            obj.iMov.pos{iApp}(2) = obj.iMov.pos{iApp}(2) + yDir*dY;            
+            obj.iMov.iR{iApp} = min(yMax,max(0,obj.iMov.iR{iApp}+yDir*dY));
             
             % updates the region grid position vector
             hInner = findall(obj.hAx,'tag','hInner','UserData',iApp);

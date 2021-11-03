@@ -51,11 +51,12 @@ classdef SingleTrackInit < SingleTrack
         % parameters
         pW = 0.5;
         nFilt = 50;
-        usePTol = 0.2;
+        usePTol = 0.25;
         pTolShape = 0.1; 
         pTolStat = 0.35;
         pTile = 90;
         QTotMin = 0.10;
+        dpTol = 0.5;
         
     end
     
@@ -420,6 +421,7 @@ classdef SingleTrackInit < SingleTrack
                     % if there was an error then store the details
                     obj.errStr = 'image translation information';
                     [obj.errMsg,obj.calcOK] = deal(ME.message,false);
+                    obj.hProg.closeProgBar;
                     return                
                 end                
             end
@@ -760,7 +762,7 @@ classdef SingleTrackInit < SingleTrack
 
             % sets the final tube region vertical coordinates
             xi0 = roundP(1:tPer:((nT+1)*tPer));
-            yTube = (tPk(1)-roundP(tPer/2))+xi0';
+            yTube = min(length(QT),max(1,(tPk(1)-roundP(tPer/2))+xi0'));
             
         end
         
@@ -902,77 +904,16 @@ classdef SingleTrackInit < SingleTrack
                                     dpOfs0,num2cell(dpOfsT,2),'un',0));
             
             % initialisations            
-            IL0 = cellfun(@(x)(x{1}),obj.Img(hasT),'un',0);
-            iFrm = cell2mat(obj.indFrm(hasT));
+            iFrm = cell2mat(obj.indFrm(hasT));          
             
-            % calculates the initial frame groupings
-            [xFrm,dX] = obj.calcInitFrameGroups(iFrm,dpOfsG(:,1));
-            [yFrm,dY] = obj.calcInitFrameGroups(iFrm,dpOfsG(:,2));   
-            nTot = size(xFrm,1) + size(yFrm,1) - 1;
-            
-            % ------------------------------------ %
-            % --- HORIZTONAL TRANSLATION CHECK --- %
-            % ------------------------------------ %
-
-            % determnes the dx change frame groupings
-            for i = 1:size(xFrm,1)-1
-                % updates the progressbar
-                wStrNw = sprintf(['Horiztonal Translation Check ',...
-                                  '(%i of %i)'],i,size(xFrm,1));
-                if obj.hProg.Update(2+obj.wOfsL,wStrNw,i/nTot)
-                    % if the user cancelled, then exit
-                    return
-                end
-                
-                % determines the phase the transition point occurs in
-                xL0 = [xFrm(i,2),xFrm(i+1,1)];
-                iPh = find(xL0(1)<=iFrmPh,1,'first');
-                xOfsPh = dpOfsT(iPh,1);
-
-                % determines the transition frame limits                
-                xi = find(xL0(1)==iFrm)+[0,1];
-                xLnw = obj.detFrameGroupLimits...
-                                (IL0{iPh},xL0,xOfsPh,dpOfsG(xi,1),1);
-                [xFrm(i,2),xFrm(i+1,1)] = deal(xLnw(1),xLnw(2));
-            end           
-            
-            % ---------------------------------- %
-            % --- VERTICAL TRANSLATION CHECK --- %
-            % ---------------------------------- %
-            
-            % index offset
-            iOfs = size(xFrm,1)-1;
-            
-            % determnes the dx change frame groupings            
-            for i = 1:size(yFrm,1)-1
-                % updates the progressbar
-                wStrNw = sprintf(['Vertical Translation Check ',...
-                                  '(%i of %i)'],i,size(yFrm,1));
-                if obj.hProg.Update(2+obj.wOfsL,wStrNw,(i+iOfs)/nTot)
-                    % if the user cancelled, then exit
-                    return
-                end
-
-                % determines the phase the transition point occurs in
-                yL0 = [yFrm(i,2),yFrm(i+1,1)];
-                iPh = find(yL0(1)<=iFrmPh,1,'first');
-                yOfsPh = dpOfsT(iPh,2);
-                
-                % determines the transition frame limits
-                xi = find(yL0(1)==iFrm)+[0,1];
-                yLnw = obj.detFrameGroupLimits...
-                                (IL0{iPh},yL0,yOfsPh,dpOfsG(xi,2),2);
-                [yFrm(i,2),yFrm(i+1,1)] = deal(yLnw(1),yLnw(2));    
-            end
-
             % sets the details into the final struct
-            obj.dpInfo = struct('xFrm',[xFrm(:,2),dX],...
-                                'yFrm',[yFrm(:,2),dY],...
-                                'dpOfsT',dpOfsT,'iFrmPh',iFrmPh);
-
-            % updates the closes the progressbar
-            obj.hProg.Update(2+obj.wOfsL,'Translation Check Complete!',1);            
+            obj.dpInfo = struct('iFrm',iFrm,'xFrm',dpOfsG(:,1),...
+                                'yFrm',dpOfsG(:,2),'dpOfsT',dpOfsT,...
+                                'iFrmPh',iFrmPh);            
             
+            % updates the closes the progressbar
+            obj.hProg.Update(2+obj.wOfsL,'Translation Check Complete!',1);                                        
+                                      
         end
         
         % --- determines the frame group limits
@@ -1028,7 +969,7 @@ classdef SingleTrackInit < SingleTrack
                     end
 
                     % calculates the image shift
-                    dPnw = -flip(fastreg(IL0,ImgNw))+pOfs;        
+                    dPnw = pOfs-flip(fastreg(IL0,ImgNw));        
                     iMx = roundP(dPnw(iType)) == roundP(dPL);
                     [pLim(iMx),dPL(iMx)] = deal(iFrmNw,dPnw(iType));
 
@@ -1058,13 +999,12 @@ classdef SingleTrackInit < SingleTrack
             if ~isempty(obj.dpOfs{iPh})
                 % removes any NaN pixels or pixels at the frame edge          
                 for i = 1:length(IR)
-                    B = bwmorph(isnan(IR{i}),'dilate');
+                    B = bwmorph(isnan(IR{i}),'dilate',1+obj.nI);
                     IR{i}(B) = 0;
                 end
             end
             
             % removes the image median
-%             IR = cellfun(@(x,y)(max(0,x-nanmedian(x(:)))),IR,'un',0);
             IR = cellfun(@(x,y)(max(0,x)),IR,'un',0);
             
         end        
@@ -1326,7 +1266,7 @@ classdef SingleTrackInit < SingleTrack
                     
                     % retrieves the image/x-corr values for the points
                     obj.pStats.I{k,iPh}(j,:) = cellfun(@(x,i)...
-                                        (obj.getPixelValue(x,i)),IL,fPnw);
+                                    (obj.getPixelValue(x,i,0)),IL,fPnw);
                             
                     % sets the most likely static blob locations
                     for iFrm = 1:length(fPnw)
@@ -1608,9 +1548,10 @@ classdef SingleTrackInit < SingleTrack
                 
                 % determines if there are any missing data values
                 fP = obj.fPos{iPh};
-                nFrm = size(fP,2);
-                tDArr = cell2mat(tData{2}(:,iPh));                
+                nFrm = size(fP,2);                               
                 iFrm = obj.indFrm{iPh};
+                tDArr = cell2mat(tData{2}(:,iPh)); 
+                fok = num2cell(obj.iMov.flyok,1)';
                 
                 % determines the frames that need recalculation
                 for i = find(any(isnan(tDArr),1))
@@ -1640,7 +1581,8 @@ classdef SingleTrackInit < SingleTrack
                 % calculates the metric z-score probabilities
                 for i = 1:nMet
                     % calculates the phase metrics mean/std values
-                    Ytot = cell2mat(tData{i}(:,iPh));
+                    Ytot = cell2mat(cellfun(@(x,i)(x(i,:)),...
+                                            tData{i},fok,'un',0));
                     [Ymn,Ysd] = deal(nanmean(Ytot(:)),nanstd(Ytot(:)));
                     
                     % sets the probability values
@@ -1659,7 +1601,7 @@ classdef SingleTrackInit < SingleTrack
             obj.pStats.Ixc = tData{2}; 
             
             % pixel tolerances
-            pTolMd = 10;
+            [pTolQ,pTolQ2] = deal(10,20);
             isAnom = false(size(obj.iMov.flyok)); 
             Qval = zeros(size(obj.iMov.flyok)); 
             
@@ -1671,8 +1613,9 @@ classdef SingleTrackInit < SingleTrack
                 
                 % determines which objects have low overall scores
                 nT = size(Amd,1);
-                isAnom(1:nT,i) = (Amd(:,1) < pTolMd) & ...
-                                          any(Amd(:,2:3) < pTolMd,2);
+                isAnom(1:nT,i) = (Amd(:,1) < pTolQ) & ...
+                            ((Amd(:,2) < pTolQ) | ...
+                            ((Amd(:,3) < pTolQ) & (Amd(:,2) < pTolQ2)));
                 Qval(1:nT,i) = mean([Amd(:,1),min(Amd(:,2:3),[],2)],2);
             end
             
@@ -1740,7 +1683,28 @@ classdef SingleTrackInit < SingleTrack
                 obj.dpOfs{iPh}(~ii,j) = interp1...
                             (xi(ii),obj.dpOfs{iPh}(ii),xi(~ii),'pchip');
             end
-        end        
+        end   
+        
+        % --- get the pixel values the coordinates, fP
+        function IP = getPixelValue(obj,I,fP,isMax)
+            
+            % sets the input variables
+            if ~exist('isMax','var'); isMax = true; end
+            
+            % memory allocation
+            isOK = ~isnan(fP(:,1));
+            N = min(floor(obj.iMov.szObj/2));
+            IsubS = cellfun(@(x)(obj.getPointSubImage(I,x,N)),...
+                                            num2cell(fP(isOK,:),2),'un',0);
+            
+            % determines the min/max values surrounding the point
+            IP = NaN(size(fP,1),1);
+            if isMax
+                IP(isOK) = cellfun(@(x)(nanmax(x(:))),IsubS);
+            else
+                IP(isOK) = cellfun(@(x)(nanmin(x(:))),IsubS);
+            end
+        end          
         
     end    
     
@@ -1776,19 +1740,7 @@ classdef SingleTrackInit < SingleTrack
             fP = cell2mat(cellfun(@(x)(getMaxCoord(x)),IL,'un',0));
             fP(:,2) = fP(:,2) + yOfs;
             
-        end        
-        
-        % --- get the pixel values the coordinates, fP
-        function IP = getPixelValue(I,fP)
-            
-            % memory allocation
-            IP = zeros(size(fP,1),1);
-
-            % retrieves the pixel values for the feasible values
-            B = ~isnan(fP(:,1));
-            IP(B) = I(sub2ind(size(I),fP(B,2),fP(B,1)));
-
-        end          
+        end                        
         
         % --- calculates the most likely objects from the row groups
         function fPos = trackAutoMovingBlobs(IR,iGrp)
@@ -1908,13 +1860,15 @@ classdef SingleTrackInit < SingleTrack
         end     
         
         % --- calculates the initial frame groups
-        function [jFrm,dPU] = calcInitFrameGroups(iFrm,dP0)
+        function [dpOfs,iFrm] = setupFrameGroups(iFrm0,dpOfs0,dpTol)
 
-            dP = roundP(dP0);
-            [dPU,~,iCX] = unique(dP,'rows','stable');
-            jFrm = cell2mat(arrayfun(@(x)([iFrm(find(iCX==x,1,'first')),...
-                      iFrm(find(iCX==x,1,'last'))]),(1:iCX(end))','un',0));
+            % calculates the 
+            dpMax = roundP(dpOfs0(end),dpTol);
+            dpOfs = (0:sign(dpMax)*dpTol:dpMax)';            
 
+            % calculates the approximate location of the limits
+            dpOfsH = nanmean([dpOfs(1:end-1),dpOfs(2:end)],2);
+            iFrm = roundP(interp1(dpOfs0,iFrm0,dpOfsH,'pchip'));
         end
         
     end

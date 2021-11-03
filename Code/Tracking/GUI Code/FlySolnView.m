@@ -1065,7 +1065,7 @@ function isIn = isInAxes(handles,mP)
 % retrieves the position data struct
 hFig = handles.output;
 T = get(hFig,'T');
-pData = hFig.output.pData;
+pData = hFig.hGUI.output.pData;
 
 % determines the maximum extent
 iApp = get(findobj(handles.menuPlotMetrics,'checked','on'),'UserData');

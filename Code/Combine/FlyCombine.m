@@ -566,9 +566,11 @@ for i = 1:length(tStr)
         switch tStr{i}
             case 'hGrpFill'
                 ix = [1,1,2,2,1];
-                arrayfun(@(x)(set(x,'xdata',xLim(ix))),hObjAx);
+                arrayfun(@(x)(set(x,'XData',xLim(ix))),hObjAx);
+            case 'hSep'
+                arrayfun(@(x)(set(x,'XData',xLim)),hObjAx);
             otherwise
-                arrayfun(@(x)(set(x,'xdata',xLim)),hObjAx);
+                arrayfun(@(x)(set(x,'XData',NaN,'YData',NaN)),hObjAx);
         end
     end
 end
@@ -1101,6 +1103,7 @@ function editExptDur(hObject, eventdata, handles)
 
 % retrieves the currently selected solution file data
 hFig = handles.figFlyCombine;
+hPanelS = handles.panelStartTime;
 hPanelF = handles.panelFinishTime;
 iType = get(hObject,'UserData');
 sInfo = getCurrentExptInfo(hFig);
@@ -1124,23 +1127,30 @@ nwVal = str2double(get(hObject,'String'));
 % determines if new value is valid
 if ok
     % determines if the new experiment duration is valid
-    iParaNw = updateFinalTimeVec(handles,iPara);
-    if chkExptDur(iParaNw)
+    [iParaNw,updateStart,ok] = updateFinalTimeVec(handles,iPara);
+    if ok
         % updates the data struct with the new value and exits
         sInfo.iPara = iParaNw;
         updateCurrentExptInfo(hFig,sInfo)
         
-        % updates the final experiment time and plot markers
-        resetPopupFields(hPanelF,sInfo.iPara.Tf)        
+        % updates the final experiment time and plot markers        
+        resetPopupFields(hPanelF,sInfo.iPara.Tf)          
         hPopup = findall(hPanelF,'Style','popupmenu','UserData',1);
         popupTimeVal(hPopup, [], handles)
+        
+        % updates the start experiment time and plot markers
+        resetPopupFields(hPanelS,sInfo.iPara.Ts)  
+        if updateStart
+            hPopup = findall(hPanelS,'Style','popupmenu','UserData',1);
+            popupTimeVal(hPopup, [], handles)            
+        end
         
         % exits the function
         return
     else
         % otherwise, create the error string
-        maxFeasDur = vec2str(getMaxExptDur(sInfo));
-        currExptDur = vec2str(getCurrentExptDur(iParaNw));
+        maxFeasDur = vec2str(sec2vec(sInfo.tDur));
+        currExptDur = vec2str(getCurrentEditDur(handles));
         eStr = sprintf(['Error! The entered experiment duration is ',...
                         'not feasible:\n\n %s Entered Duration = %s',...
                         '\n %s Feasible Duration = %s'],char(8594),...
@@ -1154,39 +1164,6 @@ waitfor(msgbox(eStr,'Invalid Experiment Duration','modal'))
 % otherwise, reset to the previous value
 tExpt0 = getCurrentExptDur(sInfo.iPara);
 set(hObject,'string',num2str(tExpt0(iType)));
-
-% --- determines if the current experiment configuration is feasible
-function isFeas = chkExptDur(iPara)
-
-isFeas = etime(iPara.Tf0,iPara.Tf) >= 0;
-
-% --- updates the final time vector with the current information
-function iPara = updateFinalTimeVec(handles,iPara)
-
-% retrieves the current expt duration (as displayed)
-tExpt = getCurrentEditDur(handles);
-
-% updates the experiment finish time vector
-Ts = datenum(iPara.Ts);
-iPara.Tf = datevec(addtodate(Ts,vec2sec(tExpt),'s'));
-
-% --- retrieves the current experiment duration (as displayed)
-function tExpt = getCurrentEditDur(handles)
-
-% retrieves the object handles
-tExpt = zeros(1,4);
-hPanelD = handles.panelExptDur;
-
-% retrieves the values from the time editboxes
-for i = 1:length(tExpt)
-    hEdit = findall(hPanelD,'Style','Edit','UserData',i);
-    tExpt(i) = str2double(get(hEdit,'String'));
-end
-
-% --- retrieves the current maximum experiment duration (in vector form)
-function tExptMax = getMaxExptDur(sInfo)
-
-tExptMax = sec2vec(sInfo.tDur-etime(sInfo.iPara.Ts,sInfo.iPara.Ts0));
 
 % --- start/finish limit marker callback function --- %
 function moveLimitMarker(pNew,handles,Type,varargin)
@@ -1822,7 +1799,7 @@ switch get(hMenu,'tag')
 end
         
 % includes a gap in the graph if there is a major gap in the data
-[T,Tmlt] = deal(T(ii),getTimeScale(T(end)));
+[T,Tmlt] = deal(T(ii)',getTimeScale(T(end)));
 dT = diff(T); jj = find(dT > nMeanRatioMax*mean(diff(T)));
 if ~isempty(jj)
     for i = length(jj):-1:1
@@ -1929,9 +1906,9 @@ if canPlot
         hPosNw = findobj(hPos,'UserData',i);                
         if ~isempty(xPlt)                    
             % updates the plot data
-            yNw = (i + 0.5) - xPlt(:,i);
-            set(hPosNw,'LineWidth',0.5,'color','b','xdata',...
-                        T*Tmlt,'yData',yNw,'visible',eStr{1+okNw});
+            yNw = (i + 0.5) - xPlt(:,i)';
+            set(hPosNw,'LineWidth',0.5,'color','b','XData',...
+                        T*Tmlt,'YData',yNw,'visible',eStr{1+okNw});
         else
             % otherwise, make the line invisible
             setObjVisibility(hPosNw,'off');                    
@@ -1941,9 +1918,9 @@ if canPlot
         hPos2Nw = findobj(hPos2,'UserData',i);                
         if ~isempty(yPlt)                   
             % updates the plot data
-            yNw = (i + 0.5) - yPlt(:,i);
-            set(hPos2Nw,'LineWidth',0.5,'color','r','xdata',...
-                        T*Tmlt,'yData',yNw,'visible',eStr{1+okNw});
+            yNw = (i + 0.5) - yPlt(:,i)';
+            set(hPos2Nw,'LineWidth',0.5,'color','r','XData',...
+                        T*Tmlt,'YData',yNw,'visible',eStr{1+okNw});
         else
             % otherwise, make the line invisible
             setObjVisibility(hPos2Nw,'off');                    
@@ -2365,6 +2342,52 @@ if ~isempty(hGUIInfo)
     % resets the ok flags
     hGUIInfo.ok = flyok;
     setappdata(hFig,'hGUIInfo',hGUIInfo);
+end
+
+% ------------------------------------- %
+% --- EXPERIMENT DURATION FUNCTIONS --- %
+% ------------------------------------- %
+
+% --- updates the final time vector with the current information
+function [iPara,updateStart,ok] = updateFinalTimeVec(handles,iPara)
+
+% retrieves the current expt duration (as displayed)
+[updateStart,ok] = deal(false,true);
+tExptNw = vec2sec(getCurrentEditDur(handles));
+tExpt0 = vec2sec(getCurrentExptDur(iPara));
+[dTs,dTf] = deal(etime(iPara.Ts,iPara.Ts0),etime(iPara.Tf0,iPara.Tf));
+
+% if the new time is invalid, then exit with an empty array
+if tExptNw > (tExpt0 + dTs + dTf)
+    % case is the experiment duration is infeasible
+    ok = false;
+    
+elseif tExptNw > (tExpt0 + dTf)
+    % case is the experiment duration is feasible, but the start time needs
+    % to be shifted to accomodate
+    Ts = datenum(iPara.Ts);
+    updateStart = true;
+    iPara.Ts = datevec(addtodate(Ts,(tExpt0 + dTf) - tExptNw,'s'));
+    iPara.Tf = datevec(addtodate(Ts,dTf+tExpt0,'s'));
+    
+else
+    % case is the experiment duration can be extended by only considering
+    % the final experiment time marker
+    Ts = datenum(iPara.Ts);
+    iPara.Tf = datevec(addtodate(Ts,tExptNw,'s'));
+end
+
+% --- retrieves the current experiment duration (as displayed)
+function tExpt = getCurrentEditDur(handles)
+
+% retrieves the object handles
+tExpt = zeros(1,4);
+hPanelD = handles.panelExptDur;
+
+% retrieves the values from the time editboxes
+for i = 1:length(tExpt)
+    hEdit = findall(hPanelD,'Style','Edit','UserData',i);
+    tExpt(i) = str2double(get(hEdit,'String'));
 end
 
 % ------------------------------- %
