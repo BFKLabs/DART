@@ -615,8 +615,12 @@ classdef TrackFull < Track
             obj.tDir = obj.iData.ProgDef.TempFile; 
             
             % sets the interpolation value
-            iLV0 = find(obj.iMov.iPhase==1,1,'first');
-            obj.nI = obj.fObj{iLV0}.nI;
+            iLV0 = find(obj.iMov.vPhase==1,1,'first');
+            if isempty(iLV0)
+                obj.nI = 0;
+            else
+                obj.nI = obj.fObj{iLV0}.nI;
+            end
             
             % function handles
             obj.dispImage = get(obj.hFig,'dispImage');

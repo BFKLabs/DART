@@ -28,11 +28,14 @@ handles.output = hObject;
 
 % sets the input arguments
 hGUI = varargin{1};
-setappdata(hObject,'hGUI',hGUI);
+
+% initialses the custom property field string
+pFldStr = {'hGUI','sPara','stimP','sData','T','dType','chName'};
+initObjPropFields(hObject,pFldStr);
 
 % retrieves the data struct from the main GUI
-iMov = get(hGUI.figFlyTrack,'iMov');
-iData = get(hGUI.figFlyTrack,'iData');
+iMov = get(hGUI.output,'iMov');
+iData = get(hGUI.output,'iData');
 
 % if there is no stimuli information, then exit the GUI
 if isempty(iData.stimP)
@@ -44,14 +47,12 @@ end
 
 % case is the experiment is run using the new stimuli format
 sPara = iData.sTrainEx;
-% sPara = evalin('base','sPara');                                   % REMOVE ME LATER
-% A = importdata('MO (6Ch).expp','-mat'); sPara = A.sTrain.Ex;      % REMOVE ME LATER  
-% A = importdata('MM (4Ch).expp','-mat'); sPara = A.sTrain.Ex;      % REMOVE ME LATER
 
 % retrieves the program data struct
-setappdata(hObject,'sPara',sPara);
-setappdata(hObject,'stimP',iData.stimP);
-setappdata(hObject,'T',iData.Tv(iData.Frm0:iMov.sRate:end));
+set(hObject,'hGUI',hGUI);
+set(hObject,'sPara',sPara);
+set(hObject,'stimP',iData.stimP);
+set(hObject,'T',iData.Tv(iData.Frm0:iMov.sRate:end));
 
 % retrieves the objects within the stimuli panel
 delete(handles.editOuter);
@@ -87,7 +88,7 @@ varargout{1} = [];
 function menuClose_Callback(hObject, eventdata, handles)
 
 % closes the GUI
-delete(handles.figStimInfo)
+delete(handles.output)
 
 %-------------------------------------------------------------------------%
 %                        FIGURE CALLBACK FUNCTIONS                        %
@@ -97,13 +98,14 @@ delete(handles.figStimInfo)
 function listDevice_Callback(hObject, eventdata, handles)
 
 % initialisations
-sData = getappdata(handles.figStimInfo,'sData');
-chName = getappdata(handles.figStimInfo,'chName');
+hFig = handles.output;
+sData = get(hFig,'sData');
+chName = get(hFig,'chName');
 [lStr,iSel] = deal(get(hObject,'String'),get(hObject,'Value'));
 
 % updates the device type
 sData.dType = lStr{iSel};
-setappdata(handles.figStimInfo,'sData',sData)
+set(hFig,'sData',sData)
 
 % updates the channel listbox
 set(handles.listChannel,'String',chName{iSel}(:),'Value',1);
@@ -113,8 +115,9 @@ listChannel_Callback(handles.listChannel, '1', handles)
 function listChannel_Callback(hObject, eventdata, handles)
 
 % initialisations
-stimP = getappdata(handles.figStimInfo,'stimP');
-sData = getappdata(handles.figStimInfo,'sData');
+hFig = handles.output;
+stimP = get(hFig,'stimP');
+sData = get(hFig,'sData');
 [lStr,iSel] = deal(get(hObject,'String'),get(hObject,'Value'));
 
 % updates the device type
@@ -126,7 +129,7 @@ nStim = length(stimPC.Ts);
 
 % updates the select tab
 sData.sTab = min(nStim,sData.sTab);
-setappdata(handles.figStimInfo,'sData',sData)
+set(hFig,'sData',sData)
 
 % resets the tabs visibility
 hTabG = get(sData.heTab{1},'Parent');
@@ -141,14 +144,15 @@ updateEventFields(handles)
 function buttonStartFrame_Callback(hObject, eventdata, handles)
 
 % retrieves the display image function
-hGUI = getappdata(handles.figStimInfo,'hGUI');
-iData = get(hGUI.figFlyTrack,'iData');
-dispImage = get(hGUI.figFlyTrack,'dispImage');
+hFig = handles.output;
+hGUI = get(hFig,'hGUI');
+iData = get(hGUI.output,'iData');
+dispImage = get(hGUI.output,'dispImage');
 
 % updates the frame counter
 set(hGUI.frmCountEdit,'string',get(handles.textStartFrame,'string'));
 iData.cFrm = str2double(get(handles.textStartFrame,'string'));
-set(hGUI.figFlyTrack,'iData',iData)
+set(hGUI.output,'iData',iData)
 
 % updates the main image axis
 axes(hGUI.imgAxes)
@@ -157,20 +161,21 @@ dispImage(hGUI)
 waitbar(1,h,'Update Complete'); delete(h);
 
 % resets the figure to stimulus info GUI
-figure(handles.figStimInfo)
+figure(handles.output)
 
 % --- Executes on button press in buttonFinishFrame.
 function buttonFinishFrame_Callback(hObject, eventdata, handles)
 
 % retrieves the display image function
-hGUI = getappdata(handles.figStimInfo,'hGUI');
-iData = get(hGUI.figFlyTrack,'iData');
-dispImage = get(hGUI.figFlyTrack,'dispImage');
+hFig = handles.output;
+hGUI = get(hFig,'hGUI');
+iData = get(hGUI.output,'iData');
+dispImage = get(hGUI.output,'dispImage');
 
 % updates the frame counter
 set(hGUI.frmCountEdit,'string',get(handles.textFinishFrame,'string'));
 iData.cFrm = str2double(get(handles.textFinishFrame,'string'));
-set(hGUI.figFlyTrack,'iData',iData)
+set(hGUI.output,'iData',iData)
 
 % updates the main image axis
 axes(hGUI.imgAxes)
@@ -179,7 +184,7 @@ dispImage(hGUI)
 waitbar(1,h,'Update Complete'); delete(h);
 
 % resets the figure to stimulus info GUI
-figure(handles.figStimInfo)
+figure(hFig)
 
 %-------------------------------------------------------------------------%
 %                             OTHER FUNCTIONS                             %
@@ -193,7 +198,8 @@ figure(handles.figStimInfo)
 function initListBoxes(handles)
 
 % retrieves the stimulus parameter struct
-stimP = getappdata(handles.figStimInfo,'stimP');
+hFig = handles.output;
+stimP = get(hFig,'stimP');
 dType = fieldnames(stimP);
 
 % memory allocation
@@ -220,8 +226,8 @@ end
 
 % reduces down the 
 [chName,dType] = deal(chName(hasStimD),dType(hasStimD));
-setappdata(handles.figStimInfo,'dType',dType);
-setappdata(handles.figStimInfo,'chName',chName);
+set(hFig,'dType',dType);
+set(hFig,'chName',chName);
 
 % sets the listbox strings
 set(handles.listDevice,'String',dType(:),'FontUnits','pixels',...
@@ -232,13 +238,14 @@ set(handles.listChannel,'String',chName{1}(:),'FontUnits','pixels',...
 % sets the data struct
 sData = struct('dType',dType{1},'chName',chName{1}{1},...
                'sTab',1,'nStimMax',nStimMax,'heTab',[]);
-setappdata(handles.figStimInfo,'sData',sData);     
+set(hFig,'sData',sData);     
                     
 % --- initialises the event tab group --- %
 function initEventTabGroup(handles)
 
 % retrieves the stimulus parameter struct
-sData = getappdata(handles.figStimInfo,'sData');
+hFig = handles.output;
+sData = get(hFig,'sData');
 hObj = findall(handles.panelStimInfo,'parent',handles.panelStimInfo);
 
 % creates the master tab group and sets the properties
@@ -267,7 +274,7 @@ setObjCallbackFcn(hTabGrp,'TabGroup',tChngFcn);
 uistack(hObj,'top');
 
 % updates the events fields
-setappdata(handles.figStimInfo,'sData',sData)
+set(hFig,'sData',sData)
 updateEventFields(handles)
 
 % ------------------------------------ %
@@ -278,11 +285,12 @@ updateEventFields(handles)
 function stimEventTabChange(hObject, eventdata, handles)
 
 % sets the data struct
-sData = getappdata(handles.figStimInfo,'sData');
+hFig = handles.output;
+sData = get(hFig,'sData');
 
 % updates the channel tab index
 sData.sTab = get(eventdata.NewValue,'UserData');
-setappdata(handles.figStimInfo,'sData',sData)
+set(hFig,'sData',sData)
 
 % updates the stimulus events fields 
 updateEventFields(handles);
@@ -295,10 +303,11 @@ updateEventFields(handles);
 function updateEventFields(handles)
 
 % gets the data struct
-T = getappdata(handles.figStimInfo,'T');
-stimP = getappdata(handles.figStimInfo,'stimP');
-sData = getappdata(handles.figStimInfo,'sData');
-sPara = getappdata(handles.figStimInfo,'sPara');
+hFig = handles.output;
+T = get(hFig,'T');
+stimP = get(hFig,'stimP');
+sData = get(hFig,'sData');
+sPara = get(hFig,'sPara');
 
 % retrieves the channel information (for the currently selected device)
 sTab = sData.sTab;
@@ -358,8 +367,7 @@ tHdr = {'Type','Count','Period (s)',...
 % sets the signal parameter table data
 sData = cell(length(sPara),length(tHdr)-1);
 for i = 1:length(sPara)
-    % calculates the time multipliers
-    
+    % calculates the time multipliers    
     tMltD = getTimeMultiplier('s',sPara(i).tDurU);
     tMltO = getTimeMultiplier('s',sPara(i).tOfsU);
     
