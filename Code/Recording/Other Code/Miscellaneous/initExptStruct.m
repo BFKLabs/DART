@@ -38,7 +38,7 @@ if ~isempty(objIMAQ)
     
     % sets the camera specific properties
     switch get(objIMAQ,'Name')
-        case 'Logitech Webcam Pro 9000'
+        case {'Logitech Webcam Pro 9000','USB Video Device'}
             Timing.Tp = 10;
     end
 end 

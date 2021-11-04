@@ -217,9 +217,14 @@ else
     setappdata(hFig,'exptType',infoObj.exType)
     
     % reduces the device information
-    [objDAQ,objDAQ0] = reduceDevInfo(infoObj.objDAQ);
-    setappdata(hFig,'objDAQ0',objDAQ0);
-    setappdata(hFig,'objDAQ',objDAQ);    
+    if infoObj.hasDAQ    
+        [objDAQ,objDAQ0] = reduceDevInfo(infoObj.objDAQ);
+        setappdata(hFig,'objDAQ0',objDAQ0);
+        setappdata(hFig,'objDAQ',objDAQ);    
+    else
+        setappdata(hFig,'objDAQ0',[]);
+        setappdata(hFig,'objDAQ',[]); 
+    end
     
     % resets the real-time tracking parameters
     rtObj = getappdata(hFig,'rtObj');
