@@ -720,6 +720,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             % removes any temporary files already stored and resets the
             % progress data struct
             obj.iMov = resetProgressStruct(obj.iData,obj.iMov,true);                             
+            obj.iMov = resetRegionPos(obj.iData,obj.iMov);
             
             % sets the new solution file name     
             [obj.sFileNw,fNameBase] = obj.getSolnFileName(iDir,iFile);                        
@@ -1227,6 +1228,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 if obj.bData(iDir).movOK(i0)
                     % resets the progress data struct and BG flag
                     obj.iMov = resetProgressStruct(obj.iData,obj.iMov,1); 
+                    obj.iMov = resetRegionPos(obj.iData,obj.iMov);
                     obj.forceCalcBG = ~strcmp(movStr,bdata.mName{i0});
 
                     % sets the new solution file name            

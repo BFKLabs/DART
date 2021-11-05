@@ -50,6 +50,12 @@ setObjVisibility(p.hFigM,'off');
 infoObj = AdaptorInfoClass(hObject,p.iType,p.reqdConfig);
 setappdata(hObject,'infoObj',infoObj)
 
+% if there was an error, then close the GUI
+if ~infoObj.ok
+    buttonExit_Callback(handles.buttonExit, [], handles)
+    return
+end
+
 % centres the figure
 centreFigPosition(hObject);
 

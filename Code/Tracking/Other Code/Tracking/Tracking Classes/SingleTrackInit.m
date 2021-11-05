@@ -1694,8 +1694,11 @@ classdef SingleTrackInit < SingleTrack
         % --- get the pixel values the coordinates, fP
         function IP = getPixelValue(obj,I,fP,isMax)
             
+            % sets the default input arguments
+            if ~exist('isMax','var'); isMax = true; end
+            
             % sets the neighbourhood size
-            if ~isfield(obj.iMov,'szObj') || isnan(obj.iMov.szObj)
+            if ~isfield(obj.iMov,'szObj') || any(isnan(obj.iMov.szObj))
                 N = 5;
             else
                 N = min(floor(obj.iMov.szObj/2));

@@ -76,11 +76,15 @@ classdef AdaptorInfoClass < handle
             
             % initialises the imaq device information
             obj.initIMAQInfo();
-            if ~obj.ok; return; end
+            if ~obj.ok
+                return
+            end
             
             % initialises the daq device information
             obj.initDAQInfo();    
-            if ~obj.ok; return; end
+            if ~obj.ok
+                return
+            end
             
             % performs the final initialisation checks
             obj.finalInitCheck()
@@ -393,7 +397,7 @@ classdef AdaptorInfoClass < handle
                 end                
                 
                 % exits the function
-                return; 
+                return 
             end                
             
             % if so, initialise the DAC/serial object listbox 
