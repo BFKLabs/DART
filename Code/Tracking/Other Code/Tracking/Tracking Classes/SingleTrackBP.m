@@ -1000,7 +1000,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                         if ~isempty(B.pData)
                             % determines
                             i0 = find(obj.iMov.ok,1,'first');
-                            j0 = find(obj.iMov.ok(:,i0),1,'first');
+                            j0 = find(obj.iMov.flyok(:,i0),1,'first');
                             
                             % determines the non-NaN frames (removes any
                             % high-variance/infeasible phases)

@@ -8,7 +8,7 @@ end
 
 % memory allocation
 A = A(~cellfun(@isempty,A));
-if (isempty(A))
+if isempty(A)
     B = []; 
     return
 else
@@ -31,15 +31,15 @@ else
             else
                 switch (class(A{i}))
                     case ('logical')
-                        C = false(szA(i,2),mxSz(2)-szA(i,2));
+                        C = numcell(false(szA(i,1),mxSz(2)-szA(i,2)));
                     case {'numeric','double'}
-                        C = NaN(szA(i,2),mxSz(2)-szA(i,2));
+                        C = num2cell(NaN(szA(i,1),mxSz(2)-szA(i,2)));
                     case ('cell')
-                        C = num2cell(NaN(szA(i,2),mxSz(2)-szA(i,2)));
+                        C = cell(szA(i,1),mxSz(2)-szA(i,2));
                 end               
                 
                 % appends the new data to the array
-                B = [B;[A{i},num2cell(C)]];    
+                B = [B;[A{i},C]];    
             end
         else
             if (szA(i,1) == mxSz(1))

@@ -1049,7 +1049,7 @@ setappdata(handles.figDART,'ProgDef',ProgDef)
 hasSep = (uType == 0) && ~isdeployed; 
 
 % only include the add package menu item if the function exists
-hasPackageFile = exist('runPackageInstaller','var');
+hasPackageFile = exist('runPackageInstaller','file') > 0;
 setObjVisibility(handles.menuAddPackage,hasPackageFile);
 
 % creates the Git menu items

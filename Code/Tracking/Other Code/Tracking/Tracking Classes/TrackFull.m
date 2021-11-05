@@ -210,9 +210,9 @@ classdef TrackFull < Track
                 % if there is no positional data, then retrieve the
                 % data values from the last valid frame
                 if length(obj.sProg.iFrmR) == nCountNw
-                    iFrmLast = obj.sProg.iFrmR{end}(1)-1;
+                    iFrmLast = max(1,obj.sProg.iFrmR{end}(1)-1);
                 else
-                    iFrmLast = obj.sProg.iFrmR{nCountNw+1}(1)-1;
+                    iFrmLast = max(1,obj.sProg.iFrmR{nCountNw+1}(1)-1);
                 end
                 
                 % sets up the previous phases data struct

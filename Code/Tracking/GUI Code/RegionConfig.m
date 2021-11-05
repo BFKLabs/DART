@@ -42,7 +42,7 @@ hLoad = ProgressLoadbar('Initialising Region Setting GUI...');
 
 % loads the background parameter struct from the program parameter file
 A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
-bgP = A.bgP;
+bgP = DetectPara.resetDetectParaStruct(A.bgP);
 
 % sets the input arguments into the gui
 pFldStr = {'hDiff','iMov','iMov0','isMTrk','iData','hSelP','hProp0',...

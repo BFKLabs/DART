@@ -348,6 +348,10 @@ classdef HVPhaseTrack < matlab.mixin.SetGet
             for i = 1:length(Img)
                 % calculates the original cross-correlation image
                 [Gx,Gy] = imgradientxy(Img{i});
+                B = isnan(Gx) | isnan(Gy);
+                [Gx(B),Gy(B)] = deal(0);                
+                
+                % calculates the original cross-correlation image
                 Ixc0 = max(0,calcXCorr(tP.GxT,Gx) + calcXCorr(tP.GyT,Gy));
                 
                 % calculates the final x-correlation mask

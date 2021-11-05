@@ -57,6 +57,7 @@ classdef SingleTrackInit < SingleTrack
         pTile = 90;
         QTotMin = 0.10;
         dpTol = 0.5;
+        hF = fspecial('gaussian',10,3);
         
     end
     
@@ -682,9 +683,13 @@ classdef SingleTrackInit < SingleTrack
                         xi = false(size(xi));
                         indG = arrayfun(@(x)(find(iC==x)),1:iC(end),'un',0);
                         for i = 1:length(indG)
-                            iMx = argMax(IRP(indG{i},iFrm));
-                            if ~isnan(iMx)
-                                xi(indG{i}(iMx)) = true;
+                            if length(indG{i}) == 1
+                                xi(indG{i}(1)) = true;
+                            else
+                                iMx = argMax(IRP(indG{i},iFrm));
+                                if ~isnan(iMx)
+                                    xi(indG{i}(iMx)) = true;
+                                end
                             end
                         end    
                         
@@ -724,8 +729,7 @@ classdef SingleTrackInit < SingleTrack
                 W = size(IL{1},2);
                 fPTot = cell2mat(obj.fPos{1}(iApp,:)');
                 obj.xTube{iApp} = [max(1,min(fPTot(B,1)) + xDel(1)),...
-                                   min(W,max(fPTot(B,1)) + xDel(2))];                                   
-%                 obj.xTube{iApp} = [min(fPTot(B,1)),max(fPTot(B,1))] + xDel;            
+                                   min(W,max(fPTot(B,1)) + xDel(2))];         
             end
             
         end        
@@ -733,14 +737,14 @@ classdef SingleTrackInit < SingleTrack
         % --- optimises the sub-region placement positions
         function yTube = optSubRegionPos(obj,iApp)
            
-            % initialisations
+            % initialisations            
             [tPer,nT] = deal(obj.tPerS(iApp),obj.nTube(iApp));  
             ImaxR0 = normImg(max(0,obj.ImaxR{iApp}));
             QT = smooth(sqrt(ImaxR0.^2 + obj.ImaxS{iApp}.^2));
             
             % determines the signal peaks (remove peaks at the extremes)
             [yPk,tPk] = findpeaks(QT,'MinPeakDistance',floor(0.75*tPer));
-            ii = (tPk > tPer/4) & (tPk < (length(ImaxR0)-tPer/4));
+            ii = (tPk > tPer/4) & (tPk < (length(QT)-tPer/4));
             [tPk,yPk] = deal(tPk(ii),yPk(ii));
             
             % determines the peaks of the objective function signal            
@@ -759,10 +763,12 @@ classdef SingleTrackInit < SingleTrack
                 % peak count but flag that the region could be incorrect
                 [obj.nTubeBest(iApp),nT] = deal(length(tPk));
             end
-
-            % sets the final tube region vertical coordinates
-            xi0 = roundP(1:tPer:((nT+1)*tPer));
-            yTube = min(length(QT),max(1,(tPk(1)-roundP(tPer/2))+xi0'));
+            
+            % determines the vertical limits of the current points
+            yLim = tPk([1,end]) + roundP(tPer/2)*[-1;1];
+            tPkMean = roundP(mean([tPk(1:end-1),tPk(2:end)],2));
+            yTube = [yLim(1);tPkMean;yLim(2)];
+            yTube = min(length(QT),max(1,yTube));
             
         end
         
@@ -1688,12 +1694,15 @@ classdef SingleTrackInit < SingleTrack
         % --- get the pixel values the coordinates, fP
         function IP = getPixelValue(obj,I,fP,isMax)
             
-            % sets the input variables
-            if ~exist('isMax','var'); isMax = true; end
+            % sets the neighbourhood size
+            if ~isfield(obj.iMov,'szObj') || isnan(obj.iMov.szObj)
+                N = 5;
+            else
+                N = min(floor(obj.iMov.szObj/2));
+            end
             
             % memory allocation
-            isOK = ~isnan(fP(:,1));
-            N = min(floor(obj.iMov.szObj/2));
+            isOK = ~isnan(fP(:,1));            
             IsubS = cellfun(@(x)(obj.getPointSubImage(I,x,N)),...
                                             num2cell(fP(isOK,:),2),'un',0);
             
