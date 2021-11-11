@@ -63,7 +63,7 @@ function currentState = enableDisableFig(hFig, newState)
               if nargin < 2
                   newState = hFig;
               else
-                  error('hFig must be a valid GUI handle or array of handles');
+                  return
               end
           end
           hFig = gcf;

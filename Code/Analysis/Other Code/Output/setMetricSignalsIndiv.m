@@ -19,20 +19,22 @@ xDep = field2cell(yVar,'xDep');
 xDepT = cellfun(@(x)(x{1}),xDep,'un',0);
 
 % determines the number of days each experiment runs for
-[Y0,nDay] = deal(field2cell(plotD,pStr{1}),zeros(nExp,1));
+Y0 = field2cell(plotD,pStr{1});
+nDay = zeros(nApp,nExp);
 for i = 1:length(Y0)
     for j = 1:nExp
-        nDay(j) = max(cellfun(@(x)(sum(~cellfun(...
+        nDay(i,j) = max(cellfun(@(x)(sum(~cellfun(...
                                 @isempty,x))),num2cell(Y0{i}(:,:,j),1)));
     end
 end
 
 % determines if any of the variables have a time dependency
+nDay = max(nDay,[],2);
 ii = find(cellfun(@(x)(any(strcmp(xDepT,x))),field2cell(iData.xVar,'Var')));
 iiT = ii(strcmp(field2cell(iData.xVar(ii),'Type'),'Time'));
 
 % splits the time-bin indices into separate days
-if (~isempty(iiT))
+if ~isempty(iiT)
     % initialisations
     [tDay,nDayMx] = deal(convertTime(1,'day','sec'),max(nDay));
     

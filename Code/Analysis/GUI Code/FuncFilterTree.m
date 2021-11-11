@@ -293,10 +293,9 @@ classdef FuncFilterTree < matlab.mixin.SetGet
                 end
 
                 % adds the compatibility filter to the total filter
-                obj.cFiltTot.add(RowFilter.orFilter(cFiltArr));    
+                obj.cFiltTot.add(RowFilter.orFilter(cFiltArr)); 
             end
-
-            %
+            
             for i = 1:obj.jRoot.getChildCount
                 % retrieves the child node
                 jNodeC = obj.jRoot.getChildAt(i-1);

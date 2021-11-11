@@ -453,22 +453,29 @@ if strcmp(exObj.vidType,'Expt')
     if exObj.isMemLog
         set(exObj.objIMAQ,'UserData',[]) 
     else
-        exObj.objIMAQ.DiskLogger = [];
+        % if the camera is running still then stop it
+        if isrunning(exObj.objIMAQ)
+            stopCamera(exObj.objIMAQ);   
+        end             
+        
+        % clears the disk logging file
+        [iter,iterMx] = deal(0,10);
+        while iter < iterMx
+            try
+                exObj.objIMAQ.DiskLogger = []; 
+                iter = iterMx;
+            catch
+                pause(0.05);
+                iter = iter + 1;
+            end
+        end
     end    
     
     % check to see if the last video or if the user stopped the experiment
-    if (exObj.nCountV == exObj.nMaxV) || exObj.userStop       
-        % if so, then flusth the disklogger information
-        if exObj.isMemLog
-            % case is recording from memory
-            set(exObj.objIMAQ,'UserData',[]) 
-        else
-            % case is recording to hard-disk
-            exObj.objIMAQ.DiskLogger = [];
-        end
-        
+    if (exObj.nCountV == exObj.nMaxV) || exObj.userStop               
         % runs the after experiment function
         exObj.finishExptObj()
+        
     else
         % if the experiment is not finished, then prepare the next video
         
@@ -481,10 +488,7 @@ if strcmp(exObj.vidType,'Expt')
         % if the camera is still logging, then stop the camera (disables
         % the stop function as this isn't required)
         if islogging(exObj.objIMAQ)
-            sFunc = exObj.objIMAQ.stopFcn; 
-            exObj.objIMAQ.stopFcn = [];
-            stop(exObj.objIMAQ); 
-            exObj.objIMAQ.StopFcn = sFunc;    
+            stopCamera(exObj.objIMAQ);   
         end
                              
         % resets the imaq log file and video camera properties
@@ -529,6 +533,19 @@ else
     hMainH = guidata(exObj.hMain);
     setObjEnable(hMainH.toggleVideoPreview,'on')
 end
+
+% --- function that stops the camera
+function stopCamera(objIMAQ)
+
+% removes the camera stop function
+sFunc = objIMAQ.stopFcn; 
+objIMAQ.stopFcn = [];
+
+% stops the camera
+stop(objIMAQ); 
+
+% resets the camera stop function
+objIMAQ.StopFcn = sFunc;  
             
 %-------------------------------------------------------------------------%
 %                             OTHER FUNCTIONS                             %
@@ -652,3 +669,17 @@ end
 if ~isempty(iExpt.Info.OutSoln)                
     setappdata(exObj.hProg,'rtPos',setupRTExptStruct(iMov)); 
 end     
+
+% --- function that stops the camera
+function stopCamera(objIMAQ)
+
+% removes the camera stop function
+sFunc = objIMAQ.stopFcn; 
+objIMAQ.stopFcn = [];
+
+% stops the camera
+stop(objIMAQ); 
+
+% resets the camera stop function
+objIMAQ.StopFcn = sFunc;  
+

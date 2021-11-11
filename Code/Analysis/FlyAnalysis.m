@@ -167,7 +167,9 @@ if ~isempty(getappdata(hFig,'sInfo'))
 end
 
 % opens the solution file gui
+wState = warning('off','all');
 OpenSolnFile(hFig);
+warning(wState);
 
 % --- function for the after running the solution file loading gui
 function postSolnLoadFunc(hFig,sInfoNw)

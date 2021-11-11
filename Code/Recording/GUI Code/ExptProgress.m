@@ -133,7 +133,7 @@ exObj = getappdata(hFig,'exObj');
 [nCount,chID] = deal([]);
 
 % if the experiment type field is not set, then set its value
-if isempty(exObj.iExpt.Info.Type)
+if isempty(exObj.iExpt.Info.Type) || ~ischar(exObj.iExpt.Info.Type)
     % sets the experiment type based on whether a RT expt is running
     if exObj.isRT
         exptType = 'RTTrack';
