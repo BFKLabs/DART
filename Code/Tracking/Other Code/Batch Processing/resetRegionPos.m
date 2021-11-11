@@ -1,16 +1,11 @@
 % --- resets the region positions (if there is any 
-function iMov = resetRegionPos(iData,iMov)
+function iMov = resetRegionPos(iMov,szFrm,dpOfs)
 
 % if there is no translation data, then exit the function
 if isempty(iMov.dpInfo); return; end
 
-% calculates the frame offset
-nApp = length(iMov.iR);
-szFrm = getCurrentImageDim();
-dpOfs = roundP(calcFrameOffset(iMov.dpInfo,iData.nFrm));
-
 % resets the regions using the image offset
-for i = 1:nApp
+for i = 1:length(iMov.iR)
     % ------------------------ %
     % --- ROW INDEX UPDATE --- %
     % ------------------------ %    
@@ -84,6 +79,7 @@ for i = 1:nApp
         % updates the region position vectors
         iMov.pos{i}(3) = iMov.pos{i}(3)-dX;
         iMov.posO{i}(3) = iMov.posO{i}(3)-dX;
+        
     end    
 end
 

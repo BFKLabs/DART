@@ -10,8 +10,13 @@ else
     [mx,mn] = deal(Ilim(2),Ilim(1));
 end
 
-% calculates the normalised pixel intensity
-In = (I - mn)/(mx - mn);
-if (nargin == 2)
-    [In(In < 0),In(In > 1)] = deal(0,1);
+%
+if (mx - mn) == 0
+    In = ones(size(I));
+else
+    % calculates the normalised pixel intensity
+    In = (I - mn)/(mx - mn);
+    if (nargin == 2)
+        [In(In < 0),In(In > 1)] = deal(0,1);
+    end
 end

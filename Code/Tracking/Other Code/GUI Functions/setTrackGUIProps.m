@@ -410,8 +410,8 @@ switch (typeStr)
         setDetectEnable(handles,'off',1:3)           
         
     case ('PreBatchProcess') % case is before the batch processing
-        % enables the tube region outline markers        
-        setPanelProps(handles.panelFrmSelect,'off')
+        % enables the tube region outline markers
+        setObjEnable(handles.toggleVideo,'off');
         
         % disables all the menu items (except the view progress item)
         hMenu = findobj(hFig,'type','uimenu');
@@ -420,7 +420,7 @@ switch (typeStr)
         setObjEnable(handles.menuViewProgress,'on')        
         
         % updates the image
-        FirstButtonCallback(handles.frmNextButton,[],handles)
+        FirstButtonCallback(handles.frmFirstButton,[],handles)
 
     case ('PostBatchProcess') % case is after the batch processing        
         hMenu = findobj(hFig,'type','uimenu');

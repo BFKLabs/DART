@@ -1,10 +1,11 @@
 % rotates the image (if required)
 function Img = getRotatedImage(iMov,Img,mlt)
 
-% global variables
-global frmSz0
+% % global variables
+% global frmSz0
 
 % sets the rotation direction multiplier
+frmSz0 = size(Img);
 if ~exist('mlt','var'); mlt = -1; end
 
 if iMov.useRot && (iMov.rotPhi ~= 0)

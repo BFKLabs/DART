@@ -26,7 +26,7 @@ end
 % updates the progressbar
 if hProg.Update(2,'Phase Detection Complete!',1)
     % if the user cancelled, then exit
-    iMov = [];
+    [iMov,trkObj] = deal([]);
     return
 end
 
@@ -61,7 +61,7 @@ trkObj.isAutoDetect = true;
 trkObj.calcInitEstimate(iMovT,hProg)
 if ~trkObj.calcOK
     % if the user cancelled, then exit
-    iMov = [];
+    [iMov,trkObj] = deal([]);
     return
 end
 
@@ -90,7 +90,7 @@ for i = 1:length(iMov.pos)
     % sets the region row/column indices   
     [x0,y0] = deal(iMov.pos{i}(1),iMov.pos{i}(2));
     iMov.iR{i} = max(1,ceil(y0+dyT(1))):min(frmSz(1),floor(y0+dyT(end)));
-    iMov.iC{i} = max(1,ceil(x0+dxT(1))):min(frmSz(1),floor(x0+dxT(end)));
+    iMov.iC{i} = max(1,ceil(x0+dxT(1))):min(frmSz(2),floor(x0+dxT(end)));
     
     % sets the sub-region row/column indices
     iMov.iCT{i} = 1:length(iMov.iC{i});

@@ -7,8 +7,7 @@ if iscell(Yc{1})
 end
 
 % array indexing
-sz = cellfun(@(x)(size(x)),reshape(Yc,length(Yc),1),'un',0);
-sz = cell2mat(sz);
+sz = cell2mat(cellfun(@(x)(size(x)),Yc(:),'un',0));
 
 % determines which of the dimensions the array is to be joined across
 if (nargin == 1)
@@ -17,8 +16,8 @@ if (nargin == 1)
     
     %
     dsz = range(sz(ii,:),1);    
-    if (all(dsz == 0))
-        [~,imn] = min(sz(find(ii,1,'first'),:));
+    if all(dsz == 0)
+        imn = argMin(sz(find(ii,1,'first'),:));
     else
         imn = find(dsz == 0);
     end

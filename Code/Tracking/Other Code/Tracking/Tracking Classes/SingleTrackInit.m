@@ -62,7 +62,7 @@ classdef SingleTrackInit < SingleTrack
     end
     
     % class methods
-    methods 
+    methods
         % class constructor
         function obj = SingleTrackInit(iData)
             
@@ -570,30 +570,47 @@ classdef SingleTrackInit < SingleTrack
             
             % initialisations
             dN = 15;
+            szObj0 = NaN(1,2);
             nApp = size(obj.fPos0{1},1);
-            [Isub,obj.useP,obj.ImaxS] = deal(cell(nApp,1));
+            [Isub,obj.useP,obj.ImaxS] = deal(cell(nApp,1));                       
             
-            % retrieves the sub-images around each significant point
-            for i = 1:nApp
-                % retrieves the local images
-                IL = cellfun(@(x)(x(obj.iRG{i},obj.iCG{i})),I,'un',0);
-                
-                % retrieves the point sub-image stack
-                Isub{i} = cell2cell(cellfun(@(x,y)(cellfun(@(z)...
-                        (obj.getPointSubImage(x,z,dN)),num2cell(y,2),...
-                        'un',0)),IL',obj.fPos0{1}(i,:),'un',0),0);
-                    
-                % removes any low-residual images
-                obj.useP{i} = obj.pStats.IR{i} > obj.pTolR(i);
-                Isub{i}(~obj.useP{i}) = {[]};
-            end            
-            
-            % calculates the template image from the estimated image
-            Itemp = calcImageStackFcn(cell2cell(Isub),'mean');
-            [GxT,GyT] = imgradientxy(Itemp,'sobel'); 
+            % keep looping until a stable solution is found
+            while 1
+                % retrieves the sub-images around each significant point
+                for i = 1:nApp
+                    % retrieves the local images
+                    IL = cellfun(@(x)(x(obj.iRG{i},obj.iCG{i})),I,'un',0);
 
-            % sets the template stucts
-            obj.tPara{1} = struct('Itemp',Itemp,'GxT',GxT,'GyT',GyT);
+                    % retrieves the point sub-image stack
+                    Isub{i} = cell2cell(cellfun(@(x,y)(cellfun(@(z)...
+                            (obj.getPointSubImage(x,z,dN)),num2cell(y,2),...
+                            'un',0)),IL',obj.fPos0{1}(i,:),'un',0),0);
+
+                    % removes any low-residual images
+                    obj.useP{i} = obj.pStats.IR{i} > obj.pTolR(i);
+                    Isub{i}(~obj.useP{i}) = {[]};
+                end            
+
+                % calculates the template image from the estimated image
+                Itemp = calcImageStackFcn(cell2cell(Isub),'mean');          
+                szObjNw = obj.calcObjShape(Itemp); 
+                
+                % determines if the new value has changed
+                if isequal(szObj0,szObjNw)
+                    % if not, then exit the loop
+                    break
+                else
+                    % otherwise, update the fields
+                    [szObj0,dN] = deal(szObjNw,max(szObjNw));
+                end
+            end
+            
+            % sets the object template field
+            [GxT,GyT] = imgradientxy(Itemp,'sobel'); 
+            obj.tPara{1} = struct('Itemp',Itemp,'GxT',GxT,'GyT',GyT);              
+            
+            % sets the class object fields
+            obj.iMov.szObj = szObjNw;
             
         end
         
@@ -617,9 +634,8 @@ classdef SingleTrackInit < SingleTrack
             [obj.yTube,obj.xTube] = deal(cell(nApp,1));
             [GxT,GyT] = deal(obj.tPara{1}.GxT,obj.tPara{1}.GyT);  
             
-            % calculates the size of the object
-            szObj = obj.calcObjShape(obj.tPara{1}.Itemp); 
-            xDel = szObj(1)*[-1,1];                             
+            % calculates the size of the object             
+            xDel = obj.iMov.szObj(1)*[-1,1];                             
             
             % calculates the maximum tube grid size
             nTubeC = num2cell(nTube(:))';
@@ -1219,10 +1235,13 @@ classdef SingleTrackInit < SingleTrack
             obj.sFlag{iPh} = double(~obj.useP) + 1;
             obj.sFlag{iPh}(~obj.iMov.flyok) = 3;            
 
+            % estimates the object shape
+            obj.iMov.szObj = obj.calcObjShape(obj.tPara{iPh}.Itemp);            
+            
+            % calculates the location of any stationary/low res sub-regions
             if any(~obj.useP(:))
                 % retrieves the template x/y gradient masks
-                [GxT,GyT] = deal(obj.tPara{iPh}.GxT,obj.tPara{iPh}.GyT); 
-                obj.iMov.szObj = obj.calcObjShape(obj.tPara{iPh}.Itemp);
+                [GxT,GyT] = deal(obj.tPara{iPh}.GxT,obj.tPara{iPh}.GyT);                 
                 
                 % loops through each of the probable stationary regions 
                 % determining the most likely blob objects 

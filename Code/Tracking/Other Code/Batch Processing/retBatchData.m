@@ -4,7 +4,8 @@ function bData = retBatchData(handles,dirName,baseDir)
 % initialises the batch processing data struct
 ProgDef = getappdata(handles.figBatchProcess,'ProgDef');
 bData = struct('MovDir',[],'SolnDir',[],'SolnDirName',[],...
-               'mName',[],'sName',[],'sfData',[],'movOK',[]);
+               'mName',[],'sName',[],'sfData',[],'movOK',[],...
+               'Img0',[],'dpImg',[]);
 
 % removes any path seperators from the end of the directory names
 if (strcmp(dirName(end),'/') || strcmp(dirName(end),'\'))

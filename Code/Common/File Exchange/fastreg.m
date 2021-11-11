@@ -33,9 +33,9 @@ else
     wn=gausswin(N);
     w=wm(:)*wn(:)';
 end
-[m,n,im]=regsurf((standimage2.*w),(compimage2.*w));
 
 try
+    [m,n,im]=regsurf((standimage2.*w),(compimage2.*w));
     [x,y]=meshgrid(-R1:R1,-R1:R1);
     immin=min(min(im((m-R0):(m+R0),(n-R0):(n+R0))));
     im=max(im-immin,0);
@@ -54,16 +54,17 @@ try
         n=n+0.5;
     end
 catch
-    m=0;
-    n=0;
+    [m,n] = deal(NaN);
 end
 dmn=[m+M0,n+N0];
 
 function [m,n,im]=regsurf(standimage,compimage)
+
 s=fft2(standimage);
 c=ifft2(compimage);
 sc=s.*c;
 im=abs(fftshift(ifft2(sc)));
 [M0,N0]=find(im==max(im(:)));
+
 m=round(mean(M0));
 n=round(mean(N0));

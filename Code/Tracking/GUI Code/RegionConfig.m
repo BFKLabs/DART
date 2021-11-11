@@ -567,12 +567,13 @@ iMov0 = get(hFig,'iMov');
 
 % if the field does exist, then ensure it is correct
 hFig.iMov.bgP = DetectPara.resetDetectParaStruct(hFig.iMov.bgP);
+hFig.iMov = setSubRegionDim(hFig.iMov,hFig.hGUI);
 
 % opens the grid detection tracking parameter gui
 gridObj = GridDetect(hFig);
 if gridObj.iFlag == 3
     % if the user cancelled, then exit
-    setupSubRegions(handles,hFig.iMov,true);
+    setupSubRegions(handles,iMov0,true);
     return
 end
 

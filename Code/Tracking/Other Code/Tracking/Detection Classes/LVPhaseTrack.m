@@ -7,26 +7,26 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
         iMov
         hProg
         Img
-        ImgLT
         prData
         iPara
         iFrmR
         
         % boolean/other scalar flags
+        iPh
+        vPh        
         is2D
         iFrm
-        calcInit
+        calcInit  
         wOfs = 0;      
-        calcOK = true;   
-        iPh
-        vPh
+        calcOK = true;         
         
         % dimensioning veriables
-        nApp
-        nTube
+        nApp        
         nImg
+        nTube
         
         % permanent object fields
+        IR 
         IPos
         fPosL
         fPos
@@ -38,8 +38,7 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
         axR
         NszB
         
-        % temporary object fields        
-        IR      
+        % temporary object fields                     
         y0      
         hS
         nI
@@ -69,7 +68,7 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
                 obj.y0{iApp} = cellfun(@(x)(x(1)-1),obj.iMov.iRT{iApp});
             end     
             
-        end        
+        end                         
         
         % ---------------------------- %
         % --- MAIN SOLVER FUNCTION --- %
@@ -108,6 +107,43 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
             obj.calcGlobalCoords();      
             
         end           
+        
+        % --- initialises the solver fields
+        function initObjectFields(obj)
+            
+            % flag initialisations
+            obj.calcOK = true;            
+            
+            % permanent field memory allocation
+            obj.IPos = cell(obj.nApp,obj.nImg);
+            obj.fPosL = cell(obj.nApp,obj.nImg);
+            obj.fPos = cell(obj.nApp,obj.nImg);
+            obj.fPosG = cell(obj.nApp,obj.nImg);             
+            
+            % orientation angle memory allocation
+            if obj.iMov.calcPhi
+                obj.Phi = cell(obj.nApp,obj.nImg);
+                obj.axR = cell(obj.nApp,obj.nImg);
+                obj.NszB = cell(obj.nApp,obj.nImg);
+            end
+            
+            % sets up the image filter (if required)
+            [bgP,obj.hS] = deal(obj.iMov.bgP.pSingle,[]);
+            if isfield(bgP,'useFilt')
+                if bgP.useFilt
+                    obj.hS = fspecial('disk',bgP.hSz);
+                end
+            end
+            
+            % initialises the progressbar
+            wStr = 'Residual Calculations (Initialising)';
+            obj.hProg.Update(2+obj.wOfs,wStr,0);            
+            
+        end            
+        
+        % ------------------------------------ %
+        % --- IMAGE SEGMENTATION FUNCTIONS --- %
+        % ------------------------------------ %
         
         % --- segments the all the objects for a given region
         function segmentRegions(obj,iApp)
@@ -153,13 +189,13 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
                 ImgSeg = obj.setupResidualStack(ImgSR,ImgBGL);  
                 
                 % segments the image stack
-                [fP0nw,IP0nw] = obj.segSubRegion(ImgSeg,pOfs,reduceImg);
+                [fP0nw,IP0nw] = obj.segmentSubRegion(ImgSeg,pOfs,reduceImg);
                 if obj.nI > 0
                     % if the image is interpolated, then performed a
                     % refined image search
                     yOfs = y0L(iTube,:);
                     [fP0nw,IP0nw] = ...
-                                obj.refinedImgSeg(ImgL,ImgBG,fP0nw,yOfs);
+                            obj.segmentSubImage(ImgL,ImgBG,fP0nw,yOfs);
                 end
                 
                 % sets the metric/position values
@@ -192,77 +228,18 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
            
         end 
         
-        % --- calculates the refined coordinates from original scale image
-        function [fP,IP] = refinedImgSeg(obj,ImgL,ImgBG,fP0,pOfs)
-            
-            % memory allocation            
-            [W,szL] = deal(2*obj.nI,size(ImgBG));
-            [fP,IP] = deal(NaN(obj.nImg,2),NaN(obj.nImg,1));
-            fPT = 1 + obj.nI*(1 + 2*(fP0-1)) + repmat(pOfs,length(ImgL),1);
-            
-            % determines the coordinates from the refined image
-            for i = 1:obj.nImg
-                % sets up the sub-image surrounding the point
-                iRP = max(1,fPT(i,2)-W):min(szL(1),fPT(i,2)+W);
-                iCP = max(1,fPT(i,1)-W):min(szL(2),fPT(i,1)+W);                   
-                IRP = ImgBG(iRP,iCP)-ImgL{i}(iRP,iCP);
-                
-                % retrieves the coordinates of the maxima
-                pMaxP = getMaxCoord(IRP);
-                IP(i) = IRP(pMaxP(2),pMaxP(1));
-                fP(i,:) = (pMaxP-1) + [iCP(1),iRP(1)] - pOfs;
-            end
-                
-        end
-        
-        % --- retrieves the sub-region indices
-        function [iRT,iCT] = getSubRegionIndices(obj,iApp,nCol)
-            
-            % sets the row/column indices
-            [iRT,iCT] = deal(obj.iMov.iRT{iApp},1:nCol);
-            
-            % interpolates the images (if large)
-            if obj.nI > 0
-                iCT = (obj.nI+1):(2*obj.nI):nCol;
-                iRT = cellfun(@(x)(x((obj.nI+1):2*obj.nI:end)),iRT,'un',0);
-            end
-            
-        end        
-        
-        % --- reduces the image stack to the neighbourhood surrounding 
-        %     the location, fP0
-        function [ImgL,pOfs] = reduceImageStack(obj,Img,fP0,W)
-            
-            % sets the image neighbourhood
-            if exist('W','var')
-                W = max(21,max(obj.iMov.szObj));
-            end
-            
-            % initialisations            
-            [szL,N] = deal(size(Img{1}),1+(W-1)/2);
-            
-            % sets up the feasible row/column indices
-            [iR,iC] = deal(fP0(2)+(-N:N),fP0(1)+(-N:N));
-            iR = iR((iR > 0) & (iR <= szL(1)));
-            iC = iC((iC > 0) & (iC <= szL(2)));
-            
-            % sets the position offset and reduced image stack
-            pOfs = [iC(1),iR(1)]-1;
-            ImgL = cellfun(@(x)(x(iR,iC)),Img,'un',0);
-            
-        end
-        
         % --- segments a sub-region with a moving object
-        function [fP,IP] = segSubRegion(obj,Img,pOfs,reduceImg)
+        function [fP,IP] = segmentSubRegion(obj,Img,pOfs,reduceImg)
             
             % memory allocation
             pW = 0.9;
             nFrm = length(Img);
             iPmx = cell(nFrm,1);
-            [fP,IP] = deal(NaN(nFrm,2),NaN(nFrm,1));            
+            [fP,IP] = deal(NaN(nFrm,2),zeros(nFrm,1));    
+            isOK = ~cellfun(@(x)(all(isnan(x(:)))),Img);
             
             % determines the most likely object position over all frames
-            for i = 1:nFrm
+            for i = find(isOK(:)')
                 % reduces the image (if required)
                 if (i > 1) && reduceImg
                     [Img(i),pOfs] = obj.reduceImageStack(Img(i),fP(i-1,:));                    
@@ -300,11 +277,108 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
                 end
             end
             
-        end
+        end        
         
-        % ----------------------- %
-        % --- OLDER FUNCTIONS --- %
-        % ----------------------- %        
+        % --- calculates the refined coordinates from original scale image
+        function [fP,IP] = segmentSubImage(obj,ImgL,ImgBG,fP0,pOfs)
+            
+            % memory allocation            
+            [W,szL] = deal(2*obj.nI,size(ImgBG));
+            [fP,IP] = deal(NaN(obj.nImg,2),NaN(obj.nImg,1));
+            fPT = 1 + obj.nI*(1 + 2*(fP0-1)) + repmat(pOfs,length(ImgL),1);
+            isOK = ~isnan(fP0(:,1));
+            
+            % determines the coordinates from the refined image
+            for i = find(isOK(:)')
+                % sets up the sub-image surrounding the point
+                iRP = max(1,fPT(i,2)-W):min(szL(1),fPT(i,2)+W);
+                iCP = max(1,fPT(i,1)-W):min(szL(2),fPT(i,1)+W);                   
+                IRP = ImgBG(iRP,iCP)-ImgL{i}(iRP,iCP);
+                
+                % retrieves the coordinates of the maxima
+                pMaxP = getMaxCoord(IRP);
+                IP(i) = IRP(pMaxP(2),pMaxP(1));
+                fP(i,:) = (pMaxP-1) + [iCP(1),iRP(1)] - pOfs;
+            end
+                
+        end            
+        
+        % ---------------------------------- %
+        % --- IMAGE STACK SETUP FUNCTION --- %
+        % ---------------------------------- %                                   
+        
+        % --- sets up the residual image stack
+        function IR = setupResidualStack(obj,Img,ImgBG)
+            
+            % calculates the image stack residual
+            IR = cellfun(@(x)(ImgBG-x),Img,'un',0);
+            isOK = ~cellfun(@(x)(all(isnan(x(:)))),IR);
+            
+            % removes any NaN values from the image
+            if ~isempty(obj.iMov.dpInfo)
+                % removes any NaN pixels or pixels at the frame edge          
+                for i = find(isOK(:)')
+                    B = bwmorph(isnan(IR{i}),'dilate',1+obj.nI);
+                    IR{i}(B) = 0;
+                end
+            end       
+            
+            % removes the image median
+            IR(isOK) = cellfun(@(x,y)(max(0,x)),IR(isOK),'un',0);            
+            
+        end          
+        
+        % --- sets up the x-correlation image stack from the stack, Img
+        function ImgXC = setupXCorrStack(obj,Img)
+            
+            % ensures the images are stored in a cell array
+            if ~iscell(Img); Img = {Img}; end
+            
+            % memory allocation
+            tP = obj.iMov.tPara;
+            ImgXC = cell(length(Img),1);
+            
+            % sets up the x-correlation image stack
+            for i = 1:length(Img)
+                % calculates the original cross-correlation image
+                [Gx,Gy] = imgradientxy(Img{i});
+                Ixc0 = max(0,calcXCorr(tP.GxT,Gx) + calcXCorr(tP.GyT,Gy));
+                
+                % calculates the final x-correlation mask
+                if isempty(obj.hS)
+                    ImgXC{i} = Ixc0/2;
+                else
+                    ImgXC{i} = imfilter(Ixc0,obj.hS)/2;
+                end
+                
+                % adjusts the image to accentuate dark regions
+                ImgXC{i} = ImgXC{i}.*(1-normImg(Img{i}));
+            end
+            
+        end           
+        
+        % --- reduces the image stack to the neighbourhood surrounding 
+        %     the location, fP0
+        function [ImgL,pOfs] = reduceImageStack(obj,Img,fP0,W)
+            
+            % sets the image neighbourhood
+            if exist('W','var')
+                W = max(21,max(obj.iMov.szObj));
+            end
+            
+            % initialisations            
+            [szL,N] = deal(size(Img{1}),1+(W-1)/2);
+            
+            % sets up the feasible row/column indices
+            [iR,iC] = deal(fP0(2)+(-N:N),fP0(1)+(-N:N));
+            iR = iR((iR > 0) & (iR <= szL(1)));
+            iC = iC((iC > 0) & (iC <= szL(2)));
+            
+            % sets the position offset and reduced image stack
+            pOfs = [iC(1),iR(1)]-1;
+            ImgL = cellfun(@(x)(x(iR,iC)),Img,'un',0);
+            
+        end           
         
         % --- sets up the image stack for the region index, iApp
         function [ImgL,ImgBG] = setupRegionImageStack(obj,iApp)
@@ -330,7 +404,9 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
                 % if so, then reset the 
                 Iref = uint8(ImgBG);
                 for i = find(~isOK(:)')
-                    ImgL{i} = double(imhistmatch(uint8(ImgL{i}),Iref));
+                    if ~all(isnan(ImgL{i}(:)))
+                        ImgL{i} = double(imhistmatch(uint8(ImgL{i}),Iref));
+                    end
                 end
             end
             
@@ -338,7 +414,7 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
             Bw = getExclusionBin(obj.iMov,[length(iR),length(iC)],iApp);
             [ImgBG,ImgL] = deal(ImgBG.*Bw,cellfun(@(I)(I.*Bw),ImgL,'un',0));
             
-        end                    
+        end           
         
         % -------------------------- %
         % --- PLOTTING FUNCTIONS --- %
@@ -404,77 +480,11 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
                 plot(h(j),fPosP(isMove,1),fPosP(isMove,2),'go');
                 plot(h(j),fPosP(~isMove,1),fPosP(~isMove,2),'ro');
             end  
-        end                
-        
-        % --- sets up the x-correlation image stack from the stack, Img
-        function ImgXC = setupXCorrStack(obj,Img)
-            
-            % ensures the images are stored in a cell array
-            if ~iscell(Img); Img = {Img}; end
-            
-            % memory allocation
-            tP = obj.iMov.tPara;
-            ImgXC = cell(length(Img),1);
-            
-            % sets up the x-correlation image stack
-            for i = 1:length(Img)
-                % calculates the original cross-correlation image
-                [Gx,Gy] = imgradientxy(Img{i});
-                Ixc0 = max(0,calcXCorr(tP.GxT,Gx) + calcXCorr(tP.GyT,Gy));
-                
-                % calculates the final x-correlation mask
-                if isempty(obj.hS)
-                    ImgXC{i} = Ixc0/2;
-                else
-                    ImgXC{i} = imfilter(Ixc0,obj.hS)/2;
-                end
-                
-                % adjusts the image to accentuate dark regions
-                ImgXC{i} = ImgXC{i}.*(1-normImg(Img{i}));
-            end
-            
-        end        
+        end                             
         
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %
-        % ------------------------------- %
-        
-        % --- initialises the solver fields
-        function initObjectFields(obj)
-            
-            % flag initialisations
-            obj.calcOK = true;            
-            
-            % permanent field memory allocation
-            obj.IPos = cell(obj.nApp,obj.nImg);
-            obj.fPosL = cell(obj.nApp,obj.nImg);
-            obj.fPos = cell(obj.nApp,obj.nImg);
-            obj.fPosG = cell(obj.nApp,obj.nImg); 
-            
-            % sets the local images
-            obj.ImgLT = cellfun(@(iR,iC)(cellfun(@(I)(I(iR,iC)),...
-                        obj.Img,'un',0)),obj.iMov.iR,obj.iMov.iC,'un',0);
-            
-            % orientation angle memory allocation
-            if obj.iMov.calcPhi
-                obj.Phi = cell(obj.nApp,obj.nImg);
-                obj.axR = cell(obj.nApp,obj.nImg);
-                obj.NszB = cell(obj.nApp,obj.nImg);
-            end
-            
-            % sets up the image filter (if required)
-            [bgP,obj.hS] = deal(obj.iMov.bgP.pSingle,[]);
-            if isfield(bgP,'useFilt')
-                if bgP.useFilt
-                    obj.hS = fspecial('disk',bgP.hSz);
-                end
-            end
-            
-            % initialises the progressbar
-            wStr = 'Residual Calculations (Initialising)';
-            obj.hProg.Update(2+obj.wOfs,wStr,0);            
-            
-        end     
+        % ------------------------------- %        
         
         % --- calculates the global coords from the sub-region reference
         function calcGlobalCoords(obj)
@@ -514,97 +524,20 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
             
         end       
         
-        % --- sets up the residual image stack
-        function IR = setupResidualStack(obj,Img,ImgBG)
+        % --- retrieves the sub-region indices
+        function [iRT,iCT] = getSubRegionIndices(obj,iApp,nCol)
             
-            % calculates the image stack residual
-            IR = cellfun(@(x)(ImgBG-x),Img,'un',0);
+            % sets the row/column indices
+            [iRT,iCT] = deal(obj.iMov.iRT{iApp},1:nCol);
             
-            % removes any NaN values from the image
-            if ~isempty(obj.iMov.dpInfo)
-                % removes any NaN pixels or pixels at the frame edge          
-                for i = 1:length(IR)
-                    B = bwmorph(isnan(IR{i}),'dilate',1+obj.nI);
-                    IR{i}(B) = 0;
-                end
-            end       
+            % interpolates the images (if large)
+            if obj.nI > 0
+                iCT = (obj.nI+1):(2*obj.nI):nCol;
+                iRT = cellfun(@(x)(x((obj.nI+1):2*obj.nI:end)),iRT,'un',0);
+            end
             
-            % removes the image median
-            IR = cellfun(@(x,y)(max(0,x)),IR,'un',0);            
-            
-        end        
+        end          
         
     end
     
-    methods(Static)
-        
-        % --- calculates the locations of the objects for each sub-region
-        function fPos = segSubRegions(IRL,pTol,fPr,fok,dTol,Nsz)
-            
-            % initialisations
-            nFrm = length(IRL);
-            
-            % determines if the region has been rejected            
-            if ~fok
-                % if so, then return NaN's
-                fPos = num2cell(NaN(nFrm,2),2)';
-                return
-            end
-            
-            % sets up the residual image stack 
-            IRL = cellfun(@(x)(x-nanmedian(x(:))),IRL,'un',0);
-            for i = 1:length(IRL)
-                IRL{i}(isnan(IRL{i})) = 0;
-            end
-            
-            % calculates the new positions from the sub-image stack  
-            [fPosNw,IRmx] = segSingleSubRegion(IRL,fPr,dTol,Nsz);
-            
-            % determines which frames have a residual value above tolerance
-            isOK = IRmx >= pTol;
-            if ~any(isOK)
-                % if not any, then determine if there is any previous data  
-                % from which to set the missing frames
-                if isempty(fPr)
-                    % if not, then return NaN's
-                    fPos = num2cell(NaN(nFrm,2),2)';
-                else
-                    % otherwise, repeat these values
-                    fPos = num2cell(repmat(fPr(end,:),nFrm,1),2)';
-                end
-
-                % exits the function
-                return
-            else
-                % otherwise, convert the position array to a cell array
-                fPos = num2cell(fPosNw,2)';
-            end
-            
-            % if there are any missing frames, then set the position 
-            % coordinates from the surrounding frames
-            if any(~isOK)
-                jGrp = getGroupIndex(~isOK);
-                for i = 1:length(jGrp)
-                    if jGrp{i}(1) == 1
-                        % case is the first frame in the group is the first
-                        % frame (use the first non-empty frame)
-                        fPos(jGrp{i}) = fPos(jGrp{i}(end)+1);
-                    else
-                        % case is the last frame is the last overall (use
-                        % the previous non-empty frame)
-                        fPos(jGrp{i}) = fPos(jGrp{i}(1)-1);
-                    end
-                end
-            end                    
-        end        
-        
-        function IRes = calcRegionResImage(ImgBG,I,hG)
-
-
-            IRes = imfilter(ImgBG-I,hG);
-            IRes(I>median(I(:))) = NaN;
-
-        end        
-        
-    end
 end

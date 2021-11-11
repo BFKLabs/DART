@@ -129,7 +129,7 @@ classdef EmptyCheck < handle
         end        
         
         % --- closes the window
-        function close(obj)
+        function closeGUI(obj)
             
             delete(obj.hFig)
             
@@ -164,7 +164,7 @@ classdef EmptyCheck < handle
             cellfun(@(x)(setObjVisibility(x,'off')),obj.hTube)
             
             % closes the object
-            obj.close();
+            obj.closeGUI();
             
         end        
         

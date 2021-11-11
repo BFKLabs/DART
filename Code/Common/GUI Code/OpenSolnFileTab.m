@@ -1174,6 +1174,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
 
             % removes the table selection
             removeTableSelection(hTable)
+            pause(0.05);
 
             % shifts the rows (if there are any rows under those being cleared)
             if iSel(end)+1 <= length(iNw)
@@ -1182,12 +1183,14 @@ classdef OpenSolnFileTab < dynamicprops & handle
             end
 
             % removes any excess rows
+            pause(0.05);
             nRow0 = obj.jTable.getRowCount;
             for i = max(obj.nExp+1,obj.nExpMax+1):nRow0
                 jTableMod.removeRow(obj.jTable.getRowCount-1)
             end
             
             % removes/clears the rows
+            pause(0.05);
             for i = (obj.nExp+1):obj.nExpMax
                 obj.clearExptInfoTableRow(i) 
             end
@@ -1210,7 +1213,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             
             % if loading files through the analysis gui, then update the
             % experiment information for the other tabs
-            hProg.StatusMessage = 'Resetting GUI Objects...';
+            hProg.StatusMessage = 'Resetting Loaded Data...';
             obj.baseObj.updateFullGUIExpt();
             
             % creates the explorer tree

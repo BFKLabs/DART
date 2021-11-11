@@ -1,5 +1,5 @@
 function varargout = RestartBatchProcess(varargin)
-% Last Modified by GUIDE v2.5 18-Sep-2017 16:55:59
+% Last Modified by GUIDE v2.5 10-Nov-2021 20:56:19
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -27,13 +27,15 @@ function RestartBatchProcess_OpeningFcn(hObject, eventdata, handles, varargin)
 handles.output = hObject;
 
 % sets the input variables
-hGUI = varargin{1};
+bpObj = varargin{1};
+hGUI = bpObj.hGUI;
 
 % loads the required structs/data objects
 iData = get(hGUI.figFlyTrack,'iData');
 
 % sets the data structs into the GUI
 setappdata(hObject,'hGUI',hGUI);
+setappdata(hObject,'bpObj',bpObj);
 setappdata(hObject,'iProg',iData.ProgDef);
 
 % initialises the fields
@@ -147,6 +149,57 @@ global bpData
 bpData = [];
 delete(handles.figMultiBatch)
 
+% ----------------------------- %
+% --- STATISTICS MENU ITEMS --- %
+% ----------------------------- %
+
+% -------------------------------------------------------------------------
+function menuCalcShift_Callback(hObject, eventdata, handles)
+
+% parameters
+pTolDiff = 10;
+
+% retrieves the currently selected experiment information
+hFig = handles.output;
+bpObj = getappdata(hFig,'bpObj');
+iExptAdd = getappdata(hFig,'iExptAdd');
+hProg = ProgBar('Video Shift Calculations','Video Shift Calculations');
+
+% retrieves the batch processing data for the current expt.
+iSel = get(handles.listExptAdded,'Value');
+bpS = iExptAdd.bpData(iSel);  
+
+% calculates the image shifts for each of the missing regions
+nFile = size(bpS.dpImg,1);
+for i = find(isnan(bpS.dpImg(:,1))')
+    % updates the progressbar 
+    wStrNw = sprintf('Calculating Video Shift (%i of %i)',i,nFile);
+    if hProg.Update(1,wStrNw,i/nFile)
+        % if the user cancelled, then exit
+        return
+    end
+    
+    % retrieves the new image
+    ImgNw = bpObj.getFeasComparisonImage(bpS.mName{i}); 
+    if abs(mean2(bpS.Img0) - mean2(ImgNw)) > pTolDiff
+        % hisogram matches the images (if difference is too large)
+        ImgNw = double(imhistmatch(uint8(ImgNw),uint8(bpS.Img0)));
+    end    
+    
+    % calculates the video offset between the new/candidate frames
+    bpS.dpImg(i,:) = flip(roundP(fastreg(ImgNw,bpS.Img0)));    
+end
+
+% updates the values within the batch processing data struct field
+iExptAdd.bpData(iSel) = bpS;
+setappdata(hFig,'iExptAdd',iExptAdd)
+
+% closes the progressbar
+hProg.closeProgBar;
+
+% updates the progress axes
+updateProgressAxes(handles,iSel)
+
 %-------------------------------------------------------------------------%
 %                        FIGURE CALLBACK FUNCTIONS                        %
 %-------------------------------------------------------------------------%
@@ -211,6 +264,141 @@ set(handles.textVideoCount,'string',length(bpNw.mName))
 set(handles.textSolnCount,'string',sum(isSegNw))
 set(handles.textPercentComp,'string',sprintf('%i%s',pComp,char(37)))
 
+% updates the progress axes
+updateProgressAxes(handles,iSel)
+
+% --- updates the progress axes
+function updateProgressAxes(handles,iSel)
+
+% initialisations
+vStr = {'off','on'};
+[hasData,showStats] = deal(~isempty(iSel),false);
+[hAxP,hAxS] = deal(handles.axesProgress,handles.axesShift);
+[hPanelP,hPanelS] = deal(handles.panelProgress,handles.panelShift);
+
+% if the selected index is given, then determine if the stats should be
+% updated (only if there is more than one video to process)
+if hasData    
+    iExptAdd = getappdata(handles.figMultiBatch,'iExptAdd');
+    [bpS,isSegS] = deal(iExptAdd.bpData(iSel),iExptAdd.isSeg{iSel}); 
+    showStats = length(isSegS) > 1;
+end
+
+% clear both axes
+cla(hAxP);
+cla(hAxS);
+
+% determines if there is any data
+if showStats
+    % retrieves the currently selected experiment information 
+    hLoad = ProgressLoadbar('Updating Tracking Statistics...');
+    outDir = fullfile(bpS.SolnDir,bpS.SolnDirName);
+    
+    % determines the number of solution files in the output directory
+    sFile = dir(fullfile(outDir,'*.soln'));
+    [iFile,nFile,prFrm] = deal(length(sFile),length(isSegS),0);      
+    
+    % if any solution files exist, then determine how far the last 
+    % solution file has been processed
+    if iFile > 0
+        % loads the data from the last solution file
+        sFileF = fullfile(outDir,sFile(end).name);
+        A = importdata(sFileF,'-mat');
+        
+        % determines the last segmented frame from the solution file
+        i0 = find(A.iMov.ok,1,'first');
+        j0 = find(A.iMov.flyok(:,i0),1,'first');
+        iFrm = find(~isnan(A.pData.fPos{i0}{j0}(:,1)),1,'last');
+        if isempty(iFrm); iFrm = 0; end
+        
+        % calculates the proportion of frames that have been segmented
+        prFrm = iFrm/size(A.pData.fPos{i0}{j0},1);
+        if prFrm == 1
+            % if the video is fully segmented, then reset the values for
+            % the next video (only if current file is not last file)
+            if iFile < nFile
+                [iFile,prFrm] = deal(iFile+1,0);
+            end
+        end
+    end
+
+    % --------------------------------- %
+    % --- BATCH PROCESSING PROGRESS --- %
+    % --------------------------------- %
+    
+    % determines the proportion of files to be selected    
+    xiP = [0,1]+0.5;
+    c = {[1,0.5,0.5],[0.5,0.5,1]};
+    prVal = 100*[(prFrm+iFile)/nFile,prFrm];
+    lblStr = {{'Overall';'Progress'},{'Video';'Progress'}};    
+    
+    % updates the axis properties 
+    hold(hAxP,'on');
+    for i = 1:length(xiP)
+        hBar = bar(hAxP,xiP(i),prVal(i),0.8);
+        set(hBar,'CData',c{i});
+    end
+    hold(hAxP,'off');
+
+    % updates the other axis properties
+    xLblT = createMultiLineAxisLabel(lblStr);
+    set(hAxP,'xlim',[0,2],'ylim',[0,100],'xTick',xiP,'XTickLabel',xLblT,...
+             'ytick',0:25:100,'FontWeight','bold','FontSize',9);
+    grid(hAxP,'on')
+
+    % -------------------------------- %
+    % --- VIDEO FOV TEMPORAL SHIFT --- %
+    % -------------------------------- %
+
+    % initialisations
+    lWid = 2;
+    xiS = 1:nFile;
+    dpImg = bpS.dpImg;
+    hPlot = zeros(1,2);    
+    xL = [1,nFile]+0.5*[-1,1];  
+    xP = [xL(1),(iFile+0.5)];
+    [i1,i2] = deal([1,1,2,2,1],[1,2,2,1,1]);    
+
+    % sets the y-axis limits
+    if all(isnan(dpImg(:)))
+        yL = [-1,1];
+    else
+        yL = [nanmin(dpImg(:)),nanmax(dpImg(:))] + [-1,1];
+    end
+
+    % creates the line plots
+    hold(hAxS,'on');
+    patch(xP(i1),yL(i2),'g','facealpha',0.2,'Parent',hAxS,...
+                            'LineStyle','none');
+    plot(hAxS,xL,[0,0],'k--','linewidth',lWid);
+    hPlot(1) = plot(hAxS,xiS,dpImg(:,1),'r','linewidth',lWid);
+    hPlot(2) = plot(hAxS,xiS,dpImg(:,2),'b','linewidth',lWid);    
+    hold(hAxS,'off');
+
+    % creates the legend object
+    lgStr = {'X-Displacement','Y-Displacement'};
+    legend(hPlot,lgStr,'Units','pixels','location','best');
+    xlabel(hAxS,'Video #','FontWeight','Bold','FontSize',10);
+    ylabel(hAxS,'Displacement (Pixels)','FontWeight','Bold','FontSize',10);
+
+    % sets the axis properties
+    set(hAxS,'xlim',xL,'ylim',yL,'FontWeight','bold','FontSize',9);
+    grid(hAxS,'on')
+
+end
+
+% updates the panel enabled properties
+setPanelProps(hPanelP,showStats);
+setPanelProps(hPanelS,showStats);
+setObjEnable(handles.menuStats,showStats);
+    
+% updates the axis objects
+axis(hAxP,vStr{1+showStats})
+axis(hAxS,vStr{1+showStats})
+
+% closes the loadbar (if one was created)
+if exist('hLoad','var'); delete(hLoad); end
+
 % ------------------------------------------------------- %
 % --- BATCH PROCESSING FILE LIST PUSHBUTTON CALLBACKS --- %
 % ------------------------------------------------------- %
@@ -242,6 +430,14 @@ if iExptAdd.nCount == 0
     setObjEnable(handles.buttonExptReset,'on')
     setObjEnable(handles.menuRestartBatch,'on')
     setPanelProps(handles.panelBatchInfo,'on')
+end
+
+% adds any missing fields to the batch processing struct
+bpNw = num2cell(iExptAll.bpData(indNw));
+for i = 1:length(bpNw)
+    if ~isfield(bpNw{i},'Img0')
+        [bpNw{i}.Img0,bpNw{i}.dpImg] = deal([]);
+    end
 end
 
 % flags the new values to be added
@@ -427,6 +623,9 @@ set(handles.textPercentComp,'string','N/A')
 if (nargin == 1)
     setPanelProps(handles.panelBatchInfo,'off')
 end
+
+% updates the progress axes
+updateProgressAxes(handles,[])
 
 % ---------------------------------------- %
 % --- OBJECT PROPERTY UPDATE FUNCTIONS --- %

@@ -37,10 +37,11 @@ iData = varargin{1};
 
 % determines if a summary file exists in the current movie directory
 smFile0 = fullfile(iData.fData.dir,'Summary.mat');
-if (~exist(smFile0,'file'))
+if ~exist(smFile0,'file')
     % if the summary file is missing, then output an error
-    eStr = [{'Error! Summary file is missing from current movie directory.'};...
-            {'Ensure summary file is present before performing batch processing.'}];
+    eStr = sprintf(['Error! Summary file is missing from current ',...
+                    'movie directory. Ensure summary file is present ',...
+                    'before performing batch processing.']);
     waitfor(errordlg(eStr,'Missing Summary File','modal'));
     
     % exits the batch processing GUI
@@ -50,7 +51,7 @@ if (~exist(smFile0,'file'))
 else
     % otherwise, load the summary file data
     sData0 = orderfields(load(smFile0));
-    if (~isfield(sData0,'sData'))
+    if ~isfield(sData0,'sData')
         sData0.sData = [];
         sData0 = orderfields(sData0);
     end    
@@ -103,14 +104,14 @@ iSel = get(handles.listExptAdded,'value');
 
 % prompts the user for the scanning directory
 scDir = uigetdir2(ProgDef.DirMov,'Set Batch Processing Directories');
-if (isempty(scDir))
+if isempty(scDir)
     % if the user cancelled, then exit the function
     return
 end
 
 % retrieves the feasible batch processing data files
 [bpData,sData,ind0,isChange] = detFeasBPDir(handles,scDir);
-if (isChange)
+if isChange
     % updates the data structs
     setappdata(handles.figBatchProcess,'bpData',bpData);
     setappdata(handles.figBatchProcess,'sData',sData);    
@@ -132,15 +133,14 @@ bpData0 = getappdata(handles.figBatchProcess,'bpData');
 solnDir = fullfile(bpData0.SolnDir,bpData0.SolnDirName);
 
 % determines if the output directory exists
-if (exist(solnDir,'dir'))
+if exist(solnDir,'dir')
     % if it does, then prompt the user that directory will be over-written
     % if they continue
-    qStr = sprintf(['The solution file directory already exists. If you ',...
-                    'continue then this directory will be overwritten\n\n',...
-                    'Do you still wish to continue?']);
-    uChoice = questdlg(qStr,'Solution File Directory Already Exists',...
-                       'Yes','No','Yes');
-    if (strcmp(uChoice,'Yes'))
+    qStr = sprintf(['The solution file directory already exists. If ',...
+                    'you continue then this directory will be ',...
+                    'overwritten.\n\nDo you still wish to continue?']);
+    uChoice = questdlg(qStr,'Directory Already Exists','Yes','No','Yes');
+    if strcmp(uChoice,'Yes')
         % sets the output batch processing data struct
         bpData = bpData0;
         
@@ -204,13 +204,13 @@ bpData = getappdata(handles.figBatchProcess,'bpData');
 nwStr = get(hObject,'string');
 
 % only check strings that are not empty
-if (~isempty(nwStr))
+if ~isempty(nwStr)
     % retrieves the new string
     iNS = regexp(nwStr,'\S');
     nwStr = nwStr(iNS(1):end);
 
     % checks to see if the user entered a correct solution file name
-    if (chkDirString(nwStr))   
+    if chkDirString(nwStr)   
         % updates the data struct
         bpData(iSel).SolnDirName = nwStr;
         setappdata(handles.figBatchProcess,'bpData',bpData);
@@ -246,7 +246,7 @@ bpData = getappdata(handles.figBatchProcess,'bpData');
 [iSel,lStr] = deal(get(hObject,'value'),get(hObject,'string'));
 
 % sets the summary output file type
-switch (lStr{iSel})
+switch lStr{iSel}
     case ('Single Summary File')
         bpData.sfData.Type = 'Append';
     otherwise
@@ -264,7 +264,7 @@ bpData = getappdata(handles.figBatchProcess,'bpData');
 
 % retrieves the new value from the editbox
 nwVal = str2double(get(hObject,'string'));
-if (chkEditValue(nwVal,[10 300],true))
+if chkEditValue(nwVal,[10 300],true)
     % sets the new value into the data struct
     bpData.sfData.tBin = nwVal;
     setappdata(handles.figBatchProcess,'bpData',bpData);
@@ -286,15 +286,12 @@ function initDefButton(handles,ProgDef)
 
 % sets the variable tag strings
 wStr = {'SolnDir'};
+hFig = handles.figBatchProcess;
 
-% sets the call back function for all the GUI buttons
+% sets the properties for all the GUI buttons
 for i = 1:length(wStr)
-    % sets up the object callback function
-    hObj = eval(sprintf('handles.button%s;',wStr{i}));
-    bFunc = @(hObj,e)SetupBatchProcess('getDirInfo',hObj,wStr{i},guidata(hObj));
-    
-    % sets the object callback function
-    set(hObj,'UserData',wStr{i},'callback',bFunc);    
+    hObj = findall(hFig,'tag',sprintf('button%s',wStr{i}));
+    set(hObj,'UserData',wStr{i},'callback',{@getDirInfo,handles});    
 end
 
 % --- initialises the list boxes objects --- %
@@ -342,7 +339,7 @@ dDir = bpData(iSel).SolnDir;
         
 % prompts the user for the new default directory
 dirName = uigetdir(dDir,'Set The Directory Path');
-if (dirName ~= 0)
+if dirName ~= 0
     % otherwise, update the directory string names
     for i = 1:length(bpData)
         bpData(i).SolnDir = dirName;

@@ -265,7 +265,7 @@ classdef ExptCompObj < handle
             tExptS = sec2vec(etime(iPara.Tf,iPara.Ts));
             
             % removes the day field (if less than one day)
-            if (tExptS(4) == 0); tExptS = tExptS(2:end); end
+            if (tExptS(1) == 0); tExptS = tExptS(2:end); end
             
             % sets the duration strings for each time field
             durStr0 = cell(1,length(tExptS));

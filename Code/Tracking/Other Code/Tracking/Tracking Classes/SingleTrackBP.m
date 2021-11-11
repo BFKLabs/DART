@@ -93,11 +93,14 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             % sets up the batch processing data struct
             if obj.isRestart
                 % case is restarting the batch processing
-                obj.bData = RestartBatchProcess(obj.hGUI);
+                obj.bData = RestartBatchProcess(obj);
             else
                 % case is setting up the batch processing
                 obj.bData = SetupBatchProcess(obj.iData);
             end
+            
+            % ensures the comparison image has been set
+            obj.setComparisonImages();            
             
             % if the user cancelled, then reset the objects
             if isempty(obj.bData)
@@ -111,6 +114,125 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             else
                 % otherwise, check the record status of the video
                 obj.checkVideoStatus();
+            end
+            
+        end    
+        
+        % --- retrieves the batch processing comparsion image
+        function setComparisonImages(obj)            
+            
+            % retrieves the comparison image for each batch processing 
+            % object (only for missing datasets)
+            for i = 1:length(obj.bData)
+                if isempty(obj.bData(i).Img0)            
+                    % retrieves the candidate frame
+                    fStr = obj.bData(i).mName{1};
+                    Img0 = obj.getFeasComparisonImage(fStr); 
+                    nFrm = length(obj.bData(i).mName);
+                    
+                    % sets the comparison image/offset values                    
+                    obj.bData(i).Img0 = Img0;
+                    obj.bData(i).dpImg = [zeros(1,2);NaN(nFrm-1,2)];
+                end
+            end
+            
+        end
+        
+        % --- retrieves the next feasible image
+        function Img0 = getFeasComparisonImage(obj,fStr,iFrm0)
+
+            % initialisation
+            if ~exist('iFrm0','var'); iFrm0 = 1; end
+
+            % reads in the first feasible frame                    
+            while 1
+                try
+                    % reads the image frame
+                    Img0 = obj.getComparisonImages(fStr,iFrm0);
+                    if ~isempty(Img0)
+                        % if feasible, then exit
+                        break
+                    end
+                end
+
+                % increments the frame counter
+                iFrm0 = iFrm0 + 1;
+            end
+
+        end        
+        
+        % --- retrieves the comparison image
+        function Img0 = getComparisonImages(obj,fStr,iFrm)
+            
+            % sets the frame index
+            if ~exist('iFrm','var'); iFrm = 1; end
+            cFrmT = obj.iMov.sRate*(iFrm-1) + obj.iData.Frm0;
+            
+            % retrieves the video object (dependent on video type) 
+            fExtn = getFileExtn(fStr);
+            switch fExtn
+                case {'.mj2', '.mov','.mp4'}
+                    % case is mj2, mov or mp4 videos
+                    mObj = VideoReader(fStr);
+
+                    % resets the image frame
+                    Img0 = read(mObj,cFrmT); 
+                    
+                case '.mkv'
+                    % case is .mkv videos
+                    mObj = ffmsReader();
+                    [~,~] = mObj.open(fStr,0); 
+                    
+                    % reads the image frame
+                    Img0 = mObj.getFrame(cFrmT-1);                 
+
+                otherwise
+                    % case are the other video types
+                    FPS = obj.iData.exP.FPS;
+                    tFrm = cFrmT/FPS + (1/(2*FPS))*[-1 1];
+                    [V,~] = mmread(fStr,[],tFrm,false,true,'');   
+                    
+                    % reads the image frame
+                    if isempty(V.frames)
+                        Img0 = [];
+                    else
+                        Img0 = V.frames(1).cdata;
+                    end
+
+            end         
+            
+            % converts truecolour images to grayscale
+            if size(Img0,3) == 3
+                Img0 = double(rgb2gray(Img0));
+            else
+                Img0 = double(Img0);
+            end           
+            
+            % rotates the final image
+            Img0 = getRotatedImage(obj.iMov,Img0);
+            
+        end
+        
+        % --- updates the video offset field (for the current video)
+        function updateVideoOffset(obj,iDir,iFile)
+            
+            % if the first file, then exit
+            if (iFile == 1) || ~isnan(obj.bData(iDir).dpImg(iFile,1))
+                return
+            end
+
+            % calculates the new video offset
+            dpImgNw = obj.calcVideoOffset(iDir,iFile);
+            obj.bData(iDir).dpImg(iFile,:) = dpImgNw;
+            szFrm = size(obj.bData(iDir).Img0);
+
+            % calculates the relative change between the
+            % previous/current videos 
+            xiS = iFile+[-1;0];
+            dpImgS = diff(obj.bData(iDir).dpImg(xiS,:),[],1);
+            if any(dpImgS ~= 0)
+                % update if there is a shift in position
+                obj.iMov = resetRegionPos(obj.iMov,szFrm,dpImgS);
             end
             
         end        
@@ -290,7 +412,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             
             % creates a new shell solution file (if one is required)
             if obj.setSoln
-                obj.createShellSolnFile(iDir);
+                obj.createShellSolnFile(iDir,obj.iFile0);
             end
 
             % resets the waitbar figure fields
@@ -386,7 +508,10 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                         
                         % ----------------------------- %
                         % --- ENTIRE VIDEO TRACKING --- %
-                        % ----------------------------- %                        
+                        % ----------------------------- %    
+                        
+                        % updates the batch processing data
+                        obj.updateBPFile(obj.bData(iDir));
                         
                         % starts full video tracking (if video is valid)
                         if obj.bData(iDir).movOK(i) ~= 0
@@ -719,8 +844,8 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             
             % removes any temporary files already stored and resets the
             % progress data struct
-            obj.iMov = resetProgressStruct(obj.iData,obj.iMov,true);                             
-            obj.iMov = resetRegionPos(obj.iData,obj.iMov);
+            obj.iMov = resetProgressStruct(obj.iData,obj.iMov,true);
+            obj.updateVideoOffset(iDir,iFile)            
             
             % sets the new solution file name     
             [obj.sFileNw,fNameBase] = obj.getSolnFileName(iDir,iFile);                        
@@ -784,6 +909,27 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             
             % makes the waitbar figure visible again
             obj.hProg.setVisibility('on')              
+            
+        end
+        
+        % --- calculates the video offset between the current/first file
+        function dpImg = calcVideoOffset(obj,iDir,iFile)
+            
+            % parameters
+            pTolDiff = 10;
+            
+            % retrieves the 
+            Img0 = obj.bData(iDir).Img0;
+            fStr = obj.bData(iDir).mName{iFile};            
+            
+            % hisogram matches the images
+            ImgNw = obj.getFeasComparisonImage(fStr); 
+            if abs(mean2(Img0) - mean2(ImgNw)) > pTolDiff
+                ImgNw = double(imhistmatch(uint8(ImgNw),uint8(Img0)));
+            end
+            
+            % calculates the video offset between the new/candidate frames
+            dpImg = flip(roundP(fastreg(ImgNw,Img0)));
             
         end
             
@@ -1215,7 +1361,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         end
         
         % --- initialises an empty solution file
-        function createShellSolnFile(obj,iDir)
+        function createShellSolnFile(obj,iDir,iFile)
             
             % initialisations
             bdata = obj.bData(iDir);
@@ -1228,9 +1374,11 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 if obj.bData(iDir).movOK(i0)
                     % resets the progress data struct and BG flag
                     obj.iMov = resetProgressStruct(obj.iData,obj.iMov,1); 
-                    obj.iMov = resetRegionPos(obj.iData,obj.iMov);
                     obj.forceCalcBG = ~strcmp(movStr,bdata.mName{i0});
-
+                    
+                    % calculates the video offset
+                    obj.updateVideoOffset(iDir,iFile);
+                    
                     % sets the new solution file name            
                     [~,fNameBase,~] = fileparts(bdata.mName{i0});
                     obj.sFileNw = fullfile(obj.outDir,[fNameBase,'.soln']);
@@ -1290,9 +1438,9 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         function [sFileNw,fNameBase] = getSolnFileName(obj,iDir,iFile)
             
             [~,fNameBase,~] = fileparts(obj.bData(iDir).mName{iFile});
-            sFileNw = fullfile(obj.outDir,[fNameBase,'.soln']);      
+            sFileNw = fullfile(obj.outDir,[fNameBase,'.soln']);
             
-        end        
+        end
         
         % --- checks the recording status of the videos
         function checkVideoStatus(obj)
