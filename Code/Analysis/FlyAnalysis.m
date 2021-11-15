@@ -1330,12 +1330,16 @@ end
 
 % creates the explorer tree (if there are functions available)
 if ~isempty(A)    
-    createFuncExplorerTree(handles);           
+    createFuncExplorerTree(handles);   
 end
 
 % resets the experiment list strings
 resetExptListStrings(handles,snTot)       
 setObjEnable(handles.popupExptIndex,eStr)
+
+if ~isa(eventdata,'char')
+    treeSelectChng([], '1', handles)
+end
 
 % --- Executes on button press in toggleFuncFilter.
 function toggleFuncFilter_Callback(hObject, ~, handles)

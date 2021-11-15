@@ -182,7 +182,7 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
                 % sets the sub-region image stack
                 pOfs = [0,0];
                 reduceImg = false;
-                ImgSR = cellfun(@(x)(x(iRT{iTube},iCT)),ImgL,'un',0);
+                ImgSR = cellfun(@(x)(x(iRT{iTube},iCT)),ImgL,'un',0);                
                 
                 % sets up the residual image stack                        
                 ImgBGL = ImgBG(iRT{iTube},iCT);
@@ -232,18 +232,21 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
         function [fP,IP] = segmentSubRegion(obj,Img,pOfs,reduceImg)
             
             % memory allocation
-            pW = 0.9;
+            pW = 0.8;
             nFrm = length(Img);
-            iPmx = cell(nFrm,1);
+            iPmx = cell(nFrm,1);            
             [fP,IP] = deal(NaN(nFrm,2),zeros(nFrm,1));    
             isOK = ~cellfun(@(x)(all(isnan(x(:)))),Img);
+            
+            % swap this for the previous stack final coordinates
+            fPpr = NaN(1,2);
             
             % determines the most likely object position over all frames
             for i = find(isOK(:)')
                 % reduces the image (if required)
                 if (i > 1) && reduceImg
                     [Img(i),pOfs] = obj.reduceImageStack(Img(i),fP(i-1,:));                    
-                end
+                end                
                 
                 % sorts the maxima in descending order
                 szL = size(Img{i});
@@ -263,18 +266,37 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
                 else
                     % case is there are more than one prominent object
                     [iGrp,pC] = getGroupIndex(Img{i}>=pTolB,'Centroid');
-                    if ~isempty(iGrp)
-                        A = cellfun(@length,iGrp)/obj.dTol;
-                        Z = cellfun(@(x)(mean(Img{i}(x))),iGrp).*A;
-
-                        % determines the most likely object, and stores the 
-                        % coordinates and peak pixel value
-                        iMx = argMax(Z);
+                    switch length(iGrp)
+                        case 0
+                            % do nothing...
+                            iMx = NaN;
+                            
+                        case 1
+                            % case is 
+                            iMx = 1;
+                            
+                        otherwise
+                            %
+                            if isnan(fPpr(1))
+                                A = cellfun(@length,iGrp)/obj.dTol;
+                                Z = cellfun(@(x)(mean(Img{i}(x))),iGrp).*A;
+                                iMx = argMax(Z);
+                            else
+                                %
+                                iMx = argMin(pdist2(pC,fPpr));
+                            end                                             
+                    end
+                    
+                    %
+                    if ~isnan(iMx)
                         fP(i,:) = max(1,roundP(pC(iMx,:))) + pOfs;
-                        IP(i) = max(Img{i}(iGrp{iMx}));
+                        IP(i) = max(Img{i}(iGrp{iMx}));  
                     end
                     
                 end
+                
+                %
+                fPpr = fP(i,:);
             end
             
         end        

@@ -1018,16 +1018,23 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             a = 1;
             save(obj.sFileNw,'a')            
             
-            % updates the solution file information
+            % updates the solution file information            
             obj.iData.sfData = dir(obj.sFileNw);
-            obj.iData.sfData.dir = obj.outDir;   
+            obj.iData.sfData.dir = obj.outDir;  
+            summFile = fullfile(obj.outDir,'Summary.mat');
             
             % if the experiment data struct is not set, then retrieve 
             % from summary file
-            if ~isfield(obj.iData,'iExpt')
-                summData = load(fullfile(obj.outDir,'Summary.mat'));
+            summData = load(summFile);
+            if ~isfield(obj.iData,'iExpt')                
                 obj.iData.iExpt = summData.iExpt;
-            end                        
+            end
+            
+            % updates the image offset array (if available)
+            if isfield(obj.bData(iDir),'dpImg')
+                summData.dpImg = obj.bData(iDir).dpImg;
+                save(summFile,'-struct','summData')
+            end                
             
             %
             if isDummy

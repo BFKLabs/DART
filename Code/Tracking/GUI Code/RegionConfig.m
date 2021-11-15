@@ -1191,7 +1191,7 @@ iMov.ok = any(iMov.flyok,1);
 % enable the update button, but disable the use automatic region and show
 % region menu items
 setMenuCheck(setObjEnable(handles.menuUseAuto,'off'),'off');
-setMenuCheck(setObjEnable(handles.menuShowRegion,'off'),'off');
+setMenuCheck(setObjEnable(handles.menuShowInner,'on'),'on');
 setObjEnable(handles.buttonUpdate,'on');
 
 % sets the sub-GUI as the top window

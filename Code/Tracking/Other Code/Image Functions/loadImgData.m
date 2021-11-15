@@ -5,6 +5,9 @@ function [ok,iData] = loadImgData(...
 % global variables
 global isBatch bufData frmSz0
 
+% sets the default values
+if isempty(isBatch); isBatch = false; end
+
 % object handles
 hFig = handles.output;
 
