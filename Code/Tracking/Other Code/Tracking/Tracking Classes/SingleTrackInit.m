@@ -496,11 +496,11 @@ classdef SingleTrackInit < SingleTrack
               
             try
                 % optimises the grid placements
-                IRL = obj.optGridVertPlacement(IR);
+                IRL = obj.optGridVertPlacement(Img,IR);
                 obj.optGridHorizPlacement(IRL);           
             catch ME
                 % if there was an error then store the details
-                obj.errStr = 'stationary object tracking';
+                obj.errStr = 'grid placement optimisation';
                 [obj.errMsg,obj.calcOK] = deal(ME.message,false);
                 return                
             end            
@@ -625,14 +625,17 @@ classdef SingleTrackInit < SingleTrack
         % -------------------------------------- %
         
         % --- optimises the grid vertical placement
-        function IRL = optGridVertPlacement(obj,IR)
+        function IRL = optGridVertPlacement(obj,I,IR)
             
             % parameters
-            dtMin = 4;            
+            dtMin = 6;
+            Ztol = 0.10;          
             
             % calculates the             
+            IL = cellfun(@(ir,ic)(cellfun(@(x)(x(ir,ic)),...
+                                I,'un',0)),obj.iRG,obj.iCG,'un',0);
             IRL = cellfun(@(ir,ic)(cellfun(@(x)(x(ir,ic)),...
-                                IR,'un',0)),obj.iRG,obj.iCG,'un',0);
+                                IR,'un',0)),obj.iRG,obj.iCG,'un',0);                            
             
             % initialisations and memory allocation
             nImg = length(IRL{1});
@@ -642,55 +645,50 @@ classdef SingleTrackInit < SingleTrack
             % memory allocation
             C = NaN(nApp,nImg);
             Ymx = cell(1,nApp);
-            [tPk,yPk] = deal(cell(nApp,nImg));             
+            [tPk,yPk] = deal(cell(nApp,nImg));           
                             
             % calculates the signal 
             for i = 1:nApp    
                 % calculates the normalised maxima 
-                Ymx{i} = cellfun(@(x)(normImg(max(x,[],2))),IRL{i},'un',0);   
+                Ymx0 = cellfun(@(x)(max(x,[],2)),IRL{i},'un',0);
+                Ymx{i} = cellfun(@(x)(normImg(x)),Ymx0,'un',0);     
 
                 % determines the major peaks from the image stack
                 for j = 1:nImg        
-                    [yPk0,tPk0] = findpeaks...
-                                    (Ymx{i}{j},'MinPeakDistance',dtMin);
+                    [yPk0,tPk0] = findpeaks(Ymx0{j},'MinPeakDistance',dtMin);
                     [idx,C0] = kmeans(yPk0,2);
 
                     iMx = argMax(C0);
                     [ii,C(i,j)] = deal(idx == iMx,C0(iMx));
-                    [tPk{i,j},yPk{i,j}] = deal(tPk0(ii),yPk0(ii));                        
+                    [tPk{i,j},yPk{i,j}] = deal(tPk0(ii),yPk0(ii));
                 end    
             end
 
             % determines which regions have a low overall residual value 
             % (these will be excluded here but analysed later)
-            %   => FINISH ME!
-            isOK = true(1,nApp);
+            [Zmu,Zsd] = deal(nanmean(C(:)),nanstd(C(:)));
+            ZC = normcdf(C,Zmu,Zsd);
+            isOK = nanmean(ZC,2) > Ztol;
+
+            % estimates the overall grid size (over all regions)
+            dtPk = cellfun(@(x)(median(diff(x))),tPk);
+            dtPer0 = roundP(nanmedian(dtPk(:)));
 
             % aligns the signal peaks over all regions
             tPkT = cell(1,nApp);
-            for i = find(isOK)
-                % combines the peak times into a single array
-                tPkT{i} = combineNumericCells(tPk(i,:));
+            for i = find(isOK(:)')
+                % aligns the peaks from the residual signal
+                tPkT{i} = obj.detUniqueSignalPeaks(tPk(i,:),dtPer0);
+                tPkC = nanmedian(tPkT{i},2);
 
-                % determines which frame has all sub-regions accounted for
-                hasAll = all(~isnan(tPkT{i}),1);
-                if any(hasAll)
-                    % if such a frame exists, use this as the reference 
-                    iMx = find(hasAll,1,'first');
-                else
-                    % finish me!
-                    a = 1;
-                end
-
-                % temporally aligns the peaks over all frames 
-                % (relative to ref frame)
+                % aligns the frame peaks relative to the ref frame
                 indG = zeros(size(tPkT{i})); 
                 for j = 1:size(tPkT{i},2)
-                    D = pdist2(tPkT{i}(:,iMx),tPkT{i}(:,j)); 
+                    D = pdist2(tPkC,tPkT{i}(:,j)); 
                     indG(:,j) = munkres(D); 
                 end
 
-                % determines if any sub-regions are missing peak values
+                % determines if any sub-regions are missing their peak 
                 isMiss = indG == 0;
                 if any(isMiss(:))
                     % re-orders the time peak array
@@ -698,11 +696,7 @@ classdef SingleTrackInit < SingleTrack
                         tPkT{i}(~isMiss(:,j),j) = ...
                                         tPkT{i}(~isnan(tPkT{i}(:,j)),j);
                         tPkT{i}(isMiss(:,j),j) = NaN;
-                    end
-
-                    % calculates an estimate of the grid spacing size
-                    dtPer0 = floor(nanmedian...
-                                    (nanmedian(diff(tPkT{i},[],1),1))/2);
+                    end        
 
                     % if so, then determine which peak roughly corresponds 
                     % to the other peak times for these sub-regions
@@ -712,56 +706,70 @@ classdef SingleTrackInit < SingleTrack
 
                         % determines the missing peaks from the signal
                         for k = find(isMiss(j,:))
-                            % determines the region of interest peaks
+                            % determines the peaks in the region of interest
                             [yMx,tMx] = findpeaks(Ymx{i}{k});
-                            ii = find((tMx > (tPkMn-dtPer0)) & ...
-                                      (tMx < (tPkMn+dtPer0)));
+                            ii = find((tMx > (tPkMn-dtPer0/2)) & ...
+                                      (tMx < (tPkMn+dtPer0/2)));
 
-                            % sets the peak time to the highest peak value
+                            % sets the peak time to be that with the 
+                            % highest peak value
                             tPkT{i}(j,k) = tMx(ii(argMax(yMx(ii))));
                         end
                     end
-                end
-
+                end   
+                
                 % determines the locations not occupied by the flies
                 X = num2cell([min(tPkT{i},[],2),max(tPkT{i},[],2)],2);
                 indX = cellfun(@(x)(x(1):x(2)),X(:)','un',0);        
-                BX = ~setGroup(cell2mat(indX),[nRow(i),1]);  
+                BX = ~setGroup(cell2mat(indX),[nRow(i),1]);
 
                 % optimises the region grid locations
                 YgT = calcImageStackFcn(Ymx{i},'max');
-                obj.yTube{i} = obj.optRegionGrid(YgT,BX,tPkT{i},nTube(i));    
-            end      
+                obj.yTube{i} = obj.optRegionGrid...
+                                        (YgT,BX,tPkT{i},dtPer0,nTube(i));                    
+   
+            end  
             
-        end      
-        
-        % --- optimises the grid vertical placement
-        function optGridHorizPlacement(obj,IRL)
+            % if all regions are found, then exit
+            if all(isOK); return; end
+
+            % memory allocation
+            nDil = min(floor(obj.iMov.szObj/4));
+            sz = roundP(2*obj.iMov.szObj);                      
+            szF = flip(sz);     
             
-            % parameters
-            pTol = 0.5;
-            xDel = ceil(obj.iMov.szObj(1)/2);
+            for i = find(~isOK(:)')
+                % calculates the x-dir median background estimate 
+                IBGx = cellfun(@(x)(medianBGImageEst(x,sz)),IL{i},'un',0);
+                IBGxMx = calcImageStackFcn(IBGx,'max'); 
+
+                % calculates the y-direction median background estimate
+                IBGy = cellfun(@(x)(medianBGImageEst(x,szF)),IL{i},'un',0);
+                IBGyMx = calcImageStackFcn(IBGy,'max'); 
+
+                % calculates the combned median bg estimate images
+                IBGT = 0.5*(IBGxMx+IBGyMx);
+                IRL{i} = cellfun(@(x)(max(0,IBGT-x)),IL{i},'un',0);
+                IRLmx0 = max(calcImageStackFcn(IRL{i},'max'),[],2);
+                IRLmx = normImg(IRLmx0);
+
+                % determines the peak of the overall signal
+                [yPk0,tPk0] = findpeaks(IRLmx0,'MinPeakDistance',dtMin);
+                [idx,C0] = kmeans(yPk0,2);       
+                tPkS = tPk0(idx == argMax(C0));     
+
+                % determines the optimal grid sizes from the 
+                BX = ~bwmorph(setGroup(tPkS,[nRow(i),1]),'dilate',nDil);
+                yTubeNw = obj.optRegionGrid(IRLmx,BX,tPkS,dtPer0,nTube(i));
+                if ~isempty(yTubeNw)
+                    obj.yTube{i} = yTubeNw;
+                end 
+            end            
             
-            %
-            for i = find(~cellfun(@isempty,obj.yTube(:)'))
-                % calculates the maximum over the image stack
-                IRLT = calcImageStackFcn(IRL{i},'max');
-                
-                % removes any rows not within the vertical regions
-                sz = size(IRL{i}{1},1);                
-                ii = max(1,obj.yTube{i}(1)):min(sz(1),obj.yTube{i}(end));
-                IRLT(~setGroup(ii,[sz(1),1])) = 0;
-                
-                % sets the grid horizontal dimensions
-                iGrp = getGroupIndex(max(normImg(IRLT),[],1) > pTol);
-                obj.xTube{i} = [max(iGrp{1}(1)-xDel,1),...
-                                min(iGrp{end}(end)+xDel,size(IRLT,2))];
-            end
-            
-        end
+        end              
         
         % --- optimises the region grid location
-        function yTube = optRegionGrid(obj,YgT,B,tPk,nTube)
+        function yTube = optRegionGrid(obj,YgT,B,tPk,tPer0,nTube)
 
             % parameters
             N = 5;
@@ -770,7 +778,6 @@ classdef SingleTrackInit < SingleTrack
             % other initialisations
             yTube = [];
             nRow = length(B);
-            tPer0 = median(arr2vec(diff(tPk,[],1)));
             xiT = max(tPerMin,tPer0-N):min(ceil(nRow/nTube),tPer0+N);
 
             %
@@ -786,17 +793,17 @@ classdef SingleTrackInit < SingleTrack
                 xi0{i} = (0:xiT(i):(nTube*xiT(i)))';
                 xiOfs = (-dxi:((nRow+dxi)-xi0{i}(end)))';
 
-                % determines if there are any feasible configurations
-                isFeas0 = arrayfun(@(x)(all...
-                                (B(min(nRow,max(1,x+xi0{i}))))),xiOfs);
+                %
+                isFeas0 = arrayfun(@(x)...
+                            (all(B(min(nRow,max(1,x+xi0{i}))))),xiOfs);
                 if any(isFeas0)
                     % flag that potentially this grid size is feasible
                     isFeas(i) = true;
 
                     % calculates the 
                     xiOfs = xiOfs(isFeas0);
-                    nTubeT = arrayfun(@(x)(sum...
-                                ((tPkT>x)&(tPkT<(x+xi0{i}(end))))),xiOfs);
+                    nTubeT = arrayfun(@(x)...
+                            (sum((tPkT>x)&(tPkT<(x+xi0{i}(end))))),xiOfs);
 
                     % 
                     nTubeG(i) = max(nTubeT);
@@ -821,7 +828,7 @@ classdef SingleTrackInit < SingleTrack
                     yTubeOpt = cellfun(@(x)(obj.refineGridPlacement...
                             (YgT,x,xi0{i})),num2cell(fGrp{i}(:,1)),'un',0);
 
-                    % calculates the average signal grid points 
+                    % calculates average signal values at the grid points 
                     Qf0 = cellfun(@(x)(mean(YgT(x))),yTubeOpt);
 
                     % determines the optimal grid point placement
@@ -843,18 +850,82 @@ classdef SingleTrackInit < SingleTrack
             yTube = xiOfs + xi0;
             dxi = diff(xi0(1:2));
 
-            %
+            % sets the grid inner region locations
             for i = 2:(length(yTube)-1)
-                xiTnw = max(1,yTube(i)-dTmax):min(length(YgT),yTube(i)+dTmax);
+                xiTnw = max(1,yTube(i)-dTmax):...
+                        min(length(YgT),yTube(i)+dTmax);
                 iMin = argMin(YgT(xiTnw));
                 yTube(i) = xiTnw(iMin);
             end
 
-            %
+            % sets the grid end point locations
             yTube(1) = max(1,yTube(2)-dxi);
             yTube(end) = min(length(YgT),yTube(end-1)+dxi);
 
         end
+        
+        % --- determines the unique signal peaks over all frames 
+        function tPkT = detUniqueSignalPeaks(obj,tPk0,tPer0)
+
+            % combines the peak times into a single array
+            tPkT = combineNumericCells(tPk0);
+
+            % determines the unique signal peak locations
+            hasAll = all(~isnan(tPkT),1);
+            B = tPkT(:,hasAll);
+
+            % aligns each of the full paths
+            tPkF = B(:,1);
+            for j = 2:size(B,2)
+                for i = 1:size(B,1)
+                    Dmn = nanmin(pdist2(tPkF,B(i,j)));
+                    if Dmn > tPer0/2
+                        tPkF = sort([tPkF;B(i,j)]);
+                    end
+                end
+            end
+
+            % if there are more unique time peak locations than the size of  
+            % the full array, then expand the full array
+            if length(tPkF) > size(tPkT,1)
+                % memory allocation
+                [A,tPkT] = deal(tPkT,NaN(length(tPkF),size(tPkT,2)));
+
+                % aligns the signal peaks over all frames
+                for i = 1:size(tPkT,2)
+                    ii = ~isnan(A(:,i));
+                    D = pdist2(A(ii,i),tPkF);
+                    indG = munkres(D);
+                    tPkT(indG,i) = A(ii,i);
+                end
+            end
+
+        end
+        
+        % --- optimises the grid vertical placement
+        function optGridHorizPlacement(obj,IRL)
+            
+            % parameters
+            pTol = 0.5;
+            xDel = ceil(obj.iMov.szObj(1)/2);
+            
+            %
+            for i = find(~cellfun(@isempty,obj.yTube(:)'))
+                % calculates the maximum over the image stack
+                IRLT = calcImageStackFcn(IRL{i},'max');
+                
+                % removes any rows not within the vertical regions
+                sz = size(IRL{i}{1},1);                
+                ii = max(1,obj.yTube{i}(1)):min(sz(1),obj.yTube{i}(end));
+                IRLT(~setGroup(ii,[sz(1),1])) = 0;
+                
+                % sets the grid horizontal dimensions
+                iGrp = getGroupIndex(max(normImg(IRLT),[],1) > pTol);
+                obj.xTube{i} = [max(iGrp{1}(1)-xDel,1),...
+                                min(iGrp{end}(end)+xDel,size(IRLT,2))];
+            end
+            
+        end        
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
@@ -1359,7 +1430,7 @@ classdef SingleTrackInit < SingleTrack
                 
                 % loops through each of the probable stationary regions 
                 % determining the most likely blob objects 
-                [iTube,iApp] = find(~obj.useP);
+                [iTube,iApp] = find(~obj.useP & obj.iMov.flyok);
                 
                 nTube = length(iTube);
                 for i = 1:nTube

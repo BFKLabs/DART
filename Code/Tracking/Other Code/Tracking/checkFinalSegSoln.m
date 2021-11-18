@@ -18,7 +18,11 @@ wStr = 'Final Segmentation Check';
 [nApp,ok] = deal(length(obj.pData.fPos),true);
 
 % calculates all the metric probabilities (over all regions/frames)
-ZPos = calcAllMetricProb(obj);
+try
+    ZPos = calcAllMetricProb(obj);
+catch
+    a = 1;
+end
 
 % loops through all the frames/sub-regions determining if there is an issue
 for i = find(iMov.ok(:)')
@@ -400,7 +404,8 @@ function ZPos = calcAllMetricProb(obj)
 
 % memory allocation
 nFrm = size(obj.pData.fPos{1}{1},1);
-IPos = cell2cell(obj.pData.IPos)';
+II = cellfun(@(x)(x(:)),obj.pData.IPos,'un',0);
+IPos = cell2cell(II,0);
 ZPos = arrayfun(@(n)(NaN(nFrm,n)),obj.nTube(:)','un',0);
 
 % loops through each phase calculating the metric probabilities
@@ -414,7 +419,8 @@ for i = 1:obj.nPhase
         case 1
             % case is a low-variance phase
             iStat = obj.iMov.StatusF{i};
-            [isStat,isMove] = deal(iStat==2,iStat==1);
+            isStat = (iStat==2) & obj.iMov.flyok;
+            isMove = (iStat==1) & obj.iMov.flyok;
             
             % calculates the metrics for the 
             ZPosNw = cell(size(IPos));
@@ -435,7 +441,9 @@ for i = 1:obj.nPhase
     if setValues
         for j = 1:size(IPos,1)
             for k = 1:size(IPos,2)
-                ZPos{k}(indF,j) = ZPosNw{j,k};
+                if obj.iMov.flyok(j,k)
+                    ZPos{k}(indF,j) = ZPosNw{j,k};
+                end
             end
         end 
     end
