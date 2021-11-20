@@ -18,11 +18,7 @@ wStr = 'Final Segmentation Check';
 [nApp,ok] = deal(length(obj.pData.fPos),true);
 
 % calculates all the metric probabilities (over all regions/frames)
-try
-    ZPos = calcAllMetricProb(obj);
-catch
-    a = 1;
-end
+ZPos = calcAllMetricProb(obj);
 
 % loops through all the frames/sub-regions determining if there is an issue
 for i = find(iMov.ok(:)')
@@ -412,6 +408,7 @@ ZPos = arrayfun(@(n)(NaN(nFrm,n)),obj.nTube(:)','un',0);
 for i = 1:obj.nPhase
     % sets the frame indices
     setValues = true;
+    fok = obj.iMov.flyok;
     indF = obj.iMov.iPhase(i,1):obj.iMov.iPhase(i,2);
     
     % groups the data values
@@ -429,7 +426,8 @@ for i = 1:obj.nPhase
             
         case 2
             % case is a high-variance phase
-            ZPosNw = calcGroupMetricProb(IPos,indF);
+            ZPosNw = cell(size(IPos));
+            ZPosNw(fok) = calcGroupMetricProb(IPos(fok),indF);
             
         otherwise
             % case is an untrackable phase type

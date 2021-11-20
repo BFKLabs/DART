@@ -107,6 +107,7 @@ h.Update(1,'Determining Initial Circle Centre Estimate',0.25);
 
 % parameters
 mTol = 0.25;
+dsTol = 0.0025;
 sTol = 0.9975;
 sz = size(I);
 NC = prod(dim);
@@ -118,7 +119,9 @@ Type = {'dark','bright'};
 % --------------------------------------- %
 
 %
+iterMx = 10;
 pTol = 0.05;
+nCircTol = 2*prod(dim);
 
 %
 Itmp = 255*normImg(removeImageMedianBL(I,1,1));
@@ -131,8 +134,25 @@ Itmp(~BZ) = nanmedian(Itmp(BZ));
 
 % calculate the circle regions using the object polarity type, Type
 for i = 1:length(Type)
-    [pC0{i},R0{i},M0{i}] = imfindcircles(Itmp,rTol,'Method',...
+    %
+    j = 1;
+    
+    while 1    
+        [pC0{i},R0{i},M0{i}] = imfindcircles(Itmp,rTol,'Method',...
                 'TwoStage','ObjectPolarity',Type{i},'Sensitivity',sTol);
+        if length(R0{i}) > nCircTol
+            sTol = sTol - dsTol;
+        elseif length(R0{i}) > nCircTol
+            sTol = sTol + dsTol;
+        else
+            break
+        end
+        
+        j = j + 1;
+        if j > iterMx
+            break
+        end
+    end
 end
 
 % determines the type which produces the better circle centre predictions
@@ -212,11 +232,34 @@ ii = find(diff([yMx;(yMx(end)+2*Rmax0)]) > Rmax0);
 xiC = num2cell([[1;(ii(1:end-1)+1)],ii],2);
 indC = cellfun(@(x)(x(1):x(2)),xiC,'un',0);
 
+% if there are more rows than required, then reduce them down
+if length(indC) > dim(1)
+    % determines which configuration closest matches the required
+    nC = cellfun(@length,indC);
+    xi = 0:(length(indC)-dim(1));
+    nCSum = arrayfun(@(x)(sum(nC(x+(1:dim(1))))),xi);
+    
+    % reduces down the regions
+    indC = indC(xi(argMin(abs(nCSum-prod(dim))))+(1:dim(1)));
+end
+
 % sets the final grid locations
 for i = 1:dim(1)
     % if there are more points than required, then reduce the grouping
     if length(indC{i}) > dim(2)
-        a = 1;
+        % retrives the x/y coordinates of the maxima
+        [XX,YY] = deal(xMx(indC{i}),yMx(indC{i}));
+        
+        % removes any potentially infeasible points
+        ii = (XX > R) & (XX < sz(2)) & (YY > R) & (YY < sz(1));
+        if sum(ii) == dim(2)
+            % reduce the indices if now feasible
+            indC{i} = indC{i}(ii);
+        else
+            % otherwise, determine the points closest to the median
+            [~,ii] = sort(abs(YY-median(YY)));
+            indC{i} = indC{i}(ii(1:dim(2)));
+        end
     end
     
     % sets the x/y grid coordinates

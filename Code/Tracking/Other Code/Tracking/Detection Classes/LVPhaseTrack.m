@@ -232,7 +232,7 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
         function [fP,IP] = segmentSubRegion(obj,Img,pOfs,reduceImg)
             
             % memory allocation
-            pW = 0.8;
+            pW = 0.5;
             nFrm = length(Img);
             iPmx = cell(nFrm,1);            
             [fP,IP] = deal(NaN(nFrm,2),zeros(nFrm,1));    

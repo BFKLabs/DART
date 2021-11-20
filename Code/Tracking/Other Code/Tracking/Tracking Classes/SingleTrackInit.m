@@ -627,9 +627,9 @@ classdef SingleTrackInit < SingleTrack
         % --- optimises the grid vertical placement
         function IRL = optGridVertPlacement(obj,I,IR)
             
-            % parameters
-            dtMin = 6;
-            Ztol = 0.10;          
+            % parameters            
+            Ztol = 0.10;  
+            dtMin = min(obj.iMov.szObj);
             
             % calculates the             
             IL = cellfun(@(ir,ic)(cellfun(@(x)(x(ir,ic)),...
@@ -678,45 +678,7 @@ classdef SingleTrackInit < SingleTrack
             tPkT = cell(1,nApp);
             for i = find(isOK(:)')
                 % aligns the peaks from the residual signal
-                tPkT{i} = obj.detUniqueSignalPeaks(tPk(i,:),dtPer0);
-                tPkC = nanmedian(tPkT{i},2);
-
-                % aligns the frame peaks relative to the ref frame
-                indG = zeros(size(tPkT{i})); 
-                for j = 1:size(tPkT{i},2)
-                    D = pdist2(tPkC,tPkT{i}(:,j)); 
-                    indG(:,j) = munkres(D); 
-                end
-
-                % determines if any sub-regions are missing their peak 
-                isMiss = indG == 0;
-                if any(isMiss(:))
-                    % re-orders the time peak array
-                    for j = find(any(isMiss,1))
-                        tPkT{i}(~isMiss(:,j),j) = ...
-                                        tPkT{i}(~isnan(tPkT{i}(:,j)),j);
-                        tPkT{i}(isMiss(:,j),j) = NaN;
-                    end        
-
-                    % if so, then determine which peak roughly corresponds 
-                    % to the other peak times for these sub-regions
-                    for j = find(any(isMiss,2))'
-                        % calculates the average peak location 
-                        tPkMn = median(tPkT{i}(j,~isnan(tPkT{i}(j,:))));
-
-                        % determines the missing peaks from the signal
-                        for k = find(isMiss(j,:))
-                            % determines the peaks in the region of interest
-                            [yMx,tMx] = findpeaks(Ymx{i}{k});
-                            ii = find((tMx > (tPkMn-dtPer0/2)) & ...
-                                      (tMx < (tPkMn+dtPer0/2)));
-
-                            % sets the peak time to be that with the 
-                            % highest peak value
-                            tPkT{i}(j,k) = tMx(ii(argMax(yMx(ii))));
-                        end
-                    end
-                end   
+                tPkT{i} = obj.detUniqueSignalPeaks(Ymx{i});
                 
                 % determines the locations not occupied by the flies
                 X = num2cell([min(tPkT{i},[],2),max(tPkT{i},[],2)],2);
@@ -773,42 +735,49 @@ classdef SingleTrackInit < SingleTrack
 
             % parameters
             N = 5;
+            ndY = 2;
             tPerMin = 5;
 
             % other initialisations
             yTube = [];
             nRow = length(B);
             xiT = max(tPerMin,tPer0-N):min(ceil(nRow/nTube),tPer0+N);
+            xidY = -ndY:ndY;
 
             %
+            tPkT = mean(tPk,2);
             nTubeG = NaN(1,length(xiT));
             isFeas = false(1,length(xiT));
             [fGrp,xi0] = deal(cell(1,length(xiT)));
 
             %
             for i = 1:length(xiT)
-                %
-                tPkT = mean(tPk,2);
+                %                
                 dxi = roundP(xiT(i)/2);    
                 xi0{i} = (0:xiT(i):(nTube*xiT(i)))';
                 xiOfs = (-dxi:((nRow+dxi)-xi0{i}(end)))';
-
+                
                 %
-                isFeas0 = arrayfun(@(x)...
-                            (all(B(min(nRow,max(1,x+xi0{i}))))),xiOfs);
+                Z0 = cell2mat(arrayfun(@(x)(x+xidY),xi0{i},'un',0));
+                xiP = arrayfun(@(x)(obj.detFeasConfig...
+                                    (B,x+Z0,tPk,ndY)),xiOfs,'un',0);
+                isFeas0 = ~cellfun(@isempty,xiP);
                 if any(isFeas0)
                     % flag that potentially this grid size is feasible
                     isFeas(i) = true;
 
-                    % calculates the 
-                    xiOfs = xiOfs(isFeas0);
-                    nTubeT = arrayfun(@(x)...
-                            (sum((tPkT>x)&(tPkT<(x+xi0{i}(end))))),xiOfs);
+                    % calculates the number of sub-regions that are covered
+                    xiP = xiP(isFeas0);
+                    nTubeT = cellfun(@(x)...
+                                (sum((tPkT>x(1))&(tPkT<(x(end))))),xiP);
 
-                    % 
+                    % removes the configurations that are less than the
+                    % maximum region cover count
                     nTubeG(i) = max(nTubeT);
                     isMax = nTubeT == nTubeG(i);
-                    fGrp{i} = [xiOfs(isMax),nTubeT(isMax)];
+                    
+                    % sets the feasible configurations
+                    fGrp{i} = [xiP(isMax),num2cell(nTubeT(isMax))];
                 end
             end
 
@@ -816,7 +785,7 @@ classdef SingleTrackInit < SingleTrack
             if any(isFeas)
                 % reduces the grid information
                 isFeasT = isFeas & (nTubeG == nanmax(nTubeG));
-                [fGrp,xi0] = deal(fGrp(isFeasT),xi0(isFeasT));
+                fGrp = fGrp(isFeasT);
 
                 % memory allocation
                 Qf = zeros(length(fGrp),1);   
@@ -824,22 +793,46 @@ classdef SingleTrackInit < SingleTrack
 
                 %
                 for i = 1:length(fGrp)
-                    % determines the refined grid placement
-                    yTubeOpt = cellfun(@(x)(obj.refineGridPlacement...
-                            (YgT,x,xi0{i})),num2cell(fGrp{i}(:,1)),'un',0);
-
                     % calculates average signal values at the grid points 
-                    Qf0 = cellfun(@(x)(mean(YgT(x))),yTubeOpt);
+                    Qf0 = cellfun(@(x)(mean(YgT(x))),fGrp{i}(:,1));
 
                     % determines the optimal grid point placement
                     iMn = argMin(Qf0);
-                    [yTube0{i},Qf(i)] = deal(yTubeOpt{iMn},Qf0(iMn));
+                    [yTube0{i},Qf(i)] = deal(fGrp{i}{iMn,1},Qf0(iMn));
                 end
 
                 % returns the optimal setup
                 yTube = yTube0{argMin(Qf)};
             end
 
+        end
+        
+        % --- 
+        function xiP = detFeasConfig(obj,B,Y0,tPk,ndY)
+            
+            % initialisations
+            xiP = [];            
+            Y = max(1,min(size(B,1),Y0));            
+            
+            %
+            BY = B(Y);
+            if all(any(BY,2))
+                % sets up the offset matrix
+                Q = repmat(-ndY:ndY,size(Y,1),1);
+                Q(~BY) = NaN;
+                
+                % determines the best 
+                [~,imn] = nanmin(abs(Q),[],2);
+                xiP = Y0(sub2ind(size(Q),(1:size(Q,1))',imn));
+                
+                % if there is more than one object per sub-region then
+                % return an empty location array 
+                if ~all(cellfun(@(y)(all(diff(arrayfun...
+                                (@(x)(sum(y<x)),xiP))<2)),num2cell(tPk,1)))
+                    xiP = [];
+                end
+            end
+            
         end
 
         % --- refines the region grid location placement
@@ -865,40 +858,124 @@ classdef SingleTrackInit < SingleTrack
         end
         
         % --- determines the unique signal peaks over all frames 
-        function tPkT = detUniqueSignalPeaks(obj,tPk0,tPer0)
-
-            % combines the peak times into a single array
-            tPkT = combineNumericCells(tPk0);
-
-            % determines the unique signal peak locations
-            hasAll = all(~isnan(tPkT),1);
-            B = tPkT(:,hasAll);
-
-            % aligns each of the full paths
-            tPkF = B(:,1);
-            for j = 2:size(B,2)
-                for i = 1:size(B,1)
-                    Dmn = nanmin(pdist2(tPkF,B(i,j)));
-                    if Dmn > tPer0/2
-                        tPkF = sort([tPkF;B(i,j)]);
+        function tPkF = detUniqueSignalPeaks(obj,Ymx)
+            
+            % memory allocation
+            dtMin = max(obj.iMov.szObj)/2;
+            [yPk0,tPk0] = deal(cell(1,length(Ymx)));
+            
+            % ---------------------------------- %
+            % --- SIGNIFICANT PEAK DETECTION --- %
+            % ---------------------------------- %
+            
+            % determines the signal peaks over all candidate frames
+            for i = 1:length(Ymx)
+                [yPk0{i},tPk0{i}] = ...
+                            findpeaks(Ymx{i},'MinPeakDistance',dtMin);                  
+            end
+            
+            % combines all the peak times/values
+            tPkT0 = combineNumericCells(tPk0);
+            yPkT0 = combineNumericCells(yPk0);
+            
+            % separates the significant/insignificant signal peaks
+            ii = ~isnan(yPkT0); 
+            [idx,C] = kmeans(yPkT0(ii),2); 
+            Z = NaN(size(tPkT0)); 
+            Z(ii) = idx;
+            
+            % removes the insignificant peaks from the arrays
+            BZ = num2cell(Z == argMax(C),1);
+            tPk = cellfun(@(x,y)(x(y(1:length(x)))),tPk0,BZ,'un',0);
+            
+            % ----------------------------- %
+            % --- GRID REGION DETECTION --- %
+            % ----------------------------- %            
+            
+            % combines the significant peaks into a single array again
+            tPkT = combineNumericCells(tPk); 
+            [tPkF,iRow] = deal(NaN(size(tPkT)));                         
+            
+            % seperates the peaks by their location in space
+            tPkMd = nanmedian(tPkT,2);
+            
+            % resets the time peaks so they match their row
+            for j = 1:size(iRow,2)
+                jj = ~isnan(tPkT(:,j));
+                D = pdist2(tPkT(jj,j),tPkMd);
+                iRow(jj,j) = munkres(D); 
+                tPkF(iRow(jj,j),j) = tPkT(jj,j);
+            end
+            
+            % performs a finer match of the signal peaks to their region
+            nRowF = size(tPkF,1);
+            for j = 1:size(tPkF,2)
+                iC = ~setGroup(j,[1,size(tPkF,2)]);
+                for i = 1:nRowF
+                    if ~isnan(tPkF(i,j))
+                        % determines if the peak is within the range of
+                        % peak times on the current row
+                        isIn = (tPkF(i,j) >= min(tPkF(i,iC))) & ...
+                               (tPkF(i,j) <= max(tPkF(i,iC)));
+                        if ~isIn
+                            % if not, determine which time peak that the
+                            % current peak is closest to
+                            dtPkF = abs(tPkF(:,iC) - tPkF(i,j));                            
+                            kmn = argMin(dtPkF(:)); 
+                            [jR,~] = ind2sub(size(tPkF(:,iC)),kmn);
+                            
+                            % if 
+                            if (jR ~= i) && isnan(tPkF(jR,j))
+                                tPkF(jR,j) = tPkF(i,j);
+                                tPkF(i,j) = NaN;
+                            end
+                        end
                     end
                 end
             end
-
-            % if there are more unique time peak locations than the size of  
-            % the full array, then expand the full array
-            if length(tPkF) > size(tPkT,1)
-                % memory allocation
-                [A,tPkT] = deal(tPkT,NaN(length(tPkF),size(tPkT,2)));
-
-                % aligns the signal peaks over all frames
-                for i = 1:size(tPkT,2)
-                    ii = ~isnan(A(:,i));
-                    D = pdist2(A(ii,i),tPkF);
-                    indG = munkres(D);
-                    tPkT(indG,i) = A(ii,i);
+            
+            % determines if there are any missing time peaks
+            isMiss = isnan(tPkF);
+            if any(isMiss(:))
+                % if so, then determine the most likely points
+                [iR,iC] = find(isMiss);
+                for i = 1:length(iR)
+                    % re-calculates the signal peaks and removes any of the
+                    % existing signal peaks from the list
+                    [yPkD,tPkD] = findpeaks(Ymx{iC(i)});                     
+                    [tPkD,iA] = setdiff(tPkD,tPkF(:,iC(i)));
+                    yPkD = yPkD(iA);
+                    
+                    switch iR(i)
+                        case 1
+                            if isnan(tPkF(2,iC(i)))
+                                jj = find(tPkD < nanmax(tPkD(iR(i)+1,:)));
+                            else
+                                jj = find(tPkD < tPkF(2,iC(i)));
+                            end
+                            
+                        case nRowF
+                            if isnan(tPkF(end-1,iC(i)))
+                                jj = find(tPkD > nanmax(tPkD(iR(i)-1,:)));
+                            else
+                                jj = find(tPkD > tPkF(end-1,iC(i)));
+                            end
+                            
+                        otherwise
+                            if any(isnan(tPkF(iR(i)+[-1,1],iC(i))))
+                                jj = find((tPkD > nanmax(tPkD(iR(i)-1,:))) & ...
+                                          (tPkD < nanmin(tPkD(iR(i)+1,:))));
+                            else
+                                jj = find((tPkD > tPkF(iR(i)-1,iC(i))) & ...
+                                          (tPkD < tPkF(iR(i)+1,iC(i))));
+                            end
+                            
+                    end
+                    
+                    % determines the most likely of these signal points
+                    tPkF(iR(i),iC(i)) = tPkD(jj(argMax(yPkD(jj))));
                 end
-            end
+            end            
 
         end
         
@@ -1579,7 +1656,7 @@ classdef SingleTrackInit < SingleTrack
             end
             
             % determines the most likely blobs for each region/frame
-            for i = 1:nApp
+            for i = find(obj.iMov.ok(:)')
                 % updates the progress bar
                 wStrNw = sprintf('Analysing Region (%i of %i)',i,nApp);
                 if obj.hProg.Update(2+obj.wOfsL,wStrNw,i/(1+nApp))
@@ -1595,7 +1672,7 @@ classdef SingleTrackInit < SingleTrack
                 % calculates the 
                 iRT = obj.iMov.iRT{i};
                 nTube = length(iRT);
-                for j = 1:nTube
+                for j = find(obj.iMov.flyok(:,i)')
                     % updates the progress bar
                     wStrNw = sprintf('Analysing Sub-Region (%i of %i)',...
                                      j,nTube);
@@ -1817,7 +1894,7 @@ classdef SingleTrackInit < SingleTrack
             Qval = zeros(size(obj.iMov.flyok)); 
             
             % determines which sub-region appear to be empty
-            for i = 1:length(obj.pData{1})
+            for i = 1:size(obj.pData{1},1)
                 % groups the metrics and calculates the max/median
                 A = cellfun(@(y)(cell2mat(y(i,:))),obj.pData,'un',0)';
                 Amd = cell2mat(cellfun(@(x)(median(x,2)),A,'un',0));
