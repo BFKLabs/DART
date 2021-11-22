@@ -669,17 +669,3 @@ end
 if ~isempty(iExpt.Info.OutSoln)                
     setappdata(exObj.hProg,'rtPos',setupRTExptStruct(iMov)); 
 end     
-
-% --- function that stops the camera
-function stopCamera(objIMAQ)
-
-% removes the camera stop function
-sFunc = objIMAQ.stopFcn; 
-objIMAQ.stopFcn = [];
-
-% stops the camera
-stop(objIMAQ); 
-
-% resets the camera stop function
-objIMAQ.StopFcn = sFunc;  
-
