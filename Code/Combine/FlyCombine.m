@@ -158,7 +158,9 @@ if ~isempty(hGUIInfo)
 end
 
 % opens the solution file gui
+wState = warning('off','all');
 OpenSolnFile(hFig);
+warning(wState)
 
 % --------------------------------------------------------------------
 function menuSaveSingle_Callback(hObject, eventdata, handles)
@@ -1799,7 +1801,7 @@ switch get(hMenu,'tag')
 end
         
 % includes a gap in the graph if there is a major gap in the data
-[T,Tmlt] = deal(T(ii)',getTimeScale(T(end)));
+[T,Tmlt] = deal(arr2vec(T(ii)'),getTimeScale(T(end)));
 dT = diff(T); jj = find(dT > nMeanRatioMax*mean(diff(T)));
 if ~isempty(jj)
     for i = length(jj):-1:1
