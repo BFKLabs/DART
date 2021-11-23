@@ -121,7 +121,12 @@ end
 
 % rotates the image (if required)
 if isempty(Img)
-    Img = NaN(getCurrentImageDim());
+    szImg = getCurrentImageDim();
+    if any(isnan(szImg))
+        Img = [];
+    else
+        Img = NaN(szImg);
+    end
 else
     Img = getRotatedImage(iMov,Img);
 end

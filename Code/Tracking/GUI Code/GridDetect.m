@@ -6,6 +6,7 @@ classdef GridDetect < matlab.mixin.SetGet
         hAx
         hFig
         hFigM
+        hFigTrk
         trkObj
         iMov
         Img0
@@ -50,7 +51,8 @@ classdef GridDetect < matlab.mixin.SetGet
         % other fields
         isSet
         iFlag = 1;
-        iSelS = [1,1];        
+        iSelS = [1,1];  
+        isClosing = false;
         
     end
     
@@ -76,8 +78,8 @@ classdef GridDetect < matlab.mixin.SetGet
         function initObjProps(obj)
             
             % retrieves the main image
-            hFigTrk = findall(0,'tag','figFlyTrack');
-            obj.hAx = findall(hFigTrk,'type','axes');
+            obj.hFigTrk = findall(0,'tag','figFlyTrack');
+            obj.hAx = findall(obj.hFigTrk,'type','axes');
             obj.hImg = findall(obj.hAx,'type','image');
             obj.Img0 = double(get(obj.hImg,'CData'));
             
@@ -88,6 +90,9 @@ classdef GridDetect < matlab.mixin.SetGet
             % deletes any existing grid detection guis
             hFigPr = findall(0,'tag','figGridDetect');
             if ~isempty(hFigPr); delete(hFigPr); end
+            
+            % sets the grid object into the region config GUI
+            set(obj.hFigM,'gridObj',obj)
             
             % -------------------- %
             % --- FIGURE SETUP --- %
@@ -244,7 +249,8 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % makes the gui visible
             setObjVisibility(obj.hFig,1);
-            obj.useFilter(obj.hCheckF,[])                        
+            obj.useFilter(obj.hCheckF,[])  
+            setPanelProps(obj.hPanelD,'off')
             
             % sets up the sub-regions
             setupRegionFcn = obj.hFigM.setupSubRegions;
@@ -253,6 +259,9 @@ classdef GridDetect < matlab.mixin.SetGet
             % turns on the region highlight
             obj.hSelS = findobj(obj.hAx,'tag','hInner','UserData',1);
             if obj.isSet; obj.setRegionHighlight('on'); end
+            
+            % repositions the sub-GUI
+            repositionSubGUI(obj.hFigM,obj.hFig)
             
             % resumes the figure
             uiwait(obj.hFig);                
@@ -267,8 +276,12 @@ classdef GridDetect < matlab.mixin.SetGet
         function useFilter(obj,hObj,~)
             
             % updates the parameter value
-            obj.setFiltPara('useFilt',get(hObj,'Value'));
+            useFilt = get(hObj,'Value');
+            obj.setFiltPara('useFilt',useFilt);
             setObjEnable(obj.hButC{1},'on');
+            
+            % updates the detection panel properties
+            setObjEnable([obj.hEditF,obj.hTxtF],useFilt)
             
             % updates the main image
             obj.updateMainImage()
@@ -377,8 +390,11 @@ classdef GridDetect < matlab.mixin.SetGet
         % --- continue callback function
         function contButton(obj,hObj,~)
             
-            % flag that the calculations were successful
+            % updates the status flag/callback function
             obj.iFlag = get(hObj,'UserData');
+            set(obj.hFigTrk,'WindowButtonDownFcn',[])
+            
+            % flag that the calculations were successful            
             uiresume(obj.hFig);
             obj.closeGUI();            
             
@@ -428,6 +444,7 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % updates the move button enabled properties
             obj.updateMoveEnableProps();
+            set(obj.hFigTrk,'WindowButtonDownFcn',@obj.trackAxesClick)
             
             % deletes the loadbar
             delete(h);
@@ -435,6 +452,33 @@ classdef GridDetect < matlab.mixin.SetGet
             % pauses the process
             setObjVisibility(obj.hFig,'on');
             uiwait(obj.hFig);
+            
+        end
+        
+        % --- callback function for selecting the region axes
+        function trackAxesClick(obj,hObj,~)
+            
+            % retrieves the current mouse click coordinates
+            mPos = get(obj.hFigTrk,'Position');
+            
+            % determines if the 
+            if isOverAxes(mPos)
+                % determines the plot objects the mouse is currently over
+                mStr = {'tag','hInner'};
+                hInner = findAxesHoverObjects(obj.hFigTrk,mStr,obj.hAx);  
+                if ~isempty(hInner)
+                    % recalculates the selected row/columns
+                    nCol = obj.iMov.pInfo.nCol;
+                    iApp = get(hInner,'UserData');                   
+                    obj.iSelS = [floor((iApp-1)/nCol)+1,mod(iApp-1,nCol)+1];
+                    
+                    % resets the gui/axes properties
+                    set(obj.hEditD{1},'String',num2str(obj.iSelS(1)))
+                    set(obj.hEditD{2},'String',num2str(obj.iSelS(2)))
+                    obj.updateRegionHighlight();
+                    obj.updateMoveEnableProps();
+                end
+            end            
             
         end
         

@@ -46,7 +46,8 @@ bgP = DetectPara.resetDetectParaStruct(A.bgP);
 
 % sets the input arguments into the gui
 pFldStr = {'hDiff','iMov','iMov0','isMTrk','iData','hSelP','hProp0',...
-           'infoObj','cmObj','hTabGrp','jTabGrp','hTab','srObj','phObj'};
+           'infoObj','cmObj','hTabGrp','jTabGrp','hTab','srObj',...
+           'phObj','gridObj'};
 initObjPropFields(hObject,pFldStr);
 addObjProps(hObject,'hGUI',hGUI,'hPropTrack0',hPropTrack0)
 
@@ -455,6 +456,14 @@ hPropTrack0 = get(hFig,'hPropTrack0');
 % makes the gui invisible
 setObjVisibility(hFig,'off');
 
+% closes the grid detection GUI (if open)
+hGrid = findall(0,'tag','figGridDetect');
+if ~isempty(hGrid)
+    gridObj = get(hFig,'gridObj');
+    gridObj.isClosing = true;
+    gridObj.cancelButton(gridObj.hButC{3})
+end
+
 % deletes the sub-regions from tracking gui axes
 deleteSubRegions(handles)
 if ~isempty(hGUI)
@@ -600,7 +609,13 @@ while cont
             
         case 3
             % case is the user cancelled
-            break
+            if gridObj.isClosing
+                % if closing region config GUI, then exit
+                return
+            else
+                % otherwise, exit the loop
+                break
+            end
     end
 end
 
@@ -1219,9 +1234,12 @@ if isfield(iMov,'xcP')
 end
 
 % if using the automatic detection, disable the button and exit
-if strcmp(get(handles.menuUseAuto,'checked'),'on') || useAuto
-    set(hFig,'iMov',iMov)
-    setObjEnable(hObject,'off'); return
+if iMov.is2D
+    if strcmp(get(handles.menuUseAuto,'checked'),'on') || useAuto
+        set(hFig,'iMov',iMov)
+        setObjEnable(hObject,'off'); 
+        return
+    end
 end
 
 % sets the final sub-region dimensions into the data struct

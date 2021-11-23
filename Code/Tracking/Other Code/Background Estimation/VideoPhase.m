@@ -14,7 +14,7 @@ classdef VideoPhase < handle
         nImgR = 10;
         p0 = 0.00;
         pW = 0.70;        
-        pTolPhase = 2.5;
+        pTolPhase = 10;
         pTolHi = 236;  
         pTolLo = 35;  
         

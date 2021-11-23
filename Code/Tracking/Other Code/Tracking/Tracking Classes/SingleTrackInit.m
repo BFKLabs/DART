@@ -505,6 +505,9 @@ classdef SingleTrackInit < SingleTrack
                 return                
             end            
             
+            % final progressbar update
+            obj.hProg.Update(2+obj.wOfsL,'Grid Detection Complete',1);
+            
         end
         
         % --- detects the moving blobs from the residual image stack, IR
@@ -512,7 +515,7 @@ classdef SingleTrackInit < SingleTrack
             
             % if the user cancelled, then exit
             if ~obj.calcOK; return; end
-            obj.hProg.Update(2+obj.wOfsL,'Moving Object Tracking',0.25);
+            obj.hProg.Update(2+obj.wOfsL,'Moving Object Tracking',0.2);
             obj.hProg.Update(3+obj.wOfsL,'Analysing Region',0);     
             
             % initialisations
@@ -566,10 +569,15 @@ classdef SingleTrackInit < SingleTrack
         % --- determines the automatic detection blob template
         function setupBlobTemplateAuto(obj,I)
             
+            % if the user cancelled, then exit
+            if ~obj.calcOK; return; end
+            obj.hProg.Update(2+obj.wOfsL,'Blob Template Calculation',0.4);
+            obj.hProg.Update(3+obj.wOfsL,'Sub-Image Stack Setup',0);                
+            
             % initialisations
-            dN = 15;            
+            dN = 15; 
+            iMax = 10;
             szObj0 = NaN(1,2);
-            [i,iMax] = deal(0,10);
             nApp = size(obj.fPos0{1},1);
             [Isub,obj.useP,obj.ImaxS] = deal(cell(nApp,1));                       
             
@@ -612,11 +620,15 @@ classdef SingleTrackInit < SingleTrack
             end
             
             % sets the object template field
+            obj.hProg.Update(3+obj.wOfsL,'Blob Template Calculation',0.5); 
             [GxT,GyT] = imgradientxy(Itemp,'sobel'); 
             obj.tPara{1} = struct('Itemp',Itemp,'GxT',GxT,'GyT',GyT);              
             
             % sets the class object fields
             obj.iMov.szObj = szObjNw;
+            
+            % updates the progresbar
+            obj.hProg.Update(3+obj.wOfsL,'Template Calculation Complete',1);
             
         end            
         
@@ -626,6 +638,11 @@ classdef SingleTrackInit < SingleTrack
         
         % --- optimises the grid vertical placement
         function IRL = optGridVertPlacement(obj,I,IR)
+            
+            % if the user cancelled, then exit
+            if ~obj.calcOK; return; end
+            obj.hProg.Update(2+obj.wOfsL,'Vertical Grid Placement',0.6);
+            obj.hProg.Update(3+obj.wOfsL,'Sub-Image Stack Setup',0);             
             
             % parameters            
             Ztol = 0.10;  
@@ -645,7 +662,10 @@ classdef SingleTrackInit < SingleTrack
             % memory allocation
             C = NaN(nApp,nImg);
             Ymx = cell(1,nApp);
-            [tPk,yPk] = deal(cell(nApp,nImg));           
+            [tPk,yPk] = deal(cell(nApp,nImg));   
+            
+            % updates the progessbar
+            obj.hProg.Update(3+obj.wOfsL,'Signal Peak Detection',0.25); 
                             
             % calculates the signal 
             for i = 1:nApp    
@@ -654,7 +674,7 @@ classdef SingleTrackInit < SingleTrack
                 Ymx{i} = cellfun(@(x)(normImg(x)),Ymx0,'un',0);     
 
                 % determines the major peaks from the image stack
-                for j = 1:nImg        
+                for j = 1:nImg
                     [yPk0,tPk0] = findpeaks(Ymx0{j},'MinPeakDistance',dtMin);
                     [idx,C0] = kmeans(yPk0,2);
 
@@ -669,14 +689,24 @@ classdef SingleTrackInit < SingleTrack
             [Zmu,Zsd] = deal(nanmean(C(:)),nanstd(C(:)));
             ZC = normcdf(C,Zmu,Zsd);
             isOK = nanmean(ZC,2) > Ztol;
+            isOK(:) = true;
 
             % estimates the overall grid size (over all regions)
             dtPk = cellfun(@(x)(median(diff(x))),tPk);
             dtPer0 = roundP(nanmedian(dtPk(:)));
-
+            
             % aligns the signal peaks over all regions
             tPkT = cell(1,nApp);
             for i = find(isOK(:)')
+                % updates the progressbar
+                wStrNw = sprintf...
+                        ('Optimising Grid Placement (%i of %i)',i,nApp);
+                if obj.hProg.Update(3+obj.wOfsL,wStrNw,0.5*(1+i/nApp))
+                    % if the user cancelled, then exit
+                    obj.calcOK = false;
+                    return
+                end
+                
                 % aligns the peaks from the residual signal
                 tPkT{i} = obj.detUniqueSignalPeaks(Ymx{i});
                 
@@ -794,7 +824,8 @@ classdef SingleTrackInit < SingleTrack
                 %
                 for i = 1:length(fGrp)
                     % calculates average signal values at the grid points 
-                    Qf0 = cellfun(@(x)(mean(YgT(x))),fGrp{i}(:,1));
+                    Qf0 = cellfun(@(x)(mean...
+                                (YgT(min(nRow,max(1,x))))),fGrp{i}(:,1));
 
                     % determines the optimal grid point placement
                     iMn = argMin(Qf0);
@@ -982,12 +1013,24 @@ classdef SingleTrackInit < SingleTrack
         % --- optimises the grid vertical placement
         function optGridHorizPlacement(obj,IRL)
             
+            % if the user cancelled, then exit
+            if ~obj.calcOK; return; end
+            obj.hProg.Update(2+obj.wOfsL,'Horiztonal Grid Placement',0.8);                        
+            
             % parameters
             pTol = 0.5;
             xDel = ceil(obj.iMov.szObj(1)/2);
+            N = length(obj.iMov.posO);
             
-            %
+            % determines the horizontal extent of all valid regions
             for i = find(~cellfun(@isempty,obj.yTube(:)'))
+                % updates the progressbar
+                wStrNw = sprintf('Detecting Region Extent (%i of %i)',i,N);
+                if obj.hProg.Update(3+obj.wOfsL,wStrNw,i/N)
+                    obj.calcOK = false;
+                    return
+                end
+                
                 % calculates the maximum over the image stack
                 IRLT = calcImageStackFcn(IRL{i},'max');
                 

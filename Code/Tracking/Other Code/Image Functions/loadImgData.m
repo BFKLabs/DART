@@ -113,7 +113,7 @@ switch fExtn
         end        
         
     otherwise        
-        iData.sz = [V.height V.width];        
+        iData.sz = [V.height V.width]; 
         iData.exP.FPS = V.rate;
         iData.nFrmT = abs(V.nrFramesTotal);
         isVidObj = false;
@@ -208,6 +208,12 @@ if isfield(iMov,'useRot')
     if detIfRotImage(iMov)
         iData.sz = iData.sz([2 1]); 
     end
+end
+
+%
+FPSest = 1/nanmean(diff(iData.Tv));
+if rectifyRatio(iData.exP.FPS/FPSest) > 1.1
+    iData.exP.FPS = FPSest;
 end
 
 % sets the time vector/total frame count
