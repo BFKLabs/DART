@@ -870,9 +870,9 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                     else
                         % otherwise, if at least one frame stack had been
                         % calculated, then no need to calculated background
-                        [i0,i1] = find(obj.iMov.flyok,1,'first');
+                        [iFly,iApp] = find(obj.iMov.flyok,1,'first');
                         obj.isCalcBG = ...
-                                    all(isnan(BT.pData.fPos{i0}{i1}(:,1)));
+                                all(isnan(BT.pData.fPos{iApp}{iFly}(:,1)));
                     end
                 end
             end                        

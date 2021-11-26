@@ -1,15 +1,17 @@
 classdef VideoPreview < handle
     % class properties
     properties
+        
         % object handles
         hFig
-        hAx
         hGUI
+        hAx
         hImage
         objIMAQ
         
         % other data structs/arrays
         iMov
+        vcObj
         
         % boolean flags
         isRecord
@@ -36,7 +38,8 @@ classdef VideoPreview < handle
             % sets the other important field values
             if isRecord
                 % case is the preview is run through the recording GUI
-                obj.hAx = obj.hGUI.axesPreview;                 
+                obj.hAx = obj.hGUI.axesPreview;   
+                obj.vcObj = getappdata(hFig,'vcObj');
                 
             else
                 % case is the preview is run through the tracking GUI
@@ -145,6 +148,11 @@ classdef VideoPreview < handle
             % resets the start/stop preview button enabled properties
             set(obj.hGUI.toggleVideoPreview,'string','Stop Video Preview');                       
             
+            % sets the video calibration start time
+            if ~isempty(obj.vcObj)
+                obj.vcObj.resetTraceFields();
+            end            
+            
             % initialises the preview image
             if obj.initPreviewImage(@obj.previewRec)
                 % enables the grid marker checkbox
@@ -155,7 +163,8 @@ classdef VideoPreview < handle
                 if obj.isOn
                     set(obj.hGUI.editVideoStatus,'string','Running',...
                                                  'BackgroundColor','g')
-                end
+                end                
+                
             else
                 % updates the video status
                 set(obj.hGUI.editVideoStatus,'string','Stopped',...
@@ -289,12 +298,18 @@ classdef VideoPreview < handle
         function previewRec(obj, hObj, event, hImage)
 
             % updates preview image (based on whether the image is rotated)
+            Inw = event.Data;
             if obj.isRot
-                set(obj.hImage, 'cdata', event.Data');
+                set(obj.hImage, 'cdata', Inw');
             else
-                set(obj.hImage, 'cdata', event.Data);
-            end        
-
+                set(obj.hImage, 'cdata', Inw);
+            end  
+            
+            % updates the video calibration trace data
+            if ~isempty(obj.vcObj)
+                obj.vcObj.appendTraceData(event)
+            end
+                
         end
         
         % --- preview update for the tracking GUI

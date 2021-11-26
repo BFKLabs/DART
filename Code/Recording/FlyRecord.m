@@ -1,5 +1,5 @@
 function varargout = FlyRecord(varargin)
-% Last Modified by GUIDE v2.5 30-Apr-2021 10:07:14
+% Last Modified by GUIDE v2.5 24-Nov-2021 19:53:50
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -116,6 +116,7 @@ setappdata(hObject,'iStim',infoObj.iStim);
 
 % runs the external packages
 feval('runExternPackage','RTTrack',handles);
+feval('runExternPackage','VideoCalib',handles);
 
 % ------------------------------------------ %
 % --- GUI OBJECT PROPERTY INITIALISATION --- %
@@ -474,7 +475,7 @@ ExptSetup(handles.figFlyRecord);
 % ------------------------------ %
 
 % -------------------------------------------------------------------------
-function menuCalibrateVideo_Callback(hObject, eventdata, handles)
+function menuCalibrateTrack_Callback(hObject, eventdata, handles)
 
 % retrieves the full DART program default struct directory
 ProgDefFull = getappdata(findall(0,'tag','figDART'),'ProgDef');
@@ -499,27 +500,13 @@ function menuToggleWhite_Callback(hObject, eventdata, handles)
 % toggles the white lights
 toggleOptoLights(handles,hObject,false)
 
-% ------------------------------ %
-% --- CALIBRATION MENU ITEMS --- %
-% ------------------------------ %
-
-% -------------------------------------------------------------------------
-function menuCalibTrack_Callback(hObject, eventdata, handles)
-
-% retrieves the full DART program default struct directory
-ProgDefFull = getappdata(findall(0,'tag','figDART'),'ProgDef');
-setappdata(handles.figFlyRecord,'ProgDefNew',ProgDefFull.Tracking)
-
-% runs the fly tracker in full calibration mode
-FlyTrack(handles,1);
-
 %-------------------------------------------------------------------------%
 %                        FIGURE CALLBACK FUNCTIONS                        %
 %-------------------------------------------------------------------------%
 
-% ------------------------------------------ %
-% --- CAMERA VIDEO PREVIEW PANEL OBJECTS --- %
-% ------------------------------------------ %
+% ----------------------------------- %
+% --- VIDEO PREVIEW PANEL OBJECTS --- %
+% ----------------------------------- %
 
 % --- Executes on button press in toggleVideoPreview.
 function toggleVideoPreview_Callback(hObject, eventdata, handles)
@@ -569,6 +556,7 @@ function resetVideoPreviewDim(handles,rPos)
 hFig = handles.figFlyRecord;
 hAx = handles.axesPreview;
 isReset = exist('rPos','var');
+vcObj = getappdata(hFig,'vcObj');
 infoObj = getappdata(hFig,'infoObj');
 
 % turns off all warnings
@@ -607,6 +595,11 @@ resetObjPos(hFig,'Bottom',-dH,1);
 resetObjPos(handles.panelVidPreview,'Height',dH,1);
 resetObjPos(handles.panelImg,'Height',dH,1);
 resetObjPos(hAx,'Height',dH,1);
+
+% resets the dimensions of the video calibration panel
+if ~isempty(vcObj)
+    vcObj.resetObjProps(dH);
+end
 
 % resets the warning flags
 warning(wState)

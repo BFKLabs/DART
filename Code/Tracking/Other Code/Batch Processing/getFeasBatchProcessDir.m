@@ -150,8 +150,16 @@ if (range(nF) > 0)
     for i = 1:length(nF)
         if (nF(i) ~= max(nF))
             % adds in the missing fields and reorders them
-            if (~isfield(bpData{i},'sfData'))
+            if ~isfield(bpData{i},'sfData')
                 bpData{i}.sfData = struct('isOut',0,'Type','Append','tBin',60);
+                bpData{i} = orderfields(bpData{i},fStr);
+            end
+            
+            % adds in 
+            if ~isfield(bpData{i},'Img0')
+                nMov = length(bpData{i}.mName);
+                bpData{i}.Img0 = [];
+                bpData{i}.dpImg = zeros(nMov,2);
                 bpData{i} = orderfields(bpData{i},fStr);
             end
         end

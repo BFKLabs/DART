@@ -127,12 +127,12 @@ classdef DetectPara
 
                 case 'pSingle' % case is single object detection parameters
 
-                    bgP = struct('hSz',3,'useFilt',false);
+                    bgP = struct('hSz',3,'useFilt',true);
 
                 case 'pMulti' % case is multi object detection parameters
 
                     bgP = struct('szFilt',8,'pwFilt',3,'isFixed',true,...
-                                 'hSz',3,'useFilt',false);        
+                                 'hSz',3,'useFilt',true);        
             end        
         end
     

@@ -99,7 +99,7 @@ if chkEditValue(nwVal,nwLim,isInt)
         % if so, then update the camera parameters
         set(srcObj,srcInfo.Name,nwVal)
         setappdata(handles.figVideoPara,'srcObj',srcObj);
-        specialParaUpdate(handles,srcInfo.Name)
+        specialParaUpdate(handles,srcInfo.Name,nwVal)
         
         % enables the reset button
         setObjEnable(handles.buttonReset,'on')
@@ -125,12 +125,13 @@ infoObj = getappdata(hFig,'infoObj');
 % retrieves the current property value
 lStr = get(hObject,'String');
 prVal = get(srcObj,srcInfo.Name);
+nwVal = lStr{get(hObject,'value')};
 
 try
     % updates the relevant field in the source object
-    set(srcObj,srcInfo.Name,lStr{get(hObject,'value')})
+    set(srcObj,srcInfo.Name,nwVal)
     setappdata(handles.figVideoPara,'srcObj',srcObj);
-    specialParaUpdate(handles,srcInfo.Name)
+    specialParaUpdate(handles,srcInfo.Name,nwVal)
 
     % enables the reset button
     setObjEnable(handles.buttonReset,'on')
@@ -232,6 +233,7 @@ pVal0 = getappdata(hFig,'pVal0');
 hMain = getappdata(hFig,'hMain');
 srcObj = getappdata(hFig,'srcObj');
 infoObj = getappdata(hFig,'infoObj');
+vcObj = getappdata(hMain.figFlyRecord,'vcObj');
 [srcInfo,fldName] = combineDataStruct(propinfo(srcObj));
 
 % other initialisations
@@ -305,6 +307,11 @@ end
 
 % disables the update/reset buttons
 setObjEnable(hObject,'off')
+
+% resets the video properties (if calibrating)
+if ~isempty(vcObj)
+    vcObj.resetVideoProp()
+end
 
 % turns the video preview back on (if already on)
 if vidOn
@@ -750,12 +757,13 @@ else
 end
 
 % --- post parameter update function (for a specific set of parameters)
-function specialParaUpdate(handles,pName)
+function specialParaUpdate(handles,pName,pVal)
 
 % memory allocation
 hFig = handles.figVideoPara;
 hMain = getappdata(hFig,'hMain');
 infoObj = getappdata(hFig,'infoObj');
+vcObj = getappdata(hMain.figFlyRecord,'vcObj');
 
 % updates the video ROI (depending on camera type)
 switch get(infoObj.objIMAQ,'Name')
@@ -766,7 +774,12 @@ switch get(infoObj.objIMAQ,'Name')
                 resetCameraROI(hMain,infoObj.objIMAQ)
         end
 end
-             
+
+% if video calibrating is on, then update the calibration info
+if ~isempty(vcObj)
+    vcObj.appendVideoProp(pName,pVal);
+end
+
 % --- retrieves the ignored field information
 function [ignoreFld,ignoreName] = getIgnoredFieldInfo(infoObj)
 

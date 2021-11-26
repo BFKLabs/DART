@@ -11,10 +11,11 @@ switch (typeStr)
     % --- OBJECT INITIALISATIONS --- %
     % ------------------------------ %
     
-    case ('InitGUI') % case is initialising the GUI (common to full & test)        
+    case ('InitGUI') % case is initialising the GUI (common to full & test)   
+        
         % clears the preview axes
         cla(handles.axesPreview); 
-        axis(handles.axesPreview,'off')
+        axis(handles.axesPreview,'off')        
                 
         % centres the figure
         centreFigPosition(hFig);        

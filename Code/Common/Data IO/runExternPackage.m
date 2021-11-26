@@ -73,6 +73,17 @@ if isOK
                 % runs the recording GUI opening function
                 pkgObj.recordGUIOpen();
             end
+            
+        case 'VideoCalib'
+            % case is real-time tracking object
+            try
+                % creates the class object and updates within the GUI
+                handles = varargin{1};
+                pkgObj = feval('VideoCalibObj',handles.figFlyRecord);                
+                setappdata(handles.figFlyRecord,'vcObj',pkgObj)
+            catch ME
+                a = 1;
+            end            
 
         case 'MultiTrack'
             % case is initialising the multi-tracking object
