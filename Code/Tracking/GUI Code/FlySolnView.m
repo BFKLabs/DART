@@ -523,7 +523,7 @@ isInit = isempty(hYLbl);
 % --- AXIS LABEL & MENU INITIALISATION --- %
 % ---------------------------------------- %
 
-%
+% retrieves the currently selected menu item
 iApp = getSelectedMenuItem(handles);
 
 % sets the ylabels
@@ -1099,6 +1099,14 @@ T = get(handles.output,'T');
 hGUI = get(handles.output,'hGUI');
 iMov = get(hGUI.output,'iMov');
 
+% deletes any previous patch objects
+hPatchPr = findall(hAxI,'tag','hPhase');
+if isempty(hPatchPr); delete(hPatchPr); end
+
+% if there are no phases detected, then exit
+nPhase = length(iMov.vPhase);
+if nPhase == 0; return; end
+
 % retrieves the axis limits (if not provided)
 if ~exist('yLimT','var'); yLimT = get(hAxI,'yLim'); end
 
@@ -1106,13 +1114,8 @@ if ~exist('yLimT','var'); yLimT = get(hAxI,'yLim'); end
 Tmlt = 1/60;
 fAlpha = 0.1;
 dT = nanmedian(diff(T));
-nPhase = length(iMov.vPhase);
 phCol = distinguishable_colors(nPhase);
 [ix,iy] = deal([1,1,2,2,1],[1,2,2,1,1]);
-
-% deletes any previous patch objects
-hPatchPr = findall(hAxI,'tag','hPhase');
-if isempty(hPatchPr); delete(hPatchPr); end
 
 % creates the phase patch objects
 for i = 1:nPhase

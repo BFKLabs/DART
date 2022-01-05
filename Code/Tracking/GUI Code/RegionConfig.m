@@ -1382,10 +1382,14 @@ end
 % --- HORIZONTAL LINE CREATION --- %
 % -------------------------------- %    
 
-% only set up the horizontal lines if there is more than one row
-if iMov.nCol > 1
-    for j = 1:iMov.nCol
-        % sets the x-location of the lines
+% only set up the horizontal lines if there is more than one column
+for j = 1:iMov.nCol
+    % sets the x-location of the lines
+    if iMov.nCol == 1
+        % case is there is only one column group
+        xHL = iMov.posO{j};
+    else
+        % case is there are multiple column groups
         switch j
             case 1
                 xHL = [iMov.posO{j}(1),xVL{j}(1)];
@@ -1397,46 +1401,46 @@ if iMov.nCol > 1
                 xHL = [xVL{j-1}(1),xVL{j}(1)];
 
         end        
+    end
 
-        % creates the line objects
-        for i = 2:iMov.nRow
-            % sets the y-location of the line
-            if ~isempty(iMov.pos)
-                [iLo,iHi] = deal((i-2)*iMov.nCol+j,(i-1)*iMov.nCol+j);
-                yHL = 0.5*(sum(iMov.pos{iLo}([2 4])) + ...
-                           sum(iMov.pos{iHi}(2)))*[1 1];
-            else
-                k = (i-1)*iMov.nCol + j;
-                yHL = iMov.posO{k}(2)*[1 1];
-            end
+    % creates the line objects
+    for i = 2:iMov.nRow
+        % sets the y-location of the line
+        if ~isempty(iMov.pos)
+            [iLo,iHi] = deal((i-2)*iMov.nCol+j,(i-1)*iMov.nCol+j);
+            yHL = 0.5*(sum(iMov.pos{iLo}([2 4])) + ...
+                       sum(iMov.pos{iHi}(2)))*[1 1];
+        else
+            k = (i-1)*iMov.nCol + j;
+            yHL = iMov.posO{k}(2)*[1 1];
+        end
 
-            % creates the line object and sets the properties
-            hHL = imline(hAx,xHL,yHL);
-            set(hHL,'tag','hHorz','UserData',[i,j]);
-            setObjVisibility(findobj(hHL,'tag','bottom line'),'off'); 
-            set(findobj(hHL,'tag','end point 1'),'hittest','off');
-            set(findobj(hHL,'tag','end point 2'),'hittest','off');        
+        % creates the line object and sets the properties
+        hHL = imline(hAx,xHL,yHL);
+        set(hHL,'tag','hHorz','UserData',[i,j]);
+        setObjVisibility(findobj(hHL,'tag','bottom line'),'off'); 
+        set(findobj(hHL,'tag','end point 1'),'hittest','off');
+        set(findobj(hHL,'tag','end point 2'),'hittest','off');        
 
-            % updates the 
-            api = iptgetapi(hHL);
-            api.setColor('r')
-            api.addNewPositionCallback(@horzCallback); 
+        % updates the 
+        api = iptgetapi(hHL);
+        api.setColor('r')
+        api.addNewPositionCallback(@horzCallback); 
 
-            % sets the position constraint function
-            fcn = makeConstrainToRectFcn('imline',xHL,getHorzYLim(iMov,i,j));
-            api.setPositionConstraintFcn(fcn);             
+        % sets the position constraint function
+        fcn = makeConstrainToRectFcn('imline',xHL,getHorzYLim(iMov,i,j));
+        api.setPositionConstraintFcn(fcn);             
 
-            % sets the left-coordinate into the corresponding vertical line
-            if (j > 1)
-                uD = [get(hVL{j-1},'UserData');{api,1,i,j}];
-                set(hVL{j-1},'UserData',uD);
-            end
+        % sets the left-coordinate into the corresponding vertical line
+        if (j > 1)
+            uD = [get(hVL{j-1},'UserData');{api,1,i,j}];
+            set(hVL{j-1},'UserData',uD);
+        end
 
-            % sets the right-coordinate into the corresponding vertical line
-            if (j < iMov.nCol)
-                uD = [get(hVL{j},'UserData');{api,2,i,j}];
-                set(hVL{j},'UserData',uD);            
-            end
+        % sets the right-coordinate into the corresponding vertical line
+        if (j < iMov.nCol)
+            uD = [get(hVL{j},'UserData');{api,2,i,j}];
+            set(hVL{j},'UserData',uD);            
         end
     end
 end

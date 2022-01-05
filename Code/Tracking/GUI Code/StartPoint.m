@@ -259,8 +259,26 @@ for i = 1:length(fStr)
     set(hEdit,'Callback',cbFcn,'String',num2str(pVal))
 end
 
-% determines if the video is multi-phase. reduce the GUI if not
+% determines the frames that have been tracked
 nPh = length(iMov.vPhase);
+iPh = iMov.iPhase(trkObj.iPhaseS,:);
+iApp0 = find(trkObj.iMov.ok,1,'first');
+iTube0 = find(trkObj.iMov.flyok(:,iApp0),1,'first');
+isTrk = ~isnan(trkObj.pData.fPos{iApp0}{iTube0}(:,1));
+
+% determines the total number of stacks per phase
+nFrmS = diff(iPh,[],2) + 1;
+nStackTot = ceil(nFrmS/trkObj.nFrmS);
+
+% determines the number of tracked stacks per phase
+nStackTrk = ceil(cellfun(@(x)(sum(isTrk(x(1):x(2)))),...
+                        num2cell(iPh,2))/trkObj.nFrmS);    
+
+setappdata(hFig,'isTrk',isTrk);
+setappdata(hFig,'nStackTrk',nStackTrk);
+setappdata(hFig,'nStackTot',nStackTot);
+
+% determines if the video is multi-phase. reduce the GUI if not
 if nPh == 1
     % calculates the change in height for the remaining objects
     pPos = get(handles.radioStartFrame,'Position');
@@ -286,10 +304,6 @@ else
     % case is there are multiple phases
     
     % initialisations
-    iPh = iMov.iPhase(trkObj.iPhaseS,:);
-    iApp0 = find(trkObj.iMov.ok,1,'first');
-    iTube0 = find(trkObj.iMov.flyok(:,iApp0),1,'first');
-    isTrk = ~isnan(trkObj.pData.fPos{iApp0}{iTube0}(:,1));
     hObj = [findall(handles.panelStartPoint,'UserData',1);hEditF];
     
     % determines the change in the GUI object heights/locations 
@@ -301,24 +315,13 @@ else
     resetObjPos(hTable,'Height',dtHght,1)
     resetObjPos(hPanelS,'Height',dtHght,1)
     resetObjPos(hPanelP,'Height',dtHght,1)
-    resetObjPos(hObj,'Bottom',dtHght,1)
-    
-    % determines the total number of stacks per phase
-    nFrmS = diff(iPh,[],2) + 1;
-    nStackTot = ceil(nFrmS/trkObj.nFrmS);
-    
-    % determines the number of tracked stacks per phase
-    nStackTrk = ceil(cellfun(@(x)(sum(isTrk(x(1):x(2)))),...
-                            num2cell(iPh,2))/trkObj.nFrmS);    
-    
+    resetObjPos(hObj,'Bottom',dtHght,1)                            
+                        
     % sets the table data/properties
     tData = num2cell([(1:nPh)',iPh,nStackTrk,nStackTot]);
     set(hTable,'Data',tData);            
     
     % runs the start point selection callback function
-    setappdata(hFig,'isTrk',isTrk);
-    setappdata(hFig,'nStackTrk',nStackTrk);
-    setappdata(hFig,'nStackTot',nStackTot);
     panelStartPoint_SelectionChangedFcn(hPanelS, '1', handles)    
 end
 

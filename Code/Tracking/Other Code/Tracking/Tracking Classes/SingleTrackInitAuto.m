@@ -537,7 +537,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
             
             % calculates the object functions values for each offset value
             Z = arrayfun(@(x)(min(arr2vec(pdist2(tPkTF,x+yL(:))))),xiPF);            
-            QZ = Z.*(nTot==max(nTot));            
+            QZ = Z.*(nTot>(max(nTot)-Nt/2));            
             
             % returns the optimal grid offset
             if length(QZ) >= 3

@@ -355,7 +355,7 @@ classdef TrackFull < Track
                 try
                     % attempts to updates the solution view GUI
                     hSolnT.updateFunc(guidata(hSolnT));
-                catch
+                catch ME
                     % if there was an error, then reset the GUI handle
                     set(obj.hFig,'hSolnT',[])   
                 end

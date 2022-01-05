@@ -104,6 +104,25 @@ for i = 1:length(iMov.pos)
         end
     end
 end
+
+% resets the outer region coordinates
+for i = 2:iMov.pInfo.nRow    
+    for j = 1:iMov.pInfo.nCol
+        % sets the lower/upper region indices
+        iLo = (i-2)*iMov.pInfo.nCol + j;
+        iHi = (i-1)*iMov.pInfo.nCol + j;
+        
+        % calculates the vertical location separating the regions
+        yHL = 0.5*(sum(iMov.pos{iLo}([2 4])) + ...
+                   sum(iMov.pos{iHi}(2)));
+        yB = sum(iMov.posO{iHi}([2,4]));
+               
+        % resets the outer region coordinates        
+        iMov.posO{iHi}(2) = yHL;
+        iMov.posO{iHi}(4) = yB - yHL;
+        iMov.posO{iLo}(4) = yHL - iMov.posO{iLo}(2);        
+    end
+end
     
 % re-initialises the status flags
 nTube = getSRCountVec(iMov)';

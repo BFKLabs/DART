@@ -749,6 +749,30 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 % retrieves the 
                 obj.iMov = trkObjI.iMov;
                 
+                % if the solution tracking GUI is open then reset it
+                hTrack = findall(0,'tag','figFlySolnView');
+                if ~isempty(hTrack)
+                    try
+                        % pause to refresh
+                        pause(0.05);       
+                        
+                        % updates the sub-region data struct
+                        iMovOrig = get(obj.hFig,'iMov');
+                        set(obj.hFig,'iMov',obj.iMov);
+                        
+                        % attempts to updates the solution view GUI
+                        hTrack.initFunc(guidata(hTrack),1)
+                        set(obj.hFig,'iMov',iMovOrig,'hSolnT',hTrack)                    
+
+                        % pause to refresh
+                        pause(0.05);
+
+                    catch
+                        % if there was an error, then reset the GUI handle
+                        set(obj.hFig,'hSolnT',[])   
+                    end      
+                end
+                
                 % ensures the sub-region data struct reflects the previous 
                 % solution file
                 if iFile > 1
@@ -892,12 +916,21 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             if ~isempty(hTrack)
                 try
                     % pause to refresh
-                    pause(0.05);                    
+                    pause(0.05);         
+                    
+                    % removes the phase field
+                    vPhase0 = obj.iMov.vPhase;
+                    obj.iMov.vPhase = [];
+                    set(obj.hFig,'iMov',obj.iMov)
                     
                     % attempts to updates the solution view GUI
                     set(obj.hGUI.checkShowMark,'value',0)
-                    set(hTrack,'pData',[])
+                    set(obj.hFig,'pData',[])
                     hTrack.initFunc(guidata(hTrack),1)
+                    
+                    % resets the phase field
+                    obj.iMov.vPhase = vPhase0;
+                    set(obj.hFig,'iMov',obj.iMov,'hSolnT',hTrack)                    
                     
                     % pause to refresh
                     pause(0.05);
