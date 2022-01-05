@@ -14,7 +14,8 @@ delProg = false;
 % creates a waitbar figure (if one is not created)
 if ~exist('h','var')
     delProg = true;
-    h = ProgBar('Current Progress','Image Estimation Stack');
+    wStr = {'Current Progress','Region Progress'};
+    h = ProgBar(wStr,'Image Estimation Stack');
 end
 
 % creates the video phase class object
@@ -24,8 +25,18 @@ phObj = VideoPhase(iData,iMov,h,1+iOfs);
 phObj.runPhaseDetect();
 
 % updates the sub-image data struct with the phase information
-phObj.iMov.ImnF = phObj.ImnF;
-[phObj.iMov.iPhase,phObj.iMov.vPhase] = deal(phObj.iPhase,phObj.vPhase);
+phObj.iMov.iPhase = phObj.iPhase;
+phObj.iMov.vPhase = phObj.vPhase;
+phObj.iMov.phInfo = getPhaseObjInfo(phObj);
+
+% reduces downs the filter/reference images (if they exist)
+for i = 1:length(phObj.iMov.iR)
+    if ~isempty(phObj.iMov.phInfo.Iref{i})
+        phObj.iMov = reducePhaseInfoImages(phObj.iMov,i);
+    end
+end
+
+% updates the sub-image data struct with the phase information
 iMov = phObj.iMov;
 
 % reads the frames from the images

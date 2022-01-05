@@ -177,26 +177,30 @@ classdef SingleTrackFull < TrackFull & SingleTrack
         function prData = setupPrevPhaseData(obj,iFrmLast,varargin)
             
             % memory allocation
-            prData = struct('Img',[],'iStatus',[],'fPos',[],'fPosPr',[]);
+            prData = struct('Img',[],'iStatus',[],'IPosPr',[],...
+                            'fPos',[],'fPosPr',[]);
             
             % sets the data fields
             prData.Img = obj.getImageStack(iFrmLast,1);
             prData.iStatus = obj.iMov.Status;            
-            prData.fPos = cell(obj.nApp,1);                          
+            prData.fPos = cell(obj.nApp,1); 
+            prData.IPosPr = cell(obj.nApp,1); 
             
             % sets the previous data locations from the last valid frame  
             dX = cellfun(@(x)(x(1)-1),obj.iMov.iC);
             for iApp = 1:obj.nApp
                 pOfs = repmat([dX(iApp),0],obj.nTube(iApp),1);
                 prData.fPos{iApp} = cell2mat(cellfun(@(x)...
-                    (x(iFrmLast,:)),obj.pData.fPos{iApp}','un',0)) - pOfs;
+                    (x(iFrmLast,:)),obj.pData.fPos{iApp}','un',0)) - pOfs;                
             end
             
             % sets the previous frame points (for the extrapolation search)
             indT = max(1,iFrmLast-(obj.nFrmPr-1)):iFrmLast;
             prData.fPosPr = cellfun(@(y)(cellfun(@(x)...
                         (x(indT,:)),y,'un',0)),obj.pData.fPosL,'un',0);            
-            
+            prData.IPosPr = cellfun(@(y)(cellfun(@(x)...
+                        (x(iFrmLast)),y(:))),obj.pData.IPos,'un',0);
+                    
         end
         
         % --- sets up the position data struct

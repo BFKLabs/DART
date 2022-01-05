@@ -35,4 +35,10 @@ switch fType
         Ic = cellfun(@(x,y)(x.*y),pW(:),I(:),'un',0);        
         Ifcn = calcImageStackFcn(Ic,'sum');
         
+    case 'range'
+        Ifcn = range(Ic,3);
+        
+    case 'isnan'
+        Ifcn = any(isnan(Ic),3);
+        
 end

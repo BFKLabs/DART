@@ -1,12 +1,15 @@
 classdef SingleTrack < Track
     
     properties
+        
         % common fields
         hS
         Dtol
         
-        % frame count
-        nFrmPr = 10;
+        % other fixed parameter fields
+        nFrmPr = 5;
+        isAutoDetect = false;
+        
     end
     
     % class methods
@@ -87,15 +90,12 @@ classdef SingleTrack < Track
             % algorithm/segmentation types
             for i = 1:length(sInd)
                 switch sInd(i)
-                    case 1
+                    case {1,2}
                         % case is low variance calculations
-                        obj.fObj{i} = LVPhaseTrack(obj.iMov,obj.hProg); 
-                        obj.fObj{i}.nI = floor(max(obj.iData.sz)/1000);
-                        
-                    case 2
-                        % case is high variance calculations
-                        obj.fObj{i} = HVPhaseTrack(obj.iMov,obj.hProg);   
-                        
+                        isHV = sInd(i) == 2;
+                        obj.fObj{i} = PhaseTrack(obj.iMov,obj.hProg,isHV); 
+                        obj.fObj{i}.nI = floor(max(obj.iData.sz)/800);
+                                                
                     case 3
                         % case is manual correction updates
                         obj.fObj{i} = ManualDetect(obj.iMov,obj.hProg);
@@ -112,23 +112,12 @@ classdef SingleTrack < Track
         function prData = getPrevPhaseData(obj,fObjPr,iFrm)
 
             % data struct memory allocation
-            prData = struct('fPosT',[],'fPos',[],'nFrmPr',obj.nFrmPr,...
-                            'iStatus',[],'iStatusF',[]);
+            prData = struct('fPosPr',[],'fPos',[],'IPosPr',[],...
+                            'iStatus',[],'nFrmPr',obj.nFrmPr);
 
             % sets the data from the previous phase   
-            prData.fPos = fObjPr.fPos(:,end);       
-            
-            % retrieves the status flags (based on tracking object type)
-            switch class(fObjPr)
-                case 'LVPhaseTrack'
-                    % case is a residual tracking object
-                    prData.iStatus = obj.iMov.Status;
-                    
-                case 'HVPhaseTrack'
-                    % case is a direct detection tracking object
-                    prData.iStatus = num2cell(fObjPr.iStatus,1);
-                    
-            end
+            prData.fPos = fObjPr.fPos(:,end);  
+            prData.iStatus = obj.iMov.Status;
             
             if isprop(obj,'pData')
                 % sets the phase index (if not provided)
@@ -140,12 +129,104 @@ classdef SingleTrack < Track
                 % sets the previous frame points (for the full search only)               
                 indT = max(1,iFrm-(obj.nFrmPr-1)):iFrm;
                 prData.fPosPr = cellfun(@(y)(cellfun(@(x)...
-                        (x(indT,:)),y,'un',0)),obj.pData.fPosL,'un',0);  
+                        (x(indT,:)),y,'un',0)),obj.pData.fPosL,'un',0); 
+                prData.IPosPr = cellfun(@(y)(cellfun(@(x)...
+                        (x(iFrm)),y(:))),obj.pData.IPos,'un',0);
             end
 
         end         
         
+        % ------------------------------------ %
+        % --- REGION STACK SETUP FUNCTIONS --- %
+        % ------------------------------------ %          
+        
+        % --- retrieves the region image stack
+        function [IL,BL] = getRegionImgStack(obj,I0,iFrm,iApp,isHiV)
+            
+            % sets the default input arguments
+            if ~exist('isHiV','var'); isHiV = false; end
+            
+            % retrieves the new image frame
+            IL = cell(size(I0));           
+            phInfo = obj.iMov.phInfo;
+            
+            % sets the row/column indices
+            if obj.isAutoDetect
+                % case is using auto-detection
+                [iR,iC] = deal(obj.iRG{iApp},obj.iCG{iApp}); 
+            else
+                % case is using general tracking
+                [iR,iC] = deal(obj.iMov.iR{iApp},obj.iMov.iC{iApp});
+            end
+            
+            % sets the sub-image stacks
+            isOK = ~cellfun(@isempty,I0);          
+            IL(isOK) = cellfun(@(I)(I(iR,iC)),I0,'un',0); 
+            if any(~isOK)
+                % if the image is empty, then return NaN arrays
+                szT = [sum(~isOK),1];
+                IL(~isOK) = repmat({NaN(length(iR),length(iC))},szT);
+            end              
+            
+            % corrects image fluctuation (if required)
+            if phInfo.hasF || isHiV
+                % if there is fluctuation, then apply the hm filter and the
+                % histogram matching to the reference image
+                h = phInfo.hmFilt{iApp};
+                Imet = cellfun(@(x)(obj.applyHMFilter(x,h)),IL(:),'un',0); 
+                IL = cellfun(@(x)(x-nanmedian(x(:))),Imet,'un',0); 
+                
+                if ~phInfo.hasT(iApp) && (nargout == 2)
+                    BL = cellfun(@(x)(x<nanmean(x(:))),IL,'un',0);
+                end
+                
+            elseif (nargout == 2)
+                % case is there is no light fluctuation
+                BL = cell(length(IL),1);
+            end
+            
+            % corrects image fluctuation
+            if phInfo.hasT(iApp)
+                p = phInfo.pOfs{iApp};
+                pOfsT = interp1(phInfo.iFrm0,p,iFrm,'linear','extrap');
+                IL = cellfun(@(x,p)(obj.applyImgTrans(x,p)),...
+                                    IL,num2cell(pOfsT,2),'un',0);
+                                
+                if phInfo.hasF && (nargout == 2)
+                    BL = cellfun(@(x)(x<nanmean(x(:))),IL,'un',0);
+                end                                
+            end
+            
+        end                       
+        
     end    
+    
+    % static class methods
+    methods (Static)          
+        
+        % --- applies the image translation 
+        function IT = applyImgTrans(I,pOfs)
+            
+            % pads the array by the movement magnitude
+            sz = size(I);
+            dpOfs = ceil(abs(flip(pOfs)));
+            Iex = padarray(I,dpOfs,'both','symmetric');
+            
+            % translates and sets the final offset image
+            IT0 = imtranslate(Iex,-pOfs);
+            IT = IT0(dpOfs(1)+(1:sz(1)),dpOfs(2)+(1:sz(2)));
+            
+        end            
+        
+        % --- applies the homomorphic filter to the image, I
+        function Ihm = applyHMFilter(I,hF)
+                
+            Ihm = applyHMFilter(I,hF);
+            Ihm = 255*normImg(Ihm - min(Ihm(:)));
+
+        end              
+        
+    end
     
 end
 

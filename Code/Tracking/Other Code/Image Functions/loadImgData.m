@@ -211,9 +211,12 @@ if isfield(iMov,'useRot')
 end
 
 %
-FPSest = 1/nanmean(diff(iData.Tv));
+FPSest = 1/nanmedian(diff(iData.Tv));
 if rectifyRatio(iData.exP.FPS/FPSest) > 1.1
-    iData.exP.FPS = FPSest;
+    I0 = getDispImage(iData,iMov,10,false);
+    if isempty(I0) || all(isnan(I0(:)))
+        iData.exP.FPS = FPSest;
+    end
 end
 
 % sets the time vector/total frame count

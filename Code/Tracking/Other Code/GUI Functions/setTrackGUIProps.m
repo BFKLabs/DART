@@ -218,7 +218,7 @@ switch (typeStr)
         setDetectEnable(handles,'off')
         setTrackGUIProps(handles,'UpdateFrameSelection')
         setMenuEnable(handles,'on',8)
-        setMenuEnable(handles,'off',[2,3,7])     
+        setMenuEnable(handles,'off',[2,7])     
                 
         % resets the status flag 
         iData.Status = 0;        
@@ -245,7 +245,7 @@ switch (typeStr)
         dispImage(handles);      
         
         % disables the detect tube button
-        if (iMov.isSet)
+        if iMov.isSet
             % resets the plot markers
             setDetectEnable(handles,'on',[1 4])            
             initMarkerPlots(handles)
@@ -966,13 +966,15 @@ end
 % sets the states for the frame buttons and index edit box
 for i = 1:length(ind)
     % sets the object enabled properties
-    if (isfield(handles,objStr{ind(i)}))
-        hObj = eval(sprintf('handles.%s',objStr{ind(i)}));
-        setObjEnable(hObj,state);
-        
-        % removes the check (if disabling)
-        if strcmp(state,'off')
-            set(hObj,'Checked','off')
+    if isfield(handles,objStr{ind(i)})
+        try
+            hObj = eval(sprintf('handles.%s',objStr{ind(i)}));
+            setObjEnable(hObj,state);
+
+            % removes the check (if disabling)
+            if strcmp(state,'off')
+                set(hObj,'Checked','off')
+            end
         end
     end
 end

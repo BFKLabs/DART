@@ -18,6 +18,10 @@ classdef TrackFull < Track
         nCountS
         iFrmG
         
+        % x/y coordinate extremum
+        xLim
+        yLim
+        
         % miscellaneous fields
         tDir
         wStr         
@@ -29,6 +33,7 @@ classdef TrackFull < Track
         solnChk = false;
         wOfs1 = 1;
         nLvl        
+        nFrmS
         
         % function handles
         dispImage
@@ -222,42 +227,14 @@ classdef TrackFull < Track
             
             % sets the tracking object properties
             set(obj.fObj{iPhase},'iMov',obj.iMov,'wOfs',wOfsNw,...
-                                 'hProg',obj.hProg,'iPh',iPhase,'vPh',vPh);
-
-            % sets the phase dependent fields
-            switch obj.iMov.vPhase(iPhase)
-                case 2
-                    % case is a low-variance phase
-                    [vPh,dN,i2] = deal(obj.iMov.vPhase,10,[]);
-
-                    % sets the pre phase frame indices
-                    i0 = find(vPh(1:iPhase-1)==1,1,'last');
-                    if ~isempty(i0)
-                        xiF = max(1,length(obj.iFrmG{i0})-[(dN-1),0]);
-                        i2 = [i2,obj.iFrmG{i0}(xiF(1):xiF(2))];
-                    end
-
-                    % sets the post phase frame indices
-                    i1 = find(vPh(iPhase+1:end)==1,1,'first')+iPhase;
-                    if ~isempty(i1)
-                        N = length(obj.iFrmG{i1});
-                        xiF = min(N,[1,dN]);
-                        i2 = [i2,obj.iFrmG{i1}(xiF(1):xiF(2))];                            
-                    end
-
-                    % sets up the interpolation data
-                    pInt = struct('fPos',[],'iFrm',i2);
-                    pInt.fPos = cellfun(@(x)(cellfun(@(y)...
-                           (y(i2,:)),x,'un',0)),obj.pData.fPosL,'un',0);
-                    set(obj.fObj{iPhase},'pInt',pInt);
-            end            
+                                 'hProg',obj.hProg,'iPh',iPhase,'vPh',vPh);      
             
             % ------------------------------ %
             % --- FLY LOCATION DETECTION --- %
             % ------------------------------ %            
             
             % loops through each image stacks segmenting fly locations
-            for i = max(1,(obj.pData.nCount(iPhase)+1)):nStack
+            for i = max(1,obj.pData.nCount(iPhase)):nStack
                 % updates the progressbar (if one is available)
                 if ~isempty(obj.hProg)
                     wStrNw = sprintf('%s (Stack %i of %i)',...
@@ -278,15 +255,16 @@ classdef TrackFull < Track
                 
                 % applies the image filter (if required)
                 if ~isempty(obj.hS)
-                    Img = cellfun(@(x)(imfilter(x,obj.hS)),Img,'un',0);
+                    Img = cellfun(@(x)(imfiltersym(x,obj.hS)),Img,'un',0);
                 end
                 
-                % applies the image offset (if shift detected)
-                Img = obj.applyImageOffset(Img,iFrmR);
+%                 % applies the image offset (if shift detected)
+%                 Img = obj.applyImageOffset(Img,iFrmR);
                 
                 % updates the tracking object class fields                
                 set(obj.fObj{iPhase},'Img',Img,'prData',prDataPh,...
-                                     'iFrmR',obj.sProg.iFrmR{i});
+                                     'iFrmR',obj.sProg.iFrmR{i},...
+                                     'xLim',obj.xLim,'yLim',obj.yLim);
                                     
                 % runs the direct detection algorithm
                 obj.fObj{iPhase}.runDetectionAlgo();   
@@ -321,6 +299,10 @@ classdef TrackFull < Track
             dX = cellfun(@(x)(x(1)-1),obj.iMov.iC);
             nFrm = length(iFrmR);
             
+            % retrieves the updated x/y limits
+            obj.xLim = get(fObjP,'xLim');
+            obj.yLim = get(fObjP,'yLim');
+            
             % retrieves all values
             for iApp = find(obj.iMov.ok(:)')
                 % calculates the offset
@@ -350,7 +332,7 @@ classdef TrackFull < Track
                             obj.getTrackFieldValues(fObjP.NszB,iApp,iFly);
                     end
                 end
-            end
+            end            
             
             % updates the stack count and the positional data struct
             obj.pData.nCount(iPhase) = iStack;
@@ -470,7 +452,8 @@ classdef TrackFull < Track
             % resets the segmentation flags/arrays 
             jPhase = obj.iPhaseS(indS(1));
             xiS = obj.iPhaseS((indS(1)+1):end);
-            [obj.iPhase0,obj.iStack0] = deal(indS(1),indS(2)-1);                        
+            obj.iPhase0 = indS(1);
+            obj.iStack0 = max(1,indS(2)-1);                        
             obj.pData.isSeg(xiS) = false;
             obj.pData.nCount(xiS) = 0;
             obj.pData.nCount(jPhase) = max(0,indS(2));
@@ -480,10 +463,9 @@ classdef TrackFull < Track
             A = load(pFile); obj.sProg = A.sProg;
             
             % sets the frames that are to be removed
-            nFrmS = getFrameStackSize();
             Brmv = false(length(obj.pData.IPos{1}{1}),1);
             Brmv(cell2mat(obj.iFrmG(xiS)')) = true;
-            Brmv(obj.iFrmG{jPhase}((indS(2)*nFrmS+1):end)) = true;
+            Brmv(obj.iFrmG{jPhase}((indS(2)*obj.nFrmS+1):end)) = true;
             
             % resets the positional arrays
             for i = 1:length(obj.pData.fPos)
@@ -508,13 +490,10 @@ classdef TrackFull < Track
         % --- initialises the fly position data struct --- %
         function setupPosDataStructFull(obj)
 
-            % loads the global analysis parameters 
-            nFrmS = getFrameStackSize();
-
             % array length indexing
             nFrm = diff(obj.iMov.iPhase,[],2) + 1;
-            nFrmS = obj.iMov.sRate.*floor(nFrmS./obj.iMov.sRate);
-            nStack = ceil(nFrm/nFrmS);                 
+            nFrmST = obj.iMov.sRate.*floor(obj.nFrmS./obj.iMov.sRate);
+            nStack = ceil(nFrm/nFrmST);                 
 
             % memory allocation 
             [obj.pData,A,B] = obj.sObj.setupPosDataStruct(nFrm);
@@ -613,6 +592,7 @@ classdef TrackFull < Track
             obj.calcOK = true;
             obj.is2D = is2DCheck(obj.iMov);
             obj.tDir = obj.iData.ProgDef.TempFile; 
+            obj.nFrmS = getFrameStackSize();
             
             % sets the interpolation value
             iLV0 = find(obj.iMov.vPhase==1,1,'first');
@@ -643,8 +623,8 @@ classdef TrackFull < Track
                 obj.wOfs1 = 2 + obj.isMultiBatch;
                 obj.isBatch = true;
                 obj.wStr = obj.hProg.wStr;                
-            end
-            
+            end            
+               
             % determines the number of progressbar field levels
             obj.nLvl = length(obj.wStr);
             
@@ -669,18 +649,13 @@ classdef TrackFull < Track
             % --- prompts the user if they wish to continue or restart
             function uChoice = promptContChoice(obj)
                 
-                % loads the global analysis parameters 
-                pPara = load(getParaFileName('ProgPara.mat'));
-                nFrmS = getFrameStackSize();
-                
-                %
+                % determines the number of phases in the current stack
                 jPhase = obj.iPhaseS(obj.iPhase0);
-                nFrmPh = diff(obj.iMov.iPhase(jPhase,:));  
-                nStackPh = ceil(nFrmPh/nFrmS);
+                nFrmPh = diff(obj.iMov.iPhase(jPhase,:))+1;  
+                nStackPh = ceil(nFrmPh/obj.nFrmS);
                 
                 % determines if the video is partially/completely tracked
-                if (obj.iPhase0 == obj.nPhase) && ...
-                                (nStackPh == obj.nCountS(obj.iPhase0))
+                if (obj.iPhase0 == obj.nPhase) && (nStackPh == obj.nCountS)
                     % case is video is fully tracked
                     sStr = 'Current video is fully segmented';
                 else
@@ -695,7 +670,7 @@ classdef TrackFull < Track
                     sprintf('Total number of video phases = %i\n',...
                                 obj.nPhase);...
                     sprintf('Currently segmented image frame stacks = %i',...
-                                obj.pData.nCount(jPhase));...
+                                obj.nCountS);...
                     sprintf('Total image frame stacks to segment = %i',...
                                 nStackPh);...
                     sprintf('\nDo you wish to continue or restart?')};   
@@ -734,7 +709,7 @@ classdef TrackFull < Track
                 fPosT = obj.pData.fPos{iApp0}{iTube0};                
 
                 % retrieves the index of the last segmented frame
-                isTrk = ~isnan(fPosT(:,1));
+                isTrk = ~isnan(fPosT(:,1));                
                 
                 % determines the phase to be segmented
                 if ~isTrk(1)
@@ -757,9 +732,14 @@ classdef TrackFull < Track
                     end         
                 end
                 
-                % determines if the first frame of the first video
-                obj.nCountS = obj.pData.nCount(obj.iPhaseS);
-                if (obj.nCountS(obj.iPhase0)==0) && (obj.iPhase0==1)
+                % determines the number of tracked frames in the phase. 
+                % from this, determine the number of analysed phase stacks       
+                iFrmS = obj.iMov.iPhase(obj.iPhaseS(obj.iPhase0),:);
+                nFrmTrkPh = sum(isTrk(iFrmS(1):iFrmS(2)));
+                obj.nCountS = ceil(nFrmTrkPh/obj.nFrmS);
+                
+                % determines/sets the tracking restart point
+                if (obj.nCountS == 0) && (obj.iPhase0 == 1)
                     % if so, then no need to reset data
                     resetData = false;
                     
@@ -780,7 +760,9 @@ classdef TrackFull < Track
                         uChoice = promptContChoice(obj);
                     end   
                     
-                    %
+                    % prompts the user where they want to start from
+                    % (either continue, restart completely, or restart from
+                    % a specified frame index)
                     switch uChoice
                         case ('Restart From...')
                             % prompts user for restart point
@@ -881,12 +863,22 @@ classdef TrackFull < Track
                 
             else
                 % flag that initialisation is not necessary
-                obj.iStack0 = obj.nCountS(obj.iPhase0);
+                obj.iStack0 = obj.nCountS;
                 if ~isfield(obj.pData,'calcPhi')
                     obj.pData.calcPhi = false;
                 end                
                 
             end
+            
+            % determine the overall min/max coordinates for all sub-regions
+            pMin = cellfun(@(y)(cell2mat(cellfun(@(x)...
+                   (nanmin(x,[],1)),y(:),'un',0))),obj.pData.fPosL,'un',0);
+            pMax = cellfun(@(y)(cell2mat(cellfun(@(x)...
+                   (nanmax(x,[],1)),y(:),'un',0))),obj.pData.fPosL,'un',0);
+               
+            % set the overall x/y-coordinate limits for each sub-region
+            obj.xLim = cellfun(@(x,y)([x(:,1),y(:,1)]),pMin,pMax,'un',0);
+            obj.yLim = cellfun(@(x,y)([x(:,2),y(:,2)]),pMin,pMax,'un',0);            
             
             % updates the frame (if required)
             if updateFrame

@@ -24,19 +24,20 @@ while 1
     
     % reads the new frame from the camera
     ImgNw = getRotatedImage(iMov,double(getsnapshot(objIMAQ)));
-    ImgMnNw = phObj.calcCombinedImgAvg(ImgNw);
+%     ImgMnNw = phObj.calcCombinedImgAvg(ImgNw);
     
     %
     if isempty(Img)
         % if the arrays are empty, then initialise them
         Img = {ImgNw};
-        ImgMn = {ImgMnNw};
+        ImgMn = {ImgNw};
         
     else
         % otherwise, determine if the new frame matches roughly the last
         % frame in the image stack
-        dImgMn = abs(max(ImgMnNw-ImgMn{end}));
-        if dImgMn > phObj.pTol
+        ImgMnNw = nanmean(arr2vec(calcImageStackFcn(Img,'mean')));
+        dImgMn = abs(max(ImgMnNw(:)-ImgMn{end}(:)))
+        if dImgMn > phObj.pTolPhase
             % if the match is poor, then reset the arrays
             Img = {ImgNw};
             ImgMn = {ImgMnNw};

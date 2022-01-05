@@ -39,16 +39,13 @@ switch (pType)
                     showMovie(pp,p{2}) 
                 end
         end
-    case ('moviesel')
-        switch (length(p))
-            case (1)
-                I = p{1};
-        end
-
+        
+    case ('moviesel')        
         % coverts to a cell array
+        I = p{1};
         if ~iscell(I); I = {I}; end
         
-        % 
+        %   
         showImage(I{1})
         setappdata(h,'I',I);      
         setappdata(h,'cFrm',1);

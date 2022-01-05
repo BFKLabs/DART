@@ -740,12 +740,14 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 set(trkObjI,'prData0',prData);
                 trkObjI.calcInitEstimate(obj.iMov,obj.hProg);                
 
-                % if the user cancelled, then exit                
-                obj.iMov = trkObjI.iMov;
+                % if the user cancelled, then exit                                
                 if ~trkObjI.calcOK
                     sFlag = 1;
                     return
                 end
+                
+                % retrieves the 
+                obj.iMov = trkObjI.iMov;
                 
                 % ensures the sub-region data struct reflects the previous 
                 % solution file
@@ -799,8 +801,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             else
                 % updates the sub-image data struct with the phase info
                 obj.iMov.iPhase = phObj.iPhase;
-                obj.iMov.vPhase = phObj.vPhase;      
-                obj.iMov.ImnF = phObj.ImnF;                
+                obj.iMov.vPhase = phObj.vPhase;          
 
                 % expands the progressbar
                 obj.hProg.expandProgBar(dLvl);
@@ -925,7 +926,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             % hisogram matches the images
             ImgNw = obj.getFeasComparisonImage(fStr); 
             if abs(mean2(Img0) - mean2(ImgNw)) > pTolDiff
-                ImgNw = double(imhistmatch(uint8(ImgNw),uint8(Img0)));
+                ImgNw = double(imhistmatch(uint8(ImgNw),uint8(Img0),256));
             end
             
             % calculates the video offset between the new/candidate frames

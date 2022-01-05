@@ -386,7 +386,7 @@ classdef HVPhaseTrack < matlab.mixin.SetGet
                 
                 % matches the histograms of the images
                 for i = find(~isOK(:)')
-                    IappF{i} = double(imhistmatch(uint8(IappF{i}),Iref));
+                    IappF{i} = double(imhistmatch(uint8(IappF{i}),Iref,256));
                 end
             end
             

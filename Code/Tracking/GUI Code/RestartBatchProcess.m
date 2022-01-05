@@ -183,7 +183,7 @@ for i = find(isnan(bpS.dpImg(:,1))')
     ImgNw = bpObj.getFeasComparisonImage(bpS.mName{i}); 
     if abs(mean2(bpS.Img0) - mean2(ImgNw)) > pTolDiff
         % hisogram matches the images (if difference is too large)
-        ImgNw = double(imhistmatch(uint8(ImgNw),uint8(bpS.Img0)));
+        ImgNw = double(imhistmatch(uint8(ImgNw),uint8(bpS.Img0),256));
     end    
     
     % calculates the video offset between the new/candidate frames
@@ -329,14 +329,14 @@ if showStats
     % determines the proportion of files to be selected    
     xiP = [0,1]+0.5;
     c = {[1,0.5,0.5],[0.5,0.5,1]};
-    prVal = 100*[(prFrm+iFile)/nFile,prFrm];
+    prVal = 100*[(prFrm+(iFile-1))/nFile,prFrm];
     lblStr = {{'Overall';'Progress'},{'Video';'Progress'}};    
     
     % updates the axis properties 
     hold(hAxP,'on');
     for i = 1:length(xiP)
         hBar = bar(hAxP,xiP(i),prVal(i),0.8);
-        set(hBar,'CData',c{i});
+        set(hBar,'FaceColor',c{i});
     end
     hold(hAxP,'off');
 

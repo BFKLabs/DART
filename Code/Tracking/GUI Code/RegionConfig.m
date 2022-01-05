@@ -105,6 +105,12 @@ if isSet
     % case is the sub-region data struct has already been set up
     hObject.iData = convertDataStruct(iMov);
     
+    % sets the configuration information data struct (if not present)
+    if ~isfield(hObject.iMov,'pInfo')
+        hObject.iMov.pInfo = getDataSubStruct(handles);
+        hObject.iMov.is2D = hObject.iData.is2D;
+    end
+    
     % if the binary mask field (for the 2D circle automatic placement) has 
     % not been set in iMov, then set the field and mark a change
     if ~isfield(hObject.iMov,'autoP'); hObject.iMov.autoP = []; end    
@@ -575,6 +581,7 @@ hFig = handles.output;
 iMov0 = get(hFig,'iMov');
 
 % if the field does exist, then ensure it is correct
+hFig.iMov.phInfo = [];
 hFig.iMov.bgP = DetectPara.resetDetectParaStruct(hFig.iMov.bgP);
 hFig.iMov = setSubRegionDim(hFig.iMov,hFig.hGUI);
 
@@ -1214,6 +1221,7 @@ uistack(hFig,'top')
 
 % updates the data struct into the GUI
 set(hFig,'iMov',iMov);
+set(hFig,'phObj',[]);
 updateMenuItemProps(handles);
 
 % --- Executes on button press in buttonUpdate.
@@ -1322,8 +1330,10 @@ hAx = hGUI.imgAxes;
 hold(hAx,'on')
 
 % sets the region position vectors
-is2DSetup = iMov.is2D;
 [rPosS,nApp] = deal(iMov.pos,numel(iMov.pos));
+
+% sets the 2D region flag
+is2DSetup = iMov.is2D;
 
 % ------------------------------ %
 % --- VERTICAL LINE CREATION --- %

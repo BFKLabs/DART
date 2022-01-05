@@ -2,10 +2,10 @@
 function nFrmS = getFrameStackSize()
 
 % global parameters
-global frmSz0 mainProgDir
+global frmSz0
 
 % opens the program parameter struct
-A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+A = load(getParaFileName('ProgPara.mat'));
 
 % sets the comparison/maximum size limits
 szMax = [1400,1800];

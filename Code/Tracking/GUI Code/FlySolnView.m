@@ -1,5 +1,5 @@
 function varargout = FlySolnView(varargin)
-% Last Modified by GUIDE v2.5 21-Jan-2021 19:18:12
+% Last Modified by GUIDE v2.5 03-Jan-2022 19:24:52
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -24,7 +24,7 @@ end
 function FlySolnView_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % global variables
-global is2D isDetecting nFrmRS updateFlag2 regSz
+global isDetecting nFrmRS updateFlag2 regSz
 updateFlag2 = 2; pause(0.1); 
 
 % retrieves the regular size of the GUI
@@ -43,15 +43,17 @@ iData = get(hGUI.output,'iData');
 % initialises the custom object properties
 addObjProps(hObject,'hGUI',hGUI,'iMov',iMov,'iData',iData,'T',[],...
                     'sFac',iData.exP.sFac,'vType',[],'nNaN',[],...
-                    'Dfrm',[],'tTick0',[],'tTickLbl0',[]);
+                    'Dfrm',[],'tTick0',[],'tTickLbl0',[],...
+                    'iPara',initParaStruct);
                                 
 % sets the functions that are to be used outside the GUI
 addObjProps(hObject,'updateFunc',@updatePlotObjects,...
-                    'initFunc',@initPlotObjects)                
+                    'initFunc',@initPlotObjects)
 
 % sets the number of frame read per image stack
 nFrmRS = getFrameStackSize();
-is2D = is2DCheck(hObject.iMov) || detMltTrkStatus(hObject.iMov);
+hObject.iMov.is2D = is2DCheck(hObject.iMov) || ...
+                    detMltTrkStatus(hObject.iMov);
 
 % if detecting, then don't allow the data tool
 if isDetecting
@@ -59,7 +61,7 @@ if isDetecting
 end
     
 % sets the view type
-if is2D   
+if hObject.iMov.is2D   
     set(handles.menuViewXY,'checked','on');
     set(hObject,'vType',[1 1])
 else
@@ -174,11 +176,75 @@ function menuClose_Callback(hObject, eventdata, handles)
 hGUI = get(handles.output,'hGUI');
 hFigM = hGUI.output;
 
+% deletes the options GUI (if open)
+hOptions = findall(0,'tag','figMetricPara');
+if ~isempty(hOptions); delete(hOptions); end
+
 % closes the GUI through the calling GUI
 hFigM.menuViewProgress_Callback(hGUI.menuViewProgress,[],hGUI)
 
 % sets the tracking GUI on top
 uistack(hFigM,'top')
+
+% ------------------------------ %
+% --- PLOT METRIC MENU ITEMS --- %
+% ------------------------------ %
+
+% --- update function for the position data menu item selection
+function menuSelectUpdate(hObject, eventdata, handles)
+
+% initialisations
+isUpdate = true;
+hMenuMet = [get(handles.menuFlyPos,'children');handles.menuAvgSpeed];
+hMenu = findobj(hMenuMet,'type','uimenu','checked','on');
+
+% retrieves the menu item that is currently checked
+if isempty(hMenu)
+    % if there is no menu item selected, then set the current menu
+    isUpdate = true;
+    set(hObject,'checked','on')
+elseif hMenu ~= hObject
+    % turns off the check for the previous menu, and set the current menu
+    set(hMenu,'checked','off')
+    set(hObject,'checked','on')
+else
+    % set the update flag to false
+    isUpdate = isa(eventdata,'char');
+end
+
+% updates the plot (if one is required)
+if isUpdate
+    updatePlotObjects(handles)
+    
+    % resets the zoom (if on)
+    if strcmp(get(handles.uiZoomAxes,'state'),'on')
+        zoom reset
+    end    
+end
+
+% --------------------------------------------------------------------
+function menuMetricOptions_Callback(hObject, eventdata, handles)
+
+% if the metric parameter GUI is already open then exit
+if strcmp(get(hObject,'Checked'),'on')
+    return
+end
+
+% runs the solution metric parameter GUI
+set(hObject,'Checked','on');
+SolnMetricPara(handles.output)
+
+% --------------------------------------------------------------------
+function menuShowPhase_Callback(hObject, eventdata, handles)
+
+% retrieves the phase object
+eStr = {'off','on'};
+isCheck = strcmp(get(hObject,'Checked'),'on');
+hPhase = findall(handles.axesImg,'tag','hPhase');
+
+% updates the menu check mark
+setObjVisibility(hPhase,~isCheck);
+set(hObject,'Checked',eStr{~isCheck+1})
 
 % -------------------------------- %
 % --- POSITION DATA MENU ITEMS --- %
@@ -307,7 +373,6 @@ resetObjPos(hPanelI,'bottom',y0nw);
 resetObjPos(hPanelI,'height',Hnw);
 set(hPanelI,'Units',hUnitsI)
 
-
 %-------------------------------------------------------------------------%
 %                        FIGURE CALLBACK FUNCTIONS                        %
 %-------------------------------------------------------------------------%
@@ -395,9 +460,10 @@ end
 setObjEnable(handles.menuDiagCheck,mStr)
 
 % creates the new apparatus markers
+hMenuP = handles.menuFlyPos;
 for i = 1:length(hGUI.output.iMov.iR)
     % creates the new menu item
-    hMenuNw = uimenu(hMenu,'Label',sprintf('Region %i Location',i)); 
+    hMenuNw = uimenu(hMenuP,'Label',sprintf('Region %i',i)); 
     
     % sets the menu item callback function
     bFunc = @(hMenuNw,e)FlySolnView('menuSelectUpdate',hMenuNw,[],handles);                       
@@ -405,23 +471,19 @@ for i = 1:length(hGUI.output.iMov.iR)
 end
 
 % creates the new menu item
-hMenuNw = uimenu(hMenu,'Label','Average Velocity'); 
-bFunc = @(hMenuNw,e)FlySolnView('menuSelectUpdate',hMenuNw,[],handles);                       
-set(hMenuNw,'Callback',bFunc,'UserData',0,'Separator','on','checked','on')    
+bFunc = {@menuSelectUpdate,handles};
+set(handles.menuAvgSpeed,'Callback',bFunc,'UserData',0,'checked','on')    
 
 % --- initialises the solution file information --- %
 function initPlotObjects(handles,varargin)
 
-% global variables
-global is2D
+% object handle retrieval
+hFig = handles.output;
+hAxI = handles.axesImg;
 
 % ------------------------------------------- %
 % --- INITIALISATIONS & MEMORY ALLOCATION --- %
 % ------------------------------------------- %
-
-% object handle retrieval
-hFig = handles.output;
-hAxI = handles.axesImg;
 
 % clears the image axis
 cla(hAxI)
@@ -461,17 +523,8 @@ isInit = isempty(hYLbl);
 % --- AXIS LABEL & MENU INITIALISATION --- %
 % ---------------------------------------- %
 
-% ses the menu selection properties
-hMenu = findobj(handles.menuPlotMetrics,'type','uimenu','checked','on');
-if isempty(hMenu)
-    hMenu = findobj(handles.menuPlotMetrics,'type','uimenu','UserData',0);
-    set(hMenu,'Checked','on')
-    iApp = 0;
-    
-else
-    % retrieves the sub-region indices
-    iApp = get(hMenu,'UserData'); 
-end
+%
+iApp = getSelectedMenuItem(handles);
 
 % sets the ylabels
 switch iApp
@@ -483,6 +536,10 @@ switch iApp
         yLimT = [1 nFly] + 0.5*[-1 1];
         yLblStr = 'Sub-Region Index';
 end
+
+% sets the time axis limits
+pDel = diff(T([1 end])*Tmlt)*0.001;
+xLimT = T([1 end])*Tmlt-[pDel,0]';
 
 % creates/resets the y-axis label
 if isInit
@@ -515,16 +572,23 @@ else
     set(findall(hAxI,'tag','hXLbl'),'string','Time (min)');
 end
 
+% ------------------------- %
+% --- PHASE PATCH SETUP --- %
+% ------------------------- %
+
+% initialises the phase patch markers
+initPhaseMarkers(handles,yLimT);
+
 % ---------------------------------- %
 % --- PLOT MARKER INITIALISATION --- %
 % ---------------------------------- %
 
+% sets the trace colours
+col = 'rb';
+
 % adds a hold to the axis
 hold(hAxI,'on')
 
-% sets the trace colours
-col = 'rb';
-    
 % adds the population markers
 for i = 1:nApp
     % sets the population line markers
@@ -534,11 +598,10 @@ for i = 1:nApp
 end
    
 % adds the individual markers
-pDel = diff(T([1 end])*Tmlt)*0.001;
 for i = 1:NN
     % creates the x-position marker
     plot(hAxI,NaN,NaN,'b','tag','hLineInd','UserData',i,'Linewidth',1);
-    if is2D 
+    if iMov.is2D 
         % creates the y-position marker (2D only)
         plot(hAxI,NaN,NaN,'r','tag','hLineInd2',...
                               'UserData',i,'Linewidth',1,'hittest','off');
@@ -552,7 +615,7 @@ for i = 1:NN
 end
 
 % updates the axis properties
-set(hAxI,'xlim',T([1 end])*Tmlt-[pDel,0]','ylim',yLimT'-[0.001;0],...
+set(hAxI,'xlim',xLimT,'ylim',yLimT'-[0.001;0],...
          'yticklabel',yStr,'ytick',yTick);
 if isInit
     % sets any initialisation only properties
@@ -621,8 +684,11 @@ function updateViewMenu(handles,hMenu,vType)
 % if the menu item is already checked, then exit the function
 if strcmp(get(hMenu,'checked'),'on'); return; end
 
+% sets the plot metric handles
+hMenuMet = [get(handles.menuFlyPos,'children');handles.menuAvgSpeed];
+
 % otherwise, remove any existing checks and turns the current one
-hMenuPr = findobj(get(handles.menuPlotData,'children'),'checked','on');
+hMenuPr = findobj(hMenuMet,'checked','on');
 set(hMenuPr,'checked','off')
 set(hMenu,'checked','on')
 
@@ -635,9 +701,6 @@ updatePlotObjects(handles)
 % --- initialises the solution file information --- %
 function updatePlotObjects(handles)
 
-% global variables
-global is2D
-
 % retrieves the positional data
 hGUI = get(handles.output,'hGUI');
 pData = hGUI.output.pData;
@@ -648,6 +711,7 @@ pData = hGUI.output.pData;
 % retrieves the objects from the GUI
 iMov = get(handles.output,'iMov');
 vType = get(handles.output,'vType');
+iPara = get(handles.output,'iPara');
 
 % if there is no data, then exit the function
 hMenu = findobj(handles.menuPlotMetrics,'type','uimenu');
@@ -666,8 +730,11 @@ end
 % parameters
 yDel = 0.05;
 
+% sets the plot metric handles
+hMenuMet = [get(handles.menuFlyPos,'children');handles.menuAvgSpeed];
+hMenu = findobj(hMenuMet,'type','uimenu','checked','on');
+
 % retrieves the menu 
-hMenu = findobj(handles.menuPlotMetrics,'type','uimenu','checked','on');
 [hAx,iApp] = deal(handles.axesImg,get(hMenu,'UserData'));
 setObjEnable(handles.menuYData,iApp~=0)
 
@@ -681,12 +748,11 @@ switch iApp
         % makes all the population plot lines visible and the individual
         % plot line invisible
         hLine = findobj(hAx,'tag','hLinePop');
-        setObjVisibility(findobj(hAx,'tag','hLineInd'),'off')
-        set(get(hAx,'Title'),'string','Average Velocity')
+        setObjVisibility(findobj(hAx,'tag','hLineInd'),'off')        
         setObjVisibility(hLine,'on')        
           
         % makes the 2nd line invisible (2D or multi-tracking only)
-        if is2D
+        if iMov.is2D
             setObjVisibility(findobj(hAx,'tag','hLineInd2'),'off'); 
         end        
         
@@ -711,12 +777,16 @@ switch iApp
         else
             % case is the old format solution file
             fPos = pData.fPos;
-        end
+        end        
         
-        % calculates the fly velocities (over all apparatus)
-        Vplt = cellfun(@(x)(calcPopVel(T,x)),fPos,'un',0);     
+        % calculates the fly velocities (over all apparatus)        
+        Vplt = cellfun(@(x)(calcPopVel(T,x,iPara.vP)),fPos,'un',0);     
         Vmax = ceil(max(cellfun(@max,Vplt)));
         VpltN = cellfun(@(x)(x/Vmax),Vplt,'un',0);                
+        
+        % updates the title
+        tStr = sprintf('Average Velocity (V_{scale} = %i)',Vmax);
+        set(get(hAx,'Title'),'string',tStr)        
         
         % updates the plot lines for all the apparatus
         for i = 1:nApp
@@ -728,7 +798,7 @@ switch iApp
         end
         
         % updates the axis limits
-        set(hAx,'yLim',[1 nApp]+0.5*[-1.002 1])    
+        set(hAx,'yLim',[1 nApp]+0.5*[-1.002 1])         
         
     otherwise % case is the fly position plot
         % makes all the population plot lines invisible and the individual
@@ -749,7 +819,7 @@ switch iApp
         setObjVisibility(hLine,vType(1))
         
         % sets the visibility of the 2nd line (if 2D or multi-tracking)
-        if is2D
+        if iMov.is2D
             setObjVisibility(findobj(hAx,'tag','hLineInd2'),vType(2)); 
         end                
         
@@ -786,7 +856,7 @@ switch iApp
         end
         
         % calculates the y-coordinates
-        if is2D && vType(2)
+        if iMov.is2D && vType(2)
             if isMTrk
                 % determines the min/max position values over all flies
                 % within the current region
@@ -816,7 +886,7 @@ switch iApp
                                 yDel+(1-2*yDel)*(1-XpltN{i}(ii))+(i-0.5))
             end
                             
-            if is2D && vType(2)
+            if iMov.is2D && vType(2)
                 ii = 1:min(length(T),length(YpltN{i})); 
                 hLineY = findobj(hAx,'tag','hLineInd2','UserData',i);
                 set(hLineY,'xdata',T(ii)*Tmlt,'yData',...
@@ -827,6 +897,11 @@ switch iApp
         % updates the axis limits
         set(hAx,'yLim',[1 nFly]+0.5*[-1.002 1])
 end
+
+% retrieves the phase patch object handle
+hPhase = findall(hAx,'tag','hPhase');
+[yLimF,iy] = deal(get(hAx,'ylim'),[1,2,2,1,1]);
+arrayfun(@(x)(set(x,'yData',yLimF(iy))),hPhase)
 
 % updates the axis properties
 xLim = [-pDel max(get(hAx,'xlim'))];
@@ -855,37 +930,6 @@ for i = 1:iMov.pInfo.nGrp
         fPos{i} = cell2cell(arrayfun(@(i,n)...
                                     (fPos0{i}(1:n)),iRegG,nFly,'un',0),0);
     end
-end
-
-% --- update function for the position data menu item selection
-function menuSelectUpdate(hObject, eventdata, handles)
-
-% initialisations
-isUpdate = true;
-hMenu = findobj(handles.menuPlotMetrics,'type','uimenu','checked','on');
-
-% retrieves the menu item that is currently checked
-if isempty(hMenu)
-    % if there is no menu item selected, then set the current menu
-    isUpdate = true;
-    set(hObject,'checked','on')
-elseif hMenu ~= hObject
-    % turns off the check for the previous menu, and set the current menu
-    set(hMenu,'checked','off')
-    set(hObject,'checked','on')
-else
-    % set the update flag to false
-    isUpdate = isa(eventdata,'char');
-end
-
-% updates the plot (if one is required)
-if isUpdate
-    updatePlotObjects(handles)
-    
-    % resets the zoom (if on)
-    if strcmp(get(handles.uiZoomAxes,'state'),'on')
-        zoom reset
-    end    
 end
 
 % --------------------------------------- %
@@ -977,27 +1021,43 @@ for j = 1:pData.nApp
 end
 
 % --- calculates the population velocity (for a given apparatus)
-function Vplt = calcPopVel(T,fPos)
+function Vplt = calcPopVel(T,fPos,vP)
 
-% parameters
-tBin = 5;    
-Vplt = NaN(length(T),1); 
+% parameters   
+nFrm = length(T);
+Vplt = NaN(nFrm,1); 
 
 % calculates the time point displacements between time points
-D = cellfun(@(x)([0;sqrt(sum(diff(x,1).^2,2))]),fPos,'un',0);
+D = cellfun(@(x)([0;sqrt(sum(diff(x,[],1).^2,2))]),fPos,'un',0);
 Dmean = nanmean(cell2mat(D),2);
 
-% sets the feasible points
+% determines the valid time frames. if there are none then exit
 ii = ~isnan(Dmean);
-if (any(ii))
-    % calculates the distance travelled and the time steps
-    iVel = (1+tBin):(find(ii,1,'last')-tBin);
-    dD = cellfun(@(x)(sum(Dmean((x-tBin):(x+tBin)))),num2cell(iVel));
-    dT = cellfun(@(x)(diff(T([(x-tBin) (x+tBin)]))),num2cell(iVel));
-    
-    % sets the new velocity values
-    Vplt(iVel) = dD./dT;
+if ~any(ii); return; end
+
+% sets up the pre/post time markers
+switch vP.Type
+    case 'Central'
+        % case is the central derivative
+        [t1,t2] = deal(vP.nPts);
+        
+    case 'Forward'
+        % case is the forward derivative
+        [t1,t2] = deal(0,vP.nPts);
+        
+    case 'Backward'
+        % case is the backward derivative
+        [t1,t2] = deal(vP.nPts,0);
+        
 end
+
+% calculates the distance travelled and the time steps
+iVel = (1+t1):(find(ii,1,'last')-t2);
+dD = cellfun(@(x)(sum(Dmean((x-t1):(x+t2)))),num2cell(iVel));
+dT = cellfun(@(x)(diff(T([(x-t1) (x+t2)]))),num2cell(iVel));
+    
+% sets the new velocity values
+Vplt(iVel) = dD./dT;
 
 % --- sets up the time vector --- %
 function T = setupTimeVector(handles)
@@ -1019,6 +1079,85 @@ if hasPosData(hGUI.output.pData)
         dT = mean(diff(T));
         T = [T;(T(end)+cumsum(dT*ones(nFrmT-length(T),1)))];
     end
+end
+
+% --- initialises the solution viewing gui parameter struct
+function iPara = initParaStruct()
+
+% memory allocation
+iPara = struct('vP',[]);
+
+% sets the velocity calculation parameters
+iPara.vP = struct('Type','Central','nPts',5);
+
+% --- initialises the phase patch markers
+function initPhaseMarkers(handles,yLimT)
+
+% object handles
+hAxI = handles.axesImg;
+T = get(handles.output,'T');
+hGUI = get(handles.output,'hGUI');
+iMov = get(hGUI.output,'iMov');
+
+% retrieves the axis limits (if not provided)
+if ~exist('yLimT','var'); yLimT = get(hAxI,'yLim'); end
+
+% other initialisations
+Tmlt = 1/60;
+fAlpha = 0.1;
+dT = nanmedian(diff(T));
+nPhase = length(iMov.vPhase);
+phCol = distinguishable_colors(nPhase);
+[ix,iy] = deal([1,1,2,2,1],[1,2,2,1,1]);
+
+% deletes any previous patch objects
+hPatchPr = findall(hAxI,'tag','hPhase');
+if isempty(hPatchPr); delete(hPatchPr); end
+
+% creates the phase patch objects
+for i = 1:nPhase
+    xP = (T(iMov.iPhase(i,:))+(dT/2)*[-1,1])*Tmlt;
+    patch(hAxI,xP(ix),yLimT(iy),phCol(i,:),'FaceAlpha',fAlpha,...
+               'tag','hPhase','UserData',i);              
+end
+
+% --- retrieves the currently selected menu item
+function iApp = getSelectedMenuItem(handles)
+
+% retrieves the selected menu item object handle
+hMenuMet = [get(handles.menuFlyPos,'children');handles.menuAvgSpeed];
+hMenu = findobj(hMenuMet,'checked','on');
+
+% ses the menu selection properties
+if isempty(hMenu)
+    % case is nothing is selected, so use avg. speed
+    hMenu = findobj(handles.menuPlotMetrics,'type','uimenu','UserData',0);
+    set(hMenu,'Checked','on')
+    iApp = 0;
+    
+else
+    % retrieves the sub-region indices
+    iApp = get(hMenu,'UserData'); 
+end
+
+% --- retrieves the current numerical derivative coefficients
+function [pC,iType] = getNumericalDerivCoeff(handles)
+
+% field retrieval
+vP = handles.output.iPara.vP;
+
+% sets up the coefficients based on type
+switch vP.Type
+    case 'Central'
+        % case is the central derivative
+        iType = 1;
+        pC = calcNumericalDerivCoeff(vP.Type,vP.nPtsH);
+        
+    otherwise
+        % case is the forward/backward derivative
+        iType = 2 + strcmp(vP.Type,'Backward');
+        pC = calcNumericalDerivCoeff(vP.Type,vP.nPts);
+        
 end
 
 % ------------------------------- %
@@ -1068,6 +1207,7 @@ T = get(hFig,'T');
 pData = hFig.hGUI.output.pData;
 
 % determines the maximum extent
+
 iApp = get(findobj(handles.menuPlotMetrics,'checked','on'),'UserData');
 if (iApp == 0)
     isIn = all([mP,T(end)/60,(length(pData.fPos)+0.5)] - [0 0.5 mP] > 0);

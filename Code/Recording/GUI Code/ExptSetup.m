@@ -577,11 +577,13 @@ sTrain = storeExptTrainPara(hFig);
 % determines if any stimuli trains have been saved
 if ~strcmp(getappdata(hFig,'devType'),'RecordOnly')
     if all(cellfun(@isempty,getStructFields(sTrain)))
-        % if not, then output an error message to screen and exit
-        eStr = ['At least one stimuli protocol train must be saved ',...
-                'before attempting to save an experimental protocol file.'];
-        waitfor(msgbox(eStr,'Protocol Output Error','modal'))
-        return
+        wStr = ['Warning. There are currently no stimuli protocols set ',...
+                'for this experiment. Do you still wish to continue?'];
+        uChoice = questdlg(wStr,'No Protocols Set?','Yes','No','Yes');
+        if ~strcmp(uChoice,'Yes')
+            % if the user cancelled, then exit
+            return
+        end
     end
 end
 
@@ -763,7 +765,7 @@ if infoObj.hasDAQ
     
     % updates the experiment information
     iExpt.Info.Type = exptType;
-    setappdata(hMain,'iExpt',iExpt)    
+    setappdata(hMain,'iExpt',iExpt)
 end
 
 % disables the video preview button (if recording video)

@@ -9,8 +9,14 @@ iMov.isSet = true;
 [iMov.pos,iMov.iC,iMov.iR,iMov.iCT,iMov.iRT,iMov.xTube,...
             iMov.yTube,iMov.Status] = deal(cell(1,iMov.nRow*iMov.nCol));
 
+% sets the 2D region flag
+if ~isfield(iMov,'is2D')
+    [is2DSetup,iMov.is2D] = deal(is2DCheck(iMov));
+else
+    is2DSetup = iMov.is2D;
+end
+        
 % determines the current frame dimensions
-is2DSetup = iMov.is2D;
 frmSz = getCurrentImageDim(hGUI.figFlyTrack);
         
 % retrieves the indices of the region objects
@@ -112,5 +118,15 @@ else
         iMov.iCT{j} = 1:length(iMov.iC{j});
         iMov.iRT{j} = cellfun(@(x)(max(1,ceil(x(1))):min(iMov.iR{j}(end),...
                     floor(x(2)))),num2cell(iMov.yTube{j},2),'un',0);            
+    
     end    
+end
+
+% reduces downs the filter/reference images (if they exist)
+if ~isempty(iMov.phInfo)
+    for j = 1:length(iMov.iC)
+        if ~isempty(iMov.phInfo.Iref{j})
+            iMov = reducePhaseInfoImages(iMov,j);
+        end
+    end
 end

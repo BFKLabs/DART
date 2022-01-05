@@ -2,6 +2,7 @@ classdef CalcBG < handle
     
     % class properties
     properties
+        
         % input argument objects
         hGUI       
         hFig
@@ -45,9 +46,14 @@ classdef CalcBG < handle
         hMark
         hMarkAll
         hManual
+        hManualB
+        hManualH
         jTable
         Imap
         pMn
+        mInfo
+        ImgM
+        hProg
         
         % manual tracking fields
         pCol0
@@ -68,6 +74,7 @@ classdef CalcBG < handle
         pData
         iFrm    
         statsObj
+        phaseObj
         dpOfs
         
     end
@@ -174,10 +181,15 @@ classdef CalcBG < handle
                 set(obj.hFig,'iMov',obj.iMov0)                        
             end                
 
+            % closes the phase statistics information GUI (if open)
+            if ~isempty(obj.phaseObj)
+                obj.menuPhaseStats(obj.hGUI.menuPhaseStats,[]);
+            end
+            
             % closes the statistics information GUI (if open)
             if ~isempty(obj.statsObj)
                 obj.menuShowStats(obj.hGUI.menuShowStats,[]);
-            end
+            end            
             
             % update axes with the original image (non-calibrating only)
             if obj.isCalib
@@ -344,6 +356,10 @@ classdef CalcBG < handle
                         obj.updateManualTrackTable();
                         obj.addManualMarker(uListNw);
                         
+                        % turns off the highlight marker
+                        set(obj.hManualH,'UserData',[]);
+                        setObjVisibility(obj.hManualH,'off')                        
+                        
                         % enables the manual correction control buttons
                         setObjEnable(obj.hGUI.buttonAddManual,1)
                         setObjEnable(obj.hGUI.buttonRemoveManual,0)
@@ -403,9 +419,9 @@ classdef CalcBG < handle
             
             % objects with normal callback functions
             cbObj = {'menuPara','menuFlyAccRej','menuCloseEstBG',...
-                     'menuShowStats','buttonUpdateStack',...
-                     'frmFirstPhase','frmPrevPhase','frmNextPhase',...
-                     'frmLastPhase','editPhaseCount',...      
+                     'menuPhaseStats','menuShowStats',...
+                     'buttonUpdateStack','frmFirstPhase','frmPrevPhase',...
+                     'frmNextPhase','frmLastPhase','editPhaseCount',...      
                      'frmFirstFrame','frmPrevFrame','frmNextFrame',...
                      'frmLastFrame','editFrameCount',...
                      'checkFilterImg','editFilterSize','popupImgType',...
@@ -495,7 +511,7 @@ classdef CalcBG < handle
             [obj.isChange,obj.frameSet] = deal(false);
             [obj.hasUpdated,obj.isBGCalc] = deal(false);
             [obj.uList,obj.fUpdate] = deal([]);
-            [obj.isAllUpdate,obj.nManualMx] = deal(true,15);             
+            [obj.isAllUpdate,obj.nManualMx] = deal(true,10);             
             
         end        
         
@@ -522,7 +538,6 @@ classdef CalcBG < handle
             setPanelProps(hgui.panelPhaseSelect,'off')
             setPanelProps(hgui.panelFrameSelect,'off')
             setPanelProps(hgui.panelManualSelect,'off')
-            setObjEnable(hgui.buttonUpdateEst,'off')
             set(hgui.menuCorrectTrans,'Checked','off')
 
             % updates the table position
@@ -539,23 +554,57 @@ classdef CalcBG < handle
                                     'Enable',eStr{1+bgP.useFilt})
             obj.updateImgTypePopup(true);         
             
-            % determines if the background has been calculated
-            if ~initDetectCompleted(imov)
-                % if the translation info field is not set, then create one
-                if ~isfield(obj.iMov,'dpInfo')
-                    obj.iMov.dpInfo = [];
-                end                
+            % if the phase info field is not set, then create one
+            if ~isfield(obj.iMov,'phInfo')
+                obj.iMov.phInfo = [];
+            end
+            
+            % determines if the phase/initial detection is complete            
+            initDetected = initDetectCompleted(obj.iMov);
+            phaseDetected = ~isempty(obj.iMov.phInfo) || initDetected;
+            
+            % sets the phase stats menu item (if info is available)
+            setObjEnable(hgui.menuPhaseStats,phaseDetected)
+            setObjEnable(hgui.buttonUpdateEst,phaseDetected)
+            setPanelProps(hgui.panelImageType,phaseDetected)
+            
+            % sets the phase detection related object properties
+            if phaseDetected
+                % sets the frame index arrays
+                nPhase = length(obj.iMov.vPhase);
+                obj.indFrm = getPhaseFrameIndices...
+                                            (obj.iMov,obj.trkObj.nFrmR);                                                                          
+                                        
+                % enables the phase panel properties (if more than one phase       
+                setPanelProps(obj.hGUI.panelPhaseSelect,'on')
+                setPanelProps(obj.hGUI.panelFrameSelect,'on');
+                setPanelProps(obj.hGUI.panelVideoInfo,'on');
+                obj.setButtonProps('Phase')
+                obj.setButtonProps('Frame') 
                 
-                % if not, disable the frame selection panels
-                setPanelProps(hgui.panelImageType,'off')
-                setObjEnable(hgui.checkFlyMarkers,'off')
-                setObjEnable(hgui.menuShowStats,'off')
-
+                % sets the other field properties
+                obj.setVideoInfoProps()
+                iFrm0 = num2str(obj.indFrm{1}(1));
+                set(obj.hGUI.editFrameCount,'string','1')          
+                set(obj.hGUI.textCurrentFrame,'string',iFrm0)   
+                
+                % sets up the frame offset
+                if isfield(obj.iMov,'dpInfo')
+                    obj.dpOfs = obj.setupFrameOffset();
+                else
+                    [obj.iMov.dpInfo,obj.dpOfs] = deal([],cell(nPhase,1));
+                end                           
+                
+            else
                 % clears the frame count string
                 set(hgui.editFrameCount,'string','')               
                 set(hgui.editPhaseCount,'string','')     
                 
                 % sets the phase count and variance type
+                set(hgui.textImagQual,'string','N/A',...
+                                      'ForegroundColor','k');
+                set(hgui.textTransStatus,'string','N/A',...
+                                         'ForegroundColor','k');
                 set(hgui.textPhaseCount,'string','N/A');
                 set(hgui.textPhaseFrames,'string','N/A');    
                 set(hgui.textPhaseStatus,'string','N/A'); 
@@ -563,27 +612,14 @@ classdef CalcBG < handle
                 % updates the text fields
                 set(hgui.textStartFrame,'string','N/A')
                 set(hgui.textEndFrame,'string','N/A')                
-                set(hgui.textCurrentFrame,'string','N/A')                  
-
-            else
-                % sets the frame index arrays
-                nPhase = length(obj.iMov.vPhase);
-                obj.indFrm = getPhaseFrameIndices...
-                                            (obj.iMov,obj.trkObj.nFrmR);                
-
-                % sets the frame count stringx1
-                iFrm0 = num2str(obj.indFrm{1}(1));
-                set(hgui.editFrameCount,'string','1')          
-                set(hgui.textCurrentFrame,'string',iFrm0)        
-                set(setObjEnable(hgui.checkFlyMarkers,'on'),'value',1) 
+                set(hgui.textCurrentFrame,'string','N/A')    
+            end
+            
+            % determines if the background has been calculated
+            if ~initDetected               
+                % sets the frame count stringx1                     
                 setObjEnable(hgui.menuShowStats,'on');
-                
-                % sets up the 
-                if isfield(obj.iMov,'dpInfo')
-                    obj.dpOfs = obj.setupFrameOffset();
-                else
-                    [obj.iMov.dpInfo,obj.dpOfs] = deal([],cell(nPhase,1));
-                end
+                set(setObjEnable(hgui.checkFlyMarkers,'on'),'value',1)                      
                 
                 % determines if the class object has location values
                 if ~isempty(obj.fPos)                    
@@ -613,9 +649,7 @@ classdef CalcBG < handle
                             end
                         end    
                     end
-                end
-
-                if ~isempty(obj.fPos)
+                    
                     % initialises the potential plot markers
                     obj.initPotentialPlotMarkers()                      
 
@@ -624,12 +658,15 @@ classdef CalcBG < handle
                     obj.checkFlyMarkers(hgui.checkFlyMarkers, [])
                     obj.updateMainImage()      
                 end
-
-                % enables the phase panel properties (if more than one phase       
-                setPanelProps(hgui.panelPhaseSelect,'on')
-                setPanelProps(hgui.panelFrameSelect,'on');
-                obj.setButtonProps('Phase')
-                obj.setButtonProps('Frame')
+            else
+                % if the translation info field is not set, then create one
+                if ~isfield(obj.iMov,'dpInfo')
+                    obj.iMov.dpInfo = [];
+                end                                                      
+                
+                % if not, disable the frame selection panels                
+                setObjEnable(hgui.checkFlyMarkers,'off')                
+                setObjEnable(hgui.menuShowStats,'off')                                  
             end            
             
         end
@@ -637,8 +674,13 @@ classdef CalcBG < handle
         % --- sets up the frame offset array
         function dpOfs = setupFrameOffset(obj)
            
+            if isfield(obj.iMov,'dpInfo')
+                dpInfo = obj.iMov.dpInfo;
+            else
+                dpInfo = [];
+            end
+            
             % memory allocation
-            dpInfo = obj.iMov.dpInfo;
             dpOfs = cell(length(obj.iMov.vPhase),1);
             
             % for each phase that has offset information, calculate the 
@@ -700,7 +742,7 @@ classdef CalcBG < handle
             
             % loops through all the sub-regions creating markers 
             hold(obj.hAx,'on')
-            obj.hMarkAll = scatter(NaN,NaN,'k','tag','hFlyAll');
+            obj.hMarkAll = scatter(obj.hAx,NaN,NaN,'k','tag','hFlyAll');
             hold(obj.hAx,'on')
             
         end
@@ -726,7 +768,8 @@ classdef CalcBG < handle
                         popStrNw = {'Background (Raw)';...
                                     'Background (Filled)';...
                                     'Residual (Raw)';...
-                                    'Residual (Filled)'};                 
+                                    'Residual (Filled)';...
+                                    'Template Cross-Correlation'};
                     end
                             
                     % adds the strings to array
@@ -790,15 +833,21 @@ classdef CalcBG < handle
             % initialisations
             cMapType = 'gray';
             frmSz = getCurrentImageDim(hgui);
-            [h,iPhase,cLim] = deal([],ipara.cPhase,[]);
-            [iok,vPhase] = deal(imov.ok,imov.vPhase(iPhase));
+            [h,iPhase,cLim,iok] = deal([],ipara.cPhase,[],imov.ok);
             
             % retrieves the tracking parameter struct
             bgP = obj.getTrackingPara();
             hS = fspecial('disk',bgP.hSz);            
             
             % retrieves the data structs/function handles from the main GUI     
-            dispImage = get(hgui.figFlyTrack,'dispImage');            
+            dispImage = get(hgui.figFlyTrack,'dispImage');      
+            
+            % updates the empty check markers (if visible)
+            hFigEmpty = findall(0,'tag','figCheckEmpty');
+            if ~isempty(hFigEmpty)
+                eObj = getappdata(hFigEmpty,'obj');
+                eObj.updatePlotMarkers() 
+            end
 
             % sets the table java object (if GUI is visible and handle not set)
             if obj.isVisible
@@ -832,15 +881,15 @@ classdef CalcBG < handle
             % reads the new frame
             imgType = obj.getSelectedImageType();
             iFrmS = obj.indFrm{iPhase}(ipara.cFrm);
-            Img0 = double(getDispImage(idata,imov,iFrmS,false));                        
+            Img0 = double(getDispImage(idata,imov,iFrmS,false));
             
-            % shifts the image (if required)
-            if ~isempty(obj.dpOfs)
-                if ~isempty(obj.dpOfs{iPhase})
-                    dP = obj.dpOfs{iPhase}(ipara.cFrm,:);
-                    Img0 = calcImgTranslate(Img0,dP);
-                end
-            end
+%             % shifts the image (if required)
+%             if ~isempty(obj.dpOfs)
+%                 if ~isempty(obj.dpOfs{iPhase})
+%                     dP = obj.dpOfs{iPhase}(ipara.cFrm,:);
+%                     Img0 = calcImgTranslate(Img0,dP);
+%                 end
+%             end
             
             % sets the image            
             switch imgType
@@ -850,7 +899,7 @@ classdef CalcBG < handle
 
                 case 'Smoothed Image'
                     % case is the filtered image frame 
-                    Inw = imfilter(Img0,hS);    
+                    Inw = imfiltersym(Img0,hS);    
 
                 case {'Background',...
                       'Background (Raw)',...
@@ -876,8 +925,21 @@ classdef CalcBG < handle
                             IbgI = imov.Ibg{iPhase};
                         end
                         
+                        % sets the 
+                        if obj.iMov.phInfo.hasF || ...
+                                            (obj.iMov.vPhase(iPhase) > 1)
+                            Imd = median(cellfun(@(x)(nanmedian(x(:))),IbgI));
+                            ImgC0 = Img0 - (nanmedian(Img0(:))+Imd);
+                            
+                            Iofs = true;
+                        else
+                            ImgC0 = Img0;
+                            Iofs = false;
+                        end
+                        
                         % creates composite image from the phase bg images                       
-                        Inw = createCompositeImage(Img0,imov,IbgI); 
+                        Inw = createCompositeImage(ImgC0,imov,IbgI); 
+                        if Iofs; Inw = Inw - nanmin(Inw(:)); end
                     end   
                     
                 case {'Residual',...
@@ -888,14 +950,16 @@ classdef CalcBG < handle
                     % reads the image
                     bgP = obj.getTrackingPara;
                     if bgP.useFilt
-                        Img0 = imfilter(Img0,hS);
+                        Img0 = imfiltersym(Img0,hS);
                     end
 
                     % case is the low-variance phase
                     cMapType = 'jet';
-                    [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);
-                    ILs = cellfun(@(x,y)(Img0(x,y)),iR,iC,'un',0);                        
-
+                    isHV = obj.iMov.vPhase(iPhase) == 2;
+                    ILs = arrayfun(@(x)(getRegionImgStack...
+                          (obj.iMov,Img0,iFrmS,x,isHV)),1:obj.nApp,'un',0);
+                    ILs = cellfun(@(x)(x{1}),ILs,'un',0);
+                      
                     % sets the background image based on the detection type
                     if strcmp(getDetectionType(imov),'GeneralR')
                         % retrieves the background image array
@@ -927,8 +991,7 @@ classdef CalcBG < handle
                         
                     end
                     
-                case {'Cross-Correlation (Normal)',...
-                      'Cross-Correlation (Adjusted)'}
+                case {'Template Cross-Correlation'}
                   
                     % creates a progressbar
                     wStr = 'Setting Up Cross-Correlation Mask';
@@ -938,48 +1001,18 @@ classdef CalcBG < handle
                     % calculates the image/template gradient masks
                     cLim = [0,1];
                     cMapType = 'jet';
-                    tPara = obj.iMov.tPara;                    
-                    [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);    
-                    isNormal = strContains(imgType,'Normal');
                     Img0(isnan(Img0)) = nanmedian(Img0(:));
                     
                     % applies the image filter (if used)
                     if bgP.useFilt
-                        Img0 = imfilter(Img0,hS);
-                    end                    
-                    
-                    % sets the image weight mask                    
-                    if isNormal
-                        Qw = ones(size(Img0));
-                    else
-                        Qw = (1-normImg(Img0));
-                    end          
-                    
-                    % calculates the x/y-derivative masks
-                    [Gx,Gy] = imgradientxy(Img0,'sobel');                    
-                    
-                    % sets the local image arrays
-                    GxL = cellfun(@(x,y)(Gx(x,y)),iR,iC,'un',0); 
-                    GyL = cellfun(@(x,y)(Gy(x,y)),iR,iC,'un',0); 
-                    QwL = cellfun(@(x,y)(Qw(x,y)),iR,iC,'un',0); 
+                        Img0 = imfiltersym(Img0,hS);
+                    end
                     
                     % calculates the region x-correlation image
-                    InwL = cell(length(iR),1);
-                    for i = 1:length(iR)
-                        InwL{i} = QwL{i}.*imfilter(max(0,...
-                                    calcXCorr(tPara.GxT,GxL{i}) + ...
-                                    calcXCorr(tPara.GyT,GyL{i})),hS)/2;
-                    end                      
+                    InwL = obj.setupXCorrImage(Img0);                     
                     
-                    % case is the low-variance phase                                         
-                    Inw = createCompositeImage(zeros(frmSz),imov,InwL);                    
-                    
-                    % if the x-correlation stats haven't been set, then
-                    % update them for this frame
-                    if isNormal && any(isnan(obj.pStats.Ixc...
-                                            {1,iPhase}(:,ipara.cFrm)))
-                        obj.updateXCorrStats(Inw);
-                    end                                        
+                    % case is the low-variance phase
+                    Inw = createCompositeImage(zeros(frmSz),imov,InwL);
                     
                     % closes the progressbar
                     delete(hLoad)
@@ -1017,6 +1050,29 @@ classdef CalcBG < handle
             
         end
         
+        % --- sets up the region x-correlation image stack
+        function IxcL = setupXCorrImage(obj,I)
+            
+            % initialisations
+            mdDim = 30*[1,1];
+            IxcL = cell(obj.nApp,1);
+            iFrm0 = obj.indFrm{obj.iPara.cPhase}(obj.iPara.cFrm);
+            isHiV = obj.iMov.vPhase(obj.iPara.cPhase) == 2;
+                        
+            % calculates the x-correlation images for each region
+            for i = 1:obj.nApp
+                % retrieves the image stack
+                IL = getRegionImgStack(obj.iMov,I,iFrm0,i,isHiV);
+                Bw = getExclusionBin(obj.iMov,size(IL{1}),i);                
+                
+                % calculates the image cross-correlation
+                dI = setupResidualEstStack(IL,mdDim);
+                IxcL{i} = Bw.*max(0,calcXCorr(obj.iMov.hFilt,...
+                                        fillArrayNaNs(dI{1})));
+            end
+            
+        end
+        
         % --- initialises the temporary fly markers
         function updateObjMarkers(obj)
 
@@ -1025,8 +1081,7 @@ classdef CalcBG < handle
             imov = obj.iMov; 
             
             % other initialisations
-            [iPhase,iFrmNw,pCol] = deal(ipara.cPhase,ipara.cFrm,'g');
-            isHiVar = imov.vPhase(iPhase) >= 3;
+            [iPhase,iFrmNw,pCol] = deal(ipara.cPhase,ipara.cFrm,'g');            
 
             % sets the marker properties            
             if ispc
@@ -1036,14 +1091,15 @@ classdef CalcBG < handle
             end                
             
             % marker coordinate arrays
-            fpos = obj.fPos{iPhase};            
+            fpos = obj.fPos{iPhase};  
+            isFeas = ~isempty(fpos);
 
             % updates the fly markers for all apparatus
             for iApp = 1:length(imov.iR)
                 % retrieves the position values
                 if obj.isMTrk
-                    % 
-                    if isempty(fpos); return; end
+                    % if there is no location data, then exit
+                    if ~isFeas; return; end
                     
                     % updates the marker locations                    
                     fPosNw = fpos{iApp,iFrmNw};
@@ -1060,11 +1116,11 @@ classdef CalcBG < handle
                     
                 else   
                     % retrieves the position coord (non-hi var phase only)
-                    if ~isHiVar; fPosNw = fpos{iApp,iFrmNw}; end
+                    if isFeas; fPosNw = fpos{iApp,iFrmNw}; end
                     
                     for iT = find(imov.flyok(:,iApp))'
                         % updates the marker locations
-                        if isHiVar
+                        if ~isFeas
                             % case is a hi-variance phase
                             set(obj.hMark{iApp}{iT},'xdata',NaN,...
                                                     'ydata',NaN)                            
@@ -1110,7 +1166,7 @@ classdef CalcBG < handle
             
             % parameters
             pCol = {'k','b','m','r',[153 51 0]/255,'k'};
-            pType = {'Low Var','Hi Var','Untrackable',...
+            pType = {'Low Variance','High Variance','Untrackable',...
                      'Invalid','Small','Direct'};                        
 
             % variance string toolstrings
@@ -1149,7 +1205,8 @@ classdef CalcBG < handle
                 vP = imov.vPhase(cPhase);
                 [cX,nX] = deal(cPhase,length(obj.indFrm));
                 iPhaseNw = obj.iMov.iPhase(cPhase,:);
-                nFrm = diff(iPhaseNw) + 1;                
+                nFrm = diff(iPhaseNw) + 1; 
+                nFrmPh = length(obj.indFrm{cPhase});
                 
                 % sets the phase count and variance type
                 set(setObjEnable(hgui.editPhaseCount,nX>1),...
@@ -1160,17 +1217,12 @@ classdef CalcBG < handle
                 set(hgui.textPhaseStatusL,'tooltipstring',ttStr{vP}); 
                 
                 % updates the text fields
-                set(hgui.textPhaseFrames,'string',num2str(nFrm))
+                set(hgui.textPhaseFrames,'string',num2str(nFrmPh))
                 set(hgui.textStartFrame,'string',num2str(iPhaseNw(1)))
                 set(hgui.textEndFrame,'string',num2str(iPhaseNw(2)))                 
                 
-                % updates the marker display object properties
+                % updates the image type and properties
                 if ~isempty(obj.fPos)
-                    % boolean flags
-                    isHiVar = vP == 3;
-                        
-                    % updates the image type and properties
-                    setObjEnable(hgui.checkFlyMarkers,~isHiVar)                    
                     obj.updateImgTypePopup();
                 end
 
@@ -1303,6 +1355,27 @@ classdef CalcBG < handle
             obj.closeBGAnalysis()
             
         end
+
+        % -----------------------------------------------------------------
+        function menuPhaseStats(obj, hMenu, ~)
+            
+            switch get(hMenu,'Checked')
+                case 'on'
+                    % case is closing an open statistics GUI
+                    obj.phaseObj.closeGUI([],obj.phaseObj);
+                    set(hMenu,'Checked','off');
+                    
+                    % clears the statistics object
+                    obj.phaseObj = [];                    
+                    
+                case 'off'
+                    % case is opening the statistics GUI
+                    obj.phaseObj = InitPhaseStats(obj);
+                    set(hMenu,'Checked','on');                    
+                    
+            end
+            
+        end
         
         % -----------------------------------------------------------------
         function menuShowStats(obj, hMenu, ~)
@@ -1364,10 +1437,16 @@ classdef CalcBG < handle
             end
             
             % if the stats gui is open, then close it
+            if ~isempty(obj.phaseObj)
+                obj.menuPhaseStats(hgui.menuPhaseStats,[]);
+                setObjEnable(hgui.menuPhaseStats,'off');
+            end                        
+            
+            % if the stats gui is open, then close it
             if ~isempty(obj.statsObj)
                 obj.menuShowStats(hgui.menuShowStats,[]);
                 setObjEnable(hgui.menuShowStats,'off');
-            end
+            end            
 
             % deselects the tube tracking regions
             if get(hgui.checkTubeRegions,'value')
@@ -1425,18 +1504,19 @@ classdef CalcBG < handle
             obj.iPara.cFrm = 1;
             obj.frameSet = true;
             obj.iPara.cPhase = find(imov.vPhase<3,1,'first');
-            [obj.isAllUpdate,obj.hasUpdated] = deal(true,false);                        
+            [obj.isAllUpdate,obj.hasUpdated] = deal(true,false);            
 
             % enables the image display properties
+            setObjEnable(hgui.menuPhaseStats,'on');
             setObjEnable(hgui.menuShowStats,'off');
+            setPanelProps(hgui.panelVideoInfo,'on');
             setPanelProps(hgui.panelFrameSelect,'on')
             setPanelProps(hgui.panelImageType,'on')
             obj.checkFilterImg(obj.hGUI.checkFilterImg,[])   
 
             % disables the manual resegmentation list
-            nPhase = length(obj.iMov.vPhase);
             setPanelProps(hgui.panelManualSelect,'off')
-            set(hgui.textPhaseCount,'string',num2str(nPhase))
+            obj.setVideoInfoProps()            
 
             % determines if that are any valid phases
             if ~all(obj.iMov.vPhase == 4)
@@ -1678,7 +1758,7 @@ classdef CalcBG < handle
     
             % determines if the new value is valid
             nwVal = str2double(get(hObj,'String'));           
-            if chkEditValue(nwVal,[2,50],true)            
+            if chkEditValue(nwVal,[1,50],true)            
                 if obj.checkParaChange()
                     % if so, then update the parameter 
                     obj.setTrackingPara('hSz',nwVal)
@@ -1736,11 +1816,17 @@ classdef CalcBG < handle
                 [obj.iMov.tPara,obj.iMov.Ibg] = deal([]);
                 setObjEnable(obj.hGUI.buttonUpdateEst,'on');
 
+                % if the phase stats gui is open, then close it
+                if ~isempty(obj.phaseObj)
+                    obj.menuPhaseStats(obj.hGUI.menuPhaseStats,[]);
+                    setObjEnable(obj.menuPhaseStats,'off');
+                end                     
+                
                 % if the stats gui is open, then close it
                 if ~isempty(obj.statsObj)
                     obj.menuShowStats(obj.hGUI.menuShowStats,[]);
                     setObjEnable(obj.menuShowStats,'off');
-                end                
+                end                                             
                 
                 % resets the image popup menu
                 if obj.updateImgTypePopup()
@@ -1875,11 +1961,12 @@ classdef CalcBG < handle
                 end        
                 
                 % if segmentation was successful, then update the 
-                % sub-image data struct   
-                obj.ok0 = imov.flyok;
-                obj.iMov = imov;                
+                % sub-image data struct
+                obj.iMov = imov;
+                obj.ok0 = imov.flyok;                              
                 obj.Ibg = cell(length(imov.vPhase),1);    
                 obj.iMov.dpInfo = obj.trkObj.dpInfo;
+                obj.iMov.hFilt = obj.trkObj.hFilt;                
                 
                 % updates the sub-region data struct in the main gui
                 set(obj.hGUI.figFlyTrack,'iMov',imov)
@@ -1891,12 +1978,11 @@ classdef CalcBG < handle
                 obj.dpOfs = obj.trkObj.dpOfs;                
 
                 % updates the list box properties but clears the list
-                setObjEnable(hObj,'off');
                 set(obj.hGUI.tableFlyUpdate,'Data',[])
                 setObjEnable(obj.hGUI.menuShowStats,'on');
                 setPanelProps(obj.hGUI.panelManualSelect,'on')                   
                 setObjEnable(obj.hGUI.buttonRemoveManual,'off')
-                setObjEnable(obj.hGUI.buttonUpdateManual,'off')                
+                setObjEnable(obj.hGUI.menuPhaseStats,'on')            
                 
                 % deletes any all potential object markers 
                 if ~isempty(obj.hMarkAll)
@@ -2041,76 +2127,71 @@ classdef CalcBG < handle
             % determines the unique combinations
             [~,~,iC] = unique(obj.uList(:,xiC),'rows');
             iRowM = arrayfun(@(x)(find(iC==x)),1:max(iC),'un',0)';                                    
+            nBlob = length(iRowM);    
             
             % --------------------------------- %
             % --- BACKGROUND RE-CALCULATION --- %
             % --------------------------------- %        
             
-            % creates the loadbar
-            h = ProgressLoadbar('Updating Manual Resegmentation...');
+            % creates the waitbar figure
+            wStr = {'Background Image Setup','Blob Progress'};
+            obj.hProg = ProgBar(wStr,'Manual Resegmentation');
             
             % calculates the background and position for each of the 
-            % manually reset points
-            for i = 1:length(iRowM)                
+            % manually reset points            
+            for i = 1:nBlob
                 obj.setupManualBGImages(iRowM{i});
-            end       
-            
-            % loops through each phase/region interpolating any gaps
-            for iPh = 1:obj.trkObj.nPhase
-                for iApp = 1:obj.trkObj.nApp
-                    % determines if there are any gaps in the images
-                    if obj.trkObj.fObj{iPh}.iPh == 1                    
-                        % case is for the low-variance phases
-                        IBG = obj.trkObj.fObj{iPh}.IBG{iApp};
-                        if any(isnan(IBG(:)))
-                            % if there are gaps, then interpolate them
-                            obj.trkObj.fObj{iPh}.IBG{iApp} = ...
-                                                    interpImageGaps(IBG);
-                        end
-                    else
-                        % case is for the high-variance phases
-                        IBG = obj.iMov.IbgT{iApp};
-                        if any(isnan(IBG(:)))
-                            % if there are gaps, then interpolate them
-                            obj.iMov.IbgT{iApp} = interpImageGaps(IBG);
-                        end
-                    end
-                end
-            end
-            
-            % sets the feasible phases (low and high variance only)
-            fObj = obj.trkObj.fObj;
-            okP = obj.iMov.vPhase < 3;       
-            obj.iMov.Ibg = cell(length(fObj),1);
-            obj.iMov.Ibg(okP) = cellfun(@(x)(x.IBG),fObj(okP),'un',0);            
+            end             
             
             % ------------------------------- %
             % --- POSITION RE-CALCULATION --- %
-            % ------------------------------- %              
+            % ------------------------------- %    
+            
+            % memory allocation
+            obj.ImgM = cellfun(@(x)(cell(length(x),1)),obj.indFrm,'un',0);
             
             % recalculates the manually selected points over all frames
-            for i = 1:length(iRowM)
+            for i = 1:nBlob
+                % updates the progressbar
+                pNw = i/(2+nBlob);
+                wStrNw = sprintf(['Recalculating Positions ',...
+                                  '(%i of %i)'],i,nBlob);
+                if obj.hProg.Update(1,wStrNw,pNw)
+                    % if the user cancelled, then exit
+                    return
+                end
+                
+                % recalculates the positions
                 obj.recalcManualPos(iRowM{i});
             end
+            
+            % clears the temporary image array
+            obj.ImgM = [];
             
             % ------------------------------- %
             % --- HOUSE-KEEPING EXERCISES --- %
             % ------------------------------- %
+            
+            % resets the progressbar
+            obj.hProg.Update(1,'Final Marker Update',1);
+            obj.hProg.Update(2,'Updating Image Axes...',0);
             
             % clears the table and disables the manual reselection panel
             set(obj.hGUI.tableFlyUpdate,'Data',[]);
             obj.setManualObjProps('off')
             obj.setManualObjProps('on')
             
+            % closes the loadbar
+            obj.hProg.Update(2,'Image Axes Update Complete!',1);
+            obj.hProg.closeProgBar;            
+            
             % updates the main image
+            set(0,'CurrentFigure',obj.hGUI.output)
             obj.updateMainImage()
             
             % deselects the fly markers
             set(obj.hGUI.checkFlyMarkers,'value',1);
-            obj.checkFlyMarkers(obj.hGUI.checkFlyMarkers,[])            
-            
-            % closes the loadbar
-            delete(h);
+            obj.checkFlyMarkers(obj.hGUI.checkFlyMarkers,[])                        
             
         end
 
@@ -2123,36 +2204,28 @@ classdef CalcBG < handle
         function setupManualBGImages(obj,iRowM)
             
             % initialisations
-            uListG = obj.uList(iRowM,:);            
-            iFrmNw = sort(uListG(:,2));
-            [iPh,iApp,iTube] = deal(uListG(1,1),uListG(1,3),uListG(1,4));
+            uListG = obj.uList(iRowM,:);
+            [iPh,iApp,iTube] = deal(uListG(1,1),uListG(1,3),uListG(1,4));            
+            Ibg0 = obj.iMov.Ibg{iPh}{iApp};
             
-            % retrieves the local images
-            iRT = obj.iMov.iRT{iApp}{iTube};
-            iRL = obj.iMov.iR{iApp}(iRT);
-            [iCL,fObj] = deal(obj.iMov.iC{iApp},obj.trkObj.fObj{iPh}); 
-            
-            % sets the local images
-            if fObj.iPh == 1
-                % case is for a low-variance phase
-                IL = cellfun(@(x)(x(iRL,iCL)),fObj.Img(iFrmNw),'un',0);
-            else
-                % case is for a high-variance phase
-                IL = cellfun(@(x)(x(iRL,iCL)),fObj.Img(iFrmNw),'un',0);
-            end
+            % retrieves the region row/column indices
+            [iR,iC] = deal(obj.iMov.iR{iApp},obj.iMov.iC{iApp});
+            iRT = obj.iMov.iRT{iApp}{iTube}; 
+            IbgL = Ibg0(iRT,:); 
             
             % sets the marker x/y coordinates            
             hM = obj.hManual(iRowM);
-            [xOfs,yOfs,szL] = deal(iCL(1)-1,iRL(1)-1,size(IL{1}));            
+            szL = [length(iRT),length(iC)];
+            [xOfs,yOfs] = deal(iC(1)-1,iR(iRT(1))-1);            
             xD = cell2mat(arrayfun(@(h)(get(h,'xData')-xOfs),hM,'un',0));
-            yD = cell2mat(arrayfun(@(h)(get(h,'yData')-yOfs),hM,'un',0));
+            yD = cell2mat(arrayfun(@(h)(get(h,'yData')-yOfs),hM,'un',0));            
             
-            % sets the 
-            Bopt = deal(fObj.Bopt);
-            [pOfs,szB] = deal((size(Bopt)-1)/2,size(Bopt));
+            % determines the shape size of the blob object
+            Brmv = bwmorph(obj.iMov.hFilt > 0,'dilate',1);
+            [pOfs,szB] = deal((size(Brmv)-1)/2,size(Brmv));                        
             
             % removes the background image
-            for i = 1:length(IL)
+            for i = 1:length(yD)
                 % sets the row/column indices
                 iRB = (yD(i)-pOfs(1)) + ((1:szB(1))'-1);
                 iCB = (xD(i)-pOfs(2)) + ((1:szB(2))'-1);
@@ -2162,20 +2235,19 @@ classdef CalcBG < handle
                 iiC = (iCB > 0) & (iCB <= szL(2));
                 
                 % removes the region containing the fly location      
-                IL{i}(iRB(iiR),iCB(iiC)) = ...
-                            ~Bopt(iiR,iiC).*IL{i}(iRB(iiR),iCB(iiC));  
-                IL{i}(IL{i}==0) = NaN;
+                IbgL(iRB(iiR),iCB(iiC)) = ...
+                            ~Brmv(iiR,iiC).*IbgL(iRB(iiR),iCB(iiC));  
+                IbgL(IbgL==0) = NaN;  
+                
+                % interpolates the image gaps
+                IbgL = interpImageGaps(IbgL);
             end      
+
+            % resets the sub-region background estimate
+            obj.iMov.Ibg{iPh}{iApp}(iRT,:) = IbgL;  
             
-            % resets the background image using the new images
-            if fObj.iPh == 1
-                % case is for a low variance phase
-                fObj.IBG{iApp}(iRT,:) = calcImageStackFcn(IL);
-                obj.trkObj.fObj{iPh} = fObj;       
-            else
-                % case is for a high variance phase
-                obj.iMov.IbgT{iApp}(iRT,:) = calcImageStackFcn(IL);
-            end
+            % updates the progressbar
+            obj.hProg.Update(2,'Background Estimate Complete',1);
             
         end        
         
@@ -2184,23 +2256,64 @@ classdef CalcBG < handle
            
             % initialisations
             pW = 0.75;
+            Dtol = obj.iMov.szObj(1);
             uListG = obj.uList(iRowM,:);            
             iFrmNw = sort(uListG(:,2));
             [iPh,iApp,iTube] = deal(uListG(1,1),uListG(1,3),uListG(1,4));            
+
+            % resets the progressbar
+            obj.hProg.Update(2,'Reading Image Frames',0);
+            
+            % determines if the blob is moving/from a hi-variance phase
+            isHV = obj.iMov.vPhase(iPh) == 2;
+            isMove = obj.iMov.StatusF{iPh}(iTube,iApp) == 1;
+            
+            % sets the frame read index
+            if isMove
+                % case is the blob is moving
+                iFrmR = iFrmNw;
+            else
+                % case is the blob is stationary
+                iFrmR = 1:length(obj.indFrm{iPh});
+            end
+            
+            % retrieves the image filter
+            if obj.iMov.bgP.pSingle.useFilt
+                hS = fspecial('disk',obj.iMov.bgP.pSingle.hSz);
+            else
+                hS = [];
+            end
             
             % retrieves the local images
             iRT = obj.iMov.iRT{iApp}{iTube};
             iRL = obj.iMov.iR{iApp}(iRT);
-            [iCL,fObj] = deal(obj.iMov.iC{iApp},obj.trkObj.fObj{iPh});                    
+            iCL = obj.iMov.iC{iApp};                                
+            IBG = obj.iMov.Ibg{iPh}{iApp}(iRT,:);
             
-            % sets up the residual image stack based on the 
-            if obj.iMov.vPhase(iPh) == 1
-                IBG = fObj.IBG{iApp}(iRT,:);
-                IL = cellfun(@(x)(x(iRL,iCL)),fObj.Img,'un',0);
-            else
-                IBG = obj.iMov.IbgT{iApp}(iRT,:);
-                IL = cellfun(@(x)(x(iRL,iCL)),fObj.ImgMd,'un',0);
+            % retrieves the local image stacks
+            IL0 = cell(length(iFrmR),1);
+            for i = 1:length(iFrmR)
+                % updates the progressbar
+                wStr = sprintf('Reading Frame (%i of %i)',i,length(iFrmR));
+                if obj.hProg.Update(2,wStr,i/length(iFrmR))
+                    % if the user cancelled, then exit
+                    return
+                end
+                
+                % retrieves the global image
+                iFrmG = obj.indFrm{iPh}(iFrmR(i));
+                if isempty(obj.ImgM{iPh}{iFrmR(i)})
+                    Img0 = double(getDispImage(obj.iData,obj.iMov,iFrmG,0));
+                    obj.ImgM{iPh}{iFrmR(i)} = imfiltersym(Img0,hS);
+                end
+            
+                % retrieves the final region image stack
+                IL0(i) = getRegionImgStack(obj.iMov,...
+                            obj.ImgM{iPh}{iFrmR(i)},iFrmG,iApp,isHV);
             end
+            
+            % retrieves the local images
+            IL = cellfun(@(x)(x(iRT,:)),IL0,'un',0);                
             
             % sets the marker x/y coordinates     
             hM = obj.hManual(iRowM);
@@ -2209,14 +2322,17 @@ classdef CalcBG < handle
             yD = cell2mat(arrayfun(@(h)(get(h,'yData')-yOfs),hM,'un',0));            
             idxD = num2cell(sub2ind(szL,roundP(yD),roundP(xD)));
             
-            % calculates the residual image stack and local maxima
-            IRL = cellfun(@(x)(imfilter(IBG-x,fObj.hG)),IL,'un',0);                        
-            Bmax = cellfun(@(x)(imregionalmax(x)),IRL,'un',0);
-            
-            % 
-            pTolRL = pW*mean(cellfun(@(x,y)(x(y)),IRL(iFrmNw),idxD));
-            BRLmax = cellfun(@(x,y)(x.*(y>pTolRL)),Bmax,IRL,'un',0);
-            iGrpMx = cellfun(@(x)(find(x(:))),BRLmax,'un',0);
+            % calculates the residual image stack and thresholds
+            IRL = cellfun(@(x)(imfiltersym(IBG-x,hS)),IL,'un',0); 
+            if isMove
+                pTolRL = pW*mean(cellfun(@(x,y)(x(y)),IRL,idxD));
+            else
+                pTolRL = pW*mean(cellfun(@(x,y)(x(idxD{1})),IRL));
+            end
+              
+            % thresholds the image and determines the blob indices
+            BRL = cellfun(@(y)(y>pTolRL),IRL,'un',0);
+            iGrpMx = cellfun(@(x)(getGroupIndex(x)),BRL,'un',0);
             
             % sets the final position vector
             for i = 1:length(IRL)
@@ -2228,16 +2344,24 @@ classdef CalcBG < handle
                         
                     case 1
                         % case is there is a unique solution
-                        iGrpF = iGrpMx{i};
+                        iMx = argMax(IRL{i}(iGrpMx{i}{1}));
+                        iGrpF = iGrpMx{i}{1}(iMx);
                         
                     otherwise
                         % case is there are unique solutions
-                        iGrpF = iGrpMx{i}(argMax(IRL{i}(iGrpMx{i})));
+                        IGrpMx = cellfun(@(x)(max(IRL{i}(x))),iGrpMx{i});
+                        AGrp = sqrt(cellfun(@length,iGrpMx{i}))/Dtol;
+                        iMx = argMax(IGrpMx.*AGrp);
+                        
+                        % retrieves the coordinates of the maxima
+                        jMx = argMax(IRL{i}(iGrpMx{i}{iMx}));
+                        iGrpF = iGrpMx{i}{iMx}(jMx);
                 end
                 
                 % updates the positions
+                k = iFrmR(i);
                 [yP,xP] = ind2sub(szL,iGrpF);
-                obj.fPos{iPh}{iApp,i}(iTube,:) = [(xP+xOfs),(yP+yOfs)];
+                obj.fPos{iPh}{iApp,k}(iTube,:) = [(xP+xOfs),(yP+yOfs)];
             end
             
         end
@@ -2252,21 +2376,41 @@ classdef CalcBG < handle
             % sets the hold on
             hold(obj.hAx,'on')
             
-            % creates manual markers for each potential location over all
-            % regions/sub-regions
-            for i = 1:obj.nApp
-                for j = 1:obj.nTube(i)
-                    for k = 1:size(obj.pMn{j,i},1)
-                        [uInd,pNw] = deal([i,j,k],obj.pMn{j,i}(k,:));
-                        plot(obj.hAx,pNw(1),pNw(2),'y.','markersize',15,...
-                                    'tag','hManual','UserData',uInd,...
-                                    'Visible','off');
-                    end
-                end
-            end
+            % creates the marker coordinate information array
+            pMnP = obj.pMn;
+            [X,Y] = meshgrid(1:size(pMnP,2),1:size(pMnP,1));
+            nBlob = cellfun(@(x)(size(x,1)),pMnP);            
+            indM = arrayfun(@(x,y,n)([(1:n)',...
+                            repmat([x,y],n,1)]),X,Y,nBlob,'un',0);
+            obj.mInfo = [cell2mat(indM(:)),cell2mat(pMnP(:))];
+            
+            % creates the manual marker objects from the plot axes
+            obj.clearAxesObjects('tag','hManualB');
+            obj.clearAxesObjects('tag','hManualH');
+                        
+            % creates the background manual markers
+            obj.hManualB = plot(obj.hAx,obj.mInfo(:,end-1),...
+                                obj.mInfo(:,end),'.','markersize',15,...
+                                'tag','hManualB','Visible','off');
+                            
+            % creates the highlight manual marker
+            obj.hManualH = plot(obj.hAx,NaN,NaN,'y.','markersize',15,...
+                                'tag','hManualH','Visible','on');            
             
             % sets the hold off
             hold(obj.hAx,'off')            
+            
+        end
+        
+        % --- clears from the main axes objects with the field/value
+        %     combination given by pFld/pVal
+        function clearAxesObjects(obj,pFld,pVal)
+            
+            % determines any objects with the field/value combo
+            hObj = findall(obj.hAx,pFld,pVal);
+            
+            % if any such objects exist, then delete them
+            if ~isempty(hObj); delete(hObj); end
             
         end
         
@@ -2283,37 +2427,37 @@ classdef CalcBG < handle
         end
         
         % --- updates the fly marker highlights
-        function updateFlyHighlight(obj,iMap)
-            
-            % sets up the index array of the previously highlighted region
-            iPr = [obj.iCloseR,obj.iCloseSR,obj.iCloseF];    
+        function updateFlyHighlight(obj,iMap,indT)
             
             % determines
             if iMap == 0
                 % if there was a previously highlighted region, then
                 % de-highlight this region
-                if iPr(1) > 0             
-                    hPr = findall(obj.hAx,'tag','hManual','visible','on');
-                    setObjVisibility(hPr,0)
-                end
+                set(obj.hManualH,'UserData',[]);
+                setObjVisibility(obj.hManualH,'off')
                 
-                %
+                % resets the highlighted fly marker
                 obj.iCloseF = -1;
                 
             else
-                % retrieves the indices of the tube region
-                iNw = [iPr(1:2),iMap];                
+                % determines if the previous/new indices match
+                iNw = [indT,iMap];            
+                iPr = get(obj.hManual,'UserData');                
                 if ~isequal(iNw,iPr)
-                    % de-highlights the old region
-                    hPr = findall(obj.hAx,'tag','hManual','visible','on');
-                    setObjVisibility(hPr,0)
-                    
-                    % highlights the new region
-                    hNw = findall(obj.hAx,'UserData',iNw,'tag','hManual');
-                    setObjVisibility(hNw,1)
-                    
-                    % updates the highlighted index array
-                    obj.iCloseF = iNw(3);                                          
+                    % if not, then update the highlight marker
+                    try
+                        pM = obj.pMn{indT(2),indT(1)}(iMap,:);
+                        set(obj.hManualH,'xData',pM(1),'yData',pM(2),...
+                                         'UserData',iNw);
+                        setObjVisibility(obj.hManualH,'on')
+
+                        % updates the highlighted index array
+                        obj.iCloseF = iMap;
+                    catch
+                        % resets the userdata/marker visibility
+                        set(obj.hManualH,'UserData',[]);
+                        setObjVisibility(obj.hManualH,'off')
+                    end
                 end                                
             end
             
@@ -2361,9 +2505,8 @@ classdef CalcBG < handle
         function addManualMarker(obj,uListNw)
             
             % sets the manual marker coordinates
-            iPr = [obj.iCloseR,obj.iCloseSR,obj.iCloseF];            
-            hMarkPr = findall(obj.hAx,'UserData',iPr,'tag','hManual');
-            [xP,yP] = deal(get(hMarkPr,'xdata'),get(hMarkPr,'ydata')); 
+            xP = get(obj.hManualH,'xData');
+            yP = get(obj.hManualH,'yData');
             
             % creates the new marker
             hold(obj.hAx,'on')
@@ -2394,12 +2537,13 @@ classdef CalcBG < handle
             % determines if the mouse is over a sub-region
             ii = cellfun(@(x)(inpolygon(mP(1,1),mP(1,2),x(:,1),x(:,2))),P);
             if any(ii)
-                % if so, retrieve/update the sub-region information
+                % if so, retrieve/update the sub-region information                
                 obj.updateTubeHighlight(hTube{ii});                          
                 
                 % determines if the mouse is over any potential markers
+                indT = get(hTube{ii},'UserData');
                 iMap = obj.Imap(sub2ind(size(obj.Imap),mP(1,2),mP(1,1)));
-                obj.updateFlyHighlight(iMap); 
+                obj.updateFlyHighlight(iMap,indT); 
                 
                 % resets the mouse pointer
                 if iMap > 0; pStr = 'hand'; end
@@ -2457,8 +2601,9 @@ classdef CalcBG < handle
             end
 
             % sets the other remaining pixel values
-            isN = isnan(IbgNw);
-            IbgNw(isN) = obj.ImgFrm0(isN);
+%             isN = isnan(IbgNw);
+%             IbgNw(isN) = obj.ImgFrm0(isN);
+%             IbgNw(isN) = nanmedian(IbgNw(~isN));
             
             % updates the array in the background image cell array
             obj.Ibg{iSel} = IbgNw;
@@ -2561,7 +2706,27 @@ classdef CalcBG < handle
                             setStructField(obj.iMov.bgP.pSingle,pFld,pVal);
             end
             
-        end              
+        end      
+        
+        % --- sets the video information properties
+        function setVideoInfoProps(obj)
+            
+            % video property fields
+            txtCol = 'kr';
+            phInfo = obj.iMov.phInfo;
+            nPhase = length(obj.iMov.vPhase);
+            stStr = {'Stable','Unstable'};
+            trStr = {'Not Detected','Detected'};
+            [hasF,hasT] = deal(phInfo.hasF,any(phInfo.hasT));            
+            
+            % updates the video information strings
+            set(obj.hGUI.textImagQual,'string',stStr{1+hasF},...
+                            'ForegroundColor',txtCol(1+hasF))
+            set(obj.hGUI.textTransStatus,'string',trStr{1+hasT},...
+                            'ForegroundColor',txtCol(1+hasT))
+            set(obj.hGUI.textPhaseCount,'string',num2str(nPhase))
+            
+        end        
     
     end
     

@@ -273,7 +273,7 @@ classdef GridDetect < matlab.mixin.SetGet
         % -------------------------- %    
 
         % --- use filter callback function
-        function useFilter(obj,hObj,~)
+        function useFilter(obj,hObj,event)
             
             % updates the parameter value
             useFilt = get(hObj,'Value');
@@ -282,6 +282,9 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % updates the detection panel properties
             setObjEnable([obj.hEditF,obj.hTxtF],useFilt)
+            if ~isempty(event)
+                set(obj.hFigM,'phObj',[]);
+            end
             
             % updates the main image
             obj.updateMainImage()
@@ -295,8 +298,9 @@ classdef GridDetect < matlab.mixin.SetGet
             nwVal = str2double(get(hObj,'String'));
             if chkEditValue(nwVal,[1,10],1)
                 % if so, then update the field value
-                obj.setFiltPara('hSz',nwVal);
+                obj.setFiltPara('hSz',nwVal);                
                 setObjEnable(obj.hButC{1},'on');
+                set(obj.hFigM,'phObj',[]);
                 
                 % updates the main image
                 obj.updateMainImage()                
@@ -330,7 +334,7 @@ classdef GridDetect < matlab.mixin.SetGet
             % determines if the new value is valid
             if chkEditValue(nwVal,nwLim,1)
                 % if so, update the selection value
-                obj.iSelS(iType) = nwVal;                 
+                obj.iSelS(iType) = nwVal;
                 
                 % updates the move button enabled properties
                 obj.updateRegionHighlight();
@@ -583,7 +587,7 @@ classdef GridDetect < matlab.mixin.SetGet
             % applies the image filter (if required)
             if obj.getFiltPara('useFilt') && ~forceRaw
                 hS = fspecial('disk',obj.getFiltPara('hSz'));
-                ImgNw = imfilter(ImgNw,hS);
+                ImgNw = imfiltersym(ImgNw,hS);
             end
             
             % updates the main image

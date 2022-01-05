@@ -44,7 +44,7 @@ for i = find(iMov.ok(:)')
         % checks the location data for NaN frames 
         ZPosSR = ZPos{i}(:,j);
         [iMov,pData] = frameNaNCheck(obj,iMov,pData,i,j);
-
+        
         % calculates inter-frame distance travelled by the object
         if iMov.Status{i}(j) == 1
             [pData,ok] = frameDistCheck(obj,pData,iMov,ZPosSR,i,j);
@@ -176,89 +176,159 @@ global wOfs
 
 % parameters
 dN = 3;
-[zPrTol,zPrMin] = deal(0.05,0.1);
+nPr = 10;
+[zPrTol,zPrMin] = deal(0.3,0.1);
 
 % field retrieval
-[is2D,cont] = deal(is2DCheck(iMov),true);
+is2D = is2DCheck(iMov);
 [wStr,ok] = deal('Inter-Frame Distance Check',true);
 [handles,iData,h] = deal(obj.hGUI,obj.iData,obj.hProg);
-T = iData.Tv(roundP(1:iMov.sRate:length(iData.Tv)));
+T = iData.Tv(roundP(1:iMov.sRate:end));
 
 % sets the x/y coordinates
 [X,Y] = deal(pData.fPosL{iApp}{iTube}(:,1),pData.fPosL{iApp}{iTube}(:,2));
+nFrm = length(X);
 
 % sets the local-to-global position offset
 i0 = find(~isnan(X),1,'first');
 pOfs = repmat(pData.fPos{iApp}{iTube}(i0,:)-[X(i0),Y(i0)],length(X),1);
 
-% calculates the position offset
-nFrm = length(X);
+% --------------------------------- %
+% --- SHORT-TERM BOBBLE REMOVAL --- %
+% --------------------------------- %
 
-% determines if there are any low metric probability frames
-isLowPr = ZPos < zPrTol;
-if any(isLowPr) && ~is2D
-    % if so, then determine if the tracking has been conducted properly
+% initialisations
+N = 3:5;
+tTol = 0.25;
+Dmin = 3;
+
+% removes any short-term bobbles in blob location
+for i = 1:length(N)
+    % calculates the short-term path tortuosity
+    [T,Dtot,~] = calcPathTortuosity(X,Y,N(i));
     
-    % calculates the coordinate extent of the feasible frames    
-    isOK = ZPos > zPrMin;
-    dXTol = obj.iMov.szObj(1)/2;
-    
-    if any(isOK)
-        xExt = [min(X(isOK)),max(X(isOK))];
-        yExt = [min(Y(isOK)),max(Y(isOK))];    
-
-        % for each low metric probability frame group, determine the side at
-        % which the object "hides". reset the coordinates to that extent
-        iGrp = getGroupIndex(isLowPr);
-        for i = 1:length(iGrp)
-            % determines the first feasible neighbouring index
-            if iGrp{i}(1) == 1
-                % case is the following point is feasible
-                iPr = iGrp{i}(end)+1;
-            else
-                % case is the previous point is feasible
-                iPr = iGrp{i}(1)-1;
-            end
-
-            % determines the side the surrounding point is closest to, and 
-            dX = max(0,[X(iPr)-xExt(1),xExt(2)-X(iPr)]);
-            iSide = argMin(dX);
-
-            if dX(iSide) < dXTol
-                [X(iGrp{i}),Y(iGrp{i})] = deal(xExt(iSide),mean(yExt));
-            elseif (iGrp{i}(1) == 1)
-                [X(iGrp{i}),Y(iGrp{i})] = deal(xExt(iSide),mean(yExt));
-            elseif (iGrp{i}(end) == nFrm)
-                if abs(diff(X(nFrm)-X(iPr))) > dXTol
-                    [X(iGrp{i}),Y(iGrp{i})] = deal(xExt(iSide),mean(yExt));
-                end
-            else
-                xiS = iGrp{i}([1,end]) + [-1,1];
-                dXS = [(X(xiS)-xExt(1)),(xExt(2)-X(xiS))];
-
-                if all(dXS(:) > dXTol)
-                    % sets the interpolation index array
-                    xi = [max(1,(iGrp{i}(1)-dN)):(iGrp{i}(1)-1),...
-                         (iGrp{i}(end)+1):min(nFrm,(iGrp{i}(end)+dN))];
-                    xi = xi(~isLowPr(xi) & ~isnan(X(xi)));
-
-                    % interpolates the missing x/y coordinates
-                    X(iGrp{i}) = roundP(interp1(xi,X(xi),iGrp{i},'pchip'));
-                    Y(iGrp{i}) = roundP(interp1(xi,Y(xi),iGrp{i},'pchip')); 
-                else
-                    [X(iGrp{i}),Y(iGrp{i})] = deal(xExt(iSide),mean(yExt));
-                end
-
-                % updates the flags
-                isLowPr(iGrp{i}) = false;
-            end
-        end
-    else
-        % if there is only low probability values, then is probably fixed
-        % in location (see locations to be median of coordinates)
-        [X(:),Y(:)] = deal(nanmedian(X),nanmedian(Y));
+    % determines frames where there is short bobble in location (low
+    % tortuosity and non-negligible distance travelled). resets the
+    % locations of the frames where the blob moved
+    isB = find((T < tTol) & (Dtot >= Dmin));
+    for j = 1:(N(i)-2)
+        [X(isB+j),Y(isB+j)] = deal(X(isB),Y(isB));
     end
 end
+
+% ---------------------------------- %
+% --- LARGE DISPLACEMENT REMOVAL --- %
+% ---------------------------------- %
+
+% % parameters
+% pW = 2;
+% 
+% % determines the frames if there 
+% iRT = iMov.iRT{iApp}{iTube};
+% Dfrm = [0;(sqrt(diff(X).^2 + diff(Y).^2)/obj.iMov.szObj(1))];
+% 
+% % determines if there are any low metric probability frames
+% isMove = Dfrm >= pW;
+% if any(isMove)
+%     % if so, then determine if the tracking has been conducted properly
+%     
+%     % determines the frames where there is a large displacement. for each
+%     % of the frames, determine if the position is correct
+%     jFrm = find(isMove);
+%     for i = 1:length(jFrm)
+%         pWT = jFrm(i)/length(X);           
+%         wStrNw = sprintf('%s (%i%% Complete)',wStr,floor(100*pWT));
+%         if h.Update(wOfs+3,wStrNw,pWT)
+%             % if the user cancelled, then exit
+%             ok = false; 
+%             return
+%         end        
+%         
+%         % 
+%         iPr = max(1,jFrm(i)-nPr):(jFrm(i)-1); 
+%         fPest = extrapBlobPosition([X(iPr),Y(iPr)]); 
+%         dfPest = abs([X(jFrm(i)),Y(jFrm(i))] - fPest);
+%         
+%         %
+%         if any(dfPest > pW*iMov.szObj)        
+%             % retrieves the image for the frame
+%             Img = double(getDispImage(iData,iMov,jFrm(i),false,handles));         
+%             if ~isempty(obj.hS); Img = imfiltersym(Img,obj.hS); end            
+%             
+%             % retrieves the region image for the current frame
+%             iPhFrm = find(jFrm(i) <= iMov.iPhase(:,2),1,'last');
+%             isHV = iMov.vPhase(iPhFrm) > 1;         
+%             IL0 = getRegionImgStack(iMov,Img,jFrm(i),iApp,isHV);        
+% 
+%             % retrieves the residual image 
+%             IbgL = obj.iMov.Ibg{iPhFrm}{iApp}(iRT,:);            
+%             IRL = max(0,IbgL - IL0{1}(iRT,:));
+%             
+%             % calculates the new coordinates (from the residual image 
+%             % adjusted by the distance mask)
+%             Dw = bwdist(setGroup(roundP(fPest),size(IRL)));
+%             Qw = 1./(1+Dw/iMov.szObj(1));
+%             iMx = argMax(Qw(:).*IRL(:));
+%             [Y(jFrm(i)),X(jFrm(i))] = ind2sub(size(IRL),iMx);
+%         end               
+%     end
+    
+%     if any(isOK)
+%         xExt = [min(X(isOK)),max(X(isOK))];
+%         yExt = [min(Y(isOK)),max(Y(isOK))];    
+% 
+%         % for each low metric probability frame group, determine the side at
+%         % which the object "hides". reset the coordinates to that extent
+%         iGrp = getGroupIndex(isLowPr);
+%         for i = 1:length(iGrp)
+%             % determines the first feasible neighbouring index
+%             if iGrp{i}(1) == 1
+%                 % case is the following point is feasible
+%                 iPr = iGrp{i}(end)+1;
+%             else
+%                 % case is the previous point is feasible
+%                 iPr = iGrp{i}(1)-1;
+%             end
+% 
+%             % determines the side the surrounding point is closest to, and 
+%             dX = max(0,[X(iPr)-xExt(1),xExt(2)-X(iPr)]);
+%             iSide = argMin(dX);
+% 
+%             if dX(iSide) < dXTol
+%                 [X(iGrp{i}),Y(iGrp{i})] = deal(xExt(iSide),mean(yExt));
+%             elseif (iGrp{i}(1) == 1)
+%                 [X(iGrp{i}),Y(iGrp{i})] = deal(xExt(iSide),mean(yExt));
+%             elseif (iGrp{i}(end) == nFrm)
+%                 if abs(diff(X(nFrm)-X(iPr))) > dXTol
+%                     [X(iGrp{i}),Y(iGrp{i})] = deal(xExt(iSide),mean(yExt));
+%                 end
+%             else
+%                 xiS = iGrp{i}([1,end]) + [-1,1];
+%                 dXS = [(X(xiS)-xExt(1)),(xExt(2)-X(xiS))];
+% 
+%                 if all(dXS(:) > dXTol)
+%                     % sets the interpolation index array
+%                     xi = [max(1,(iGrp{i}(1)-dN)):(iGrp{i}(1)-1),...
+%                          (iGrp{i}(end)+1):min(nFrm,(iGrp{i}(end)+dN))];
+%                     xi = xi(~isLowPr(xi) & ~isnan(X(xi)));
+% 
+%                     % interpolates the missing x/y coordinates
+%                     X(iGrp{i}) = roundP(interp1(xi,X(xi),iGrp{i},'pchip'));
+%                     Y(iGrp{i}) = roundP(interp1(xi,Y(xi),iGrp{i},'pchip')); 
+%                 else
+%                     [X(iGrp{i}),Y(iGrp{i})] = deal(xExt(iSide),mean(yExt));
+%                 end
+% 
+%                 % updates the flags
+%                 isLowPr(iGrp{i}) = false;
+%             end
+%         end
+%     else
+%         % if there is only low probability values, then is probably fixed
+%         % in location (see locations to be median of coordinates)
+%         [X(:),Y(:)] = deal(nanmedian(X),nanmedian(Y));
+%     end
+% end
  
 % updates the waitbar figure
 h.Update(wOfs+3,sprintf('%s (100%% Complete)',wStr),1);
@@ -273,11 +343,14 @@ function [pData,ok] = framePosCheck(obj,pData,iMov,ZPos,iApp,iTube)
 % global variables
 global wOfs
 
+% parameters
+mTol = 0.05;
+mdDim = 30*[1,1];
+
 % field retrieval
 [handles,iData,h] = deal(obj.hGUI,obj.iData,obj.hProg);
 
 % other initialistions
-mTol = 0.05;
 [wStr,ok,cont] = deal('Inter-Frame Distance Check',true,true);
 [iR,iRT,iC] = deal(iMov.iR{iApp},iMov.iRT{iApp}{iTube},iMov.iC{iApp});
 [X,Y] = deal(pData.fPosL{iApp}{iTube}(:,1),pData.fPosL{iApp}{iTube}(:,2));
@@ -291,9 +364,9 @@ end
 % determines the distance tolerances
 if isfield(iMov,'szObj')
     if is2D
-        dTol = sqrt(sum(iMov.szObj.^2))/2;   
+        dTol = sqrt(sum(iMov.szObj.^2));   
     else
-        dTol = iMov.szObj(1)/2;
+        dTol = iMov.szObj(1);
     end        
 end
 
@@ -342,16 +415,23 @@ while cont
         pNw = [X(iFrm-1),Y(iFrm-1)];
     else
         % otherwise, apply the filter/transition offset
-        if ~isempty(obj.hS); Img = imfilter(Img,obj.hS); end
-        Img = applyImgOffset(Img,iMov,iFrm);
+        if ~isempty(obj.hS); Img = imfiltersym(Img,obj.hS); end
 
-        % calculates the adjust x-correlation image
-        ImgL = Img(iR(iRT),iC);    
-        ImgLN = (1-normImg(ImgL));
-        IxcL = calcXCorrStack(obj.iMov,ImgL,obj.hS).*ImgLN.*BD; 
+        % retrieves the phase index/phase type flag
+        iPhFrm = find(iFrm <= iMov.iPhase(:,2),1,'last');
+        isHV = iMov.vPhase(iPhFrm) > 1;
+        
+        % calculates the distance mask
+        IBG = obj.iMov.Ibg{iPhFrm}{iApp}(iRT,:);
+        DW = bwdist(setGroup([X(iFrm-1),Y(iFrm-1)],size(IBG)));
+        QW = 1./(1+DW/dTol);
+        
+        % calculates the local image        
+        IL0 = getRegionImgStack(iMov,Img,iFrm,iApp,isHV);        
+        IRL = max(0,(IBG-IL0{1}(iRT,:))).*QW;        
         
         % calculates the most likely coordinates from the sub-image
-        pNw = getMaxCoord(IxcL);
+        pNw = getMaxCoord(IRL);
     end
     
     % calculates the new coordinates    
@@ -392,7 +472,7 @@ Ixc0 = max(0,calcXCorr(tP.GxT,Gx) + calcXCorr(tP.GyT,Gy));
 if isempty(hS)
     Ixc = Ixc0/2;
 else
-    Ixc = imfilter(Ixc0,hS)/2;
+    Ixc = imfiltersym(Ixc0,hS)/2;
 end
 
 % --- calculates the metric probabilities over all frames
@@ -422,7 +502,7 @@ for i = 1:obj.nPhase
             % calculates the metrics for the 
             ZPosNw = cell(size(IPos));
             ZPosNw(isMove) = calcGroupMetricProb(IPos(isMove),indF);            
-            ZPosNw(isStat) = calcGroupMetricProb(IPos(isStat),indF);
+            ZPosNw(isStat) = calcGroupMetricProb(IPos(isStat),indF,1);
             
         case 2
             % case is a high-variance phase
@@ -448,14 +528,21 @@ for i = 1:obj.nPhase
 end
 
 % --- calculates the metric for a given group
-function ZPos = calcGroupMetricProb(IPos,indF)
+function ZPos = calcGroupMetricProb(IPos,indF,varargin)
 
-% calculates the mean/std deviation of the group metric values
-IPosT = cell2mat(cellfun(@(x)(x(indF,1)),IPos,'un',0));
-[pMu,pSD] = deal(nanmean(IPosT(:)),nanstd(IPosT(:)));
-
-% calculates the normal cdf values
-ZPos = cellfun(@(x)(normcdf(x(indF,1),pMu,pSD)),IPos,'un',0);
+if nargin == 3
+    % case is the blobs are stationary
+    ZPos = cellfun(@(x)(NaN(length(indF),1)),IPos,'un',0);
+else
+    % calculates the mean/std deviation of the group metric values
+    IPosT = cellfun(@(x)(x(indF,1)),IPos,'un',0);  
+    ZPos = cellfun(@(x)(x/nanmedian(x)),IPosT,'un',0);
+    
+%     %
+%     pMu = cellfun(@nanmean,IPosT,'un',0);
+%     pSD = cellfun(@nanstd,IPosT,'un',0);    
+%     ZPos = cellfun(@(x,mu,sd)(normcdf(x,mu,sd)),IPosT,pMu,pSD,'un',0);
+end
 
 % ----------------------- %
 % --- OTHER FUNCTIONS --- %

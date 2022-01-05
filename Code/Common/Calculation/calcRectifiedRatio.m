@@ -1,6 +1,6 @@
 function Rxy = calcRectifiedRatio(X,Y)
 
-if X > Y
+if abs(X) > abs(Y)
     Rxy = Y/X;
 else
     Rxy = X/Y;

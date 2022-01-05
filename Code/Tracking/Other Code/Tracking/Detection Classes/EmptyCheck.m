@@ -3,11 +3,14 @@ classdef EmptyCheck < handle
     properties
     
         % important fields
+        fP
         iApp
         iTube
         Qval
+        hFigM
         isAnom
         isEmpty
+        showMark
         
         % object properties
         hFig        
@@ -16,21 +19,28 @@ classdef EmptyCheck < handle
         hTable
         hButton
         hTube
+        hMark
         
-        %
+        % parameters
         dY = 10;
         dYB = 8;
+        mSz = 10;
         
     end
     
     methods
         
         % class contructor
-        function obj = EmptyCheck(Qval,isAnom)
+        function obj = EmptyCheck(fPos,Qval,isAnom)
             
-            % sets the table fields
+            % main field set
+            obj.fP = fPos;
             [obj.Qval,obj.isAnom] = deal(Qval,isAnom);            
+            obj.hFigM = findall(0,'tag','figFlyTrack');
+            
+            % sets the table fields            
             [obj.iTube,obj.iApp] = find(isAnom);
+            obj.showMark = true(length(obj.iApp),1);
             obj.isEmpty = true(length(obj.iApp),1);
             
             % initialises the gui objects
@@ -47,22 +57,22 @@ classdef EmptyCheck < handle
             % fixed dimensions
             bHght = 25;
             pHght = 40;
-            tWid = 350;            
+            tWid = 400;            
             
             % table dimensions
             nRow = length(obj.iApp);
             tHght = nRow*HWT+H0T;
             
             % sets up the table data fields
-            cEdit = [false(1,3),true];
-            cHdr = {'Region','Sub-Region','Quality (%)','Empty?'};
+            cEdit = [false(1,3),true(1,2)];
+            cHdr = {'Region','Sub-Region','Quality','Marker','Empty?'};
             Qscore = obj.Qval(obj.isAnom);
             tData0 = num2cell([obj.iApp(:),obj.iTube(:),Qscore(:)]);
-            tData = [tData0,num2cell(obj.isEmpty)];
-            cForm = {'numeric','numeric','numeric','logical'};
+            tData = [tData0,num2cell([obj.showMark,obj.isEmpty])];
+            cForm = {'numeric','numeric','numeric','logical','logical'};
             
             % retrieves the tube object handles
-            hTube0 = get(findall(0,'tag','figFlyTrack'),'hTube');
+            hTube0 = get(obj.hFigM,'hTube');
             obj.hTube = cellfun(@(x)(hTube0{x{1}}{x{2}}),...
                                         num2cell(tData0(:,1:2),2),'un',0);
             cellfun(@(x)(setObjVisibility(x,'on')),obj.hTube)
@@ -92,7 +102,8 @@ classdef EmptyCheck < handle
                               'Name','Anomalous Region Check',...
                               'ToolBar','none',...
                               'MenuBar','none',...
-                              'CloseRequestFcn',[]);
+                              'CloseRequestFcn',[],...
+                              'Tag','figCheckEmpty');
             
             % creates the panels
             obj.hPanelT = uipanel('Title','',...
@@ -119,9 +130,22 @@ classdef EmptyCheck < handle
                                     'FontSize',12,...
                                     'FontWeight','bold',...
                                     'Callback',cbFcnB);
+                                
+            % creates the plot markers
+            hAx = findall(obj.hFigM,'type','axes');
+            hold(hAx,'on')
+            obj.hMark = plot(hAx,NaN,NaN,'yo','MarkerSize',obj.mSz,...
+                                 'tag','hMarkE');
+            hold(hAx,'off')
+            
+            % updates the plot markers
+            obj.updatePlotMarkers()
             
             % resizes the table columns
             autoResizeTableColumns(obj.hTable)
+            
+            % sets the object into the gui
+            setappdata(obj.hFig,'obj',obj)
             
             % adds a wait until the user is finished
             uiwait(obj.hFig)
@@ -143,6 +167,24 @@ classdef EmptyCheck < handle
             
         end
         
+        % --- updates the plot markers
+        function updatePlotMarkers(obj)
+            
+            % retrieves the current phase/frame
+            bgObj = get(obj.hFigM,'bgObj');
+            [iPh,iFrm] = deal(bgObj.iPara.cPhase,bgObj.iPara.cFrm);
+            fP0 = obj.fP{iPh}(:,iFrm);            
+            
+            % sets the marker plot coordinates (removes unselected)
+            fPT = cell2mat(arrayfun(@(x,y)...
+                            (fP0{x}(y,:)),obj.iApp,obj.iTube,'un',0));
+            fPT(~obj.showMark,:) = NaN;            
+                        
+            % updates the plot coordinates
+            set(obj.hMark,'xdata',fPT(:,1),'ydata',fPT(:,2))     
+            
+        end
+        
     end
     
     methods(Static)
@@ -151,9 +193,16 @@ classdef EmptyCheck < handle
         function tableEditCallback(hObj,evnt,obj)
             
             % updates the empty flag
-            iRow = evnt.Indices(1);
-            obj.isEmpty(iRow) = evnt.NewData;
-            obj.updateTubeColour(iRow)
+            [iRow,iCol] = deal(evnt.Indices(1),evnt.Indices(2));
+            
+            switch iCol
+                case 4
+                    obj.showMark(iRow) = evnt.NewData;
+                    obj.updatePlotMarkers()                    
+                case 5
+                    obj.isEmpty(iRow) = evnt.NewData;
+                    obj.updateTubeColour(iRow)
+            end
             
         end
         
@@ -162,6 +211,9 @@ classdef EmptyCheck < handle
             
             % makes the tube region invisible again
             cellfun(@(x)(setObjVisibility(x,'off')),obj.hTube)
+            
+            % deletes the plot markers
+            delete(obj.hMark);
             
             % closes the object
             obj.closeGUI();

@@ -409,7 +409,11 @@ end
 % updates the figure position for the enumeration parameters
 hPanelE = findobj(hFig,'tag','panelENumPara');
 if ~isempty(hPanelE)
-    pPosE = get(hPanelE,'position');
+    if length(hPanelE) > 1
+        delete(hPanelE(2:end))
+    end
+    
+    pPosE = get(hPanelE,'position');    
     figPos(4) = figPos(4) + (pPosE(4) + vGapP);
     set(hPanelE,'Position',pPosE)
 end
@@ -662,8 +666,14 @@ nPara = length(srcInfoENum);
 % calculates the panel bottom (depending on whether there are any numerical
 % parameters for the camera or not)
 if any(isNum)
-    % if no numerical parameters, then set the default size
-    pPos = get(findobj(hFig,'tag','panelNumPara'),'position');
+    % if there are numerical parameters, then reset the size based on the
+    % number of parameters
+    hPanelN = findobj(hFig,'tag','panelNumPara');
+    if length(hPanelN) > 1
+        delete(hPanelN(2:end))
+    end
+
+    pPos = get(hPanelN(1),'position');
     Bpe = (pPos(2)+pPos(4)) + vGapP;
 else
     % if no numerical parameters, then set the default size

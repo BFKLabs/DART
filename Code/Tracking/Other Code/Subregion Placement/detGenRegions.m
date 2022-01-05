@@ -92,7 +92,7 @@ for i = 1:nIter
         
         % calculates the cross-correlation of the image against the
         % reference estimate (retrieves the sub-images from this)   
-        Ixc = imfilter(calcXCorrImage(ImdBL,IRef),hG);
+        Ixc = imfiltersym(calcXCorrImage(ImdBL,IRef),hG);
         [IGrpXC,iOfs] = getInitRegionSubImages(Ixc,iR,iC);  
         
         % calculates the positional offset vectors
@@ -106,7 +106,7 @@ for i = 1:nIter
         
         % calculates the cross-correlation of the image against the
         % reference estimate (retrieves the sub-images from this)
-        Ixc = imfilter(calcXCorrImage(ImdBL,IRef),hG);        
+        Ixc = imfiltersym(calcXCorrImage(ImdBL,IRef),hG);        
         IGrpXC = cellfun(@(x)(getPointSubImages(Ixc,x,szL)),pMaxC,'un',0);
         
         % calculates the positional offset

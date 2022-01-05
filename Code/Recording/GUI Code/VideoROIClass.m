@@ -68,7 +68,10 @@ classdef VideoROIClass < handle
             handles = obj.hGUI;
             obj.hAx = handles.axesImg;
             obj.hAxLV = handles.axesLargeVideo;
-            obj.hAxM = findall(obj.hFigM,'type','axes');    
+
+            % sets up the main image axes handle
+            hPanelP = findall(obj.hFigM,'tag','panelImg');
+            obj.hAxM = findobj(obj.hFigM,'type','axes','Parent',hPanelP);             
 
             % retrieves the current/full video resolution
             obj.rPos = get(obj.infoObj.objIMAQ,'ROIPosition');

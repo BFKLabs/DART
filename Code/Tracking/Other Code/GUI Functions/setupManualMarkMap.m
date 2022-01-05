@@ -17,7 +17,8 @@ hG = fspecial('gaussian',5,2);
 
 % retrieves the image from the main gui
 hImg = findobj(obj.hGUI.imgAxes,'Type','image');
-I = imfilter(double(get(hImg,'CData')),hG);
+I0 = imfiltersym(double(get(hImg,'CData')),hG);
+I = applyHMFilter(I0);
 
 % other memory allocations
 sz = size(I);
@@ -44,17 +45,18 @@ for i = 1:obj.nApp
         pOfs = [iC(1),iR(1)]-1;
         
         % determines all the minima within the sub-region
-        IL = I(iR,iC);
+%         IL = I(iR,iC);
         isIn = find((yMx >= iR(1)) & (yMx <= iR(end)) & ...
                     (xMx >= iC(1)) & (xMx <= iC(end)));
         
-        % removes any low-grade minima from the selection group
-        szL = size(IL);
-        iMxL = sub2ind(szL,yMx(isIn)-pOfs(2),xMx(isIn)-pOfs(1));
-        ZL = (IL-mean(IL(:)))/std(IL(:));
-        isIn = isIn(ZL(iMxL)/min(ZL(iMxL)) > zTol);
+%         % removes any low-grade minima from the selection group
+%         
+%         iMxL = sub2ind(szL,yMx(isIn)-pOfs(2),xMx(isIn)-pOfs(1));
+%         ZL = (IL-mean(IL(:)))/std(IL(:));
+%         isIn = isIn(ZL(iMxL)/min(ZL(iMxL)) > zTol);
         
         % creates the sub-region map from the remaining points
+        szL = [length(iR),length(iC)];
         pMn{j,i} = [xMx(isIn),yMx(isIn)];
         Imap(iR,iC) = setSubRegionMap(pMn{j,i},pOfs,szL,dTol);
     end

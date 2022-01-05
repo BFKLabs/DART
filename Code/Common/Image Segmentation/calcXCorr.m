@@ -1,13 +1,13 @@
 % --- calculates the x-correlation of the image, I, with the template, IT
 function Ixc = calcXCorr(IT,I,D,varargin)
 
-%
+% sets the default input arguments
 if ~exist('D','var')
-    D = ceil((size(IT) - 1)/2);
+    D = 2*ceil((size(IT) - 1)/2);
 end
 
 % calculates the x/y-direction gradient cross-correlation
-Iex = padarray(I,D,'replicate','both');
+Iex = padarray(I,D,'symmetric','both');
 if nargin < 4
     Ixc = normxcorr2(IT,Iex);
 else

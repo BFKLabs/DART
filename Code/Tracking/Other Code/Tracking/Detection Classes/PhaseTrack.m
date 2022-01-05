@@ -1,4 +1,4 @@
-classdef LVPhaseTrack < matlab.mixin.SetGet
+classdef PhaseTrack < matlab.mixin.SetGet
    
     % class properties
     properties
@@ -12,6 +12,8 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
         iFrmR
         
         % boolean/other scalar flags
+        iPr0
+        iPr1
         iPh
         vPh        
         is2D
@@ -37,13 +39,18 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
         Phi
         axR
         NszB
+        xLim
+        yLim
         
-        % temporary object fields                     
+        % other object fields                     
         y0      
         hS
         nI
         dTol
+        isHV
+        pTolW = 0.6;
         pTolPh = 5;
+        nPr = 5;
         
     end
     
@@ -51,11 +58,12 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
     methods
         
         % class constructor
-        function obj = LVPhaseTrack(iMov,hProg)
+        function obj = PhaseTrack(iMov,hProg,isHV)
             
             % sets the input arguments
             obj.iMov = iMov;
             obj.hProg = hProg;
+            obj.isHV = isHV;
             
             % array dimensioning
             obj.nApp = length(obj.iMov.iR);
@@ -127,6 +135,20 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
                 obj.NszB = cell(obj.nApp,obj.nImg);
             end
             
+            % sets the previous stack location data
+            if isempty(obj.prData) || ~isfield(obj.prData,'fPosPr')
+                % no previous data, so use empty values
+                nPr0 = 0;
+            else
+                % otherwise, use the previous values
+                nPr0 = size(obj.prData.fPosPr{1}{1},1);
+            end            
+            
+            % sets the up the previous data coordinate index arrays
+            xiF = 1:obj.nImg;
+            obj.iPr0 = arrayfun(@(x)(x:nPr0),xiF,'un',0);
+            obj.iPr1 = arrayfun(@(x)(max(1,x-obj.nPr):(x-1)),xiF,'un',0);            
+            
             % sets up the image filter (if required)
             [bgP,obj.hS] = deal(obj.iMov.bgP.pSingle,[]);
             if isfield(bgP,'useFilt')
@@ -161,17 +183,25 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
             fP0 = repmat({NaN(nTubeR,2)},1,obj.nImg);
             IP0 = repmat({NaN(nTubeR,1)},1,obj.nImg);
             
-%             % sets the previous stack location data
-%             if isempty(obj.prData)
-%                 % no previous data, so use empty values
-%                 fPr = cell(obj.nTube(iApp),1);
-%             elseif ~isfield(obj.prData,'fPosPr')
-%                 % no previous data, so use empty values
-%                 fPr = cell(obj.nTube(iApp),1);                
-%             else
-%                 % otherwise, use the previous values
-%                 fPr = obj.prData.fPosPr{iApp}(:);
-%             end            
+            % sets the previous stack location data
+            if isempty(obj.prData)
+                % no previous data, so use empty values
+                fPr = cell(obj.nTube(iApp),1);  
+                IPr = NaN(obj.nTube(iApp),1);
+                
+            elseif ~isfield(obj.prData,'fPosPr')
+                % no previous data, so use empty values
+                fPr = cell(obj.nTube(iApp),1);      
+                IPr = NaN(obj.nTube(iApp),1);
+                
+            else
+                % otherwise, use the previous values
+                fPr = obj.prData.fPosPr{iApp}(:);
+                IPr = obj.prData.IPosPr{iApp};
+                if obj.nI > 0
+                    fPr = cellfun(@(x)(obj.downsampleCoord(x)),fPr,'un',0);
+                end
+            end
             
             % sets up the region image stack
             [ImgL,ImgBG] = obj.setupRegionImageStack(iApp);            
@@ -180,23 +210,22 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
             % segments the location for each feasible sub-region
             for iTube = find(fok(:)')
                 % sets the sub-region image stack
-                pOfs = [0,0];
-                reduceImg = false;
-                ImgSR = cellfun(@(x)(x(iRT{iTube},iCT)),ImgL,'un',0);                
+                ImgSR = cellfun(@(x)(x(iRT{iTube},iCT)),ImgL,'un',0);                                
                 
                 % sets up the residual image stack                        
                 ImgBGL = ImgBG(iRT{iTube},iCT);
                 ImgSeg = obj.setupResidualStack(ImgSR,ImgBGL);  
                 
                 % segments the image stack
-                [fP0nw,IP0nw] = obj.segmentSubRegion(ImgSeg,pOfs,reduceImg);
+                [fP0nw,IP0nw] = obj.segmentSubRegion...
+                              (ImgSeg,fPr{iTube},IPr(iTube),[iApp,iTube]);
                 if obj.nI > 0
                     % if the image is interpolated, then performed a
                     % refined image search
                     yOfs = y0L(iTube,:);
                     [fP0nw,IP0nw] = ...
                             obj.segmentSubImage(ImgL,ImgBG,fP0nw,yOfs);
-                end
+                end                
                 
                 % sets the metric/position values
                 for j = 1:obj.nImg
@@ -224,35 +253,52 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
             obj.IPos(iApp,:) = IP0;
             obj.fPosL(iApp,:) = fP0;
             obj.fPos(iApp,:) = cellfun(@(x)(...
-                                    x+y0L),obj.fPosL(iApp,:),'un',0);
+                                    x+y0L),obj.fPosL(iApp,:),'un',0);                  
            
         end 
         
         % --- segments a sub-region with a moving object
-        function [fP,IP] = segmentSubRegion(obj,Img,pOfs,reduceImg)
+        function [fP,IP] = segmentSubRegion(obj,Img,fPr0,IPr0,indR)
             
-            % memory allocation
-            pW = 0.5;
-            nFrm = length(Img);
-            iPmx = cell(nFrm,1);            
-            [fP,IP] = deal(NaN(nFrm,2),zeros(nFrm,1));    
+            % memory allocation   
+            IPr = IPr0;
+            nFrm = length(Img);                        
+            iPmx = cell(nFrm,1);  
+            [fP,IP] = deal(NaN(nFrm,2),zeros(nFrm,1)); 
+            isMove = obj.iMov.Status{indR(1)}(indR(2)) == 1;
+            
+            % retrieves the comparison pixel tolerance
+            if isfield(obj.iMov,'pTolF')
+                pTol = obj.iMov.pTolF(indR(1),obj.iPh);
+            else
+                pTol = NaN;
+            end
+            
+            % retrieves the x/y-limits
+            dTolL = obj.iMov.szObj(1);
+            xL = obj.xLim{indR(1)}(indR(2),:);
+            yL = obj.yLim{indR(1)}(indR(2),:);            
+            
+            % determines the feasible analysis frames
             isOK = ~cellfun(@(x)(all(isnan(x(:)))),Img);
-            
-            % swap this for the previous stack final coordinates
-            fPpr = NaN(1,2);
+            iFrmS = find(isOK(:)'); 
             
             % determines the most likely object position over all frames
-            for i = find(isOK(:)')
-                % reduces the image (if required)
-                if (i > 1) && reduceImg
-                    [Img(i),pOfs] = obj.reduceImageStack(Img(i),fP(i-1,:));                    
-                end                
-                
+            for i = iFrmS
+%                 % reduces the image (if required)
+%                 if (i > 1) && reduceImg
+%                     [Img(i),pOfs] = obj.reduceImageStack(Img(i),fP(i-1,:));                    
+%                 end        
+
+                % ----------------------------------------------- %
+                % --- LIKELY POSITION COORDINATE CALCULATIONS --- %
+                % ----------------------------------------------- %
+                                
                 % sorts the maxima in descending order
                 szL = size(Img{i});
                 iPmx{i} = find(imregionalmax(Img{i}));
                 [Pmx,iS] = sort(Img{i}(iPmx{i}),'descend');
-                pTolB = pW*Pmx(1);
+                pTolB = obj.pTolW*Pmx(1);
                 
                 % determines how many prominent objects are in the frame
                 ii = Pmx >= pTolB;
@@ -262,7 +308,7 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
                     [yP,xP] = ind2sub(szL,iPnw);
                     
                     % sets the final positional/intensity values
-                    [fP(i,:),IP(i)] = deal([xP,yP]+pOfs,Img{i}(iPnw));
+                    [fP(i,:),IP(i)] = deal([xP,yP],Img{i}(iPnw));
                 else
                     % case is there are more than one prominent object
                     [iGrp,pC] = getGroupIndex(Img{i}>=pTolB,'Centroid');
@@ -272,32 +318,109 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
                             iMx = NaN;
                             
                         case 1
-                            % case is 
+                            % case is there is a unique peak
                             iMx = 1;
                             
                         otherwise
-                            %
-                            if isnan(fPpr(1))
-                                A = cellfun(@length,iGrp)/obj.dTol;
-                                Z = cellfun(@(x)(mean(Img{i}(x))),iGrp).*A;
-                                iMx = argMax(Z);
+                            % case is there are multiple peaks
+                            
+                            % sets the previous data points (for estimating 
+                            % the location of the blob on this frame)
+                            fPrNw = [fPr0(obj.iPr0{i},:);fP(obj.iPr1{i},:)];
+                            fPest = extrapBlobPosition(fPrNw);
+                            
+                            % determines if the last position can be used
+                            % to estimate the previous location
+                            if isnan(fPest(1))
+                                % if not, then determine the largest group
+                                % with the highest pixel intensity
+                                A = sqrt(cellfun(@length,iGrp))/obj.dTol;
+                                Z = cellfun(@(x)(mean(Img{i}(x))),iGrp).^2;
+                                iMx = argMax(Z.*A);
                             else
-                                %
-                                iMx = argMin(pdist2(pC,fPpr));
+                                % otherwise, calculate the distance between
+                                % the current peaks and previous location
+                                iMx = argMin(pdist2(pC,fPest));
                             end                                             
                     end
                     
-                    %
-                    if ~isnan(iMx)
-                        fP(i,:) = max(1,roundP(pC(iMx,:))) + pOfs;
-                        IP(i) = max(Img{i}(iGrp{iMx}));  
+                    % if a valid solution was found, then update the
+                    % location and pixel intensity data
+                    if ~isnan(iMx)                        
+                        fP(i,:) = max(1,roundP(pC(iMx,:)));
+                        IP(i) = max(Img{i}(iGrp{iMx}));                        
                     end
                     
                 end
                 
-                %
-                fPpr = fP(i,:);
+                % ------------------------------------ %
+                % --- COORDINATE FEASIBILITY CHECK --- %
+                % ------------------------------------ %
+                
+                % for 1D experiments, prevents the large jumps in position
+                % cause by blobs hiding at the edges of the sub-region
+                
+                % new coordinate feasibility check
+                %  - only check coordinate feasibility if:
+                %    * the setup is 1D only
+                %    * there is a comparison pixel tolerance (pTol)
+                %    * the fly actually moves over the phase
+                %    * both the new/current values are less than tolerance
+                chkCoord = [~isnan(pTol),...
+                            isMove,...
+                            all([IPr,IP(i)] < pTol),...
+                            ~obj.iMov.is2D];
+                if all(chkCoord)
+                    % if this is all true, then determine if there has been
+                    % a large movement in the blob
+                    fPT = [];
+                    if i == 1
+                        % sets the previous coordinates from the last
+                        % phase/stack (if available)
+                        if ~isempty(fPr0)
+                            fPT = [fPr0(end,:);fP(i,:)];
+                        end
+                    else
+                        % otherwise, set the comparison coordinate using
+                        % the previous frame
+                        fPT = fP(i+[-1;0],:);
+                    end
+                    
+                    % determines if there are any comparison coordinates
+                    if ~isempty(fPT)
+                        % if so, determine if there has been a large
+                        % displacement between frames. if so, then reset
+                        % the coordinates for the current frame to the last
+                        % (likely jump in location detected)
+                        DPT = abs(diff(fPT,[],1));
+                        if any(DPT > dTolL)
+                            fP(i,:) = fPT(1,:);
+                        end
+                    end
+                end
+                
+                % ------------------------------------- %
+                % --- OTHER HOUSE-KEEPING EXERCISES --- %
+                % ------------------------------------- %
+                
+                % sets the limit comparison coordinates
+                if obj.nI > 0
+                    % upsamples the coordinates (if required)
+                    fPL = 1 + obj.nI*(1 + 2*(fP(i,:)-1));
+                else
+                    % otherwise, use the original coordinates
+                    fPL = fP(i,:);
+                end
+                
+                % updates the x/y coordinate limits
+                IPr = IP(i);
+                xL = [nanmin(fPL(1),xL(1)),nanmax(fPL(1),xL(2))];
+                yL = [nanmin(fPL(2),yL(1)),nanmax(fPL(2),yL(2))];                
             end
+            
+            % resets the x/y-limits
+            obj.xLim{indR(1)}(indR(2),:) = xL;
+            obj.yLim{indR(1)}(indR(2),:) = yL;
             
         end        
         
@@ -305,7 +428,7 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
         function [fP,IP] = segmentSubImage(obj,ImgL,ImgBG,fP0,pOfs)
             
             % memory allocation            
-            [W,szL] = deal(2*obj.nI,size(ImgBG));
+            [W,szL] = deal(2+obj.nI,size(ImgBG));
             [fP,IP] = deal(NaN(obj.nImg,2),NaN(obj.nImg,1));
             fPT = 1 + obj.nI*(1 + 2*(fP0-1)) + repmat(pOfs,length(ImgL),1);
             isOK = ~isnan(fP0(:,1));
@@ -370,7 +493,7 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
                 if isempty(obj.hS)
                     ImgXC{i} = Ixc0/2;
                 else
-                    ImgXC{i} = imfilter(Ixc0,obj.hS)/2;
+                    ImgXC{i} = imfiltersym(Ixc0,obj.hS)/2;
                 end
                 
                 % adjusts the image to accentuate dark regions
@@ -406,9 +529,9 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
         function [ImgL,ImgBG] = setupRegionImageStack(obj,iApp)
             
             % sets the region row/column indices
-            isHV = obj.iMov.vPhase(obj.iPh) > 1;
             [iR,iC] = deal(obj.iMov.iR{iApp},obj.iMov.iC{iApp});
-            ImgL = getRegionImgStack(obj.iMov,obj.Img,obj.iFrmR,iApp,isHV);
+            ImgL = getRegionImgStack...
+                            (obj.iMov,obj.Img,obj.iFrmR,iApp,obj.isHV);
             
             % calculates the background/local images from the stack    
             ImgBG = obj.iMov.Ibg{obj.iPh}{iApp};             
@@ -525,7 +648,7 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
                     obj.fPosG{iApp,i} = obj.fPos{iApp,i} + pOfs;
                     obj.pMaxG{iApp,i} = num2cell(obj.fPosG{iApp,i},2);
                 end
-            end            
+            end 
             
         end           
         
@@ -552,6 +675,13 @@ classdef LVPhaseTrack < matlab.mixin.SetGet
             
         end
         
+        % --- downsamples the coordinates
+        function fP = downsampleCoord(obj,fP0)
+            
+            fP = roundP(((fP0-1)/obj.nI - 1)/2 + 1);
+        
+        end
+            
     end
     
 end

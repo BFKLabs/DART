@@ -1,6 +1,8 @@
 classdef FlyInfoGUI < handle
+    
     % class properties
     properties
+        
         % input arguments
         hGUI
         snTot
@@ -40,7 +42,7 @@ classdef FlyInfoGUI < handle
     
     % class methods
     methods
-        % class custructor
+        % --- class custructor
         function obj = FlyInfoGUI(hGUI, snTot, hProp, isVis)
     
             % sets the default input arguments
@@ -224,7 +226,7 @@ classdef FlyInfoGUI < handle
                                         obj.rTable.getTableHeader());
                                     
             % retrieves the matlab handle
-            [~, hContainer] = createJavaComponent(jSP, [], obj.hPanelV);                 
+            [~, hContainer] = createJavaComponent(jSP, [], obj.hPanelV);
             
             % determines the overall maximum table width
             tFont = jTableH.getTableHeader.getFont();

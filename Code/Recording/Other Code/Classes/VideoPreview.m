@@ -57,11 +57,10 @@ classdef VideoPreview < handle
                         
             % resets the running flag
             obj.isOn = true;   
-            obj.iMov = getappdata(obj.hFig,'iMov'); 
+            obj.iMov = get(obj.hFig,'iMov'); 
             
             % sets the image acquisition object handle
-            infoObj = getappdata(obj.hFig,'infoObj');
-            obj.objIMAQ = infoObj.objIMAQ;
+            obj.objIMAQ = obj.hFig.infoObj.objIMAQ;
             
             % other initialisations
             initStr = 'Initialising...';
@@ -79,8 +78,7 @@ classdef VideoPreview < handle
             if obj.initPreviewImage(@obj.previewTrk)           
                 % if the sub-regions have been set then recreate the markers
                 if obj.iMov.isSet
-                    initFcn = getappdata(obj.hFig,'initMarkerPlots');
-                    initFcn(obj.hGUI,0)
+                    obj.hFig.initMarkerPlots(obj.hGUI,0)
                 end      
                 
                 % updates the video status
@@ -108,11 +106,11 @@ classdef VideoPreview < handle
             
             % if the sub-regions have been set then recreate the markers
             if obj.iMov.isSet
-                initFcn = getappdata(obj.hFig,'initMarkerPlots');
+                initFcn = get(obj.hFig,'initMarkerPlots');
                 initFcn(obj.hGUI,get(obj.hGUI.checkShowTube,'Value'))
                 
                 if get(obj.hGUI.checkShowTube,'Value')
-                    chkFcn = getappdata(obj.hFig,'checkShowTube_Callback');
+                    chkFcn = get(obj.hFig,'checkShowTube_Callback');
                     chkFcn(obj.hGUI.checkShowTube, 1, obj.hGUI)
                 end                
             end

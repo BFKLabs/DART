@@ -101,7 +101,7 @@ if ~frameSet
                 else
                     Img = rgb2gray(V.frames(1).cdata);        
                 end
-            catch
+            catch ME
                 % if an error occured, then return an empty array
                 Img = [];
                 return

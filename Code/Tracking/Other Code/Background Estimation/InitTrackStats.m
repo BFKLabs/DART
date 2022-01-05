@@ -31,7 +31,7 @@ classdef InitTrackStats < handle
         % fixed object dimensions        
         dY = 5;        
         dX = 10;  
-        nMet = 3;
+        nMet = 2;
         txtSz = 12;
         widFig = 570;        
         hghtPanelI = 40;        
@@ -56,6 +56,7 @@ classdef InitTrackStats < handle
         iMin
         iMax
         isOK = true;
+        isUpdating = false;
         
         % variable object dimensions
         cWid0
@@ -170,7 +171,7 @@ classdef InitTrackStats < handle
             % creates the popupmenu object
             cbFcn = {@obj.popupChangeMetric,obj};
             ppPos = [sum(txtPos([1,3])),y0,obj.widPopup,obj.hghtPopup];
-            lStr = {'Residual','Cross-Correlation','Raw Image'}';
+            lStr = {'Residual (Raw)','Residual (Median-Adjusted)'}';
             obj.hPopupM = uicontrol(obj.hPanelT,'Units','Pixels',...
                                    'Style','PopupMenu','Value',1,...
                                    'Position',ppPos,'String',lStr,...
@@ -281,9 +282,12 @@ classdef InitTrackStats < handle
             obj.jTable.setModel(jTableMod);
             
             % sets the table callback function
-            cbFcn = {@obj.tableCellSelect,obj};
-            jTM = handle(obj.jTable,'callbackproperties');
-            addJavaObjCallback(jTM,'MouseClickedCallback',cbFcn);            
+            jTM = handle(obj.jTable,'callbackproperties');            
+            cbFcnC = {@obj.tableCellSelect,obj};
+            addJavaObjCallback(jTM,'MouseClickedCallback',cbFcnC);  
+
+%             cbFcnT = {@obj.tableCellChange,obj};            
+%             addJavaObjCallback(jTableMod,'TableChangedCallback',cbFcnT)
             
             % creates the table cell renderer
             obj.tabCR = ColoredFieldCellRenderer(obj.white);
@@ -348,6 +352,10 @@ classdef InitTrackStats < handle
         % --- initialises the function cell compatibility table colours
         function resetTableData(obj)
             
+            % flag that the table is updating
+            obj.isUpdating = true;
+            pause(0.05);
+            
             % sets the background colours based on the column indices
             for i = 1:size(obj.Data,1)
                 for j = 1:size(obj.Data,2)
@@ -359,7 +367,10 @@ classdef InitTrackStats < handle
             end
 
             % repaints the table
-            obj.jTable.repaint(); 
+            obj.jTable.repaint();
+            
+            % flag that the table is updating
+            obj.isUpdating = false;            
             
         end                            
         
@@ -371,7 +382,7 @@ classdef InitTrackStats < handle
                 if mod(iCol,4) == 0
                     cWid = 2;
                 else
-                    cWid = 55 - any(iCol == [1,5:7]);
+                    cWid = 82 + any(iCol == [1,4]);
                 end
             else
                 if ~exist('cWid','var')
@@ -410,7 +421,7 @@ classdef InitTrackStats < handle
             nMaxSR = max(obj.bgObj.nTube);
             
             % sets the base column header
-            mStr = {'Residual','X-Corr','Intensity'};
+            mStr = {'Residual (R)','Residual (M)'};
             sStr = {'Min','Max','Avg'};
             
             % sets the column header strings
@@ -432,11 +443,16 @@ classdef InitTrackStats < handle
             nCol = (length(sStr)+1)*obj.nMet - 1;
             obj.Data = cell(nMaxSR,nCol);
             [obj.iMin,obj.iMax] = deal(NaN(nMaxSR,3));
+            indOK = obj.getValidFrames();
             
             % sets the table data values
             for iMet = 1:obj.nMet
-                % determines the min/max metric values
+                % retrieves the metric values            
                 yMet = cell2mat(obj.pData{iMet}(iApp,:));
+                yMet(isnan(yMet)) = 0;
+                yMet(:,~indOK) = NaN;                
+                
+                % determines the min/max metric values                
                 [yMin,obj.iMin(iSR,iMet)] = nanmin(yMet,[],2);
                 [yMax,obj.iMax(iSR,iMet)] = nanmax(yMet,[],2);
                 yMean = nanmean(yMet,2);
@@ -486,10 +502,15 @@ classdef InitTrackStats < handle
             obj.cHdr = [{createTableHdrString({'Overall','Min'}),...
                          createTableHdrString({'Overall','Max'}),...
                          createTableHdrString({'Overall','Avg'}),...
-                         ' '},cHdr0];
-            
+                         ' '},cHdr0];            
+                     
             % retrieves the metric values
+            indOK = obj.getValidFrames();
             yMet = cell2mat(obj.pData{iMet}(iApp,:));
+            yMet(isnan(yMet)) = 0;
+            yMet(:,~indOK) = NaN;
+            
+            % determines the min/max/mean metric values
             [yMin,obj.iMin] = nanmin(yMet,[],2);
             [yMax,obj.iMax] = nanmax(yMet,[],2);
             yMean = nanmean(yMet,2);
@@ -508,6 +529,16 @@ classdef InitTrackStats < handle
             obj.bgCol = cellfun(@(x)(obj.getCellColour(x)),obj.Data,'un',0);
             
         end        
+        
+        % --- retrieves the valid (low/hi-variance) phase frames
+        function indOK = getValidFrames(obj)
+
+            % determines the feasible (low/hi-variance) phases
+            [iFrm,vPh] = deal(obj.bgObj.indFrm,obj.bgObj.iMov.vPhase);
+            indOK = logical(cell2mat(cellfun(@(x,y)((y<3)*ones...
+                        (length(x),1)),iFrm,num2cell(vPh),'un',0)));            
+            
+        end
         
         % --- sets up the region strings
         function rStr = setupRegionString(obj)
@@ -707,6 +738,24 @@ classdef InitTrackStats < handle
             % updates the highlight marker
             setObjEnable(obj.hCheckH,'on');
             obj.updateHighlightMarker(iPhase,iFrm,iRow);
+            
+        end
+        
+        % --- resets the table data values
+        function tableCellChange(~, evnt, obj)
+            
+            % if updating, then exit
+            if obj.isUpdating; return; end
+            
+            % retrieves the altered row/column indices
+            [iRow,iCol] = deal(evnt.getFirstRow,evnt.getColumn);            
+
+            % resets the cell table value
+            obj.isUpdating = true;
+            pause(0.05);
+            
+            obj.jTable.setValueAt(obj.Data{iRow+1,iCol+1},iRow,iCol);
+            obj.isUpdating = false;
             
         end
         

@@ -115,12 +115,17 @@ classdef RunExptObj < handle
                     obj.extnObj = getappdata(obj.hExptF,'extnObj');
                     
                     % sets up the experiment data struct
-                    iExpt0 = obj.getExptDataStruct();                
+                    iExpt0 = obj.getExptDataStruct();
                     
                     % sets the other fields
                     obj.iStim = infoObj.iStim;
                     [obj.iExpt,obj.iExpt0] = deal(iExpt0);    
                     [obj.isRT,obj.isRTB] = deal(isRTExpt,isRTBatch); 
+                    
+                    % updates the experiment information field (this could
+                    % have changed when starting the expt)
+                    iExptM = getappdata(hMain,'iExpt'); 
+                    obj.iExpt.Info.Type = iExptM.Info.Type;                    
                     
                     % sets the video dependent fields (if recording)
                     if obj.hasIMAQ
@@ -345,7 +350,8 @@ classdef RunExptObj < handle
             end
 
             % sets the current access to be the main gui axes handle
-            obj.hAx = findobj(obj.hMain,'type','axes');
+            hPanelImg = findall(obj.hMain,'tag','panelImg');
+            obj.hAx = findobj(hPanelImg,'type','axes');
             set(obj.hMain,'CurrentAxes',obj.hAx);        
 
             % sets the empty images into the recording axes

@@ -84,23 +84,57 @@ isFrameSel = strcmp(get(hRadio,'tag'),'radioStartFrame');
 setObjEnable(handles.editFrame,isFrameSel)
 setPanelProps(handles.panelStartPhase,~isFrameSel)
 
+% sets the table background colour based on the selection
+if isFrameSel
+    % case is the global frame is selected
+    bgCol = 0.81*[1,1,1];
+else
+    % case is the phase/stack is selected
+    nStackTrk = getappdata(handles.output,'nStackTrk');
+    nStackTot = getappdata(handles.output,'nStackTot');
+    
+    % sets the table background colours
+    prTrk = nStackTrk./nStackTot;
+    bgCol0 = {[1,0,0],[1,1,0],[0,1,0]};
+    trkType = 1 + (prTrk > 0) + (prTrk == 1);
+    bgCol = cell2mat(arrayfun(@(x)(bgCol0{x}),trkType(:),'un',0));
+    
+    % highlights the selected row
+    iData = getappdata(handles.output,'iDataS');
+    bgCol(iData.Phase,:) = 0.75*bgCol(iData.Phase,:);
+end
+
+% updates the table background colour
+set(handles.tablePhaseInfo,'BackgroundColor',bgCol)
+
 % --- Executes on updating parameter editboxes
 function editParaUpdate(hEdit, eventdata, h)
 
 % retrieves the important data structs
 hFig = h.figStartPoint;
 isTrk = getappdata(hFig,'isTrk');
-trkObj = getappdata(hFig,'trkObj');
+nStackTot = getappdata(hFig,'nStackTot');
+nStackTrk = getappdata(hFig,'nStackTrk');
 [iDataS,iData0] = deal(getappdata(hFig,'iDataS'));
+hPanelS = h.panelStartPoint;
 
 % retrieves the parameter limits (based on type)
 pStr = get(hEdit,'UserData');
 switch pStr
     case 'Phase' % case is the start frame
-        nwLim = [1,trkObj.iPhase0];        
+        
+        % determines the feasible max phase count
+        nPhMax = find(nStackTrk > 0,1,'last');
+        if nStackTrk(nPhMax)/nStackTot(nPhMax) == 1
+            % if the phase is fully tracked, then start on the next phase
+            nPhMax = min(length(nStackTot),nPhMax+1);
+        end
+        
+        % sets the phase limits
+        nwLim = [1,nPhMax];        
         
     case 'Stack' % case is the start stack
-        nwLim = [1,trkObj.nCountS(iDataS.Phase)];
+        nwLim = [1,max(1,nStackTrk(iDataS.Phase))];
         
     case 'Frame' % case is the start frame
         nwLim = [1,length(isTrk)];
@@ -138,19 +172,15 @@ if chkEditValue(nwVal,nwLim,true)
             end
             
         case 'Phase' % case is the phase index
-            % resets the stack index 
-            nCount = trkObj.nCountS(iDataS.Phase);
-            if iDataS.Stack > nCount
-                iDataS.Stack = nCount;
+            % resets the stack index
+            if iDataS.Stack > nStackTot(iDataS.Phase)
+                iDataS.Stack = nStackTot(iDataS.Phase);
                 set(h.editStack,'string',num2str(iDataS.Stack))                
             end
             
-            % updates the phase count string
-            set(h.textPhaseCount,'string',num2str(nCount))
-            
             % resets the frame index
             iDataS.Frame = calcFrameIndex(h,iDataS.Phase,iDataS.Stack);                
-            set(h.editFrame,'string',num2str(iDataS.Frame))            
+            set(h.editFrame,'string',num2str(iDataS.Frame))                    
             
         otherwise % case is the stack index
             iDataS.Frame = calcFrameIndex(h,iDataS.Phase,iDataS.Stack);
@@ -160,6 +190,9 @@ if chkEditValue(nwVal,nwLim,true)
     
     % updates the data struct
     setappdata(hFig,'iDataS',iDataS)
+    if strcmp(pStr,'Phase')
+        panelStartPoint_SelectionChangedFcn(hPanelS,'1',h)
+    end
     
 else
     % otherwise, reset the parameter to the last valid value
@@ -198,12 +231,23 @@ delete(handles.figStartPoint)
 % --- initialises the object properties
 function initObjProps(handles)
 
+% global variables
+global H0T HWT
+
 % retrieves the data structs
+dX = 10;
 hFig = handles.figStartPoint;
 iDataS = getappdata(hFig,'iDataS');
 trkObj = getappdata(hFig,'trkObj');
+iMov = trkObj.iMov;
 
-% initialises the 
+% object handles
+hEditF = handles.editFrame;
+hTable = handles.tablePhaseInfo;
+hPanelS = handles.panelStartPoint;
+hPanelP = handles.panelStartPhase;
+
+% initialises the editbox object properties
 fStr = fieldnames(iDataS);
 for i = 1:length(fStr)
     % retrieves the editbox handle
@@ -215,25 +259,74 @@ for i = 1:length(fStr)
     set(hEdit,'Callback',cbFcn,'String',num2str(pVal))
 end
 
-% updates the phase count string
-nCount = trkObj.nCountS(iDataS.Phase);
-set(handles.textPhaseCount,'string',num2str(nCount))
-
-% determines the first feasible region/sub-region
-iApp0 = find(trkObj.iMov.ok,1,'first');
-iTube0 = find(trkObj.iMov.flyok(:,iApp0),1,'first');
-setappdata(hFig,'isTrk',~isnan(trkObj.pData.fPos{iApp0}{iTube0}(:,1)));
-
-
-% runs the start point selection callback function
-panelStartPoint_SelectionChangedFcn(handles.panelStartPoint, '1', handles)
+% determines if the video is multi-phase. reduce the GUI if not
+nPh = length(iMov.vPhase);
+if nPh == 1
+    % calculates the change in height for the remaining objects
+    pPos = get(handles.radioStartFrame,'Position');
+    dHght = dX - pPos(2);    
+    
+    % makes the phase objects invisible
+    setObjVisibility(handles.radioStartFrame,0)
+    setObjVisibility(handles.radioStartPhase,0)  
+    setObjVisibility(handles.textStartPhase,0)
+    setObjVisibility(handles.panelStartPhase,0)
+    
+    % retrieves the non-panel object handles
+    hObj = findall(hPanelS);
+    hObj = hObj(hObj ~= hPanelS);
+    
+    % resets the height of the objects
+    resetObjPos(hObj,'Bottom',dHght,1)
+    resetObjPos(hPanelS,'Height',dHght,1)    
+    resetObjPos(hFig,'Height',dHght,1)
+    set(handles.radioStartFrame,'Value',1)
+    
+else
+    % case is there are multiple phases
+    
+    % initialisations
+    iPh = iMov.iPhase(trkObj.iPhaseS,:);
+    iApp0 = find(trkObj.iMov.ok,1,'first');
+    iTube0 = find(trkObj.iMov.flyok(:,iApp0),1,'first');
+    isTrk = ~isnan(trkObj.pData.fPos{iApp0}{iTube0}(:,1));
+    hObj = [findall(handles.panelStartPoint,'UserData',1);hEditF];
+    
+    % determines the change in the GUI object heights/locations 
+    tPos0 = get(hTable,'Position');
+    dtHght = H0T + nPh*HWT - tPos0(4);
+    
+    % resets the object positions
+    resetObjPos(hFig,'Height',dtHght,1)
+    resetObjPos(hTable,'Height',dtHght,1)
+    resetObjPos(hPanelS,'Height',dtHght,1)
+    resetObjPos(hPanelP,'Height',dtHght,1)
+    resetObjPos(hObj,'Bottom',dtHght,1)
+    
+    % determines the total number of stacks per phase
+    nFrmS = diff(iPh,[],2) + 1;
+    nStackTot = ceil(nFrmS/trkObj.nFrmS);
+    
+    % determines the number of tracked stacks per phase
+    nStackTrk = ceil(cellfun(@(x)(sum(isTrk(x(1):x(2)))),...
+                            num2cell(iPh,2))/trkObj.nFrmS);    
+    
+    % sets the table data/properties
+    tData = num2cell([(1:nPh)',iPh,nStackTrk,nStackTot]);
+    set(hTable,'Data',tData);            
+    
+    % runs the start point selection callback function
+    setappdata(hFig,'isTrk',isTrk);
+    setappdata(hFig,'nStackTrk',nStackTrk);
+    setappdata(hFig,'nStackTot',nStackTot);
+    panelStartPoint_SelectionChangedFcn(hPanelS, '1', handles)    
+end
 
 % --- initialises the data struct
 function iDataS = initDataStruct(handles,trkObj)
 
 % calculates the frame index
-iPhase0 = trkObj.iPhase0;
-iStack0 = trkObj.nCountS(iPhase0);
+[iPhase0,iStack0] = deal(trkObj.iPhase0,max(1,trkObj.nCountS));
 iFrm0 = calcFrameIndex(handles,iPhase0,iStack0);
 
 % sets up the data struct
@@ -250,7 +343,7 @@ nFrmMx = size(trkObj.pData.fPos{1}{1},1);
 
 % calculates the start frame index
 jPhase = trkObj.iPhaseS(iPhase0);
-iFrm0 = min(nFrmMx,trkObj.iMov.iPhase(jPhase,1)+nFrmS*iStack0);
+iFrm0 = min(nFrmMx,trkObj.iMov.iPhase(jPhase,1)+nFrmS*(iStack0-1));
 
 % --- calculates the phase/stack indices (from the frame index)
 function [iPhase0,iStack0] = calcPhaseIndex(handles,iFrm0)
@@ -262,8 +355,4 @@ trkObj = getappdata(handles.figStartPoint,'trkObj');
 % calculates the phase/stack indices
 iPhase0 = find(cellfun(@(x)(any(x==iFrm0)),trkObj.iFrmG(trkObj.iPhaseS)));
 iPhaseS0 = trkObj.iPhaseS(iPhase0);
-iStack0 = ceil((iFrm0-trkObj.iMov.iPhase(iPhaseS0,1))/nFrmS);
-
-% updates the phase count string
-nCount = trkObj.nCountS(iPhase0);
-set(handles.textPhaseCount,'string',num2str(nCount))
+iStack0 = max(1,ceil((iFrm0-trkObj.iMov.iPhase(iPhaseS0,1))/nFrmS));
