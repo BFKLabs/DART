@@ -181,8 +181,12 @@ classdef SingleTrackInit < SingleTrack
             nT = getSRCountVec(obj.iMov);
             nApp = numel(nT);
             
-            % field re-initialisation
-            obj.hFilt = [];            
+             % field re-initialisation
+             if isfield(obj.iMov,'hFilt')
+                 obj.hFilt = obj.iMov.hFilt;  
+             else
+                obj.hFilt = [];   
+             end
             
             % phase dependent object memory allocation
             A = cell(nPh,1);           
@@ -478,7 +482,7 @@ classdef SingleTrackInit < SingleTrack
             
             % initialisations
             nApp = length(obj.iMov.iR);
-            Ds = obj.iMov.szObj(1);
+            Ds = obj.iMov.szObj(1)/2;
             
             % calculates the overall sub-region status flags
             sFlagMax = calcImageStackFcn(obj.sFlag,'max');
@@ -537,7 +541,7 @@ classdef SingleTrackInit < SingleTrack
                 % current sub-region
                 [iRT,dP] = obj.getSRRowIndices(k,j); 
                 ZtotL0 = cellfun(@(x)(x(iRT,:)),Ztot0{k},'un',0);
-                ZtotLF = cellfun(@(x)(x(iRT,:)),ZtotF{k},'un',0);
+%                 ZtotLF = cellfun(@(x)(x(iRT,:)),ZtotF{k},'un',0);
                 
                 % retrieves the previous likely position
                 if hasMove(j,k)
@@ -547,7 +551,7 @@ classdef SingleTrackInit < SingleTrack
                 end
 
                 % calculates the most likely static blobs 
-                fPnw0 = obj.calcLikelyStaticBlobs(ZtotLF,fP0,dP,Ds);
+                fPnw0 = obj.calcLikelyStaticBlobs(ZtotL0,fP0,dP,Ds);
                 if ~isnan(fP0(1))
                     % if there is a comparison value, then determine if the
                     % new coordinates is close enough 
@@ -634,7 +638,7 @@ classdef SingleTrackInit < SingleTrack
                 
                 % calculates the distance weighting mask
                 Dw = bwdist(setGroup(fP0mn,size(Ztot{1})));
-                Qw = double(1./(1+Dw/Dscale));
+                Qw = double(1./max(1,Dw/Dscale)).^2;
                 Ztot = cellfun(@(x)(x.*Qw),Ztot,'un',0);
             end
             
@@ -825,7 +829,7 @@ classdef SingleTrackInit < SingleTrack
             if obj.iMov.is2D
                 hSz0 = 25;
             else
-                hSz0 = ceil(diff(obj.iMov.yTube{iApp}(1:2))/2);
+                hSz0 = min(30,ceil(diff(obj.iMov.yTube{iApp}(1:2))/2));
             end
                         
             % sets the initial parameter estimate
@@ -930,7 +934,7 @@ classdef SingleTrackInit < SingleTrack
             obj.mFlag = cell(nApp,1);
             
             % attempts to calculate the coordinates of the moving objects            
-            for iApp = 1:nApp
+            for iApp = find(obj.iMov.ok(:)')
                 % updates the progress bar
                 wStrNw = sprintf('Analysing Region (%i of %i)',iApp,nApp);
                 if obj.hProg.Update(3+obj.wOfsL,wStrNw,iApp/(1+nApp))
@@ -951,7 +955,7 @@ classdef SingleTrackInit < SingleTrack
                 
                 % sets up the search mask for each sub-region
                 [obj.mFlag{iApp},obj.Imu(iApp,iPh),...
-                 obj.Isd(iApp,iPh),obj.pTolF(iApp,iPh)] = ...
+                obj.Isd(iApp,iPh),obj.pTolF(iApp,iPh)] = ...
                                 obj.calcSubRegionProps(IRng{iApp},iRT,iCT);                
                 obj.mFlag{iApp}(~obj.iMov.flyok(:,iApp)) = 0;
                 
@@ -1018,10 +1022,8 @@ classdef SingleTrackInit < SingleTrack
             %  = 0: blob is completely stationary over the phase
             %  = 1: blob has moved a very small distance
             %  = 2: blob has moved a significant distance
-            mFlag = double(Z > obj.zTolS) + double(Z > obj.zTolJ); 
-            
-            % any sub-regions with any significant rows are flagged as
-            % being moving
+            mFlag = zeros(size(isSig));
+%             mFlag(Z > obj.zTolS)= 1;
             mFlag(isSig) = 2;
             
         end
@@ -1110,7 +1112,7 @@ classdef SingleTrackInit < SingleTrack
             % retrieves the movement flags (for each sub-region) and
             % determines which have some sort of movement
             Zflag = combineNumericCells(obj.mFlag(:)');
-            obj.useP = (Zflag == 2) & (ZR > obj.zTolJ);
+            obj.useP = (Zflag == 2); % & (ZR > obj.zTolJ);
             
             % calculates the distance range 
             DrngC = cellfun(@(x)(sqrt(sum(calcImageStackFcn...
@@ -1125,7 +1127,7 @@ classdef SingleTrackInit < SingleTrack
             end
                                     
             % determines which sub-images to use for the template   
-            for i = 1:nApp
+            for i = find(obj.iMov.ok(:)')
                 % updates the progress bar
                 wStrNw = sprintf('Analysing Region (%i of %i)',i,nApp);
                 if obj.hProg.Update(3+obj.wOfsL,wStrNw,i/(1+nApp))
@@ -1512,7 +1514,7 @@ classdef SingleTrackInit < SingleTrack
                                 
                 % determines the frames that need recalculation                
                 if obj.iMov.vPhase(iPh) < 3
-                    for j = 1:nApp
+                    for j = find(obj.iMov.ok(:)')
                         % updates the progressbar
                         wStr = sprintf('%s (%i of %i)',wStr0{2},j,nApp);
                         if obj.hProg.Update(2,wStr,j/nApp)

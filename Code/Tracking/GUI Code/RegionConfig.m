@@ -2371,7 +2371,6 @@ iData = struct('D1',B,'D2',C,'is2D',false,'isFixed',false);
 function iData = convertDataStruct(iMov)
 
 % data struct initialisations
-is2D = is2DCheck(iMov);
 [D1,D2] = getRegionDataStructs(iMov);
 
 % resets the arrays 
@@ -2380,7 +2379,7 @@ if detMltTrkStatus(iMov)
 end
 
 % sets the final data struct
-iData = struct('D1',D1,'D2',D2,'is2D',is2D,'isFixed',true);
+iData = struct('D1',D1,'D2',D2,'is2D',iMov.is2D,'isFixed',true);
 
 % --- retrieves the data sub struct (dependent on the setup type)
 function [pInfo,is2D] = getDataSubStruct(handles,is2D)

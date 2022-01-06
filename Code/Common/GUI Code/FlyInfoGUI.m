@@ -18,8 +18,7 @@ classdef FlyInfoGUI < handle
         jTable
         rTable        
         
-        % other fields        
-        is2D      
+        % other fields           
         isVis
         ok
         nRow
@@ -86,7 +85,6 @@ classdef FlyInfoGUI < handle
            
             % creates the figure object
             fPos = [100,100,200,70];
-            obj.is2D = is2DCheck(obj.iMov);
             
             % creates the figure object
             obj.hFig = figure('Position',fPos,'tag','figFlyInfoCond',...
@@ -116,6 +114,7 @@ classdef FlyInfoGUI < handle
                 
             end
             
+            % sets the grouping indices
             if isfield(obj.iMov,'pInfo')
                 obj.iGrp = obj.iMov.pInfo.iGrp; 
             else
@@ -136,19 +135,29 @@ classdef FlyInfoGUI < handle
             
             % sets up the cell background colour array
             colArr = getAllGroupColours(max(obj.iGrp(:)));            
-            if is2DCheck(obj.iMov)
+            if obj.iMov.is2D
                 obj.bgCol = arrayfun(@(x)(...
                            getJavaColour(colArr(x+1,:))),obj.iGrp,'un',0);
             else
+                % memory allocation
                 nFly = size(obj.ok,1);
-                iGrpC = arr2vec(obj.iGrp')';                
-                bgCol0 = arrayfun(@(x)(repmat({getJavaColour(...
-                                colArr(x+1,:))},nFly,1)),iGrpC,'un',0);
-                obj.bgCol = cell2cell(bgCol0,0);
+                iGrpC = arr2vec(obj.iGrp')';  
+                nFlyR = arr2vec(obj.iMov.pInfo.nFly')';
+                
+                % sets the grouping indices
+                iCol = zeros(nFly,length(iGrpC));
+                for i = 1:size(iCol,2)
+                    iCol(1:nFlyR(i),i) = iGrpC(i);
+                    obj.Data((nFlyR(i)+1):end,i) = {[]};
+                end
+                
+                % sets the background colours
+                obj.bgCol = arrayfun(@(x)(getJavaColour(...
+                                        colArr(x+1,:))),iCol,'un',0);
             end
             
             % sets up the table column names
-            if obj.is2D
+            if obj.iMov.is2D
                 obj.cHdr = cellfun(@(x)(sprintf('%s #%i','Column',x)),...
                                     num2cell(1:size(obj.Data,2)),'un',0); 
             else
@@ -288,7 +297,7 @@ classdef FlyInfoGUI < handle
             end
             
             % creates the table row headers 
-            obj.rTable = RowNumberTable(obj.jTable,obj.is2D);
+            obj.rTable = RowNumberTable(obj.jTable,obj.iMov.is2D);
             
         end
         

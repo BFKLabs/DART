@@ -210,7 +210,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             % segments the location for each feasible sub-region
             for iTube = find(fok(:)')
                 % sets the sub-region image stack
-                ImgSR = cellfun(@(x)(x(iRT{iTube},iCT)),ImgL,'un',0);                                
+                ImgSR = cellfun(@(x)(x(iRT{iTube},iCT)),ImgL,'un',0);
                 
                 % sets up the residual image stack                        
                 ImgBGL = ImgBG(iRT{iTube},iCT);
@@ -327,21 +327,19 @@ classdef PhaseTrack < matlab.mixin.SetGet
                             % sets the previous data points (for estimating 
                             % the location of the blob on this frame)
                             fPrNw = [fPr0(obj.iPr0{i},:);fP(obj.iPr1{i},:)];
-                            fPest = extrapBlobPosition(fPrNw);
-                            
-                            % determines if the last position can be used
-                            % to estimate the previous location
-                            if isnan(fPest(1))
-                                % if not, then determine the largest group
-                                % with the highest pixel intensity
-                                A = sqrt(cellfun(@length,iGrp))/obj.dTol;
-                                Z = cellfun(@(x)(mean(Img{i}(x))),iGrp).^2;
-                                iMx = argMax(Z.*A);
-                            else
-                                % otherwise, calculate the distance between
-                                % the current peaks and previous location
-                                iMx = argMin(pdist2(pC,fPest));
-                            end                                             
+                            fPest0 = extrapBlobPosition(fPrNw);
+                            fPest = max(1,min(fPest0,flip(szL)));
+
+                            % sets up the distance estimate mask
+                            Best = setGroup(roundP(fPest),szL);
+                            Dw0 = 1./max(1,bwdist(Best)/(obj.dTol));
+                            Dw = Dw0(sub2ind(szL,...
+                                    roundP(pC(:,2)),roundP(pC(:,1))));
+
+                            % determines the brightest group that is
+                            % closest to the estimated location
+                            Z = cellfun(@(x)(mean(Img{i}(x))),iGrp).^2;
+                            iMx = argMax(Z.*Dw);                                        
                     end
                     
                     % if a valid solution was found, then update the

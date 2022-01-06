@@ -6,6 +6,12 @@ function [D1,D2] = getRegionDataStructs(iMov,appPara)
 is2D = is2DCheck(iMov);
 isNewFormat = isfield(iMov,'pInfo');
 
+if isfield(iMov,'is2D')
+    is2D = iMov.is2D;
+else
+    is2D = is2DCheck(iMov);
+end
+    
 % determines if the variable sub-region count has been set
 if isfield(iMov,'nTubeR')
     hasNTube = ~isempty(iMov.nTubeR);

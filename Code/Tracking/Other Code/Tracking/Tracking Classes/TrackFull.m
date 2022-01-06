@@ -209,15 +209,24 @@ classdef TrackFull < Track
                 % available then use these values
                 iPhPr = iPhase-1;
                 iFrmF = obj.iMov.iPhase(iPhPr,2);
-                prDataPh = obj.sObj.getPrevPhaseData(obj.fObj{iPhPr},iFrmF); 
+                prDataPh = obj.sObj.getPrevPhaseData(obj.fObj{iPhPr},iFrmF);
                 
             else
-                % if there is no positional data, then retrieve the
-                % data values from the last valid frame
-                if length(obj.sProg.iFrmR) == nCountNw
-                    iFrmLast = max(1,obj.sProg.iFrmR{end}(1)-1);
+                % otherwise, determine the last tracked from the current 
+                % phase. use this to determine the previous data
+                iApp0 = find(obj.iMov.ok,1,'first');
+                iTube0 = find(obj.iMov.flyok(:,iApp0),1,'first');
+                iFrmP = obj.iMov.iPhase(iPhase,1):obj.iMov.iPhase(iPhase,2);
+                isTrk = ~isnan(obj.pData.fPos{iApp0}{iTube0}(iFrmP,1));
+                
+                % determines the last valid frame in the phase that was
+                % analysed
+                if ~any(isTrk)
+                    % use the first frame from the phase if none
+                    iFrmLast = iFrmP(1)-1;
                 else
-                    iFrmLast = max(1,obj.sProg.iFrmR{nCountNw+1}(1)-1);
+                    % otherwise, return the last tracked frame
+                    iFrmLast = iFrmP(find(isTrk,1,'last'));
                 end
                 
                 % sets up the previous phases data struct
@@ -465,7 +474,7 @@ classdef TrackFull < Track
             % sets the frames that are to be removed
             Brmv = false(length(obj.pData.IPos{1}{1}),1);
             Brmv(cell2mat(obj.iFrmG(xiS)')) = true;
-            Brmv(obj.iFrmG{jPhase}((indS(2)*obj.nFrmS+1):end)) = true;
+            Brmv(obj.iFrmG{jPhase}(((indS(2)-1)*obj.nFrmS+1):end)) = true;
             
             % resets the positional arrays
             for i = 1:length(obj.pData.fPos)

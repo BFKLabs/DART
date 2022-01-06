@@ -1210,8 +1210,7 @@ T = get(hFig,'T');
 pData = hFig.hGUI.output.pData;
 
 % determines the maximum extent
-
-iApp = get(findobj(handles.menuPlotMetrics,'checked','on'),'UserData');
+iApp = getSelectedMenuItem(handles);
 if (iApp == 0)
     isIn = all([mP,T(end)/60,(length(pData.fPos)+0.5)] - [0 0.5 mP] > 0);
 else

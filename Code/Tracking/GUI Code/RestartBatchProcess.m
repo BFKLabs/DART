@@ -167,11 +167,11 @@ hProg = ProgBar('Video Shift Calculations','Video Shift Calculations');
 
 % retrieves the batch processing data for the current expt.
 iSel = get(handles.listExptAdded,'Value');
+nFile = length(iExptAdd.isSeg{iSel});
 bpS = iExptAdd.bpData(iSel);  
 
 % calculates the image shifts for each of the missing regions
-nFile = size(bpS.dpImg,1);
-for i = find(isnan(bpS.dpImg(:,1))')
+for i = find(isnan(bpS.dpImg(1:nFile,1))')
     % updates the progressbar 
     wStrNw = sprintf('Calculating Video Shift (%i of %i)',i,nFile);
     if hProg.Update(1,wStrNw,i/nFile)
@@ -353,7 +353,7 @@ if showStats
     % initialisations
     lWid = 2;
     xiS = 1:nFile;
-    dpImg = bpS.dpImg;
+    dpImg = bpS.dpImg(xiS,:);
     hPlot = zeros(1,2);    
     xL = [1,nFile]+0.5*[-1,1];  
     xP = [xL(1),(iFile+0.5)];

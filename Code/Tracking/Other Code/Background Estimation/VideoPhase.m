@@ -493,6 +493,7 @@ classdef VideoPhase < handle
             % other initialisations
             nGrp = size(iFrmG,1);
             iGrpC = cell(nGrp-1,1);
+            nFrmGrpMax = 25;
             
             % sets the frames that are checked
             indChk0 = [obj.iFrm0(1):obj.iFrm0(iFrmG(1,2)),...
@@ -534,6 +535,7 @@ classdef VideoPhase < handle
             iFrmF = find(obj.Dimg(:,1));                        
             iFrmGrp = cellfun(@(x)(iFrmF...
                    ((iFrmF>=x(1))&(iFrmF<=x(2)))),num2cell(indG,2),'un',0);
+            nFrmGrp = diff(indG,[],2) + 1;
                
             % calculates the mean intensities/gradients for each groupings
             pGrp = obj.calcFrmGroupGradient(iFrmGrp);           
@@ -551,7 +553,7 @@ classdef VideoPhase < handle
                 [dT,Vest] = deal(diff(iNw),pGrp(i-1));
 
                 % determines if the the frame groups can be combined  
-                if isnan(Vest)
+                if isnan(Vest) || any(nFrmGrp(i+[-1,0]) > nFrmGrpMax)
                     inTol = false;
                 elseif abs(Vest) < pTolMin
                     % if the gradient of the previous frame group is
