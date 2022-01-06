@@ -119,7 +119,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         end    
         
         % --- retrieves the batch processing comparsion image
-        function setComparisonImages(obj)            
+        function setComparisonImages(obj)
             
             % retrieves the comparison image for each batch processing 
             % object (only for missing datasets)
@@ -427,9 +427,9 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             % intialisation
             isInit = true;            
             obj.isOutput = true;
-            eStr = {['Error! There was an issue with ',...
-                     'the tracking process.'];['Read the error ',...
-                     'message associated with this issue.']};            
+            eStr = {'Error! There was an issue with ',...
+                    'the tracking process.';'Read the error ',...
+                    'message associated with this issue.'};            
             
             % loops through all the movies (starting at iFile0)
             i = obj.iFile0;
@@ -683,8 +683,9 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         function prData = getPrevSolnData(obj,iDir,iFile)
             
             % initialisations
-            xOfs = cellfun(@(x)(x(1)-1),obj.iMov.iC);
-            prData = struct('fPos',[],'iStatus',[],'iMov',[]);            
+            nPr = 5;
+            prData = struct('fPosPr',[],'iStatus',[],'iStatusF',[],...
+                            'IPosPr',[],'fPos',[]);
             
             % retrieves the full file name of the solution file
             sFilePr = obj.getSolnFileName(iDir,iFile);
@@ -695,16 +696,14 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             warning(wState)        
             
             % sets the location of the objects at the end of the video
-            prData.fPos = cellfun(@(fp)(cell2mat(cellfun(@(x)...
-                    (x(end,:)),fp(:),'un',0))),sData.pData.fPos,'un',0); 
-            for i = 1:length(xOfs)
-                prData.fPos{i}(:,1) = prData.fPos{i}(:,1) - xOfs(i);
-            end
+            prData.fPosPr = cellfun(@(y)(cellfun(@(x)(x((end-(nPr-1))...
+                            :end,:)),y,'un',0)),sData.pData.fPosL,'un',0);
+            prData.IPosPr = cellfun(@(y)(cellfun(@(x)(x(end)),y)),...
+                            sData.pData.IPos,'un',0);
             
             % retrieves the previous solution file data
             prData.iStatus = obj.iMov.Status;
             prData.iStatusF = obj.iMov.StatusF{end};
-            prData.iMov = sData.iMov;
             
         end
         

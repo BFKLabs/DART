@@ -34,12 +34,12 @@ classdef SingleTrackInit < SingleTrack
         dpInfo
         errStr
         errMsg
-        hFilt
-        prData0 = []; 
+        hFilt        
         mFlag
         Isd
         Imu
         pTolF
+        prData0 = []; 
         
         % parameters
         isHiV
@@ -544,9 +544,16 @@ classdef SingleTrackInit < SingleTrack
 %                 ZtotLF = cellfun(@(x)(x(iRT,:)),ZtotF{k},'un',0);
                 
                 % retrieves the previous likely position
-                if hasMove(j,k)
+                if (iPh == 1) && ~isempty(obj.prData0)
+                    % case is there are coordinates from the previous
+                    % solution file to compare against
+                    fP0 = roundP(nanmean(obj.prData0.fPosPr{k}{j},1));
+                elseif hasMove(j,k)
+                    % otherwise, set the comparison coordinates to the last
+                    % phase which the blob moved
                     fP0 = obj.getLikelyPrevCoord(iPh,k,j);
                 else
+                    % otherwise, set NaN's for the previous coordinates
                     fP0 = NaN(1,2);
                 end
 
