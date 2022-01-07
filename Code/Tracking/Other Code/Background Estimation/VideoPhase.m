@@ -511,7 +511,11 @@ classdef VideoPhase < handle
                 frm0 = obj.iFrm0(ii);       
 
                 % calculates the coarse phase limits
-                iGrpC{i} = obj.detCoarsePhaseLimits(frm0);
+                if diff(frm0) == 0
+                    iGrpC{i} = {frm0};
+                else
+                    iGrpC{i} = obj.detCoarsePhaseLimits(frm0);
+                end
                 
                 % updates the progressbar    
                 if obj.updatePhaseDetectionProgress()
@@ -629,19 +633,18 @@ classdef VideoPhase < handle
             % memory allocation
             nGrpF = size(iGrpF,1);
             DimgF = cell(nGrpF,1); 
-            vPhaseF = zeros(nGrpF,1);            
+            vPhaseF = zeros(nGrpF,1); 
+            nFrmG = diff(iGrpF,[],2) + 1;
             
             % determines if the phases can be combined/reduced
             for i = 1:nGrpF
                 % retrieves the non-sparse frames for the current group
                 iGrpNw = iGrpF(i,1):iGrpF(i,2);
                 iFrmG = find(obj.Dimg(iGrpNw,1)) + (iGrpF(i,1)-1);
-                nFrmG = diff(iGrpF(i,:)) + 1;
-
+                
                 % determines if the frame range is too low for tracking                
                 DimgF{i} = full(obj.Dimg(iFrmG,:));                
-                if all(DimgF{i}(:) < pTolRng) || ...
-                            ((nFrmG == 1) && all(i ~= [1,nGrpF]))
+                if all(DimgF{i}(:) < pTolRng)
                     % pixel range is too low, so set as untrackable
                     vPhaseF(i) = 3;
                 else
@@ -674,24 +677,34 @@ classdef VideoPhase < handle
             % --- PHASE REDUCTION CALCULATIONS --- %
             % ------------------------------------ %
             
+            % parameters
+            nFrmMin = 2;
+            
             % updates the progressbar
-            obj.updateSubProgField('Phase Reduction Calculations...',0.25);
+            obj.updateSubProgField('Phase Reduction Calculations...',0.25);            
             
             % determines which adjacent phases are either
             % medium/untrackable phases AND have a small number of frames
             isOK = true(size(vPhaseF));
             for i = 2:length(vPhaseF)                
                 ii = i + [-1,0];
-                if ~any(vPhaseF(ii) == 1)
-                    % determines if there is any 
-                    s12 = arrayfun(@(x)(prod...
+                if all(vPhaseF(ii) == 2) 
+                    if any(nFrmG(ii) <= nFrmMin)
+                        % case is one of the phases is very small
+                        isOverlap = true;
+                    else
+                        % otherwise determines if there is any overlap in
+                        % the pixel range of each phase
+                        s12 = arrayfun(@(x)(prod...
                                 (sign(Drng(ii(1),:)-x))),DimgFmu{ii(2)});
-                    s21 = arrayfun(@(x)(prod...
+                        s21 = arrayfun(@(x)(prod...
                                 (sign(Drng(ii(2),:)-x))),DimgFmu{ii(1)});                    
                             
-                    % determines if the pixel intensities overlap between
-                    % the adjacent phases
-                    isOverlap = any(s12 == -1) || any(s21 == -1);
+                        % determines if the pixel intensities overlap 
+                    	% between the adjacent phases
+                        isOverlap = any(s12 == -1) || any(s21 == -1);
+                    end
+                    
                     if isOverlap         
                         % if so, then combine the phases
                         isOK(i-1) = false;

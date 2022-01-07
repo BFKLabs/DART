@@ -56,6 +56,16 @@ for i = 1:length(isHover)
             isHover(i) = (prod(sign(xD-mPos(1,1))) == -1) && ...
                          (prod(sign(yD-mPos(1,2))) == -1);            
             
+        case 'line'  
+            pP = get(hP,'Position');
+            [xL,yL] = deal(get(hP,'xlim'),get(hP,'ylim'));
+            [dxL,dyL] = deal(diff(xL),diff(yL));
+            
+            xD = pP(3)*(get(axObj(i),'xData')-xL(1))/dxL;
+            yD = pP(4)*(get(axObj(i),'yData')-yL(1))/dyL;            
+            mP = pP(3:4).*(mPos(1,1:2)-[xL(1),yL(1)])./[dxL,dyL];
+            
+            isHover(i) = any(pdist2([xD(:),yD(:)],mP) < 5);
     end
 end
 

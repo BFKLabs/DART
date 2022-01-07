@@ -172,10 +172,7 @@ classdef CalcBG < handle
                 isMovChange = true;
                 set(obj.hFig,'pData',[])
                 set(obj.hFig,'iMov',obj.iMov) 
-                
-%                 % initialises the plot markers
-%                 markerFcn = get(obj.hFig,'initMarkerPlots');
-%                 markerFcn(hgui,1); pause(0.01); 
+                setObjEnable(obj.hGUI.checkShowMark,'off')
             else
                 % otherwise, reset to the original sub-region data struct
                 set(obj.hFig,'iMov',obj.iMov0)                        

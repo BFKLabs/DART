@@ -114,25 +114,33 @@ classdef SingleTrackInit < SingleTrack
             sFlag0 = cellfun(@(x)(3-x),obj.sFlag,'un',0);
             obj.iMov.StatusF = sFlag0;
             
+            % calculates the distance each blob travels over the video
+            fPT = num2cell(cell2cell(obj.fPosL(okPh)'),2);
+            fPmn = cellfun(@(x)(calcImageStackFcn(x,'min')),fPT,'un',0);
+            fPmx = cellfun(@(x)(calcImageStackFcn(x,'max')),fPT,'un',0);
+            DfPC = cellfun(@(x,y)(sum((y-x).^2,2).^0.5),fPmn,fPmx,'un',0);
+            DfP = combineNumericCells(DfPC(:)');
+            
             % determines which regions are potentially empty 
             ii = ~cellfun(@isempty,obj.iMov.StatusF);
             if any(ii)
-                szDim = [1,1,sum(ii)];
-                Status0 = cell2mat(reshape(obj.iMov.StatusF(ii),szDim));
-                Status1 = min(Status0,[],3);
-                noFly = any(Status0==3,3);
+                % sets the status flag array. any blobs which have been
+                % flagged as non-moving, but actually has moved appreciably
+                % over the video, is reset to moving
+                Status = calcImageStackFcn(obj.iMov.StatusF(ii),'min');
+                Status((Status==2) & (DfP > obj.iMov.szObj(1))) = 1;
 
-                % updates the status flag  
-                Status1(Status1 == 0) = 2;
+                % updates the other status flag 
+                noFly = Status==3;
                 if obj.isBatch                
-                    Status1(noFly & obj.iMov.flyok) = 2;
-                    Status1(noFly & ~obj.iMov.flyok) = 3;
+                    Status(noFly & obj.iMov.flyok) = 2;
+                    Status(noFly & ~obj.iMov.flyok) = 3;
                 else
-                    Status1(noFly) = 3;  
+                    Status(noFly) = 3;  
                 end
 
                 % resets the status flags for the video
-                obj.iMov.Status = num2cell(Status1,1);   
+                obj.iMov.Status = num2cell(Status,1);   
             else
                 obj.iMov.Status = arrayfun(@(x)...
                             (zeros(x,1)),getSRCountVec(obj.iMov)','un',0);                
@@ -644,8 +652,9 @@ classdef SingleTrackInit < SingleTrack
                 end
                 
                 % calculates the distance weighting mask
+                fP0mn = max(1,min(fP0mn,flip(size(Ztot{1}))));
                 Dw = bwdist(setGroup(fP0mn,size(Ztot{1})));
-                Qw = double(1./max(1,Dw/Dscale)).^2;
+                Qw = double(1./max(0.5,Dw/Dscale)).^2;
                 Ztot = cellfun(@(x)(x.*Qw),Ztot,'un',0);
             end
             
@@ -1083,7 +1092,8 @@ classdef SingleTrackInit < SingleTrack
             % if the user cancelled, then exit
             if ~obj.calcOK; return; end               
             
-            % parameters and memory allocation            
+            % parameters and memory allocation 
+            pSigMin = 0.5;
             fP = obj.fPosL{iPh};
             nApp = size(fP,1);
             obj.useP = zeros(max(obj.nTube),nApp);
@@ -1121,6 +1131,11 @@ classdef SingleTrackInit < SingleTrack
             Zflag = combineNumericCells(obj.mFlag(:)');
             obj.useP = (Zflag == 2); % & (ZR > obj.zTolJ);
             
+            % determines if a majority of the residual pixel intensities
+            % meets the tolerance (for each sub-region) across all frames
+            allSig = combineNumericCells(cellfun(@(x,y)(mean(x>y,2) > ...
+                    pSigMin),pPR,num2cell(obj.pTolF(:,iPh)),'un',0)');
+            
             % calculates the distance range 
             DrngC = cellfun(@(x)(sqrt(sum(calcImageStackFcn...
                     (x,'range').^2,2))),num2cell(obj.fPosL{iPh},2),'un',0);
@@ -1129,7 +1144,7 @@ classdef SingleTrackInit < SingleTrack
             % if the blob filter has been calculated, then exit
             if ~isempty(obj.hFilt)
                 % determines the blobs that haven't moved far over the phase
-                obj.setStatusFlag(Zflag,ZR,Drng,iPh);
+                obj.setStatusFlag(Zflag,ZR,Drng,allSig,iPh);
                 return
             end
                                     
@@ -1161,7 +1176,7 @@ classdef SingleTrackInit < SingleTrack
             obj.iMov.szObj = pBB(3:4);       
             
             % determines the blobs that haven't moved far over the phase
-            obj.setStatusFlag(Zflag,ZR,Drng,iPh);           
+            obj.setStatusFlag(Zflag,ZR,Drng,allSig,iPh);           
             
             % updates the progressbar
             obj.hProg.Update(3+obj.wOfsL,'Region Analysis Complete',1);            
@@ -1208,7 +1223,7 @@ classdef SingleTrackInit < SingleTrack
         end
         
         % --- determines the final status flags for each blob
-        function setStatusFlag(obj,sFlag0,ZR,Drng,iPh)
+        function setStatusFlag(obj,sFlag0,ZR,Drng,allSig,iPh)
         
             % determines which blobs have moved appreciably
             isMove = Drng > obj.iMov.szObj(1);
@@ -1226,7 +1241,12 @@ classdef SingleTrackInit < SingleTrack
             
             % re-classify blobs that high z-scores, but insigificant
             % movement, as being partially moving
-            sFlag0((sFlag0==2) & ~isMove) = 1;
+            isS2 = sFlag0 == 2;
+            sFlag0(isS2 & ~isMove) = 1; 
+            
+            % if a blob is flagged as significant and moving, but not all
+            % frames were significant, then flag as being stationary
+            sFlag0((isS2 & isMove) & (allSig==0)) = 0;
             
             % stores the status flags
             obj.sFlag{iPh} = sFlag0;

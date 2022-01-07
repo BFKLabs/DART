@@ -824,7 +824,8 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             else
                 % updates the sub-image data struct with the phase info
                 obj.iMov.iPhase = phObj.iPhase;
-                obj.iMov.vPhase = phObj.vPhase;          
+                obj.iMov.vPhase = phObj.vPhase; 
+                obj.iMov.phInfo = getPhaseObjInfo(phObj);
 
                 % expands the progressbar
                 obj.hProg.expandProgBar(dLvl);

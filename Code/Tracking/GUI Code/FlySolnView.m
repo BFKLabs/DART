@@ -52,8 +52,10 @@ addObjProps(hObject,'updateFunc',@updatePlotObjects,...
 
 % sets the number of frame read per image stack
 nFrmRS = getFrameStackSize();
-hObject.iMov.is2D = is2DCheck(hObject.iMov) || ...
-                    detMltTrkStatus(hObject.iMov);
+if ~isfield(hObject.iMov,'is2D')
+    hObject.iMov.is2D = is2DCheck(hObject.iMov) || ...
+                        detMltTrkStatus(hObject.iMov);
+end
 
 % if detecting, then don't allow the data tool
 if isDetecting
@@ -133,7 +135,7 @@ function uiDataTool_ClickedCallback(hObject, eventdata, handles)
 switch get(hObject,'state')
     case ('on') % case is the data tool is turned on        
         % sets the mouse-motion function
-        wmFunc = @(hObject,e)FlySolnView('resetMarkerLine',hObject,[],handles); 
+        wmFunc = {@resetMarkerLine,handles}; 
         set(handles.output,'WindowButtonMotionFcn',wmFunc)                                        
         
         % sets the button-down function

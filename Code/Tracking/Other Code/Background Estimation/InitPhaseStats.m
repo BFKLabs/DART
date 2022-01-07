@@ -9,6 +9,8 @@ classdef InitPhaseStats < handle
         
         % object handles
         hFig
+        hTool
+        hToolB       
         hPanelO
         hPanelAx
         hPanelT
@@ -17,8 +19,17 @@ classdef InitPhaseStats < handle
         hTxt
         hAx
         
+        % info marker related object
+        hZoom
+        axPosXF
+        axPosYF
+        wmFunc
+        hText
+        hMark
+        
         % fixed object dimensions    
         dX = 10;
+        fSz = 8;
         lblSz = 12;
         widFig
         hghtFig
@@ -30,6 +41,7 @@ classdef InitPhaseStats < handle
         hghtPanelO = 450; 
         widTxtL = 130;
         widTxt = 35;
+        iTab = 1;
         
     end
     
@@ -64,6 +76,9 @@ classdef InitPhaseStats < handle
             hFig0 = findall(0,'tag','figInitTrackStats');
             if ~isempty(hFig0); delete(hFig0); end
             
+            % sets the windows movement callback function
+            obj.wmFunc = {@obj.showPlotMarkerInfo};
+            
         end
         
         % --- initialises the object properties
@@ -84,7 +99,7 @@ classdef InitPhaseStats < handle
             % sets the frame index/avg. pixel intensity arrays 
             if hasF
                 % case is the video has high fluctuation
-                if isempty(obj.phInfo.DimgF)
+                if isempty(pInfo.DimgF)
                     [iFrm,Imu] = deal(pInfo.iFrm0,pInfo.Dimg0);
                 else
                     [iFrm,Imu] = deal(pInfo.iFrmF,mean(pInfo.DimgF,2));
@@ -118,7 +133,13 @@ classdef InitPhaseStats < handle
                               'MenuBar','None','Toolbar','None',...
                               'Name','Initial Tracking Statistics',...
                               'NumberTitle','off','Visible','off',...
-                              'Resize','off','CloseRequestFcn',cbFcn);             
+                              'Resize','off','CloseRequestFcn',cbFcn,...
+                              'WindowButtonMotionFcn',obj.wmFunc);    
+                          
+            % creates the toolbar objects
+            obj.hTool = uitoolbar(obj.hFig);
+            obj.hToolB = uitoolfactory(obj.hTool,'Exploration.ZoomIn');
+            set(obj.hToolB,'ClickedCallback',{@obj.zoomToggle})
             
             % creates the table panel
             pPosO = [obj.dX*[1,1],obj.widPanelO ,obj.hghtPanelO];
@@ -159,6 +180,7 @@ classdef InitPhaseStats < handle
                 % sets up the tabs within the tab group
                 obj.hTab{i} = createNewTab(obj.hTabGrp,...
                                     'Title',tStr{i},'UserData',i);
+                set(obj.hTab{i},'ButtonDownFcn',{@obj.tabSelected})
                 pause(0.1)
                 
                 % creates the axes panel object
@@ -185,7 +207,7 @@ classdef InitPhaseStats < handle
                 
                 % creates the phase patch objects                
                 for j = 1:nPhase
-                    xP = [iPhase(j,1),iPhase(j,2)];
+                    xP = [iPhase(j,1),iPhase(j,2)]+0.5*[-1,1];
                     patch(obj.hAx{i},xP(ii),yP(jj),pCol(j,:),...
                                      'FaceAlpha',0.2,'EdgeColor','None');
                 end                
@@ -232,13 +254,34 @@ classdef InitPhaseStats < handle
             plot(obj.hAx{1},xLim,yLim0(2)*[1,1],'r--')
             
             % plots the markers
-            plot(obj.hAx{1},iFrm,Imu,'kx');
+            plot(obj.hAx{1},iFrm,Imu,'kx','tag','hMarker');
             
             % sets the axis properties
             yTickStr = arrayfun(@(x)(num2str(roundP(x,0.1))),yLim0,'un',0);
             set(obj.hAx{1},'xlim',xLim,'ylim',yLim,'ytick',yLim0,...
                            'yTickLabel',yTickStr)
+                    
+            % calculates the global x/y coordinates of the axes
+            axPos = get(obj.hAx{1},'Position');
+            pPos = getObjGlobalCoord(obj.hAx{1});            
+            obj.axPosXF = pPos(1) + [0,axPos(3)];
+            obj.axPosYF = pPos(2) + [0,axPos(4)]; 
             
+            % sets up the marker line
+            obj.hMark = plot(obj.hAx{1},NaN,NaN,'yo','linewidth',2,...
+                    'MarkerSize',10);
+            
+            % sets the text label
+            obj.hText = imtext(0,0,{''},'right');
+            set(obj.hText,'tag','hText','parent',obj.hAx{1},'visible',...
+                    'off','FontSize',obj.fSz,'FontWeight','bold',...
+                    'EdgeColor','k','LineWidth',1,'BackgroundColor','y')  
+                
+            % creates the zoom object
+            obj.hZoom = zoom(obj.hAx{1});
+            set(obj.hZoom,'Enable','off','Motion','horizontal');
+            zoom(obj.hAx{1},'reset')
+
             % ------------------------------ %
             % --- TRANSLATION AXES SETUP --- %
             % ------------------------------ %      
@@ -247,7 +290,7 @@ classdef InitPhaseStats < handle
             pW = 1.1;
             hP = zeros(1,2);
             
-            %
+            % sets up the axis limits based on whether there is translation
             if hasT
                 % sets the y-axis limits
                 pOfsT = calcImageStackFcn(obj.phInfo.pOfs);
@@ -321,7 +364,96 @@ classdef InitPhaseStats < handle
             % deletes the GUI
             delete(obj.hFig);
             
-        end                
+        end      
+
+        % --- plot marker callback functions
+        function zoomToggle(obj,hObject,~)
+           
+            switch get(hObject,'State')
+                case 'off'
+                    zoom(obj.hAx{1},'out')
+                    zoom(obj.hAx{1},'off')
+                case 'on'
+                    zoom(obj.hAx{1},'xon')
+            end
+            
+        end
+        
+        % --- plot marker callback functions
+        function showPlotMarkerInfo(obj,~,~)
+            
+            % retrieves the current mouse location
+            infoOn = false;
+            objType = {'tag','hMarker'};
+            mP = get(obj.hFig,'CurrentPoint');
+            
+            % determines if the mouse if over the plot axes
+            if isOverAxes(mP,obj.axPosXF,obj.axPosYF)
+                % if so, then determine if the mouse is over any objects
+                hHover = findAxesHoverObjects(obj.hFig,objType,obj.hAx{1});
+                if ~isempty(hHover)
+                    % cursor is inside axes, so turn on marker line
+                    [infoOn,mP] = deal(true,get(obj.hAx{1},'CurrentPoint'));
+                    set(obj.hMark,'xData',mP(1,1),'yData',mP(2,1))
+
+                    % sets the normalised coordinates
+                    xL = get(obj.hAx{1},'xlim');
+                    yL = get(obj.hAx{1},'ylim');
+                    mPN = [(mP(1,1)-xL(1))/diff(xL),...
+                           (mP(1,2)-yL(1))/diff(yL)];                    
+
+                    % updates the text-box position
+                    ttStr = obj.setDataTipString(hHover,mP);
+                    set(obj.hText,'String',ttStr,...
+                                  'HorizontalAlignment','center');
+                              
+                    % updates the text object position
+                    [dXT,dYT] = deal(0.02);
+                    pExt = get(obj.hText,'Extent');                    
+                    [xLT,yLT] = deal(1-pExt(3)-dXT,1-pExt(4)-dYT);
+                    xD = (1 - 2*(mPN(1) > xLT))*(dXT + pExt(3)/2);
+                    yD = (1 - 2*(mPN(2) > yLT))*(dYT + pExt(4)/2);
+                    set(obj.hText,'Position',[mPN(1:2)+[xD,yD],0]);                           
+                end
+            end
+            
+            % sets the visibility flag
+            setObjVisibility(obj.hMark,infoOn)
+            setObjVisibility(obj.hText,infoOn)
+            
+        end
+        
+        % --- sets the data tip string
+        function ttStr = setDataTipString(obj,hHover,mP)
+            
+            % determines the point that is currently being hovered over
+            [xD,yD] = deal(get(hHover,'xData'),get(hHover,'yData'));
+            iMn = argMin(pdist2([xD(:),yD(:)],mP(1,1:2)));
+            iPhase = find(xD(iMn)>=obj.bgObj.iMov.iPhase(:,1),1,'last');
+            
+            % sets the string
+            ttStr = {sprintf('Phase = %i',iPhase);...
+                     sprintf('Frame = %i',xD(iMn));...
+                     sprintf('Intensity = %.1f',yD(iMn))};
+            
+        end
+        
+        % --- callback function for selecting the file type tab
+        function tabSelected(obj, hObject, ~)
+            
+            % updates the selected tab
+            obj.iTab = get(hObject,'UserData');
+
+            switch obj.iTab
+                case 1
+                    % sets the mouse-motion function                     
+                    set(obj.hFig,'WindowButtonMotionFcn',obj.wmFunc)
+                case 2
+                    % removes the mouse-movement function
+                    set(obj.hFig,'WindowButtonMotionFcn',[])
+            end
+            
+        end
         
     end
     

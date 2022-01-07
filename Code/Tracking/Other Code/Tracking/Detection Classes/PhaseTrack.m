@@ -332,7 +332,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
 
                             % sets up the distance estimate mask
                             Best = setGroup(roundP(fPest),szL);
-                            Dw0 = 1./max(1,bwdist(Best)/(obj.dTol));
+                            Dw0 = 1./max(0.5,bwdist(Best)/(obj.dTol));
                             Dw = Dw0(sub2ind(szL,...
                                     roundP(pC(:,2)),roundP(pC(:,1))));
 

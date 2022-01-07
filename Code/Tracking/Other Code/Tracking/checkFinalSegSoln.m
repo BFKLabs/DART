@@ -421,12 +421,16 @@ while cont
         iPhFrm = find(iFrm <= iMov.iPhase(:,2),1,'last');
         isHV = iMov.vPhase(iPhFrm) > 1;
         
-        % calculates the distance mask
+        % calculates the distance mask (for weighting the local image)
         IBG = obj.iMov.Ibg{iPhFrm}{iApp}(iRT,:);
-        DW = bwdist(setGroup([X(iFrm-1),Y(iFrm-1)],size(IBG)));
-        QW = 1./(1+DW/dTol);
+        if iFrm == 1
+            DW = bwdist(setGroup(roundP(fPosMn),size(IBG)));
+        else
+            DW = bwdist(setGroup([X(iFrm-1),Y(iFrm-1)],size(IBG))); 
+        end
         
-        % calculates the local image        
+        % calculates the distance weighted local image
+        QW = 1./max(0.5,DW/dTol);
         IL0 = getRegionImgStack(iMov,Img,iFrm,iApp,isHV);        
         IRL = max(0,(IBG-IL0{1}(iRT,:))).*QW;        
         
