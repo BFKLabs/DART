@@ -54,7 +54,7 @@ if showStim
         showStim = false;
     else
         % retrieves the font-sizes
-        axSz = detSolnViewFontSizes(handles);        
+        axSz = detSolnViewFontSizes(handles);
         
         % retrieves the stimuli data for each channel
         stimPC = cellfun(@(x)(getStructField(stimP,x{1},x{2})),...
@@ -71,6 +71,13 @@ if showStim
         yStrS = cellfun(@(x,y,z)(sprintf('%s (%s%s)',x,y(1),z)),...
                                         yStrS0,dcInfo(:,1),sStr,'un',0);        
 
+        % reshapes the GUI to hide the missing panel
+        axH = nStim*yStim;
+        set(hAxS,'Units','Pixels')  
+        resetObjPos(hAxS,'Height',axH)
+        resetObjPos(hPS,'Height',axH+2*dY)
+        resetObjPos(hPI,'Bottom',axH+4*dY)                                    
+                                    
         % creates the stimuli plot objects for each stimuli
         for i = 1:nStim
             % retrieves the stimuli information/parameters
@@ -92,13 +99,6 @@ if showStim
             end
         end
 
-        % reshapes the GUI to hide the missing panel
-        axH = nStim*yStim;
-        set(hAxS,'Units','Pixels')  
-        resetObjPos(hAxS,'Height',axH)
-        resetObjPos(hPS,'Height',axH+2*dY)
-        resetObjPos(hPI,'Bottom',axH+4*dY)
-
         % removes hold from the axis
         hold(hAxS,'off')
         axis(hAxS,'ij')
@@ -106,13 +106,11 @@ if showStim
 
         % sets the other axis properties
         set(hAxS,'xlim',T([1 end])*Tmlt-[pDel,0]','ylim',yLimS'-[0.001;0],...
-                 'yticklabel',yStrS,'ytick',yTickS);
-        if isInit
-            % sets the initialisation only properties
-            set(hAxS,'fontweight','bold','fontsize',axSz-6,...
+                 'yticklabel',yStrS,'ytick',yTickS,'fontweight','bold',...
+                 'fontunits','pixels','fontsize',axSz-6,...
                  'TickLength',[0 0],'LineWidth',1.5,'UserData',2,...
-                 'Color',axCol,'box','on');            
-        end
+                 'Color',axCol,'box','on');
+        set(hAxS,'fontunits','normalized');
 
         % links the 2-axes in the x-direction
         wState = warning('off','all');
@@ -133,7 +131,6 @@ switch get(hFig,'tag')
             % hide the stimuli info axes panel
             setObjVisibility(handles.menuStim,'off')
             setObjVisibility(handles.menuShowStim,'off')
-
 
             % reshapes the GUI to hide the missing panel
             setObjVisibility(handles.panelStim,'off')

@@ -506,6 +506,30 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                             end                             
                         end
                         
+                        % reset the solution tracking GUI if open 
+                        hTrack = findall(0,'tag','figFlySolnView');
+                        if ~isempty(hTrack)
+                            try
+                                % pause to refresh
+                                pause(0.05);       
+
+                                % updates the sub-region data struct
+                                iMovT = get(obj.hFig,'iMov');
+                                set(obj.hFig,'iMov',obj.iMov);
+
+                                % attempts to updates the solution view GUI
+                                hTrack.initFunc(guidata(hTrack),1)
+                                set(obj.hFig,'iMov',iMovT,'hSolnT',hTrack)
+
+                                % pause to refresh
+                                pause(0.05);
+
+                            catch
+                                % if there is an error then reset handle
+                                set(obj.hFig,'hSolnT',[])   
+                            end      
+                        end                        
+
                         % ----------------------------- %
                         % --- ENTIRE VIDEO TRACKING --- %
                         % ----------------------------- %    
@@ -746,31 +770,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 end
                 
                 % retrieves the 
-                obj.iMov = trkObjI.iMov;
-                
-                % if the solution tracking GUI is open then reset it
-                hTrack = findall(0,'tag','figFlySolnView');
-                if ~isempty(hTrack)
-                    try
-                        % pause to refresh
-                        pause(0.05);       
-                        
-                        % updates the sub-region data struct
-                        iMovOrig = get(obj.hFig,'iMov');
-                        set(obj.hFig,'iMov',obj.iMov);
-                        
-                        % attempts to updates the solution view GUI
-                        hTrack.initFunc(guidata(hTrack),1)
-                        set(obj.hFig,'iMov',iMovOrig,'hSolnT',hTrack)                    
-
-                        % pause to refresh
-                        pause(0.05);
-
-                    catch
-                        % if there was an error, then reset the GUI handle
-                        set(obj.hFig,'hSolnT',[])   
-                    end      
-                end
+                obj.iMov = trkObjI.iMov;               
                 
                 % ensures the sub-region data struct reflects the previous 
                 % solution file

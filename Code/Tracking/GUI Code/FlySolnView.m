@@ -641,6 +641,12 @@ resetObjProps(hAxI,'FontUnits','Pixels')
 isShow = addStimAxesPanels(handles,iData.stimP,iData.sTrainEx,T,isInit);
 setObjEnable(set(handles.menuShowStim,'Checked',eStr{1+isShow}),isShow)
 
+% updates the visibility of the stimuli related objects
+if ~isInit
+    setObjVisibility(handles.menuShowStim,isShow);
+    setObjVisibility(handles.panelStim,isShow)
+end
+
 % ------------------------------------------- %
 % --- DATA INFORMATION BOX INITIALISATION --- %
 % ------------------------------------------- %
