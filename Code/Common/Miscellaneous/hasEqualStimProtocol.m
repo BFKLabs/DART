@@ -12,7 +12,7 @@ if ~isempty(sTrainEx{1})
     
     % sets the stimuli count for each device (if required)
     if nargout == 2
-        nCount = field2cell(sTrainEx{1}.sParaEx,'nCount');    
+        nCount = field2cell(sTrainEx{1}.sParaEx,'nCount',1);    
         nStim = nCount*hasEqSP;
     end
 end

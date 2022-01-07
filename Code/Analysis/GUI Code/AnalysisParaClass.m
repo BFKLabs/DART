@@ -1488,6 +1488,7 @@ classdef AnalysisParaClass < handle
                         nRow = nNew;
                         lStr = setTimeGroupStrings(nNew,obj.tDay);                                                    
                     case {'appName','appNameS'}
+                        snTotT = getappdata(obj.hFigM,'snTot');
                         lStr = snTotT(1).iMov.pInfo.gName;
                         if (pInd ~= 3)                            
                             lStr = lStr(snTotT(eInd).iMov.ok);

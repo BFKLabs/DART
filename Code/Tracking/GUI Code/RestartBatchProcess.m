@@ -308,18 +308,26 @@ if showStats
         % determines the last segmented frame from the solution file
         i0 = find(A.iMov.ok,1,'first');
         j0 = find(A.iMov.flyok(:,i0),1,'first');
-        iFrm = find(~isnan(A.pData.fPos{i0}{j0}(:,1)),1,'last');
-        if isempty(iFrm); iFrm = 0; end
-        
-        % calculates the proportion of frames that have been segmented
-        prFrm = iFrm/size(A.pData.fPos{i0}{j0},1);
-        if prFrm == 1
-            % if the video is fully segmented, then reset the values for
-            % the next video (only if current file is not last file)
-            if iFile < nFile
-                [iFile,prFrm] = deal(iFile+1,0);
-            end
-        end
+
+        % calculates the proportion of the video that is segmented
+        if isfield(A,'pData')
+            % determines the last frame that was segmented
+            iFrm = find(~isnan(A.pData.fPos{i0}{j0}(:,1)),1,'last');
+            if isempty(iFrm); iFrm = 0; end
+            
+            % calculates the proportion of frames that have been segmented
+            prFrm = iFrm/size(A.pData.fPos{i0}{j0},1);
+            if prFrm == 1
+                % if the video is fully segmented then reset the values for
+                % the next video (only if current file is not last file)
+                if iFile < nFile
+                    [iFile,prFrm] = deal(iFile+1,0);
+                end
+            end            
+        else
+            % if there is no segmented data, then set propotion to zero
+            prFrm = 0;            
+        end            
     end
 
     % --------------------------------- %
