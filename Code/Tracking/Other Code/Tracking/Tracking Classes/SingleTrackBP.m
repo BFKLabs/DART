@@ -141,7 +141,8 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         % --- retrieves the next feasible image
         function Img0 = getFeasComparisonImage(obj,fStr,iFrm0)
 
-            % initialisation
+            % initialisations
+            pLim = [0,255] + 15*[1,-1];
             if ~exist('iFrm0','var'); iFrm0 = 1; end
 
             % reads in the first feasible frame                    
@@ -150,8 +151,13 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                     % reads the image frame
                     Img0 = obj.getComparisonImages(fStr,iFrm0);
                     if ~isempty(Img0)
-                        % if feasible, then exit
-                        break
+                        % if a frame has been read, then determine if the
+                        % pixel intensity is feasible
+                        Imd = nanmedian(Img0(:));
+                        if prod(sign(pLim-Imd)) == -1                        
+                            % if feasible, then exit
+                            break
+                        end
                     end
                 end
 

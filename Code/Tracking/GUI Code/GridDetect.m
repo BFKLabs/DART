@@ -350,16 +350,78 @@ classdef GridDetect < matlab.mixin.SetGet
         % --- region move up/down button callback function
         function moveButton(obj,hObj,~)
             
+            % global variables
+            global isUpdating
+            
             % initialisations
-            iMov0 = obj.iMov;
             iApp = obj.getRegionIndex();     
-            yMax = obj.iMov.posO{iApp}(4);
+            yMax = obj.iMov.posO{iApp}(4); 
+            [nRow,nCol] = deal(obj.iMov.pInfo.nRow,obj.iMov.pInfo.nCol);
             
             % calculates the change in the vertical location
             yDir = 3 - 2*get(hObj,'UserData');
-            dY = roundP(median(cellfun(@length,iMov0.iRT{iApp})));
+            dY = roundP(median(cellfun(@length,obj.iMov.iRT{iApp})));
             obj.iMov.pos{iApp}(2) = obj.iMov.pos{iApp}(2) + yDir*dY;            
             obj.iMov.iR{iApp} = min(yMax,max(0,obj.iMov.iR{iApp}+yDir*dY));
+            
+            % if there is more than one row grouping, then determine if the
+            % new configuration is feasible (given the outer coords)
+            if nRow > 1
+                % if so, then retrieve the row/column indices
+                updateOuter = false;
+                [iCol,~,iRow] = getRegionIndices(obj.iMov,iApp);                
+                if (iRow < nRow) && (yDir == 1)
+                    % if moving down (and not the last row) then determine
+                    % if the bottom overlaps the outer edge
+                    updateOuter = sum(obj.iMov.pos{iApp}([2,4])) > ...
+                                  sum(obj.iMov.posO{iApp}([2,4]));
+                    
+                elseif (iRow > 1) && (yDir == -1)
+                    % if moving up (and not the first row) then determine
+                    % if the top overlaps the outer edge                    
+                    updateOuter = obj.iMov.pos{iApp}(2) < 0;
+                end
+                
+                % updates the outer regions (if required)
+                if updateOuter
+                    uD = [iRow+(yDir==1),iCol];
+                    hHorz = findall(obj.hAx,'tag','hHorz','UserData',uD);
+                    apiH = iptgetapi(hHorz);
+                    lPos = apiH.getPosition();
+                    
+                    % recalculates
+                    iAppC = iApp + yDir*nCol;
+                    if yDir == 1
+                        % sets the location of the horizontal marker
+                        yH = 0.5*(sum(obj.iMov.pos{iApp}([2,4])) + ...
+                                      obj.iMov.pos{iAppC}(2));
+                        yH0 = sum(obj.iMov.pos{iAppC}([2,4]));
+                                  
+                        % resets the region outer limits
+                        obj.iMov.posO{iApp}(4) = yH-obj.iMov.posO{iApp}(2);
+                        obj.iMov.posO{iAppC}(2) = yH;
+                        obj.iMov.posO{iAppC}(4) = yH0-yH;
+                        
+                    else
+                        % sets the location of the horizontal marker
+                        yH = 0.5*(sum(obj.iMov.pos{iAppC}([2,4])) + ...
+                                      obj.iMov.pos{iApp}(2));   
+                        yH0 = sum(obj.iMov.pos{iApp}([2,4]));
+                        
+                        % resets the region outer limits
+                        obj.iMov.posO{iAppC}(4) = ...
+                                            yH-obj.iMov.posO{iAppC}(2);
+                        obj.iMov.posO{iApp}(2) = yH;
+                        obj.iMov.posO{iApp}(4) = yH0-yH;
+                    end
+                    
+                    % resets the horizontal marker location
+                    lPos(:,2) = yH;
+                    isUpdating = true;
+                    apiH.setPosition(lPos); pause(0.05);
+                    isUpdating = false;
+                end
+            end            
             
             % updates the region grid position vector
             hInner = findall(obj.hAx,'tag','hInner','UserData',iApp);
@@ -536,15 +598,31 @@ classdef GridDetect < matlab.mixin.SetGet
             % retrieves the current region position
             iApp = obj.getRegionIndex;
             pos = obj.iMov.pos{iApp};
-            posO = obj.iMov.posO{iApp};
+            posO = obj.iMov.posO{iApp};             
+            
+            % determines the currently selected row 
+            posO(1:2) = max(0,posO(1:2));
+            [nRow,nCol] = deal(obj.iMov.pInfo.nRow,obj.iMov.pInfo.nCol);
+            iRow = floor((iApp-1)/nCol) + 1;
+            
+            % sets the region lower limit
+            yLo = posO(2);
+            if iRow > 1
+                yLo = sum(obj.iMov.pos{iApp-nCol}([2,4]));
+            end
+            
+            % sets the region upper limit 
+            yHi = sum(posO([2,4]));
+            if iRow < nRow
+                yHi = obj.iMov.pos{iApp+nCol}(2);
+            end            
             
             % calculates the offset
-            posO(1:2) = max(0,posO(1:2));
             dY = roundP(median(cellfun(@length,obj.iMov.iRT{iApp})));
             
             % updates the button enabled properties
-            setObjEnable(obj.hButD{1},sum(posO([2,4]))-sum(pos([2,4]))>dY);
-            setObjEnable(obj.hButD{2},(pos(2)-posO(2))>dY);            
+            setObjEnable(obj.hButD{1},yHi-sum(pos([2,4]))>dY);
+            setObjEnable(obj.hButD{2},(pos(2)-yLo)>dY);            
             
         end        
         

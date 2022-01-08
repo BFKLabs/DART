@@ -2415,7 +2415,7 @@ classdef CalcBG < handle
         function deleteManualMarkers(obj)
             
             % find any of the manual markers
-            hManualPr = findall(obj.hAx,'tag','hManual');
+            hManualPr = findall(obj.hAx,'tag','hManualH');
             if ~isempty(hManualPr)
                 % if any exists, then delete them
                 delete(hManualPr)

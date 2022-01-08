@@ -423,8 +423,23 @@ classdef SingleTrackInit < SingleTrack
             
             % memory allocation
             prTol = 0.75;
+            ILim = [10,245];
             fP0 = cell(obj.nApp,2);
             [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);
+            
+            % determines if any of the images in the phase are completely
+            % untrackable (either too dark or too bright)
+            ImgMd = cellfun(@(x)(nanmedian(x(:))),obj.Img{iPh});
+            if any(ImgMd <= ILim(1)) || any(ImgMd >= ILim(2))
+                % resets the coordinates for each sub-region to NaNs
+                for i = 1:length(obj.fPos{iPh})
+                    obj.fPos{iPh}{i}(:) = NaN;
+                    obj.fPosL{iPh}{i}(:) = NaN;
+                end
+                
+                % exits the function
+                return
+            end
             
             % determines if the surrounding phases is feasible
             okPh = obj.iMov.vPhase < 3;
@@ -442,9 +457,8 @@ classdef SingleTrackInit < SingleTrack
             end
             
             % calculates the hm filtered image stack
-            Ihm = cellfun(@(x)(applyHMFilter(x)),obj.Img{iPh},'un',0);
-              
-            for i = 1:obj.nApp                                
+            Ihm = cellfun(@(x)(applyHMFilter(x)),obj.Img{iPh},'un',0);              
+            for i = 1:obj.nApp
                 % sets up the cross-correlation images
                 IL = cellfun(@(y)(y(iR{i},iC{i})),Ihm,'un',0);
 
@@ -461,7 +475,7 @@ classdef SingleTrackInit < SingleTrack
                     % sets up the distance mask
                     sz0 = size(ILS{1});
                     Dw = bwdist(setGroup(min(max(1,fPmnS),flip(sz0)),sz0));
-                    Qw = (1./(1+Dw/obj.iMov.szObj(1)));
+                    Qw = (1./max(0.5,Dw/obj.iMov.szObj(1)/2)).^2;
                     
                     % calculates the likely coords and updates within the
                     % storage arrays
@@ -473,12 +487,14 @@ classdef SingleTrackInit < SingleTrack
                         ii = ILSS/ILSS(1) > prTol;
                         
                         % determines the blob closest to the estimate
-                        iPR = iP(iS(ii));
-                        iNw = argMin(Dw(iPR));
-                        [yNw,xNw] = ind2sub(size(Qw),iPR(iNw));
-                        
-                        % sets the coordinates into storage
-                        obj.fPosL{iPh}{i,k}(j,:) = [xNw,yNw];
+                        if any(ii)
+                            iPR = iP(iS(ii));
+                            iNw = argMin(Dw(iPR));
+                            [yNw,xNw] = ind2sub(size(Qw),iPR(iNw));
+
+                            % sets the coordinates into storage
+                            obj.fPosL{iPh}{i,k}(j,:) = [xNw,yNw];
+                        end
                     end
                 end
             end
@@ -489,6 +505,7 @@ classdef SingleTrackInit < SingleTrack
         function analyseStationaryBlobs(obj,IL0,iPh)
             
             % initialisations
+            usePrevData = false;
             nApp = length(obj.iMov.iR);
             Ds = obj.iMov.szObj(1)/2;
             
@@ -505,11 +522,22 @@ classdef SingleTrackInit < SingleTrack
             % the stationary ambiguous blobs from this phase              
             
             % initialisations
-            wStr0 = 'Analysing Sub-Region (%i of %i)';               
+            wStr0 = 'Analysing Sub-Region (%i of %i)';     
+            
+            % determines the static blobs from the phase
+            nFrm = length(obj.Img{iPh});
+            if nFrm == 1
+                % phase is only one frame, so analyse all
+                [statObj,Ds] = deal(obj.iMov.flyok,2*Ds);                
+            else
+                % otherwise, determine the static objects from the phase                
+                statObj = obj.sFlag{iPh} == 0 & obj.iMov.flyok;
+                usePrevData = ~isempty(obj.prData0);        
+            end
             
             % determine the regions/sub-regions that need to
             % be re-tracked for stationary/low-residual blobs
-            [iTube,iApp] = find(obj.sFlag{iPh} == 0 & obj.iMov.flyok);
+            [iTube,iApp] = find(statObj);
             [Ztot0,ZtotF,Ixc] = deal(cell(nApp,1));
             nTubeS = length(iTube);
 
@@ -526,7 +554,7 @@ classdef SingleTrackInit < SingleTrack
 
                 % retrieves the image stack for the sub-region 
                 [j,k] = deal(iTube(i),iApp(i));
-                iRT0 = obj.iMov.iRT{k}{j};                
+                iRT0 = obj.iMov.iRT{k}{j}; 
 
                 % sets up the image stack for template analysis
                 if isempty(obj.Iss{k,iPh})
@@ -556,10 +584,28 @@ classdef SingleTrackInit < SingleTrack
                     % otherwise, set the comparison coordinates to the last
                     % phase which the blob moved
                     fP0 = obj.getLikelyPrevCoord(iPh,k,j);                
-                elseif (iPh == 1) && ~isempty(obj.prData0)
+                elseif usePrevData
                     % case is there are coordinates from the previous
                     % solution file to compare against
-                    fP0 = roundP(nanmean(obj.prData0.fPosPr{k}{j},1));
+                    if iPh == 1
+                        % case is the first phase, so use previous data
+                        calcStat = true;
+                    else
+                        % otherwise, only is the previous data if there has
+                        % been no movement over previous phases
+                        sFlagPr = obj.sFlag(1:(iPh-1));
+                        calcStat = cellfun(@(x)(x(j,k)),sFlagPr) == 1;
+                    end
+                    
+                    % determines if the previous data can be used 
+                    if calcStat
+                        % case is the blob hasn't moved since the start of
+                        % the video (over all phases)
+                        fP0 = roundP(nanmean(obj.prData0.fPosPr{k}{j},1));
+                    else
+                        % otherwise, set NaN's for the previous coordinates
+                        fP0 = NaN(1,2);                        
+                    end
                 else
                     % otherwise, set NaN's for the previous coordinates
                     fP0 = NaN(1,2);
@@ -1315,7 +1361,7 @@ classdef SingleTrackInit < SingleTrack
         end
         
         % --- downsamples the image stack
-        function I = downSampleImgStack(obj,I)            
+        function I = downSampleImgStack(obj,I)
            
             % retrieves the full image size
             if iscell(I)

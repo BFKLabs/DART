@@ -633,6 +633,9 @@ pause(0.05);
 % updates the sub-regions (if updating)
 if isUpdate
     setupSubRegions(handles,gridObj.iMov,true);
+    for iApp = 1:length(gridObj.iMov.iR)
+        resetRegionPropDim(hFig,gridObj.iMov.pos{iApp},iApp)
+    end
 end
 
 % sets up the sub-regions for the final time (delete loadbar)
@@ -2576,7 +2579,7 @@ srObj.isUpdating = false;
 function roiCallback(rPos,iApp)
 
 % global variables
-global iAppInner isUpdating pX pY pW pH
+global iAppInner isUpdating
 
 % initialisations
 hFig = findall(0,'tag','figRegionSetup');
@@ -2611,25 +2614,34 @@ end
 % if not updating, then reset the proportional dimensions
 if ~isUpdating
     % retrieves the sub-region data struct
-    iMov = get(hFig,'iMov');
-    hGUIH = get(hFig,'hGUI');
-    
-    % sets the row/column indices
-    iRow = floor((iApp-1)/iMov.nCol) + 1;
-    iCol = mod((iApp-1),iMov.nCol) + 1;
-    
-    % retrieves the x/y limits of the region
-    xLim = getRegionXLim(iMov,hGUIH.imgAxes,iCol);
-    yLim = getRegionYLim(iMov,hGUIH.imgAxes,iRow,iCol);
-    
-    % recalculates the proportional dimensions
-    [W,H] = deal(diff(xLim),diff(yLim));
-    [pX(iApp),pY(iApp)] = deal((rPos(1)-xLim(1))/W,(rPos(2)-yLim(1))/H);
-    [pW(iApp),pH(iApp)] = deal(rPos(3)/W,rPos(4)/H);    
+    resetRegionPropDim(hFig,rPos,iApp);   
     
     % enables the update button
     setObjEnable(handles.buttonUpdate,'on')
-end
+end 
+
+% --- resets the region proportional dimensions
+function resetRegionPropDim(hFig,rPos,iApp)
+
+% global variables
+global pX pY pW pH
+
+% field retrieval
+iMov = get(hFig,'iMov');
+hGUIH = get(hFig,'hGUI');
+
+% sets the row/column indices
+iRow = floor((iApp-1)/iMov.nCol) + 1;
+iCol = mod((iApp-1),iMov.nCol) + 1;
+
+% retrieves the x/y limits of the region
+xLim = getRegionXLim(iMov,hGUIH.imgAxes,iCol);
+yLim = getRegionYLim(iMov,hGUIH.imgAxes,iRow,iCol);
+
+% recalculates the proportional dimensions
+[W,H] = deal(diff(xLim),diff(yLim));
+[pX(iApp),pY(iApp)] = deal((rPos(1)-xLim(1))/W,(rPos(2)-yLim(1))/H);
+[pW(iApp),pH(iApp)] = deal(rPos(3)/W,rPos(4)/H);
 
 % --- updates the position of the inner regions (if the vertical/horizontal
 %     line objects are being moved)

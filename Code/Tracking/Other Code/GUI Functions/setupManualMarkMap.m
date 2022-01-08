@@ -1,16 +1,6 @@
 function [Imap,pMn] = setupManualMarkMap(obj)
 
-% % sets the image size (based on whether the image is being rotated or not)
-% if obj.iMov.useRot && ((obj.iMov.rotPhi) > 45)
-%     % case is the image is being rotated
-%     sz = flip(obj.iData.sz);
-% else
-%     % case is the image is not being rotated
-%     sz = obj.iData.sz;
-% end
-
 % memory allocation
-zTol = 0.5;
 dTol = 10;
 pMn = cell(max(obj.nTube),obj.nApp);
 hG = fspecial('gaussian',5,2);
@@ -32,7 +22,8 @@ for i = 1:obj.nApp
 end
 
 % retrieves the indices
-iMx = find(Bw.*imregionalmin(I));
+Ixc = calcXCorr(obj.iMov.hFilt,I);
+iMx = find(Bw.*imregionalmin(Ixc));
 [yMx,xMx] = ind2sub(sz,iMx);
 
 %
@@ -45,15 +36,8 @@ for i = 1:obj.nApp
         pOfs = [iC(1),iR(1)]-1;
         
         % determines all the minima within the sub-region
-%         IL = I(iR,iC);
         isIn = find((yMx >= iR(1)) & (yMx <= iR(end)) & ...
                     (xMx >= iC(1)) & (xMx <= iC(end)));
-        
-%         % removes any low-grade minima from the selection group
-%         
-%         iMxL = sub2ind(szL,yMx(isIn)-pOfs(2),xMx(isIn)-pOfs(1));
-%         ZL = (IL-mean(IL(:)))/std(IL(:));
-%         isIn = isIn(ZL(iMxL)/min(ZL(iMxL)) > zTol);
         
         % creates the sub-region map from the remaining points
         szL = [length(iR),length(iC)];
