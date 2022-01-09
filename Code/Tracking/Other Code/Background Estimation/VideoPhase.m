@@ -43,7 +43,7 @@ classdef VideoPhase < handle
         iPhase
         vPhase        
         pTolLo = 35;
-        pTolHi = 236;        
+        pTolHi = 210;        
         
         % homomorphic filter parameters
         aHM = 0;
@@ -53,7 +53,7 @@ classdef VideoPhase < handle
         
         % other fixed parameters
         Dtol = 2;
-        nPhaseMx = 5;
+        nPhaseMx = 6;
         nImgR = 10;
         nFrm0 = 10;
         nPhMax = 5;
@@ -688,6 +688,7 @@ classdef VideoPhase < handle
             isOK = true(size(vPhaseF));
             for i = 2:length(vPhaseF)                
                 ii = i + [-1,0];
+                isOverlap = false;
                 if all(vPhaseF(ii) == 2) 
                     if any(nFrmG(ii) <= nFrmMin)
                         % case is one of the phases is very small
@@ -704,12 +705,15 @@ classdef VideoPhase < handle
                     	% between the adjacent phases
                         isOverlap = any(s12 == -1) || any(s21 == -1);
                     end
+                elseif all(vPhaseF(ii) == 3)
+                    % combine all adjacent untrackable phases
+                    isOverlap = true;
+                end
                     
-                    if isOverlap         
-                        % if so, then combine the phases
-                        isOK(i-1) = false;
-                        iGrpF(i,1) = iGrpF(i-1,1); 
-                    end
+                if isOverlap         
+                    % if so, then combine the phases
+                    isOK(i-1) = false;
+                    iGrpF(i,1) = iGrpF(i-1,1); 
                 end
             end    
             
@@ -748,7 +752,7 @@ classdef VideoPhase < handle
             
             % if there are a large number of phases, then flag the video as
             % having high pixel fluctuation
-            if length(vPhaseF) >= obj.nPhaseMx
+            if length(vPhaseF) > obj.nPhaseMx
                 obj.hasF = true;                
                 [iPhaseF,vPhaseF] = deal([1,obj.iFrm0(end)],1); 
                 

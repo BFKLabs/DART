@@ -17,9 +17,6 @@ end
 wStr = 'Final Segmentation Check';
 [nApp,ok] = deal(length(obj.pData.fPos),true);
 
-% calculates all the metric probabilities (over all regions/frames)
-ZPos = calcAllMetricProb(obj);
-
 % loops through all the frames/sub-regions determining if there is an issue
 for i = find(iMov.ok(:)')
     % updates the waitbar figure
@@ -42,20 +39,89 @@ for i = find(iMov.ok(:)')
         end
 
         % checks the location data for NaN frames 
-        ZPosSR = ZPos{i}(:,j);
         [iMov,pData] = frameNaNCheck(obj,iMov,pData,i,j);
         
+        % calculates the distance check flag
+        dStatus = getDistCheckStatus(obj,pData,iMov,i,j);
+        
         % calculates inter-frame distance travelled by the object
-        if iMov.Status{i}(j) == 1
-            [pData,ok] = frameDistCheck(obj,pData,iMov,ZPosSR,i,j);
-        else
-            [pData,ok] = framePosCheck(obj,pData,iMov,ZPosSR,i,j);                    
+        switch dStatus
+            case 1
+                %
+                iMov.Status{i}(j) = 1;
+                [pData,ok] = frameDistCheck(obj,pData,iMov,i,j);
+                
+            case 2
+                % 
+                [pData,ok] = framePosCheck(obj,pData,iMov,i,j);                    
         end
 
         % if the user cancelled, then exit
         if ~ok; return; end
     end
 end
+
+% --- determines the distance check status flag
+function dStatus = getDistCheckStatus(obj,pData,iMov,iApp,iTube)
+
+% parameters
+pTolMn = 1.5;
+
+% determines the status flag depending on the movement type
+switch iMov.Status{iApp}(iTube)
+    case 1
+        % case is the blob is smoving
+        dStatus = 1;
+        
+    case 2
+        % case is the blob is flagged as stationary
+        fP = pData.fPosL{iApp}{iTube};
+        IP = pData.IPos{iApp}{iTube};
+        
+        % determines the distance tolerances
+        if iMov.is2D
+            dTol = sqrt(sum(iMov.szObj.^2));   
+        else
+            dTol = iMov.szObj(1);
+        end         
+        
+        % determines if there are any points outside the 
+        fPosMn = nanmedian(fP,1);
+        DPosMn = pdist2(fP,fPosMn)/dTol;
+        
+        % determines if there is any significant movement
+        isMove = DPosMn > 1;
+        if any(isMove)
+            % if so, then determine if the 
+            
+            % sets the pixel tolerances for each phase
+            pTol = NaN(size(IP));
+            for i = find(obj.iMov.vPhase(:)' < 3)
+                ii = obj.iMov.iPhase(i,1):obj.iMov.iPhase(i,2);
+                pTol(ii) = obj.iMov.pTolF(iApp,i);
+            end
+            
+            % determines the frames where the pixel tolerance is large
+            isTol = IP./pTol > pTolMn;
+            
+            % determines if there are any frames where significant
+            % movement and pixel intensity has been detected
+            if any(isTol & isMove)
+                % if so, then the blob probably has moved so perform a
+                % distance check instead
+                dStatus = 1;
+            else
+                % otherwise, flag that the object is still stationary, but
+                % a position check is required
+                dStatus = 2;
+            end
+            
+        else
+            % if not, then flag that a position check is not required
+            dStatus = 3;
+        end
+end
+
 
 %-------------------------------------------------------------------------%
 %                             OTHER FUNCTIONS                             %
@@ -169,7 +235,7 @@ if any(ii == 1)
 end
 
 % --- checks the position data for any large jumps in location
-function [pData,ok] = frameDistCheck(obj,pData,iMov,ZPos,iApp,iTube)
+function [pData,ok] = frameDistCheck(obj,pData,iMov,iApp,iTube)
 
 % global variables
 global wOfs
@@ -338,7 +404,7 @@ pData.fPosL{iApp}{iTube} = [X,Y];
 pData.fPos{iApp}{iTube} = pData.fPosL{iApp}{iTube} + pOfs;
 
 % --- checks the position data for static objects
-function [pData,ok] = framePosCheck(obj,pData,iMov,ZPos,iApp,iTube)
+function [pData,ok] = framePosCheck(obj,pData,iMov,iApp,iTube)
 
 % global variables
 global wOfs

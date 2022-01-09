@@ -115,7 +115,7 @@ classdef SingleTrackInit < SingleTrack
             obj.iMov.StatusF = sFlag0;
             
             % calculates the distance each blob travels over the video
-            fPT = num2cell(cell2cell(obj.fPosL(okPh)'),2);
+            fPT = num2cell(cell2cell(obj.fPosL(okPh)',0),2);
             fPmn = cellfun(@(x)(calcImageStackFcn(x,'min')),fPT,'un',0);
             fPmx = cellfun(@(x)(calcImageStackFcn(x,'max')),fPT,'un',0);
             DfPC = cellfun(@(x,y)(sum((y-x).^2,2).^0.5),fPmn,fPmx,'un',0);
@@ -1059,34 +1059,44 @@ classdef SingleTrackInit < SingleTrack
         function [mFlag,ImuF,IsdF,pTol] = ...
                                     calcSubRegionProps(obj,IRng,iRT,iCT)
             
+            % parameters and initialisations
+            zTol = 2.5;
+            snrTol = -1.5;
             iRTF = cell2mat(iRT(:)');
             
-            % calculates the maximum range value for each sub-region
+            % calculates the max range values (across each row) and the
+            % baseline removed signal
             IRngC = nanmax(IRng,[],2);
-            IRngL = cellfun(@(x)(IRng(x,iCT)),iRT,'un',0);
-            IRngMx = cellfun(@(x)(nanmax(x(:))),IRngL);
+            Ysnr = snr(IRngC);
             
-            % calculates the peak range value Z-scores (relative to the
-            % entire region range mask)
+            % calculates the mean/std dev range values
             IRngF = IRng(iRTF,iCT);
-            [ImuF,IsdF] = deal(nanmean(IRngF(:)),nanstd(IRngF(:)));
-            Z = (IRngMx - ImuF)./IsdF;
+            [ImuF,IsdF] = deal(nanmean(IRngF(:)),nanstd(IRngF(:)));            
             
-            % determines which rows are significant
-            [idx,C] = kmeans(IRngC,2);
-            isSig0 = idx == argMax(C);
-            isSig = cellfun(@(x)(any(isSig0(x))),iRT);
+            % calculates the maximum range value for each sub-region            
+            IRngL = cellfun(@(x)(IRng(x,iCT)),iRT,'un',0);
+            IRngMx = cellfun(@(x)(nanmax(x(:))),IRngL);                        
             
             % sets the thresholding pixel tolerance
-            pTol = mean([min(IRngC(isSig0)),max(IRngC(~isSig0))]);
+            %  - if large movement, the threshold is calculated by the
+            %    significant points from the kmeans grouping
+            %  - if small movement, the Z-score of the raw range values
+            %    is used to ensure the threshold isn't too small
+            if Ysnr > snrTol
+                % determines which rows are significant
+                [idx,C] = kmeans(IRngC,2);
+                isSig0 = idx == argMax(C);                              
+                pTol = mean([min(IRngC(isSig0)),max(IRngC(~isSig0))]);
+            else
+                % calculates the max range mean/std values
+                pTol = nanmean(IRngC(iRTF)) + zTol*nanstd(IRngC(iRTF));
+            end
             
             % calculates the movement status flags:
             %  = 0: blob is completely stationary over the phase
-            %  = 1: blob has moved a very small distance
             %  = 2: blob has moved a significant distance
-            mFlag = zeros(size(isSig));
-%             mFlag(Z > obj.zTolS)= 1;
-            mFlag(isSig) = 2;
+            mFlag = zeros(size(IRngMx));
+            mFlag(IRngMx >= pTol) = 2;
             
         end
         
