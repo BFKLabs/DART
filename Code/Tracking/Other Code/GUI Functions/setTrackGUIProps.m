@@ -264,10 +264,14 @@ switch (typeStr)
             if ~isempty(pData)
                 % can view everything
                 iData.Status = 2;
-                setDetectEnable(handles,'on') 
-                if ~iMov.calcPhi
-                    setDetectEnable(handles,'off',3); 
-                end 
+                if any(iMov.vPhase < 3)
+                    setDetectEnable(handles,'on')                                
+                    if ~iMov.calcPhi
+                        setDetectEnable(handles,'off',3); 
+                    end 
+                else
+                    setDetectEnable(handles,'off')
+                end
                 
             elseif initDetectCompleted(iMov)
                 % case is the background has been calculated only
@@ -342,7 +346,7 @@ switch (typeStr)
         set(setObjEnable(handles.menuCorrectTrans,'off'),'checked','off')
         setDetectEnable(handles,'off')         
             
-    case ('PostTubeDetect') 
+    case ('PostInitDetect') 
         % case is after detecting the tube regions
         
         % resets the show tube checkbox and enables save soln menu item
@@ -358,7 +362,9 @@ switch (typeStr)
                     setDetectEnable(handles,'on',[1 4:5])      
                 end
             else
-                setDetectEnable(handles,'on',[1 4:5])      
+                isFeas = any(iMov.vPhase < 3);
+                setDetectEnable(handles,'on',[1 4])
+                setDetectEnable(handles,eStr{1+isFeas},5)
             end
             
             % sets the frame to the initial frame & and enable the batch

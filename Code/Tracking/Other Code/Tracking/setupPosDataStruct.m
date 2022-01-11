@@ -24,10 +24,12 @@ nStack = ceil(nFrm/nFrmS);
 % memory allocation 
 xiT = num2cell(nTube)';
 a = cellfun(@(x)(repmat({NaN(sum(nFrm),2)},1,x)),xiT,'un',0);
+b = cellfun(@(x)(repmat({NaN(sum(nFrm),1)},1,x)),xiT,'un',0);
 
 % sets the fly location data struct
-pData = struct('T',[],'fPos',[],'fPosL',[],'frmOK',[],'isSeg',[],...
+pData = struct('T',[],'fPos',[],'fPosL',[],'IPos',[],'frmOK',[],'isSeg',[],...
                'nTube',nTube,'nApp',nApp,'nCount',[],'calcPhi',iMov.calcPhi);
+pData.IPos = b;           
 [pData.fPos,pData.fPosL] = deal(a);
 [pData.nCount,pData.isSeg] = deal(zeros(nPhase,1),false(nPhase,1));
 

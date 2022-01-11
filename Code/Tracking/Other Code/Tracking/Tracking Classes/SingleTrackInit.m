@@ -594,7 +594,7 @@ classdef SingleTrackInit < SingleTrack
                         % otherwise, only is the previous data if there has
                         % been no movement over previous phases
                         sFlagPr = obj.sFlag(1:(iPh-1));
-                        calcStat = cellfun(@(x)(x(j,k)),sFlagPr) == 1;
+                        calcStat = all(cellfun(@(x)(x(j,k)),sFlagPr) == 1);
                     end
                     
                     % determines if the previous data can be used 
@@ -994,6 +994,7 @@ classdef SingleTrackInit < SingleTrack
             % memory allocation
             nApp = length(obj.iMov.pos);
             obj.mFlag = cell(nApp,1);
+            nFrmPh = diff(obj.iMov.iPhase(iPh,:))+1;
             
             % attempts to calculate the coordinates of the moving objects            
             for iApp = find(obj.iMov.ok(:)')
@@ -1018,7 +1019,7 @@ classdef SingleTrackInit < SingleTrack
                 % sets up the search mask for each sub-region
                 [obj.mFlag{iApp},obj.Imu(iApp,iPh),...
                 obj.Isd(iApp,iPh),obj.pTolF(iApp,iPh)] = ...
-                                obj.calcSubRegionProps(IRng{iApp},iRT,iCT);                
+                        obj.calcSubRegionProps(IRng{iApp},iRT,iCT,nFrmPh);                
                 obj.mFlag{iApp}(~obj.iMov.flyok(:,iApp)) = 0;
                 
                 % tracks the blobs for each sub-region
@@ -1057,34 +1058,46 @@ classdef SingleTrackInit < SingleTrack
         
         % --- calculates the sub-region properties
         function [mFlag,ImuF,IsdF,pTol] = ...
-                                    calcSubRegionProps(obj,IRng,iRT,iCT)
+                            calcSubRegionProps(obj,IRng,iRT,iCT,nFrmPh)
             
             % parameters and initialisations
             zTol = 2.5;
-            snrTol = -1.5;
+            nFrmMin = 3;
+            rGrpTol = 3.0;
             iRTF = cell2mat(iRT(:)');
             
             % calculates the max range values (across each row) and the
             % baseline removed signal
             IRngC = nanmax(IRng,[],2);
-            Ysnr = snr(IRngC);
+            
+            % calculates the maximum range value for each sub-region
+            IRngL = cellfun(@(x)(IRng(x,iCT)),iRT,'un',0);
+            IRngMx = cellfun(@(x)(nanmax(x(:))),IRngL);              
             
             % calculates the mean/std dev range values
             IRngF = IRng(iRTF,iCT);
-            [ImuF,IsdF] = deal(nanmean(IRngF(:)),nanstd(IRngF(:)));            
+            [ImuF,IsdF] = deal(nanmean(IRngF(:)),nanstd(IRngF(:)));              
             
-            % calculates the maximum range value for each sub-region            
-            IRngL = cellfun(@(x)(IRng(x,iCT)),iRT,'un',0);
-            IRngMx = cellfun(@(x)(nanmax(x(:))),IRngL);                        
+            if nFrmPh > nFrmMin          
+                % calculates the kmean groupings for the signal points, and
+                % from this the range of the signal to the distance between 
+                % the two groupings (if the ratio is high, then this 
+                % indicates separation between groupings is too low)
+                [idx,C] = kmeans(IRngC,2);
+                rRatio = range(IRngC)/abs(diff(C));
+            else
+                % case is there isn't enough frames to separate the groups
+                % properly (range will be too low)
+                rRatio = 1e10;
+            end
             
             % sets the thresholding pixel tolerance
             %  - if large movement, the threshold is calculated by the
             %    significant points from the kmeans grouping
             %  - if small movement, the Z-score of the raw range values
-            %    is used to ensure the threshold isn't too small
-            if Ysnr > snrTol
-                % determines which rows are significant
-                [idx,C] = kmeans(IRngC,2);
+            %    is used to ensure the threshold isn't too small            
+            if rRatio < rGrpTol
+                % determines which rows are significant                
                 isSig0 = idx == argMax(C);                              
                 pTol = mean([min(IRngC(isSig0)),max(IRngC(~isSig0))]);
             else
@@ -1180,11 +1193,13 @@ classdef SingleTrackInit < SingleTrack
             % -------------------------------- %
             
             % memory allocation
+            ok = obj.iMov.ok;
             pFilt = cell(nApp,1);
+            Zflag = NaN(max(cellfun(@length,obj.mFlag)),nApp);
             
             % retrieves the movement flags (for each sub-region) and
             % determines which have some sort of movement
-            Zflag = combineNumericCells(obj.mFlag(:)');
+            Zflag(:,ok) = combineNumericCells(obj.mFlag(ok)');
             obj.useP = (Zflag == 2); % & (ZR > obj.zTolJ);
             
             % determines if a majority of the residual pixel intensities

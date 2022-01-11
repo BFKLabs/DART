@@ -59,7 +59,8 @@ classdef VideoPhase < handle
         nPhMax = 5;
         szDS = 1000;
         szBig = 1400; 
-        dnFrmMin = 50;              
+        dnFrmMin = 50; 
+        isFeasVid = true;
         
     end
     
@@ -146,6 +147,21 @@ classdef VideoPhase < handle
             
             % reads the initial image stack
             obj.getInitialImgStack();
+            if ~obj.isFeasVid
+                % updates the progressbar
+                obj.updateProgField('Infeasible Video Detected',1);
+                
+                % flag that the video is untrackable
+                [obj.vPhase,obj.iPhase] = deal(3,[1,obj.iData.nFrm]);
+                
+                % closes the progressbar (if required)
+                if obj.closePB
+                    obj.hProg.closeProgBar();
+                end                
+                
+                % exits the function
+                return
+            end
             
             % determines the video properties
             obj.detVideoProps();
@@ -204,6 +220,10 @@ classdef VideoPhase < handle
             % the video            
             obj.isBig = any(size(obj.Img0{1}) > obj.szBig);  
             
+            % determines if the video is trackable
+            Imu = cellfun(@(x)(nanmean(x(:))),obj.Img0);
+            obj.isFeasVid = any((Imu > obj.pTolLo) & (Imu < obj.pTolHi));
+            
             % updates the progressbar
             obj.updateSubProgField('Image Estimate Read Complete',1);
             
@@ -221,7 +241,7 @@ classdef VideoPhase < handle
             obj.updateSubProgField('Determining Video Properties',0);
             
             % calculates the offset between the last/first frame
-            obj.hasT = false(1,obj.nApp);
+            obj.hasT = false(1,obj.nApp);            
             
             % updates the progressbar
             obj.updateSubProgField('Determining Video Translation',0.25);            

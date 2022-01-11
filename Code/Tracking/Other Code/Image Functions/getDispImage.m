@@ -68,7 +68,7 @@ if ~frameSet
                 Img = [];
                 return
             end
-                            
+               
             Img = read(mObj,cFrmT); 
             if size(Img,3) == 3
                 Img = rgb2gray(Img);

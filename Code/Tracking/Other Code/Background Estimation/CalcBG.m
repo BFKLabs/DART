@@ -271,7 +271,7 @@ classdef CalcBG < handle
             set(obj.hGUI.imgAxes,'CLimMode','Auto')
             
             % sets the pre-background detection properties
-            setTrackGUIProps(obj.hGUI,'PostTubeDetect',obj.isChange);
+            setTrackGUIProps(obj.hGUI,'PostInitDetect',obj.isChange);
             
             % clears the class fields
             obj.clearClassFields()
@@ -520,6 +520,7 @@ classdef CalcBG < handle
             imov = obj.iMov;
             
             % other initialisations
+            isFeas = false;
             eStr = {'off','on'};            
             cHdr = {'Phase','Frame','Region','Sub-Region'};
 
@@ -560,9 +561,14 @@ classdef CalcBG < handle
             initDetected = initDetectCompleted(obj.iMov);
             phaseDetected = ~isempty(obj.iMov.phInfo) || initDetected;
             
+            % determines if any of the detected phses are trackable
+            if phaseDetected
+                isFeas = any(obj.iMov.vPhase < 3);
+            end
+            
             % sets the phase stats menu item (if info is available)
             setObjEnable(hgui.menuPhaseStats,phaseDetected)
-            setObjEnable(hgui.buttonUpdateEst,phaseDetected)
+            setObjEnable(hgui.buttonUpdateEst,phaseDetected && isFeas)
             setPanelProps(hgui.panelImageType,phaseDetected)
             
             % sets the phase detection related object properties
@@ -1499,9 +1505,16 @@ classdef CalcBG < handle
             obj.iMov = imov;
             obj.iMov.Ibg = [];
             obj.iPara.cFrm = 1;
-            obj.frameSet = true;
-            obj.iPara.cPhase = find(imov.vPhase<3,1,'first');
-            [obj.isAllUpdate,obj.hasUpdated] = deal(true,false);            
+            obj.frameSet = true;            
+            [obj.isAllUpdate,obj.hasUpdated] = deal(true,false);   
+            
+            % sets the phase index
+            okPh = imov.vPhase < 3;
+            if any(okPh)
+                obj.iPara.cPhase = find(okPh,1,'first');
+            else
+                obj.iPara.cPhase = 1;
+            end
 
             % enables the image display properties
             setObjEnable(hgui.menuPhaseStats,'on');
@@ -1509,17 +1522,12 @@ classdef CalcBG < handle
             setPanelProps(hgui.panelVideoInfo,'on');
             setPanelProps(hgui.panelFrameSelect,'on')
             setPanelProps(hgui.panelImageType,'on')
-            obj.checkFilterImg(obj.hGUI.checkFilterImg,[])   
+            obj.checkFilterImg(obj.hGUI.checkFilterImg,[])  
+            setObjEnable(hgui.buttonUpdateEst,any(okPh))
 
             % disables the manual resegmentation list
             setPanelProps(hgui.panelManualSelect,'off')
-            obj.setVideoInfoProps()            
-
-            % determines if that are any valid phases
-            if ~all(obj.iMov.vPhase == 4)
-                % if so, then enable the update estimate button
-                setObjEnable(hgui.buttonUpdateEst,'on')    
-            end
+            obj.setVideoInfoProps()
 
             % sets the enables properties of the phase selection objects
             setPanelProps(hgui.panelPhaseSelect,'on');            
@@ -1888,6 +1896,14 @@ classdef CalcBG < handle
             % global variables
             global wOfs1
             wOfs1 = 0;
+            
+            % if there are no trackable frames then exit
+            if ~any(obj.iMov.vPhase < 3)
+                mStr = ['This video does not appear to have any ',...
+                        'trackable frames.'];
+                waitfor(msgbox(mStr,'No Trackable Frames?','modal'))
+                return
+            end
 
             % progressbar strings
             wStr = {'Reading Initial Image Stack',...

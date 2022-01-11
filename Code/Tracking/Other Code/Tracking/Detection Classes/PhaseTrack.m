@@ -95,9 +95,10 @@ classdef PhaseTrack < matlab.mixin.SetGet
             % segments the object locations for each region
             for iApp = find(obj.iMov.ok(:)')
                 % updates the progress bar
+                pW = 0.5*(1+iApp/(1+obj.nApp));
                 wStr = sprintf(['Residual Calculations ',...
                                 '(Region %i of %i)'],iApp,obj.nApp);
-                if obj.hProg.Update(2+obj.wOfs,wStr,iApp/(1+obj.nApp))
+                if obj.hProg.Update(2+obj.wOfs,wStr,pW)
                     % if the user cancelled, then exit
                     obj.calcOK = false;
                     return

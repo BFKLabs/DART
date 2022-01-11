@@ -143,6 +143,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
 
             % initialisations
             pLim = [0,255] + 15*[1,-1];
+            [iImg,nFrmMax] = deal(1,20);            
             if ~exist('iFrm0','var'); iFrm0 = 1; end
 
             % reads in the first feasible frame                    
@@ -162,7 +163,13 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 end
 
                 % increments the frame counter
-                iFrm0 = iFrm0 + 1;
+                [iFrm0,iImg] = deal(iFrm0 + 1,iImg + 1);
+                if (iImg > nFrmMax)
+                    % if the frame count is too high, then may the video is
+                    % not a trackable video?
+                    Img0 = [];
+                    return
+                end
             end
 
         end        
@@ -474,7 +481,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                     obj.reloadImgData(iDir,i)
                     
                     % if the next video is valid, then segment the video
-                    if obj.bData(iDir).movOK(i) == 1
+                    if obj.bData(iDir).movOK(i)
                         % creates/opens a new solution file
                         obj.openNewSolnFile(iDir,i)
                         
@@ -490,7 +497,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                         % --------------------------------- %                        
                         
                         % new background estimate calculations
-                        if obj.bData(iDir).movOK(i) == 1  
+                        if obj.bData(iDir).movOK(i)  
                             % if initialising and not segmenting the first
                             % video, then retrieve the information from the
                             % last video frame to use for the new file
@@ -514,7 +521,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                         
                         % reset the solution tracking GUI if open 
                         hTrack = findall(0,'tag','figFlySolnView');
-                        if ~isempty(hTrack)
+                        if ~isempty(hTrack) && obj.bData(iDir).movOK(i)
                             try
                                 % pause to refresh
                                 pause(0.05);       
@@ -544,7 +551,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                         obj.updateBPFile(obj.bData(iDir));
                         
                         % starts full video tracking (if video is valid)
-                        if obj.bData(iDir).movOK(i) ~= 0
+                        if obj.bData(iDir).movOK(i)
                             % tracks the video
                             trkOK = obj.segObjLocations(prData);
                             if ~isempty(obj.wErr)                                
@@ -603,8 +610,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
 
                 % video counter incrememnt and output flag reset
                 i = i + 1;           
-                obj.isOutput = true;  
-                obj.pData = [];
+                [obj.isOutput,obj.pData] = deal(true,[]); 
                                 
                 if i <= obj.nFile
                     try
@@ -751,6 +757,11 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                     % if the user cancelled, then exit
                     sFlag = 1;
                     return
+                elseif all(obj.iMov.vPhase == 3)
+                    % if the video is untrackable, then update the tracking
+                    % flag and exit the function
+                    obj.bData(iDir).movOK(iFile) = false;
+                    return                    
                 end
                 
                 % initialises the initial tracking object
@@ -962,13 +973,21 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             Img0 = obj.bData(iDir).Img0;
             fStr = obj.bData(iDir).mName{iFile};            
             
-            % hisogram matches the images
+            % determines the feasible comparison image
             ImgNw = obj.getFeasComparisonImage(fStr); 
-            if abs(mean2(Img0) - mean2(ImgNw)) > pTolDiff
-                ImgNw = double(imhistmatch(uint8(ImgNw),uint8(Img0),256));
+            if isempty(ImgNw)
+                % if one doesn't exist, then return a zero offset
+                dpImg = zeros(1,2);
+                return
+            end
+                
+            % if the difference between the candidate/comparison images is
+            % too large, then perform a histogram match
+            if abs(mean2(Img0) - mean2(ImgNw)) > pTolDiff                
+                ImgNw = double(imhistmatch(uint8(ImgNw),uint8(Img0),256));                
             end
             
-            % calculates the video offset between the new/candidate frames
+            % calculates the image offset
             dpImg = flip(roundP(fastreg(ImgNw,Img0)));
             
         end

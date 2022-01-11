@@ -94,18 +94,23 @@ classdef InitPhaseStats < handle
             % patch object indices
             yP = 255*[-1,1];
             pInfo = obj.phInfo;
+            pCol = 0.5*ones(1,3);
             [ii,jj] = deal([1,1,2,2,1],[1,2,2,1,1]);
+            isFeas = any(vPhase < 3);
             
             % sets the frame index/avg. pixel intensity arrays 
-            if hasF
+            if ~isFeas
+                % case is the video is untrackable
+                iFrm = pInfo.iFrm0;
+                Imu = NaN(size(iFrm));                
+                
+            elseif hasF
                 % case is the video has high fluctuation
                 if isempty(pInfo.DimgF)
                     [iFrm,Imu] = deal(pInfo.iFrm0,pInfo.Dimg0);
                 else
                     [iFrm,Imu] = deal(pInfo.iFrmF,mean(pInfo.DimgF,2));
                 end
-                    
-                pCol = 0.5*ones(1,3);
             else
                 % case is the video has relatively steady intensity
                 [iFrm,Imu] = deal(pInfo.iFrmF,mean(pInfo.DimgF,2));
@@ -244,9 +249,14 @@ classdef InitPhaseStats < handle
             % ---------------------------- %                                 
             
             % REMOVE ME LATER
-            dyLim = 0.05;            
-            yLim0 = [min(Imu),max(Imu)];
-            yLim = max(0,min(255,yLim0 + dyLim*diff(yLim0)*[-1,1]));            
+            dyLim = 0.05;                        
+            
+            if isFeas
+                yLim0 = [min(Imu),max(Imu)];
+                yLim = max(0,min(255,yLim0 + dyLim*diff(yLim0)*[-1,1])); 
+            else
+                [yLim,yLim0] = deal([0,255]);
+            end
             
             % creates the plot markers
             plot(obj.hAx{1},iFrm,Imu,'k','linewidth',1)
