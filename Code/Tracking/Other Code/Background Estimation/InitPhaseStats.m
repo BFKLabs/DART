@@ -106,11 +106,11 @@ classdef InitPhaseStats < handle
                 
             elseif hasF
                 % case is the video has high fluctuation
-                if isempty(pInfo.DimgF)
+%                 if isempty(pInfo.DimgF)
                     [iFrm,Imu] = deal(pInfo.iFrm0,pInfo.Dimg0);
-                else
-                    [iFrm,Imu] = deal(pInfo.iFrmF,mean(pInfo.DimgF,2));
-                end
+%                 else
+%                     [iFrm,Imu] = deal(pInfo.iFrmF,mean(pInfo.DimgF,2));
+%                 end
             else
                 % case is the video has relatively steady intensity
                 [iFrm,Imu] = deal(pInfo.iFrmF,mean(pInfo.DimgF,2));

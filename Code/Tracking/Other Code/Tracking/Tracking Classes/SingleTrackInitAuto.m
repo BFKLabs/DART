@@ -330,9 +330,10 @@ classdef SingleTrackInitAuto < SingleTrackInit
             obj.hProg.Update(3+obj.wOfsL,'Sub-Image Stack Setup',0);             
             
             % parameters  
+            pW = 0.75;
             dtOfs = 2;              
-            dtMin = max(obj.iMov.szObj);  
             dPMin = min(obj.iMov.szObj)/2;
+            dtMin = max(ceil(pW*obj.iMov.szObj));              
             
             % initialisations and memory allocation            
             nTube = obj.nTube;

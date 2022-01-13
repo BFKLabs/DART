@@ -1962,6 +1962,7 @@ classdef CalcBG < handle
                 h = ProgBar(wStr,'Single Object Background Estimation'); 
                 
                 % calculates the initial location estimates
+                obj.trkObj.hFilt = [];
                 obj.trkObj.calcInitEstimate(obj.iMov,h);                                 
             end
 

@@ -5,14 +5,21 @@ if isempty(stimP)
     % if no stimuli information, then exit
     [Ts,Tf] = deal([]);
     return
-elseif ~isfield(stimP,'Motor')
-    % if no motor field, then exit
-    [Ts,Tf] = deal([]);
-    return    
+else
+    % determines which are the motor related fields
+    sFld = fieldnames(stimP);
+    isMotor = strContains(sFld,'Motor');
+    
+    % if no motor field, then exit    
+    if ~any(isMotor)
+        [Ts,Tf] = deal([]);
+        return  
+    end
 end
 
 % initiasiations
-pMotor = stimP.Motor;
+sFldM = sFld(isMotor);
+pMotor = getStructField(stimP,sFldM{1});
 
 % determines what type of stimuli pattern was used for the motor device
 if isfield(pMotor,'Ch')

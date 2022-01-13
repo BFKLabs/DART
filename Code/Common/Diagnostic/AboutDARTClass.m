@@ -111,24 +111,30 @@ classdef AboutDARTClass < handle
                                              'Position',pPosL);
             obj.createExplorerTree(tPosL);                               
             
-            % ------------------------------- %
-            % --- DESCRIPTION PANEL SETUP --- %
-            % ------------------------------- %            
+            % -------------------------------- %
+            % --- DESCRIPTION PANELS SETUP --- %
+            % -------------------------------- %            
                           
+            % memory allocation
+            obj.hPanelD = cell(2,1);
+            
             % sets the position vectors
             x0D = sum(pPosL([1,3])) + obj.dXH;
             pPosD = [x0D,obj.dXH,obj.widPanelD,pPosL(4)];
             ePosD = [obj.dXH*[1,1],pPosD(3:4)-obj.dX];
             
             % creates the table panel
-            obj.hPanelD = uipanel(obj.hPanelO,'Title','','Units','Pixels',...
-                                             'Position',pPosD);
-                                         
-            % creates the table panel
-            obj.hEditD = uicontrol(obj.hPanelD,'Style','Edit',...
-                            'Position',ePosD,'Enable','Inactive',...
-                            'FontUnits','Pixels','FontSize',obj.txtSz,...
-                            'String','','HorizontalAlignment','left');
+            for i = 1:2
+                % creates the panel object
+                obj.hPanelD{i} = uipanel(obj.hPanelO,'Title','',...
+                                    'Units','Pixels','Position',pPosD);
+            end
+            
+            % creates the editbox object
+            obj.hEditD{i} = uicontrol(obj.hPanelD{i},'Style','Edit',...
+                        'Position',ePosD,'Enable','Inactive',...
+                        'FontUnits','Pixels','FontSize',obj.txtSz,...
+                        'String','','HorizontalAlignment','left');            
                                          
         end
         
@@ -154,6 +160,7 @@ classdef AboutDARTClass < handle
             for i = 1:length(obj.fexType)
                 dStr = obj.fexType{i};
                 hNodeL = createUITreeNode(dStr,dStr,[],true);
+                hNodeL.setUserObject(i);
                 hNodeD.add(hNodeL)
             end
             
@@ -199,7 +206,7 @@ classdef AboutDARTClass < handle
             switch get(hNode(1),'Name')
                 case 'Program Details'
                     % case is selecting the program details
-                    
+                    a = 1;
                     
                 case {'File Exchange References','ABOUT DART'}
                     % clears the description panel
@@ -207,8 +214,20 @@ classdef AboutDARTClass < handle
                 otherwise
                     % case is the file exchange files
                     
+                    %
+                    iNode = hNode(1).getUserObject;
+                    dStr = obj.getRefDescString(iNode);
                     
             end
+            
+        end
+        
+        % --- retrieves the code reference description string
+        function dStr = getRefDescString(obj,iNode)
+            
+            %
+            fStr = cell(5,1);
+            dStr = '';
             
         end
         

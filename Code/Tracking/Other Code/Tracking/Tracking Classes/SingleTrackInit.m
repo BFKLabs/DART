@@ -1163,6 +1163,7 @@ classdef SingleTrackInit < SingleTrack
             
             % parameters and memory allocation 
             pSigMin = 0.5;
+            pvSigMin = 0.1;
             fP = obj.fPosL{iPh};
             nApp = size(fP,1);
             obj.useP = zeros(max(obj.nTube),nApp);
@@ -1192,6 +1193,9 @@ classdef SingleTrackInit < SingleTrack
             % --- FLY TEMPLATE CALCULATION --- %
             % -------------------------------- %
             
+            % parameters
+            pS = 1.5;
+            
             % memory allocation
             ok = obj.iMov.ok;
             pFilt = cell(nApp,1);
@@ -1204,8 +1208,11 @@ classdef SingleTrackInit < SingleTrack
             
             % determines if a majority of the residual pixel intensities
             % meets the tolerance (for each sub-region) across all frames
-            allSig = combineNumericCells(cellfun(@(x,y)(mean(x>y,2) > ...
-                    pSigMin),pPR,num2cell(obj.pTolF(:,iPh)),'un',0)');
+            pSig = combineNumericCells(cellfun(@(x,y)(mean(x>y,2)),...
+                                pPR,num2cell(obj.pTolF(:,iPh)),'un',0)');
+            pvSig = combineNumericCells(cellfun(@(x,y)(mean(x>pS*y,2)),...
+                                pPR,num2cell(obj.pTolF(:,iPh)),'un',0)');                                                    
+            isSig = (pSig >= pSigMin) | (pvSig > 0);
             
             % calculates the distance range 
             DrngC = cellfun(@(x)(sqrt(sum(calcImageStackFcn...
@@ -1215,7 +1222,7 @@ classdef SingleTrackInit < SingleTrack
             % if the blob filter has been calculated, then exit
             if ~isempty(obj.hFilt)
                 % determines the blobs that haven't moved far over the phase
-                obj.setStatusFlag(Zflag,ZR,Drng,allSig,iPh);
+                obj.setStatusFlag(Zflag,ZR,Drng,isSig,iPh);
                 return
             end
                                     
@@ -1247,7 +1254,7 @@ classdef SingleTrackInit < SingleTrack
             obj.iMov.szObj = pBB(3:4);       
             
             % determines the blobs that haven't moved far over the phase
-            obj.setStatusFlag(Zflag,ZR,Drng,allSig,iPh);           
+            obj.setStatusFlag(Zflag,ZR,Drng,isSig,iPh);           
             
             % updates the progressbar
             obj.hProg.Update(3+obj.wOfsL,'Region Analysis Complete',1);            

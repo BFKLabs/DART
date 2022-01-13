@@ -266,7 +266,7 @@ pOfs = repmat(pData.fPos{iApp}{iTube}(i0,:)-[X(i0),Y(i0)],length(X),1);
 % initialisations
 N = 3:5;
 tTol = 0.25;
-Dmin = 3;
+Dmin = floor(iMov.szObj(1)/2);
 
 % removes any short-term bobbles in blob location
 for i = 1:length(N)
@@ -485,11 +485,11 @@ while cont
 
         % retrieves the phase index/phase type flag
         iPhFrm = find(iFrm <= iMov.iPhase(:,2),1,'last');
-        isHV = iMov.vPhase(iPhFrm) > 1;
+        isHV = iMov.vPhase(iPhFrm) > 1;                
         
         % calculates the distance mask (for weighting the local image)
         IBG = obj.iMov.Ibg{iPhFrm}{iApp}(iRT,:);
-        if iFrm == 1
+        if (iFrm == 1) || any(isnan([X(iFrm-1),Y(iFrm-1)]))
             DW = bwdist(setGroup(roundP(fPosMn),size(IBG)));
         else
             DW = bwdist(setGroup([X(iFrm-1),Y(iFrm-1)],size(IBG))); 

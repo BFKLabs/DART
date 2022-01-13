@@ -210,11 +210,21 @@ if isfield(iMov,'useRot')
     end
 end
 
-%
+% calculates an estimate of the sampling rate from the time stamps
 FPSest = 1/nanmedian(diff(iData.Tv));
 if rectifyRatio(iData.exP.FPS/FPSest) > 1.1
-    I0 = getDispImage(iData,iMov,10,false);
+    % if there is a major discrepancy, then determine if the calculated
+    % sampling rate is better than the stated value
+    iDataT = iData;
+    if isnan(iDataT.Frm0)
+        % sets the initial frame (if not set)
+        iDataT.Frm0 = Frm0;
+    end
+    
+    % retrieves an image from the video (given the stated sampling rate)
+    I0 = getDispImage(iDataT,iMov,10,false);
     if isempty(I0) || all(isnan(I0(:)))
+        % if there was an error then reset the rate to the calculated value
         iData.exP.FPS = FPSest;
     end
 end

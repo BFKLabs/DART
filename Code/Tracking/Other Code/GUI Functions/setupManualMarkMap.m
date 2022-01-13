@@ -22,11 +22,10 @@ for i = 1:obj.nApp
 end
 
 % retrieves the indices
-Ixc = calcXCorr(obj.iMov.hFilt,I);
-iMx = find(Bw.*imregionalmin(Ixc));
-[yMx,xMx] = ind2sub(sz,iMx);
+iMn = find(Bw.*imregionalmin(I));
+[yMx,xMx] = ind2sub(sz,iMn);
 
-%
+% sets up the full marker map
 for i = 1:obj.nApp
     % sets the column indices for the region
     iC = obj.iMov.iC{i};
