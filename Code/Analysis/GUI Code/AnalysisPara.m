@@ -36,6 +36,9 @@ setappdata(hObject,'hGUI',hGUI)
 setappdata(hObject,'getPlotData',@getPlotData)
 setappdata(hObject,'initAnalysisGUI',@initAnalysisGUI)
 
+% initialises the base GUI objects
+initBaseGUIObjects(handles)
+
 % initialises the analysis parameter class object
 pObj = AnalysisParaClass(hObject,hGUI);
 if pObj.isOK
@@ -57,6 +60,19 @@ function varargout = AnalysisPara_OutputFcn(hObject, eventdata, handles)
 
 % Get default command line output from handles structure
 varargout{1} = handles.output;
+
+%-------------------------------------------------------------------------%
+%                           BOX-PANEL FUNCTIONS                           %
+%-------------------------------------------------------------------------%
+
+% --- initialises the base GUI objects
+function initBaseGUIObjects(handles)
+
+%
+
+
+% --- box panel minimise/maximise callback function
+function boxPanelClick(hObject, evnt, handles)
 
 %-------------------------------------------------------------------------%
 %                             OTHER FUNCTIONS                             %

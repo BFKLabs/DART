@@ -8,6 +8,11 @@ if nargin < 3
     h = ProgBar({'Initialising'},'Retrieving Sleep Intensity Data');
 end
 
+% retrieves the other calculation parameters (if they exist)
+[devType,chType] = deal([]);
+if isfield(cP,'devType'); devType = cP.devType; end
+if isfield(cP,'chType'); chType = cP.chType; end   
+
 % retrieves the group/bin number count
 if isfield(cP,'nBin')
     % flag is set as "nBin"
@@ -32,7 +37,7 @@ nApp = length(snTot.iMov.flyok);
 xiG = num2cell(1:nGrp)';
 
 % sets the stimuli times
-Ts = getMotorFiringTimes(snTot.stimP);
+Ts = getMotorFiringTimes(snTot.stimP,devType,chType);
 % Ts = cell2mat(snTot.Ts);
 if isempty(Ts)
     % if there are no recorded stimuli events, then output an error    

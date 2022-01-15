@@ -7,6 +7,11 @@ if nargin < 3
     h = ProgBar({'Initialising'},'Retrieving Sleep Intensity Data');
 end
 
+% retrieves the other calculation parameters (if they exist)
+[devType,chType] = deal([]);
+if isfield(cP,'devType'); devType = cP.devType; end
+if isfield(cP,'chType'); chType = cP.chType; end   
+
 % ------------------------------------------- %
 % --- INITIALISATIONS & MEMORY ALLOCATION --- %
 % ------------------------------------------- %
@@ -41,7 +46,7 @@ TsigR = cumsum([0;(Tsig + field2cell(pSig,'sDelay',1));1e10]);
 [cP.tNonR,tImmobTol] = deal(TsigR(end-1),TsigR(2));
 
 % sets the stimuli times
-Ts = getMotorFiringTimes(snTot.stimP);
+Ts = getMotorFiringTimes(snTot.stimP,devType,chType);
 if isempty(Ts)
     % if there are no recorded stimuli events, then output an error    
     if wOfs == 0

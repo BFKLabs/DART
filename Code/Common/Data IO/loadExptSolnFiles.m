@@ -243,6 +243,11 @@ end
 % updates the waitbar figure
 h.Update(1+wOfs,'Final House-Keeping Operations...',1.0);
 
+% reduces the stimuli timing struct (if stimuli is present)
+if ~isempty(snTot.stimP)
+    snTot.stimP = reduceStimTimingStruct(snTot.stimP);
+end
+
 % separates the acceptance flags (if stored in a cell array)
 if iscell(snTot.iMov.flyok)
     % separates the multi-experiment group names

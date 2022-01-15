@@ -1196,7 +1196,8 @@ if ~isempty(sPara.pData{sInd}) && ~any(isnan(sPara.ind(sInd,:)))
     
     % updates the parameter GUI
     if isempty(hPara)
-        hPara = AnalysisPara(handles);
+%         hPara = AnalysisPara(handles);
+        hPara = AnalysisParaNew(handles);
         setappdata(hFig,'hPara',hPara);
     else
         pObj = getappdata(hPara,'pObj');
@@ -1387,7 +1388,8 @@ hPara = getappdata(hFig,'hPara');
 try 
     guidata(hPara);
 catch
-    hPara = AnalysisPara(handles);
+%     hPara = AnalysisPara(handles);
+    hPara = AnalysisParaNew(handles);
     setappdata(hFig,'hPara',hPara);
 end
 
@@ -2076,7 +2078,8 @@ if isShowPara
         % creates the new parameter GUI
         hPara = getappdata(hFig,'hPara');
         if isempty(hPara)
-            hPara = AnalysisPara(handles);
+            hPara = AnalysisParaNew(handles);
+%             hPara = AnalysisPara(handles);
             setappdata(hFig,'hPara',hPara);
             
             % if there is more than one subplot, update the data values
@@ -2123,7 +2126,8 @@ if isShowPara
                 pObj.initAnalysisGUI();
             else
                 % if the gui is not valid, then recreate the gui
-                hPara = AnalysisPara(handles);
+                hPara = AnalysisParaNew(handles);
+%                 hPara = AnalysisPara(handles);
                 setappdata(hPara,'hPara',hPara);
             end
             
