@@ -440,7 +440,7 @@ end
 function menuAboutDART_Callback(~, ~, ~)
 
 % runs the about DART GUI
-AboutDART();
+AboutDARTClass();
 
 %-------------------------------------------------------------------------%
 %                        FIGURE CALLBACK FUNCTIONS                        %
