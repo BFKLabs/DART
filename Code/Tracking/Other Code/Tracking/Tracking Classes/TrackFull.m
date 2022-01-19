@@ -223,7 +223,8 @@ classdef TrackFull < Track
                 % analysed
                 if ~any(isTrk)
                     % use the first frame from the phase if none
-                    iFrmLast = iFrmP(1)-1;
+                    X0 = obj.pData.fPos{iApp0}{iTube0}(:,1);
+                    iFrmLast = find(~isnan(X0),1,'last');
                 else
                     % otherwise, return the last tracked frame
                     iFrmLast = iFrmP(find(isTrk,1,'last'));
@@ -305,7 +306,6 @@ classdef TrackFull < Track
             
             % retrieves the global frame indices            
             fObjP = obj.fObj{iPhase};
-            dX = cellfun(@(x)(x(1)-1),obj.iMov.iC);
             nFrm = length(iFrmR);
             
             % retrieves the updated x/y limits
@@ -315,7 +315,8 @@ classdef TrackFull < Track
             % retrieves all values
             for iApp = find(obj.iMov.ok(:)')
                 % calculates the offset
-                pOfs = repmat([dX(iApp),0],nFrm,1);                                
+                dX = obj.iMov.iC{iApp}(1) - 1;
+                pOfs = repmat([dX,0],nFrm,1);                                
                 for iFly = 1:obj.sObj.getSubRegionCount(iApp)
                     % sets the local/global position values
                     obj.pData.fPos{iApp}{iFly}(iFrmR,:) = pOfs + ...
@@ -886,8 +887,12 @@ classdef TrackFull < Track
                    (nanmax(x,[],1)),y(:),'un',0))),obj.pData.fPosL,'un',0);
                
             % set the overall x/y-coordinate limits for each sub-region
-            obj.xLim = cellfun(@(x,y)([x(:,1),y(:,1)]),pMin,pMax,'un',0);
-            obj.yLim = cellfun(@(x,y)([x(:,2),y(:,2)]),pMin,pMax,'un',0);            
+            isOK = ~cellfun(@isempty,pMin);
+            [obj.xLim,obj.yLim] = deal(cell(size(pMax)));
+            obj.xLim(isOK) = cellfun(@(x,y)...
+                        ([x(:,1),y(:,1)]),pMin(isOK),pMax(isOK),'un',0);
+            obj.yLim(isOK) = cellfun(@(x,y)...
+                        ([x(:,2),y(:,2)]),pMin(isOK),pMax(isOK),'un',0);            
             
             % updates the frame (if required)
             if updateFrame

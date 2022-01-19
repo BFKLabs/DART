@@ -697,15 +697,7 @@ setObjEnable(handles.menuGlobal,'off')
 function menuProgPara_Callback(~, ~, handles)
 
 % runs the program default GUI
-hFig = handles.figFlyAnalysis;
-iData = getappdata(hFig,'iData');
-[iData.ProgDef,isSave] = ProgParaAnalysis(hFig,iData.ProgDef);
-
-% updates the data struct if the user specifed changes
-if isSave
-    setappdata(hFig,'iData',iData);
-    setappdata(hFig,'iProg',iData.ProgDef)
-end
+ProgDefaultDef(handles.figFlyAnalysis,'Analysis');
 
 % -------------------------------------------------------------------------
 function menuExit_Callback(~, ~, handles)

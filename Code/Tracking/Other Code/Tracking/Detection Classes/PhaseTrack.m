@@ -72,7 +72,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             
             % sets the tube-region offsets
             obj.y0 = cell(obj.nApp,1);
-            for iApp = 1:obj.nApp
+            for iApp = find(obj.iMov.ok)
                 obj.y0{iApp} = cellfun(@(x)(x(1)-1),obj.iMov.iRT{iApp});
             end     
             

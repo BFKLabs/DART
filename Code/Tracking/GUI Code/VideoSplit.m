@@ -37,8 +37,8 @@ hMain = varargin{1};
 
 % retrieves the 
 setObjVisibility(hMain,'off')
-iMov = getappdata(hMain,'iMov');
-iDataM = getappdata(hMain,'iData');
+iMov = get(hMain,'iMov');
+iDataM = get(hMain,'iData');
 
 % initialisation of the program data struct
 iData = initDataStruct(iDataM,iMov);
@@ -48,7 +48,7 @@ setappdata(hObject,'hMain',hMain)
 setappdata(hObject,'iData',iData)
 setappdata(hObject,'iDataM',iDataM)
 setappdata(hObject,'hMainG',guidata(hMain))
-setappdata(hObject,'iMov',getappdata(hMain,'iMov'))
+setappdata(hObject,'iMov',get(hMain,'iMov'))
 
 % initialises the GUI object properties
 initObjProps(handles,iData)

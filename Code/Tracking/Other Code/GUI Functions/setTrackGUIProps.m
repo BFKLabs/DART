@@ -463,7 +463,8 @@ switch (typeStr)
         setMovEnable(handles,'on');
         setMenuEnable(handles,'on',1:2)                 
         setDetectEnable(handles,'on',[1 4])
-        set(handles.checkShowTube,'value',1)         
+        set(handles.checkShowTube,'value',1)
+        set(handles.movCountEdit,'string','1')
         
         % disables all the metric marker check boxes and the metric
         % calculations button (i.e., the solution has been reinitialised)
@@ -639,6 +640,9 @@ switch (typeStr)
     case ('UpdateMovieSelection') % case is updating the frame selection buttons
         % retrieves the current frame from the frame counter edit box
         cMov = iData.cMov;
+        
+        % updates the rejection button
+        setObjEnable(handles.checkReject,~isempty(iMov.pos{cMov}))
 
         % check to see if any buttons need to be enabled/disabled
         if (cMov == iData.nMov)

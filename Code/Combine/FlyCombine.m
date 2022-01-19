@@ -279,15 +279,8 @@ setObjEnable(handles.menuPlotData,'off');
 % -------------------------------------------------------------------------
 function menuProgPara_Callback(hObject, eventdata, handles)
 
-% runs the program preference sub-GUI
-hFig = handles.figFlyCombine;
-iProg = getappdata(hFig,'iProg');
-[iProgNw,isSave] = ProgParaCombine(hFig,iProg);
-
-% updates the data struct (based on the program preference)
-if isSave
-    setappdata(hFig,'iProg',iProgNw);
-end
+% runs the program default GUI
+ProgDefaultDef(handles.figFlyCombine,'Combine');
 
 % -------------------------------------------------------------------------
 function menuExit_Callback(hObject, eventdata, handles)

@@ -38,6 +38,7 @@ setappdata(hObject,'iDataS',initDataStruct(handles,trkObj))
 
 % initialises the object properties
 initObjProps(handles)
+centreFigPosition(hObject)
 
 % Update handles structure
 guidata(hObject, handles);

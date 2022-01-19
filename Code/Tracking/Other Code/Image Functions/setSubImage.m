@@ -17,6 +17,12 @@ if isnan(iApp)
     set(handles.movCountEdit,'string',iApp)
 end
 
+% if there is no sub-region data, then exit with an empty image
+if isempty(iMov.iR{iApp}) % || ~obj.iMov.ok(iApp)
+    ImgS = [];
+    return
+end
+
 % sets the sub-image from the global image
 iR = max(1,iMov.iR{iApp}(1)-szDel):min(sz(1),iMov.iR{iApp}(end)+szDel);
 iC = max(1,iMov.iC{iApp}(1)-szDel):min(sz(2),iMov.iC{iApp}(end)+szDel);

@@ -283,14 +283,8 @@ SyncSummary(handles.figFlyRecord)
 % -------------------------------------------------------------------------
 function menuProgDef_Callback(hObject, eventdata, handles)
 
-% runs the program preference sub-GUI
-iProg = getappdata(handles.figFlyRecord,'iProg');
-[iProgNw,isSave] = ProgParaRecord(handles.figFlyRecord,iProg);
-
-% updates the data struct (based on the program preference)
-if (isSave)
-    setappdata(handles.figFlyRecord,'iProg',iProgNw);
-end
+% runs the program default GUI
+ProgDefaultDef(handles.figFlyRecord,'Recording');
 
 % -------------------------------------------------------------------------
 function menuExit_Callback(hObject, eventdata, handles)
@@ -679,8 +673,10 @@ else
         'Program Default Setup','Manually','Automatically','Manually');
     switch (uChoice)
         case ('Manually')
-            % user chose to setup manually, so load the ProgDef sub-GUI
-            ProgDef = ProgParaRecord(handles.figFlyRecord,[],1);
+            % user chose to setup manually, so load the ProgDef sub-GUI            
+            ProgDefaultDef(handles.figFlyRecord,'Recording');
+            ProgDef = getappdata(handles.figFlyRecord,'iProg');
+            
         case ('Automatically')
             % user chose to setup automatically then create the directories            
             ProgDef = setupAutoDir(mainProgDir,progFile);
@@ -736,10 +732,11 @@ for i = 1:length(fldNames)
 end
 
 % if any of the directories do not exist, then
-if (any(~isExist))
+if any(~isExist)
     % runs the program default sub-ImageSeg
-    if (nargin == 1)
-        ProgDef = ProgParaRecord(handles.figFlyRecord,ProgDef,1);
+    if nargin == 1
+        ProgDefaultDef(handles.figFlyRecord,'Recording');
+        ProgDef = getappdata(handles.figFlyRecord,'iProg');
     end
 end
 

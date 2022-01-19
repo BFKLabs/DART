@@ -57,10 +57,11 @@ classdef EmptyCheck < handle
             % fixed dimensions
             bHght = 25;
             pHght = 40;
-            tWid = 400;            
+            tWid = 400;
+            nRowMax = 20;
             
             % table dimensions
-            nRow = length(obj.iApp);
+            nRow = min(nRowMax,length(obj.iApp));
             tHght = nRow*HWT+H0T;
             
             % sets up the table data fields
@@ -146,6 +147,7 @@ classdef EmptyCheck < handle
             
             % sets the object into the gui
             setappdata(obj.hFig,'obj',obj)
+            centreFigPosition(obj.hFig,2);
             
             % adds a wait until the user is finished
             uiwait(obj.hFig)

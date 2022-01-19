@@ -112,8 +112,7 @@ global isDetecting
 switch get(hObject,'state')
     case ('on') % case is the zoom is turned on        
         % turns the zoom on
-        zoom xon            
-        zoom reset
+        zoom xon                  
         
         % disables the relevant objects
         set(setObjEnable(handles.uiDataTool,'off'),'state','off')
@@ -463,7 +462,7 @@ setObjEnable(handles.menuDiagCheck,mStr)
 
 % creates the new apparatus markers
 hMenuP = handles.menuFlyPos;
-for i = 1:length(hGUI.output.iMov.iR)
+for i = find(hGUI.output.iMov.ok)
     % creates the new menu item
     hMenuNw = uimenu(hMenuP,'Label',sprintf('Region %i',i)); 
     
@@ -674,6 +673,7 @@ end
 % removes hold from the axis
 hold(hAxI,'off')
 axis(hAxI,'ij')
+zoom(hAxI,'reset')
 
 % sets the initial plot to be the average velocity
 if nargin == 1
@@ -766,7 +766,7 @@ switch iApp
         
         % sets the y-axis limits and strings
         yTick = 1:nApp;
-        yStr = cellfun(@(x)(sprintf('%i',x)),num2cell(yTick)','un',0);
+        yStr = arrayfun(@(x)(sprintf('%i',x)),find(iMov.ok)','un',0);
         
         % sets/updates the y-axis label
         hYLbl = findall(hAx,'tag','hYLbl');
@@ -847,8 +847,12 @@ switch iApp
         
         % calculates the x-coordinates
         if vType(1)      
-            xMin = iMov.iC{iApp}(1) - 1;
-            xMax = iMov.iC{iApp}(end) - 1; 
+            if isempty(iMov.iC{iApp})
+                [xMin,xMax] = deal(0,1);
+            else
+                xMin = iMov.iC{iApp}(1) - 1;
+                xMax = iMov.iC{iApp}(end) - 1; 
+            end
             
             if isMTrk
                 % determines the min/max position values over all flies
@@ -952,7 +956,7 @@ hAx = handles.axesImg;
 cPos = get(hAx,'CurrentPoint'); mP = cPos(1,1:2);
 
 % only update if the mouse-click was within the image axes
-if (isInAxes(handles,mP))
+if isInAxes(handles,mP)
     % determines the frame that is currently selected
     T = get(handles.output,'T');
     [~,iFrm] = min(abs(T/60-mP(1)));    
@@ -1129,7 +1133,7 @@ phCol = distinguishable_colors(nPhase);
 for i = 1:nPhase
     xP = (T(iMov.iPhase(i,:))+(dT/2)*[-1,1])*Tmlt;
     patch(hAxI,xP(ix),yLimT(iy),phCol(i,:),'FaceAlpha',fAlpha,...
-               'tag','hPhase','UserData',i);              
+               'tag','hPhase','UserData',i,'LineStyle','none');
 end
 
 % --- retrieves the currently selected menu item
@@ -1196,7 +1200,7 @@ if isInAxes(handles,mP)
     
     % sets the normalised coordinates
     mPN = [(mP(1)-xLim(1))/diff(xLim),(mP(2)-yLim(1))/diff(yLim)];
-    yDel =  0.07 + 0.86*(mPN(2) > 0.5); 
+    yDel =  0.14 + 0.86*(mPN(2) > 0.5); 
     xDel = -0.005 + 0.15*(mPN(1) < 0.5); 
     
     % updates the text-box position
@@ -1222,7 +1226,7 @@ iApp = getSelectedMenuItem(handles);
 if (iApp == 0)
     isIn = all([mP,T(end)/60,(length(pData.fPos)+0.5)] - [0 0.5 mP] > 0);
 else
-    isIn = all([mP,T(end)/60,(length(pData.fPos{1})+0.5)] - [0 0.5 mP] > 0);
+    isIn = all([mP,T(end)/60,(length(pData.fPos{iApp})+0.5)] - [0 0.5 mP] > 0);
 end
 
 % --- sets the string for the data-cursor box

@@ -105,6 +105,10 @@ for i = 1:length(iMov.pos)
     end
 end
 
+% sets the outer region dimension vectors
+pPos = iMov.pos;
+pPos(~iMov.ok) = iMov.posO(~iMov.ok);
+
 % resets the outer region coordinates
 for i = 2:iMov.pInfo.nRow    
     for j = 1:iMov.pInfo.nCol
@@ -113,8 +117,7 @@ for i = 2:iMov.pInfo.nRow
         iHi = (i-1)*iMov.pInfo.nCol + j;
         
         % calculates the vertical location separating the regions
-        yHL = 0.5*(sum(iMov.pos{iLo}([2 4])) + ...
-                   sum(iMov.pos{iHi}(2)));
+        yHL = 0.5*(sum(pPos{iLo}([2 4])) + sum(pPos{iHi}(2)));
         yB = sum(iMov.posO{iHi}([2,4]));
                
         % resets the outer region coordinates        

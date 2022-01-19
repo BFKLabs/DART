@@ -583,7 +583,17 @@ iMov0 = get(hFig,'iMov');
 % if the field does exist, then ensure it is correct
 hFig.iMov.phInfo = [];
 hFig.iMov.bgP = DetectPara.resetDetectParaStruct(hFig.iMov.bgP);
-hFig.iMov = setSubRegionDim(hFig.iMov,hFig.hGUI);
+
+% determines the sub-region dimension configuration
+[iMovNw,ok] = setSubRegionDim(hFig.iMov,hFig.hGUI);
+if ~ok
+    % exits the function if there was an error
+    setObjEnable(hObject,'off')
+    return
+else
+    % otherwise, update the data struct
+    hFig.iMov = iMovNw;
+end
 
 % opens the grid detection tracking parameter gui
 gridObj = GridDetect(hFig);
@@ -633,7 +643,7 @@ pause(0.05);
 % updates the sub-regions (if updating)
 if isUpdate
     setupSubRegions(handles,gridObj.iMov,true);
-    for iApp = 1:length(gridObj.iMov.iR)
+    for iApp = find(gridObj.iMov.ok)
         resetRegionPropDim(hFig,gridObj.iMov.pos{iApp},iApp)
     end
 end
@@ -1038,10 +1048,12 @@ end
 
 % initialisations
 iSel = eventdata.Indices;
+iMov = get(handles.output,'iMov');
 pInfo = getDataSubStruct(handles,false);
 
 % retrieves the global column/row indices
-tData = get(hObject,'Data');
+tData = get(hObject,'Data');    
+cForm = get(hObject,'ColumnFormat');
 [iRG,iCG] = deal(tData{iSel(1),1},tData{iSel(1),2});
 
 % updates the parameter based on the 
@@ -1049,9 +1061,19 @@ nwVal = eventdata.NewData;
 switch iSel(2)
     case 3
         % case is updating the sub-region count
-        if chkEditValue(nwVal,[1,pInfo.nFlyMx],1)
+        if chkEditValue(nwVal,[0,pInfo.nFlyMx],1)
             % if the value is valid, then update the field
-            pInfo.nFly(iRG,iCG) = nwVal;            
+            pInfo.nFly(iRG,iCG) = nwVal;    
+            
+            % if setting the count to zero, then reset the popup menu
+            if nwVal == 0
+                % resets the group index
+                pInfo.iGrp(iRG,iCG) = 0;
+                
+                % updates the table data
+                tData{iSel(1),4} = cForm{end}{1};
+                set(hObject,'Data',tData)
+            end
         else
             % otherwise, reset to the previous valid value
             tData{iSel(1),iSel(2)} = eventdata.PreviousData;
@@ -1062,17 +1084,32 @@ switch iSel(2)
         end
         
     case 4
-        % case is updating the group name        
-        cForm = get(hObject,'ColumnFormat');
-        
         % updates the group index values
-        iGrpNw = find(strcmp(cForm{end},nwVal)) - 1;
-        pInfo.iGrp(iRG,iCG) = iGrpNw;
+        nFlyS = pInfo.nFly(iRG,iCG);
+        if (nFlyS == 0) || isnan(nFlyS)
+            % if the fly count is set to zero, then reset the group type
+            eStr = ['Set a non-zero sub-region count before ',...
+                    'setting the group type.'];
+            waitfor(msgbox(eStr,'Infeasible Region Configuration','modal'))
+                
+            % otherwise, reset to the previous valid value
+            tData{iSel(1),iSel(2)} = eventdata.PreviousData;
+            set(hObject,'Data',tData)
+            
+            % exits the function
+            return            
+        else
+            % 
+            iGrpNw = find(strcmp(cForm{end},nwVal)) - 1;
+            pInfo.iGrp(iRG,iCG) = iGrpNw;
+        end
         
 end
 
+% updates the update button
+setObjEnable(handles.buttonUpdate,iMov.isSet)
+
 % updates the data struct into the gui
-setObjEnable(handles.buttonUpdate,1)
 setDataSubStruct(handles,pInfo,false);
 
 % resets the configuration axes
@@ -1192,26 +1229,11 @@ hOut = findall(hGUI.imgAxes,'tag','hOuter');
 if ~isempty(hOut); delete(hOut); end
 
 % sets up the sub-regions
+iMov.is2D = hFig.iData.is2D;
 [iMov.isSet,iMov.iR] = deal(true,[]);
+
+% creates the sub-regions
 iMov = setupSubRegions(handles,iMov);
-
-% sets up the sub-region acceptance flags
-if iMov.is2D
-    % case is a 2D expt setup
-    iMov.flyok = iMov.pInfo.iGrp > 0;
-    
-else
-    % case is a 1D expt setup
-    iGrp = arr2vec(iMov.pInfo.iGrp')';
-    nFly = (iGrp>0).*arr2vec(iMov.pInfo.nFly')';    
-    
-    szF = [max(nFly),1];
-    flyok = arrayfun(@(x)(setGroup(1:x,szF)),nFly,'un',0);
-    iMov.flyok = cell2mat(flyok);
-end
-
-% sets the region acceptance flags
-iMov.ok = any(iMov.flyok,1);
 
 % enable the update button, but disable the use automatic region and show
 % region menu items
@@ -1254,8 +1276,10 @@ if iMov.is2D
 end
 
 % sets the final sub-region dimensions into the data struct
-iMov = setSubRegionDim(iMov,hGUI);
-if ~isa(eventdata,'char')
+[iMov,ok] = setSubRegionDim(iMov,hGUI);
+if ~ok
+    return
+elseif ~isa(eventdata,'char')
     isChange = true;    
     setObjEnable(hObject,'off');
 end
@@ -1347,20 +1371,27 @@ xVL = cell(iMov.nCol-1,1);
 hVL = cell(1,iMov.nCol-1);
 yVL = iMov.posG(2) + [0 iMov.posG(4)];
 
+% sets the position vector
+if ~isempty(iMov.pos)
+    pPos = iMov.pos;
+    pPos(~iMov.ok) = iMov.posO(~iMov.ok);
+end
+
 % only set up the vertical lines if there is more than one column
 for i = 2:iMov.nCol
     % sets the x-location of the lines
     if ~isempty(iMov.pos)
         % sets the indices of the groups to the left of the line
         iLf = iMov.nCol*(0:(iMov.nRow-1)) + (i-1);
-        
+
         % sets the locations of the lower top/upper bottom indices
-        xR = max(cellfun(@(x)(sum(x([1 3]))),iMov.pos(iLf)));
-        xL = min(cellfun(@(x)(x(1)),iMov.pos(iLf+1)));  
-        
+        xR = max(cellfun(@(x)(sum(x([1 3]))),pPos(iLf)));
+        xL = min(cellfun(@(x)(x(1)),pPos(iLf+1)));  
+
         % sets the horizontal location of the vertical separator
-        xVL{i-1} = 0.5*(xR+xL)*[1 1];          
+        xVL{i-1} = 0.5*(xR+xL)*[1 1];
     else
+        % if there is no position data, then use the outer region
         xVL{i-1} = iMov.posO{i}(1)*[1 1];
     end
 
@@ -1411,8 +1442,8 @@ for j = 1:iMov.nCol
         % sets the y-location of the line
         if ~isempty(iMov.pos)
             [iLo,iHi] = deal((i-2)*iMov.nCol+j,(i-1)*iMov.nCol+j);
-            yHL = 0.5*(sum(iMov.pos{iLo}([2 4])) + ...
-                       sum(iMov.pos{iHi}(2)))*[1 1];
+            yHL = 0.5*(sum(pPos{iLo}([2 4])) + ...
+                       sum(pPos{iHi}(2)))*[1 1];
         else
             k = (i-1)*iMov.nCol + j;
             yHL = iMov.posO{k}(2)*[1 1];
@@ -1459,11 +1490,8 @@ else
     col = 'gmy';    
 end
 
-% memory allocation
-pPos = cell(nApp,1);
-
 % sets the inner rectangle objects for all apparatus
-for i = 1:nApp
+for i = find(iMov.ok)
     % sets the row/column indices
     iCol = mod(i-1,iMov.nCol) + 1;
     iRow = floor((i-1)/iMov.nCol) + 1;
@@ -1902,6 +1930,7 @@ iRow = cell2mat(arrayfun(@(x)(x*ones(nCol,1)),(1:nRow)','un',0));
 [iFly,iGrpT] = deal(arr2vec(nFly'),arr2vec(iGrp'));
 
 % sets the column format names
+iFly(isnan(iFly)) = 0;
 cForm = {'char','char','char',[]};
 cForm{end} = [{' '};pInfo.gName(:)]';
 
@@ -3031,6 +3060,24 @@ for i = 1:nRow
         iMov.pos{k} = PosNw;        
     end
 end
+
+% sets up the sub-region acceptance flags
+if iMov.is2D
+    % case is a 2D expt setup
+    iMov.flyok = iMov.pInfo.iGrp > 0;
+    
+else
+    % case is a 1D expt setup
+    iGrp = arr2vec(iMov.pInfo.iGrp')';
+    nFly = (iGrp>0).*arr2vec(iMov.pInfo.nFly')';    
+    
+    szF = [max(nFly),1];
+    flyok = arrayfun(@(x)(setGroup(1:x,szF)),nFly,'un',0);
+    iMov.flyok = cell2mat(flyok);
+end
+
+% sets the region acceptance flags
+iMov.ok = any(iMov.flyok,1);
 
 % --- updates the group arrays
 function [pInfo,isDiff] = updateGroupArrays(handles)

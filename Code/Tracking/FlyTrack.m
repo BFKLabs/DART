@@ -942,13 +942,7 @@ ConvertVideo(handles.output.iData.ProgDef);
 function menuProgPara_Callback(hObject, eventdata, handles)
 
 % runs the program default GUI
-iData = get(handles.output,'iData');
-[iData.ProgDef,isSave] = ProgParaTrack(handles,iData.ProgDef);
-
-% updates the data struct if the user specifed changes
-if isSave
-    set(handles.output,'iData',iData);
-end
+ProgDefaultDef(handles.output,'Tracking');
 
 % -------------------------------------------------------------------------
 function menuExit_Callback(hObject, eventdata, handles)
@@ -1236,7 +1230,9 @@ if isChange
     % sets the individual acceptance flags for each group
     for i = 1:length(nTube)
         iMov.Status{i}(:) = 0;
-        [iMov.ok(i),iMov.flyok(1:nTube(i),i)] = deal(true); 
+        if iMov.ok(i)
+            iMov.flyok(1:nTube(i),i) = true;
+        end
     end
     
     % initialises the stats/backgrounds arrays
@@ -2223,24 +2219,26 @@ hTube = get(hFig,'hTube');
 [ii,jj,mlt] = deal([1 2 2 1],[1 1 2 2],1);
 isLocalView = get(handles.checkLocalView,'value');
 
-% retrieves the indices of the sub-regions to be shown
-if isLocalView
-    % local view, so get the current sub-region
-    ind = iData.cMov;
-    
-else
-    % global view, so show all sub-regions
-    ind = 1:length(hTube);
-end
-
 % resets the tube regions (if they are invalid)
 if ~ishandle(hTube{1}{1})
     initMarkerPlots(handles,get(hObject,'Value'))
     hTube = get(hFig,'hTube');
 end
 
+% retrieves the indices of the sub-regions to be shown
+if isLocalView
+    % local view, so get the current sub-region
+    ind = iData.cMov;
+    isOther = ~setGroup(ind,size(hTube));
+    cellfun(@(x)(setObjVisibility(x,0)),hTube(isOther))
+    
+else
+    % global view, so show all sub-regions
+    ind = find(iMov.ok);
+end
+
 % sets the tube visibility strings
-for i = 1:length(hTube)
+for i = ind
     if ~showUpdate
         switch Type
             case {'GeneralR','Circle'} % case is automatic detection
@@ -2263,27 +2261,35 @@ for i = 1:length(hTube)
                 % sets the positional offset                
                 if isLocalView
                     % case is for local view
-                    if size(iMov.xTube{i}([1 end]),1) == 1
-                        yOfs = min(max(0,(iMov.iR{ind}(1)-1)),szDel);
-                        xOfs = szDel;
-                    else
-                        xOfs = min(max(0,(iMov.iC{ind}(1)-1)),szDel);
-                        yOfs = szDel;
-                    end            
+                    if iMov.ok(i)
+                        if size(iMov.xTube{i}([1 end]),1) == 1
+                            yOfs = min(max(0,(iMov.iR{ind}(1)-1)),szDel);
+                            xOfs = szDel;
+                        else
+                            xOfs = min(max(0,(iMov.iC{ind}(1)-1)),szDel);
+                            yOfs = szDel;
+                        end            
+                    end
                 else
                     % case is for global view
                     [xOfs,yOfs] = deal(iMov.pos{i}(1),iMov.pos{i}(2));   
                 end       
 
                 % sets the x/y-coordinates of the sub-region
-                if size(iMov.xTube{i},1) == 1
-                    x = (iMov.xTube{i}([1 end]) + xOfs);
+                if isempty(iMov.xTube{i})
+                    % case is the region has never been set
+                    iFlyR = [];                    
                 else
-                    y = (iMov.yTube{i}([1 end]) + yOfs);
+                    % otherwise, set the x/y offsets
+                    if size(iMov.xTube{i},1) == 1
+                        x = (iMov.xTube{i}([1 end]) + xOfs);
+                    else
+                        y = (iMov.yTube{i}([1 end]) + yOfs);
+                    end
+
+                    % sets the fly indices
+                    iFlyR = 1:length(hTube{i});
                 end
-                
-                % sets the fly indices
-                iFlyR = 1:length(hTube{i});
         end        
 
         for j = iFlyR(:)'
@@ -2724,7 +2730,7 @@ end
 
 % sets the markers for all flies
 if ~isempty(hFig.hMark)    
-    for i = 1:nApp
+    for i = find(iMov.ok)
         % if the markers have been deleted then re-initialise them
         if (i == 1) && ~ishandle(hFig.hMark{i}{1})
             initMarkerPlots(handles,1)
@@ -2873,7 +2879,7 @@ isOnD = get(handles.checkShowAngle,'Value') && isOn;
 
 % resets the markers
 hold(hAx,'on')
-for i = 1:nApp
+for i = find(iMov.ok)
     % sets the x/y offset
     [xOfs,yOfs] = deal((iMov.iC{i}(1)-1),(iMov.iR{i}(1)-1));  
     
@@ -3148,6 +3154,11 @@ end
 % initialisations
 [nRow,nCol] = deal(iMov.nRow,iMov.nCol);
 
+% sets the region dimension vectors
+pPos = iMov.pos;
+useOuter = cellfun(@isempty,pPos);
+pPos(useOuter) = iMov.posO(useOuter);
+
 %
 if isempty(iMov.autoP)
     % retrieves the handles to the horizontal/vertical line objects
@@ -3200,8 +3211,8 @@ if isempty(iMov.autoP)
     for i = 1:(nRow-1)        
         for j = 1:nCol
             % determines the apparatus index
-            iApp = ((i-1)*nCol + j) + [0 nCol];
-            yPltH = 0.5*(sum(iMov.pos{iApp(1)}([2 4]))+iMov.pos{iApp(2)}(2));
+            iApp = ((i-1)*nCol + j) + [0 nCol];            
+            yPltH = 0.5*(sum(pPos{iApp(1)}([2 4]))+pPos{iApp(2)}(2));
 
             % retrieves the line
             hLineNw = findobj(hLine,'UserData',[i,j]);  
@@ -3228,8 +3239,13 @@ for i = 1:nRow
         if ~isempty(hText)
             % sets the base x/y location of the text object
             if isfield(iMov,'iC')
-                X = mean(iMov.iC{k}([1 end]));
-                Y = mean(iMov.iR{k}([1 end]));                
+                if isempty(iMov.iC{k})
+                    X = L+(j-0.5)*dW;
+                    Y = T+(i-0.5)*dH;                    
+                else
+                    X = mean(iMov.iC{k}([1 end]));
+                    Y = mean(iMov.iR{k}([1 end]));
+                end
             else
                 X = L+(j-0.5)*dW;
                 Y = T+(i-0.5)*dH;
@@ -3307,7 +3323,7 @@ else
 end
 
 % sets the inner rectangle objects for all apparatus
-for i = 1:nApp
+for i = find(iMov.ok)
     % determines the new image sub-limits
     [xLimS,yLimS] = setSubImageLimits(hAx,xLim,yLim,iMov,rPos,i);
     xLimS = [max(rPos(1),xLimS(1)) min(rPos(1)+rPos(3),xLimS(2))];
@@ -3503,7 +3519,9 @@ else
     switch uChoice
         case 'Manually'
             % user chose to setup manually, so load the ProgDef sub-GUI
-            ProgDef = ProgParaTrack(handles.output,[],1);            
+            ProgDefaultDef(handles.output,'Tracking');
+            ProgDef = handles.output.iData.ProgDef;
+            
         case 'Automatically'
             % user chose to setup automatically then create the directories
             ProgDef = setupAutoDir(progDir,progFile);
@@ -3558,7 +3576,8 @@ end
 if any(~isExist)
     % runs the program default sub-ImageSeg
     if nargin == 1
-        ProgDef = ProgParaTrack(handles.output,ProgDef,1);    
+        ProgDefaultDef(handles.output,'Tracking');        
+        ProgDef = handles.output.iData.ProgDef;    
     end
 end
 

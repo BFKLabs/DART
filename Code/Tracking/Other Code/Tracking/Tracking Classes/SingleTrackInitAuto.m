@@ -421,7 +421,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
             [tPer0,yOfs0] = deal(NaN(nApp,1));
             
             % aligns the signal peaks over all regions
-            for i = 1:nApp
+            for i = find(obj.iMov.ok(:)')
                 % updates the progressbar
                 wStrNw = sprintf...
                         ('Optimising Grid Placement (%i of %i)',i,nApp);

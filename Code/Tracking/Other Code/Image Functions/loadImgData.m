@@ -150,8 +150,7 @@ catch
 end
 
 % opens the movie file and gets the movie details
-iData.movStr = fStr;
-iData.isLoad = false;     
+[iData.movStr,iData.isLoad] = deal(fStr,false);     
 % sets the video index
 if ~isempty(sStr)
     % loads the summary data file 
@@ -182,18 +181,16 @@ if ~isempty(sStr)
 %             Tv = removeTimeNaNs(Tv,FPS,Tv(i0)-(i0-1)/FPS,nanTv);
 %         end           
 %     end       
-    
-    % sets the properties of the related objects
-    if ~isBatch
-        setObjEnable(handles.menuStimInfo,'on')
-    end        
+   
     
     % retrieves the videos stimuli information
-    if isempty(iData.stimP)
+    if ~isempty(iData.stimP)
         summFile = getSummaryFilePath(iData);
         [iData.stimP,iData.sTrainEx] = getExptStimInfo(summFile,iData.Tv);
-        setObjEnable(handles.menuStimInfo,detIfHasStim(iData.stimP))  
     end    
+    
+    % sets the stimuli info menu item enabled properties
+    setObjEnable(handles.menuStimInfo,detIfHasStim(iData.stimP))    
 else
     % otherwise, set empty 
     [iData.Tv,iData.stimP,iData.sTrainEx] = deal([]);   

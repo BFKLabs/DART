@@ -106,11 +106,8 @@ classdef InitPhaseStats < handle
                 
             elseif hasF
                 % case is the video has high fluctuation
-%                 if isempty(pInfo.DimgF)
-                    [iFrm,Imu] = deal(pInfo.iFrm0,pInfo.Dimg0);
-%                 else
-%                     [iFrm,Imu] = deal(pInfo.iFrmF,mean(pInfo.DimgF,2));
-%                 end
+                [iFrm,Imu] = deal(pInfo.iFrm0,pInfo.Dimg0);
+
             else
                 % case is the video has relatively steady intensity
                 [iFrm,Imu] = deal(pInfo.iFrmF,mean(pInfo.DimgF,2));
@@ -289,7 +286,8 @@ classdef InitPhaseStats < handle
                 
             % creates the zoom object
             obj.hZoom = zoom(obj.hAx{1});
-            set(obj.hZoom,'Enable','off','Motion','horizontal');
+            set(obj.hZoom,'Enable','off','Motion','horizontal',...
+                          'ActionPostCallback',{@obj.postZoomCallback});
             zoom(obj.hAx{1},'reset')
 
             % ------------------------------ %
@@ -462,6 +460,16 @@ classdef InitPhaseStats < handle
                     % removes the mouse-movement function
                     set(obj.hFig,'WindowButtonMotionFcn',[])
             end
+            
+        end
+        
+        % --- post zoom callback function
+        function postZoomCallback(obj,hObject,event)
+            
+            %
+            xLim = roundP(get(event.Axes,'xlim'));
+            xTickStr = arrayfun(@num2str,xLim,'un',0);
+            set(event.Axes,'xLim',xLim,'xTick',xLim,'xTickLabel',xTickStr)
             
         end
         

@@ -428,13 +428,7 @@ SerialConfig(handles.figDART);
 function menuProgPara_Callback(~, ~, handles)
 
 % runs the program default GUI
-ProgDef = getappdata(handles.figDART,'ProgDef');
-[ProgDef.DART,isSave] = ProgParaDART(handles.figDART,ProgDef.DART);
-
-% updates the data struct if the user specifed changes
-if isSave
-    setappdata(handles.figDART,'ProgDef',ProgDef);
-end
+ProgDefaultDef(handles.figDART,'DART');
 
 % -------------------------------------------------------------------------
 function menuAboutDART_Callback(~, ~, ~)

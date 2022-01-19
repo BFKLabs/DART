@@ -80,7 +80,8 @@ classdef SingleTrack < Track
             
             % updates the ok flags
             if isfield(obj.iMov,'pInfo')
-                obj.iMov.flyok(obj.iMov.pInfo.iGrp == 0) = false;
+                iGrp = arr2vec(obj.iMov.pInfo.iGrp')';
+                obj.iMov.flyok(:,iGrp==0) = false;
             end
             
             % memory allocation            
@@ -147,6 +148,7 @@ classdef SingleTrack < Track
             if ~exist('isHiV','var'); isHiV = false; end
             
             % retrieves the new image frame
+            I0 = I0(:);
             IL = cell(size(I0));           
             phInfo = obj.iMov.phInfo;
             
@@ -190,7 +192,7 @@ classdef SingleTrack < Track
                 p = phInfo.pOfs{iApp};
                 pOfsT = interp1(phInfo.iFrm0,p,iFrm,'linear','extrap');
                 IL = cellfun(@(x,p)(obj.applyImgTrans(x,p)),...
-                                    IL,num2cell(pOfsT,2),'un',0);
+                                IL,num2cell(pOfsT,2),'un',0);
                                 
                 if phInfo.hasF && (nargout == 2)
                     BL = cellfun(@(x)(x<nanmean(x(:))),IL,'un',0);

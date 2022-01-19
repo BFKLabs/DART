@@ -53,14 +53,23 @@ classdef VideoPhase < handle
         
         % other fixed parameters
         Dtol = 2;
-        nPhaseMx = 6;
+        nPhaseMx = 100;
         nImgR = 10;
         nFrm0 = 10;
         nPhMax = 5;
         szDS = 1000;
         szBig = 1400; 
-        dnFrmMin = 50; 
+        dnFrmMin = 25; 
         isFeasVid = true;
+        refSearch = false;
+        
+        % histogram tolerances
+        eDistTol = 0.035;
+        mDistTol = 0.25;
+        iSectTol = 0.875;
+        vCosTol = 0.95;
+        xi2Tol = 0.15;
+        dHistTol = 20;
         
     end
     
@@ -504,6 +513,7 @@ classdef VideoPhase < handle
             % parameters            
             dVtol = 1.0;
             pTolMin = 0.15;
+            nGrpSearch = 10;
             
             % determines the coarse frame groupings
             Dtot = Dtot(:,any(~isnan(Dtot),1));
@@ -525,7 +535,10 @@ classdef VideoPhase < handle
                 return
             end            
             
-            for i = 1:(nGrp-1)
+            % search the phases based on decreasing size
+            nG = iFrmG(2:end,1)-iFrmG(1:end-1,1);
+            [~,iS] = sort(nG,'descend');            
+            for i = iS(:)'
                 % determines the phase limits within the coarse limits
                 ii = [iFrmG(i,2),iFrmG(i+1,1)];                
                 frm0 = obj.iFrm0(ii);       
@@ -534,7 +547,19 @@ classdef VideoPhase < handle
                 if diff(frm0) == 0
                     iGrpC{i} = {frm0};
                 else
-                    iGrpC{i} = obj.detCoarsePhaseLimits(frm0);
+                    % otherwise, determine the existence of any sub-phases 
+                    % within the coarse phase group
+                    iGrpC{i} = obj.detCoarsePhaseLimits(frm0);  
+                    
+                    % combines the detected phases into a single array
+                    iGrpT = cell2cell(iGrpC{i});
+                    if (size(iGrpT,1) >= nGrpSearch) || obj.refSearch
+                        % if there is a significant number of sub-phases
+                        % detected, then perform a very fine search of 
+                        % the coarse phase (fills any large frame gaps)
+                        obj.refSearch = true;
+                        iGrpC{i} = obj.refineCoarseSearch(iGrpT,frm0);
+                    end
                 end
                 
                 % updates the progressbar    
@@ -617,7 +642,76 @@ classdef VideoPhase < handle
             % updates the progressbar
             obj.updateSubProgField('Frame Group Limit Detection',1);             
                       
-        end              
+        end   
+        
+        % --- performs a refined search of the coarsely determined
+        %     phase frame limits (reduces the search gaps in the image
+        %     until the largest search gap is dFrmMax in size)
+        function iGrpC = refineCoarseSearch(obj,iGrpT,frm0)
+            
+            % initialisations
+            dFrmMax = 25;
+            iGrpT0 = iGrpT;
+            xi = frm0(1):frm0(2);
+            
+            % keep searching the groupings until the frame gap < dFrmMax
+            while 1
+                % determines the frames that have been analysed
+                iFrmD = find(obj.Dimg(xi,1)) + (xi(1)-1);                      
+                
+                % determines if there are any large frame gaps remaining
+                dFrmD = diff(iFrmD);           
+                ii = find(dFrmD(:)' > dFrmMax);
+                if isempty(ii)
+                    % if there are no large gaps, then exit the loop
+                    break
+                else
+                    % otherwise, set the large frame group index array
+                    iNw = [iFrmD(ii),iFrmD(ii+1)];
+                end
+                
+                % resets the phase detection progressbar
+                for i = 1:size(iNw,1)
+                    obj.isCheck((iNw(i,1)+1):iNw(i,2)-1) = false;
+                    if obj.updatePhaseDetectionProgress()
+                        % finish me...
+                    end
+                end
+                
+                % performs the refined search of the large gaps
+                iGrpTmp = cell(length(ii),1);
+                for i = 1:length(iGrpTmp)
+                    % calculates the phase limits of the gap
+                    jGrpT = cell2cell(obj.detCoarsePhaseLimits(iNw(i,:)));
+                    if size(jGrpT,1) > 1
+                        % if multiple sub-phases were found then store them
+                        isAdd = true;
+                    else
+                        % otherwise, determine if the phase limit is valid
+                        % (i.e., there is a change in pixel tolerance)
+                        dD = abs(diff(mean(full(obj.Dimg(jGrpT,:)),2)));
+                        isAdd = dD > obj.Dtol;
+                    end
+                    
+                    % adds on the data to the storage array (if required)
+                    if isAdd
+                        if jGrpT(end,2) < iGrpT(1,1)
+                            % case is frame indices are placed before
+                            iGrpT = [jGrpT;iGrpT];
+                        elseif jGrpT(1,1) > iGrpT(end,2)
+                            % case is frame indices are placed after
+                            i0 = find(jGrpT(1,1) > iGrpT(:,2),1,'last');
+                            iGrpT = [iGrpT(1:i0,:);jGrpT;iGrpT(i0+1:end,:)];
+                        end
+                    end
+                end                
+                
+            end
+            
+            % resets the index values
+            iGrpC = {iGrpT};         
+            
+        end
         
         % --- calculates the frame group gradients
         function [pGrp,DGrpMn] = calcFrmGroupGradient(obj,iFrmGrp)
@@ -700,6 +794,8 @@ classdef VideoPhase < handle
             % parameters
             nFrmMin = 2;
             
+            Q = cell(length(vPhaseF),1);
+            
             % updates the progressbar
             obj.updateSubProgField('Phase Reduction Calculations...',0.25);            
             
@@ -708,29 +804,26 @@ classdef VideoPhase < handle
             isOK = true(size(vPhaseF));
             for i = 2:length(vPhaseF)                
                 ii = i + [-1,0];
-                isOverlap = false;
+                joinPhases = false;
                 if all(vPhaseF(ii) == 2) 
-                    if any(nFrmG(ii) <= nFrmMin)
-                        % case is one of the phases is very small
-                        isOverlap = true;
-                    else
-                        % otherwise determines if there is any overlap in
-                        % the pixel range of each phase
-                        s12 = arrayfun(@(x)(prod...
-                                (sign(Drng(ii(1),:)-x))),DimgFmu{ii(2)});
-                        s21 = arrayfun(@(x)(prod...
-                                (sign(Drng(ii(2),:)-x))),DimgFmu{ii(1)});                    
-                            
-                        % determines if the pixel intensities overlap 
-                    	% between the adjacent phases
-                        isOverlap = any(s12 == -1) || any(s21 == -1);
-                    end
+                    % if both phases are high-variance, then 
+                    iFrmL = [iGrpF(ii(1),2),iGrpF(ii(2),1)];
+                    [~,Imet1] = obj.getRegionImgStack(iFrmL(1)); 
+                    [~,Imet2] = obj.getRegionImgStack(iFrmL(2));
+                    Qnw = nanmean(cell2mat(cellfun(@(x,y)...
+                            (calcHistSimMetrics(x,y)),Imet1,Imet2,'un',0)),1);
+                    
+                    % determines if the 
+                    [joinPhases,b] = obj.checkHistMetrics(Qnw);
+                    a = 1;
+                        
                 elseif all(vPhaseF(ii) == 3)
                     % combine all adjacent untrackable phases
-                    isOverlap = true;
+                    joinPhases = true;
+
                 end
                     
-                if isOverlap         
+                if joinPhases         
                     % if so, then combine the phases
                     isOK(i-1) = false;
                     iGrpF(i,1) = iGrpF(i-1,1); 
@@ -792,8 +885,26 @@ classdef VideoPhase < handle
         
         % --------------------------------------- %
         % --- PHASE LIMIT DETECTION FUNCTIONS --- %
-        % --------------------------------------- %             
+        % --------------------------------------- %   
         
+        % --- determines if the histogram metrics between phases are
+        %     within tolerance (and hence can be combined)
+        function [joinPhases,meetsTol] = checkHistMetrics(obj,Q)
+        
+            % determines if the inter-phase histogram metrics are all
+            % within tolerance
+            meetsTol = [Q(1) < obj.eDistTol,...     % euclidean distance tolerance
+                        Q(2) < obj.mDistTol,...     % manhattan distance tolerance
+                        Q(3) > obj.iSectTol,...     % intersection distance tolerance
+                        Q(4) > obj.vCosTol,...      % vector cosine distance tolerance
+                        Q(5) < obj.xi2Tol,...       % chi2 distance tolerance
+                        abs(Q(6)) < obj.dHistTol];  % histogram shift distance tolerance
+            
+            % determines if all the metrics meets tolerance 
+            joinPhases = all(meetsTol);
+            
+        end
+            
         % --- determines the coarse phase limits
         function iFrmG = detCoarsePhaseLimits(obj,iFrm0)
             
