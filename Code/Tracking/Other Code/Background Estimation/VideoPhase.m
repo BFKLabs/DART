@@ -43,7 +43,7 @@ classdef VideoPhase < handle
         iPhase
         vPhase        
         pTolLo = 35;
-        pTolHi = 210;        
+        pTolHi = 230;        
         
         % homomorphic filter parameters
         aHM = 0;

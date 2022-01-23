@@ -275,14 +275,11 @@ for i = 1:nFile
         ii = argMin(D(:,1));
         
         % sets the region count
-        if (isfield(a.pData,'nApp'))
+        if isfield(a.pData,'nApp')
             nApp = a.pData.nApp;
         else
             nApp = numel(fPos);
-        end        
-        
-        % more than one row, so use the region row indices as offset
-        yOfs = cellfun(@(x)(x(1)-1),a.iMov.iR);
+        end                
         
         % sets the essential parameters (for the first frame)
         if initData
@@ -339,7 +336,7 @@ for i = 1:nFile
         % loops through all the apparatus setting the x/y locations of the
         % flies, and calculates binned x/y location and summed displacement
         % of the flies
-        for j = 1:nApp                         
+        for j = find(a.iMov.ok)
             % fills any missing data values with NaN's
             kk = cellfun(@isempty,fPos{j});
             if any(kk)
@@ -352,9 +349,9 @@ for i = 1:nFile
                     end
                 end
             end
-
+            
             % sets the x/y locations of the flies
-            dyOfs = yOfs(j); %-yOfs(1);
+            dyOfs = a.iMov.iR{j}(i)-1;
             Px{i}{j} = cell2mat(cellfun(@(x)(x(:,1)*sgP.sFac),...
                             fPos{j},'un',0));
             Py{i}{j} = cell2mat(cellfun(@(x)((x(:,2)+dyOfs)*sgP.sFac),...

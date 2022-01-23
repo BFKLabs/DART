@@ -7,7 +7,7 @@ function p = retParaStruct(pStr,varargin)
 % creates an empty struct and add in all the fields
 p = struct();
 for i = 1:length(fVal)
-    switch (fType{i})
+    switch fType{i}
         % ------------------------------------ %
         % --- SPECIALITY PARAMETER STRUCTS --- %
         % ------------------------------------ %
@@ -26,7 +26,7 @@ for i = 1:length(fVal)
             
         case ('Subplot') % case is the subplot parameter struct  
             % sets the time parameter struct
-            if (fVal{i}.isComb)
+            if fVal{i}.isComb
                 [nRow,nCol] = deal([]);
             else
                 [nRow,nCol] = deal(fVal{i}.nRow,fVal{i}.nCol);
@@ -38,9 +38,9 @@ for i = 1:length(fVal)
             
         case ('Stim') % case is the stimuli response parameter struct
             % sets the stimuli response parameters
-            if (isstruct(pStr(i).Lim))
+            if isstruct(pStr(i).Lim)
                 p.pInd = pStr(i).Lim.appInd;
-                if (isfield(pStr(i).Lim,'plotTrace'))
+                if isfield(pStr(i).Lim,'plotTrace')
                     p.pT = pStr(i).Lim.plotTrace;            
                     p.pF = pStr(i).Lim.plotFit;
                 end
@@ -53,7 +53,7 @@ for i = 1:length(fVal)
         % ---------------------------------- %
         
         case ('Number') % case is a numerical variable
-            if (mod(fVal{i},1) == 0)
+            if mod(fVal{i},1) == 0
                 % if an integer, set as within the string a integer
                 eval(sprintf('p.%s = %i;',fStr{i},fVal{i}))
             else
@@ -73,13 +73,13 @@ for i = 1:length(fVal)
 end
 
 % sets the global parameters (if they are provided)
-if (nargin == 2)
+if nargin == 2
     % sets the global parameter struct fieldnames
     gPara = varargin{1};
     gStr = fieldnames(gPara); 
     
     % updates the parameter struct with the global parameters
-    for i = 1:length(gStr); 
+    for i = 1:length(gStr)
         eval(sprintf('p.%s = gPara.%s;',gStr{i},gStr{i})); 
     end
 end

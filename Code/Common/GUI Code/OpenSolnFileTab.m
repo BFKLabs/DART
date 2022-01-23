@@ -82,7 +82,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % objects with normal callback functions
             cbObj = {'buttonSetDir','buttonAddSoln','buttonClearExpt',...
                      'buttonClearAll','buttonShowProtocol',...
-                     'buttonHideProtocol'};
+                     'buttonHideProtocol','menuCombExpt'};
             for i = 1:length(cbObj)
                 hObj = getStructField(obj.hGUI,cbObj{i});
                 cbFcn = eval(sprintf('@obj.%sCB',cbObj{i}));
@@ -912,9 +912,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             global hh
 
             % object/array retrieval
-            sInfo0 = obj.sInfo;
-            handles = obj.hGUI;
-            hPanelEx = handles.panelExptInfo;
+            sInfo0 = obj.sInfo;                        
 
             % other initialisations
             tDir = obj.iProg.TempFile;
@@ -1064,10 +1062,9 @@ classdef OpenSolnFileTab < dynamicprops & handle
             try; hh.closeProgBar(); end
             hh = [];            
             
-            %
+            % if there was an error loading a directory/file, then 
+            % output these directories to screen
             if any(~isOK)
-                % if there was an error loading a directory/file, then 
-                % output these directories to screen
                 eStr = sprintf(['There was an error loading files ',...
                                 'from the following directories:\n\n']);
                 for i = find(~isOK(:))
@@ -1091,6 +1088,17 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 mName = mName(isOK);
             end
             
+            % updates the solution file GUI
+            obj.updateSolnFileGUI(~isempty(mName));
+           
+        end
+        
+        % --- updates the solution file GUI
+        function updateSolnFileGUI(obj,hasFile)
+            
+            % sets the default input argument
+            if ~exist('hasFile','var'); hasFile = true; end
+            
             % creates a loadbar
             hLoad = ProgressLoadbar('Updating Loaded Data Information...');
             
@@ -1100,7 +1108,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
 
             % recreates the explorer tree
             obj.createFileExplorerTree()
-            if isempty(mName); return; end
+            if ~hasFile; return; end
 
             % if loading files through the analysis gui, then update the
             % experiment information for the other tabs
@@ -1110,7 +1118,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
             obj.updateExptInfoTable(hLoad)               
 
             % updates the added experiment objects
-            setPanelProps(hPanelEx,'on');
+            handles = obj.hGUI;
+            setPanelProps(handles.panelExptInfo,'on');
             setObjEnable(handles.buttonClearAll,'on');
             set(handles.textExptCount,'string',num2str(obj.nExp),...
                                       'enable','on')                       
@@ -1118,7 +1127,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % updates the change flag
             obj.isChange = true;          
             
-        end
+        end        
         
         % --- callback function for clicking buttonClearExpt
         function buttonClearExptCB(obj, hObject, ~)
@@ -1187,6 +1196,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             nRow0 = obj.jTable.getRowCount;
             for i = max(obj.nExp+1,obj.nExpMax+1):nRow0
                 jTableMod.removeRow(obj.jTable.getRowCount-1)
+                obj.jTable.repaint()
             end
             
             % removes/clears the rows
@@ -1314,6 +1324,18 @@ classdef OpenSolnFileTab < dynamicprops & handle
             setObjVisibility(handles.panelStimOuter,0)            
             
         end        
+       
+        % ------------------------------- %
+        % --- MENU CALLBACK FUNCTIONS --- %
+        % ------------------------------- %        
+        
+        % ---- callback function for the combine experiment menu item
+        function menuCombExptCB(obj, ~, ~)
+            
+            % runs the experiment concatenation dialog
+            combObj = ConcatExptClass(obj);
+            
+        end
         
         % ----------------------------------------- %
         % --- CELL SELECTION CALLBACK FUNCTIONS --- %
@@ -1469,9 +1491,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 sInfoNw{i}.tDur = ceil(t1-t0);
 
                 % sets the duration string
-                s = seconds(sInfoNw{i}.tDur); 
-                s.Format = 'dd:hh:mm:ss';
-                sInfoNw{i}.tDurS = char(s);
+                sInfoNw{i}.tDurS = getExptDurString(sInfoNw{i}.tDur);
 
                 % initialises the timing parameter struct
                 sInfoNw{i}.iPara = obj.initParaStruct(sInfoNw{i}.snTot);

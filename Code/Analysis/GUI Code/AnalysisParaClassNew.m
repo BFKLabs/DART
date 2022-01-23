@@ -193,6 +193,9 @@ classdef AnalysisParaClassNew < handle
                 obj.updateMainPara();
                                    
             catch ME
+                % re-centres the figure
+                centreFigPosition(obj.hFig,2);
+                
                 % if there was an error, then try running the GUI again
                 eStr = 'There was an error initialising the Analysis parameter GUI.';
                 waitfor(errordlg(eStr,'GUI Initialisation Error','modal'))
@@ -439,7 +442,7 @@ classdef AnalysisParaClassNew < handle
 
             % retrieves the corresponding indices and parameter values
             uData = get(hObject,'UserData');
-            switch (uData{2})
+            switch uData{2}
                 case ('Calc')
                     % case is a calculation parameter
                     [fStr,isPlot] = deal('cP',false);
@@ -480,14 +483,64 @@ classdef AnalysisParaClassNew < handle
             % retrieve the new parameter value and overall parameter struct
             nwVal = get(hObject,'Value');
             uData = get(hObject,'UserData');
+            stimStr = {'nGrp','nBin'};
 
             % retrieves the corresponding indices and parameter values            
             switch uData{2}
                 case ('Calc')
                     % case is a calculation parameter
+                    ind0 = obj.pData.cP(uData{1}).Value{1};
                     obj.pData.cP(uData{1}).Value{1} = nwVal;         
                     p = obj.pData.cP;
                     
+                    % updates the parameter gui (dependent on parameter)
+                    if any(strContains(stimStr,p(uData{1}).Para)) ...
+                                && strcmp(obj.pData.sP(3).Type,'Stim')
+                        % case is the bin/group count
+                        pPara = p(uData{1}).Para;
+                        obj.resizeStimRespTable(pPara,uData{1},ind0);
+                        nNew = str2double(p(uData{1}).Value{2}{nwVal});
+                        
+                        % resets the table data                        
+                        switch pPara
+                            case ('nBin') 
+                                % case is the sleep intensity metrics
+                                nRow = 60/nNew;          
+                                lStr = setTimeBinStrings(nNew,nRow,1);
+                            case ('nGrp') 
+                                % case is the time-grouped stimuli response
+                                lStr = setTimeGroupStrings(nNew,obj.tDay);
+                        end                        
+                        
+                        % retrieves the plot indices
+                        pSelF = obj.pData.sP(3).Lim.plotFit;
+                        pSelT = obj.pData.sP(3).Lim.plotTrace;
+                        
+                        % expands/contracts the selection array
+                        dpSel = length(lStr) - length(pSelF);
+                        if dpSel > 0
+                            pSelF = [pSelF;false(dpSel,1)];
+                            pSelT = [pSelT;false(dpSel,1)];
+                        else
+                            pSelF = pSelF(1:length(lStr));
+                            pSelT = pSelT(1:length(lStr));
+                        end
+                        
+                        % updates the special parameter flags
+                        obj.pData.sP(3).Lim.plotFit = pSelF;
+                        obj.pData.sP(3).Lim.plotTrace = pSelT;                        
+                        
+                        % resets the table data
+                        Data = [lStr(:),num2cell(pSelT)];
+                        if strcmp(p(uData{1}).Para,'nBin')
+                            Data = [Data,num2cell(pSelF)];
+                        end
+                        
+                        % updates the table properties
+                        hTable = findall(obj.hPanel{5},'type','uitable');                        
+                        set(hTable,'Data',Data)
+                    end
+
                 case ('Plot')
                     % case is a plotting parameter
                     obj.pData.pP(uData{1}).Value{1} = nwVal;             
@@ -602,6 +655,55 @@ classdef AnalysisParaClassNew < handle
             
         end                
         
+        % --- resizes the stimuli response
+        function resizeStimRespTable(obj,pPara,indP,ind0)
+            
+            % global variables
+            global HWT H0T
+            
+            % object handles
+            hPanelSR = obj.hPanel{5};
+            cPV = obj.pData.cP(indP).Value;
+            
+            % determines the table/data array size offset
+            hTable = findall(hPanelSR,'type','uitable');  
+            tPos = get(hTable,'Position');
+            Data = get(hTable,'Data');
+            dN0 = size(Data,1) - (tPos(4)-H0T)/HWT;
+        
+            % retrieves the previous/new group counts                    
+            N0 = str2double(cPV{2}{ind0});
+            N1 = str2double(cPV{2}{cPV{1}}); 
+            
+            switch pPara
+                case 'nBin'
+                    % case is the bin count size
+                    dN = 60/N1-60/N0;
+                    
+                case 'nGrp'
+                    % case is the group count
+                    dN = N1-N0;
+            end
+            
+            % resets the box panel height
+            dHght = (dN+dN0)*HWT;
+            obj.Hpanel(4) = obj.Hpanel(4) + dHght;
+            obj.resetBoxPanelHeight()              
+            pause(0.05)
+            
+%             % resets the panel bottom/height properties
+%             resetObjPos(hPanelSR,'height',dHght,1);
+%             resetObjPos(hPanelSR,'bottom',-dHght,1);   
+            
+            % resets the figure properties
+            resetObjPos(obj.hFig,'height',dHght,1);
+            resetObjPos(obj.hFig,'bottom',-dHght,1);
+            
+            % resets the bottom locations of the objects
+            resetObjPos(hTable,'height',dHght,1);                               
+            
+        end
+            
         % --------------------------------- %        
         % --- MAIN GUI OBJECT FUNCTIONS --- %
         % --------------------------------- %
@@ -1439,9 +1541,9 @@ classdef AnalysisParaClassNew < handle
         end
         
         % --- sets up the time parameters
-        function setupStimPara(obj,p,indP)            
+        function setupStimPara(obj,p,indP)
             
-            % if the object is empty then exit
+            % if the object is not empty then exit
             if ~isempty(obj.hObj{3}{3})
                 return
             end
@@ -1532,11 +1634,11 @@ classdef AnalysisParaClassNew < handle
                     case ('nBin') 
                         % case is the sleep intensity metrics
                         nRow = 60/nNew;          
-                        lStr = setTimeBinStrings(nNew,nRow,1);                       
+                        lStr = setTimeBinStrings(nNew,nRow,1);
                     case ('nGrp') 
                         % case is the time-grouped stimuli response
                         nRow = nNew;
-                        lStr = setTimeGroupStrings(nNew,obj.tDay);                                                    
+                        lStr = setTimeGroupStrings(nNew,obj.tDay);
                     case {'appName','appNameS'}                        
                         lStr = snTotT(1).iMov.pInfo.gName;
                         if (pInd ~= 3)                            
@@ -1731,7 +1833,7 @@ classdef AnalysisParaClassNew < handle
                 if iscell(Enable{1})
                     isOn = true;
                 else
-                    isOn = ~isnan(Enable{1});
+                    isOn = all(~isnan(Enable{1}));
                 end
                     
                 cellfun(@(x)(setObjEnable(x,isOn)),obj.hObj{iType}{indP})

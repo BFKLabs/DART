@@ -31,7 +31,7 @@ end
 
 % offsets the time arrays for the new indices
 [snTot.T,Tofs] = reshapeTimeArrays(snTot.T,indS,indF);
-snTot.isDay = reshapeTimeArrays(snTot.isDay,indS,indF,0);
+% snTot.isDay = reshapeTimeArrays(snTot.isDay,indS,indF,0);
 snTot.stimP = reshapeStimuliTiming(snTot,Tofs);
 
 % --- reshapes the time arrays such that A) the time is offset by Tofs, and

@@ -597,8 +597,15 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % retrieves the current region position
             iApp = obj.getRegionIndex;
-            pos = obj.iMov.pos{iApp};
-            posO = obj.iMov.posO{iApp};             
+            
+            % fills any missing elements with the outer region dimenions
+            pPos = obj.iMov.pos;
+            useOuter = cellfun(@isempty,pPos);
+            pPos(useOuter) = obj.iMov.posO(useOuter);
+            
+            % sets the region local/outer region dimension vectors
+            pos = pPos{iApp};
+            posO = obj.iMov.posO{iApp};                         
             
             % determines the currently selected row 
             posO(1:2) = max(0,posO(1:2));
@@ -608,13 +615,13 @@ classdef GridDetect < matlab.mixin.SetGet
             % sets the region lower limit
             yLo = posO(2);
             if iRow > 1
-                yLo = sum(obj.iMov.pos{iApp-nCol}([2,4]));
+                yLo = sum(pPos{iApp-nCol}([2,4]));
             end
             
             % sets the region upper limit 
             yHi = sum(posO([2,4]));
             if iRow < nRow
-                yHi = obj.iMov.pos{iApp+nCol}(2);
+                yHi = pPos{iApp+nCol}(2);
             end            
             
             % calculates the offset

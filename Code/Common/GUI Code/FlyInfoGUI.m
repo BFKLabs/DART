@@ -147,8 +147,10 @@ classdef FlyInfoGUI < handle
                 % sets the grouping indices
                 iCol = zeros(nFly,length(iGrpC));
                 for i = 1:size(iCol,2)
-                    iCol(1:nFlyR(i),i) = iGrpC(i);
-                    obj.Data((nFlyR(i)+1):end,i) = {[]};
+                    if ~isnan(nFlyR(i))
+                        iCol(1:nFlyR(i),i) = iGrpC(i);
+                        obj.Data((nFlyR(i)+1):end,i) = {[]};
+                    end
                 end
                 
                 % sets the background colours

@@ -2697,17 +2697,19 @@ if isVert
             yLim = getRegionYLim(iMov,hAx,i,iL+(j-1));
             
             % retrieves the in
-            api = iptgetapi(hInner);
-            inPos = api.getPosition();
-            
-            % sets the new inner region position            
-            inPos(1) = xLim(1) + pX(iApp(i))*diff(xLim);              
-            inPos(3) = pW(iApp(i))*diff(xLim);
-                                    
-            % sets the constraint region for the inner regions
-            api.setPosition(inPos);
-            fcn = makeConstrainToRectFcn('imrect',xLim,yLim);
-            api.setPositionConstraintFcn(fcn);             
+            if ~isempty(hInner)
+                api = iptgetapi(hInner);
+                inPos = api.getPosition();
+
+                % sets the new inner region position            
+                inPos(1) = xLim(1) + pX(iApp(i))*diff(xLim);              
+                inPos(3) = pW(iApp(i))*diff(xLim);
+
+                % sets the constraint region for the inner regions
+                api.setPosition(inPos);
+                fcn = makeConstrainToRectFcn('imrect',xLim,yLim);
+                api.setPositionConstraintFcn(fcn);
+            end
         end
     end
 else
@@ -2723,17 +2725,19 @@ else
         hInner = findall(hAx,'tag','hInner','UserData',iApp);   
         
         % retrieves the in
-        api = iptgetapi(hInner);
-        inPos = api.getPosition();
+        if ~isempty(hInner)
+            api = iptgetapi(hInner);
+            inPos = api.getPosition();
 
-        % sets the new inner region position            
-        inPos(2) = yLim(1) + pY(iApp)*diff(yLim);              
-        inPos(4) = pH(iApp)*diff(yLim);
+            % sets the new inner region position            
+            inPos(2) = yLim(1) + pY(iApp)*diff(yLim);              
+            inPos(4) = pH(iApp)*diff(yLim);
 
-        % sets the constraint region for the inner regions
-        api.setPosition(inPos);
-        fcn = makeConstrainToRectFcn('imrect',xLim,yLim);
-        api.setPositionConstraintFcn(fcn);         
+            % sets the constraint region for the inner regions
+            api.setPosition(inPos);
+            fcn = makeConstrainToRectFcn('imrect',xLim,yLim);
+            api.setPositionConstraintFcn(fcn);
+        end
     end
 end
 

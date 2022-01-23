@@ -137,17 +137,17 @@ classdef ProgDefaultDef < handle
         % --- initialises the class object properties
         function initObjProps(obj)
             
+            % deletes any previous default directory GUIs
+            hPrev = findall(0,'tag','figProgDef');
+            if ~isempty(hPrev); delete(hPrev); end            
+            
             % --------------------------- %
             % --- MAIN FIGURE OBJECTS --- %
             % --------------------------- %
             
             % creates the figure object
             fPos = [100,100,obj.widFig,obj.hghtFig];
-            fName = sprintf('%s GUI Default Directories',obj.dType);
-            
-            % deletes any previous default directory GUIs
-            hPrev = findall(0,'tag','figProgDef');
-            if ~isempty(hPrev); delete(hPrev); end
+            fName = sprintf('%s GUI Default Directories',obj.dType);            
             
             % creates the figure object
             obj.hFig = figure('Position',fPos,'tag','figProgDef',...

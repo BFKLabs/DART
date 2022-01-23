@@ -10,6 +10,7 @@ T0(2) = mod(T0(2) - Tgrp0,24);
 T = T + vec2sec(T0) - dT/2;
 
 %
+tDay = deal(convertTime(1,'d','s'));
 [T0D,TfD] = deal(convertTime(T(1),'s','d'),convertTime(T(end),'s','d'));
 nDay = length(indD0);
 
@@ -24,12 +25,12 @@ else
     % sets the day binned indices wrt to the start of the day
     for i = 1:nDay
         % determines the index of the time points wrt the start of the day
-        if (i == 1)
-            dTT = convertTime(roundP(T(indD0{i}),dT),'sec','day');
-        else
-            dTT = convertTime(roundP(T(indD0{i})-T(indD0{i}(1)),dT),'sec','day');
-        end
-        
+%         if (i == 1)
+%             dTT = convertTime(roundP(T(indD0{i}),dT),'sec','day');
+%         else
+            dTT = convertTime(roundP(T(indD0{i})-(i-1)*tDay,dT),'sec','day');
+%         end
+%         
         %
         iTT = roundP(convertTime(dTT,'day','sec')/dT) + 1; 
         for j = find(diff(iTT(:)') == 0)
@@ -40,8 +41,9 @@ else
             end
         end
             
-        % sets the indices into the final array            
-        indD(iTT,i) = indD0{i};
+        % sets the indices into the final array    
+        ii = (iTT > 0) & (iTT <= size(indD,1));
+        indD(iTT(ii),i) = indD0{i}(ii);
     end
 end
 

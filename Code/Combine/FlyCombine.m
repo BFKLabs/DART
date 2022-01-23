@@ -545,8 +545,8 @@ set(handles.popupAppPlot,'string',popStr,'value',1)
 % sets the bin indices
 ii = 1:pStep:nFrm;
 T = cell2mat(snTot.T); T = T(ii);
-isDay = cell2mat(snTot.isDay'); 
-snTot.isDay = {isDay(ii)};
+% isDay = cell2mat(snTot.isDay'); 
+% snTot.isDay = {isDay(ii)};
 
 % updates the axis x-limits
 xLim0 = Tmlt*[0 T(end)];

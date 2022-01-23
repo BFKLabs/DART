@@ -9,7 +9,7 @@ V = cell(length(indB),1);
 
 % sets the new x/y fly location arrays
 Px = snTot.Px{ind};
-if (~isempty(snTot.Py))
+if ~isempty(snTot.Py)
     % y-values present, so use them
     Py = snTot.Py{ind}; 
 else

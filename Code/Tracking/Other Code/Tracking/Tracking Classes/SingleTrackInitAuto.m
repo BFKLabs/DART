@@ -466,7 +466,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
                 IRLT = calcImageStackFcn(IRL(:,i),'max');
                 
                 % removes any rows not within the vertical regions
-                sz = size(IRL{i,1},1);    
+                sz = size(IRL{1,i},1);    
                 yT = roundP(obj.yTube{i});
                 ii = max(1,yT(1)):min(sz(1),yT(end));
                 IRLT(~setGroup(ii,[sz(1),1])) = 0;

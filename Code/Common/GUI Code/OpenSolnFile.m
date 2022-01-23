@@ -181,6 +181,10 @@ else
     postSolnLoadFunc(hFigM); 
 end
 
+%-------------------------------------------------------------------------%
+%                             OTHER FUNCTIONS                             %
+%-------------------------------------------------------------------------%
+
 % --- resets the loaded experiment data
 function sInfo = resetLoadedExptData(sObj)
 

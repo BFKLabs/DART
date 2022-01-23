@@ -16,7 +16,7 @@ else
 end
 
 % memory allocations & parameters
-jj = cellfun(@length,indB) > 1;
+jj = ~cellfun(@isempty,indB);
 i0 = find(jj,1,'first');
 
 % calculates the binned activity metrics   
@@ -28,7 +28,7 @@ Y(jj,:) = logical(cell2mat(I(jj)));
 
 % determines the groups of indices which correspond to the fly being
 % inactive (false values in the temporary array)
-Tmn = cellfun(@(x)(mean(Ttot(x))),indB);
+Tmn = cellfun(@(x)(nanmean(Ttot(x))),indB);
 iGrp = cellfun(@(x)(getGroupIndex(x)),num2cell(~Y,1),'un',0);
 
 % for each fly, determine which periods of inactivation were longer than
@@ -39,15 +39,17 @@ for i = 1:length(iGrp)
 end
 
 % calculates the new time groups
-if (isfield(cP,'nGrp'))
+if isfield(cP,'nGrp')
     [nGrp,Tgrp0] = deal(str2double(cP.nGrp),cP.Tgrp0);   
 else
     [nGrp,Tgrp0] = deal(1440/cP.tBin,cP.Tgrp0);    
 end
     
 % sets the group indices
+iMap = find(~isnan(Tmn));
 indGrp = detTimeGroupIndices(Tmn,snTot.iExpt(1).Timing.T0,nGrp,Tgrp0,true);
-Tgrp = cellfun(@(x)(mean(Tmn(x))),indGrp);
+indGrp = cellfun(@(x)(iMap(x)),indGrp,'un',0);
+Tgrp = cellfun(@(x)(nanmean(Tmn(x))),indGrp);
 
 % calculates the sleep bouts/durations
 YY = cellfun(@(x)(num2cell(~Y(x,:),1)),indGrp,'un',0);
@@ -56,7 +58,7 @@ nBout = cellfun(@(y)(cellfun(@(x)(...
 tSleep = cellfun(@(y)(cellfun(@(x)(sum(x)),y)),YY,'un',0);
 
 % removes any rejected values from the analysis
-if ((any(~fok)) && (length(fok) == size(nBout{1},2)))
+if any(~fok) && (length(fok) == size(nBout{1},2))
     for i = 1:numel(nBout)
         [nBout{i}(:,~fok),tSleep{i}(:,~fok)] = deal(NaN);
     end
@@ -74,5 +76,3 @@ tSleep(jj) = cellfun(@(x)(NaN(size(x))),nBout(jj),'un',0);
 % converts the metrics to hourly rates
 nBoutAvg = cellfun(@(x,y)(60*(x/y)),nBout,num2cell(dT),'un',0);
 tSleepAvg = cellfun(@(x,y)(60*(x/y)),tSleep,num2cell(dT),'un',0);
-
-

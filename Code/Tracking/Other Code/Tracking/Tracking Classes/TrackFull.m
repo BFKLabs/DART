@@ -222,16 +222,31 @@ classdef TrackFull < Track
                 % determines the last valid frame in the phase that was
                 % analysed
                 if ~any(isTrk)
-                    % use the first frame from the phase if none
-                    X0 = obj.pData.fPos{iApp0}{iTube0}(:,1);
-                    iFrmLast = find(~isnan(X0),1,'last');
+                    % if there is none, then determine the last existing
+                    % frame that has tracking data
+                    if iPhase > 1
+                        % case is not the first phase, so determine if any
+                        % preceding phase frames are valid
+                        ii = 1:(obj.iMov.iPhase(iPhase-1,2)-1);
+                        X0 = obj.pData.fPos{iApp0}{iTube0}(ii,1);
+                        iFrmLast = find(~isnan(X0),1,'last');
+                    else
+                        % case is the first phase, so no valid frame
+                        iFrmLast = [];
+                    end
                 else
                     % otherwise, return the last tracked frame
                     iFrmLast = iFrmP(find(isTrk,1,'last'));
                 end
                 
-                % sets up the previous phases data struct
-                prDataPh = obj.sObj.setupPrevPhaseData(iFrmLast,iPhase);
+                % sets the previous data struct if the last frame is valid
+                if isempty(iFrmLast)
+                    % case is the there are no viable frames
+                    prDataPh = obj.prData;                      
+                else
+                    % otherwise, set up the previous phases data struct                    
+                    prDataPh = obj.sObj.setupPrevPhaseData(iFrmLast,iPhase);
+                end
                 
             end
             
@@ -266,10 +281,7 @@ classdef TrackFull < Track
                 % applies the image filter (if required)
                 if ~isempty(obj.hS)
                     Img = cellfun(@(x)(imfiltersym(x,obj.hS)),Img,'un',0);
-                end
-                
-%                 % applies the image offset (if shift detected)
-%                 Img = obj.applyImageOffset(Img,iFrmR);
+                end                
                 
                 % updates the tracking object class fields                
                 set(obj.fObj{iPhase},'Img',Img,'prData',prDataPh,...
