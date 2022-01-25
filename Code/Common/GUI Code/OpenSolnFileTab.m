@@ -82,7 +82,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % objects with normal callback functions
             cbObj = {'buttonSetDir','buttonAddSoln','buttonClearExpt',...
                      'buttonClearAll','buttonShowProtocol',...
-                     'buttonHideProtocol','menuCombExpt'};
+                     'buttonHideProtocol','menuCombExpt','menuScaleFactor'};
             for i = 1:length(cbObj)
                 hObj = getStructField(obj.hGUI,cbObj{i});
                 cbFcn = eval(sprintf('@obj.%sCB',cbObj{i}));
@@ -236,11 +236,6 @@ classdef OpenSolnFileTab < dynamicprops & handle
             if (iRow+1) > size(tabData,1)
                 % if the row index is infeasible then exit
                 return
-                
-%                 % case is the experiment has not been loaded
-%                 mStr = sprintf(['It isn''t possible to set the name ',...
-%                                 'for an experiment that is not loaded.']);
-%                 waitfor(msgbox(mStr,'Experiment Naming Error','modal'))
 
             elseif strcmp(nwStr,tabData{iRow+1,iCol+1})
                 % case is the string name has not changed
@@ -703,7 +698,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % sets the root search directory (dependent on stored 
             % values and tab index)
             if isempty(sDirNw)
-                if isempty(obj.sDir{obj.iTab})
+%                 if isempty(obj.sDir{obj.iTab})
                     switch obj.iTab
                         case 1
                             % case is video solution files
@@ -713,10 +708,10 @@ classdef OpenSolnFileTab < dynamicprops & handle
                             % case is experiment solution files
                             sDirNw = obj.iProg.DirComb;
                     end
-                else
-                    % otherwise, use the stored directory path
-                    sDirNw = obj.sDir{obj.iTab};
-                end
+%                 else
+%                     % otherwise, use the stored directory path
+%                     sDirNw = obj.sDir{obj.iTab};
+%                 end
 
 %                 % prompts the user for the search directory
 %                 titleStr = 'Select the root search directory';
@@ -1327,13 +1322,21 @@ classdef OpenSolnFileTab < dynamicprops & handle
        
         % ------------------------------- %
         % --- MENU CALLBACK FUNCTIONS --- %
-        % ------------------------------- %        
-        
+        % ------------------------------- %                
+
+        % ---- callback function for the combine experiment menu item
+        function menuScaleFactorCB(obj, ~, ~)
+            
+            % runs the video parameter reset dialog
+            ResetVideoPara(obj);
+            
+        end
+    
         % ---- callback function for the combine experiment menu item
         function menuCombExptCB(obj, ~, ~)
             
             % runs the experiment concatenation dialog
-            combObj = ConcatExptClass(obj);
+            ConcatExptClass(obj);
             
         end
         

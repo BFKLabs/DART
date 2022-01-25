@@ -82,6 +82,9 @@ classdef OpenSolnTab < handle
                     end
             end
             
+            % centres the figure position
+            centreFigPosition(hFig)
+            
         end     
         
         % --- expands the gui so the panels are part of a tab panel object
@@ -258,6 +261,16 @@ classdef OpenSolnTab < handle
         % --- tab selection callback function
         function tabSelectedFull(obj, hObject, eventdata)
             
+            % determines the index of the tab that is selected
+            iTab = get(hObject,'UserData');
+            if ~obj.jTabGrpF.isEnabledAt(iTab - 1)
+                % if the tab is enabled, then exit
+                return
+            end
+            
+            % sets the enabled properties of the menu items
+            setObjEnable(obj.hGUI.menuCombExpt,iTab==1)
+            setObjEnable(obj.hGUI.menuScaleFactor,iTab==1)
             
         end        
     end

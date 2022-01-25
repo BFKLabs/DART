@@ -12,20 +12,24 @@ classdef AnalysisParaClass < handle
         hPanel    
         hObj
         hTabG
+        hVB
         nPmx
+        Hpanel
+        hChild
         
         % parameter struct fields
         pData
         
         % object dimensioning
         tDay
-        pOfs = 10;
+        pOfs = 5;
         hOfs = 25;
         hOfs2 = 20;
         B0 = 50;
         nTabMax = 10;
         hTabOfs = 35;
         dhTabOfs = 10;
+        pHght = 25;
         
         % other array fields
         pStr = {'Calc','Plot','Sub','Time','StimRes'};
@@ -50,7 +54,7 @@ classdef AnalysisParaClass < handle
             
             % sets the main class objects
             obj.hFig = hFig;
-            obj.hGUI = hGUI;
+            obj.hGUI = hGUI;            
             
             % creates a loadbar
             wStr = 'Initialising Function Parameter GUI...';
@@ -81,6 +85,16 @@ classdef AnalysisParaClass < handle
             % field initialisations
             obj.nPmx = zeros(1,3);
             [obj.hTab,obj.hTabG,obj.hObj] = deal(cell(1,3));
+            
+            % sets the vertical box object handle
+            hGUIF = guidata(obj.hFig);
+            obj.hVB = hGUIF.panelVBox;
+            obj.Hpanel = get(obj.hVB,'Heights');
+            
+            % sorts the child objects by their userdata indices
+            hChild0 = get(obj.hVB,'Children');
+            [~,iS] = sort(arrayfun(@(x)(get(x,'UserData')),hChild0));
+            obj.hChild = hChild0(iS);            
             
             % retrieves all panel object handles
             obj.hPanel = cell(length(obj.pStr),1);            
@@ -124,7 +138,7 @@ classdef AnalysisParaClass < handle
             
             % deletes any axes objects on the parameter gui
             hAx0 = findall(obj.hFig,'type','Axes');
-            if ~isempty(hAx0); delete(hAx0); end
+            if ~isempty(hAx0); delete(hAx0); end            
             
             % sets the panels for object removal           
             for i = 1:length(obj.hPanel)
@@ -157,8 +171,8 @@ classdef AnalysisParaClass < handle
                 end
                 
                 % resets the visibility to on
-                setObjVisibility(obj.hPanel{i},'on')                
-            end
+                setObjVisibility(obj.hPanel{i},'on')
+            end            
             
             % sets the selected indices
             [eInd,fInd,pInd] = getSelectedIndices(obj.hGUI);            
@@ -181,11 +195,13 @@ classdef AnalysisParaClass < handle
             
             % initialises the GUI objects
             try
-                obj.resetGUIObjects()
                 obj.setupGUIObjects(isInit);
                 obj.updateMainPara();
                                    
             catch ME
+                % re-centres the figure
+                centreFigPosition(obj.hFig,2);
+                
                 % if there was an error, then try running the GUI again
                 eStr = 'There was an error initialising the Analysis parameter GUI.';
                 waitfor(errordlg(eStr,'GUI Initialisation Error','modal'))
@@ -432,7 +448,7 @@ classdef AnalysisParaClass < handle
 
             % retrieves the corresponding indices and parameter values
             uData = get(hObject,'UserData');
-            switch (uData{2})
+            switch uData{2}
                 case ('Calc')
                     % case is a calculation parameter
                     [fStr,isPlot] = deal('cP',false);
@@ -473,14 +489,64 @@ classdef AnalysisParaClass < handle
             % retrieve the new parameter value and overall parameter struct
             nwVal = get(hObject,'Value');
             uData = get(hObject,'UserData');
+            stimStr = {'nGrp','nBin'};
 
             % retrieves the corresponding indices and parameter values            
             switch uData{2}
                 case ('Calc')
                     % case is a calculation parameter
+                    ind0 = obj.pData.cP(uData{1}).Value{1};
                     obj.pData.cP(uData{1}).Value{1} = nwVal;         
                     p = obj.pData.cP;
                     
+                    % updates the parameter gui (dependent on parameter)
+                    if any(strContains(stimStr,p(uData{1}).Para)) ...
+                                && strcmp(obj.pData.sP(3).Type,'Stim')
+                        % case is the bin/group count
+                        pPara = p(uData{1}).Para;
+                        obj.resizeStimRespTable(pPara,uData{1},ind0);
+                        nNew = str2double(p(uData{1}).Value{2}{nwVal});
+                        
+                        % resets the table data                        
+                        switch pPara
+                            case ('nBin') 
+                                % case is the sleep intensity metrics
+                                nRow = 60/nNew;          
+                                lStr = setTimeBinStrings(nNew,nRow,1);
+                            case ('nGrp') 
+                                % case is the time-grouped stimuli response
+                                lStr = setTimeGroupStrings(nNew,obj.tDay);
+                        end                        
+                        
+                        % retrieves the plot indices
+                        pSelF = obj.pData.sP(3).Lim.plotFit;
+                        pSelT = obj.pData.sP(3).Lim.plotTrace;
+                        
+                        % expands/contracts the selection array
+                        dpSel = length(lStr) - length(pSelF);
+                        if dpSel > 0
+                            pSelF = [pSelF;false(dpSel,1)];
+                            pSelT = [pSelT;false(dpSel,1)];
+                        else
+                            pSelF = pSelF(1:length(lStr));
+                            pSelT = pSelT(1:length(lStr));
+                        end
+                        
+                        % updates the special parameter flags
+                        obj.pData.sP(3).Lim.plotFit = pSelF;
+                        obj.pData.sP(3).Lim.plotTrace = pSelT;                        
+                        
+                        % resets the table data
+                        Data = [lStr(:),num2cell(pSelT)];
+                        if strcmp(p(uData{1}).Para,'nBin')
+                            Data = [Data,num2cell(pSelF)];
+                        end
+                        
+                        % updates the table properties
+                        hTable = findall(obj.hPanel{5},'type','uitable');                        
+                        set(hTable,'Data',Data)
+                    end
+
                 case ('Plot')
                     % case is a plotting parameter
                     obj.pData.pP(uData{1}).Value{1} = nwVal;             
@@ -595,6 +661,55 @@ classdef AnalysisParaClass < handle
             
         end                
         
+        % --- resizes the stimuli response
+        function resizeStimRespTable(obj,pPara,indP,ind0)
+            
+            % global variables
+            global HWT H0T
+            
+            % object handles
+            hPanelSR = obj.hPanel{5};
+            cPV = obj.pData.cP(indP).Value;
+            
+            % determines the table/data array size offset
+            hTable = findall(hPanelSR,'type','uitable');  
+            tPos = get(hTable,'Position');
+            Data = get(hTable,'Data');
+            dN0 = size(Data,1) - (tPos(4)-H0T)/HWT;
+        
+            % retrieves the previous/new group counts                    
+            N0 = str2double(cPV{2}{ind0});
+            N1 = str2double(cPV{2}{cPV{1}}); 
+            
+            switch pPara
+                case 'nBin'
+                    % case is the bin count size
+                    dN = 60/N1-60/N0;
+                    
+                case 'nGrp'
+                    % case is the group count
+                    dN = N1-N0;
+            end
+            
+            % resets the box panel height
+            dHght = (dN+dN0)*HWT;
+            obj.Hpanel(4) = obj.Hpanel(4) + dHght;
+            obj.resetBoxPanelHeight()              
+            pause(0.05)
+            
+%             % resets the panel bottom/height properties
+%             resetObjPos(hPanelSR,'height',dHght,1);
+%             resetObjPos(hPanelSR,'bottom',-dHght,1);   
+            
+            % resets the figure properties
+            resetObjPos(obj.hFig,'height',dHght,1);
+            resetObjPos(obj.hFig,'bottom',-dHght,1);
+            
+            % resets the bottom locations of the objects
+            resetObjPos(hTable,'height',dHght,1);                               
+            
+        end
+            
         % --------------------------------- %        
         % --- MAIN GUI OBJECT FUNCTIONS --- %
         % --------------------------------- %
@@ -607,7 +722,6 @@ classdef AnalysisParaClass < handle
             [L,W,H,H2] = deal(10,315,55,10);
 
             % resets the panel positions
-            set(h.panelFuncInfo,'position',[L 200 W 75])
             set(h.panelCalcPara,'position',[L 135 W H])
             set(h.panelPlotPara,'position',[L 70 W H])
             set(h.panelSubPara,'position',[L 50 W H2])
@@ -627,6 +741,7 @@ classdef AnalysisParaClass < handle
             % memory allocation
             hObjF = cell(3,1);
             wMax = deal(zeros(1,3)); 
+            fPos = get(obj.hFig,'position');
             
             % ----------------------------------- %
             % --- FUNCTION FIELD OBJECT SETUP --- %
@@ -662,7 +777,7 @@ classdef AnalysisParaClass < handle
 
             % calculates the object widths
             wObjF = retObjDimPos(hObjF,3);
-            wObjFMx = max(cellfun(@(x)(sum(x)+2*obj.pOfs+obj.pOfs/2),wObjF));            
+            wObjFMx = max(cellfun(@(x)(sum(x)+3.5*obj.pOfs),wObjF));            
             
             % ------------------------------------------ %
             % --- CALCULATION/PARAMETER OBJECT SETUP --- %
@@ -686,7 +801,7 @@ classdef AnalysisParaClass < handle
                     else
                         % case is a numeric/list parameter
                         if ~isempty(wObj{i}{j})
-                            wMaxNw = wObj{i}{j}+20*obj.hasTab(i);
+                            wMaxNw = wObj{i}{j};
                             wMax(1:2) = max(wMax(1:2),wMaxNw);
                         end
                     end
@@ -694,7 +809,7 @@ classdef AnalysisParaClass < handle
             end
 
             % determines the overall maximum 
-            wObjMx = max(sum(wMax(1:2))+obj.pOfs/2,wMax(3)) + 2*obj.pOfs;
+            wObjMx = max(sum(wMax(1:2))+obj.pOfs/2,wMax(3)) + 3*obj.pOfs;
             if (wObjFMx > wObjMx)
                 % the function information fields are longer
                 obj.wObjNw = wObjFMx;
@@ -718,7 +833,10 @@ classdef AnalysisParaClass < handle
                     else
                         % deletes the subplot panel
                         setObjVisibility(h.panelPlotPara,'off');            
-                    end
+                     end
+                    
+                    % resets the box panel height
+                    obj.Hpanel(i+1) = 0;                         
                 else
                     HObj(i) = obj.nPmx(i)*obj.hOfs+4*obj.pOfs;
                 end
@@ -731,6 +849,9 @@ classdef AnalysisParaClass < handle
                 setObjVisibility(h.panelTimePara,'off');
                 setObjVisibility(h.panelSubPara,'off'); 
                 setObjVisibility(h.panelStimResPara,'off'); 
+                
+                % resets the box panel height
+                obj.Hpanel(4:6) = 0;               
                 
             else
                 for i = 1:length(obj.hObj{3})
@@ -751,6 +872,10 @@ classdef AnalysisParaClass < handle
                                 % deletes the subplot panel
                                 setObjVisibility(h.panelStimResPara,'off');                                 
                         end
+                        
+                        % resets the box panel height
+                        obj.Hpanel(7-i) = 0;
+                        
                     else
                         % retrieves the first valid handle from the array
                         i0 = find(~cellfun...
@@ -776,34 +901,32 @@ classdef AnalysisParaClass < handle
                                 case (3) % deletes the subplot panel
                                     setObjVisibility(h.panelStimResPara,0);                                                         
                             end
+                            
+                            % resets the box panel height
+                            obj.Hpanel(7-i) = 0;
                         end
                     end
                 end
-            end
-
+            end           
             
-            % ---------------------------- %
-            % --- PANEL RE-POSITIONING --- %
-            % ---------------------------- %                        
+%             % ---------------------------- %
+%             % --- PANEL RE-POSITIONING --- %
+%             % ---------------------------- %                        
 
-            % resets the figure height/bottom coordinates
-            [fPos,obj.yNew] = deal(get(obj.hFig,'Position'),obj.pOfs);
-            Hfunc = 3*obj.hOfs2 + (3/2)*obj.pOfs;
-            Hfig = (Hfunc + 2*obj.pOfs) + (sum(obj.HObjS)+sum(HObj)) + ...
-                                          sum(obj.hasTab(1:2))*obj.hTabOfs;
+%             % resets the figure height/bottom coordinates
+%             [fPos,obj.yNew] = deal(get(obj.hFig,'Position'),obj.pOfs);
+%             Hfunc = 3*obj.hOfs2 + (3/2)*obj.pOfs;
+%             Hfig = (Hfunc + 2*obj.pOfs) + (sum(obj.HObjS)+sum(HObj)) + ...
+%                                           sum(obj.hasTab(1:2))*obj.hTabOfs;
 
-            % recalculates the figure bottom location
-            if (fPos(2) < obj.B0)        
-                bNew = obj.B0;
-            elseif fPos(2) > (obj.scrSz(4)-(Hfig+obj.B0))
-                bNew = (obj.scrSz(4)-(Hfig+obj.B0));
-            else
-                bNew = fPos(2);
-            end
-
-            % resets the figure position
-            resetObjPos(obj.hFig,'height',Hfig) 
-            resetObjPos(obj.hFig,'bottom',bNew)            
+%             % recalculates the figure bottom location
+%             if (fPos(2) < obj.B0)        
+%                 bNew = obj.B0;
+%             elseif fPos(2) > (obj.scrSz(4)-(Hfig+obj.B0))
+%                 bNew = (obj.scrSz(4)-(Hfig+obj.B0));
+%             else
+%                 bNew = fPos(2);
+%             end           
 
             % ------------------------ %            
             % --- TIME LIMIT PANEL --- %
@@ -847,22 +970,31 @@ classdef AnalysisParaClass < handle
             % --- FUNCTION INFORMATION PANEL --- %
             % ---------------------------------- %            
             
+            % retrieves the box panel heights
+            HpanelNw = obj.getCurrentPanelHeights();            
+            
+            % calculates the new overall figure height
+            Hfig = sum(HpanelNw);
+            
+            % resets the box panel heights
+            obj.resetBoxPanelHeight();                                     
+            
             % resets the function parameters panel
-            resetObjPos(h.panelFuncInfo,'bottom',obj.yNew)
             resetObjPos(h.panelFuncInfo,'width',obj.wObjNw)
             
             % --------------------------------- %
             % --- GUI OBJECT RE-POSITIONING --- %
             % --------------------------------- %            
             
-            % sets the new left/right
+            % sets the new left/right                        
             [W1,W2] = deal(wMax(1),wMax(2));
-            [L1,L2] = deal(obj.pOfs,(3/2)*obj.pOfs+W1);            
+            [L1,L2] = deal(obj.pOfs,obj.pOfs+W1);                                  
             
-            % resets the figure dimensions
-            resetObjPos(obj.hFig,'height',Hfig) 
-            resetObjPos(obj.hFig,'width',2*obj.pOfs + obj.wObjNw)
-            resetObjPos(obj.hFig,'bottom',bNew)            
+            % resets the figure dimensions            
+            resetObjPos(obj.hFig,'width',obj.wObjNw)            
+            resetObjPos(obj.hFig,'height',Hfig)             
+            resetObjPos(obj.hFig,'bottom',sum(fPos([2,4]))-Hfig)
+%             resetObjPos(obj.hFig,'bottom',50)
             
             % updates the locations of the non-boolean parameters
             for i = 1:2
@@ -873,14 +1005,14 @@ classdef AnalysisParaClass < handle
                         resetObjPos(obj.hObj{i}{j}{1},'width',W1)
 
                         % resets the 2nd objects location
-                        Wnw = W2-20*obj.hasTab(i);
+                        Wnw = W2-15*obj.hasTab(i);
                         resetObjPos(obj.hObj{i}{j}{2},'left',L2)
                         resetObjPos(obj.hObj{i}{j}{2},'width',Wnw)        
                     end
                 end
 
                 if obj.hasTab(i)
-                    resetObjPos(obj.hTabG{i},'width',obj.wObjNw-10);
+                    resetObjPos(obj.hTabG{i},'width',obj.wObjNw-15);
                 end
             end            
             
@@ -899,17 +1031,16 @@ classdef AnalysisParaClass < handle
         function resetTimeLimitPanel(obj)
             
             % initialisations
+            nP = 4;
             h = guidata(obj.hFig);
             hObjNw = obj.hObj{3}{1};   
             
             % resets the panel position                     
-            resetObjPos(h.panelTimePara,'bottom',obj.yNew)
-            resetObjPos(h.panelTimePara,'width',obj.wObjNw)
-            obj.yNew = obj.yNew + obj.HObjS(1);          
+            resetObjPos(h.panelTimePara,'width',obj.wObjNw)         
 
             % sets the object width and the new left location
-            Wobj = roundP((obj.wObjNw - (7/2)*obj.pOfs)/4,1);
-            L0 = (obj.wObjNw - 4*Wobj) - (5/2)*obj.pOfs;            
+            Wobj = roundP((obj.wObjNw - nP*obj.pOfs)/nP,1);
+            L0 = (obj.wObjNw - nP*Wobj) - (nP-1/2)*obj.pOfs;            
 
             % resets the button position
             bPos = get(hObjNw{1}{3}{2},'position');
@@ -941,7 +1072,7 @@ classdef AnalysisParaClass < handle
             % initialisations
             h = guidata(obj.hFig);
             hObjNw = obj.hObj{3}{2};
-            WTab = (obj.wObjNw - 2*obj.pOfs);            
+            WTab = obj.wObjNw - (2+obj.pOfs);            
             wTab = roundP(WTab/6,1);            
             
             % sets the table column width array
@@ -986,7 +1117,7 @@ classdef AnalysisParaClass < handle
                 updateStruct = false;
                 nRow = size(get(hObjNw{1}{1},'Data'),1);
                 wOfs = (17+20*ismac)*(nRow>10) + 2;
-                [WTab,wTabL] = deal(obj.wObjNw - 2*obj.pOfs,70);   
+                [WTab,wTabL] = deal(obj.wObjNw - (2+obj.pOfs),70);   
 
                 % sets the stimuli response type
                 if isstruct(obj.pData.sP(3).Lim)
@@ -1059,31 +1190,35 @@ classdef AnalysisParaClass < handle
 
             % resets the panel dimensions
             resetObjPos(h.panelStimResPara,'width',obj.wObjNw)
-            resetObjPos(h.panelStimResPara,'bottom',obj.yNew)        
-            obj.yNew = obj.yNew + obj.HObjS(3);             
             
         end
         
         % --- resets the plotting parameter panel
-        function resetParaPanel(obj,hP,ind)
+        function resetParaPanel(obj,hPB,ind)
+            
+            % retrieves the panel object
+            hP = findall(hPB,'tag','hPanelS');
+            isShow = ~get(hPB,'Minimized');
             
             % sets the new locations
-            HNew = obj.nPmx(ind)*obj.hOfs + 3*obj.pOfs + ...
+            N = 2;
+            HNew = obj.nPmx(ind)*obj.hOfs + N*obj.pOfs + ...
                    obj.hTabOfs*(~isempty(obj.hTabG{ind}));    
-
+            obj.Hpanel(ind+1) = HNew*isShow + obj.pHght;
+               
             % resets the panel position
-            resetObjPos(hP,'bottom',obj.yNew)
             resetObjPos(hP,'width',obj.wObjNw)
-            resetObjPos(hP,'height',HNew)    
+            resetObjPos(hP,'height',HNew)            
 
             % resets the tab group position
             if obj.hasTab(ind)
-                HnwG = HNew-(obj.hTabOfs-obj.dhTabOfs);
+                HnwG = HNew-N*obj.pOfs;
                 resetObjPos(obj.hTabG{ind},'height',HnwG)  
             end
 
             % increment the vertical offset
-            obj.yNew = obj.yNew + (HNew+obj.pOfs);                       
+            obj.yNew = obj.yNew + (HNew+obj.pOfs);                
+            set(hP,'UserData',HNew)
             
         end        
         
@@ -1095,7 +1230,7 @@ classdef AnalysisParaClass < handle
         function setupParaObjects(obj,Type)
 
             % parameters            
-            [dX,dY,dY0] = deal(5,3,15); 
+            [dX,dY,dY0] = deal(5,3,5); 
             [obj.yOfs,obj.Hnew,obj.yNew] = deal(0,0,obj.pOfs);
             
             % retrieves the total solution data struct
@@ -1105,10 +1240,10 @@ classdef AnalysisParaClass < handle
             switch Type
                 case ('Calc') 
                     % case is a calculation parameter
-                    [hP0,p,iType] = deal(h.panelCalcPara,obj.pData.cP,1);        
+                    [hPB0,p,iType] = deal(h.panelCalcPara,obj.pData.cP,1);        
                 case ('Plot') 
                     % case is a plotting parameters
-                    [hP0,p,iType] = deal(h.panelPlotPara,obj.pData.pP,2);        
+                    [hPB0,p,iType] = deal(h.panelPlotPara,obj.pData.pP,2);        
                 case ('Spec') 
                     % case is a speciality parameters
                     [p,obj.yOfs,iType] = deal(obj.pData.sP,obj.pOfs,3);        
@@ -1148,8 +1283,11 @@ classdef AnalysisParaClass < handle
             if iType < 3
                 % sets the initial tab position vector
                 obj.nPmx(iType) = nPmx0;
+                hP0 = findall(hPB0,'tag','hPanelS');
+                
                 pPos = get(hP0,'Position');
-                tPos = [dX,dY,pPos(3)-2*dX,pPos(4)-(2*dY+dY0)];                   
+                panelHght = get(hP0,'UserData');
+                tPos = [dX,dY,pPos(3)-2*dX,panelHght-(2*dY+dY0)];                   
                 
                 % creates the master tab group and sets the properties                
                 if isempty(obj.hTabG{iType})
@@ -1215,7 +1353,7 @@ classdef AnalysisParaClass < handle
                             
                         otherwise
                             % case is a calculation/plotting panel
-                            yNw = obj.pOfs+((k-1)+(nPmx0-indF))*obj.hOfs-2;
+                            yNw = obj.pOfs+((k-1)+(nPmx0-indF))*obj.hOfs;
                             
                             % sets the tab panel object
                             if ~(strcmp(p(i).Type,'None') || ...
@@ -1250,7 +1388,8 @@ classdef AnalysisParaClass < handle
             h = guidata(obj.hFig);
             fPos = get(obj.hFig,'position');
             pPos = get(h.panelTimePara,'position');
-            hP = findall(obj.hFig,'tag','panelTimePara');
+            [hPB,hP,iP] = obj.getPanelObjHandles('panelTimePara');
+            isShow = ~get(hPB,'Minimized');
             
             % sets the lower time limit objects
             hObjNw = cell(2,1);            
@@ -1258,13 +1397,13 @@ classdef AnalysisParaClass < handle
             hObjNw{2} = obj.createTimeLimitObj(hP,p.Value,'Upper',indP);
             
             % increments the height/vertical offset
-            HNew = 2*(2*obj.hOfs2 + obj.hOfs + obj.pOfs) + obj.pOfs/2;   
-            obj.yOfs = obj.yOfs + HNew;
+            HNew = 2*(2*obj.hOfs2 + obj.hOfs + obj.pOfs) + obj.pOfs;   
 
-            % resets the panel location
+            % resets the panel dimensions
+            set(hP,'UserData',HNew)
             resetObjPos(obj.hFig,'height',fPos(4)+(HNew-pPos(4)))
-            resetObjPos(hP,'height',HNew);
-            resetObjPos(hP,'bottom',obj.pOfs); 
+            resetObjPos(hP,'height',HNew);     
+            obj.Hpanel(iP) = isShow*HNew + obj.pHght;       
             
             % updates the object field
             obj.hObj{3}{1} = hObjNw;            
@@ -1287,7 +1426,8 @@ classdef AnalysisParaClass < handle
             Value = p.Value;
             nApp = length(Value.isPlot);    
             cbFcn = @obj.callbackSubPlot;
-            hP = findall(obj.hFig,'tag','panelSubPara');  
+            [hPB,hP,iP] = obj.getPanelObjHandles('panelSubPara');
+            isShow = ~get(hPB,'Minimized');
             
             % determines if the can combine trace flag is set
             if Value.canComb    
@@ -1346,7 +1486,7 @@ classdef AnalysisParaClass < handle
             fSz = 11;  
             tStr = {'nRow','nCol'};
             figPos = get(obj.hFig,'Position');
-            tabPos = [obj.pOfs (obj.pOfs + cOfs) 200 Htab];  
+            tabPos = [1 cOfs 200 Htab];  
             
             % creates the table object
             tData = obj.getSubplotTableData(Value);
@@ -1379,21 +1519,44 @@ classdef AnalysisParaClass < handle
                 end
             end            
             
-            % resets the panel location
+            % resets the panel dimensions
+            set(hP,'UserData',obj.Hnew)
             resetObjPos(obj.hFig,'height',figPos(4)+(obj.Hnew-pPos(4)))
-            resetObjPos(hP,'height',obj.Hnew);
-            resetObjPos(hP,'bottom',obj.yOfs);     
-            obj.yOfs = obj.yOfs + (obj.pOfs + obj.Hnew);            
+            resetObjPos(hP,'height',obj.Hnew);     
+            obj.Hpanel(iP) = isShow*obj.Hnew + obj.pHght;                                                        
             
             % updates the object field
             obj.hObj{3}{2} = hObjNw;
             
         end
         
-        % --- sets up the time parameters
-        function setupStimPara(obj,p,indP)            
+        % --- retrieves the panel object handles for the tag, tagStr
+        function [hPB,hP,iP] = getPanelObjHandles(obj,tagStr)
             
-            % if the object is empty then exit
+            % retrieves the outer and inner panel object handles
+            hPB = findall(obj.hFig,'tag',tagStr);
+            hP = findall(hPB,'tag','hPanelS');
+            
+            % retrieves the index of the panel
+            iP = get(hPB,'UserData');        
+        
+        end
+            
+        % --- resets the box panel height
+        function resetBoxPanelHeight(obj)            
+            
+            % determines which box panels are maximises
+            HpanelNw = obj.getCurrentPanelHeights();
+            
+            % resets the panel heights
+            set(obj.hVB,'Heights',HpanelNw,'MinimumHeights',HpanelNw);            
+            
+        end
+        
+        % --- sets up the time parameters
+        function setupStimPara(obj,p,indP)
+            
+            % if the object is not empty then exit
             if ~isempty(obj.hObj{3}{3})
                 return
             end
@@ -1405,8 +1568,10 @@ classdef AnalysisParaClass < handle
             % initialisations
             figPos = get(obj.hFig,'Position');
             cbFcn = @obj.callbackStimResponse;
-            hP = findall(obj.hFig,'tag','panelStimResPara');
-                    
+            [hPB,hP,iP] = obj.getPanelObjHandles('panelStimResPara');            
+            isShow = ~get(hPB,'Minimized');
+            snTotT = getappdata(obj.hFigM,'snTot');
+            
             % determines if the experiments can be combined
             canComb = (~obj.pData.hasSP || obj.pData.hasSR) && ...
                       ((obj.pData.nApp > 1) && ~strcmp(p.Para,'appName'));    
@@ -1464,7 +1629,7 @@ classdef AnalysisParaClass < handle
                 pType = p.Lim;
             end 
             
-            % retrieves the matching parameter value      
+            % retrieves the matching parameter value
             if ~isempty(obj.pData.sP(3).Para)
                 pPara = field2cell(obj.pData.cP,'Para');
                 ii = cellfun(@(x)(strcmp(x,p.Para)),pPara);
@@ -1482,13 +1647,12 @@ classdef AnalysisParaClass < handle
                     case ('nBin') 
                         % case is the sleep intensity metrics
                         nRow = 60/nNew;          
-                        lStr = setTimeBinStrings(nNew,nRow,1);                       
+                        lStr = setTimeBinStrings(nNew,nRow,1);
                     case ('nGrp') 
                         % case is the time-grouped stimuli response
                         nRow = nNew;
-                        lStr = setTimeGroupStrings(nNew,obj.tDay);                                                    
-                    case {'appName','appNameS'}
-                        snTotT = getappdata(obj.hFigM,'snTot');
+                        lStr = setTimeGroupStrings(nNew,obj.tDay);
+                    case {'appName','appNameS'}                        
                         lStr = snTotT(1).iMov.pInfo.gName;
                         if (pInd ~= 3)                            
                             lStr = lStr(snTotT(eInd).iMov.ok);
@@ -1529,6 +1693,10 @@ classdef AnalysisParaClass < handle
 
                         % sets the number of table rows
                         [nRowNw,nRow] = deal(length(lStr));
+                        
+                    otherwise
+                        obj.Hnew = cOfs + 2*obj.pOfs; 
+                        nRowNw = 0;
                 end
             end        
             
@@ -1578,12 +1746,12 @@ classdef AnalysisParaClass < handle
                     obj.hObj{3}{3} = []; 
                     return
                 else
-                    obj.Hnew = Htab + 2*obj.pOfs + cOfs;                 
+                    obj.Hnew = Htab + obj.pOfs + (cOfs+3);                 
                 end
 
                 % sets the table properties
                 if ~isempty(DataNw)
-                    tabPos = [obj.pOfs (obj.pOfs + cOfs) 300 Htab];
+                    tabPos = [1 (cOfs+obj.pOfs) 300 Htab];
 
                     % sets the data array
                     Data = [lStr,DataNw];
@@ -1610,12 +1778,13 @@ classdef AnalysisParaClass < handle
                         set(hObjNw{1}{1},'UserData',uData)
                     end
                 end
-            end
-
-            % resets the panel location                
+            end       
+            
+            % resets the panel location      
+            set(hP,'UserData',obj.Hnew)            
             resetObjPos(obj.hFig,'height',figPos(4)+(obj.Hnew-pPos(4)))
             resetObjPos(hP,'height',obj.Hnew);
-            resetObjPos(obj.hPanel,'bottom',obj.yOfs); 
+            obj.Hpanel(iP) = isShow*obj.Hnew + obj.pHght;
             
             % updates the object field
             obj.hObj{3}{3} = hObjNw;
@@ -1627,7 +1796,8 @@ classdef AnalysisParaClass < handle
          
             % sets the new height and increments the index
             isValid = true;
-            [Name,TTstr,Value] = deal(p.Name,p.TTstr,p.Value);
+            [Name,TTstr] = deal(p.Name,p.TTstr);
+            [Value,Enable] = deal(p.Value,p.Enable);
             
             % creates the objects for all of the parameters in the group
             switch (p.Type)                                
@@ -1672,7 +1842,24 @@ classdef AnalysisParaClass < handle
             if isValid
                 set(obj.hObj{iType}{indP}{end},...
                                     'Callback',cbFcn,'UserData',uD)       
-            end           
+            end        
+            
+            % resets the enabled properties of the objects
+            if ~isempty(Enable)
+                % disables the object if the enabled field is NaN
+                if iscell(Enable{1})
+                    isOn = true;
+                else
+                    isOn = all(~isnan(Enable{1}));
+                end
+                    
+                cellfun(@(x)(setObjEnable(x,isOn)),obj.hObj{iType}{indP})
+            else
+                % otherwise, enable the object
+                try
+                    cellfun(@(x)(setObjEnable(x,1)),obj.hObj{iType}{indP})
+                end
+            end
             
         end             
         
@@ -2030,6 +2217,17 @@ classdef AnalysisParaClass < handle
             end
 
         end
+        
+        % --- retrieves the current heights of the box panel objects
+        function HpanelNw = getCurrentPanelHeights(obj)
+            
+            % determines which box panels are maximises
+            isShow = obj.Hpanel > 0;
+            isMax = ~arrayfun(@(x)(x.Minimized),obj.hChild);
+            HpanelNw = obj.Hpanel.*isMax;  
+            HpanelNw(isShow) = max(HpanelNw(isShow),obj.pHght);            
+            
+        end        
         
     end
     

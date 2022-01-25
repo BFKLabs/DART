@@ -2170,7 +2170,7 @@ if isCalib
 end
 
 % runs the scale factor sub-GUI
-ScaleFactor(handles)
+ScaleFactor(hFig,'FlyTrack')
 
 % restarts the video timer (if calibrating and video feed on)
 if isCalib     

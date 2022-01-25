@@ -27,19 +27,33 @@ function ScaleFactor_OpeningFcn(hObject, eventdata, handles, varargin)
 handles.output = hObject;
 
 % sets the input arguments
-hGUI = varargin{1};
+hFigM = varargin{1};
+hType = varargin{2};
 
 % resets the object font sizes
-setGUIFontSize(handles)
-hProp0 = disableAllTrackingPanels(hGUI);
-centreFigPosition(hObject);
+hGUI = guidata(hFigM);
 
+% updates the scale factor value in the main GUI axes
+switch hType
+    case 'FlyTrack'
+        hProp0 = disableAllTrackingPanels(hGUI);
+    case 'FlyAnalysis'
+        hProp0 = [];
+end
+        
 % sets up the data struct
 iData = struct('Lm',1,'Lp',0);
+hAx = findobj(hFigM,'type','axes');
+hEdit = findobj(hFigM,'tag','editScaleFactor');
 setObjEnable(handles.buttonUpdate,'off')
 
 % adds the object properties
-addObjProps(hObject,'hGUI',hGUI,'iData',iData,'hProp0',hProp0);
+addObjProps(hObject,'hGUI',hGUI,'hFigM',hFigM,'hAx',hAx,'hEdit',hEdit,...
+                    'iData',iData,'hProp0',hProp0,'hType',hType);
+
+% sets the other figure properties
+setGUIFontSize(handles)
+centreFigPosition(hObject,2);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -82,16 +96,16 @@ function buttonSet_Callback(hObject, eventdata, handles)
 
 % sets focus to the main image axes
 hFig = handles.figScaleFactor;
-hGUI = get(hFig,'hGUI');
-axes(hGUI.imgAxes)
+hAx = get(hFig,'hAx');
 
 % creates a new line object
-hScale = imline(gca);
+axes(hAx)
+hScale = imline(hAx);
 setColor(hScale,'r');
 set(hScale,'tag','hScale')
 
 % sets the constraint/position callback functions
-fcn = makeConstrainToRectFcn('imline',get(gca,'XLim'),get(gca,'YLim'));
+fcn = makeConstrainToRectFcn('imline',get(hAx,'XLim'),get(hAx,'YLim'));
 setPositionConstraintFcn(hScale,fcn);
 hScale.addNewPositionCallback(@(p)moveScaleMarker(p,handles));
 
@@ -104,7 +118,7 @@ moveScaleMarker(hScale.getPosition(),handles);
 
 % resets the figure stacks
 uistack(handles.figScaleFactor,'top');
-uistack(hGUI.figFlyTrack,'bottom')
+uistack(hFig.hFigM,'down',1);
 
 % --- Executes on button press in buttonUpdate.
 function buttonUpdate_Callback(hObject, eventdata, handles)
@@ -114,34 +128,42 @@ global isCalib isRTPChange
 
 % retrieves the main GUI handles and sub-GUI data struct
 hFig = handles.figScaleFactor;
-hGUI = get(hFig,'hGUI');
 iData = get(hFig,'iData');
+hFigM = get(hFig,'hFigM');
 
 % calculates the scale factor and updates the scale factor values
 sFac = calcScaleFactor(iData);
 
 % updates the scale factor value in the main GUI axes
-iDataMain = get(hGUI.figFlyTrack,'iData');
-iDataMain.exP.sFac = sFac;
-set(hGUI.figFlyTrack,'iData',iDataMain);
-
-% updates the scale factor in the real-time tracking parameters
-if isCalib
-    [hGUI.figFlyTrack.rtP.trkP.sFac,isRTPChange] = deal(sFac,true);
+switch hFig.hType
+    case 'FlyTrack'
+        % updates the scale factor
+        hFigM.iData.exP.sFac = sFac;
+   
+        % updates the scale factor in the real-time tracking parameters
+        if isCalib
+            [hFigM.rtP.trkP.sFac,isRTPChange] = deal(sFac,true);
+        end        
+        
+    case 'FlyAnalysis'
+        % updates the scale factor
+        vpObj = getappdata(hFigM,'vpObj');
+        vpObj.sFac(vpObj.iExpt) = sFac;
+        vpObj.isChange = true;
 end
 
 % disables the update button
 setObjEnable(hObject,'off')
-set(hGUI.editScaleFactor,'string',num2str(sFac))
+set(hFig.hEdit,'string',num2str(sFac))
 
 % --- Executes on button press in buttonClose.
-function buttonClose_Callback(hObject, eventdata, handles)
+function buttonClose_Callback(~, ~, handles)
 
 % removes the scale marker from the main GUI axes
 hFig = handles.figScaleFactor;
-hGUI = get(hFig,'hGUI');
-hProp0 = get(hFig,'hProp0');
-hScale = findobj(hGUI.imgAxes,'Tag','hScale');
+
+% deletes the scale marker
+hScale = findobj(hFig.hAx,'Tag','hScale');
 delete(hScale);
 
 % determines if the update button has been set
@@ -157,9 +179,11 @@ if strcmp(get(handles.buttonUpdate,'enable'),'on')
 end
 
 % resets the tracking GUI properties
-nwStr = get(hGUI.editScaleFactor,'string');
-resetHandleSnapshot(hProp0)
-set(hGUI.editScaleFactor,'string',nwStr)
+if ~isempty(hFig.hProp0)
+    nwStr = get(hFig.hEdit,'string');
+    resetHandleSnapshot(hFig.hProp0)
+    set(hFig.hEdit,'string',nwStr)
+end
 
 % closes the scale factor sub-GUI
 delete(hFig)

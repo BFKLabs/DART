@@ -224,19 +224,19 @@ setappdata(hFig,'LoadSuccess',true);
 % retrieves the stored data
 pDataT = getappdata(hFig,'pDataT');
 snTot = num2cell(getappdata(hFig,'snTot'));
-
-% retrieves the function filter class object
-fObj = getappdata(hFig,'fObj');
-if isempty(fObj)    
-    % creates the function filter
-    fObj = FuncFilterTree(hFig,snTot,pDataT);
-    set(fObj,'treeUpdateExtn',@updateFuncFilter);
-    setappdata(hFig,'fObj',fObj);
-end
+   
+% creates the function filter
+fObj = FuncFilterTree(hFig,snTot,pDataT);
+set(fObj,'treeUpdateExtn',@updateFuncFilter);
+setappdata(hFig,'fObj',fObj);
 
 % sets up the loaded information and resets the gui objects
 setSolnInfo(handles)
 resetGUIObjects(guidata(hFig))
+
+% sets the save stimuli data enabled properties
+hasStim = any(cellfun(@(x)(~isempty(x.stimP)),snTot));
+setObjEnable(handles.menuSaveStim,hasStim)
 
 % makes the main gui visible again
 setObjVisibility(hFig,'on');
@@ -258,10 +258,6 @@ fObj.detExptCompatibility(fScope);
 
 % resets the function list
 popupPlotType_Callback(hPopup, '1', guidata(hFig))
-
-% %
-% createFuncExplorerTree(guidata(hFig))
-% a = 1;
 
 % --- separates the solution file information data struct into
 %     its components (snTot is used for analysis)
@@ -1188,8 +1184,7 @@ if ~isempty(sPara.pData{sInd}) && ~any(isnan(sPara.ind(sInd,:)))
     
     % updates the parameter GUI
     if isempty(hPara)
-%         hPara = AnalysisPara(handles);
-        hPara = AnalysisParaNew(handles);
+        hPara = AnalysisPara(handles);
         setappdata(hFig,'hPara',hPara);
     else
         pObj = getappdata(hPara,'pObj');
@@ -1380,8 +1375,7 @@ hPara = getappdata(hFig,'hPara');
 try 
     guidata(hPara);
 catch
-%     hPara = AnalysisPara(handles);
-    hPara = AnalysisParaNew(handles);
+    hPara = AnalysisPara(handles);
     setappdata(hFig,'hPara',hPara);
 end
 
@@ -1751,7 +1745,7 @@ set(h.panelPlotFunc,'position',[dX,dY,WPI,HPF]);
 pPosF = [dX,YLF,WPI-2*dX,HLF];
 hTree = findall(h.panelFuncList,'type','hgjavacomponent');
 set(h.panelFuncList,'position',pPosF);
-set(hTree,'Position',[dX*[1,1],pPosF(3:4)-2*dX])
+set(hTree,'Position',[(dX/2)*[1,1],pPosF(3:4)-2*dX])
 
 % resets the analysis scope object positions
 yBot0 = YLF+HLF+dY/2;
@@ -1956,7 +1950,7 @@ indF = find(~any(isnan(Imap(:,iCol)),2));
 % initialisations
 dX = 10;
 pPos = get(hPanel,'Position');
-tPos = [dX*[1,1],pPos(3:4)-1.5*dX];
+tPos = [dX*[1,1],pPos(3:4)-2*dX];
 fcnName = fObj.fcnData(indS,1);
 rootStr = setHTMLColourString('kb','Function List',1);
 
@@ -2070,8 +2064,7 @@ if isShowPara
         % creates the new parameter GUI
         hPara = getappdata(hFig,'hPara');
         if isempty(hPara)
-            hPara = AnalysisParaNew(handles);
-%             hPara = AnalysisPara(handles);
+            hPara = AnalysisPara(handles);
             setappdata(hFig,'hPara',hPara);
             
             % if there is more than one subplot, update the data values
@@ -2118,8 +2111,7 @@ if isShowPara
                 pObj.initAnalysisGUI();
             else
                 % if the gui is not valid, then recreate the gui
-                hPara = AnalysisParaNew(handles);
-%                 hPara = AnalysisPara(handles);
+                hPara = AnalysisPara(handles);
                 setappdata(hPara,'hPara',hPara);
             end
             
@@ -2874,8 +2866,6 @@ switch type
         Str = cellfun(@(x)(retHTMLColouredStrings(x)),StrOld,'un',0);
         set(hObj,'string',getListColourStrings(handles,Str,type))        
 end
-
-
     
 % --- converts the list strings, lStr, to coloured strings depending on A) 
 %     whether data has been calculated for the function/experiment, and B) 
