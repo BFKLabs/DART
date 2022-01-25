@@ -336,7 +336,7 @@ for i = 1:nFile
         % loops through all the apparatus setting the x/y locations of the
         % flies, and calculates binned x/y location and summed displacement
         % of the flies
-        for j = find(a.iMov.ok)
+        for j = find(a.iMov.ok(:)')
             % fills any missing data values with NaN's
             kk = cellfun(@isempty,fPos{j});
             if any(kk)

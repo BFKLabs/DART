@@ -37,10 +37,12 @@ else
     % calculates the global sub-region index
     iOfs = sum(nFlyT(1:(iRow-1)));
     iFlyR = (1:nFlyT(iRow))+iOfs;
-    
+    isUse = iMov.isUse{iCol};    
+        
     % reduces the array by the in-use flags (if available)
     if reduceIndices
-        iFlyR = iFlyR(iMov.isUse{iRow,iCol});
+%         indU = sub2ind(size(isUse),iRow,iCol);
+        iFlyR = iFlyR(isUse(iRow));
     end
 end
 

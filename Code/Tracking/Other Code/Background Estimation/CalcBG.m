@@ -450,9 +450,15 @@ classdef CalcBG < handle
             % retrieves the sub-region/program data structs
             [obj.iMov,obj.iMov0] = deal(get(obj.hFig,'iMov'));
             obj.iData = get(obj.hFig,'iData');   
-            obj.iPara = obj.initParaStruct(10); 
-            obj.is2D = is2DCheck(obj.iMov);
+            obj.iPara = obj.initParaStruct(10);             
             obj.isMTrk = detMltTrkStatus(obj.iMov);
+            
+            % sets the 2D region flag
+            if isfield(obj.iMov,'is2D')
+                obj.is2D = obj.iMov.is2D;
+            else
+                [obj.is2D,obj.iMov.is2D] = deal(is2DCheck(obj.iMov));
+            end
             
             % retrieves the current image dimensions
             frmSz = getCurrentImageDim(obj.hGUI);
@@ -559,7 +565,7 @@ classdef CalcBG < handle
             
             % determines if the phase/initial detection is complete            
             initDetected = initDetectCompleted(obj.iMov);
-            phaseDetected = ~isempty(obj.iMov.phInfo) || initDetected;
+            phaseDetected = ~isempty(obj.iMov.phInfo); % || initDetected;
             
             % determines if any of the detected phses are trackable
             if phaseDetected

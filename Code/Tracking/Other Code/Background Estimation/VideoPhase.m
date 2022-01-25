@@ -101,8 +101,14 @@ classdef VideoPhase < handle
         % --- initialises the class object fields
         function initClassFields(obj)
             
-            % other class fields
-            obj.nApp = length(obj.iMov.posO);
+            % sets the region count
+            if isfield(obj.iMov,'posO')
+                obj.nApp = length(obj.iMov.posO);
+            else
+                obj.nApp = length(obj.iMov.pos);
+            end
+            
+            % other class fields            
             [obj.rOpt,obj.rMet] = imregconfig('monomodal');  
             obj.rOpt.MaximumIterations = 250;
             
@@ -126,8 +132,10 @@ classdef VideoPhase < handle
             % retrieves/sets the region outline coordinates
             if obj.autoDetect
                 posO = getCurrentRegionOutlines(obj.iMov);
-            else
+            elseif isfield(obj.iMov,'posO')
                 posO = obj.iMov.posO;
+            else
+                posO = obj.iMov.pos;
             end
             
             % sets the region row/column indices            

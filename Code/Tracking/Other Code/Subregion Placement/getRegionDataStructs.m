@@ -141,7 +141,7 @@ else
     [D1.nRow,D1.nCol] = deal(iMov.nRow,iMov.nCol);
     
     % for all rejected regions, then remove these values
-    for i = find(~iMov.ok)'        
+    for i = find(~iMov.ok(:)')
         [iCol,~,iRow] = getRegionIndices(iMov,i);
         [D1.iGrp(iRow,iCol),D1.nFly(iRow,iCol)] = deal(0,NaN);
     end

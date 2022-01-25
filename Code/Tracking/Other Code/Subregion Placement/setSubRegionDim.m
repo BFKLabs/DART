@@ -140,7 +140,7 @@ end
 
 % reduces downs the filter/reference images (if they exist)
 if ~isempty(iMov.phInfo)
-    for j = find(iMov.ok)
+    for j = find(iMov.ok(:)')
         if ~isempty(iMov.phInfo.Iref{j})
             iMov = reducePhaseInfoImages(iMov,j);
         end

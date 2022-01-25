@@ -59,6 +59,11 @@ addObjProps(hObject,'hGUI',hGUI,'hPropTrack0',hPropTrack0)
 hFig = hGUI.figFlyTrack;
 iMov = get(hFig,'iMov');
 
+% sets the 2D region flag (if not set)
+if ~isfield(iMov,'is2D')
+    iMov.is2D = is2DCheck(iMov);
+end
+
 % sets the background parameter struct (if not set)
 isSet = iMov.isSet;
 if ~isfield(iMov,'bgP')
@@ -643,7 +648,7 @@ pause(0.05);
 % updates the sub-regions (if updating)
 if isUpdate
     setupSubRegions(handles,gridObj.iMov,true);
-    for iApp = find(gridObj.iMov.ok)
+    for iApp = find(gridObj.iMov.ok(:)')
         resetRegionPropDim(hFig,gridObj.iMov.pos{iApp},iApp)
     end
 end
@@ -1491,7 +1496,7 @@ else
 end
 
 % sets the inner rectangle objects for all apparatus
-for i = find(iMov.ok)
+for i = find(iMov.ok(:)')
     % sets the row/column indices
     iCol = mod(i-1,iMov.nCol) + 1;
     iRow = floor((i-1)/iMov.nCol) + 1;

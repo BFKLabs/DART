@@ -2234,7 +2234,7 @@ if isLocalView
     
 else
     % global view, so show all sub-regions
-    ind = find(iMov.ok);
+    ind = find(iMov.ok(:)');
 end
 
 % sets the tube visibility strings
@@ -2730,7 +2730,7 @@ end
 
 % sets the markers for all flies
 if ~isempty(hFig.hMark)    
-    for i = find(iMov.ok)
+    for i = find(iMov.ok(:)')
         % if the markers have been deleted then re-initialise them
         if (i == 1) && ~ishandle(hFig.hMark{i}{1})
             initMarkerPlots(handles,1)
@@ -2879,7 +2879,7 @@ isOnD = get(handles.checkShowAngle,'Value') && isOn;
 
 % resets the markers
 hold(hAx,'on')
-for i = find(iMov.ok)
+for i = find(iMov.ok(:)')
     % sets the x/y offset
     [xOfs,yOfs] = deal((iMov.iC{i}(1)-1),(iMov.iR{i}(1)-1));  
     
@@ -3323,7 +3323,7 @@ else
 end
 
 % sets the inner rectangle objects for all apparatus
-for i = find(iMov.ok)
+for i = find(iMov.ok(:)')
     % determines the new image sub-limits
     [xLimS,yLimS] = setSubImageLimits(hAx,xLim,yLim,iMov,rPos,i);
     xLimS = [max(rPos(1),xLimS(1)) min(rPos(1)+rPos(3),xLimS(2))];

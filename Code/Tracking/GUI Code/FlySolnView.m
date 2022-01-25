@@ -462,7 +462,7 @@ setObjEnable(handles.menuDiagCheck,mStr)
 
 % creates the new apparatus markers
 hMenuP = handles.menuFlyPos;
-for i = find(hGUI.output.iMov.ok)
+for i = find(hGUI.output.iMov.ok(:)')
     % creates the new menu item
     hMenuNw = uimenu(hMenuP,'Label',sprintf('Region %i',i)); 
     
@@ -692,11 +692,8 @@ function updateViewMenu(handles,hMenu,vType)
 % if the menu item is already checked, then exit the function
 if strcmp(get(hMenu,'checked'),'on'); return; end
 
-% sets the plot metric handles
-hMenuMet = [get(handles.menuFlyPos,'children');handles.menuAvgSpeed];
-
 % otherwise, remove any existing checks and turns the current one
-hMenuPr = findobj(hMenuMet,'checked','on');
+hMenuPr = findobj(handles.menuYData,'checked','on');
 set(hMenuPr,'checked','off')
 set(hMenu,'checked','on')
 
@@ -766,7 +763,7 @@ switch iApp
         
         % sets the y-axis limits and strings
         yTick = 1:nApp;
-        yStr = arrayfun(@(x)(sprintf('%i',x)),find(iMov.ok)','un',0);
+        yStr = arrayfun(@(x)(sprintf('%i',x)),find(iMov.ok(:)')','un',0);
         
         % sets/updates the y-axis label
         hYLbl = findall(hAx,'tag','hYLbl');

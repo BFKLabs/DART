@@ -967,7 +967,7 @@ classdef SingleTrackInit < SingleTrack
             obj.usePTol = 0.2*(1+0.75*(obj.iMov.phInfo.hasF || obj.isHiV));                                    
             
             % sets up the raw/residual image stacks            
-            for i = find(obj.iMov.ok)                
+            for i = find(obj.iMov.ok(:)')                
                 % retrieves the region image stack
                 IL(:,i) = obj.getRegionImgStack(Img,iFrm,i,isHiV);
                 
@@ -1024,6 +1024,12 @@ classdef SingleTrackInit < SingleTrack
             pOfs = [zeros(length(yOfs),1),yOfs(:)-1];
             fP = obj.fPosL{iPh}{iApp,iFrm} + pOfs;
             fP = fP(obj.useP(xiT,iApp),:);
+            
+            % if there are no feasible points then exit
+            if isempty(fP)
+                [pFiltB,ZmxF] = deal(NaN(1,2),NaN);
+                return
+            end
             
             % calculates the initial parameters
             if obj.iMov.is2D
@@ -1237,34 +1243,37 @@ classdef SingleTrackInit < SingleTrack
             IRngBL = imopen(IRngC0,ones(szRow,1));
             IRngC = normImg(IRngC0 - IRngBL);
             
-            %
-            BPk = zeros(size(iRTF));
-            [yPk,iPk,wPk0,~] = findpeaks(IRngC(iRTF));
-            [BPk(iPk),wPk] = deal(1:length(iPk),wPk0/obj.Dtol);
-            
-            %         
-            wyPk = [wPk,yPk];
-            indPk = cellfun(@(x)(nonzeros(BPk(x))),iRTL,'un',0); 
-            iMx = cellfun(@(x)(argMax(yPk(x))),indPk);
-            
-            % calculates the 
-            Dmin = NaN(length(indPk),1);
-            for i = 1:length(indPk)
-                if length(indPk{i}) > 1
-                    wyPkT = wyPk(indPk{i},:);
-                    BT = ~setGroup(iMx(i),size(indPk{i}));
-                    DT = pdist2(wyPkT(BT,:),wyPkT(iMx(i),:));
-                    Dmin(i) = min(DT);
+            if ~obj.iMov.is2D
+
+                %
+                BPk = zeros(size(iRTF));
+                [yPk,iPk,wPk0,~] = findpeaks(IRngC(iRTF));
+                [BPk(iPk),wPk] = deal(1:length(iPk),wPk0/obj.Dtol);
+
+                %         
+                wyPk = [wPk,yPk];
+                indPk = cellfun(@(x)(nonzeros(BPk(x))),iRTL,'un',0); 
+                iMx = cellfun(@(x)(argMax(yPk(x))),indPk);
+
+                % calculates the 
+                Dmin = NaN(length(indPk),1);
+                for i = 1:length(indPk)
+                    if length(indPk{i}) > 1
+                        wyPkT = wyPk(indPk{i},:);
+                        BT = ~setGroup(iMx(i),size(indPk{i}));
+                        DT = pdist2(wyPkT(BT,:),wyPkT(iMx(i),:));
+                        Dmin(i) = min(DT);
+                    end
                 end
+
+                % if the magnitude of the signal is too low, then likely 
+                % that all blobs are stationary (so exit the function here)
+                if ~any(Dmin > DminTol)
+                    [ImuF,IsdF,pTol] = deal(NaN);
+                    return
+                end                        
             end
-                        
-            % if the magnitude of the signal is too low, then likely that
-            % all blobs are stationary (so exit the function here)
-            if ~any(Dmin > DminTol)
-                [ImuF,IsdF,pTol] = deal(NaN);
-                return
-            end                        
-            
+                
             % calculates the mean/std dev range values
             IRngF = IRng(iRTF,iCT);
             [ImuF,IsdF] = deal(nanmean(IRngF(:)),nanstd(IRngF(:)));                          
@@ -1439,7 +1448,7 @@ classdef SingleTrackInit < SingleTrack
             end
             
             % creates the object filter
-            pFiltTot = median(cell2mat(pFilt),1);
+            pFiltTot = nanmedian(cell2mat(pFilt),1);
             pFiltTot(1) = 2*floor(pFiltTot(1)/2)+1;            
             obj.hFilt = -fspecial('log',pFiltTot(1),pFiltTot(2));
             
@@ -1674,7 +1683,7 @@ classdef SingleTrackInit < SingleTrack
             hold on
 
             % plots the locations for all objects in the region
-            for i = find(obj.iMov.ok)
+            for i = find(obj.iMov.ok(:)')
                 % sets the row/column indices
                 [iR,iC] = deal(obj.iMov.iR{i},obj.iMov.iC{i});
                 iRT = obj.iMov.iRT{i};

@@ -187,7 +187,7 @@ classdef SingleTrackFull < TrackFull & SingleTrack
             prData.IPosPr = cell(obj.nApp,1); 
             
             % sets the previous data locations from the last valid frame  
-            for iApp = find(obj.iMov.ok)
+            for iApp = find(obj.iMov.ok(:)')
                 dX = obj.iMov.iC{iApp}(1) - 1;
                 pOfs = repmat([dX,0],obj.nTube(iApp),1);
                 prData.fPos{iApp} = cell2mat(cellfun(@(x)...
