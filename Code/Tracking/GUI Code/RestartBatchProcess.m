@@ -360,7 +360,7 @@ if showStats
 
     % initialisations
     lWid = 2;
-    xiS = 1:nFile;
+    xiS = 1:min(nFile,size(bpS.dpImg,1));
     dpImg = bpS.dpImg(xiS,:);
     hPlot = zeros(1,2);    
     xL = [1,nFile]+0.5*[-1,1];  

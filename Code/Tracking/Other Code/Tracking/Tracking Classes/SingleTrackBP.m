@@ -229,6 +229,12 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         % --- updates the video offset field (for the current video)
         function updateVideoOffset(obj,iDir,iFile)
             
+            % appends new data fields (if insufficient space)
+            if iFile > size(obj.bData(iDir).dpImg,1)
+                N = iFile - size(obj.bData(iDir).dpImg,1);
+                obj.bData(iDir).dpImg = [obj.bData(iDir).dpImg;NaN(N,2)]; 
+            end
+            
             % if the first file, then exit
             if (iFile == 1) || ~isnan(obj.bData(iDir).dpImg(iFile,1))
                 return

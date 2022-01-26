@@ -1253,10 +1253,14 @@ classdef SingleTrackInit < SingleTrack
                 [yPk,iPk,wPk0,~] = findpeaks(IRngC(iRTF));
                 [BPk(iPk),wPk] = deal(1:length(iPk),wPk0/obj.Dtol);
 
-                %         
+                % determines the location of the peaks       
                 wyPk = [wPk,yPk];
                 indPk = cellfun(@(x)(nonzeros(BPk(x))),iRTL,'un',0); 
-                iMx = cellfun(@(x)(argMax(yPk(x))),indPk);
+                
+                % determines the signal peak for each region
+                iMx = NaN(size(indPk));
+                isOK = ~cellfun(@isempty,indPk);
+                iMx(isOK) = cellfun(@(x)(argMax(yPk(x))),indPk(isOK));
 
                 % calculates the 
                 Dmin = NaN(length(indPk),1);

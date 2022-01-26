@@ -156,7 +156,8 @@ classdef SingleTrack < Track
             
             % retrieves the new image frame
             I0 = I0(:);
-            IL = cell(size(I0));                                           
+            IL = cell(size(I0));     
+            phInfo = obj.iMov.phInfo;
             
             % sets the row/column indices
             if obj.isAutoDetect
