@@ -889,8 +889,12 @@ classdef CalcBG < handle
             
             % reads the new frame
             imgType = obj.getSelectedImageType();
-            iFrmS = obj.indFrm{iPhase}(ipara.cFrm);
-            Img0 = double(getDispImage(idata,imov,iFrmS,false));
+            if obj.isCalib
+                Img0 = obj.ImgC{1}{ipara.cFrm};
+            else
+                iFrmS = obj.indFrm{iPhase}(ipara.cFrm);
+                Img0 = double(getDispImage(idata,imov,iFrmS,false));
+            end
             
 %             % shifts the image (if required)
 %             if ~isempty(obj.dpOfs)
@@ -1525,11 +1529,11 @@ classdef CalcBG < handle
             % enables the image display properties
             setObjEnable(hgui.menuPhaseStats,'on');
             setObjEnable(hgui.menuShowStats,'off');
+            setObjEnable(hgui.buttonUpdateEst,any(okPh));
             setPanelProps(hgui.panelVideoInfo,'on');
             setPanelProps(hgui.panelFrameSelect,'on')
             setPanelProps(hgui.panelImageType,'on')
-            obj.checkFilterImg(obj.hGUI.checkFilterImg,[])  
-            setObjEnable(hgui.buttonUpdateEst,any(okPh))
+            obj.checkFilterImg(obj.hGUI.checkFilterImg,[])              
 
             % disables the manual resegmentation list
             setPanelProps(hgui.panelManualSelect,'off')
@@ -2323,7 +2327,12 @@ classdef CalcBG < handle
                 % retrieves the global image
                 iFrmG = obj.indFrm{iPh}(iFrmR(i));
                 if isempty(obj.ImgM{iPh}{iFrmR(i)})
-                    Img0 = double(getDispImage(obj.iData,obj.iMov,iFrmG,0));
+                    if obj.isCalib
+                        Img0 = obj.ImgC{1}{iFrmR(i)};
+                    else
+                        Img0 = double(getDispImage(obj.iData,obj.iMov,iFrmG,0));
+                    end
+                        
                     obj.ImgM{iPh}{iFrmR(i)} = imfiltersym(Img0,hS);
                 end
             
@@ -2737,7 +2746,13 @@ classdef CalcBG < handle
             nPhase = length(obj.iMov.vPhase);
             stStr = {'Stable','Unstable'};
             trStr = {'Not Detected','Detected'};
-            [hasF,hasT] = deal(phInfo.hasF,any(phInfo.hasT));            
+            
+            % sets the image fluctuation/translation flags
+            if obj.isCalib
+                [hasF,hasT] = deal(false);
+            else
+                [hasF,hasT] = deal(phInfo.hasF,any(phInfo.hasT));
+            end
             
             % updates the video information strings
             set(obj.hGUI.textImagQual,'string',stStr{1+hasF},...

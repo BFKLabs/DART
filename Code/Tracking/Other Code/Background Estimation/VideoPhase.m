@@ -62,6 +62,7 @@ classdef VideoPhase < handle
         dnFrmMin = 25; 
         isFeasVid = true;
         refSearch = false;
+        pTolPhase = 5;
         
         % histogram tolerances
         eDistTol = 0.035;

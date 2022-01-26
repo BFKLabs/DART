@@ -446,7 +446,7 @@ if strcmp(get(handles.buttonUpdate,'enable'),'on')
     switch uChoice
         case ('Yes') % case is the user wants to update movie struct
             if strcmp(get(handles.menuUseAuto,'checked'),'off')
-                buttonUpdate_Callback(handles.buttonUpdate, 1, handles)
+                buttonUpdate_Callback(handles.buttonUpdate, 1, handles);
             end
             
         case ('No') % case is the user does not want to update
@@ -1255,7 +1255,7 @@ set(hFig,'phObj',[]);
 updateMenuItemProps(handles);
 
 % --- Executes on button press in buttonUpdate.
-function buttonUpdate_Callback(hObject, eventdata, handles)
+function ok = buttonUpdate_Callback(hObject, eventdata, handles)
 
 % global variables
 global isChange useAuto
@@ -3202,8 +3202,11 @@ I = get(findobj(get(hGUI.imgAxes,'children'),'type','image'),'cdata');
 % determines if the sub-region data struct has been set
 if isempty(iMov0.iR)
     % if the sub-regions not set, then determine them from the main axes
-    buttonUpdate_Callback(handles.buttonUpdate, '1', handles)
-
+    if ~buttonUpdate_Callback(handles.buttonUpdate, '1', handles)
+        [iMov,hGUI,I] = deal([]);
+        return            
+    end
+        
     % retrieves the sub-region data struct and 
     iMov = get(hFig,'iMov');
     if isfield(iMov,'autoP'); iMov = rmfield(iMov,'autoP'); end
@@ -3238,8 +3241,10 @@ if isCalib
     % case is the user is calibrating the camera
     infoObj = get(hFig,'infoObj');
     for i = 1:nFrm
-        I{i} = getsnapshot(infoObj.objIMAQ);
+        I{i} = getsnapshot(infoObj.objIMAQ);        
         pause(1);
+        
+        fprintf('Image %i of %i\n',i,nFrm);
     end
     
 else

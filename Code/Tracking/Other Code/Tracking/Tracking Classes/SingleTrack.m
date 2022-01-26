@@ -94,8 +94,15 @@ classdef SingleTrack < Track
                     case {1,2}
                         % case is low variance calculations
                         isHV = sInd(i) == 2;
-                        obj.fObj{i} = PhaseTrack(obj.iMov,obj.hProg,isHV); 
-                        obj.fObj{i}.nI = floor(max(obj.iData.sz)/800);
+                        obj.fObj{i} = PhaseTrack(obj.iMov,obj.hProg,isHV);
+                        
+                        % 
+                        if obj.isCalib
+                            sz = size(obj.Img0{1}{1});
+                            obj.fObj{i}.nI = floor(max(sz)/800);
+                        else
+                            obj.fObj{i}.nI = floor(max(obj.iData.sz)/800);
+                        end
                                                 
                     case 3
                         % case is manual correction updates
@@ -149,8 +156,7 @@ classdef SingleTrack < Track
             
             % retrieves the new image frame
             I0 = I0(:);
-            IL = cell(size(I0));           
-            phInfo = obj.iMov.phInfo;
+            IL = cell(size(I0));                                           
             
             % sets the row/column indices
             if obj.isAutoDetect
@@ -171,7 +177,7 @@ classdef SingleTrack < Track
             end              
             
             % corrects image fluctuation (if required)
-            if phInfo.hasF || isHiV
+            if obj.getFlucFlag() || isHiV
                 % if there is fluctuation, then apply the hm filter and the
                 % histogram matching to the reference image
                 h = phInfo.hmFilt{iApp};
@@ -188,7 +194,8 @@ classdef SingleTrack < Track
             end
             
             % corrects image fluctuation
-            if phInfo.hasT(iApp)
+            if obj.getTransFlag(iApp)
+                phInfo = obj.iMov.phInfo;
                 p = phInfo.pOfs{iApp};
                 pOfsT = interp1(phInfo.iFrm0,p,iFrm,'linear','extrap');
                 IL = cellfun(@(x,p)(obj.applyImgTrans(x,p)),...
@@ -200,6 +207,32 @@ classdef SingleTrack < Track
             end
             
         end                       
+        
+        % --- retrieves the fluctuation flag
+        function hasF = getFlucFlag(obj)
+              
+            if obj.isCalib
+                % case is tracking calibration
+                hasF = false;
+            else
+                % case is video tracking
+                hasF = obj.iMov.phInfo.hasF;
+            end
+            
+        end 
+        
+        % --- retrieves the fluctuation flag
+        function hasT = getTransFlag(obj,iApp)
+              
+            if obj.isCalib
+                % case is tracking calibration
+                hasT = false;
+            else
+                % case is video tracking
+                hasT = obj.iMov.phInfo.hasT(iApp);
+            end
+            
+        end           
         
     end    
     

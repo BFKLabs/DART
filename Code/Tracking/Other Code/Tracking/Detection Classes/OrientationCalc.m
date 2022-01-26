@@ -14,12 +14,17 @@ classdef OrientationCalc < handle
         
         % other fields
         N
-        sz
+        fok
         szL
         del        
         nImg
         nTube
         fPosL
+        
+        % parameters
+        pZ = 150;
+        hZ = 2;
+        
     end
    
     % class methods
@@ -31,36 +36,31 @@ classdef OrientationCalc < handle
             obj.I = I;
             obj.iMov = iMov;
             obj.fPos = fPos;
-            obj.iApp = iApp;
-            
-            % memory allocation and other initialisations
-            obj.sz = size(I{1}{1});
+            obj.iApp = iApp;                
             
             % initialises the object fields
             obj.initObjectFields();
             
             % calculates the orientation angles for each sub-region
-            for iTube = 1:obj.nTube
-                if obj.iMov.flyok(iTube,obj.iApp)
-                    obj.calcOrientationAngles(iTube);
-                end
+            for iImg = 1:obj.nImg
+                obj.calcOrientationAngles(iImg);
             end
             
         end       
         
-        % --- calculates the fly orientation angles from their binary images
-        function calcOrientationAngles(obj,iTube)            
+        % --- calculates the fly orientation angles from their local images
+        function calcOrientationAngles(obj,iImg)            
 
             % sets the positional values
-            fPosT = num2cell(roundP(cell2mat(obj.fPos{iTube}(:))),2);
+            fPosT = num2cell(roundP(obj.fPos{iImg}),2);
                 
             % sets the local images surrounding the position vectors
             IL = cellfun(@(x,y)...
-                      (obj.getLocalImage(x,y)),obj.I{iTube}',fPosT,'un',0);
+                      (obj.getLocalImage(x,y)),obj.I{iImg},fPosT,'un',0);
 
             % calculates the local image orientation angles
             phiD = cell2mat(cellfun(@(x)...
-                      (obj.calcLocalImageAngle(x)),IL,'un',0));
+                      (obj.calcLocalImageAngle(x)),IL(obj.fok),'un',0));
             [Phi0,axR0,Nsz0] = deal(phiD(:,1)*(180/pi),phiD(:,2),phiD(:,3));
 
             % determines if any NaN-values are in the angle calculations
@@ -100,36 +100,33 @@ classdef OrientationCalc < handle
             end
             
             % sets orientation angles/axis 
-            obj.Phi(iTube,:) = Phi0;
-            obj.axR(iTube,:) = axR0;
-            obj.NszB(iTube,:) = Nsz0;
+            obj.Phi(obj.fok,iImg) = Phi0;
+            obj.axR(obj.fok,iImg) = axR0;
+            obj.NszB(obj.fok,iImg) = Nsz0;
             
         end
         
         % --- calculates the local image orientation angle
         function phi = calcLocalImageAngle(obj,IL)
 
-            % sets the x/y meshgrid values                 
-            [xx,yy] = meshgrid(1:obj.szL);
+            % sets the x/y meshgrid values        
+            nPts = ceil(obj.N/2);
+            [xx,yy] = meshgrid((1:obj.szL)-(1+floor(obj.szL(1)/2)));
 
             % determines the most likely points from the image
-            B0 = (IL > nanmedian(IL(:))) & (IL ~= 0);
-            if sum(B0(:)) < obj.N/2
-                % if the thresholded image is too small, then 
-                % rethreshold with so that the binary has a decent size
-                B0 = setGroup(detTopNPoints(IL(:),obj.N,0,0),obj.szL) & ...
-                             (IL ~= 0);
-            end
-
+            BPos = IL > 0;
+            iMx = detTopNPoints(IL(:),nPts,0,1);
+            B0 = setGroup(iMx,obj.szL*[1,1]) & BPos;
+            
             % thresholds the sub-image and determines the overlapping
             [~,Bnw] = detGroupOverlap(B0,obj.fPosL);
             if ~any(Bnw(:))
-                % if there is no overlapping group, then determine the groups from the
-                % initial binary image
+                % if there is no overlapping group, then determine the 
+                % groups from the initial binary image
                 [iGrp,pCent] = getGroupIndex(B0,'Centroid');
                 if length(iGrp) > 1
-                    % if there is more than one group, then determine the group that is
-                    % closest to the centre of the sub-image
+                    % if there is more than one group, then determine the 
+                    % group that is closest to the centre of the sub-image
                     [~,imn] = min(sqrt(sum((pCent - ...
                                 repmat(obj.fPosL,size(pCent,1),1)).^2,2)));
                     iGrp = iGrp(imn);
@@ -140,15 +137,20 @@ classdef OrientationCalc < handle
                 iGrp = getGroupIndex(bwfill(Bnw,'holes'));
             end
 
-            % ensures there are no non-zero values in the pca array setup
-            ILmn = min(IL(iGrp{1}));
-            if (ILmn < 1); IL = IL + (1 - ILmn); end
+            % determines if there are a feasible number of points
+            if length(iGrp{1}) > 1
+                % rescales the image
+                [ILmn,ILmx] = deal(nanmin(IL(iGrp{1})),nanmax(IL(iGrp{1})));
+                ILZ = obj.pZ*((IL - ILmn)/(ILmx - ILmn)).^obj.hZ;                
 
-            % sets up and calculate the PCA 
-            BB = num2cell(iGrp{1});
-            z = cell2mat(cellfun(@(x)(repmat([xx(x),yy(x)],...
-                                            ceil(IL(x)),1)),BB,'un',0)); 
-            [coef,~,eVal] = pca(z); 
+                % sets up and calculate the PCA 
+                z = cell2mat(cellfun(@(x)(repmat([xx(x),yy(x)],...
+                            floor(ILZ(x)),1)),num2cell(iGrp{1}),'un',0)); 
+                [coef,~,eVal] = pca(z); 
+            else
+                % if there are insufficient points, then return NaN values
+                eVal = [];
+            end
 
             % determines if the pca calculations returned feasible values
             if (length(eVal) < 2)
@@ -173,14 +175,15 @@ classdef OrientationCalc < handle
             
             % memory allocation            
             IL = zeros(obj.szL*[1,1]);
+            if any(isnan(fPos)); return; end
             
             % sets the row/column indices
             iR = (fPos(2)-obj.del):(fPos(2)+obj.del);
             iC = (fPos(1)-obj.del):(fPos(1)+obj.del);
             
             % determines the feasible row/column indices
-            ii = (iR >= 1) & (iR <= obj.sz(1));
-            jj = (iC >= 1) & (iC <= obj.sz(2));
+            ii = (iR >= 1) & (iR <= size(I,1));
+            jj = (iC >= 1) & (iC <= size(I,2));
             
             % sets the sub-image
             IL(ii,jj) = I(iR(ii),iC(jj));            
@@ -191,8 +194,9 @@ classdef OrientationCalc < handle
         function initObjectFields(obj)
             
             % array dimensioning
-            obj.nImg = length(obj.I{1});
-            obj.nTube = length(obj.fPos);            
+            obj.nImg = length(obj.fPos);
+            obj.nTube = size(obj.fPos{1},1);   
+            obj.fok = obj.iMov.flyok(1:obj.nTube,obj.iApp);
             
             % memory allocation
             obj.Phi = NaN(obj.nTube,obj.nImg);

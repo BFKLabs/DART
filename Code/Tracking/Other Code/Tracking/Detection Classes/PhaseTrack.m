@@ -205,6 +205,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             end
             
             % sets up the region image stack
+            iRT0 = obj.iMov.iRT{iApp};
             [ImgL,ImgBG] = obj.setupRegionImageStack(iApp);            
             [iRT,iCT] = obj.getSubRegionIndices(iApp,size(ImgBG,2));            
             
@@ -232,23 +233,24 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 for j = 1:obj.nImg
                     IP0{j}(iTube) = IP0nw(j);
                     fP0{j}(iTube,:) = fP0nw(j,:);
-                end
+                end                                       
+            end    
+            
+            % performs the orientation angle calculations (if required)
+            if imov.calcPhi
+                % sets up the local residual image stack
+                IRes = cellfun(@(x)(ImgBG-x),ImgL(:)','un',0);
+                IResL = cellfun(@(x)...
+                        (cellfun(@(y)(x(y,:)),iRT0,'un',0)),IRes,'un',0);
                 
-                % performs the orientation angle calculations (if required)
-                if imov.calcPhi
-                    % FINISH ME!
-                    waitfor(msgbox('Finish Me!','Finish Me!','modal'))
-                    
-                    % creates the orientation angle object
-                    phiObj = OrientationCalc...
-                                (imov,num2cell(IResL,2),fPos0,iApp);
+                % creates the orientation angle object
+                phiObj = OrientationCalc(imov,IResL,fP0,iApp);
 
-                    % sets the orientation angles/eigan-value ratio
-                    obj.Phi(iApp,:) = num2cell(phiObj.Phi,1);
-                    obj.axR(iApp,:) = num2cell(phiObj.axR,1);
-                    obj.NszB(iApp,:) = num2cell(phiObj.NszB,1);
-                end                       
-            end                                                                                         
+                % sets the orientation angles/eigan-value ratio
+                obj.Phi(iApp,:) = num2cell(phiObj.Phi,1);
+                obj.axR(iApp,:) = num2cell(phiObj.axR,1);
+                obj.NszB(iApp,:) = num2cell(phiObj.NszB,1);
+            end            
             
             % sets the sub-region/region coordindates
             obj.IPos(iApp,:) = IP0;

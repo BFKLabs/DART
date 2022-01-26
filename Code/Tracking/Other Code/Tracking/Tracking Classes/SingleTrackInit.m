@@ -964,7 +964,10 @@ classdef SingleTrackInit < SingleTrack
             
             % other phase initialisations
             obj.isHiV = isHiV;
-            obj.usePTol = 0.2*(1+0.75*(obj.iMov.phInfo.hasF || obj.isHiV));                                    
+            hasF = obj.getFlucFlag();
+                
+            % calculates the pixel tolerance
+            obj.usePTol = 0.2*(1+0.75*(hasF || obj.isHiV));                                    
             
             % sets up the raw/residual image stacks            
             for i = find(obj.iMov.ok(:)')                
@@ -1624,11 +1627,14 @@ classdef SingleTrackInit < SingleTrack
         % --- sets up the image stack for the template analysis
         function [I,dI,d2I] = setupStatObjStack(obj,I,iApp) 
             
+            % retrieves the fluctuation/translation flags
+            [hasF,hasT] = deal(obj.getFlucFlag,obj.getTransFlag(iApp));
+            
             % if the region has significant translation, and the image
             % fluctuations hasn't been accounted for, then apply the
-            % homomorphic transform to the image stack
-            needsCorrect = ~(obj.iMov.phInfo.hasF || obj.isHiV);
-            if ~needsCorrect && obj.iMov.phInfo.hasT(iApp)
+            % homomorphic transform to the image stack  
+            needsCorrect = ~(hasF || obj.isHiV);
+            if ~needsCorrect && hasT
                 [I0,I] = deal(I,cell(length(I),1));
                 [I{1},H] = applyHMFilter(I0{1});
                 I(2:end) = cellfun(@(x)...
@@ -1805,8 +1811,13 @@ classdef SingleTrackInit < SingleTrack
                 rReqd = ~cellfun(@isempty,obj.Iss(:,iPh)) & obj.iMov.ok(:);
                 if any(rReqd)
                     % retrieves the image stack
-                    I = arrayfun(@(x)(double(getDispImage...
-                                (obj.iData,obj.iMov,x,0))),iFrm,'un',0);                    
+                    if obj.isCalib
+                        I = obj.Img0{1};
+                    else
+                        I = arrayfun(@(x)(double(getDispImage...
+                                (obj.iData,obj.iMov,x,0))),iFrm,'un',0); 
+                    end     
+                            
                     if ~isempty(obj.hS)
                         % applies the smoothing filter (if required)
                         I = cellfun(@(x)(imfiltersym(x,obj.hS)),I,'un',0); 

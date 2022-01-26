@@ -36,7 +36,7 @@ while 1
         % otherwise, determine if the new frame matches roughly the last
         % frame in the image stack
         ImgMnNw = nanmean(arr2vec(calcImageStackFcn(Img,'mean')));
-        dImgMn = abs(max(ImgMnNw(:)-ImgMn{end}(:)))
+        dImgMn = abs(max(ImgMnNw(:)-ImgMn{end}(:)));
         if dImgMn > phObj.pTolPhase
             % if the match is poor, then reset the arrays
             Img = {ImgNw};
