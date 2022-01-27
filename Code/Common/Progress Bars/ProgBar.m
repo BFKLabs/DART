@@ -24,9 +24,10 @@ classdef ProgBar < matlab.mixin.SetGet
         bHgt = 20;                  % box/edit height                        
         
         % other properties
+        nLvl
         cProp = 0;
         mxProp = 1;
-        fSz = 10;
+        fSz = 10;        
         wImg = ones(1,1000,3);      
         fldNames = {'wStr','wAxes','wImg'};
     end
@@ -64,7 +65,7 @@ classdef ProgBar < matlab.mixin.SetGet
             hObj0 = struct('wStr',[],'wAxes',[],'wImg',[],'wProp',[]);
             
             % memory allocation
-            nStr = length(obj.wStr);
+            [nStr,obj.nLvl] = deal(length(obj.wStr));
             obj.hObj = repmat(hObj0,nStr,1);
 
             % sets the figure and cancel button position vectors
@@ -196,17 +197,28 @@ classdef ProgBar < matlab.mixin.SetGet
             
         end
         
+        % --- sets a fixed progressbar level count
+        function setLevelCount(obj,nLvlF)
+            
+            dnLvl = obj.nLvl - nLvlF;
+            if dnLvl ~= 0
+                obj.collapseProgBar(dnLvl);
+            end
+            
+        end
+        
         % --- collapses the progress bar by nLvl rows
-        function collapseProgBar(obj,nLvl)
+        function collapseProgBar(obj,nLvlC)
 
             % sets the indices
-            [sLvl,nLvl] = deal(sign(nLvl),abs(nLvl));
+            obj.nLvl = obj.nLvl - nLvlC;
+            [sLvl,nLvlC] = deal(sign(nLvlC),abs(nLvlC));
             [nObj,mlt] = deal(length(obj.hObj),1-2*(sLvl > 0));
 
             % resets the figure/panel heights
             try
-                resetObjPos(obj.hPanel,'height',mlt*obj.dY*nLvl,1)
-                resetObjPos(obj.hFig,'height',mlt*obj.dY*nLvl,1)   
+                resetObjPos(obj.hPanel,'height',mlt*obj.dY*nLvlC,1)
+                resetObjPos(obj.hFig,'height',mlt*obj.dY*nLvlC,1)   
             catch
                 return
             end
@@ -224,7 +236,7 @@ classdef ProgBar < matlab.mixin.SetGet
 
                 % sets the properties based on the new values
                 try
-                    resetObjPos(hObjNw(1:2),'bottom',mlt*obj.dY*nLvl,1)
+                    resetObjPos(hObjNw(1:2),'bottom',mlt*obj.dY*nLvlC,1)
                     cellfun(@(x)(setObjVisibility(x,i <= hRow)),hObjNw) 
                 catch
                     return
@@ -237,9 +249,9 @@ classdef ProgBar < matlab.mixin.SetGet
         end
         
         % --- expands the progress bar by nLvl rows
-        function expandProgBar(obj,nLvl)
-            
-            obj.collapseProgBar(-abs(nLvl))
+        function expandProgBar(obj,nLvlEx)
+                        
+            obj.collapseProgBar(-abs(nLvlEx))
             
         end        
         

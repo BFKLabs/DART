@@ -1776,9 +1776,8 @@ classdef SingleTrackInit < SingleTrack
                 obj.hProg.Update(1,wStr0{i},0);
             end
             
-            % collapses the progress bar by one level
-            obj.hProg.collapseProgBar(1)
-            pause(0.05);
+            % resets the progressbar level count
+            obj.hProg.setLevelCount(2);
             
             % sets up the image filter object
             if bgP.useFilt

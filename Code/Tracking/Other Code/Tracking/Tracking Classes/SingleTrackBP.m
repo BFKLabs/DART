@@ -394,7 +394,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             % sets the initial data structs
             iwLvl = 1 + obj.isMultiBatch;
             [obj.iMov0,obj.iData0] = deal(obj.iMov,obj.iData);            
-            obj.wStr{iwLvl} = 'Current Directory Progress';               
+            obj.wStr{iwLvl} = 'Current Directory Progress';                         
             
             % determines the processing start point
             obj.iFile0 = obj.detectStartPoint(obj.iData0.exP,iDir);
@@ -407,7 +407,12 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 % otherwise, set the video output file base name
                 j0 = max(1,obj.iFile0-1);
                 [~,obj.fNameBase0,~] = fileparts(obj.bData(iDir).mName{j0});                 
-            end                        
+            end     
+            
+            % updates the waitbar figure
+            wStrNw = sprintf('%s (Movie %i of %i)',...
+                                obj.wStr{iwLvl},obj.iFile0,obj.nFile);
+            obj.hProg.Update(iwLvl,wStrNw,obj.iFile0/obj.nFile);              
             
             % waits for the current video to stop recording (if required)
             if obj.isRecord(iDir)
@@ -666,7 +671,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         function ok = segObjLocations(obj,prData)
             
             % expands the waitbar figure by 1 level
-            obj.hProg.expandProgBar(1);
+            obj.hProg.setLevelCount(4);
             
             % initalises the tracking object
             if strContains(obj.iMov.bgP.algoType,'single')
@@ -1017,7 +1022,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             
             % collapses down the waitbar figure
             hh0 = getHandleSnapshot(findall(obj.hProg.hFig));
-            obj.hProg.collapseProgBar(1);               
+            obj.hProg.setLevelCount(2);               
             
             % waits for the file to finish recording
             if ~waitForRecordedFile(...
@@ -1559,8 +1564,8 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             
             % sets the waitbar figure to invisible
             wOfs = 2 + obj.isMultiBatch;
-            hh0 = getHandleSnapshot(findall(obj.hProg.hFig));
-            obj.hProg.collapseProgBar(1);
+            obj.hProg.setLevelCount(2);
+            hh0 = getHandleSnapshot(findall(obj.hProg.hFig));            
 
             % if the summary file has not yet turned up, then wait for it 
             if ~exist(bdata.sName,'file')
