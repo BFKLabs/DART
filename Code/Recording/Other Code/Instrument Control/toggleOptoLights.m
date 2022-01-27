@@ -7,6 +7,18 @@ if nargin < 4; yAmp = '050'; end
 hFig = handles.output;
 objDAQ = getappdata(hFig,'objDAQ');
 
+if isempty(objDAQ)
+    % if there are no connected devices, then exit
+    return
+else
+    % determines if there are any opto devices connected
+    isOpto = strcmp(objDAQ.sType,'Opto');
+    if ~any(isOpto)
+        % if there are no connected opto devices, then exit
+        return 
+    end
+end
+
 % sets the light properties based on the checked state of the menu item
 if strcmp(get(hObject,'Checked'),'off')
     % turns on the lights
@@ -29,7 +41,7 @@ else
 end
 
 % writes the serial string to each of the devices
-hOpto = objDAQ.Control(strcmp(objDAQ.sType,'Opto'));
+hOpto = objDAQ.Control(isOpto);
 if ~isempty(hOpto)
     for i = 1:length(hOpto)
         try

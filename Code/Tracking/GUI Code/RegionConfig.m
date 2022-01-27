@@ -673,6 +673,10 @@ if isempty(iMov); return; end
 
 % retrieves the region estimate image stack
 I = getRegionEstImageStack(handles,hGUI,iMov); 
+if isempty(I)
+    setObjVisibility(handles.output,'on');
+    return
+end
 
 % keep looping until either the user is satified or cancels
 while cont
@@ -3232,21 +3236,38 @@ function I = getRegionEstImageStack(handles,hGUI,iMov)
 global isCalib
 
 % memory allocation
-nFrm = 11;
+nFrm = 10;
+tPause = 0.5;
 I = cell(nFrm,1);
 hFig = handles.output;
 
 % retrieves the initial image stack
 if isCalib
+    % creates a waitbar figure
+    wStr = {'Capturing Test Image Frames'};
+    hProg = ProgBar(wStr,'Test Image Capture');
+    
     % case is the user is calibrating the camera
     infoObj = get(hFig,'infoObj');
     for i = 1:nFrm
-        I{i} = getsnapshot(infoObj.objIMAQ);        
-        pause(1);
+        % updates the progressbar
+        wStrNw = sprintf('%s (%i of %i)',wStr{1},i,nFrm);
+        if hProg.Update(1,wStrNw,i/(nFrm+1))
+            % if the user cancelled, then exit
+            I = []; 
+            return
+        end        
         
-        fprintf('Image %i of %i\n',i,nFrm);
+        % reads in the next frame
+        I{i} = double(getsnapshot(infoObj.objIMAQ));        
+        pause(tPause);
     end
     
+    % updates the progressbar
+    hProg.Update(1,'Test Image Capture Complete',1);    
+    
+    % closes the progressbar
+    hProg.closeProgBar;
 else
     % retrieves the tracking data struct
     iData = get(hGUI.figFlyTrack,'iData');

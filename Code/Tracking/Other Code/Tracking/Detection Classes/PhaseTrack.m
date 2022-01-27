@@ -216,7 +216,12 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 
                 % sets up the residual image stack                        
                 ImgBGL = ImgBG(iRT{iTube},iCT);
-                ImgSeg = obj.setupResidualStack(ImgSR,ImgBGL);  
+                ImgSeg = obj.setupResidualStack(ImgSR,ImgBGL); 
+                
+                %
+                if isequal([iApp,iTube],[1,4])
+                    a = 1;
+                end
                 
                 % segments the image stack
                 [fP0nw,IP0nw] = obj.segmentSubRegion...
@@ -310,8 +315,29 @@ classdef PhaseTrack < matlab.mixin.SetGet
                     iPnw = iPmx{i}(iS(1));
                     [yP,xP] = ind2sub(szL,iPnw);
                     
+                    % calculates the distance covered from the previous
+                    % frame to the new positions
+                    fPrNw = [fPr0(obj.iPr0{i},:);fP(obj.iPr1{i},:)];
+                    pdPrNw = pdist2([xP,yP],fPrNw(end,:))/obj.dTol;
+                        
+                    % determines where the estimated location is in
+                    % relation to the region limits
+                    if obj.withinEdge(indR,fPrNw(end,:))
+                        pdTolMax = 1;
+                    else
+                        pdTolMax = 2*(1+obj.iMov.is2D);
+                    end                                           
+                        
                     % sets the final positional/intensity values
-                    [fP(i,:),IP(i)] = deal([xP,yP],Img{i}(iPnw));
+                    if pdPrNw < pdTolMax
+                        % case is the blob has moved a feasible distance
+                        [fP(i,:),IP(i)] = deal([xP,yP],Img{i}(iPnw));
+                    else
+                        % case is the blob has moved an infeasible distance
+                        fP(i,:) = fPrNw(end,:);
+                        fPR = roundP(fP(i,:));
+                        IP(i) = Img{i}(sub2ind(szL,fPR(2),fPR(1)));
+                    end
                 else
                     % case is there are more than one prominent object
                     [iGrp,pC] = getGroupIndex(Img{i}>=pTolB,'Centroid');
@@ -335,14 +361,51 @@ classdef PhaseTrack < matlab.mixin.SetGet
 
                             % sets up the distance estimate mask
                             Best = setGroup(roundP(fPest),szL);
-                            Dw0 = 1./max(0.5,bwdist(Best)/(obj.dTol));
-                            Dw = Dw0(sub2ind(szL,...
-                                    roundP(pC(:,2)),roundP(pC(:,1))));
+                            DWest = bwdist(Best);
+                            
+                            % calculates the distance of the candidate
+                            % points from the estimated location
+                            ipC = sub2ind(szL,...
+                                        roundP(pC(:,2)),roundP(pC(:,1)));
+                            DpC = DWest(ipC)/obj.dTol;
+                            
+                            % determines where the estimated location is in
+                            % relation to the region limits
+                            if obj.withinEdge(indR,fPest)
+                                dTolMax = 0.5;
+                            else
+                                dTolMax = 2;
+                            end
+                            
+                            % determines if any points are within the
+                            % distance tolerance
+                            inDistTol = DpC < dTolMax;
+                            if any(inDistTol)
+                                % calculates the distance weighting
+                                Dw = 1./max(0.25,DpC);
 
-                            % determines the brightest group that is
-                            % closest to the estimated location
-                            Z = cellfun(@(x)(mean(Img{i}(x))),iGrp).^2;
-                            iMx = argMax(Z.*Dw);                                        
+                                % determines the brightest group that is
+                                % closest to the estimated location
+                                Z = cellfun(@(x)(mean(Img{i}(x))),iGrp).^2;
+                                Z(~inDistTol) = 0;
+                                iMx = argMax(Z.*Dw); 
+                            else
+                                % case is there are no blob maxima within a
+                                % small distance of the estimate. in this
+                                % case, use the previous/estimate position
+                                if all(range(fPrNw,1)) < obj.dTol/2
+                                    % case is the blob isn't moving that
+                                    % fast, so use previous location
+                                    fP(i,:) = fPrNw(end,:);
+                                else
+                                    % otherwise, use the estimate
+                                    fP(i,:) = fPest;
+                                end
+                                
+                                fPR = roundP(fP(i,:));
+                                iPEst = sub2ind(szL,fPR(2),fPR(1));
+                                [IP(i),iMx] = deal(Img{i}(iPEst),NaN);
+                            end
                     end
                     
                     % if a valid solution was found, then update the
@@ -682,7 +745,21 @@ classdef PhaseTrack < matlab.mixin.SetGet
             fP = roundP(((fP0-1)/obj.nI - 1)/2 + 1);
         
         end
+        
+        % --- determines if a blob is within the edge limits
+        function isIn = withinEdge(obj,indR,fPest)
             
+            if obj.iMov.is2D
+                % don't consider for 2D...
+                isIn = false;
+            else
+                % otherwise, determine if the blob is close to the limits
+                % of the locations it has already taken
+                dxLim = abs(obj.xLim{indR(1)}(indR(2),:) - fPest(1));
+                isIn = any(dxLim < obj.dTol/2);
+            end
+            
+        end
     end
     
 end

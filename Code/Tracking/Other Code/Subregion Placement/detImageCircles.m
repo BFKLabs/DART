@@ -118,12 +118,12 @@ Type = {'dark','bright'};
 % --- INITIAL CIRCLE CENTRE DETECTION --- %
 % --------------------------------------- %
 
-%
+% parameters
 iterMx = 10;
 pTol = 0.05;
 nCircTol = 2*prod(dim);
 
-%
+% calculates the normalised image and mean/std dev
 Itmp = 255*normImg(removeImageMedianBL(I,1,1));
 [Imn,Isd] = deal(nanmean(Itmp(:)),nanstd(Itmp(:)));
 

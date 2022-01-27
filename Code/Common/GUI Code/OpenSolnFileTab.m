@@ -28,9 +28,9 @@ classdef OpenSolnFileTab < dynamicprops & handle
         hMovT
         sFileT                             
         
-        % scalar class properties
-        iTab      
+        % scalar class properties            
         iExp
+        iTab = 1;
         nTab = 3;        
         nExpMax = 4;
         tableUpdate = false;

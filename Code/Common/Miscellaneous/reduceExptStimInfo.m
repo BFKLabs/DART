@@ -16,18 +16,17 @@ for i = 1:length(fStrD)
     % the current video
     for j = 1:length(stimPC)            
         if isempty(stimPC{j}.Ts)
-            % 
+            % if there are no stimuli event for the device, then remove it
             stimPD = rmfield(stimPD,fStrC{j});            
         else
             % determines which stimuli events occur within the video
             if exist('tLimV','var')
-                tVid = diff(tLimV);
+                % determines which stimuli events occur within the 
+                % span of the time vector
                 [Ts,Tf] = deal(stimPC{j}.Ts,stimPC{j}.Tf);
                 isIn = (Ts<=tLimV(2)) & (Tf>=tLimV(1));                
 
                 % removes the stimuli events not within the video
-%                 stimPC{j}.Ts = max(0,stimPC{j}.Ts(isIn) - tLimV(1));
-%                 stimPC{j}.Tf = min(tVid,stimPC{j}.Tf(isIn) - tLimV(1));
                 stimPC{j}.Ts = stimPC{j}.Ts(isIn) - tLimV(1);
                 stimPC{j}.Tf = stimPC{j}.Tf(isIn) - tLimV(1);
                 stimPC{j}.iStim = stimPC{j}.iStim(isIn);

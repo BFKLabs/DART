@@ -159,26 +159,8 @@ classdef TrackFull < Track
             
             % updates the progressbar fields (single tracking only)
             if ~obj.isMulti
-                % resets the waitbar figure based on phase/algorithm type
-                switch vPh
-                    case 1
-                        % case is background estimation 
-                        if obj.nLvl == (4 + bOfs)
-                            obj.nLvl = 3 + bOfs;
-                            obj.hProg.collapseProgBar(1)
-                        end
-
-                    case 2
-                        % case is direct detect
-                        if obj.nLvl == (3 + bOfs)
-                            obj.nLvl = 4 + bOfs;
-                            obj.hProg.expandProgBar(1)
-                        end
-
-                end        
-                
                 % sets the progress bar level offset
-                wOfsNw = (bOfs + 1) + (vPh > 1);
+                wOfsNw = (bOfs + 1);
                 
             else
                 % sets the progress bar level offset
@@ -632,8 +614,7 @@ classdef TrackFull < Track
                 % sets the progressbar strings
                 obj.wStr = {'Video Tracking Progress',...
                             'Current Video Progress',...
-                            'Sub-Image Stack Reading',...
-                            'Image Stack Segmentation'};
+                            'Sub-Image Stack Reading'};
 
                 % case is the waitbar figure is being created here
                 wtStr = 'Fly Location Detection Progress';

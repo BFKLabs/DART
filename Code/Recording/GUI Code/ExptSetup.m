@@ -494,6 +494,15 @@ switch fExtn
         sTrainEx = [];
 end
 
+% ensures the start time to this day
+T0 = clock;
+iExpt.Timing.T0(1:3) = T0(1:3);
+if datenum(iExpt.Timing.T0) < now
+    % if the start time is before now, then add a day to the time
+    T0new = addtodate(datenum(iExpt.Timing.T0),1,'day');
+    iExpt.Timing.T0 = datevec(T0new);
+end
+
 % determines if the currently loaded device properties are sufficient
 % to run this experiment
 if ~isempty(sTrain)

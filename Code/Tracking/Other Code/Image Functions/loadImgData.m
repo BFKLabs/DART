@@ -186,7 +186,7 @@ if ~isempty(sStr)
     % retrieves the videos stimuli information
     if ~isempty(iData.stimP)
         summFile = getSummaryFilePath(iData);
-        [iData.stimP,iData.sTrainEx] = getExptStimInfo(summFile,iData.Tv);
+        [iData.stimP,iData.sTrainEx] = getExptStimInfo(summFile,Tv);
     end    
     
     % sets the stimuli info menu item enabled properties
