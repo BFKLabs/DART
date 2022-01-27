@@ -318,15 +318,21 @@ classdef PhaseTrack < matlab.mixin.SetGet
                     % calculates the distance covered from the previous
                     % frame to the new positions
                     fPrNw = [fPr0(obj.iPr0{i},:);fP(obj.iPr1{i},:)];
-                    pdPrNw = pdist2([xP,yP],fPrNw(end,:))/obj.dTol;
-                        
-                    % determines where the estimated location is in
-                    % relation to the region limits
-                    if obj.withinEdge(indR,fPrNw(end,:))
-                        pdTolMax = 1;
+                    if isempty(fPrNw)
+                        % no previous data, so accept unconditionally
+                        [pdPrNw,pdTolMax] = deal(0,1);
                     else
-                        pdTolMax = 2*(1+obj.iMov.is2D);
-                    end                                           
+                        % otherwise, calculate the inter-frame distance
+                        pdPrNw = pdist2([xP,yP],fPrNw(end,:))/obj.dTol;
+    
+                        % determines where the estimated location is in
+                        % relation to the region limits
+                        if obj.withinEdge(indR,fPrNw(end,:))
+                            pdTolMax = 1;
+                        else
+                            pdTolMax = 2*(1+obj.iMov.is2D);
+                        end
+                    end
                         
                     % sets the final positional/intensity values
                     if pdPrNw < pdTolMax
@@ -353,36 +359,46 @@ classdef PhaseTrack < matlab.mixin.SetGet
                         otherwise
                             % case is there are multiple peaks
                             
+                            % calculates the centroid linear indices
+                            pCR = roundP(pC);
+                            ipC = sub2ind(szL,pCR(:,2),pCR(:,1));                            
+                            
                             % sets the previous data points (for estimating 
                             % the location of the blob on this frame)
                             fPrNw = [fPr0(obj.iPr0{i},:);fP(obj.iPr1{i},:)];
-                            fPest0 = extrapBlobPosition(fPrNw);
-                            fPest = max(1,min(fPest0,flip(szL)));
-
-                            % sets up the distance estimate mask
-                            Best = setGroup(roundP(fPest),szL);
-                            DWest = bwdist(Best);
-                            
-                            % calculates the distance of the candidate
-                            % points from the estimated location
-                            ipC = sub2ind(szL,...
-                                        roundP(pC(:,2)),roundP(pC(:,1)));
-                            DpC = DWest(ipC)/obj.dTol;
-                            
-                            % determines where the estimated location is in
-                            % relation to the region limits
-                            if obj.withinEdge(indR,fPest)
-                                dTolMax = 0.5;
+                            if isempty(fPrNw)
+                                % case is there is no previous data
+                                dTolMax = 1e10;
+                                DpC = ones(size(ipC));
                             else
-                                dTolMax = 2;
-                            end
+                                % if there is no 
+                                fPest0 = extrapBlobPosition(fPrNw);
+                                fPest = max(1,min(fPest0,flip(szL)));
+
+                                % sets up the distance estimate mask
+                                Best = setGroup(roundP(fPest),szL);
+                                DWest = bwdist(Best);
+                                DpC = DWest(ipC)/obj.dTol;                                                             
+                                
+                                % determines where the estimated location 
+                                % is in relation to the region limits
+                                if obj.withinEdge(indR,fPest)
+                                    dTolMax = 0.5;
+                                else
+                                    dTolMax = 2;
+                                end                                
+                            end                                                       
                             
                             % determines if any points are within the
                             % distance tolerance
                             inDistTol = DpC < dTolMax;
                             if any(inDistTol)
                                 % calculates the distance weighting
-                                Dw = 1./max(0.25,DpC);
+                                if isempty(fPrNw)
+                                    Dw = ones(size(DpC));
+                                else
+                                    Dw = 1./max(0.25,DpC);
+                                end
 
                                 % determines the brightest group that is
                                 % closest to the estimated location
@@ -393,13 +409,15 @@ classdef PhaseTrack < matlab.mixin.SetGet
                                 % case is there are no blob maxima within a
                                 % small distance of the estimate. in this
                                 % case, use the previous/estimate position
-                                if all(range(fPrNw,1)) < obj.dTol/2
-                                    % case is the blob isn't moving that
-                                    % fast, so use previous location
-                                    fP(i,:) = fPrNw(end,:);
-                                else
-                                    % otherwise, use the estimate
+                                if isempty(fPrNw) || ...
+                                        any(range(fPrNw,1) > obj.dTol/2)                                    
+                                    % if the step size is too large, or
+                                    % there is no prevsious data, then use
+                                    % the estimated values
                                     fP(i,:) = fPest;
+                                else
+                                    % otherwise, use previous location
+                                    fP(i,:) = fPrNw(end,:);                                    
                                 end
                                 
                                 fPR = roundP(fP(i,:));

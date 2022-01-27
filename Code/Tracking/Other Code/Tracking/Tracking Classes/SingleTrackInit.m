@@ -1221,7 +1221,7 @@ classdef SingleTrackInit < SingleTrack
             zTol = 2.5;
             nFrmMin = 3;
             rGrpTol = 3.0;            
-            DminTol = 0.75;
+            DminTol = 0.65;
             iRTF = cell2mat(iRT(:)');     
             nRT = cellfun(@length,iRT);
             mFlag = zeros(size(iRT));             
