@@ -218,11 +218,6 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 ImgBGL = ImgBG(iRT{iTube},iCT);
                 ImgSeg = obj.setupResidualStack(ImgSR,ImgBGL); 
                 
-                %
-                if isequal([iApp,iTube],[1,4])
-                    a = 1;
-                end
-                
                 % segments the image stack
                 [fP0nw,IP0nw] = obj.segmentSubRegion...
                               (ImgSeg,fPr{iTube},IPr(iTube),[iApp,iTube]);
@@ -277,9 +272,9 @@ classdef PhaseTrack < matlab.mixin.SetGet
             
             % retrieves the comparison pixel tolerance
             if isfield(obj.iMov,'pTolF')
-                pTol = obj.iMov.pTolF(indR(1),obj.iPh);
+                pTol0 = obj.iMov.pTolF(indR(1),obj.iPh);
             else
-                pTol = NaN;
+                pTol0 = NaN;
             end
             
             % retrieves the x/y-limits
@@ -301,23 +296,37 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 % ----------------------------------------------- %
                 % --- LIKELY POSITION COORDINATE CALCULATIONS --- %
                 % ----------------------------------------------- %
+                
+                % sets the previous coordinate array
+                fPrNw = [fPr0(obj.iPr0{i},:);fP(obj.iPr1{i},:)];
                                 
                 % sorts the maxima in descending order
                 szL = size(Img{i});
                 iPmx{i} = find(imregionalmax(Img{i}));
                 [Pmx,iS] = sort(Img{i}(iPmx{i}),'descend');
-                pTolB = obj.pTolW*Pmx(1);
+
+		% sets the frame pixel intensity tolerance
+		if isnan(pTol0)
+        	    pTolB = obj.pTolW*Pmx(1);
+		else
+		    pTolB = pTol0;
+		end
                 
                 % determines how many prominent objects are in the frame
                 ii = Pmx >= pTolB;
-                if sum(ii) == 1
+                if sum(ii) == 0
+                    % case is there are no prominent objects
+                    if ~isempty(fPrNw)
+                        fP(i,:) = fPrNw(end,:);
+                    end
+                    
+                elseif sum(ii) == 1
                     % case is there is only 1 prominent object
                     iPnw = iPmx{i}(iS(1));
                     [yP,xP] = ind2sub(szL,iPnw);
                     
                     % calculates the distance covered from the previous
-                    % frame to the new positions
-                    fPrNw = [fPr0(obj.iPr0{i},:);fP(obj.iPr1{i},:)];
+                    % frame to the new positions                    
                     if isempty(fPrNw)
                         % no previous data, so accept unconditionally
                         [pdPrNw,pdTolMax] = deal(0,1);

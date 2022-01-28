@@ -835,10 +835,10 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             
             % collapses the waitbar figure            
             dLvl = 1 + obj.isMultiBatch;
-            obj.hProg.collapseProgBar(dLvl);
+            obj.hProg.setLevelCount(2+dLvl);
 
             % creates the video phase class object
-            iLvl = dLvl;
+            iLvl = 1+dLvl;
             phObj = VideoPhase(obj.iData,obj.iMov,obj.hProg,iLvl);
 
             % runs the phase detection solver            
@@ -853,9 +853,6 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 obj.iMov.iPhase = phObj.iPhase;
                 obj.iMov.vPhase = phObj.vPhase; 
                 obj.iMov.phInfo = getPhaseObjInfo(phObj);
-
-                % expands the progressbar
-                obj.hProg.expandProgBar(dLvl);
             end
 
         end        
@@ -1021,8 +1018,8 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             A = load(bdata.sName,'-mat','iExpt');  
             
             % collapses down the waitbar figure
-            hh0 = getHandleSnapshot(findall(obj.hProg.hFig));
-            obj.hProg.setLevelCount(2);               
+            obj.hProg.setLevelCount(2);
+            hh0 = getHandleSnapshot(findall(obj.hProg.hFig));                           
             
             % waits for the file to finish recording
             if ~waitForRecordedFile(...

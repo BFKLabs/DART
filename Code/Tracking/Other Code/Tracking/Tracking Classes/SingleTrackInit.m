@@ -1307,10 +1307,12 @@ classdef SingleTrackInit < SingleTrack
             if rRatio < rGrpTol
                 % determines which rows are significant                
                 isSig0 = idx == argMax(C);                              
-                pTol = mean([min(IRngC(isSig0)),max(IRngC(~isSig0))]);
+                pTolC = mean([min(IRngC(isSig0)),max(IRngC(~isSig0))]);
+                pTol = mean([min(IRngC0(isSig0)),max(IRngC0(~isSig0))]); 
             else
                 % calculates the max range mean/std values
-                pTol = nanmean(IRngC(iRTF)) + zTol*nanstd(IRngC(iRTF));
+                pTolC = nanmean(IRngC(iRTF)) + zTol*nanstd(IRngC(iRTF));
+                pTol = nanmean(IRngC0(iRTF)) + zTol*nanstd(IRngC0(iRTF));
             end
             
             % calculates the maximum range values for each sub-region
@@ -1320,7 +1322,7 @@ classdef SingleTrackInit < SingleTrack
             % calculates the movement status flags:
             %  = 0: blob is completely stationary over the phase
             %  = 2: blob has moved a significant distance              
-            mFlag(IRngMax >= pTol) = 2;
+            mFlag(IRngMax >= pTolC) = 2;
             
         end
         

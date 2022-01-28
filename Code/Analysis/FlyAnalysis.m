@@ -171,160 +171,6 @@ wState = warning('off','all');
 OpenSolnFile(hFig);
 warning(wState);
 
-% --- function for the after running the solution file loading gui
-function postSolnLoadFunc(hFig,sInfoNw)
-
-% retrieves the gui object handle
-handles = guidata(hFig);
-
-% performs the actions based on the user input
-if ~exist('sInfoNw','var')      
-    % if the user cancelled or there was no change, then exit the function
-    tempSolnDataIO(handles,'reload')
-    
-    % if the parameter gui is present, then make it visible   
-    hPara = findall(0,'tag','figAnalysisPara');
-    if ~isempty(hPara)
-        setObjVisibility(hPara,1);
-    end
-    
-    % closes the loadbar
-    try; close(h); end
-    
-    % makes the gui visible again and exits the function
-    setObjVisibility(hFig,'on');
-    return
-    
-elseif isempty(sInfoNw)    
-    % if all data was cleared, then reset the gui
-    menuClearData_Callback(handles.menuClearData, [], handles)
-    
-    % makes the gui visible again
-    tempSolnDataIO(handles,'remove')
-    setObjVisibility(hFig,'on');        
-    return
-end
-
-% creates a loadbar
-h = ProgressLoadbar('Updating Analysis Information...');
-
-% separates the solution file information from the loaded data
-[~,sInfoNw] = separateInfoDataStruct(hFig,sInfoNw);
-
-% makes the gui visible again
-tempSolnDataIO(handles,'remove')
-
-% sets the experiment name strings
-sName = cellfun(@(x)(x.expFile),sInfoNw,'un',0);
-sNameFull = cellfun(@(x)(x.sFile),sInfoNw,'un',0);
-setappdata(hFig,'sName',sName)
-setappdata(hFig,'sNameFull',sNameFull)
-setappdata(hFig,'LoadSuccess',true);
-
-% retrieves the stored data
-pDataT = getappdata(hFig,'pDataT');
-snTot = num2cell(getappdata(hFig,'snTot'));
-   
-% creates the function filter
-fObj = FuncFilterTree(hFig,snTot,pDataT);
-set(fObj,'treeUpdateExtn',@updateFuncFilter);
-setappdata(hFig,'fObj',fObj);
-
-% sets up the loaded information and resets the gui objects
-setSolnInfo(handles)
-resetGUIObjects(guidata(hFig))
-
-% sets the save stimuli data enabled properties
-hasStim = any(cellfun(@(x)(~isempty(x.stimP)),snTot));
-setObjEnable(handles.menuSaveStim,hasStim)
-
-% makes the main gui visible again
-setObjVisibility(hFig,'on');
-
-% attempts to close the loadbar
-try; close(h); end
-
-% --- function filter class update callback
-function updateFuncFilter()
-
-% retrieves the function filter class object
-hFig = findall(0,'tag','figFlyAnalysis');
-hPopup = findall(0,'tag','popupPlotType');
-fObj = getappdata(hFig,'fObj');
-
-% resets the experiment compatibility flags
-fScope = getAnalysisScopeFlag(hFig);
-fObj.detExptCompatibility(fScope);
-
-% resets the function list
-popupPlotType_Callback(hPopup, '1', guidata(hFig))
-
-% --- separates the solution file information data struct into
-%     its components (snTot is used for analysis)
-function [snTot,sInfo] = separateInfoDataStruct(hFig,sInfo)
-
-% memory allocation
-nExp = length(sInfo);
-snTot = cell(nExp,1);
-
-% removes any apparatus information fields
-for i = 1:nExp
-    if isfield(sInfo{i}.snTot,'appPara')
-        sInfo{i}.snTot = rmfield(sInfo{i}.snTot,'appPara');
-    end
-end
-
-% % retrieves the fieldname from each solution file
-% fName = cellfun(@(x)(fieldnames(x.snTot)),sInfo,'un',0)';
-
-% separates the data struct (removes snTot from sInfo)
-for i = 1:nExp
-    if i == 1
-        snTot{i} = sInfo{i}.snTot;
-    else
-        snTot{i} = orderfields(sInfo{i}.snTot,snTot{1});
-    end
-        
-    sInfo{i}.snTot = [];
-end
-
-% converts the solution file data cell array into a struct array
-snTot = cell2mat(snTot);
-
-% updates the data struct into the gui
-setappdata(hFig,'sInfo',sInfo)
-setappdata(hFig,'snTot',snTot)
-
-% --- combines the solution data and information structs into a single
-%     data struct (to be used for opening file data)
-function combineInfoDataStructs(hFig)
-
-% retrieves the data structs
-sInfo = getappdata(hFig,'sInfo');
-snTot = num2cell(getappdata(hFig,'snTot'));
-
-% sets the solution data field for each experiment
-for i = 1:length(sInfo)
-    % separates the multi-experiment group names
-    gName = separateMultiExptGroupNames(snTot{i});    
-    
-    % updates the group names
-    snTot{i}.iMov.pInfo.gName = gName;
-    
-    % converts the data value arrays for the new format files
-    snTot{i} = splitAcceptanceFlags(snTot{i});
-    sInfo{i}.snTot = convertDataArrays(snTot{i});
-    sInfo{i}.snTot.iMov = reduceRegionInfo(sInfo{i}.snTot.iMov);  
-    sInfo{i}.gName = gName;
-    
-    % converts the data arrays
-    snTot{i} = [];
-end
-
-% updates the solution file info into the gui
-setappdata(hFig,'snTot',[])
-setappdata(hFig,'sInfo',sInfo)
-
 % -------------------------------------------------------------------------
 function menuOpenSubConfig_Callback(~, ~, handles)
 
@@ -2407,6 +2253,76 @@ for i = 1:hNodeP.getChildCount
     end
 end
 
+% ---------------------------------- %
+% --- INFO DATA STRUCT FUNCTIONS --- %
+% ---------------------------------- %
+
+% --- separates the solution file information data struct into
+%     its components (snTot is used for analysis)
+function [snTot,sInfo] = separateInfoDataStruct(hFig,sInfo)
+
+% memory allocation
+nExp = length(sInfo);
+snTot = cell(nExp,1);
+
+% removes any apparatus information fields
+for i = 1:nExp
+    if isfield(sInfo{i}.snTot,'appPara')
+        sInfo{i}.snTot = rmfield(sInfo{i}.snTot,'appPara');
+    end
+end
+
+% % retrieves the fieldname from each solution file
+% fName = cellfun(@(x)(fieldnames(x.snTot)),sInfo,'un',0)';
+
+% separates the data struct (removes snTot from sInfo)
+for i = 1:nExp
+    if i == 1
+        snTot{i} = sInfo{i}.snTot;
+    else
+        snTot{i} = orderfields(sInfo{i}.snTot,snTot{1});
+    end
+        
+    sInfo{i}.snTot = [];
+end
+
+% converts the solution file data cell array into a struct array
+snTot = cell2mat(snTot);
+
+% updates the data struct into the gui
+setappdata(hFig,'sInfo',sInfo)
+setappdata(hFig,'snTot',snTot)
+
+% --- combines the solution data and information structs into a single
+%     data struct (to be used for opening file data)
+function combineInfoDataStructs(hFig)
+
+% retrieves the data structs
+sInfo = getappdata(hFig,'sInfo');
+snTot = num2cell(getappdata(hFig,'snTot'));
+
+% sets the solution data field for each experiment
+for i = 1:length(sInfo)
+    % separates the multi-experiment group names
+    gName = separateMultiExptGroupNames(snTot{i});    
+    
+    % updates the group names
+    snTot{i}.iMov.pInfo.gName = gName;
+    
+    % converts the data value arrays for the new format files
+    snTot{i} = splitAcceptanceFlags(snTot{i});
+    sInfo{i}.snTot = convertDataArrays(snTot{i});
+    sInfo{i}.snTot.iMov = reduceRegionInfo(sInfo{i}.snTot.iMov);  
+    sInfo{i}.gName = gName;
+    
+    % converts the data arrays
+    snTot{i} = [];
+end
+
+% updates the solution file info into the gui
+setappdata(hFig,'snTot',[])
+setappdata(hFig,'sInfo',sInfo)
+
 % ------------------------------- %
 % --- MISCELLANEOUS FUNCTIONS --- %
 % ------------------------------- %
@@ -3035,3 +2951,91 @@ fScope0 = {'I','S','M'};
 
 % returns the final string
 fScope = fScope0{pInd};
+
+% --- function for the after running the solution file loading gui
+function postSolnLoadFunc(hFig,sInfoNw)
+
+% retrieves the gui object handle
+handles = guidata(hFig);
+
+% performs the actions based on the user input
+if ~exist('sInfoNw','var')      
+    % if the user cancelled or there was no change, then exit the function
+    tempSolnDataIO(handles,'reload')
+    
+    % if the parameter gui is present, then make it visible   
+    hPara = findall(0,'tag','figAnalysisPara');
+    if ~isempty(hPara)
+        setObjVisibility(hPara,1);
+    end
+    
+    % closes the loadbar
+    try; close(h); end
+    
+    % makes the gui visible again and exits the function
+    setObjVisibility(hFig,'on');
+    return
+    
+elseif isempty(sInfoNw)    
+    % if all data was cleared, then reset the gui
+    menuClearData_Callback(handles.menuClearData, [], handles)
+    
+    % makes the gui visible again
+    tempSolnDataIO(handles,'remove')
+    setObjVisibility(hFig,'on');        
+    return
+end
+
+% creates a loadbar
+h = ProgressLoadbar('Updating Analysis Information...');
+
+% separates the solution file information from the loaded data
+[~,sInfoNw] = separateInfoDataStruct(hFig,sInfoNw);
+
+% makes the gui visible again
+tempSolnDataIO(handles,'remove')
+
+% sets the experiment name strings
+sName = cellfun(@(x)(x.expFile),sInfoNw,'un',0);
+sNameFull = cellfun(@(x)(x.sFile),sInfoNw,'un',0);
+setappdata(hFig,'sName',sName)
+setappdata(hFig,'sNameFull',sNameFull)
+setappdata(hFig,'LoadSuccess',true);
+
+% retrieves the stored data
+pDataT = getappdata(hFig,'pDataT');
+snTot = num2cell(getappdata(hFig,'snTot'));
+   
+% creates the function filter
+fObj = FuncFilterTree(hFig,snTot,pDataT);
+set(fObj,'treeUpdateExtn',@updateFuncFilter);
+setappdata(hFig,'fObj',fObj);
+
+% sets up the loaded information and resets the gui objects
+setSolnInfo(handles)
+resetGUIObjects(guidata(hFig))
+
+% sets the save stimuli data enabled properties
+hasStim = any(cellfun(@(x)(~isempty(x.stimP)),snTot));
+setObjEnable(handles.menuSaveStim,hasStim)
+
+% makes the main gui visible again
+setObjVisibility(hFig,'on');
+
+% attempts to close the loadbar
+try; close(h); end
+
+% --- function filter class update callback
+function updateFuncFilter()
+
+% retrieves the function filter class object
+hFig = findall(0,'tag','figFlyAnalysis');
+hPopup = findall(0,'tag','popupPlotType');
+fObj = getappdata(hFig,'fObj');
+
+% resets the experiment compatibility flags
+fScope = getAnalysisScopeFlag(hFig);
+fObj.detExptCompatibility(fScope);
+
+% resets the function list
+popupPlotType_Callback(hPopup, '1', guidata(hFig))
