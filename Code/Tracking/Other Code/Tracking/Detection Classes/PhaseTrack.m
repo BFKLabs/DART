@@ -298,19 +298,23 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 % ----------------------------------------------- %
                 
                 % sets the previous coordinate array
-                fPrNw = [fPr0(obj.iPr0{i},:);fP(obj.iPr1{i},:)];
+                if obj.iFrmR(i) < 5
+                    fPrNw = fP(obj.iPr1{i},:);
+                else
+                    fPrNw = [fPr0(obj.iPr0{i},:);fP(obj.iPr1{i},:)];
+                end
                                 
                 % sorts the maxima in descending order
                 szL = size(Img{i});
                 iPmx{i} = find(imregionalmax(Img{i}));
                 [Pmx,iS] = sort(Img{i}(iPmx{i}),'descend');
 
-		% sets the frame pixel intensity tolerance
-		if isnan(pTol0)
-        	    pTolB = obj.pTolW*Pmx(1);
-		else
-		    pTolB = pTol0;
-		end
+                % sets the frame pixel intensity tolerance
+                if isnan(pTol0)
+                    pTolB = obj.pTolW*Pmx(1);
+                else
+                    pTolB = pTol0;
+                end
                 
                 % determines how many prominent objects are in the frame
                 ii = Pmx >= pTolB;
@@ -327,7 +331,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                     
                     % calculates the distance covered from the previous
                     % frame to the new positions                    
-                    if isempty(fPrNw)
+                    if isempty(fPrNw) || isnan(fPrNw(end,1))
                         % no previous data, so accept unconditionally
                         [pdPrNw,pdTolMax] = deal(0,1);
                     else
@@ -375,7 +379,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                             % sets the previous data points (for estimating 
                             % the location of the blob on this frame)
                             fPrNw = [fPr0(obj.iPr0{i},:);fP(obj.iPr1{i},:)];
-                            if isempty(fPrNw)
+                            if isempty(fPrNw) || isnan(fPrNw(end,1))
                                 % case is there is no previous data
                                 dTolMax = 1e10;
                                 DpC = ones(size(ipC));
@@ -457,9 +461,9 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 %    * there is a comparison pixel tolerance (pTol)
                 %    * the fly actually moves over the phase
                 %    * both the new/current values are less than tolerance
-                chkCoord = [~isnan(pTol),...
+                chkCoord = [~isnan(pTolB),...
                             isMove,...
-                            all([IPr,IP(i)] < pTol),...
+                            all([IPr,IP(i)] < pTolB),...
                             ~obj.iMov.is2D];
                 if all(chkCoord)
                     % if this is all true, then determine if there has been
