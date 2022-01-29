@@ -1,5 +1,5 @@
 function varargout = FlyAnalysis(varargin)
-% Last Modified by GUIDE v2.5 14-Sep-2021 21:53:34
+% Last Modified by GUIDE v2.5 29-Jan-2022 11:06:45
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -103,10 +103,14 @@ setappdata(hObject,'sDirO',sDir);
 setappdata(hObject,'plotMetricGraph',@plotMetricGraph);
 setappdata(hObject,'initAxesObject',@initAxesObject)
 setappdata(hObject,'clearAxesObject',@clearAxesObject)
-setappdata(hObject,'popupSubInd',@popupSubInd_Callback);
-setappdata(hObject,'axisClickCallback',@axisClickCallback);
 setappdata(hObject,'postSolnLoadFunc',@postSolnLoadFunc)
 setappdata(hObject,'setSelectedNode',@setSelectedNode)
+setappdata(hObject,'resetPlotPanelCoords',@resetPlotPanelCoords)
+setappdata(hObject,'menuSubPlot',@menuSubPlot);
+
+% updates the figure click callback function
+fbcFcn = {@figButtonClick,handles.panelPlot};
+setappdata(hObject,'figButtonClick',fbcFcn)
 
 % initialises the gui object properties
 initGUIObjects(handles)
@@ -175,8 +179,8 @@ warning(wState);
 function menuOpenSubConfig_Callback(~, ~, handles)
 
 % loads the data structs from the GUI
-iData = getappdata(handles.figFlyAnalysis,'iData');
-fcnAxC = getappdata(handles.figFlyAnalysis,'axisClickCallback');
+hFig = handles.figFlyAnalysis;
+iData = getappdata(hFig,'iData');
 dDir = iData.ProgDef.OutFig; 
 
 % prompts the user for the solution file directory
@@ -188,34 +192,30 @@ if fIndex == 0
     return
 else
     % makes the figure invisible
-    setObjVisibility(handles.figFlyAnalysis,'off'); 
+    setObjVisibility(hFig,'off'); 
     pause(0.05);
     
     % opens the file and retrieves the subplot parameter data struct
     A = load(fullfile(fDir,fName),'-mat');
-    setappdata(handles.figFlyAnalysis,'sPara',A.sPara)
+    setappdata(hFig,'sPara',A.sPara)
     
     % removes any existing panels/plots
     hPanel = findall(handles.panelPlot,'tag','subPanel');
     if ~isempty(hPanel); delete(hPanel); end    
     
     % deletes/clears the analysis parameter GUI
-    hPara = getappdata(handles.figFlyAnalysis,'hPara');
+    hPara = getappdata(hFig,'hPara');
     if ~isempty(hPara); delete(hPara); end
-    setappdata(handles.figFlyAnalysis,'hPara',[]);
+    setappdata(hFig,'hPara',[]);
     
-    % updates the popup subindex list
+    % creates the new subplot panels and menu items
     nReg = size(A.sPara.pos,1);
-    lStr = cellfun(@num2str,num2cell(1:nReg)','un',0);  
-    set(handles.popupSubInd,'visible','on','string',lStr,'value',1); 
-    setObjVisibility(handles.textSubInd,'on')
-    
-    % creates the new subplot panels    
-    setupSubplotPanels(handles.panelPlot,A.sPara,fcnAxC)      
+    setupSubplotPanels(handles.panelPlot,A.sPara)      
+    resetSubplotMenuItems(hFig,obj.menuSubPlot,nReg);
     
     % updates the panel selection    
-    setappdata(handles.figFlyAnalysis,'sInd',1)
-    popupSubInd_Callback(handles.popupSubInd,[],handles)
+    setappdata(hFig,'sInd',1)    
+    menuSubPlot(hFig,[])
     
     % makes the figure visible again
     setObjEnable(handles.menuSaveSubConfig,'on')
@@ -668,8 +668,8 @@ if size(sPara.pos,1) > 1
     setappdata(hFig,'sPara',sPara);
     
     % updates the subplot index popup menu
-    set(handles.popupSubInd,'value',1)
-    popupSubInd_Callback(handles.popupSubInd, '1', handles)
+    setappdata(hFig,'sInd',1);
+    menuSubPlot(hFig,'1')
 end
 
 % clears the axis object and resets the plotting data structs
@@ -721,7 +721,7 @@ UndockPlot(handles)
 function menuSplitPlot_Callback(~, ~, handles)
 
 % runs the axis splitting GUI
-SplitAxisRegions(handles)
+SplitAxisClass(handles.figFlyAnalysis);
 
 % ----------------------------------- %
 % --- GLOBAL PARAMETERS MENU ITEM --- %
@@ -764,6 +764,100 @@ if strcmp(uChoice,'Yes')
     % resets all the calculated/plotted data
     setappdata(handles.figFlyAnalysis,'gPara',gPara);
     menuResetData_Callback(handles.menuResetData, 'All', handles)    
+end
+
+% ------------------------------ %
+% --- SUBPLOT ITEM FUNCTIONS --- %
+% ------------------------------ %
+
+% --------------------------------------------------------------------
+function menuSubPlot(hObject, eventdata)
+
+% initialisations
+handles = guidata(hObject);
+hFig = handles.figFlyAnalysis;
+hMenuSP = handles.menuSubPlot;
+
+hPara = getappdata(hFig,'hPara');
+sPara = getappdata(hFig,'sPara');
+pData = getappdata(hFig,'pData');
+sInd0 = getappdata(hFig,'sInd');
+fObj = getappdata(hFig,'fObj');
+
+% retrieves the new subplot index
+switch class(hObject)
+    case 'matlab.ui.container.Menu'
+        % case is the menu item object
+        sInd = get(hObject,'UserData');
+        setappdata(handles.figFlyAnalysis,'sInd',sInd);
+        
+    case 'matlab.ui.Figure'
+        % case is the figure object
+        sInd = getappdata(hObject,'sInd');
+        
+end
+   
+% resets the menu check items
+set(findall(hMenuSP,'Checked','On'),'Checked','off')
+set(findall(hMenuSP,'UserData',sInd),'Checked','on');
+
+% resets the highlight panel colours
+hPanel = findall(handles.panelPlot,'tag','subPanel');
+set(hPanel,'HighLightColor','w');
+set(findobj(hPanel,'tag','subPanel','UserData',sInd),'HighlightColor','r');
+
+% determines if there are any valid indices selected
+[eInd,fInd,pInd] = getSelectedIndices(handles);
+if ~isempty(hPara) && ~isa(eventdata,'char')  
+    if all([eInd,fInd,pInd] > 0)
+        % if so, then update the plotting data struct
+        pObj = getappdata(hPara,'pObj');
+        sPara.pData{sInd0} = pObj.pData;
+        setappdata(hFig,'sPara',sPara);
+
+        % updates the plot data struct        
+        pData{pInd}{fInd,eInd} = pObj.pData;
+        setappdata(hFig,'pData',pData);
+    end        
+end
+
+% determines if the plot data has been set for the current sub-plot
+if ~isempty(sPara.pData{sInd}) && ~any(isnan(sPara.ind(sInd,:)))
+    % sets the new selected indices
+    fIndNw = fObj.getFuncIndex(sPara.pData{sInd}.Name,pInd);  
+    
+    % if so, then update the popup menu/list value 
+    setObjEnable(handles.menuUndock,'on')
+    setObjEnable(handles.menuSaveData,'on')
+    setObjEnable(handles.buttonUpdateFigure,'on')
+    set(handles.popupExptIndex,'value',sPara.ind(sInd,1))
+    set(handles.popupPlotType,'value',sPara.ind(sInd,3)) 
+    setSelectedNode(handles,fIndNw)
+    
+    % updates the parameter GUI
+    if isempty(hPara)
+        hPara = AnalysisPara(handles);
+        setappdata(hFig,'hPara',hPara);
+    else
+        pObj = getappdata(hPara,'pObj');
+        pObj.initAnalysisGUI()
+    end
+else
+    % otherwise, remove the plot list
+    setSelectedNode(handles)    
+    setObjVisibility(hPara,'off'); 
+    setObjEnable(handles.menuSaveData,'off')
+    
+    % enables the undocking menu item
+    if size(sPara.pos,1) == 1
+        setObjEnable(handles.menuUndock,'off')
+    else
+        setObjEnable(handles.menuUndock,any(~isnan(sPara.ind(:))))        
+    end      
+    
+    % disables the update button
+    [gCol,hButton] = deal((240/255)*[1 1 1],handles.buttonUpdateFigure);
+    set(setObjEnable(hButton,'off'),'BackgroundColor',gCol)
 end
 
 % ------------------------------ %
@@ -869,9 +963,11 @@ if isSet
             hP = handles.panelPlot;            
             
             % retrieves the plot data struct
-            pObj = getappdata(hPara,'pObj');
-            pDataNw = pObj.pData;
-            plotDNw = plotD{pInd}{fInd,eInd};
+            if ~isempty(hPara)
+                pObj = getappdata(hPara,'pObj');
+                pDataNw = pObj.pData;
+                plotDNw = plotD{pInd}{fInd,eInd};
+            end
         else           
             % updates the subplot index
             setappdata(hObject,'sInd',i);
@@ -950,109 +1046,24 @@ updateFlag = 0;
 % resets the original sub-plot index
 setappdata(hObject,'sInd',sInd0);
 
-% --- callback function when a sub-plot axes is clicked
-function axisClickCallback(hObject, ~)
+% --- figure button down callback function
+function figButtonClick(hFig, ~, hP)
 
-% global variable
-global canSelect
-
-% if can't select, then exit the function
-if ~canSelect; return; end
-
-% retrieves the GUI object handles
-handles = guidata(hObject);
-
-% determines the object being selected
-if strcmp(get(hObject,'type'),'axes')
-    % case selecting an axes object
-    iSel = get(get(hObject,'Parent'),'UserData');
-else
-    % case selecting a panel object
-    iSel = get(hObject,'UserData');
+% determines if the mouse point is currently over the plot axes
+mPos = get(hFig,'CurrentPoint');
+if isOverAxes(mPos)
+    % if so, then determine which object was clicked
+    hHover = findAxesHoverObjects(hFig,{'tag','subPanel'},hP);
+    if ~isempty(hHover)
+        % updates the popup sub index 
+        setappdata(hFig,'sInd',get(hHover(1),'UserData'))
+        menuSubPlot(hFig,[])
+    end
 end
-
-% updates the popup sub index 
-set(handles.popupSubInd,'value',iSel)
-popupSubInd_Callback(handles.popupSubInd, [], handles)
 
 % ---------------------------------------- %
 % --- EXPERIMENT INFORMATION FUNCTIONS --- %
 % ---------------------------------------- %
-
-% --- Executes on selection change in popupSubInd.
-function popupSubInd_Callback(hObject, eventdata, handles)
-
-% retrieves the sub-region data struct
-hFig = handles.figFlyAnalysis;
-hPara = getappdata(hFig,'hPara');
-sPara = getappdata(hFig,'sPara');
-pData = getappdata(hFig,'pData');
-sInd0 = getappdata(hFig,'sInd');
-fObj = getappdata(hFig,'fObj');
-
-% retrieves the selected index
-[lStr,iStr] = deal(get(hObject,'string'),get(hObject,'value'));
-sInd = str2double(lStr{iStr});
-setappdata(hFig,'sInd',sInd)
-
-% resets the highlight panel colours
-hPanel = findall(handles.panelPlot,'tag','subPanel');
-set(hPanel,'HighLightColor','w');
-set(findobj(hPanel,'tag','subPanel','UserData',sInd),'HighlightColor','r');
-
-% determines if there are any valid indices selected
-[eInd,fInd,pInd] = getSelectedIndices(handles);
-if ~isempty(hPara) && ~isa(eventdata,'char')  
-    if all([eInd,fInd,pInd] > 0)
-        % if so, then update the plotting data struct
-        pObj = getappdata(hPara,'pObj');
-        sPara.pData{sInd0} = pObj.pData;
-        setappdata(hFig,'sPara',sPara);
-
-        % updates the plot data struct        
-        pData{pInd}{fInd,eInd} = pObj.pData;
-        setappdata(hFig,'pData',pData);
-    end        
-end
-
-% determines if the plot data has been set for the current sub-plot
-if ~isempty(sPara.pData{sInd}) && ~any(isnan(sPara.ind(sInd,:)))
-    % sets the new selected indices
-    fIndNw = fObj.getFuncIndex(sPara.pData{sInd}.Name);  
-    
-    % if so, then update the popup menu/list value 
-    setObjEnable(handles.menuUndock,'on')
-    setObjEnable(handles.menuSaveData,'on')
-    setObjEnable(handles.buttonUpdateFigure,'on')
-    set(handles.popupExptIndex,'value',sPara.ind(sInd,1))
-    set(handles.popupPlotType,'value',sPara.ind(sInd,3)) 
-    setSelectedNode(handles,fIndNw)
-    
-    % updates the parameter GUI
-    if isempty(hPara)
-        hPara = AnalysisPara(handles);
-        setappdata(hFig,'hPara',hPara);
-    else
-        pObj = getappdata(hPara,'pObj');
-        pObj.initAnalysisGUI()
-    end
-else
-    % otherwise, remove the plot list
-    setSelectedNode(handles)    
-    setObjVisibility(hPara,'off'); 
-    setObjEnable(handles.menuSaveData,'off')
-    
-    % enables the undocking menu item
-    if size(sPara.pos,1) == 1
-        setObjEnable(handles.menuUndock,'off')
-    else
-        setObjEnable(handles.menuUndock,any(~isnan(sPara.ind(:))))        
-    end      
-    
-    % disables the update button
-    [gCol,hButton] = deal((240/255)*[1 1 1],handles.buttonUpdateFigure);
-    set(setObjEnable(hButton,'off'),'BackgroundColor',gCol)
-end
 
 % --- Executes on selection change in popupExptIndex.
 function popupExptIndex_Callback(hObject, eventdata, handles)
@@ -1448,19 +1459,21 @@ function hAx = initAxesObject(handles)
 global isDocked newSz
 
 % retrieves the sub-plot parameter struct
+cbFcn = [];
 uStr = 'pixels';
-sInd = getappdata(handles.figFlyAnalysis,'sInd');
-sPara = getappdata(handles.figFlyAnalysis,'sPara');    
+hFig0 = handles.figFlyAnalysis;
+sInd = getappdata(hFig0,'sInd');
+sPara = getappdata(hFig0,'sPara');    
 
 % sets the units string/axis handles for setting up the figure   
 if isDocked
     % retrieves the sub-plot parameter struct
-    [h,hFig] = deal(handles,handles.figFlyAnalysis);
+    [h,hFig] = deal(handles,hFig0);
     sInd = getappdata(hFig,'sInd');
     sPara = getappdata(hFig,'sPara');    
 else
     % if the plot axis is undocked, then use normalized coordinates
-    hFig = getappdata(handles.figFlyAnalysis,'hUndock');
+    hFig = getappdata(hFig0,'hUndock');
     h = guidata(hFig);            
 end
        
@@ -1477,11 +1490,14 @@ if size(sPara.pos,1) == 1
     set(hAx,'parent',h.panelPlot,'Units',uStr)        
     set(h.panelPlot,'Units','Pixels')
     newSz = get(h.panelPlot,'position');
+    
 else
-    % set the plot within the new plot panel
-    fcnAxC = getappdata(handles.figFlyAnalysis,'axisClickCallback');
+    % sets the button down callback function
+    cbFcn = {@figButtonClick,handles.panelPlot};
+    
+    % set the plot within the new plot panel    
     hPanel = findall(h.panelPlot,'tag','subPanel','UserData',sInd);                          
-    set(hAx,'parent',hPanel,'Units',uStr,'UserData',sInd,'ButtonDownFcn',fcnAxC)        
+    set(hAx,'parent',hPanel,'Units',uStr,'UserData',sInd)        
 
     % retrieves the panel dimensions (in pixels)
     set(hPanel,'Units','Pixels')        
@@ -1491,7 +1507,7 @@ end
 
 % clears the axis and ensures it is off
 set(0,'CurrentFigure',hFig)
-set(hFig,'CurrentAxes',hAx)
+set(hFig,'CurrentAxes',hAx,'WindowButtonDownFcn',cbFcn)
 cla(hAx); rotate3d(hAx,'off');     
 
 % --- initialises the plotting image axis 
@@ -1525,9 +1541,10 @@ else
     end
     
     % retrieves the axis objects for all the selected indices
-    for i = sInd    
+    for i = sInd
         if isDocked
             % case is the figure is docked
+            h = handles.figFlyAnalysis;
             hP = findall(handles.panelPlot,'tag','subPanel','UserData',i);
         else
             % case is the figure is undocked
@@ -1568,6 +1585,9 @@ setObjEnable(handles.menuClearPlot,'off')
 setObjEnable(handles.menuUndock,'off')
 setObjEnable(handles.menuResetData,'off')
 setObjEnable(handles.menuSplitPlot,'off')
+
+% calculates the global axes coordinates
+resetPlotPanelCoords(handles)
 
 % --- resizes the analysis GUI objects
 function resetFigSize(h,fPos)
@@ -2444,8 +2464,6 @@ setObjEnable(handles.menuClearData,'on')
 % removes any existing panels/plots
 hPanel = findall(handles.panelPlot,'tag','subPanel');
 if ~isempty(hPanel); delete(hPanel); end    
-setObjVisibility(handles.textSubInd,'off')
-setObjVisibility(handles.popupSubInd,'off'); 
 
 % updates the plot type popup
 popupPlotType_Callback(handles.popupPlotType, '1', handles)
@@ -3039,3 +3057,13 @@ fObj.detExptCompatibility(fScope);
 
 % resets the function list
 popupPlotType_Callback(hPopup, '1', guidata(hFig))
+
+% --- resets the plot panel coordinate vectors
+function resetPlotPanelCoords(handles)
+
+% global variables
+global axPosX axPosY
+
+% calculates the global coordinates
+pPos = getObjGlobalCoord(handles.panelPlot);
+[axPosX,axPosY] = deal(pPos(1)+[0,pPos(3)],pPos(2)+[0,pPos(4)]);

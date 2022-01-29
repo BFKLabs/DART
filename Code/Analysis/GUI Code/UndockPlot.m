@@ -81,7 +81,7 @@ if (size(sPara.pos,1) > 1)
         
     % initialises the subplot panels and makes the parameter GUI visible
     setObjVisibility(hPara,'off')
-    setupSubplotPanels(handles.panelPlot,sPara,@axisClickCallback)                
+    setupSubplotPanels(handles.panelPlot,sPara)                
     
     % updates the subplot selection
     sInd = getappdata(hGUI.figFlyAnalysis,'sInd');
@@ -214,8 +214,7 @@ if size(sPara.pos,1) > 1
     h = ProgressLoadbar('Initialising Analysis Plot...');
     
     % initialises the subplot panels and makes the parameter GUI visible    
-    fcnAxC = getappdata(hGUI.figFlyAnalysis,'axisClickCallback');
-    setupSubplotPanels(hGUI.panelPlot,sPara,fcnAxC,1)    
+    setupSubplotPanels(hGUI.panelPlot,sPara,1)    
             
     % deletes/clears the analysis parameter GUI
     if strcmp(get(hPara,'visible'),'off')
@@ -224,9 +223,8 @@ if size(sPara.pos,1) > 1
     end
     
     % updates the sub-index popup function    
-    popFcn = getappdata(hGUI.figFlyAnalysis,'popupSubInd');
-    set(hGUI.popupSubInd,'value',getappdata(hGUI.figFlyAnalysis,'sInd'))
-    popFcn(hGUI.popupSubInd,1,hGUI)       
+    menuFcn = getappdata(hGUI.figFlyAnalysis,'menuSubPlot'); 
+    menuFcn(hGUI.figFlyAnalysis,[])       
     
     % deletes the loadbar 
     delete(h); pause(0.05); 
@@ -411,9 +409,10 @@ sPara = getappdata(handles.figUndockPlot,'sPara');
 hPara = getappdata(handles.figUndockPlot,'hPara');
 
 % updates the subplot index
+hGUIM = guidata(hGUI.figFlyAnalysis);
 fObj = getappdata(hGUI.figFlyAnalysis,'fObj');
 sInd0 = getappdata(hGUI.figFlyAnalysis,'sInd');
-selectFcn = getappdata(hGUIM.figFlyAnalysis,'setSelectedNode');
+selectFcn = getappdata(hGUI.figFlyAnalysis,'setSelectedNode');
 setappdata(hGUI.figFlyAnalysis,'sInd',sInd)
 
 % retrieves the current plot scope index
@@ -425,7 +424,7 @@ set(hPanel,'HighLightColor','w');
 set(findobj(hPanel,'tag','subPanel','UserData',sInd),'HighlightColor','r');
 
 % updates the plot parameters (if a valid plot has been selected)
-if ((~isempty(sPara.pData{sInd0})) && (nargin == 2))
+if ~isempty(sPara.pData{sInd0}) && (nargin == 2)
     % retrieves the experiment, function and plot indices
     ind = sPara.ind(sInd0,:);
     [eInd,fInd,pInd] = deal(ind(1),ind(2),ind(3));
@@ -444,7 +443,7 @@ end
 % updates the plot parameters (if a valid plot has been selected)
 if ~isempty(sPara.pData{sInd})
     % sets the new selected indices
-    fIndNw = fObj.getFuncIndex(sPara.pData{sInd}.Name);
+    fIndNw = fObj.getFuncIndex(sPara.pData{sInd}.Name,pInd);
     
     % update the popup menu/list values
     set(hGUI.popupExptIndex,'value',sPara.ind(sInd,1))

@@ -559,7 +559,7 @@ classdef FuncFilterTree < matlab.mixin.SetGet
         end            
                         
         % --- retrieves the matching function index
-        function fcnIndex = getFuncIndex(obj,fcnName)
+        function fcnIndex = getFuncIndex(obj,fcnName,pInd)
             
             iSelF = strcmp(obj.fcnData(:,1),fcnName);
             fcnIndex = obj.Imap(iSelF,pInd);           

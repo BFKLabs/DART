@@ -454,7 +454,12 @@ classdef OpenSolnFileTab < dynamicprops & handle
 
             % removes the table selection
             obj.jTable.changeSelection(-1,-1,false,false);
-
+            
+            % resets the enabled properties of the menu items
+            handles = obj.baseObj.hGUI;
+            setObjEnable(handles.menuScaleFactor,0);
+            setObjEnable(handles.menuCombExpt,obj.nExp>1);
+            
             % adds data to the table
             for i = 1:obj.nExp
                 % adds the data for the new table row and bg colour index
@@ -1084,6 +1089,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             end
             
             % updates the solution file GUI
+            setObjEnable(obj.baseObj.hGUI.buttonClearExpt,0);
             obj.updateSolnFileGUI(~isempty(mName));
            
         end
@@ -1167,6 +1173,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
             setObjEnable(handles.buttonShowProtocol,0)
             setObjVisibility(handles.tableGroupNames,0)
             setObjEnable(handles.buttonClearAll,obj.nExp>0)
+            setObjEnable(handles.menuScaleFactor,0);
+            setObjEnable(handles.menuCombExpt,obj.nExp>1);            
             set(setObjEnable(hText,1),'string',num2str(obj.nExp))
 
             % reduces down the solution file information
@@ -1267,6 +1275,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
             setObjEnable(handles.buttonClearExpt,0)
             setObjEnable(handles.buttonShowProtocol,0)
             setObjVisibility(handles.tableGroupNames,0)
+            setObjEnable(handles.menuScaleFactor,0);
+            setObjEnable(handles.menuCombExpt,0);            
             set(handles.textExptCount,'string',0)
 
             % disables the added experiment information fields
@@ -1360,7 +1370,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
 
             % retrieves the other imporant fields
             obj.iExp = eventdata.Indices(1);
-
+            setObjEnable(handles.menuScaleFactor,1);
+            
             % updates the group table
             if obj.iExp <= length(obj.sInfo)
                 setObjEnable(handles.buttonClearExpt,1)

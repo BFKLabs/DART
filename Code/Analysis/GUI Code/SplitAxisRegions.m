@@ -123,7 +123,7 @@ global isChange
 uChoice = questdlg({['Are you sure you want to clear the split ',...
                     'regions?'];'';'This action can not be reversed.'},...
                     'Clear Split Regions?','Yes','No','Yes');
-if (~strcmp(uChoice,'Yes'))
+if ~strcmp(uChoice,'Yes')
     % if not, then exit the function
     return
 else
@@ -258,8 +258,8 @@ if (isChange)
             delete(getappdata(hGUI.figFlyAnalysis,'hPara'))
             setappdata(hGUI.figFlyAnalysis,'hPara',[])          
         case ('No') % case is not wanting to update
-            sPara = getappdata(handles.figSplitPlot,'sPara0')
-            setappdata(hGUI.figFlyAnalysis,'sPara',sPara)                            
+            sPara = getappdata(handles.figSplitPlot,'sPara0');
+            setappdata(hGUI.figFlyAnalysis,'sPara',sPara)
         otherwise % case is cancelling
             return
     end
@@ -271,7 +271,7 @@ if (~isempty(hAx)); delete(hAx); end
 
 % clears all the plot panel objects
 hPanel = findall(hGUI.panelPlot,'tag','subPanel');
-if (~isempty(hPanel)); delete(hPanel); end                
+if (~isempty(hPanel)); delete(hPanel); end
 
 % sets the sub-index 
 nReg = size(sPara.pos,1);
@@ -284,8 +284,7 @@ setMainGUIProps(handles,'on')
 % if more than one region, then update the figure properties
 if nReg > 1
     % updates the editbox (if visible)
-    lStr = cellfun(@num2str,num2cell(1:nReg)','un',0);        
-    fcnAxC = getappdata(hGUI.figFlyAnalysis,'axisClickCallback');       
+    lStr = cellfun(@num2str,num2cell(1:nReg)','un',0);
     
     % updates the subplot index popup-menu
     setObjEnable(hGUI.menuSaveSubConfig,'on')
@@ -293,7 +292,7 @@ if nReg > 1
     if isChange; set(hGUI.popupSubInd,'value',1); end
     
     % creates the subplot panels
-    setupSubplotPanels(hGUI.panelPlot,sPara,fcnAxC)       
+    setupSubplotPanels(hGUI.panelPlot,sPara)       
     
     % updates the sub-index popup function
     popFcn = getappdata(hGUI.figFlyAnalysis,'popupSubInd');
@@ -1086,7 +1085,6 @@ posXY(4,:) = [pos(1)+[0 pos(3)],sum(pos([2 4]))*[1 1]];
 function initObjProps(handles)
 
 % retrieves the segmentation parameters
-eStr = {'off','on'};
 sPara = getappdata(handles.figSplitPlot,'sPara');
       
 % sets the properties for all the parameter edit boxes 
@@ -1143,7 +1141,7 @@ if (strcmp(state,'off'))
     % sets the axis properties
     hAx = axes('position',[0 0 1 1],'units','pixels');
     set(hAx,'parent',hGUI.panelPlot,'tag','axesCustomPlot',...
-            'xticklabel',[],'xtick',[],'yticklabel',[],'ytick',[]);                   
+            'xticklabel',[],'xtick',[],'yticklabel',[],'ytick',[]);
 else
     % otherwise, clear the temporary axis 
     hAx = findall(hGUI.panelPlot,'tag','axesCustomPlot');
@@ -1342,7 +1340,7 @@ function clearAxesObjects(hAx)
 % retrieves the objects
 hSub = findall(hAx,'tag','hSub');
 hNum = findall(hAx,'tag','hNum');
-hSel = findall(hAx,'tag','hSub');
+hSel = findall(hAx,'tag','hSel');
 hEdge = findall(hAx,'tag','hEdge');
 hSubV = findall(hAx,'tag','hSubV');
 hSubH = findall(hAx,'tag','hSubH');
@@ -1350,7 +1348,7 @@ hSubH = findall(hAx,'tag','hSubH');
 % deletes the objects (if they exist)
 if (~isempty(hSub)); delete(hSub); end
 if (~isempty(hNum)); delete(hNum); end
-if (~isempty(hNum)); delete(hSel); end
+if (~isempty(hSel)); delete(hSel); end
 if (~isempty(hEdge)); delete(hEdge); end
 if (~isempty(hSubV)); delete(hSubV); end
 if (~isempty(hSubH)); delete(hSubH); end

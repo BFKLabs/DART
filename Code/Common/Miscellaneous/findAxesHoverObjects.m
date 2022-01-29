@@ -35,6 +35,10 @@ axObj = cell2cell(axObj);
 % determines the objects that the mouse is currently hovering over
 isHover = false(length(axObj),1);
 for i = 1:length(isHover)
+    % ensures the units are in terms of pixels
+    hUnit0 = get(axObj(i),'Units');
+    set(axObj(i),'Units','Pixels');
+    
     switch get(axObj(i),'Type')
         case 'patch'
             [xD,yD] = deal(get(axObj(i),'xData'),get(axObj(i),'yData'));
@@ -67,6 +71,9 @@ for i = 1:length(isHover)
             
             isHover(i) = any(pdist2([xD(:),yD(:)],mP) < 5);
     end
+    
+    % resets the original object units
+    set(axObj(i),'Units',hUnit0);    
 end
 
 % returns the objects which are being hovered over

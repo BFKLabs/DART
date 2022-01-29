@@ -424,7 +424,7 @@ for i = 1:N
         
         % sets the other object values
         set(handles.checkOutputAll,'value',isOutAll);          
-        feval(selectFcn,hGUIM,fObj.getFuncIndex(pData(i).Name));
+        feval(selectFcn,hGUIM,fObj.getFuncIndex(pData(i).Name,pInd));
     end
     
     % saves the figure

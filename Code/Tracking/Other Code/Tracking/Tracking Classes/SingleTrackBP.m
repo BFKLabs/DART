@@ -36,6 +36,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         % other parameters/flags
         iFile0
         nFile
+        nRetry = 5;
         TwaitEnd = 10;
         
         % initial data objects
@@ -1391,20 +1392,34 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         % --------------------------------- %
         
         % --- sets up the experiment summary file
-        function setupSummaryFile(obj,bdata)
+        function setupSummaryFile(obj,bdata)            
             
             % determines if the summary file exists
             if exist(obj.outSumm,'file')
                 % if so compare the time stamps to see if they match
-                [a0,a1] = deal(load(bdata.sName),load(obj.outSumm));
+                isOK = false;
+                for i = 1:obj.nRetry
+                    try
+                        [a0,a1] = deal(load(bdata.sName),load(obj.outSumm));
+                        isOK = true;
+                        break
+                    catch
+                        pause(1)
+                    end
+                end
                 
                 % checks the video time stamps
-                copySumm = ~all(cellfun(@(x,y)...
+                if isOK
+                    copySumm = ~all(cellfun(@(x,y)...
                                 (isequal(x,y)),a0.tStampV,a1.tStampV));   
-                if (strcmp(a0.iExpt.Info.Type,'RecordStim'))
-                    % checks the stimuli time stamps (stimuli expt only)
-                    copySumm = copySumm || ~all(cellfun(@(x,y)...
+                    if (strcmp(a0.iExpt.Info.Type,'RecordStim'))
+                        % checks the stimuli time stamps (stimuli expt only)
+                        copySumm = copySumm || ~all(cellfun(@(x,y)...
                                     (isequal(x,y)),a0.tStampS,a1.tStampS));
+                    end
+                else
+                    % if there was an issue, then copy over the file
+                    copySumm = true;
                 end                            
             else
                 % if not, then ensure the summary file is copied over

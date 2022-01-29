@@ -48,6 +48,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
         nI
         dTol
         isHV
+        rPmxTol = 0.8;
         pTolW = 0.6;
         pTolPh = 5;
         nPr = 5;
@@ -320,8 +321,28 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 ii = Pmx >= pTolB;
                 if sum(ii) == 0
                     % case is there are no prominent objects
-                    if ~isempty(fPrNw)
-                        fP(i,:) = fPrNw(end,:);
+                    if isempty(fPrNw)
+                        if Pmx(2)/Pmx(1) < obj.rPmxTol
+                            iPnw = iPmx{i}(iS(1));
+                            [fP(i,2),fP(i,1)] = ind2sub(szL,iPnw);
+                        end
+                    else
+                        % if there is previous data, then estimate where
+                        % the blob is most likely to be
+                        fPest0 = extrapBlobPosition(fPrNw);
+                        fPest = roundP(max(1,min(fPest0,flip(szL))));
+                        Dest = bwdist(setGroup(fPest,szL));
+                        
+                        % calculates the objective function for all points
+                        % detected from above
+                        iPmxS = iPmx{i}(iS);
+                        DpC = Dest(iPmxS)/obj.dTol;
+                        Dw = 1./max(0.25,DpC);                        
+                        
+                        % determines the most likely blob and sets the
+                        % coordinates for the current frame
+                        iMx = argMax(Dw.*Pmx);
+                        [fP(i,2),fP(i,1)] = ind2sub(szL,iPmxS(iMx));
                     end
                     
                 elseif sum(ii) == 1
@@ -365,10 +386,6 @@ classdef PhaseTrack < matlab.mixin.SetGet
                             % do nothing...
                             iMx = NaN;
                             
-                        case 1
-                            % case is there is a unique peak
-                            iMx = 1;
-                            
                         otherwise
                             % case is there are multiple peaks
                             
@@ -378,7 +395,6 @@ classdef PhaseTrack < matlab.mixin.SetGet
                             
                             % sets the previous data points (for estimating 
                             % the location of the blob on this frame)
-                            fPrNw = [fPr0(obj.iPr0{i},:);fP(obj.iPr1{i},:)];
                             if isempty(fPrNw) || isnan(fPrNw(end,1))
                                 % case is there is no previous data
                                 dTolMax = 1e10;
@@ -390,8 +406,8 @@ classdef PhaseTrack < matlab.mixin.SetGet
 
                                 % sets up the distance estimate mask
                                 Best = setGroup(roundP(fPest),szL);
-                                DWest = bwdist(Best);
-                                DpC = DWest(ipC)/obj.dTol;                                                             
+                                Dest = bwdist(Best);
+                                DpC = Dest(ipC)/obj.dTol;                                                             
                                 
                                 % determines where the estimated location 
                                 % is in relation to the region limits

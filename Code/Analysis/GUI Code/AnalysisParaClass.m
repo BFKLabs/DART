@@ -184,7 +184,7 @@ classdef AnalysisParaClass < handle
             else
                 % case is multiple sub-plots                
                 sInd = getappdata(obj.hFigM,'sInd');
-                if isempty(sPara.pData{sInd})
+                if isempty(sPara0.pData{sInd})
                     % current sub-plot is empty
                     obj.pData = pData0{pInd}{fInd,eInd};
                 else
@@ -209,7 +209,7 @@ classdef AnalysisParaClass < handle
             
             % returns the parameter data struct
             if (nargout == 1)
-                varargout{1} = pDataNw;
+                varargout{1} = obj.pData;
             end            
             
         end
