@@ -95,14 +95,7 @@ classdef SingleTrack < Track
                         % case is low variance calculations
                         isHV = sInd(i) == 2;
                         obj.fObj{i} = PhaseTrack(obj.iMov,obj.hProg,isHV);
-                        
-                        % 
-                        if obj.isCalib
-                            sz = size(obj.Img0{1}{1});
-                            obj.fObj{i}.nI = floor(max(sz)/800);
-                        else
-                            obj.fObj{i}.nI = floor(max(obj.iData.sz)/800);
-                        end
+                        obj.fObj{i}.nI = floor(max(getCurrentImageDim())/800);                        
                                                 
                     case 3
                         % case is manual correction updates

@@ -246,7 +246,7 @@ classdef VideoPreview < handle
             resetObjPos(obj.hAx,'Height',pPos(4)-2*dY);
             resetObjPos(obj.hAx,'Width',pPos(3)-2*dY);
             resetObjPos(obj.hAx,'Left',dY);
-            resetObjPos(obj.hAx,'Bottom',dY);            
+            resetObjPos(obj.hAx,'Bottom',dY); 
             
             % turns the axes off
             axis(obj.hAx,'off');

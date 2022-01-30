@@ -1,12 +1,16 @@
 % --- retrieves the set number of frames from the camera
-function Img = getCameraSnapshots(iMov,iData,objIMAQ,frmPara)
+function Img = getCameraSnapshots(iMov,iData,objIMAQ,frmPara,h)
 
 % parameters & memory allocation
+wOfs = 1;
 [Img,ImgMn] = deal([]);
 
 % sets up the waitbar figure
-wStr0 = {'Reading Image Frames','Current Frame Wait'};
-h = ProgBar(wStr0,'Reading Video Frames');
+if ~exist('h','var')
+    wOfs = 0;
+    wStr0 = {'Reading Image Frames','Current Frame Wait'};
+    h = ProgBar(wStr0,'Reading Video Frames');
+end
 
 % creates the video phase class object
 phObj = VideoPhase(iData,iMov,h,1);
@@ -16,7 +20,7 @@ while 1
     % updates the waitbar figure
     iFrm = length(Img)+1;
     wStrNw = sprintf('%s (%i of %i)',h.wStr{1},iFrm,frmPara.Nframe);
-    if h.Update(1,wStrNw,iFrm/frmPara.Nframe)
+    if h.Update(1+wOfs,wStrNw,iFrm/frmPara.Nframe)
         % if the user cancelled, then exit the function
         Img = [];
         return
@@ -56,7 +60,7 @@ while 1
     end       
     
     % pause for required time period
-    if ~pauseForFrame(h,frmPara)
+    if ~pauseForFrame(h,frmPara,wOfs)
         % if the user cancelled, then exit the function
         Img = [];
         return        
@@ -67,10 +71,10 @@ end
 Img = Img(:);
 
 % closes the waitbar figure
-h.closeProgBar();
+if wOfs == 0; h.closeProgBar(); end
 
 % --- pauses for the next frame (updates the waitbar figure)
-function ok = pauseForFrame(h,frmPara)
+function ok = pauseForFrame(h,frmPara,wOfs)
 
 % sets up the wait timer object
 ok = true;
@@ -81,7 +85,7 @@ nUpdate = roundP(frmPara.wP/tUpdate);
 for i = 1:nUpdate
     tRemain = tUpdate*(nUpdate-i);
     wStrNw = sprintf('Waiting For New Frame (%.1fs Remains)',tRemain);
-    if h.Update(2,wStrNw,i/nUpdate)
+    if h.Update(2+wOfs,wStrNw,i/nUpdate)
         ok = false;
         return
     else

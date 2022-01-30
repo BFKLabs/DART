@@ -290,11 +290,12 @@ switch length(varargin)
         end
         
         % retrieves the frame size (flips if required)
-        [iData.sz,frmSz0] = deal(size(Inw(:,:,1)));
-        if detIfRotImage(hObject.iMov); iData.sz = flip(iData.sz); end
+        [sz,frmSz0] = deal(size(Inw(:,:,1)));
+        if detIfRotImage(hObject.iMov); sz = flip(sz); end
                        
         % sets the image size vector/string
-        nwStr = sprintf('%i %s %i',iData.sz(1),char(215),iData.sz(2));         
+        nwStr = sprintf('%i %s %i',sz(1),char(215),sz(2)); 
+        hObject.iData.sz = sz;
         
         % runs the resize function
         if detIfRotImage(hObject.iMov)
@@ -2076,7 +2077,12 @@ nwVal = str2double(get(hObject,'string'));
 % detetermines the parameter limits
 switch get(hObject,'UserData')       
     case {'Frame','DD'} % case is the movie frame
-        [pStr,nwLim] = deal('cFrm',[1,iData.nFrm]);
+        pStr = 'cFrm';
+        if isfield(iData,'nFrm')
+            nwLim = [1,iData.nFrm];
+        else
+            nwLim = [1,1];
+        end
 
     case 'Sub' % case is the sub-movie
         [pStr,nwLim] = deal('cMov',[1,iData.nMov]);

@@ -3,6 +3,9 @@ classdef SingleTrackInit < SingleTrack
     % class properties
     properties
         
+        % main fields
+        infoObj
+        
         % image array fields
         Img
         Img0
@@ -39,7 +42,7 @@ classdef SingleTrackInit < SingleTrack
         Isd
         Imu
         pTolF
-        prData0 = []; 
+        prData0 = [];         
         
         % parameters
         isHiV
@@ -156,8 +159,18 @@ classdef SingleTrackInit < SingleTrack
         % --- runs the pre-estimate initialisations
         function preEstimateSetup(obj)
             
+            % global variables
+            global isCalib
+            
             % sets the input variables
+            obj.isCalib = isCalib;
             obj.nI = floor(max(getCurrentImageDim())/800);
+            
+            % retrieves the device information struct (if calibrating)
+            if obj.isCalib
+                hFig = findall(0,'tag','figFlyTrack');
+                obj.infoObj = get(hFig,'infoObj');
+            end
                         
             % initialises the tracking objects
             obj.initTrackingObjects('InitEstimate');
@@ -241,23 +254,40 @@ classdef SingleTrackInit < SingleTrack
         % --- sets up the tracking image stack/index array
         function getTrackingImages(obj)
             
+            % retrieves the use filter flag
+            if isfield(obj.iMov.bgP.pSingle,'useFilt')
+                obj.useFilt = obj.iMov.bgP.pSingle.useFilt;
+            else
+                obj.useFilt = false;
+            end            
+            
             % retrieves the frame index/image arrays
             if obj.isCalib
                 % returns the previously read image stack
-                obj.Img = obj.Img0;
+                if isempty(obj.Img0)
+                    wStr0 = obj.hProg.wStr;
+                    obj.hProg.wStr(2:3) = {'Reading Image Frames',...
+                                           'Current Frame Wait'};
+                    
+                    obj.Img = {obj.getCameraImgStack()};
+                    obj.hProg.wStr = wStr0;
+                else
+                    obj.Img = obj.Img0;
+                end
+                   
+                % sets the frame indices
                 obj.indFrm = {1:length(obj.Img{1})};
+                
+                % applies the smooth filter (if specified)
+                if obj.useFilt
+                    obj.Img{1} = cellfun(@(x)(imfiltersym...
+                                            (x,obj.hS)),obj.Img{1},'un',0);
+                end                
                 
             else
                 % sets the phase frame indices
                 nPh = obj.nPhase;
-                obj.indFrm = getPhaseFrameIndices(obj.iMov,obj.nFrmR);
-                
-                % retrieves the use filter flag
-                if isfield(obj.iMov.bgP.pSingle,'useFilt')
-                    obj.useFilt = obj.iMov.bgP.pSingle.useFilt;
-                else
-                    obj.useFilt = false;
-                end
+                obj.indFrm = getPhaseFrameIndices(obj.iMov,obj.nFrmR);                
                 
                 % memory allocation
                 wStr0 = 'Initial Frame Stack Read';
@@ -290,7 +320,21 @@ classdef SingleTrackInit < SingleTrack
             % updates the progress-bar
             obj.hProg.Update(2+obj.wOfsL,'Frame Read Complete',1);
             
-        end                                             
+        end                 
+        
+        % --- retrieves the image stack from the camera snapshots
+        function ImgS = getCameraImgStack(obj)
+            
+            % initialisations
+            fPara = struct('Nframe',10,'wP',0.5);
+            objIMAQ = obj.infoObj.objIMAQ;
+            
+            % reads the snapshots from the camera (stopping after)
+            ImgS = getCameraSnapshots...
+                            (obj.iMov,obj.iData,objIMAQ,fPara,obj.hProg);            
+            
+            
+        end
        
         % -------------------------------------------- %
         % --- INITIAL RESIDUAL DETECTION FUNCTIONS --- %

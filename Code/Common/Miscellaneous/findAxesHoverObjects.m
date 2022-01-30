@@ -36,8 +36,12 @@ axObj = cell2cell(axObj);
 isHover = false(length(axObj),1);
 for i = 1:length(isHover)
     % ensures the units are in terms of pixels
-    hUnit0 = get(axObj(i),'Units');
-    set(axObj(i),'Units','Pixels');
+    if isprop(axObj(i),'Units')
+        hUnits0 = get(axObj(i),'Units');
+        set(axObj(i),'Units','Pixels');
+    else
+        hUnits0 = [];
+    end
     
     switch get(axObj(i),'Type')
         case 'patch'
@@ -73,7 +77,9 @@ for i = 1:length(isHover)
     end
     
     % resets the original object units
-    set(axObj(i),'Units',hUnit0);    
+    if ~isempty(hUnits0)
+        set(axObj(i),'Units',hUnits0);  
+    end
 end
 
 % returns the objects which are being hovered over

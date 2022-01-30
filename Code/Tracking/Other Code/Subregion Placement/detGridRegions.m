@@ -1,5 +1,8 @@
 function [iMov,trkObj] = detGridRegions(hFig)
 
+% global variables
+global isCalib
+
 % progressbar setup
 wStr = {'Phase Detection','Region Segmentation','Sub-Region Segmentation'};
 hProg = ProgBar(wStr,'1D Automatic Detection');
@@ -13,27 +16,33 @@ updateObj = false;
 phObj = get(hFig,'phObj');
 [iMov,iData] = deal(get(hFig,'iMov'),get(hFig.hGUI.output,'iData'));
 
-% runs the phase detection solver            
-hProg.Update(1,'Determining Video Phases...',0.25);
+% runs the phase detection solver    
+if isCalib
+    % updates the sub-image data struct with the phase information
+    phObj = struct('iPhase',[1,1],'vPhase',1);
+else
+    % creates the video phase object
+    hProg.Update(1,'Determining Video Phases...',0.25);
+    if isempty(phObj)
+        updateObj = true;
+        phObj = VideoPhase(iData,iMov,hProg,1,true);
+        phObj.runPhaseDetect();  
+    end
 
-% creates the video phase object
-if isempty(phObj)
-    updateObj = true;
-    phObj = VideoPhase(iData,iMov,hProg,1,true);
-    phObj.runPhaseDetect();  
+    % updates the progressbar
+    if hProg.Update(2,'Phase Detection Complete!',1)
+        % if the user cancelled, then exit
+        [iMov,trkObj] = deal([]);
+        return
+    end
+
+    % updates the sub-image data struct with the phase information
+    iMov.phInfo = getPhaseObjInfo(phObj);
 end
 
-% updates the progressbar
-if hProg.Update(2,'Phase Detection Complete!',1)
-    % if the user cancelled, then exit
-    [iMov,trkObj] = deal([]);
-    return
-end
-
-% updates the sub-image data struct with the phase information
+% sets the phase indices/classification flags
 iMov.iPhase = phObj.iPhase;
 iMov.vPhase = phObj.vPhase;
-iMov.phInfo = getPhaseObjInfo(phObj);
 
 % ---------------------------------- %
 % --- INITIAL DETECTION ESTIMATE --- %

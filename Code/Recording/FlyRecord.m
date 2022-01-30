@@ -215,7 +215,10 @@ else
     % updates the stimuli data struct and expt type
     setappdata(hFig,'iMov',[]);
     setappdata(hFig,'iStim',infoObj.iStim);
-    setappdata(hFig,'exptType',infoObj.exType)
+    setappdata(hFig,'exptType',infoObj.exType)     
+    
+    % resets the video preview dimensions
+    resetVideoPreviewDim(handles)    
     
     % reduces the device information
     if infoObj.hasDAQ    
@@ -232,7 +235,7 @@ else
     if ~isempty(rtObj)
 %         rtObj.initTrackPara();
 %         rtObj.initVideoTimer(handles)  
-    end
+    end    
 end    
 
 % ------------------------------------------ %
@@ -589,6 +592,7 @@ resetObjPos(hFig,'Bottom',-dH,1);
 resetObjPos(handles.panelVidPreview,'Height',dH,1);
 resetObjPos(handles.panelImg,'Height',dH,1);
 resetObjPos(hAx,'Height',dH,1);
+pause(0.05);
 
 % resets the dimensions of the video calibration panel
 if ~isempty(vcObj)
