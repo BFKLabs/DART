@@ -1253,6 +1253,9 @@ classdef SingleTrackInit < SingleTrack
                 [yPk,iPk,wPk0,~] = findpeaks(IRngC(iRTF));
                 [BPk(iPk),wPk] = deal(1:length(iPk),wPk0/obj.Dtol);
 
+                % ensures the peak widths have at least a max value of 1
+                if max(wPk) < 1; wPk = normImg(wPk); end
+                
                 % determines the location of the peaks       
                 wyPk = [wPk,yPk];
                 indPk = cellfun(@(x)(nonzeros(BPk(x))),iRTL,'un',0); 
