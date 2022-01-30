@@ -1262,16 +1262,28 @@ classdef SingleTrackInit < SingleTrack
                 isOK = ~cellfun(@isempty,indPk);
                 iMx(isOK) = cellfun(@(x)(argMax(yPk(x))),indPk(isOK));
 
-                % calculates the 
-                Dmin = NaN(length(indPk),1);
+                % calculates the global index indices (for the maximum
+                % determined from each sub-region)
+                [jMxA,jMxR] = deal(NaN(size(indPk)),cell(size(indPk)));
                 for i = 1:length(indPk)
+                    % if there is more than one peak, set the indices of
+                    % the non-maximal peaks
                     if length(indPk{i}) > 1
-                        wyPkT = wyPk(indPk{i},:);
                         BT = ~setGroup(iMx(i),size(indPk{i}));
-                        DT = pdist2(wyPkT(BT,:),wyPkT(iMx(i),:));
-                        Dmin(i) = min(DT);
+                        jMxR{i} = indPk{i}(BT);
+                    end
+                    
+                    % sets the accepted peak index (if feasible)
+                    if isOK(i)
+                        jMxA(i) = indPk{i}(iMx(i));
                     end
                 end
+                
+                % calculates the minimum distance between the peaks from
+                % the accepted groupings to the other groupings
+                wyPkA = wyPk(jMxA(isOK),:);
+                wyPkR = wyPk(cell2mat(jMxR),:);
+                Dmin = min(pdist2(wyPkA,wyPkR),[],2);
 
                 % if the magnitude of the signal is too low, then likely 
                 % that all blobs are stationary (so exit the function here)

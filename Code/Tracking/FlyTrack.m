@@ -519,7 +519,7 @@ if setMovie
                     [iData0.fData.dir,iData0.fData.name] = deal(fDir,fName);
 
                     % removes the background and resets the statuses    
-                    iMov.isSet = false;
+                    iMov.isSet = true;
                     [iMov.Ibg,iMov.pStats,iMov.autoP] = deal([]);
                     for i = 1:length(iMov.Status)
                         iMov.Status{i}(:) = 0;
@@ -688,7 +688,7 @@ if loadImgData(handles, ldData.name, ldData.dir, setMovie, isSolnLoad)
         % resets the progress struct (if the sub-regions have been set)
         if iMov.isSet
             % resets the sub-region data struct
-            iMov = resetProgressStruct(handles.iData,iMov); 
+            iMov = resetProgressStruct(handles.output.iData,iMov); 
             set(handles.output,'iMov',iMov);
         end
     end    

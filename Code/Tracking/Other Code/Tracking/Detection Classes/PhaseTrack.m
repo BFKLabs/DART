@@ -211,7 +211,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             [iRT,iCT] = obj.getSubRegionIndices(iApp,size(ImgBG,2));            
             
             % segments the location for each feasible sub-region
-            for iTube = find(fok(:)')
+            for iTube = find(fok(:)')                
                 % sets the sub-region image stack
                 ImgSR = cellfun(@(x)(x(iRT{iTube},iCT)),ImgL,'un',0);
                 
@@ -292,7 +292,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
 %                 % reduces the image (if required)
 %                 if (i > 1) && reduceImg
 %                     [Img(i),pOfs] = obj.reduceImageStack(Img(i),fP(i-1,:));                    
-%                 end        
+%                 end
 
                 % ----------------------------------------------- %
                 % --- LIKELY POSITION COORDINATE CALCULATIONS --- %
@@ -362,9 +362,9 @@ classdef PhaseTrack < matlab.mixin.SetGet
                         % determines where the estimated location is in
                         % relation to the region limits
                         if obj.withinEdge(indR,fPrNw(end,:))
-                            pdTolMax = 1;
+                            pdTolMax = 2;
                         else
-                            pdTolMax = 2*(1+obj.iMov.is2D);
+                            pdTolMax = 3*(1+0.5*obj.iMov.is2D);
                         end
                     end
                         

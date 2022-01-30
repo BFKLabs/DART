@@ -265,18 +265,19 @@ pOfs = repmat(pData.fPos{iApp}{iTube}(i0,:)-[X(i0),Y(i0)],length(X),1);
 
 % initialisations
 N = 3:5;
-tTol = 0.25;
+tTol = 0.15;
 Dmin = floor(iMov.szObj(1)/2);
+DstpMax = 5*iMov.szObj(1);
 
 % removes any short-term bobbles in blob location
 for i = 1:length(N)
     % calculates the short-term path tortuosity
-    [T,Dtot,~] = calcPathTortuosity(X,Y,N(i));
+    [T,Dtot,Dstp] = calcPathTortuosity(X,Y,N(i));    
     
     % determines frames where there is short bobble in location (low
     % tortuosity and non-negligible distance travelled). resets the
     % locations of the frames where the blob moved
-    isB = find((T < tTol) & (Dtot >= Dmin));
+    isB = find((T < tTol) & ((Dtot <= Dmin) | (Dstp >= DstpMax)));
     for j = 1:(N(i)-2)
         [X(isB+j),Y(isB+j)] = deal(X(isB),Y(isB));
     end
