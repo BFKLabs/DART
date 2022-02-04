@@ -6,10 +6,15 @@ function resetObjPos(hObj,dim,nwVal,varargin)
 isAdd = (nargin==4);
 if (~iscell(hObj)); hObj = num2cell(hObj); end
 
-% retrieves the position of the handle
-for i = 1:length(hObj)
-    hPos = get(hObj{i},'position');
+% only update objects which have the position property
+hasPos = cellfun(@(x)(isprop(x,'position')),hObj);
+hObj = hObj(hasPos);
 
+% updates the dimensions based on the type
+for i = 1:length(hObj)
+    % retrieves the position of the handle    
+    hPos = get(hObj{i},'position');
+    
     % resets the position location to the value, nwVal
     switch (lower(dim))
         case ('left') % case is resetting the left location

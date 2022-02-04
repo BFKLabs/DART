@@ -71,7 +71,10 @@ switch (typeStr)
         setObjVisibility(handles.textVideoStatus,'off')
         setObjVisibility(handles.editVideoStatus,'off')
         
-    case ('InitGUICalib') % case is initialising the GUI     
+    case ('InitGUICalib') % case is initialising the GUI  
+        % device object data struct
+        infoObj = get(hFig,'infoObj');
+        
         % sets the type string
         if cType == 1
             tStr = 'Real-Time Calibration';    
@@ -86,27 +89,26 @@ switch (typeStr)
         
         % initialises the field strings/values
         setImgEnable(handles,'on')   
-        set(handles.textMovieFileS,'string',tStr)
-        if isTest
-            set(handles.textFrameCountS,'string','N/A')
-            set(handles.textTimeStepS,'string','N/A')
-            set(handles.textFrameSizeS,'string','N/A')                   
+        set(handles.textMovieFileS,'string',tStr)        
+        
+        % retrieves the video resolution            
+        vRes = getVideoResolution(infoObj.objIMAQ);
+        vStr = sprintf('%i %s %i',vRes(2),char(215),vRes(2));
+
+        % determines the video framerate
+        if infoObj.isTest
+            vRate = 1;
+            setObjEnable(handles.menuVideoProps,0)            
         else
-            % retrieves the video resolution
-            infoObj = get(hFig,'infoObj');
-            vRes = getVideoResolution(infoObj.objIMAQ);
-            vStr = sprintf('%i %s %i',vRes(2),char(215),vRes(2));
-            
-            % determines the video framerate
             objSrc = get(infoObj.objIMAQ,'Source');
             vRate = roundP(str2double(get(objSrc,'FrameRate')));
-            
-            % sets the field strings
-            set(handles.textFrameCountS,'string','Video Feed')
-            set(handles.textTimeStepL,'string','Frame Rate')
-            set(handles.textTimeStepS,'string',sprintf('%i fps',vRate))
-            set(handles.textFrameSizeS,'string',vStr)    
         end
+
+        % sets the field strings
+        set(handles.textFrameCountS,'string','Video Feed')
+        set(handles.textTimeStepL,'string','Frame Rate')
+        set(handles.textTimeStepS,'string',sprintf('%i fps',vRate))
+        set(handles.textFrameSizeS,'string',vStr)    
         
         % disables the other GUI objects
         setFrmEnable(handles,'off')
@@ -176,20 +178,15 @@ switch (typeStr)
         setAxesEnable(handles,'on',[1 2])                
         setObjEnable(handles.textScaleFactor,'on')
         setObjEnable(handles.editScaleFactor,'on')
+        setObjEnable(handles.editScaleFactor,'on')
         
         % if testing, then set the frame count edit box to inactive        
         if get(hFig,'isTest')
             setObjEnable(handles.frmCountEdit,'inactive')
         end        
         
-        if isTest
-            set(setObjEnable(handles.menuVideoFeed,'off'),'checked','off')
-            setObjVisibility(handles.menuVideoProps,'off')
-            setPanelProps(handles.panelAxProp,'off',1)
-            
-        else
-            set(handles.menuVideoFeed,'checked','on')
-        end                
+        % sets the other menu items
+        set(handles.menuVideoFeed,'checked','on')        
         
     % --- PRE/POST FILE I/O --- %
     % ------------------------- %        

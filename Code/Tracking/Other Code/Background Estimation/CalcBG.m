@@ -117,9 +117,11 @@ classdef CalcBG < handle
             % stops the camera (if running)
             if obj.isCalib
                 infoObj = get(obj.hFig,'infoObj');  
-                if strcmp(get(infoObj.objIMAQ,'Running'),'off')
-                    start(infoObj.objIMAQ); pause(0.05); 
-                end                
+                if ~infoObj.isTest
+                    if strcmp(get(infoObj.objIMAQ,'Running'),'off')
+                        start(infoObj.objIMAQ); pause(0.05); 
+                    end                
+                end
             end
             
             % toggles the normal/background estimate panel visibilities
@@ -192,8 +194,10 @@ classdef CalcBG < handle
             if obj.isCalib
                 % stops the camera (if running)
                 infoObj = get(obj.hFig,'infoObj'); 
-                if strcmp(get(infoObj.objIMAQ,'Running'),'on')
-                    stop(infoObj.objIMAQ); pause(0.05); 
+                if ~infoObj.isTest
+                    if strcmp(get(infoObj.objIMAQ,'Running'),'on')
+                        stop(infoObj.objIMAQ); pause(0.05); 
+                    end
                 end
                 
             else
@@ -572,9 +576,13 @@ classdef CalcBG < handle
                 isFeas = any(obj.iMov.vPhase < 3);
             end
             
+            % flag whether the update button is enabled
+            canUpdate = (phaseDetected && isFeas) || obj.isCalib;
+            
             % sets the phase stats menu item (if info is available)
             setObjEnable(hgui.menuPhaseStats,phaseDetected)
-            setObjEnable(hgui.buttonUpdateEst,phaseDetected && isFeas)
+            setObjEnable(hgui.buttonUpdateStack,~obj.isCalib)
+            setObjEnable(hgui.buttonUpdateEst,canUpdate)
             setPanelProps(hgui.panelImageType,phaseDetected)
             
             % sets the phase detection related object properties
@@ -609,10 +617,17 @@ classdef CalcBG < handle
                 set(hgui.editFrameCount,'string','')               
                 set(hgui.editPhaseCount,'string','')     
                 
+                % sets the quality/translation strings
+                if obj.isCalib
+                    lblStr = 'Calibrating';
+                else
+                    lblStr = 'N/A';
+                end
+                
                 % sets the phase count and variance type
-                set(hgui.textImagQual,'string','N/A',...
+                set(hgui.textImagQual,'string',lblStr,...
                                       'ForegroundColor','k');
-                set(hgui.textTransStatus,'string','N/A',...
+                set(hgui.textTransStatus,'string',lblStr,...
                                          'ForegroundColor','k');
                 set(hgui.textPhaseCount,'string','N/A');
                 set(hgui.textPhaseFrames,'string','N/A');    
@@ -625,7 +640,7 @@ classdef CalcBG < handle
             end
             
             % determines if the background has been calculated
-            if ~initDetected               
+            if initDetected
                 % sets the frame count stringx1                     
                 setObjEnable(hgui.menuShowStats,'on');
                 set(setObjEnable(hgui.checkFlyMarkers,'on'),'value',1)                      
@@ -674,8 +689,8 @@ classdef CalcBG < handle
                 end                                                      
                 
                 % if not, disable the frame selection panels                
-                setObjEnable(hgui.checkFlyMarkers,'off')                
-                setObjEnable(hgui.menuShowStats,'off')                                  
+                set(setObjEnable(hgui.checkFlyMarkers,0),'Value',0)
+                set(setObjEnable(hgui.menuShowStats,0),'Checked','off')                                 
             end            
             
         end

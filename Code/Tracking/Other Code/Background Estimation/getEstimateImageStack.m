@@ -19,10 +19,15 @@ if ~exist('h','var')
 end
 
 % creates the video phase class object
-phObj = VideoPhase(iData,iMov,h,1+iOfs);
-
-% runs the phase detection solver
-phObj.runPhaseDetect();
+if detMltTrkStatus(iMov)
+    % case is multi-tracking
+    phObj = VideoPhaseMulti(iData,iMov,h,1+iOfs);
+    phObj.runPhaseDetect();
+else
+    % case is single-tracking
+    phObj = VideoPhase(iData,iMov,h,1+iOfs);
+    phObj.runPhaseDetect();
+end
 
 % updates the sub-image data struct with the phase information
 phObj.iMov.iPhase = phObj.iPhase;

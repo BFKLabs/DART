@@ -488,6 +488,7 @@ classdef SingleTrackInit < SingleTrack
             % parameters
             pWD = 0.75;
             Dtol = obj.iMov.szObj(1)/(1+obj.nI);
+            okPh = find(obj.iMov.vPhase < 3);
             
             % calculates the overall sub-region status flags
             sFlagMax = calcImageStackFcn(obj.sFlag,'max');
@@ -502,7 +503,7 @@ classdef SingleTrackInit < SingleTrack
                 
                 % retrieves the blob locations over all frame/phases
                 fP = cellfun(@(y)(cell2mat(cellfun(@(x)...
-                            (x(j,:)),y(k,:)','un',0))),obj.fPosL,'un',0);
+                        (x(j,:)),y(k,:)','un',0))),obj.fPosL(okPh),'un',0);
                 fPT = cell2mat(fP);                
                 
                 % determines if there has been significant over all frames
@@ -518,6 +519,7 @@ classdef SingleTrackInit < SingleTrack
                     
                     % determines the unique groups 
                     D = pdist2(fPmn,fPmn);
+                    D(isnan(D)) = 0;
                     isF = false(size(D,1),1);
                     
                     % groups the likely locations over all phases
@@ -540,10 +542,10 @@ classdef SingleTrackInit < SingleTrack
                         fPGrp = obj.downsampleImageCoords(fPGrp,obj.nI);
                     end
                     
-                    % sets the row/column indices
+                    % sets the row/column indices                    
                     iRT0 = obj.iMov.iRT{k}{j};
                     [iR0,iC0] = deal(obj.iMov.iR{k},obj.iMov.iC{k});
-                    iRT = unique(ceil(iRT0/(1+obj.nI)));
+                    iRT = obj.getSRRowIndices(k,j);
                     
                     % sets up the sub-region image (only including the
                     % regions surrounding the likely points)
@@ -562,10 +564,10 @@ classdef SingleTrackInit < SingleTrack
                     pOfs = pOfsL + [xOfs,yOfs];
                     
                     % resets the coordinates for each phase/frame
-                    for iPh = 1:obj.nPhase
+                    for iPh = okPh(:)'
                         % sets up the phase local image stack
-                        dIssL = cellfun(@(x)...
-                                    (x(iRT,:).*BD),obj.dIss{k,iPh},'un',0);
+                        dIssL = cellfun(@(x)(x(iRT,:).*BD),...
+                                                obj.dIss{k,iPh},'un',0);
                         fPT = zeros(length(dIssL),2);        
                         
                         for ii = 1:length(dIssL)
@@ -588,7 +590,7 @@ classdef SingleTrackInit < SingleTrack
                         obj.Ibg{iPh}{k}(iRT0,:) = IbgNw;                        
                     end
                 end
-            end            
+            end
             
         end
         
@@ -999,7 +1001,7 @@ classdef SingleTrackInit < SingleTrack
         % ----------------------------------- %        
         
         % --- analyses a low variance video phase
-        function IL = analysePhase(obj,Img,iPh,isHiV)            
+        function IL = analysePhase(obj,Img,iPh,isHiV)
                 
             % memory allocation            
             iFrm = obj.indFrm{iPh};
@@ -1014,7 +1016,7 @@ classdef SingleTrackInit < SingleTrack
             obj.usePTol = 0.2*(1+0.75*(hasF || obj.isHiV));                                    
             
             % sets up the raw/residual image stacks            
-            for i = find(obj.iMov.ok(:)')                
+            for i = find(obj.iMov.ok(:)')
                 % retrieves the region image stack
                 IL(:,i) = obj.getRegionImgStack(Img,iFrm,i,isHiV);
                 
@@ -1215,7 +1217,7 @@ classdef SingleTrackInit < SingleTrack
                 IR0 = cellfun(@(x)(Bw.*x),IR0,'un',0);
                 
                 % sets the sub-region row/column indices
-                [iRT,iCT] = obj.getSubRegionIndices(iApp,size(IL0{1},2));                
+                [iRT,iCT] = obj.getSubRegionIndices(iApp,size(IL0{1},2));
                 
                 % sets up the search mask for each sub-region
                 [obj.mFlag{iApp},obj.Imu(iApp,iPh),...
@@ -1367,7 +1369,11 @@ classdef SingleTrackInit < SingleTrack
                 % determines which rows are significant                
                 isSig0 = idx == argMax(C);                              
                 pTolC = mean([min(IRngC(isSig0)),max(IRngC(~isSig0))]);
-                pTol = mean([min(IRngC0(isSig0)),max(IRngC0(~isSig0))]); 
+                
+                % calculates the final pixel tolerance
+                [jdx,C0] = kmeans(IRngC0,2);
+                isSigF = jdx == argMax(C0);            
+                pTol = mean([min(IRngC0(isSigF)),max(IRngC0(~isSigF))]); 
             else
                 % calculates the max range mean/std values
                 pTolC = nanmean(IRngC(iRTF)) + zTol*nanstd(IRngC(iRTF));
@@ -1653,13 +1659,15 @@ classdef SingleTrackInit < SingleTrack
                 iRT = (find(indR==iRTM(1))-1) + (1:nR); 
             end   
             
-            %
-            if iRT(1) > 1
-                [iRT,dP(1)] = deal([(iRT(1)-1),iRT],1); 
-            end
-            
-            if iRT(end) < nRT 
-                [iRT,dP(2)] = deal([iRT,(iRT(end)+1)],1);
+            % expands the row indices (if being tracked)
+            if nargout == 2
+                if iRT(1) > 1
+                    [iRT,dP(1)] = deal([(iRT(1)-1),iRT],1); 
+                end
+
+                if iRT(end) < nRT 
+                    [iRT,dP(2)] = deal([iRT,(iRT(end)+1)],1);
+                end
             end
             
         end

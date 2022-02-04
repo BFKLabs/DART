@@ -2,7 +2,7 @@
 function Img = getDispImage(iData,iMov,cFrm,isSub,handles)
 
 % global variables
-global bufData frmSz0
+global bufData
 
 % checks if the movie file data has been set
 frameSet = false;
@@ -55,41 +55,53 @@ if ~frameSet
     
     % loads the frame based on the movie type
     switch fExtn    
-        case {'.mj2','.mov','.mp4'} % case is a moving JPEG movie/quicktime movie
-            % if the fly track handles gui isn't provided, then find
-            % these handles manually
-            if nargin < 5
-                handles = guidata(findall(0,'tag','figFlyTrack'));
+        case {'.mj2','.mov','.mp4'} 
+            % case is a moving JPEG movie/quicktime movie
+            if isfield(iData,'mObj')
+                % movie object is provided in the Data struct
+                mObj = iData.mObj;
+            else
+                % retrieves the main gui handle (if not provided)
+                if nargin < 5
+                    handles = guidata(findall(0,'tag','figFlyTrack'));
+                end
+                
+                % retrieves the movie object handle
+                mObj = get(handles.figFlyTrack,'mObj');
             end
-            
-            % retrieves the current image frame
-            mObj = get(handles.figFlyTrack,'mObj');
+                
+            % if the frame index exceeds the max frame count then exit
             if cFrmT > mObj.NumberOfFrames
                 Img = [];
                 return
             end
                
+            % reads the new image (converts to grayscale if truecolor)
             Img = read(mObj,cFrmT); 
-            if size(Img,3) == 3
-                Img = rgb2gray(Img);
-            end            
+            if size(Img,3) == 3; Img = rgb2gray(Img); end            
             
-        case '.mkv' % case is matroska video format
-            % if the fly track handles gui isn't provided, then find
-            % these handles manually
-            if nargin < 5
-                handles = guidata(findall(0,'tag','figFlyTrack'));
+        case '.mkv' 
+            % case is matroska video format
+            if isfield(iData,'mObj')
+                % movie object is provided in the Data struct
+                mObj = iData.mObj;
+            else
+                % retrieves the main gui handle (if not provided)
+                if nargin < 5
+                    handles = guidata(findall(0,'tag','figFlyTrack'));
+                end
+                
+                % retrieves the movie object handle
+                mObj = get(handles.figFlyTrack,'mObj');
             end
             
-            % retrieves the current image frame
-            mObj = get(handles.figFlyTrack,'mObj');
+            % reads the new image (converts to grayscale if truecolor)            
             Img = mObj.getFrame(cFrmT-1);
-            if size(Img,3) == 3
-                Img = rgb2gray(Img);
-            end
+            if size(Img,3) == 3; Img = rgb2gray(Img); end
             
             
-        otherwise % case is the other movie types        
+        otherwise
+            % case is the other movie types
             try
                 % sets the time-span for the frame and reads it from file
                 tFrm = cFrmT/iData.exP.FPS + (1/(2*iData.exP.FPS))*[-1 1];
@@ -101,6 +113,7 @@ if ~frameSet
                 else
                     Img = rgb2gray(V.frames(1).cdata);        
                 end
+                
             catch ME
                 % if an error occured, then return an empty array
                 Img = [];

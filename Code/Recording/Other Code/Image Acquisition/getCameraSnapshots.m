@@ -13,8 +13,14 @@ if ~exist('h','var')
 end
 
 % creates the video phase class object
-phObj = VideoPhase(iData,iMov,h,1);
-
+if isempty(iData)
+    % case is running the real-time tracking
+    phObj = struct('pTolPhase',5);
+else
+    % case is running the background image calculation
+    phObj = VideoPhase(iData,iMov,h,1);
+end
+    
 % reads the required frames from the camera
 while 1 
     % updates the waitbar figure

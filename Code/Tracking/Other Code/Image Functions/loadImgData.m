@@ -76,10 +76,12 @@ switch fExtn
         iData.sz = [mObj.Height mObj.Width];   
         iData.nFrmT = mObj.NumberOfFrames;
         
+        % determines the final frame count (some frames at the
+        % end of videos sometimes are dodgy...)        
         while 1            
             try 
                 % reads a new frame. 
-                Img = read(mObj,iData.nFrmT);
+                read(mObj,iData.nFrmT);
                 break
             catch
                 % if there was an error, reduce the frame count
@@ -203,7 +205,7 @@ frmSz0 = iData.sz;
 % sets the image rotation flag
 if isfield(iMov,'useRot')
     if detIfRotImage(iMov)
-        iData.sz = iData.sz([2 1]); 
+        iData.sz = flip(iData.sz); 
     end
 end
 

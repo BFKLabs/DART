@@ -245,8 +245,8 @@ end
 function infoObj = connectIMAQDevice(handles,infoObj)
 
 % exits if a stimuli only experiment
-if strcmp(infoObj.exType,'StimOnly')
-    infoObj.objIMAQ = [];
+if strcmp(infoObj.exType,'StimOnly') || infoObj.isTest
+    infoObj.objIMAQ = DummyVideo(infoObj.testFile);
     return
 end
 

@@ -61,7 +61,7 @@ pFldStr = {'pData','hSolnT','hTube','hMark','hDir','hMainGUI','mObj',...
            'vidTimer','hGUIOpen','reopenGUI','cType','infoObj','hTrack',...
            'isText','iMov','rtP','rtD','iData','ppDef','frmBuffer',...
            'bgObj','prObj','objDACInfo','iStim','hTT','pColF','isTest',...
-           'fPosNew'};
+           'fPosNew','vcObj'};
 initObjPropFields(hObject,pFldStr);
 
 % ensures the background detection panel is invisible
@@ -236,11 +236,17 @@ switch length(varargin)
         hMainGUI = hGUI.figFlyRecord;           
         setObjVisibility(hMainGUI,'off'); pause(0.01);                
         
-        % stops the camera (if running)
-        hObject.infoObj = getappdata(hMainGUI,'infoObj');       
-        if isrunning(hObject.infoObj.objIMAQ)
-            stop(hObject.infoObj.objIMAQ); pause(0.1);
-        end         
+        % retrieves the video object information from the recording GUI
+        hObject.infoObj = getappdata(hMainGUI,'infoObj');     
+        if ~hObject.infoObj.isTest
+            % stops the camera (if running)
+            if isrunning(hObject.infoObj.objIMAQ)
+                stop(hObject.infoObj.objIMAQ); pause(0.1);
+            end
+            
+            % resets the camera logging mode
+            set(hObject.infoObj.objIMAQ,'LoggingMode','Memory');
+        end
         
 %         % retrieves/sets/updates the scale factor
 %         if cType == 1
@@ -264,28 +270,28 @@ switch length(varargin)
 %             setappdata(hObject,'rtP',rtP)
 %         end                        
 
-        % sets the sub-movie data struct
+        % sets the sub-movie data struct (initialise if empty)
         hObject.iMov = getappdata(hMainGUI,'iMov');
         if isempty(hObject.iMov)
-            % struct has not been set, so initialise
             hObject.iMov = initMovStruct(hObject.iData);            
         end
         
         % sets the camera logging mode to memory
-        infoObj = getappdata(hGUI.figFlyRecord,'infoObj');
-        set(infoObj.objIMAQ,'LoggingMode','Memory');
-        
-        while 1
-            try
-                % starts the camera                        
-                start(infoObj.objIMAQ); pause(0.1);
+        if hObject.infoObj.isTest
+            Inw = hObject.infoObj.objIMAQ.getCurrentFrame();
+        else
+            while 1
+                try
+                    % starts the camera                        
+                    start(hObject.infoObj.objIMAQ); pause(0.1);
 
-                % updates the frame size string
-                Inw = getsnapshot(infoObj.objIMAQ);
-                stop(infoObj.objIMAQ); pause(0.1);
-                break
-            catch 
-                stop(infoObj.objIMAQ); pause(0.1);
+                    % updates the frame size string
+                    Inw = getsnapshot(hObject.infoObj.objIMAQ);
+                    stop(hObject.infoObj.objIMAQ); pause(0.1);
+                    break
+                catch 
+                    stop(hObject.infoObj.objIMAQ); pause(0.1);
+                end
             end
         end
         
@@ -1459,6 +1465,7 @@ function menuVideoFeed_Callback(hObject, eventdata, handles)
 % retrieves the video timer object
 hFig = handles.output;
 prObj = get(hFig,'prObj');
+infoObj = get(hFig,'infoObj');
 % iMov = get(hFig,'iMov');
 % cType = get(hFig,'cType');
 % isTest = get(hFig,'isTest');
@@ -1471,7 +1478,7 @@ if strcmp(get(hObject,'checked'),'on')
     
     % updates the menu properties
     set(hObject,'checked','off')        
-    setObjEnable(handles.menuVideoProps,1)    
+    setObjEnable(handles.menuVideoProps,~infoObj.isTest)    
     
     % if the tracking GUI is open, then delete it    
     if ~isempty(hFig.hTrack)

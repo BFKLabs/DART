@@ -2,6 +2,7 @@ classdef AdaptorInfoClass < handle
     
     % propertes
     properties
+        
         % main class objects
         hFig
         hFigM
@@ -51,11 +52,16 @@ classdef AdaptorInfoClass < handle
         hasIMAQ = true; 
         onlyDAQ        
         vStr = {'Motor','Opto'};
+        testFile = '';
+        popStr
+        iProg
+        isTest = false;
         
     end
 
     % class methods
     methods
+
         % class constructor
         function obj = AdaptorInfoClass(hFig,iType,reqdConfig)
             
@@ -114,13 +120,22 @@ classdef AdaptorInfoClass < handle
             % external device initialisations
             obj.extnObj = feval('runExternPackage','ExtnDevices');
             
+            % sets the program default directory struct
+            switch get(obj.hFigM,'tag')
+                case 'figFlyRecord'
+                    obj.iProg = getappdata(obj.hFigM,'iProg');                
+                otherwise
+                    obj.iProg = getappdata(obj.hFigM,'ProgDefNew');
+            end
+            
         end
         
         % --- initialises the class object fields
         function initObjCallbacks(obj)
             
             % objects with normal callback functions
-            cbObj = {'popupVidResolution','listDACObj','listIMAQObj'};
+            cbObj = {'popupVidResolution','listDACObj',...
+                     'listIMAQObj','menuEnableTest'};
             for i = 1:length(cbObj)
                 hObj = getStructField(obj.hGUI,cbObj{i});
                 cbFcn = eval(sprintf('@obj.%sCB',cbObj{i}));
@@ -133,7 +148,13 @@ classdef AdaptorInfoClass < handle
                 hObj = getStructField(obj.hGUI,csObj{i});
                 cbFcn = eval(sprintf('@obj.%sSC',csObj{i}));
                 set(hObj,'SelectionChangeFcn',cbFcn)
-            end                        
+            end       
+            
+            % sets the test mode menu item
+            devName = {'DESKTOP-94RD45L'};
+            [~,hName] = system('hostname');            
+            isDev = any(strContains(devName,hName(1:end-1)));
+            setObjVisibility(obj.hGUI.menuTestMode,isDev);
             
         end        
         
@@ -459,7 +480,7 @@ classdef AdaptorInfoClass < handle
                 end
             end                 
             
-        end   
+        end                   
 
         % --- initialises the properties of the channel count editboxes
         function initChannelEdit(obj)
@@ -540,8 +561,60 @@ classdef AdaptorInfoClass < handle
         
         % --------------------------------- %        
         % --- OBJECT CALLBACK FUNCTIONS --- %
-        % --------------------------------- %        
+        % --------------------------------- %  
         
+        % --- Executes when selecting menuEnableTest.
+        function menuEnableTestCB(obj, hObject, ~)
+        
+            % popup menu item handle
+            hText = obj.hGUI.textVidResolution;
+            hPopup = obj.hGUI.popupVidResolution;
+            obj.isTest = strcmp(get(hObject,'Checked'),'off');
+            
+            % sets the test flag
+            if obj.isTest
+                % disables the image acquisition panel 
+                setObjEnable(obj.hGUI.listIMAQObj,0)
+                
+                % toggles the checkmark
+                set(hObject,'Checked','on');                                
+                set(hPopup,'ButtonDownFcn',{@obj.editVidResolutionCB},...
+                           'Style','Edit','HorizontalAlignment','left',...
+                           'String',obj.testFile,'Enable','Inactive',...
+                           'Callback',[],'Max',1);
+                set(hText,'String','Testing Video File: ');
+                    
+            else
+                % toggles the checkmark
+                set(hObject,'Checked','off');    
+                
+                % sets the popup string/values
+                if isempty(obj.popStr)
+                    set(hPopup,'Value',1,'String',{''},'Max',2)
+                else
+                    set(hPopup,'String',obj.popStr,'Max',1)
+                end
+                       
+                % sets the other popup menu properties
+                set(hPopup,'Style','PopupMenu','ButtonDownFcn',[],...
+                           'Callback',{@obj.popupVidResolutionCB});                
+                set(hText,'String','Recording Format: ');
+                       
+                % sets the object enabled properties
+                setObjEnable(obj.hGUI.listIMAQObj,1)
+                setObjEnable(hPopup,~isempty(obj.vSelIMAQ))
+            end 
+            
+            % resets the popup menu item position
+            dHght = 2*obj.isTest - 1;
+            resetObjPos(hPopup,'Bottom',-dHght,1)
+            resetObjPos(hPopup,'Height',dHght,1)
+            
+            % updates the connection button enabled properties
+            obj.updateConnectEnable();
+            
+        end
+            
         % --- Executes when selected object is changed in panelExptType.
         function listIMAQObjCB(obj, hObject, eventdata)
            
@@ -571,21 +644,19 @@ classdef AdaptorInfoClass < handle
             if notOK
                 setObjEnable(hButtonC,0)
             else
-                canConnect = recordOnly || ...
-                            (~(isempty(obj.vSelDAQ) || ...
-                               any(obj.nCh(obj.vSelDAQ) == 0)));
-                setObjEnable(hButtonC,canConnect)
+                obj.updateConnectEnable();
             end
 
             % updates the drop-down box
             if ~isa(eventdata,'char')                
                 % sets the video resolution/format strings
-                popStr = obj.sFormat{obj.vSelIMAQ};
+                obj.popStr = obj.sFormat{obj.vSelIMAQ};
                 
                 % updates the object properties
+                hasMultiVid = length(obj.popStr) > 1;
                 setObjEnable(handles.textVidResolution,'on')
-                set(handles.popupVidResolution,'string',popStr,'max',1)
-                setObjEnable(handles.popupVidResolution,length(popStr)>1)
+                set(handles.popupVidResolution,'string',obj.popStr,'max',1)
+                setObjEnable(handles.popupVidResolution,hasMultiVid)
                 
                 if obj.sInd(obj.vSelIMAQ) > 0
                     % updates the selection
@@ -597,7 +668,7 @@ classdef AdaptorInfoClass < handle
                 end
             end            
             
-        end           
+        end                   
         
         % --- Executes when selected object is changed in panelExptType.
         function popupVidResolutionCB(obj, hObject, ~)
@@ -606,6 +677,28 @@ classdef AdaptorInfoClass < handle
             obj.sInd(obj.vSelIMAQ) = get(hObject,'value');
             
         end   
+        
+        % --- Executes on selecting editVidResolution.
+        function editVidResolutionCB(obj, hObject, ~)
+            
+            % sets the video type/descriptors
+            mType = '*.avi;*.AVI;*.mj2;*.mp4;*.mkv;*.mov';
+            mStr = 'Movie Files (*.avi, *.AVI, *.mj2, *.mp4, *.mkv, *.mov';
+            
+            % user is manually selecting file to open
+            [fName,fDir,fIndex] = uigetfile({mType,sprintf('%s)',mStr)},...
+                            'Select A File',obj.iProg.DirMov);
+            if fIndex == 0
+                % if the user cancelled, then exit
+                return
+            end
+            
+            % updates the test file string
+            obj.testFile = fullfile(fDir,fName);
+            set(hObject,'String',obj.testFile)
+            obj.updateConnectEnable();
+            
+        end
         
         % --- Executes when selected object is changed in panelExptType.
         function listDACObjCB(obj, hObject, ~)
@@ -927,7 +1020,7 @@ classdef AdaptorInfoClass < handle
         function setEditProp(obj,ind,state)
 
             % if there are no indices, then exit the function
-            if isempty(ind)
+            if ~isempty(ind)
                 return;
             end
 
@@ -956,6 +1049,26 @@ classdef AdaptorInfoClass < handle
                                  'ForegroundColor',fCol)),hEdit,editStr);
 
         end
+        
+        % --- updates the connect button enabled properties
+        function updateConnectEnable(obj)
+            
+            % determines if a valid video object has been selected
+            if strcmp(get(obj.hGUI.menuEnableTest,'Checked'),'on')
+                hasVidSel = ~isempty(obj.testFile);
+            else
+                hasVidSel = ~isempty(obj.vSelIMAQ);
+            end
+           
+            % determines if it is feasible to connect 
+            canConnect = hasVidSel || ...
+                            (~(isempty(obj.vSelDAQ) || ...
+                             any(obj.nCh(obj.vSelDAQ) == 0)));            
+            
+            % sets the connect button enabled properties
+            setObjEnable(obj.hGUI.buttonConnect,canConnect)
+            
+        end        
         
     end
     

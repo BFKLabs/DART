@@ -112,7 +112,6 @@ setappdata(hObject,'objDAQ0',objDAQ0);
 setappdata(hObject,'objDAQ',objDAQ);
 setappdata(hObject,'infoObj',infoObj)
 setappdata(hObject,'iStim',infoObj.iStim);
-% setappdata(hObject,'objIMAQ',infoObj.objIMAQ);
 
 % runs the external packages
 feval('runExternPackage','RTTrack',handles);
@@ -185,9 +184,11 @@ infoObj0 = getappdata(hFig,'infoObj');
 setObjVisibility(hFig,'off'); pause(0.05);
 
 % retrieves the camera field names and property values
-srcObj = getselectedsource(infoObj0.objIMAQ);
-[~,fldNames] = combineDataStruct(propinfo(srcObj));
-pVal0 = get(srcObj,fldNames);
+if ~infoObj0.isTest
+    srcObj = getselectedsource(infoObj0.objIMAQ);
+    [~,fldNames] = combineDataStruct(propinfo(srcObj));
+    pVal0 = get(srcObj,fldNames);
+end
 
 % if the IR lights are on, then turn them off
 onIR = strcmp(get(handles.menuToggleIR,'Checked'),'on');
@@ -250,21 +251,25 @@ setappdata(hFig,'iExpt',iExpt);
 setRecordGUIProps(handles,'InitGUI',infoObj.exType);
 setRecordGUIProps(handles,propStr)
 
-% if there is no change in the camera type, then reset the camera to the
-% original parameters (full program only)
-srcObjNw = getselectedsource(infoObj.objIMAQ);
-[srcInfoNw,fldNamesNw] = combineDataStruct(propinfo(srcObjNw));
-if isequal(fldNamesNw,fldNames)
-    % only updates the non read-only fields
-    for i = 1:length(fldNamesNw)
-        if (~strcmp(srcInfoNw(i).ReadOnly,'always'))
-            switch (fldNames{i})
-                case ('FrameRate')
-                    set(srcObjNw,fldNames{i},srcObjNw.FrameRate)
-                otherwise
-                    try
-                        set(srcObjNw,fldNames{i},pVal0{i})
-                    end
+% if there is no change in the camera type, then reset the camera to 
+% the original parameters (full program only)    
+if ~infoObj.isTest && ~infoObj0.isTest 
+    % retrieves the current camera properties and resets any class fields
+    % that don't match
+    srcObjNw = getselectedsource(infoObj.objIMAQ);
+    [srcInfoNw,fldNamesNw] = combineDataStruct(propinfo(srcObjNw));
+    if isequal(fldNamesNw,fldNames)
+        % only updates the non read-only fields
+        for i = 1:length(fldNamesNw)
+            if (~strcmp(srcInfoNw(i).ReadOnly,'always'))
+                switch (fldNames{i})
+                    case ('FrameRate')
+                        set(srcObjNw,fldNames{i},srcObjNw.FrameRate)
+                    otherwise
+                        try
+                            set(srcObjNw,fldNames{i},pVal0{i})
+                        end
+                end
             end
         end
     end
@@ -316,7 +321,7 @@ if strcmp(selection,'Yes')
     % deletes any previous DAC objects in memory
     try
         daqObj = daqfind;
-        if (~isempty(daqObj))
+        if ~isempty(daqObj)
             delete(daqObj)
         end
     end
@@ -324,7 +329,7 @@ if strcmp(selection,'Yes')
     % deletes any previous imaq objects in memory
     try
         imaqObj = imaqfind;
-        if (~isempty(imaqObj))
+        if ~isempty(imaqObj)
             delete(imaqObj)
         end
     end
@@ -561,13 +566,16 @@ wState = warning('off','all');
 
 % determines if the new roi position has been provided
 if isReset
-    % inverts the bottom location of the ROI
-    vRes = get(infoObj.objIMAQ,'VideoResolution');
-    rPos(2) = vRes(2) - sum(rPos([2,4]));
+    % calculates the bottom location of the preview
+    vRes = getVideoResolution(infoObj.objIMAQ);    
+    rPos(2) = vRes(2) - sum(rPos([2,4]));     
     
-    % if so, then reset the dimensions of the preview
-    set(infoObj.objIMAQ,'ROIPosition',rPos); 
-    set(hAx,'xlim',[0,rPos(3)],'ylim',[0,rPos(4)])
+    % resets the dimensions of the preview axes
+    if ~infoObj.isTest            
+        % inverts the bottom location of the ROI
+        set(infoObj.objIMAQ,'ROIPosition',rPos); 
+        set(hAx,'xlim',[0,rPos(3)],'ylim',[0,rPos(4)])
+    end
     
     % if the camera preview is off, then reset the axes image
     prObj = getappdata(hFig,'prObj');
@@ -577,8 +585,8 @@ if isReset
         set(hImage,'CData',uint8(zeros(rPos([4,3]))));
     end
 else
-    % otherwise, retrieve the current roi position    
-    rPos = get(infoObj.objIMAQ,'ROIPosition');
+    % otherwise, retrieve the current roi position 
+    rPos = getVideoROIPosition(infoObj);
 end
 
 % calculates the change in the GUI height
@@ -848,3 +856,16 @@ end
 axis off
 colormap(hAx,gray)
 caxis([0 255])
+
+% --- retrieves the video ROI position
+function rPos = getVideoROIPosition(infoObj)
+
+if infoObj.isTest
+    % video object is the test file
+    rPos = [1,1,flip(infoObj.objIMAQ.szImg)];
+else
+    % video object is the image acquisition object
+    rPos = get(infoObj.objIMAQ,'ROIPosition');
+end
+
+

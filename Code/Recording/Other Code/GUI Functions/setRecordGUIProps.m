@@ -4,6 +4,7 @@ function varargout = setRecordGUIProps(handles,typeStr,varargin)
 % class object retrieval
 hFig = handles.output;
 objDAQ = getappdata(hFig,'objDAQ');
+infoObj = getappdata(hFig,'infoObj');
 
 % sets the object properties based on the type string
 switch (typeStr)
@@ -20,13 +21,13 @@ switch (typeStr)
         % centres the figure
         centreFigPosition(hFig);        
         
+        % sets the menu item enabled properties
+        setObjEnable(handles.menuExpt,~infoObj.isTest);
+        setObjEnable(handles.menuAdaptors,~infoObj.isTest);            
+        
         % --------------------------------------------------- %
         % --- REMOVE ME LATER (only for testing purposes) --- %
-        % --------------------------------------------------- %
-        
-        % determines if stimuli devices are set
-        exptType = varargin{1};
-        hasStim = strcmp(exptType,'RecordStim');
+        % --------------------------------------------------- %                    
         
 %         % sets the valid hostname strings
 %         if isfield(handles,'menuRTTrack')

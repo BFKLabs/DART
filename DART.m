@@ -739,22 +739,11 @@ for i = 1:length(fldNames)
                 {''};cellfun(@(x)(['    => ',x]),cellfun(@(x)(x{2}),dirDetails(~ok),'un',0),'un',0)];
         waitfor(warndlg(wStr,'Program Default File Missing'));
                     
-        % runs the program default directory reset GUI         
-        switch fldNames{i}
-            case ('DART') % case is the Recording default directories
-                nwStr = ProgParaDART(hDART,nwStr,1);            
-            case ('Recording') % case is the Recording default directories
-                nwStr = ProgParaRecord(hDART,nwStr,1);
-            case ('Tracking') % case is the Tracking default directories
-                nwStr = ProgParaTrack(hDART,nwStr,1);
-            case ('Combine') % case is the Combination default directories
-                nwStr = ProgParaCombine(hDART,nwStr,1);                
-            case ('Analysis') % case is the Analysis default directories
-                nwStr = ProgParaAnalysis(hDART,nwStr,1);
-        end
+        % runs the program default directory reset GUI
+        obj = ProgDefaultDef(hDART,fldNames{i},nwStr);
         
         % updates the data struct with the new data struct
-        eval(sprintf('%s = nwStr;',ProgDefS))
+        ProgDef = setStructField(ProgDef,fldNames{i},obj.ProgDef);
         save(defFile,'ProgDef');
     end
 end

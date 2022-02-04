@@ -6,6 +6,10 @@ if isa(vObj,'VideoReader')
     % video object is the video reader
     vRes = [get(vObj,'Width'),get(vObj,'Height')];
     
+elseif isa(vObj,'DummyVideo')
+    % video object is the video reader
+    vRes = flip(vObj.szImg);    
+    
 else
     % video object is the image acquisition object
     rPos = get(vObj,'ROIPosition');

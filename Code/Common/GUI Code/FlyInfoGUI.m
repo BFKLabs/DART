@@ -287,7 +287,7 @@ classdef FlyInfoGUI < handle
             obj.jTable = CondCheckTable(jTabMod,obj.Type,obj.bgCol);
                                 
             % sets the java object callback functions
-            cbFcn = {@obj.tableCellChange,obj};
+            cbFcn = {@obj.tableCellChange};
             addJavaObjCallback(jTabMod,'TableChangedCallback',cbFcn)
             
             % resets the panel viewport
@@ -350,63 +350,12 @@ classdef FlyInfoGUI < handle
             
         end
         
-        % --- gui close callback function
-        function closeFigure(obj,~)
-            
-            % deletes the GUI
-            setappdata(obj.hFigMain,'hGUIInfo',[])
-            delete(obj.hFig);
-            
-        end
-        
-        % --- repositions the sub-gui
-        function repositionGUI(obj)
-            
-            repositionSubGUI(obj.hFigMain,obj.hFig); 
-            
-        end
-        
-        % --- updates the solution file accepatance flags
-        function updateSolutionFlags(obj)
-            
-            % if the apparatus being updating is also being shown on 
-            % the combined solution viewing GUI, then update the figure
-            hFigM = obj.hGUI.figFlyCombine;
-
-            % updates the flag within the corresponding solution data
-            % field (within the main GUI)
-            sInfo0 = getappdata(hFigM,'sInfo');
-            sInfo0{obj.iTab}.snTot.iMov.flyok = obj.ok;
-            setappdata(hFigM,'sInfo',sInfo0);
-            
-        end
-        
-    end
-    
-    % static class methods
-    methods (Static)
-        % --- popup menu selection callback function
-        function popupChange(hPopup, evnt, obj)
-            
-            % REMOVE ME
-            a = 1;
-            
-        end
-        
-        % --- closes the gui
-        function closeGUI(hFig, evnt, obj)
-            
-            % removes the menu check
-            hh = guidata(obj.hFigMain);
-            set(hh.menuFlyAccRej,'Checked','off');
-            
-            % deletes the GUI
-            delete(obj.hFig);
-            
-        end
+        % -------------------------- %
+        % --- CALLBACK FUNCTIONS --- %
+        % -------------------------- %
         
         % --- table information cell change callback function
-        function tableCellChange(hTable, evnt, obj)
+        function tableCellChange(obj, ~, evnt)
             
             % global variables
             global tableUpdating
@@ -460,7 +409,7 @@ classdef FlyInfoGUI < handle
                 cFunc2 = get(hGUIM.checkFlyMarkers,'Callback');
 
                 % updates the tubes visibility
-                hGUIM.iMov = obj.iMov;
+                hGUIM.output.iMov.flyok = obj.ok;
                 cFunc(hGUIM.checkShowTube,num2str(...
                                 get(hGUIM.checkTubeRegions,'value')),hGUIM)   
                 cFunc2(hGUIM.checkFlyMarkers,[])    
@@ -469,7 +418,62 @@ classdef FlyInfoGUI < handle
             % resets the update flag
             tableUpdating = false;
             
-        end        
+        end          
+        
+        % --- gui close callback function
+        function closeFigure(obj,~)
+            
+            % deletes the GUI
+            setappdata(obj.hFigMain,'hGUIInfo',[])
+            delete(obj.hFig);
+            
+        end
+        
+        % --- repositions the sub-gui
+        function repositionGUI(obj)
+            
+            repositionSubGUI(obj.hFigMain,obj.hFig); 
+            
+        end
+        
+        % --- updates the solution file accepatance flags
+        function updateSolutionFlags(obj)
+            
+            % if the apparatus being updating is also being shown on 
+            % the combined solution viewing GUI, then update the figure
+            hFigM = obj.hGUI.figFlyCombine;
+
+            % updates the flag within the corresponding solution data
+            % field (within the main GUI)
+            sInfo0 = getappdata(hFigM,'sInfo');
+            sInfo0{obj.iTab}.snTot.iMov.flyok = obj.ok;
+            setappdata(hFigM,'sInfo',sInfo0);
+            
+        end
+        
+    end
+    
+    % static class methods
+    methods (Static)
+        % --- popup menu selection callback function
+        function popupChange(hPopup, evnt, obj)
+            
+            % REMOVE ME
+            a = 1;
+            
+        end
+        
+        % --- closes the gui
+        function closeGUI(hFig, evnt, obj)
+            
+            % removes the menu check
+            hh = guidata(obj.hFigMain);
+            set(hh.menuFlyAccRej,'Checked','off');
+            
+            % deletes the GUI
+            delete(obj.hFig);
+            
+        end              
         
     end
 end

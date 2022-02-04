@@ -31,7 +31,7 @@ Video = struct('nCount',[],'Ts',[],'Tf',[],'FPS',5,...
                'Dmax',[0,30,0],'Type',3,'vCompress','Motion JPEG AVI');
 
 % sets the sub-struct fields
-if ~isempty(objIMAQ)
+if ~isempty(objIMAQ) && ~isa(objIMAQ,'DummyVideo')
     % sets the camera frame rate
     [fRate,~,iSel] = detCameraFrameRate(getselectedsource(objIMAQ),[]);
     Video.FPS = fRate(iSel); 

@@ -539,16 +539,17 @@ classdef PhaseTrack < matlab.mixin.SetGet
         function [fP,IP] = segmentSubImage(obj,ImgL,ImgBG,fP0,pOfs)
             
             % memory allocation            
+            pOfsT = repmat(pOfs,length(ImgL),1);
             [W,szL] = deal(2+obj.nI,size(ImgBG));
             [fP,IP] = deal(NaN(obj.nImg,2),NaN(obj.nImg,1));
-            fPT = 1 + obj.nI*(1 + 2*(fP0-1)) + repmat(pOfs,length(ImgL),1);
+            fPT = roundP(1 + obj.nI*(1 + 2*(fP0-1)) + pOfsT);
             isOK = ~isnan(fP0(:,1));
             
             % determines the coordinates from the refined image
             for i = find(isOK(:)')
                 % sets up the sub-image surrounding the point
                 iRP = max(1,fPT(i,2)-W):min(szL(1),fPT(i,2)+W);
-                iCP = max(1,fPT(i,1)-W):min(szL(2),fPT(i,1)+W);                   
+                iCP = max(1,fPT(i,1)-W):min(szL(2),fPT(i,1)+W);
                 IRP = ImgBG(iRP,iCP)-ImgL{i}(iRP,iCP);
                 
                 % retrieves the coordinates of the maxima

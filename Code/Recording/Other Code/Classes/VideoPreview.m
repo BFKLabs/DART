@@ -1,4 +1,5 @@
 classdef VideoPreview < handle
+    
     % class properties
     properties
         
@@ -17,6 +18,7 @@ classdef VideoPreview < handle
         isRecord
         isRot      
         isOn
+        isTest
         
         % other parameters
         tPause = 1;
@@ -24,6 +26,7 @@ classdef VideoPreview < handle
     
     % class methods
     methods
+        
         % class contstructor
         function obj = VideoPreview(hFig,isRecord)
             
@@ -43,7 +46,7 @@ classdef VideoPreview < handle
                 
             else
                 % case is the preview is run through the tracking GUI
-                obj.hAx = obj.hGUI.imgAxes;                
+                obj.hAx = obj.hGUI.imgAxes;
             end
             
         end
@@ -56,15 +59,25 @@ classdef VideoPreview < handle
         function startTrackPreview(obj)
                         
             % resets the running flag
+            cbFcn = [];
             obj.isOn = true;   
             obj.iMov = get(obj.hFig,'iMov'); 
             
             % sets the image acquisition object handle
-            obj.objIMAQ = obj.hFig.infoObj.objIMAQ;
+            obj.isTest = obj.hFig.infoObj.isTest;
+            obj.objIMAQ = obj.hFig.infoObj.objIMAQ;            
             
             % other initialisations
             initStr = 'Initialising...';
             hEditS = obj.hGUI.editVideoStatus;
+            colormap(obj.hGUI.imgAxes,'gray')
+            
+            % sets the preview callback function
+            if obj.isTest                
+                obj.objIMAQ.hAx = obj.hGUI.imgAxes;                
+            else
+                cbFcn = @obj.previewTrk;
+            end
             
             % sets the rotation flag
             obj.isRot = (abs(obj.iMov.rotPhi) > 45) && obj.iMov.useRot;
@@ -75,7 +88,7 @@ classdef VideoPreview < handle
             % initialises the preview image          
             set(obj.hGUI.checkShowTube,'Value',0)
             setObjEnable(obj.hGUI.menuAnalysis,'off');
-            if obj.initPreviewImage(@obj.previewTrk)           
+            if obj.initPreviewImage(cbFcn)           
                 % if the sub-regions have been set then recreate the markers
                 if obj.iMov.isSet
                     obj.hFig.initMarkerPlots(obj.hGUI,0)
@@ -95,14 +108,19 @@ classdef VideoPreview < handle
         end
         
         % --- stops the video preview
-        function stopTrackPreview(obj)                  
+        function stopTrackPreview(obj)
             
             % resets the running flag
             obj.isOn = false;
             
             % stops the video preview
             setObjEnable(obj.hGUI.menuAnalysis,'on');
-            closepreview(obj.objIMAQ)   
+            if obj.isTest
+                obj.objIMAQ.stopVideo();
+                obj.objIMAQ.previewUpdateFcn = [];
+            else
+                closepreview(obj.objIMAQ)  
+            end
             
             % if the sub-regions have been set then recreate the markers
             if obj.iMov.isSet
@@ -133,10 +151,12 @@ classdef VideoPreview < handle
         function startVideoPreview(obj)
 
             % resets the running flag
+            cbFcn = [];
             obj.isOn = true; 
             
             % retrieves the image acquisition object
             infoObj = getappdata(obj.hFig,'infoObj');
+            obj.isTest = infoObj.isTest;
             obj.objIMAQ = infoObj.objIMAQ;
             
             % updates the video status
@@ -146,13 +166,20 @@ classdef VideoPreview < handle
             % resets the start/stop preview button enabled properties
             set(obj.hGUI.toggleVideoPreview,'string','Stop Video Preview');                       
             
+            % sets the preview callback function
+            if obj.isTest
+                obj.objIMAQ.hAx = obj.hGUI.axesPreview;
+            else
+                cbFcn = @obj.previewRec;
+            end            
+            
             % sets the video calibration start time
             if ~isempty(obj.vcObj)
                 obj.vcObj.resetTraceFields();
             end            
             
             % initialises the preview image
-            if obj.initPreviewImage(@obj.previewRec)
+            if obj.initPreviewImage(cbFcn)
                 % enables the grid marker checkbox
                 setObjEnable(obj.hGUI.checkShowGrid,'on')
                 
@@ -195,7 +222,11 @@ classdef VideoPreview < handle
             end
 
             % stops the video preview
-            closepreview(obj.objIMAQ)                           
+            if obj.isTest
+                obj.objIMAQ.stopVideo();
+            else
+                closepreview(obj.objIMAQ)
+            end
 
             % resets the start/stop preview button enabled properties
             set(obj.hGUI.toggleVideoPreview,'string',tStr);                
@@ -230,12 +261,14 @@ classdef VideoPreview < handle
         % ------------------------------- %        
         
         % --- initialises the preview image
-        function ok = initPreviewImage(obj,cbFcn)           
+        function ok = initPreviewImage(obj,cbFcn)
             
-            % ensures the camera is not running
-            if strcmp(get(obj.objIMAQ,'Running'),'on')
-                stop(obj.objIMAQ); pause(0.05);
-            end                        
+            if ~obj.isTest
+                % ensures the camera is not running                
+                if strcmp(get(obj.objIMAQ,'Running'),'on')
+                    stop(obj.objIMAQ); pause(0.05);
+                end                        
+            end
             
             % retrieves the position of the axes parent panel
             [dY,ok] = deal(10,true);
@@ -261,24 +294,33 @@ classdef VideoPreview < handle
                 obj.hImage = image(zeros(flip(vRes)),'Parent',obj.hAx);        
                 [xL,yL] = deal([1 vRes(1)]+0.5,[1 vRes(2)]+0.5);
             end        
-
-            % sets the image object    
-            setappdata(obj.hImage,'UpdatePreviewWindowFcn',cbFcn)
+            
+            % sets the axis properties
+            set(obj.hImage,'CDataMapping','scaled')
             set(obj.hAx,'xtick',[],'ytick',[],'xticklabel',[],...
                         'yticklabel',[],'xLim',xL,'yLim',yL) 
                     
             % updates the axis to image format
             pause(0.05);
             axis(obj.hAx,'image');
-            pause(0.05);    
+            pause(0.05);
 
             try
-                % starts the video preview        
-                preview(obj.objIMAQ,obj.hImage)
+                % starts the video preview  
+                if obj.isTest
+                    % case is the test case
+                    obj.objIMAQ.iFrmT = 1;
+                    obj.objIMAQ.hImage = obj.hImage;
+                    obj.objIMAQ.startVideo(~obj.isRecord);                    
+                else
+                    % case is the camera object
+                    setappdata(obj.hImage,'UpdatePreviewWindowFcn',cbFcn)
+                    preview(obj.objIMAQ,obj.hImage)
+                end
+                
             catch
                 % makes the loadbar invisible
                 ok = false;
-                setObjVisibility(h,'off');
                 
                 % an error occured while starting the preview, so close 
                 % the loadbar and output an error function. 
@@ -293,7 +335,7 @@ classdef VideoPreview < handle
         end        
 
         % --- preview update for the tracking GUI
-        function previewRec(obj, hObj, event, hImage)
+        function previewRec(obj, ~, event, ~)
 
             % updates preview image (based on whether the image is rotated)
             Inw = event.Data;
@@ -311,13 +353,18 @@ classdef VideoPreview < handle
         end
         
         % --- preview update for the tracking GUI
-        function previewTrk(obj, hObj, event, hImage)
+        function previewTrk(obj, ~, event, ~)
             
             % retrieves the rotated image
             Img = getRotatedImage(obj.iMov,event.Data);            
             
             % updates the image
             set(obj.hImage, 'cdata', Img);
+            
+            % updates the video calibration trace data
+            if ~isempty(obj.vcObj)
+                obj.vcObj.appendTraceData(event)
+            end            
             
         end
         

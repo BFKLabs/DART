@@ -59,9 +59,12 @@ classdef SplitSubRegion < handle
         hghtPanelC = 40;
         
         % sub-region parameters
+        pHghtF
         pHght
+        pWidF
         pWid
-        pPhi
+        pPhiF        
+        pPhi        
         
     end
     
@@ -72,7 +75,7 @@ classdef SplitSubRegion < handle
             
             % sets the input arguments
             obj.hFigM = hFigM;            
-            obj.iMov = getappdata(hFigM,'iMov');
+            obj.iMov = get(hFigM,'iMov');
             obj.mShape = obj.iMov.mShape;           
             
             % sets the axes handles
@@ -105,8 +108,7 @@ classdef SplitSubRegion < handle
                             
                             % sets up the parameter struct
                             p0 = struct('nSeg',0);
-                            pVal = {cellfun(@length,obj.pPhi)};
-                            
+                            pVal = {cellfun(@length,obj.pPhi)};                            
                         end
                 end
                 
@@ -394,24 +396,38 @@ classdef SplitSubRegion < handle
         
         % --- update button callback function
         function updateButton(obj,~,~)
+
+            % retrieves the fixed flag value
+            [iP,jP] = deal(obj.iFlyS,obj.iAppS);
+            isFix = obj.isFixed(iP,jP);
             
             % updates the 
             switch obj.mShape
                 case 'Rect'
                     % case is rectangular regions
-                    srData = struct('pHght',[],'pWid',[]);
-                    [srData.pHght,srData.pWid] = deal(obj.pHght,obj.pWid);
+                    srData = struct('pHght',[],'pWid',[],'isFix',isFix);
+                    if isFix                        
+                        srData.pWid = obj.pWidF;
+                        srData.pHght = obj.pHghtF;
+                    else
+                        srData.pWid = obj.pWid;
+                        srData.pHght = obj.pHght;                        
+                    end
                     
                 case 'Circ'
                     % case is circular regions
-                    srData = struct('pPhi',[]);
-                    srData.pPhi = obj.pPhi;
+                    srData = struct('pPhi',[],'isFix',isFix);
+                    if isFix
+                        srData.pPhi = obj.pPhiF;
+                    else
+                        srData.pPhi = obj.pPhi;                        
+                    end
                     
             end
             
             % updates the sub-region data struct within the main GUI
             obj.iMov.srData = srData;
-            setappdata(obj.hFigM,'iMov',obj.iMov);
+            set(obj.hFigM,'iMov',obj.iMov);
             
             % disables the update button
             setObjEnable(obj.hBut{1},0);
@@ -476,15 +492,18 @@ classdef SplitSubRegion < handle
                         % case is row count
                         iTable = 2;
                         obj.pHght{i,j} = diff(linspace(0,1,nwVal+1)');
+                        obj.pHghtF{i,j} = obj.pHght{i,j};
                         
                     case 'nCol'
                         % case is column count                        
                         obj.pWid{i,j} = diff(linspace(0,1,nwVal+1)');
+                        obj.pWidF{i,j} = obj.pWid{i,j};
                         
                     case 'nSeg'                        
                         % case is a circular region
                         phi0 = obj.convertAngle(linspace(0,2*pi,nwVal+1)');
                         obj.pPhi{i,j} = phi0(1:end-1);
+                        obj.pPhiF{i,j} = obj.pPhi{i,j};
                         
                 end
                 
@@ -567,7 +586,7 @@ classdef SplitSubRegion < handle
                     
                 case 'Circ'
                     % case is circular regions
-                    obj.pSeg(:) = obj.pSeg(iP,jP);
+                    obj.pPhi(:) = obj.pPhi(iP,jP);
             end
             
             % resets the parameter struct            
@@ -602,11 +621,11 @@ classdef SplitSubRegion < handle
                         % sets the proportional width values 
                         tagStr = 'end point 2';
                         nCol = obj.iParaR(iP,jP).nCol;
-                        obj.pWid{iP,jP} = diff(linspace(0,1,nCol+1)');    
+                        obj.pWidF{iP,jP} = diff(linspace(0,1,nCol+1)');    
                         
                         % sets the proportional height values
                         nRow = obj.iParaR(iP,jP).nRow;
-                        obj.pHght{iP,jP} = diff(linspace(0,1,nRow+1)'); 
+                        obj.pHghtF{iP,jP} = diff(linspace(0,1,nRow+1)'); 
                         
                     case 'Circ'
                         % case is circular regions
@@ -614,15 +633,17 @@ classdef SplitSubRegion < handle
                         % sets the segment angles                        
                         nSeg = obj.iParaR(iP,jP).nSeg;                      
                         phi0 = obj.convertAngle(linspace(0,2*pi,nSeg+1)');
-                        obj.pPhi{iP,jP} = phi0(1:end-1);                        
+                        obj.pPhiF{iP,jP} = phi0(1:end-1);                        
                         
                 end
                 
                 % resets the object markers
-                htStr = 'off';
-                indR = sub2ind(size(obj.iParaR),iP,jP);
-                obj.updateRegionMarkers(indR)                                
+                htStr = 'off';                            
             end            
+            
+            % updates the region markers
+            indR = sub2ind(size(obj.iParaR),iP,jP);
+            obj.updateRegionMarkers(indR)            
             
             % updates the parameter table
             for i = 1:length(obj.hTableP)
@@ -963,6 +984,7 @@ classdef SplitSubRegion < handle
             % determines the region/sub-region indices
             iPara = obj.iParaR(indR);
             [iFly,iApp] = ind2sub(size(obj.iParaR),indR);
+            isFix = obj.isFixed(iFly,iApp);
             
             % retrieves the ROI api object
             hROI = obj.getROIObject(iApp,iFly);    
@@ -980,12 +1002,19 @@ classdef SplitSubRegion < handle
                 case 'Rect'
                     % case is a rectangular grid      
                     
+                    % sets the rectangular dimensions
+                    if isFix
+                        pH = obj.pHghtF{iFly,iApp};
+                        pW = obj.pWidF{iFly,iApp};
+                    else
+                        pH = obj.pHght{iFly,iApp};
+                        pW = obj.pWid{iFly,iApp};
+                    end                    
+                    
                     % rectangle parameters
-                    pH = obj.pHght{iFly,iApp};
-                    pW = obj.pWid{iFly,iApp};
                     [p0,W,H] = deal(pPos(1:2),pPos(3),pPos(4));
                     [xV,yH] = deal(cumsum(pW)*W,cumsum(pH)*H);
-                    tStr = {'end point 1','end point 2','bottom line'}; 
+                    tStr = {'end point 1','end point 2','bottom line'};                     
                     
                     % sets up the constraint function
                     [xLim,yLim] = deal(p0(1)+[0,W],p0(2)+[0,H]);
@@ -1038,11 +1067,17 @@ classdef SplitSubRegion < handle
                 case 'Circ'
                     % case is a circular grid
                     
+                    % sets the angular coordinates
+                    if isFix
+                        phi = obj.pPhiF{iFly,iApp};
+                    else
+                        phi = obj.pPhi{iFly,iApp};
+                    end                    
+                    
                     % circle parameters
                     R = pPos(3)/2;
-                    p0 = pPos(1:2)+R;
-                    phi = obj.pPhi{iFly,iApp};
-                    tStr = {'end point 1','top line','bottom line'};                    
+                    p0 = pPos(1:2)+R;                    
+                    tStr = {'end point 1','top line','bottom line'};
                     
                     % creates the line markers         
                     hMark = cell(iPara.nSeg,1);
@@ -1090,7 +1125,8 @@ classdef SplitSubRegion < handle
             
             % calculates the circle radius
             hTL = findall(hObj,'tag','top line');
-            R = sqrt(diff(get(hTL,'xData')).^2 + diff(get(hTL,'yData')).^2);
+            R = sqrt(diff(get(hTL,'xData')).^2 + ...
+                     diff(get(hTL,'yData')).^2);
             
             % updates the marker line coordinates
             pNw = p0 + R*[cos(pPhiNw),sin(pPhiNw)];
@@ -1188,26 +1224,44 @@ classdef SplitSubRegion < handle
         % --- retrieves the section table data
         function [tData,cName] = getTableData(obj,iType)
             
+            % determines if the fixed coordinates are to be used
+            isFix = obj.isFixed(obj.iFlyS,obj.iAppS);
+            
             % sets the table data values
             switch obj.mShape
                 case 'Rect'
                     % case is rectangular regions
                     if iType == 2
                         % case is the proportional height
-                        Y = obj.pHght{obj.iFlyS,obj.iAppS};
                         cName = {'Row #','Height'};  
+                        if isFix
+                            Y = obj.pHghtF{obj.iFlyS,obj.iAppS};
+                        else
+                            Y = obj.pHght{obj.iFlyS,obj.iAppS};                            
+                        end
                         
                     else
                         % case is the proportional width
-                        Y = obj.pWid{obj.iFlyS,obj.iAppS};
-                        cName = {'Column #','Width'};                                                
+                        cName = {'Column #','Width'};
+                        if isFix
+                            Y = obj.pWidF{obj.iFlyS,obj.iAppS};
+                        else
+                            Y = obj.pWid{obj.iFlyS,obj.iAppS};
+                        end                        
                     end
 
                 case 'Circ'
                     % case is circular regions
-                    pPhiT = obj.pPhi{obj.iFlyS,obj.iAppS};
-                    Y = roundP(deg2bear(-pPhiT),0.1);  
                     cName = {'Segment #','Angle (Deg)'};
+                    if isFix
+                        pPhiT = obj.pPhiF{obj.iFlyS,obj.iAppS};
+                    else
+                        pPhiT = obj.pPhi{obj.iFlyS,obj.iAppS};
+                    end
+                        
+                    % calculates the corrected angle
+                    Y = roundP(deg2bear(-pPhiT),0.1);  
+
 
             end
 
@@ -1263,7 +1317,7 @@ classdef SplitSubRegion < handle
                         
                     case 'Circ'
                         % case is circular regions
-                        pX = obj.pSeg{obj.iFlyS,obj.iAppS};
+                        pX = obj.pPhi{obj.iFlyS,obj.iAppS};
                         
                 end
                 

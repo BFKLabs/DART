@@ -63,6 +63,7 @@ classdef VideoPhase < handle
         isFeasVid = true;
         refSearch = false;
         pTolPhase = 5;
+        hasSR = false;
         
         % histogram tolerances
         eDistTol = 0.035;
@@ -155,8 +156,52 @@ classdef VideoPhase < handle
         % --- runs the phase detection algorithm
         function runPhaseDetect(obj,varargin)
             
+            % runs the pre-initial detection. if theres an issue then exit
+            if ~obj.preDetectSetup(nargin==2)
+                return
+            end                        
+            
+            % updates the progressbar
+            obj.updateProgField('Region Property Calculations',0.5);
+            
+            % calculates the initial information for each region 
+            for iApp = 1:obj.nApp
+                % updates the progressbar
+                wStrNw = sprintf(['Calculating Region Properties ',...
+                                  '(Region %i of %i)'],iApp,obj.nApp);
+                if obj.updateSubProgField(wStrNw,iApp/obj.nApp)
+                    % if the user cancelled, then exit
+                    obj.calcOK = false;
+                    return
+                end
+
+                % calculates the region information
+                [IL,obj.ILF(:,iApp)] = obj.setupRegionInfoStack(iApp);
+                obj.Dimg(obj.iFrm0,iApp) = obj.calcAvgImgIntensity(IL,iApp);                
+                
+            end            
+            
+            % optimises the frame group limits
+            iGrpF = obj.optFrameGroupLimits();
+            
+            % checks the final frame groupings
+            obj.checkFinalFrameGroups(iGrpF);
+            
+            % closes the progressbar (if required)
+            if obj.closePB
+                obj.hProg.closeProgBar();
+            end
+            
+        end           
+        
+        % --- pre-detection setup function 
+        function ok = preDetectSetup(obj,initPB)
+            
+            % initialisations
+            ok = true;
+            
             % creates the progress bar (if not provided)
-            if nargin == 2
+            if initPB
                 wStr = {'Overall Progress',...
                         'Reading Initial Frame Stack'};
                 obj.hProg = ProgBar(wStr,'Phase Detection');
@@ -178,42 +223,14 @@ classdef VideoPhase < handle
                 end                
                 
                 % exits the function
+                ok = false;
                 return
             end
             
             % determines the video properties
-            obj.detVideoProps();
+            obj.detVideoProps();            
             
-            % updates the progressbar
-            obj.updateProgField('Region Property Calculations',0.5);
-            
-            % calculates the initial information for each region 
-            for iApp = 1:obj.nApp
-                % updates the progressbar
-                wStrNw = sprintf(['Calculating Region Properties ',...
-                                  '(Region %i of %i)'],iApp,obj.nApp);
-                if obj.updateSubProgField(wStrNw,iApp/obj.nApp)
-                    % if the user cancelled, then exit
-                    obj.calcOK = false;
-                    return
-                end
-                
-                % calculates the region information
-                obj.calcRegionInfo(iApp)
-            end            
-            
-            % optimises the frame group limits
-            iGrpF = obj.optFrameGroupLimits();
-            
-            % checks the final frame groupings
-            obj.checkFinalFrameGroups(iGrpF);
-            
-            % closes the progressbar (if required)
-            if obj.closePB
-                obj.hProg.closeProgBar();
-            end
-            
-        end                                                        
+        end        
         
         % --- calculates the region information
         function getInitialImgStack(obj)
@@ -261,9 +278,14 @@ classdef VideoPhase < handle
             % calculates the offset between the last/first frame
             obj.hasT = false(1,obj.nApp);            
             
+            % determines the frames which are feasible
+            ImgMu = cellfun(@(x)(nanmean(x(:))),obj.Img0);
+            isOK = (ImgMu > obj.pTolLo) & (ImgMu < obj.pTolHi);
+            [i0,i1] = deal(find(isOK,1,'first'),find(isOK,1,'last'));                
+            
             % updates the progressbar
             obj.updateSubProgField('Determining Video Translation',0.25);            
-            ImgHM = cellfun(@(x)(applyHMFilter(x)),obj.Img0([1,end]),'un',0);
+            ImgHM = cellfun(@(x)(applyHMFilter(x)),obj.Img0([i0,i1]),'un',0);
             pOfs0 = obj.estImgOffset(ImgHM{2},ImgHM{1});            
             
             % if there is significant translation, then determine which 
@@ -325,11 +347,12 @@ classdef VideoPhase < handle
             % updates the progressbar           
             wStrF = 'Video Property Detection Complete';
             obj.calcOK = ~obj.updateSubProgField(wStrF,1);
+            obj.Dtol = 2+obj.hasF;
             
-        end            
+        end
         
-        % --- calculates the information (for a specific region)
-        function calcRegionInfo(obj,iApp)
+        % --- sets up the region information image stack
+        function [IL,ILT] = setupRegionInfoStack(obj,iApp)
             
             % retrieves the raw region image stack
             [iR,iC] = deal(obj.iR0{iApp},obj.iC0{iApp});
@@ -338,11 +361,11 @@ classdef VideoPhase < handle
             % if there is severe light fluctuation or translation, then
             % calculate the hm-filtered images
             if obj.hasF
-                ILhmf = cellfun(@(x)(obj.applyHMFilter...
+                IL = cellfun(@(x)(obj.applyHMFilter...
                         (x,obj.hmFilt{iApp})),IL,'un',0);  
-                obj.IrefF{iApp} = uint8(calcImageStackFcn(ILhmf,'max'));
+                obj.IrefF{iApp} = uint8(calcImageStackFcn(IL,'max'));
                 IL = cellfun(@(x)(double((imhistmatch...
-                        (uint8(x),obj.IrefF{iApp},256)))),ILhmf,'un',0);
+                        (uint8(x),obj.IrefF{iApp},256)))),IL,'un',0);
             end         
               
             % if there is significant image translations then estimate the 
@@ -353,17 +376,15 @@ classdef VideoPhase < handle
                 pOfs0 = NaN(obj.nFrm0,2);
                 
                 % calculates the hm-filtered images
-                if obj.hasF
-                    ILhmf = IL;
-                else
+                if ~obj.hasF
                     obj.hmFilt{iApp} = obj.setupHMFilterW(iApp);
-                    ILhmf = cellfun(@(x)(obj.applyHMFilter...
+                    IL = cellfun(@(x)(obj.applyHMFilter...
                                     (x,obj.hmFilt{iApp})),IL,'un',0); 
                 end                
                 
                 % calculates the image offset over the video
                 for k = 1:obj.nFrm0
-                    pOfs0(k,:) = obj.estImgOffset(ILhmf{k},ILhmf{1});
+                    pOfs0(k,:) = obj.estImgOffset(IL{k},IL{1});
                     ILT{k} = obj.applyImgTrans(IL{k},pOfs0(k,:));
                 end        
 
@@ -372,23 +393,7 @@ classdef VideoPhase < handle
             else
                 % if there is no translation, then update the image array
                 ILT = IL;
-            end              
-            
-            % ------------------------------------------- %
-            % --- FINAL IMAGE DIFFERENCE CALCULATIONS --- %
-            % ------------------------------------------- %        
-
-            % calculates image metric values
-            if obj.hasF
-                % case is the video has intensity fluctuations
-                obj.Dimg(obj.iFrm0,iApp) = obj.calcAvgImgIntensity(ILhmf);
-            else  
-                % case is the video doesn't have intensity fluctuations
-                obj.Dimg(obj.iFrm0,iApp) = obj.calcAvgImgIntensity(IL);
-            end
-            
-            % sets the region specific variables
-            obj.ILF(:,iApp) = ILT;              
+            end            
             
         end
         
@@ -401,8 +406,7 @@ classdef VideoPhase < handle
                 return
             end            
             
-            % parameters and initialisations
-            obj.Dtol = 2+obj.hasF;     
+            % parameters and initialisations                 
             isF = false(obj.nFrm0,1);
             iGrpF = cell(obj.nFrm0,1);                        
             
@@ -422,10 +426,10 @@ classdef VideoPhase < handle
             
             % ----------------------------------------- %
             % --- INITIAL FRAME GROUPING ESTIMATION --- %
-            % ----------------------------------------- %
-            
-            % determines which frames are reasonably tolerances
-            DimgF = full(obj.Dimg(obj.iFrm0,:));
+            % ----------------------------------------- %            
+                
+            % determines which frames are reasonably within tolerance
+            DimgF = obj.getDimg(obj.iFrm0);
             D0 = cellfun(@(x)(pdist2(x(:),x(:))),num2cell(DimgF,1),'un',0);            
             D = calcImageStackFcn(D0,'max');            
             BD = D <= obj.Dtol;
@@ -587,10 +591,16 @@ classdef VideoPhase < handle
                 indG = [[obj.iFrm0(1);X(:,2)],[X(:,1);obj.iFrm0(end)]];
             end
             
+            % sets the frame indices
+            if iscell(obj.Dimg)
+                iFrmF = find(obj.Dimg{1}(:,1));
+            else
+                iFrmF = find(obj.Dimg(:,1));
+            end            
+            
             % for each for the frame groupings, determine the valid frames
             % indices 
-            indG0 = indG;
-            iFrmF = find(obj.Dimg(:,1));                        
+            indG0 = indG;            
             iFrmGrp = cellfun(@(x)(iFrmF...
                    ((iFrmF>=x(1))&(iFrmF<=x(2)))),num2cell(indG,2),'un',0);
             nFrmGrp = diff(indG,[],2) + 1;
@@ -726,7 +736,7 @@ classdef VideoPhase < handle
         function [pGrp,DGrpMn] = calcFrmGroupGradient(obj,iFrmGrp)
             
             % calculates the 
-            DGrp = cellfun(@(x)(full(obj.Dimg(x,:))),iFrmGrp,'un',0);
+            DGrp = cellfun(@(x)(obj.getDimg(x)),iFrmGrp,'un',0);
             DGrpMn = cellfun(@(x)(nanmean(x,2)),DGrp,'un',0);
             
             % calculates the linear fits for each frame grouping
@@ -763,10 +773,14 @@ classdef VideoPhase < handle
             for i = 1:nGrpF
                 % retrieves the non-sparse frames for the current group
                 iGrpNw = iGrpF(i,1):iGrpF(i,2);
-                iFrmG = find(obj.Dimg(iGrpNw,1)) + (iGrpF(i,1)-1);
+                if iscell(obj.Dimg)
+                    iFrmG = find(obj.Dimg{1}(iGrpNw,1)) + (iGrpF(i,1)-1);
+                else
+                    iFrmG = find(obj.Dimg(iGrpNw,1)) + (iGrpF(i,1)-1);
+                end
                 
                 % determines if the frame range is too low for tracking                
-                DimgF{i} = full(obj.Dimg(iFrmG,:));                
+                DimgF{i} = obj.getDimg(iFrmG);
                 if all(DimgF{i}(:) < pTolRng)
                     % pixel range is too low, so set as untrackable
                     vPhaseF(i) = 3;
@@ -824,7 +838,6 @@ classdef VideoPhase < handle
                     
                     % determines if the 
                     [joinPhases,b] = obj.checkHistMetrics(Qnw);
-                    a = 1;
                         
                 elseif all(vPhaseF(ii) == 3)
                     % combine all adjacent untrackable phases
@@ -1294,33 +1307,68 @@ classdef VideoPhase < handle
         % --- calculates the mean distance for a given frame, iFrm
         function Dmn = calcDist(obj,iFrm)
             
-            Dmn = mean(full(obj.Dimg(iFrm,:)),2);
+            DimgFrm = obj.getDimg(iFrm);
+            Dmn = mean(DimgFrm,2);
             
         end        
         
         % --- calculates the region image avg. pixel intensities
         function calcRegionAvgInt(obj,iFrm)
+            
+            % retrieves the image intensities for the current frame
+            DimgFrm = obj.getDimg(iFrm);
         
-            if all(full(obj.Dimg(iFrm,:)) == 0)
+            % calculates the average image intensities (if missing)
+            if all(DimgFrm == 0)
+                % retrieves the image stack
                 [~,Imet] = obj.getRegionImgStack(iFrm);
-                obj.Dimg(iFrm,:) = obj.calcAvgImgIntensity(Imet);
+                
+                % recalculates the image intensities based on type
+                if iscell(obj.Dimg)
+                    % case is the data is stored in cell array
+                    for i = 1:obj.nApp
+                        obj.Dimg{i}(iFrm,:) = ...
+                                        obj.calcAvgImgIntensity(Imet,i);
+                    end
+                else
+                    % case is the data is stored in a sparse array
+                    obj.Dimg(iFrm,:) = obj.calcAvgImgIntensity(Imet);
+                end
             end
             
         end          
         
         % --- calculates the average image intensity (based on type)
-        function D = calcAvgImgIntensity(obj,I)
+        function D = calcAvgImgIntensity(obj,I,iApp)
             
-            % down-samples the images (based on image size)            
-            Ii = cellfun(@(x)(dsimage(x,obj.nDS)),I,'un',0);            
-            
-            if obj.hasF
-                D = cellfun(@(x)(nanmean(x(:))),Ii);
+            % calculates the average image intensity (based on type)
+            if obj.hasSR
+                % case is there is sub-region data set
+                D = cell2mat(cellfun(@(y)(cellfun(@(x)...
+                        (nanmean(x(y))),I)),obj.iGrpSR{iApp}(:),'un',0))';
+                
             else
-                D = cellfun(@(x)(nanmean(x(:))),Ii);   
+                % case is there is no sub-region setup
+                Bw = getExclusionBin(obj.iMov,size(I{1}),iApp);
+                D = cellfun(@(x)(nanmean(x(Bw))),I)';
             end
             
         end                
+        
+        % --- retrieves the image pixel intensities (for the frames, iFrmD)
+        function Dimg = getDimg(obj,iFrmD)
+
+            % retrieves the values depending on how they are stored
+            if iscell(obj.Dimg)
+                % values are stored in a cell of sparse arrays
+                DimgC = cellfun(@(x)(full(x(iFrmD,:))),obj.Dimg,'un',0);
+                Dimg = cell2mat(DimgC(:)');
+            else
+                % case is a normal sparse array
+                Dimg = full(obj.Dimg(iFrmD,:));
+            end
+
+        end        
         
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %

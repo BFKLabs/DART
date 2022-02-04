@@ -5,7 +5,7 @@ classdef ProgDefaultDef < handle
         % main object handles        
         hFig 
         hFigM
-        dType
+        dType        
         ProgDef                  
         
         % data I/O folder objects
@@ -41,6 +41,7 @@ classdef ProgDefaultDef < handle
         pSz = 13;
         tSz = 12;
         dSz = 10.667;
+        isMain = false;
         
         % variable object dimensions
         hghtFig
@@ -54,7 +55,13 @@ classdef ProgDefaultDef < handle
     % class methods
     methods
         % --- class constructor
-        function obj = ProgDefaultDef(hFigM,dType)
+        function obj = ProgDefaultDef(hFigM,dType,defDir0)
+            
+            % sets the default input argument
+            if exist('defDir0','var')
+                obj.ProgDef = defDir0;
+                obj.isMain = true; 
+            end
             
             % sets the input arguments
             obj.hFigM = hFigM;
@@ -67,6 +74,11 @@ classdef ProgDefaultDef < handle
             % centres the figure and makes it visible
             centreFigPosition(obj.hFig);
             setObjVisibility(obj.hFig,1);
+            
+            % if running from the main GUI, force a halt on the figure
+            if obj.isMain
+                uiwait(obj.hFig);
+            end
             
         end
         
@@ -85,26 +97,28 @@ classdef ProgDefaultDef < handle
             [obj.nIO,obj.nPr] = deal(size(obj.wStrIO,1),size(obj.wStrPr,1));            
 
             % updates the default directory
-            switch obj.dType
-                case 'Analysis'
-                    % case is the analysis default directories
-                    iData = getappdata(obj.hFigM,'iData');
-                    obj.ProgDef = iData.ProgDef;                
-                
-                case {'Combine','Recording'}
-                    % case is the recording/combining default directories
-                    obj.ProgDef = getappdata(obj.hFigM,'iProg');                    
-                    
-                case 'DART'
-                    % case is the main program default directories
-                    PD = getappdata(obj.hFigM,'ProgDef');
-                    obj.ProgDef = PD.DART;                    
-                    
-                case 'Tracking'
-                    % case is the tracking default directories
-                    obj.ProgDef = obj.hFigM.iData.ProgDef;
-                                    
-            end            
+            if ~obj.isMain
+                switch obj.dType
+                    case 'Analysis'
+                        % case is the analysis default directories
+                        iData = getappdata(obj.hFigM,'iData');
+                        obj.ProgDef = iData.ProgDef;                
+
+                    case {'Combine','Recording'}
+                        % case is the recording/combining default directories
+                        obj.ProgDef = getappdata(obj.hFigM,'iProg');                    
+
+                    case 'DART'
+                        % case is the main program default directories
+                        PD = getappdata(obj.hFigM,'ProgDef');
+                        obj.ProgDef = PD.DART;                    
+
+                    case 'Tracking'
+                        % case is the tracking default directories
+                        obj.ProgDef = obj.hFigM.iData.ProgDef;
+
+                end            
+            end
             
             % calculates the height of the data I/O default panel
             if obj.nIO > 0
@@ -283,6 +297,13 @@ classdef ProgDefaultDef < handle
         % --- Executes on button press in buttonReset.
         function buttonReset(obj,~,~)
             
+            % case is running from the main DART GUI (update is done
+            % within main GUI itself)
+            if obj.isMain
+                obj.buttonUpdate()
+                return
+            end
+            
             % determines if the program defaults have been set
             pFile = getParaFileName('ProgDef.mat');
             hDART = findall(0,'tag','figDART');
@@ -313,28 +334,30 @@ classdef ProgDefaultDef < handle
         function buttonUpdate(obj,~,~)
             
             % updates the default directory
-            switch obj.dType
-                case 'Analysis'
-                    % case is the analysis default directories
-                    iData = getappdata(obj.hFigM,'iData');
-                    iData.ProgDef = obj.ProgDef;
-                    setappdata(obj.hFigM,'iData',iData)
-                    setappdata(obj.hFigM,'iProg',obj.ProgDef)
-                
-                case {'Recording','Combine'}
-                    % case is the recording/combining default directories
-                    setappdata(obj.hFigM,'iProg',obj.ProgDef);                    
-                    
-                case 'DART'
-                    % case is the main program default directories
-                    PD = getappdata(obj.hFigM,'ProgDef');
-                    PD.DART = obj.ProgDef;
-                    setappdata(obj.hFigM,'ProgDef',PD)
-                
-                case 'Tracking'
-                    % case is the tracking default directories
-                    obj.hFigM.iData.ProgDef = obj.ProgDef;                    
+            if ~obj.isMain
+                switch obj.dType
+                    case 'Analysis'
+                        % case is the analysis default directories
+                        iData = getappdata(obj.hFigM,'iData');
+                        iData.ProgDef = obj.ProgDef;
+                        setappdata(obj.hFigM,'iData',iData)
+                        setappdata(obj.hFigM,'iProg',obj.ProgDef)
 
+                    case {'Recording','Combine'}
+                        % case is recording/combining default directories
+                        setappdata(obj.hFigM,'iProg',obj.ProgDef);                    
+
+                    case 'DART'
+                        % case is the main program default directories
+                        PD = getappdata(obj.hFigM,'ProgDef');
+                        PD.DART = obj.ProgDef;
+                        setappdata(obj.hFigM,'ProgDef',PD)
+
+                    case 'Tracking'
+                        % case is the tracking default directories
+                        obj.hFigM.iData.ProgDef = obj.ProgDef;                    
+
+                end
             end
 
             % closes the figure
