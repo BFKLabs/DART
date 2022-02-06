@@ -417,9 +417,14 @@ switch (typeStr)
         setObjEnable(handles.toggleVideo,'off');
         
         % disables all the menu items (except the view progress item)
-        hMenu = findobj(hFig,'type','uimenu');
-        setObjEnable(hMenu,'off');        
-        setObjEnable(handles.menuAnalysis,'on')        
+        hMenuP = {handles.menuFile,handles.menuAnalysis};
+        for i = 1:length(hMenuP)
+            hMenu = findobj(hMenuP{i},'type','uimenu');
+            setObjEnable(hMenu,'off');        
+        end
+        
+        % resets the enabled properties of specific menu items
+        setObjEnable(handles.menuAnalysis,'on')  
         setObjEnable(handles.menuViewProgress,'on')        
         
         % updates the image

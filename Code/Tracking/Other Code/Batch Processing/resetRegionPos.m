@@ -1,9 +1,6 @@
 % --- resets the region positions (if there is any 
 function iMov = resetRegionPos(iMov,szFrm,dpOfs)
 
-% if there is no translation data, then exit the function
-if isempty(iMov.dpInfo); return; end
-
 % resets the regions using the image offset
 for i = 1:length(iMov.iR)
     % ------------------------ %
@@ -27,7 +24,7 @@ for i = 1:length(iMov.iR)
         iMov.iRT{i}{1} = iMov.iRT{i}(iMov.iRT{i} >= 1);
         iMov.yTube{i} = max(0,iMov.yTube{i} - dY);
         iMov.pos{i}([2,4]) = [1,iMov.pos{i}(4) - dY];  
-        iMov = resetExclusionBin(iMov,ii,dpOfs(2),i,1);
+        iMov = resetExclusionBin(iMov,ii,i,1);
         
         
     elseif iMov.iR{i}(end) > szFrm(1)
@@ -40,7 +37,7 @@ for i = 1:length(iMov.iR)
         iMov.iRT{i}{end} = iMov.iRT{i}{end}(1):sum(ii);        
         iMov.yTube{i} = min(szFrm(1)-1,iMov.yTube{i}+dY);  
         iMov.pos{i}(4) = iMov.pos{i}(4)-dY;         
-        iMov = resetExclusionBin(iMov,ii,dpOfs(2),i,1);
+        iMov = resetExclusionBin(iMov,ii,i,1);
         
     end              
     
@@ -78,7 +75,7 @@ for i = 1:length(iMov.iR)
         % updates the region position vectors
         iMov.pos{i}([1,3]) = [1,iMov.pos{i}(3) - dX];
         iMov.posO{i}([1,3]) = [1,iMov.posO{i}(3) - dX];
-        iMov = resetExclusionBin(iMov,jj,dpOfs(1),i,2);
+        iMov = resetExclusionBin(iMov,jj,i,2);
         
     elseif iMov.iC{i}(end) > szFrm(2)
         % case is there are frames exceeding the frame edge
@@ -92,7 +89,7 @@ for i = 1:length(iMov.iR)
         % updates the region position vectors
         iMov.pos{i}(3) = iMov.pos{i}(3) - dX;
         iMov.posO{i}(3) = iMov.posO{i}(3) - dX;
-        iMov = resetExclusionBin(iMov,jj,dpOfs(1),i,2);
+        iMov = resetExclusionBin(iMov,jj,i,2);
     end  
     
     % determines if the outer region dimensions are feasible
@@ -117,7 +114,7 @@ for i = 1:length(iMov.iR)
 end
 
 % --- resets the binary mask
-function iMov = resetExclusionBin(iMov,indNw,dP,iApp,iDim)
+function iMov = resetExclusionBin(iMov,indNw,iApp,iDim)
 
 switch iDim
     case 1
