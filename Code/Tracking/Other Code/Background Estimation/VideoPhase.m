@@ -1342,19 +1342,13 @@ classdef VideoPhase < handle
         function D = calcAvgImgIntensity(obj,I,iApp)
             
             % calculates the average image intensity (based on type)
-            if (nargin == 2)
-                iApp = (1:obj.nApp)';
-                Bw = arrayfun(@(x)(getExclusionBin...
-                            (obj.iMov,size(I{1}),x)),iApp,'un',0);                
-                D = cellfun(@(x,y)(nanmean(x(y))),I,Bw)';                
-            elseif obj.hasSR
+            if obj.hasSR
                 % case is there is sub-region data set
                 D = cell2mat(cellfun(@(y)(cellfun(@(x)...
                         (nanmean(x(y))),I)),obj.iGrpSR{iApp}(:),'un',0))';                
             else
                 % case is there is no sub-region setup (single region)
-                Bw = getExclusionBin(obj.iMov,size(I{1}),iApp);
-                D = cellfun(@(x)(nanmean(x(Bw))),I)';
+                D = cellfun(@(x)(nanmean(x(:))),I)';
             end
             
         end                

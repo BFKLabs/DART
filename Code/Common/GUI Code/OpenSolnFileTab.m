@@ -690,7 +690,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
         % ------------------------------------ %
         
         % --- creates the file explorer tree
-        function createFileExplorerTree(obj)
+        function createFileExplorerTree(obj,sDirNw)
            
             % imports the checkbox tree
             import com.mathworks.mwswing.checkboxtree.*
@@ -703,28 +703,15 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % sets the root search directory (dependent on stored 
             % values and tab index)
             if isempty(sDirNw)
-%                 if isempty(obj.sDir{obj.iTab})
-                    switch obj.iTab
-                        case 1
-                            % case is video solution files
-                            sDirNw = obj.iProg.DirSoln;
+                switch obj.iTab
+                    case 1
+                        % case is video solution files
+                        sDirNw = obj.iProg.DirSoln;
 
-                        otherwise
-                            % case is experiment solution files
-                            sDirNw = obj.iProg.DirComb;
-                    end
-%                 else
-%                     % otherwise, use the stored directory path
-%                     sDirNw = obj.sDir{obj.iTab};
-%                 end
-
-%                 % prompts the user for the search directory
-%                 titleStr = 'Select the root search directory';
-%                 sDirNw = uigetdir(defDir,titleStr);
-%                 if sDirNw == 0
-%                     % if the user cancelled, then exit
-%                     return
-%                 end
+                    otherwise
+                        % case is experiment solution files
+                        sDirNw = obj.iProg.DirComb;
+                end
             end
 
             % deletes any existing tree objects
@@ -899,9 +886,21 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 end
             end
 
+            % prompts the user for the search directory
+            defDir = obj.sDir{obj.iTab};
+            titleStr = 'Select the root search directory';
+            sDirNw = uigetdir(defDir,titleStr);
+            if sDirNw == 0
+                % if the user cancelled, then exit
+                return
+            else
+                % otherwise, update the tab default directory
+                obj.sDir{obj.iTab} = sDirNw;
+            end            
+
             % creates the explorer tree
             obj.isChange = true;
-            obj.createFileExplorerTree();            
+            obj.createFileExplorerTree(obj.sDir{obj.iTab});
             
         end
         
