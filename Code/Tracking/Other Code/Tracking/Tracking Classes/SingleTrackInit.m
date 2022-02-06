@@ -216,7 +216,6 @@ classdef SingleTrackInit < SingleTrack
             [obj.Ibg,obj.Ibg0] = deal(A);
             [obj.IbgT,obj.IbgT0] = deal(A);
             [obj.sFlag,obj.tPara,obj.pQ0] = deal(A);
-            [obj.dpOfs,obj.dpInfo] = deal(A);
             [obj.isStat,obj.fPosG] = deal(A);
             [obj.errStr,obj.errMsg] = deal([]);
             
@@ -452,24 +451,7 @@ classdef SingleTrackInit < SingleTrack
             % stationary blob locations are consistent over all phases
             if obj.nPhase > 1
                 obj.checkStationaryBlobs();
-            end
-            
-            % ----------------------------------- %
-            % --- IMAGE TRANSLATION DETECTION --- %
-            % ----------------------------------- %
-
-            % determines the image translation information 
-            try
-                % determines the image translation information
-                obj.detImgTranslateInfo();
-
-            catch ME
-                % if there was an error then store the details
-                obj.errStr = 'image translation information';
-                [obj.errMsg,obj.calcOK] = deal(ME.message,false);
-                obj.hProg.closeProgBar;
-                return                
-            end                
+            end             
             
             % updates the progressbar
             wStrF = 'Initial Detection Complete!';
@@ -539,7 +521,7 @@ classdef SingleTrackInit < SingleTrack
                     fPGrp = roundP(cell2mat(cellfun(@(x)...
                                       (mean(fPmn(x,:),1)),kGrp','un',0)));
                     if obj.nI > 0
-                        fPGrp = obj.downsampleImageCoords(fPGrp,obj.nI);
+                        fPGrp = obj.downsampleImageCoords(fPGrp,obj.nI);                        
                     end
                     
                     % sets the row/column indices                    
@@ -551,6 +533,7 @@ classdef SingleTrackInit < SingleTrack
                     % regions surrounding the likely points)
                     ILTnw = ILT{k}(iRT,:);
                     szL = size(ILTnw);
+                    fPGrp = max(1,min(fPGrp,flip(szL)));
                     BD0 = bwdist(setGroup(fPGrp,szL)) < Dtol;
                     
                     % determines the max
@@ -708,7 +691,7 @@ classdef SingleTrackInit < SingleTrack
                 [statObj,Ds] = deal(obj.iMov.flyok,2*Ds);                
             else
                 % otherwise, determine the static objects from the phase                
-                statObj = obj.sFlag{iPh} == 0 & obj.iMov.flyok;
+                statObj = (obj.sFlag{iPh} < 2) & obj.iMov.flyok;
                 usePrevData = ~isempty(obj.prData0);        
             end
             
@@ -736,7 +719,7 @@ classdef SingleTrackInit < SingleTrack
                 % sets up the image stack for template analysis
                 if isempty(obj.Iss{k,iPh})
                     [obj.Iss{k,iPh},obj.dIss{k,iPh}] = ...
-                                    obj.setupStatObjStack(IL0(:,k),k);
+                                    obj.setupStatObjStack(IL0(:,k),iPh,k);
                 end
 
                 % sets up the total combine image stack
@@ -1018,7 +1001,7 @@ classdef SingleTrackInit < SingleTrack
             % sets up the raw/residual image stacks            
             for i = find(obj.iMov.ok(:)')
                 % retrieves the region image stack
-                IL(:,i) = obj.getRegionImgStack(Img,iFrm,i,isHiV);
+                IL(:,i) = obj.getRegionImageStack(Img,iFrm,i,isHiV);
                 
                 % calculates the 
                 IbgTnw = calcImageStackFcn(IL(:,i),'max');
@@ -1137,41 +1120,7 @@ classdef SingleTrackInit < SingleTrack
                 end
             end
                 
-        end
-        
-        % --- determines the image translation information
-        function detImgTranslateInfo(obj)
-            
-            % determines if any phases have translation
-            hasT = ~cellfun(@isempty,obj.dpOfs);
-            if ~any(hasT)
-                % if there is no translation info, then exit
-                obj.dpInfo = [];
-                return
-            end
-            
-            % determines the global frame offset
-            dpOfs0 = obj.dpOfs(hasT);
-            iFrmPh = obj.iMov.iPhase(hasT,2);
-            dpOfsF = cell2mat(cellfun(@(x)(x(end,:)),dpOfs0,'un',0));
-            dpOfsT = [zeros(1,2);cumsum(dpOfsF(1:end-1,:),1)];
-            
-            % calculates the full frame translation
-            dpOfsG = cell2mat(cellfun(@(x,y)([x(:,1)+y(1),x(:,2)+y(2)]),...
-                                    dpOfs0,num2cell(dpOfsT,2),'un',0));
-            
-            % initialisations            
-            iFrm = cell2mat(obj.indFrm(hasT));          
-            
-            % sets the details into the final struct
-            obj.dpInfo = struct('iFrm',iFrm,'xFrm',dpOfsG(:,1),...
-                                'yFrm',dpOfsG(:,2),'dpOfsT',dpOfsT,...
-                                'iFrmPh',iFrmPh);            
-            
-            % updates the closes the progressbar
-            obj.hProg.Update(2+obj.wOfsL,'Translation Check Complete!',1);                                        
-                                      
-        end                     
+        end                   
         
         % --- tracks the moving blobs from the residual image stack, IR
         function detectMovingBlobs(obj,I,IR,IRng,iPh)
@@ -1264,10 +1213,7 @@ classdef SingleTrackInit < SingleTrack
                             calcSubRegionProps(obj,IRng,iRT,iCT,nFrmPh)
             
             % parameters and initialisations
-            zTol = 2.5;
-            nFrmMin = 3;
-            rGrpTol = 3.0;            
-            DminTol = 0.65;
+            pYRngTol = 5.0;
             iRTF = cell2mat(iRT(:)');     
             nRT = cellfun(@length,iRT);
             mFlag = zeros(size(iRT));             
@@ -1285,109 +1231,77 @@ classdef SingleTrackInit < SingleTrack
             % calculates the max range values (across each row) and the
             % baseline removed signal            
             IRng = imfilter(IRng,obj.hSR);
-            IRngC0 = nanmax(IRng,[],2);                     
+            IRTL = IRng(iRTF,iCT);
             
-            % estimates the average baseline value
-            szRow = 2*floor(nanmedian(nRT/2)) + 1;
-            IRngBL = imopen(IRngC0,ones(szRow,1));
-            IRngC = normImg(IRngC0 - IRngBL);
+            % calculates the max range values (across each row)         
+            IRngR0 = cellfun(@(x)(nanmax(IRTL(x,:),[],1)),iRTL,'un',0);
             
-            if ~obj.iMov.is2D
-
-                %
-                BPk = zeros(size(iRTF));
-                [yPk,iPk,wPk0,~] = findpeaks(IRngC(iRTF));
-                [BPk(iPk),wPk] = deal(1:length(iPk),wPk0/obj.Dtol);
-
-                % ensures the peak widths have at least a max value of 1
-                if max(wPk) < 1; wPk = normImg(wPk); end
-                
-                % determines the location of the peaks       
-                wyPk = [wPk,yPk];
-                indPk = cellfun(@(x)(nonzeros(BPk(x))),iRTL,'un',0); 
-                
-                % determines the signal peak for each region
-                iMx = NaN(size(indPk));
-                isOK = ~cellfun(@isempty,indPk);
-                iMx(isOK) = cellfun(@(x)(argMax(yPk(x))),indPk(isOK));
-
-                % calculates the global index indices (for the maximum
-                % determined from each sub-region)
-                [jMxA,jMxR] = deal(NaN(size(indPk)),cell(size(indPk)));
-                for i = 1:length(indPk)
-                    % if there is more than one peak, set the indices of
-                    % the non-maximal peaks
-                    if length(indPk{i}) > 1
-                        BT = ~setGroup(iMx(i),size(indPk{i}));
-                        jMxR{i} = indPk{i}(BT);
-                    end
-                    
-                    % sets the accepted peak index (if feasible)
-                    if isOK(i)
-                        jMxA(i) = indPk{i}(iMx(i));
-                    end
-                end
-                
-                % calculates the minimum distance between the peaks from
-                % the accepted groupings to the other groupings
-                wyPkA = wyPk(jMxA(isOK),:);
-                wyPkR = wyPk(cell2mat(jMxR),:);
-                Dmin = min(pdist2(wyPkA,wyPkR),[],2);
-
-                % if the magnitude of the signal is too low, then likely 
-                % that all blobs are stationary (so exit the function here)
-                if ~any(Dmin > DminTol)
-                    [ImuF,IsdF,pTol] = deal(NaN);
-                    return
-                end                        
-            end
+            % calculates the baseline estimate
+            YRng0 = cell2cell(cellfun(@(x)([x,NaN]),IRngR0,'un',0),0);
+            [~,~,wPk0] = findpeaks(YRng0(:));            
+            YRng0(isnan(YRng0)) = 0;
+            YBL = imopen(YRng0(:),ones(ceil(max(wPk0))*2,1));   
+            
+            % calculates the proportional signal difference
+            pYRng = (YRng0(:) - YBL)./YBL;  
+            ii = pYRng > pYRngTol;
+            if ~any(ii)
+                % if the proportional difference is too low, then all blobs
+                % are probably stationary over all frames so exit
+                [ImuF,IsdF,pTol] = deal(NaN);
+                return
+            end                
                 
             % calculates the mean/std dev range values
             IRngF = IRng(iRTF,iCT);
-            [ImuF,IsdF] = deal(nanmean(IRngF(:)),nanstd(IRngF(:)));                          
+            [ImuF,IsdF] = deal(nanmean(IRngF(:)),nanstd(IRngF(:)));
             
-            if nFrmPh > nFrmMin          
-                % calculates the kmean groupings for the signal points, and
-                % from this the range of the signal to the distance between 
-                % the two groupings (if the ratio is high, then this 
-                % indicates separation between groupings is too low)
-                [idx,C] = kmeans(IRngC,2);
-                rRatio = range(IRngC)/abs(diff(C));
+            %
+            iGrp = getGroupIndex(ii);
+            pTolGrp = zeros(length(iGrp),2);
+            pp = pchip(1:length(pYRng),YRng0);
+            
+            %
+            for i = 1:length(iGrp)
+                % calculates the signal left side limit location
+                if (iGrp{i}(1) == 1) || isnan(pYRng(iGrp{i}(1)-1))
+                    % point is infeasible 
+                    pTolGrp(i,1) = NaN;
+                else
+                    %
+                    iLim = iGrp{i}(1)+[-1,0];                    
+                    pYL = pYRng(iLim);                    
+                    xNw = iLim(1) + (pYRngTol - pYL(1))/diff(pYL);
+                    
+                    % calculates the interpolated value
+                    pTolGrp(i,1) = ppval(pp,xNw);
+                end
                 
-            else
-                % case is there isn't enough frames to separate the groups
-                % properly (range will be too low)
-                rRatio = 1e10;
-            end
+                % calculates the signal right side limit location
+                if (iGrp{i}(end)==length(ii)) || isnan(pYRng(iGrp{i}(end)+1))
+                    % point is infeasible
+                    pTolGrp(i,1) = NaN;
+                else
+                    %
+                    iLim = iGrp{i}(end)+[0,1];
+                    pYL = pYRng(iLim);                    
+                    xNw = iLim(1) + (pYRngTol - pYL(1))/diff(pYL); 
+                    
+                    % calculates the interpolated value
+                    pTolGrp(i,2) = ppval(pp,xNw);                    
+                end
+            end       
             
-            % sets the thresholding pixel tolerance
-            %  - if large movement, the threshold is calculated by the
-            %    significant points from the kmeans grouping
-            %  - if small movement, the Z-score of the raw range values
-            %    is used to ensure the threshold isn't too small            
-            if rRatio < rGrpTol
-                % determines which rows are significant                
-                isSig0 = idx == argMax(C);                              
-                pTolC = mean([min(IRngC(isSig0)),max(IRngC(~isSig0))]);
-                
-                % calculates the final pixel tolerance
-                [jdx,C0] = kmeans(IRngC0,2);
-                isSigF = jdx == argMax(C0);            
-                pTol = mean([min(IRngC0(isSigF)),max(IRngC0(~isSigF))]); 
-            else
-                % calculates the max range mean/std values
-                pTolC = nanmean(IRngC(iRTF)) + zTol*nanstd(IRngC(iRTF));
-                pTol = nanmean(IRngC0(iRTF)) + zTol*nanstd(IRngC0(iRTF));
-            end
+            % calculates the mean pixel tolerances over all peaks
+            pTol = nanmedian(pTolGrp(:));
             
-            % calculates the maximum range values for each sub-region
-            IRngL = cellfun(@(x)(IRngC(x)),iRT,'un',0);
-            IRngMax = cellfun(@(x)(nanmax(x(:))),IRngL);               
+            % reduces the proportional difference arrya for each subregion         
+            Q = reshape(pYRng,[length(IRngR0{1})+1,length(iRTL)]);
             
             % calculates the movement status flags:
             %  = 0: blob is completely stationary over the phase
             %  = 2: blob has moved a significant distance              
-            mFlag(IRngMax >= pTolC) = 2;
+            mFlag(any(Q > pYRngTol,1)) = 2;
             
         end
         
@@ -1515,7 +1429,7 @@ classdef SingleTrackInit < SingleTrack
                 
                 % sets up the image stack for template analysis
                 [obj.Iss{i,iPh},obj.dIss{i,iPh},d2I] = ...
-                                        obj.setupStatObjStack(I(:,i),i);
+                                    obj.setupStatObjStack(I(:,i),iPh,i);
                 
                 % calculates the optimal blob filter parameters
                 pFilt{i} = obj.optBlobFilter(d2I{1},iPh,i,1);                                 
@@ -1698,7 +1612,7 @@ classdef SingleTrackInit < SingleTrack
         end
         
         % --- sets up the image stack for the template analysis
-        function [I,dI,d2I] = setupStatObjStack(obj,I,iApp) 
+        function [I,dI,d2I] = setupStatObjStack(obj,I,iPh,iApp) 
             
             % retrieves the fluctuation/translation flags
             [hasF,hasT] = deal(obj.getFlucFlag,obj.getTransFlag(iApp));
@@ -1722,7 +1636,21 @@ classdef SingleTrackInit < SingleTrack
             end         
             
             % applies the exclusion mask
-            Bw = getExclusionBin(obj.iMov,size(I{1}),iApp);
+            szI = size(I{1});
+            Bw = bwmorph(getExclusionBin(obj.iMov,szI,iApp),'dilate');
+            if hasT                                
+                % calculates the x/y coordinate translation
+                phInfo = obj.iMov.phInfo;
+                [p,iFrm] = deal(phInfo.pOfs{iApp},obj.indFrm{iPh});
+                pOfsT = interp1(phInfo.iFrm0,p,iFrm,'linear','extrap');
+                
+                % applies the image translation                
+                Bw = cellfun(@(p)(obj.applyImgTrans(Bw,p)),...
+                                            num2cell(pOfsT,2),'un',0);
+            else
+                % otherwise, covert the array to a cell aray
+                Bw = repmat({Bw},length(I),1);
+            end
             
             % downsamples the images (if high frame resolution)
             if obj.nI > 0
@@ -1735,11 +1663,11 @@ classdef SingleTrackInit < SingleTrack
                 dI = setupResidualEstStack(I,obj.mdDim);                                 
             else
                 [dI,d2I] = setupResidualEstStack(I,obj.mdDim);  
-                d2I = cellfun(@(x)(Bw.*x),d2I,'un',0);
+                d2I = cellfun(@(x,b)(b.*x),d2I,Bw,'un',0);
             end
             
             % applies the exclusion filter
-            dI = cellfun(@(x)(Bw.*x),dI,'un',0);
+            dI = cellfun(@(x,b)(b.*x),dI,Bw,'un',0);
             
         end                                               
         
@@ -1898,9 +1826,9 @@ classdef SingleTrackInit < SingleTrack
                     % sets up the residual estimate image stacks
                     for iApp = find(rReqd(:)')
                         % retrieves the region image stack
-                        IL = obj.getRegionImgStack(I,iFrm,iApp,isHV);
+                        IL = obj.getRegionImageStack(I,iFrm,iApp,isHV);
                         [obj.Iss{iApp,iPh},obj.dIss{iApp,iPh}] = ...
-                                        obj.setupStatObjStack(IL,iApp);
+                                        obj.setupStatObjStack(IL,iPh,iApp);
                     end
                 end
                                 

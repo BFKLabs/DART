@@ -1241,8 +1241,8 @@ function updateCTMenu(handles,iMov)
 [chkStr,hasTrans] = deal({'off','on'},false);
 
 % determines if the there are any translation phases
-if isfield(iMov,'dpInfo') && ~isempty(iMov.dpInfo)
-    hasTrans = ~isempty(iMov.dpInfo);
+if isfield(iMov,'phInfo') && ~isempty(iMov.phInfo)
+    hasTrans = any(iMov.phInfo.hasT);
 end
 
 % updates the translation correction menu flag

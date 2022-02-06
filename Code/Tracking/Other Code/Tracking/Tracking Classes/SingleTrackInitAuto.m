@@ -148,7 +148,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
             % sets up the raw/residual image stacks
             for i = 1:obj.nApp
                 % retrieves the region image stack
-                IL(:,i) = obj.getRegionImgStack(Img,iFrmF,i);
+                IL(:,i) = obj.getRegionImageStack(Img,iFrmF,i);
                 
                 % calculates the 
                 IbgTnw = calcImageStackFcn(IL(:,i),'max');

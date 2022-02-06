@@ -8,8 +8,8 @@ if isempty(is2D)
 end
 
 % sets the exclusion binary mask based on the region detection type
-switch (getDetectionType(iMov))
-    case ('None')
+switch getDetectionType(iMov)
+    case 'None'
         Bw = bwmorph(true(sz),'erode');
         
     case 'Circle'

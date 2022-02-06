@@ -3275,6 +3275,6 @@ else
     % case is the tracking from a video
     xi = roundP(linspace(1,iData.nFrm,nFrm));
     for i = 1:length(xi)
-        I{i} = getDispImage(iData,iMov,xi(i),false,hGUI);
+        I{i} = double(getDispImage(iData,iMov,xi(i),false,hGUI));
     end
 end

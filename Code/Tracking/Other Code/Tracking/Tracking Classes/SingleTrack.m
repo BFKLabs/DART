@@ -142,7 +142,7 @@ classdef SingleTrack < Track
         % ------------------------------------ %          
         
         % --- retrieves the region image stack
-        function [IL,BL] = getRegionImgStack(obj,I0,iFrm,iApp,isHiV)
+        function [IL,BL] = getRegionImageStack(obj,I0,iFrm,iApp,isHiV)
             
             % sets the default input arguments
             if ~exist('isHiV','var'); isHiV = false; end
@@ -170,7 +170,7 @@ classdef SingleTrack < Track
                 IL(~isOK) = repmat({NaN(length(iR),length(iC))},szT);
             end              
             
-            % corrects image fluctuation (if required)
+            % corrects image fluctuation (if applicable)
             if obj.getFlucFlag() || isHiV
                 % if there is fluctuation, then apply the hm filter and the
                 % histogram matching to the reference image
@@ -187,14 +187,16 @@ classdef SingleTrack < Track
                 BL = cell(length(IL),1);
             end
             
-            % corrects image fluctuation
+            % corrects image fluctuation (if applicable)
             if obj.getTransFlag(iApp)
+                % calculates the x/y coordinate translation
                 phInfo = obj.iMov.phInfo;
                 p = phInfo.pOfs{iApp};
                 pOfsT = interp1(phInfo.iFrm0,p,iFrm,'linear','extrap');
+                
+                % applies the image translation
                 IL = cellfun(@(x,p)(obj.applyImgTrans(x,p)),...
-                                IL,num2cell(pOfsT,2),'un',0);
-                                
+                                    IL,num2cell(pOfsT,2),'un',0);                                
                 if phInfo.hasF && (nargout == 2)
                     BL = cellfun(@(x)(x<nanmean(x(:))),IL,'un',0);
                 end                                

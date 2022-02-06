@@ -1,14 +1,16 @@
 % --- calculates the frame translation offset for the frame indices, iFrm
-function dpOfs = calcFrameOffset(dpInfo,iFrmR)
+function pOfsT = calcFrameOffset(phInfo,iFrmR,iAppR)
+
+% sets the default input arguments
+if ~exist('iAppR','var'); iAppR = 1:length(phInfo.pOfs); end
+
+% memory allocation
+pOfsT = zeros(length(phInfo.pOfs),2);
 
 % field retrieval
-iFrm = dpInfo.iFrm;
-[xFrm,yFrm,dpOfsT] = deal(dpInfo.xFrm,dpInfo.yFrm,dpInfo.dpOfsT);
-
-% determines the video phase that each frame belongs to
-iPh = find(iFrm(1)<=dpInfo.iFrmPh,1,'first');
-
-% interpolates the translation values
-xFrmR = interp1(iFrm,xFrm,iFrmR,'pchip');
-yFrmR = interp1(iFrm,yFrm,iFrmR,'pchip');
-dpOfs = roundP([xFrmR(:)-dpOfsT(iPh,1),yFrmR(:)-dpOfsT(iPh,2)]);
+for iApp = iAppR(:)'
+    if phInfo.hasT(iApp)
+        p = phInfo.pOfs{iApp};
+        pOfsT(iApp,:) = interp1(phInfo.iFrm0,p,iFrmR,'linear','extrap');
+    end
+end

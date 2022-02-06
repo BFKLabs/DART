@@ -211,7 +211,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             [iRT,iCT] = obj.getSubRegionIndices(iApp,size(ImgBG,2));            
             
             % segments the location for each feasible sub-region
-            for iTube = find(fok(:)')                
+            for iTube = find(fok(:)')
                 % sets the sub-region image stack
                 ImgSR = cellfun(@(x)(x(iRT{iTube},iCT)),ImgL,'un',0);
                 
@@ -361,10 +361,14 @@ classdef PhaseTrack < matlab.mixin.SetGet
     
                         % determines where the estimated location is in
                         % relation to the region limits
-                        if obj.withinEdge(indR,fPrNw(end,:))
-                            pdTolMax = 2;
+                        if obj.iMov.is2D
+                            pdTolMax = 4.5;
                         else
-                            pdTolMax = 3*(1+0.5*obj.iMov.is2D);
+                            if obj.withinEdge(indR,fPrNw(end,:))
+                                pdTolMax = 2;
+                            else
+                                pdTolMax = 3;
+                            end
                         end
                     end
                         
@@ -411,11 +415,19 @@ classdef PhaseTrack < matlab.mixin.SetGet
                                 
                                 % determines where the estimated location 
                                 % is in relation to the region limits
-                                if obj.withinEdge(indR,fPest)
-                                    dTolMax = 0.5;
+                                if obj.iMov.is2D
+                                    % case is 2D setups
+                                    dTolMax = 1;
                                 else
-                                    dTolMax = 2;
-                                end                                
+                                    % case is 1D setups
+                                    if obj.withinEdge(indR,fPest)
+                                        % case is within edge
+                                        dTolMax = 0.5;
+                                    else
+                                        % case is not near the edge
+                                        dTolMax = 2;
+                                    end
+                                end
                             end                                                       
                             
                             % determines if any points are within the
@@ -572,7 +584,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             isOK = ~cellfun(@(x)(all(isnan(x(:)))),IR);
             
             % removes any NaN values from the image
-            if ~isempty(obj.iMov.dpInfo)
+            if ~isempty(obj.iMov.phInfo)
                 % removes any NaN pixels or pixels at the frame edge          
                 for i = find(isOK(:)')
                     B = bwmorph(isnan(IR{i}),'dilate',1+obj.nI);

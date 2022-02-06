@@ -831,8 +831,8 @@ classdef VideoPhase < handle
                 if all(vPhaseF(ii) == 2) 
                     % if both phases are high-variance, then 
                     iFrmL = [iGrpF(ii(1),2),iGrpF(ii(2),1)];
-                    [~,Imet1] = obj.getRegionImgStack(iFrmL(1)); 
-                    [~,Imet2] = obj.getRegionImgStack(iFrmL(2));
+                    [~,Imet1] = obj.getRegionImageStack(iFrmL(1)); 
+                    [~,Imet2] = obj.getRegionImageStack(iFrmL(2));
                     Qnw = nanmean(cell2mat(cellfun(@(x,y)...
                             (calcHistSimMetrics(x,y)),Imet1,Imet2,'un',0)),1);
                     
@@ -1096,7 +1096,7 @@ classdef VideoPhase < handle
         % ----------------------------- %     
 
         % --- retrieves the region image stack
-        function [IL,Imet] = getRegionImgStack(obj,iFrm)
+        function [IL,Imet] = getRegionImageStack(obj,iFrm)
             
             % retrieves the new image frame
             I0 = obj.getImageFrame(iFrm);
@@ -1321,7 +1321,7 @@ classdef VideoPhase < handle
             % calculates the average image intensities (if missing)
             if all(DimgFrm == 0)
                 % retrieves the image stack
-                [~,Imet] = obj.getRegionImgStack(iFrm);
+                [~,Imet] = obj.getRegionImageStack(iFrm);
                 
                 % recalculates the image intensities based on type
                 if iscell(obj.Dimg)
@@ -1342,13 +1342,17 @@ classdef VideoPhase < handle
         function D = calcAvgImgIntensity(obj,I,iApp)
             
             % calculates the average image intensity (based on type)
-            if obj.hasSR
+            if (nargin == 2)
+                iApp = (1:obj.nApp)';
+                Bw = arrayfun(@(x)(getExclusionBin...
+                            (obj.iMov,size(I{1}),x)),iApp,'un',0);                
+                D = cellfun(@(x,y)(nanmean(x(y))),I,Bw)';                
+            elseif obj.hasSR
                 % case is there is sub-region data set
                 D = cell2mat(cellfun(@(y)(cellfun(@(x)...
-                        (nanmean(x(y))),I)),obj.iGrpSR{iApp}(:),'un',0))';
-                
+                        (nanmean(x(y))),I)),obj.iGrpSR{iApp}(:),'un',0))';                
             else
-                % case is there is no sub-region setup
+                % case is there is no sub-region setup (single region)
                 Bw = getExclusionBin(obj.iMov,size(I{1}),iApp);
                 D = cellfun(@(x)(nanmean(x(Bw))),I)';
             end

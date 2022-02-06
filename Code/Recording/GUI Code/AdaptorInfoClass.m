@@ -751,10 +751,18 @@ classdef AdaptorInfoClass < handle
             % retrieves the required data structs
             iCh = get(hObject,'UserData');
             handles = obj.hGUI;
-
+                        
+            try
+                % sets the channel limits
+                nwLim = [0 obj.nChMax(iCh)];
+            catch
+                % if there was an error, use a fixed value
+                nwLim = [0 4];
+            end
+                
             % retrieves the new value and determines if it is valid
             nwVal = str2double(get(hObject,'string'));
-            if chkEditValue(nwVal,[0 obj.nChMax(iCh)],1)
+            if chkEditValue(nwVal,nwLim,1)
                 % sets the new value if valid
                 obj.nCh(iCh) = nwVal;
 
@@ -765,9 +773,12 @@ classdef AdaptorInfoClass < handle
                 else
                     % otherwise, check to see if the IMAQ object has been 
                     % set AND at least one channel has been provided for 
-                    % each DAC device
-                    canConnect = ~(any(obj.nCh(obj.vSelDAQ) == 0) || ...
-                                   isempty(obj.vSelIMAQ));
+                    % each DAC device                    
+                    canConnect = ~any(obj.nCh(obj.vSelDAQ) == 0);
+                    if obj.hasIMAQ 
+                        canConnect = canConnect && ~isempty(obj.vSelIMAQ);
+                    end
+                        
                     setObjEnable(handles.buttonConnect,canConnect)
                 end
             else
@@ -1020,7 +1031,7 @@ classdef AdaptorInfoClass < handle
         function setEditProp(obj,ind,state)
 
             % if there are no indices, then exit the function
-            if ~isempty(ind)
+            if isempty(ind)
                 return;
             end
 

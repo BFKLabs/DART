@@ -603,14 +603,7 @@ classdef CalcBG < handle
                 obj.setVideoInfoProps()
                 iFrm0 = num2str(obj.indFrm{1}(1));
                 set(obj.hGUI.editFrameCount,'string','1')          
-                set(obj.hGUI.textCurrentFrame,'string',iFrm0)   
-                
-                % sets up the frame offset
-                if isfield(obj.iMov,'dpInfo')
-                    obj.dpOfs = obj.setupFrameOffset();
-                else
-                    [obj.iMov.dpInfo,obj.dpOfs] = deal([],cell(nPhase,1));
-                end                           
+                set(obj.hGUI.textCurrentFrame,'string',iFrm0)                          
                 
             else
                 % clears the frame count string
@@ -683,36 +676,10 @@ classdef CalcBG < handle
                     obj.updateMainImage()      
                 end
             else
-                % if the translation info field is not set, then create one
-                if ~isfield(obj.iMov,'dpInfo')
-                    obj.iMov.dpInfo = [];
-                end                                                      
-                
                 % if not, disable the frame selection panels                
                 set(setObjEnable(hgui.checkFlyMarkers,0),'Value',0)
                 set(setObjEnable(hgui.menuShowStats,0),'Checked','off')                                 
             end            
-            
-        end
-        
-        % --- sets up the frame offset array
-        function dpOfs = setupFrameOffset(obj)
-           
-            if isfield(obj.iMov,'dpInfo')
-                dpInfo = obj.iMov.dpInfo;
-            else
-                dpInfo = [];
-            end
-            
-            % memory allocation
-            dpOfs = cell(length(obj.iMov.vPhase),1);
-            
-            % for each phase that has offset information, calculate the 
-            if ~isempty(dpInfo)
-                for i = find(obj.iMov.vPhase(:) == 1)'
-                    dpOfs{i} = calcFrameOffset(dpInfo,obj.indFrm{i});
-                end
-            end
             
         end
         
@@ -910,14 +877,6 @@ classdef CalcBG < handle
                 iFrmS = obj.indFrm{iPhase}(ipara.cFrm);
                 Img0 = double(getDispImage(idata,imov,iFrmS,false));
             end
-            
-%             % shifts the image (if required)
-%             if ~isempty(obj.dpOfs)
-%                 if ~isempty(obj.dpOfs{iPhase})
-%                     dP = obj.dpOfs{iPhase}(ipara.cFrm,:);
-%                     Img0 = calcImgTranslate(Img0,dP);
-%                 end
-%             end
             
             % sets the image            
             switch imgType
@@ -1432,6 +1391,9 @@ classdef CalcBG < handle
         % --- Executes on button press in buttonUpdateStack.
         function buttonUpdateStack(obj, ~, ~)
 
+            % initialisations
+            chkStr = {'off','on'};
+            
             % retrieves the program data struct and the image stack size
             idata = obj.iData;
             imov = obj.iMov;
@@ -1524,8 +1486,8 @@ classdef CalcBG < handle
                     % if the user cancelled, then exit the function
                     return    
                 end
-            end
-
+            end           
+            
             % updates the parameter struct   
             obj.iMov = imov;
             obj.iMov.Ibg = [];
@@ -1574,6 +1536,11 @@ classdef CalcBG < handle
             obj.iData = idata;                
             obj.iPara.nFrm = length(obj.indFrm{obj.iPara.cPhase});
 
+            % resets the video translation menu item   
+            hMenuCT = obj.hGUI.menuCorrectTrans;
+            hasT = ~isempty(imov.phInfo) && any(imov.phInfo.hasT);
+            set(setObjEnable(hMenuCT,hasT),'Checked',chkStr{1+hasT})                        
+            
             % runs the post video phase update
             if isprop(obj.trkObj,'hMenuM')
                 obj.trkObj.postVideoPhaseUpdate();
@@ -2003,8 +1970,7 @@ classdef CalcBG < handle
                 % sub-image data struct
                 obj.iMov = imov;
                 obj.ok0 = imov.flyok;                              
-                obj.Ibg = cell(length(imov.vPhase),1);    
-                obj.iMov.dpInfo = obj.trkObj.dpInfo;
+                obj.Ibg = cell(length(imov.vPhase),1);
                 obj.iMov.hFilt = obj.trkObj.hFilt;                
                 
                 % updates the sub-region data struct in the main gui
@@ -2013,8 +1979,7 @@ classdef CalcBG < handle
                 % likely/potential object locations
                 obj.fPos = obj.trkObj.fPosG;
                 obj.pStats = obj.trkObj.pStats;
-                obj.pData = obj.trkObj.pData;
-                obj.dpOfs = obj.trkObj.dpOfs;                
+                obj.pData = obj.trkObj.pData;               
 
                 % updates the list box properties but clears the list
                 set(obj.hGUI.tableFlyUpdate,'Data',[])

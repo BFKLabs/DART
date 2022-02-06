@@ -237,7 +237,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             end
             
             % if the first file, then exit
-            if (iFile == 1) || ~isnan(obj.bData(iDir).dpImg(iFile,1))
+            if iFile == 1
                 return
             end
 
@@ -1392,7 +1392,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         % --------------------------------- %
         
         % --- sets up the experiment summary file
-        function setupSummaryFile(obj,bdata)            
+        function setupSummaryFile(obj,bdata)
             
             % determines if the summary file exists
             if exist(obj.outSumm,'file')

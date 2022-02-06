@@ -2602,8 +2602,13 @@ iData = get(hFig,'iData');
 
 % updates the frame selection object properties
 if ishandle(handles.frmCountEdit)
-    cFrm = str2double(get(handles.frmCountEdit,'string'));  
-    isBGCalc = ~isempty(findobj(0,'tag','figBackEst'));
+    isBGCalc = ~isempty(hFig.bgObj) && hFig.bgObj.isVisible;
+    if isBGCalc
+        iFrmPh = hFig.bgObj.indFrm{hFig.bgObj.iPara.cPhase};
+        cFrm = iFrmPh(hFig.bgObj.iPara.cFrm);
+    else
+        cFrm = str2double(get(handles.frmCountEdit,'string'));  
+    end
 else
     [cFrm,isBGCalc] = deal(1,false);
 end
@@ -2629,12 +2634,12 @@ switch nargin
         
     otherwise % case is a normal image update
         isSub = get(handles.checkLocalView,'value');
-        ImgNw = getDispImage(iData,iMov,cFrm,isSub,handles); 
-        
-        % applies the image correction (if required)
-        if strcmp(get(handles.menuCorrectTrans,'Checked'),'on')
-            ImgNw = applyImgOffset(ImgNw,iMov,cFrm);
-        end
+        ImgNw = double(getDispImage(iData,iMov,cFrm,isSub,handles));         
+end
+
+% applies the image correction (if required)
+if strcmp(get(handles.menuCorrectTrans,'Checked'),'on')
+    ImgNw = applyImgOffset(ImgNw,iMov,cFrm);
 end
         
 % updates the frame selection properties
@@ -2734,18 +2739,23 @@ else
 end
 
 % array indexing & parameters
-nApp = length(hFig.hMark);
 if isCalib
     if isfield(hFig,'rtObj')
         if isempty(hFig.fPosTmp); return; end     
     end
 end
 
+% retrieves the updates the region markers (if there is translation)
+if ~isempty(iMov.phInfo) && any(iMov.phInfo.hasT)
+    
+end
+
 % sets the markers for all flies
 if ~isempty(hFig.hMark)    
     for i = find(iMov.ok(:)')
         % if the markers have been deleted then re-initialise them
-        if (i == 1) && ~ishandle(hFig.hMark{i}{1})
+        initReqd = isempty(hFig.hMark{i}{1}) || ~ishandle(hFig.hMark{i}{1});
+        if (i == 1) && initReqd
             initMarkerPlots(handles,1)
         end
         
@@ -3862,8 +3872,7 @@ iMov = struct('pos',[1 1 1 1],'posG',[],'Ibg',[],'ddD',[],...
               'sgP',[],'Status',[],'tempName',[],'autoP',[],'bgP',[],...
               'isSet',false,'ok',true,'tempSet',false,'isOpt',false,...
               'useRot',false,'rotPhi',90,'calcPhi',false,'sepCol',false,...
-              'vGrp',[],'sRate',5,'nDS',1,'mShape','Rect',...
-              'dpInfo',[],'phInfo',[]);
+              'vGrp',[],'sRate',5,'nDS',1,'mShape','Rect','phInfo',[]);
 iMov.sgP = iData.sgP;          
           
 % --- sets the experimental parameters struct/field values --- %

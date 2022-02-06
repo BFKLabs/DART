@@ -391,35 +391,6 @@ classdef TrackFull < Track
                 setTrackGUIProps(obj.hGUI,'UpdateFrameSelection')
             end  
             
-        end   
-        
-        % --- applies the image offset
-        function Img = applyImageOffset(obj,Img,iFrmR)
-            
-            % determines if there is any valid translation information
-            if ~isfield(obj.iMov,'dpInfo')
-                % case is older format file (no translation)
-                return
-            elseif isempty(obj.iMov.dpInfo)
-                % case is there is no translation
-                return
-            end
-            
-            % calculates and applied the image offset
-            dpOfs = calcFrameOffset(obj.iMov.dpInfo,iFrmR);
-            if all(dpOfs == 0)
-                return
-            else
-                Img = cellfun(@(I,dp)(calcImgTranslate(I,dp)),...
-                                        Img,num2cell(dpOfs,2)','un',0);  
-            end
-                                
-            % removes any regions surrounding the 
-            for i = 1:length(Img)
-                B = bwmorph(isnan(Img{i}),'dilate',1+obj.nI);
-                Img{i}(B) = NaN;
-            end
-            
         end
         
         % ---------------------------------------- %
