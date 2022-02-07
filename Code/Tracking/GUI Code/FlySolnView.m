@@ -670,11 +670,12 @@ yPlt = hFig.dyLim + (1-2*hFig.dyLim)*(Imu-yLim(1))/diff(yLim);
 % plots image average intensity line
 hAvgTag = 'hLineAvg';
 [yLo,yHi] = deal(hFig.dyLim*[1,1],(1-hFig.dyLim)*[1,1]);
-plot(hAxI,T(ii)*Tmlt,yPlt,'kx-','tag',hAvgTag,'LineWidth',1,'UserData',1);
+plot(hAxI,T(ii)*Tmlt,yPlt,'kx-','tag',hAvgTag,'LineWidth',1,...
+                    'UserData',1,'Visible','off');
 plot(hAxI,xLimT,yLo,'r:','tag',hAvgTag,'LineWidth',1,...
-                  'UserData',2,'Visible','off');
+                    'UserData',2,'Visible','off');
 plot(hAxI,xLimT,yHi,'r:','tag',hAvgTag,'LineWidth',1,...
-                  'UserData',2,'Visible','off');
+                    'UserData',2,'Visible','off');
 
 % sets up the axis limits based on whether there is translation
 if any(pInfo.hasT)
@@ -697,16 +698,17 @@ end
               
 % plot image translation line
 hLTag = 'hLineTrans';
-plot(hAxI,xLimT,yPlt0,'k','tag',hLTag,'LineWidth',2);
+plot(hAxI,xLimT,yPlt0,'k','tag',hLTag,'LineWidth',2,'Visible','off');
 hPlt = [plot(hAxI,tPlt,yPltX,'b','tag',hLTag,'LineWidth',2);...
         plot(hAxI,tPlt,yPltY,'r','tag',hLTag,'LineWidth',2)];
-plot(hAxI,xLimT,yLo,'k:','tag',hLTag,'LineWidth',1);
-plot(hAxI,xLimT,yHi,'k:','tag',hLTag,'LineWidth',1);
+plot(hAxI,xLimT,yLo,'k:','tag',hLTag,'LineWidth',1,'Visible','off');
+plot(hAxI,xLimT,yHi,'k:','tag',hLTag,'LineWidth',1,'Visible','off');
+setObjVisibility(hPlt,'off')
 
 % creates the legned object
 hLg = legend(hPlt,{'X-Offset';'Y-Offset'});
 set(hLg,'location','best','tag','hLegend','location','northwest',...
-        'Box','off','FontWeight','Bold');%,'Visible','off');
+        'Box','off','FontWeight','Bold','Visible','off');
 
 % -------------------------------------- %
 % --- STIMULI MARKER INITIALISATIONS --- %
@@ -749,6 +751,9 @@ end
 % ------------------------------ %
 % --- HOUSE-KEEPING ROUTINES --- %
 % ------------------------------ %
+
+% ensures the average speed menu item is selected
+toggleLineMarker(iMov,hAxI,1)
 
 % removes hold from the axis
 hold(hAxI,'off')
@@ -841,7 +846,7 @@ switch iApp
         
         % sets the y-axis limits and strings
         yTick = 1:nApp;
-        yStr = arrayfun(@(x)(sprintf('%i',x)),find(iMov.ok(:)')','un',0);
+        yStr = arrayfun(@(x)(sprintf('%i',x)),yTick(:),'un',0);
         
         % sets/updates the y-axis label
         hYLbl = findall(hAx,'tag','hYLbl');
@@ -894,13 +899,8 @@ switch iApp
         
         % sets up the plot values
         pInfo = iMov.phInfo;
-        [ii,Imu] = deal(pInfo.iFrmF,mean(pInfo.DimgF,2));  
-        yLim = [floor(min(Imu)),ceil(max(Imu))];                
-        yPlt = hFig.dyLim + (1-2*hFig.dyLim)*(Imu-yLim(1))/diff(yLim);
-        
-        % resets the line properties
-        hLineAvg = findobj(hAx,'tag','hLineAvg','UserData',1);
-        set(hLineAvg,'xdata',T(ii)*Tmlt,'yData',yPlt)                
+        Imu = mean(pInfo.DimgF,2);  
+        yLim = [floor(min(Imu)),ceil(max(Imu))];
         
         % updates the other object properties
         set(hAx,'yLim',[0 1])
@@ -924,7 +924,7 @@ switch iApp
                 
         % sets the y-axis limits
         pOfsT = calcImageStackFcn(iMov.phInfo.pOfs);
-        yLim = [min(-1,min(pOfsT(:))),max(1,max(pOfsT(:)))];        
+        yLim = [floor(min(-1,min(pOfsT(:)))),ceil(max(1,max(pOfsT(:))))];        
         
         % updates the other object properties
         set(hAx,'yLim',[0 1])
@@ -933,7 +933,7 @@ switch iApp
         
         % sets the axis limits and strings
         yTick = [hFig.dyLim,(1-hFig.dyLim)];
-        yStr = arrayfun(@num2str,flip(yLim),'un',0);
+        yStr = arrayfun(@num2str,yLim,'un',0);
         
     otherwise
         % case is the fly position plot
@@ -1047,7 +1047,7 @@ xLim = [-pDel max(get(hAx,'xlim'))];
 set(hAx,'yticklabel',yStr,'ytick',yTick,'xlim',xLim);
 
 % updates the axis orientation
-if iApp == -1
+if any(iApp == [-1,-2])
     axis(hAx,'xy')
 else
     axis(hAx,'ij') 

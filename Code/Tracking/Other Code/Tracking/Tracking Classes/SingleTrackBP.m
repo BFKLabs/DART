@@ -538,12 +538,14 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                                 pause(0.05);       
 
                                 % updates the sub-region data struct
-                                iMovT = get(obj.hFig,'iMov');
-                                set(obj.hFig,'iMov',obj.iMov);
+                                hFigM = obj.hGUI.output;
+                                iMovT = get(hFigM,'iMov');
+                                set(hFigM,'iMov',obj.iMov);
+                                set(hTrack,'iMov',obj.iMov);
 
                                 % attempts to updates the solution view GUI
                                 hTrack.initFunc(guidata(hTrack),1)
-                                set(obj.hFig,'iMov',iMovT,'hSolnT',hTrack)
+                                set(hFigM,'iMov',iMovT,'hSolnT',hTrack)
 
                                 % pause to refresh
                                 pause(0.05);

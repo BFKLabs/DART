@@ -486,19 +486,13 @@ classdef SingleTrackInit < SingleTrack
                 
                 % retrieves the blob locations over all frame/phases
                 fP = cellfun(@(y)(cell2mat(cellfun(@(x)...
-                        (x(j,:)),y(k,:)','un',0))),obj.fPosL(okPh),'un',0);
+                        (x(j,:)),y(k,:)','un',0))),obj.fPosL(okPh),'un',0);                
                 fPT = cell2mat(fP);                
                 
                 % determines if there has been significant over all frames
                 if ~all(range(fPT,1) < Dtol)
                     % calculates the mean locations for each phase
-                    fPmn = cell2mat(cellfun(@(x)(mean(x,1)),fP,'un',0));
-                    
-                    % calculates the total image stack
-                    if isempty(ILT{k})
-                        ILT{k} = calcImageStackFcn(...
-                                        cell2cell(obj.dIss(k,:)),'mean');
-                    end                    
+                    fPmn = cell2mat(cellfun(@(x)(mean(x,1)),fP,'un',0));                    
                     
                     % determines the unique groups 
                     D = pdist2(fPmn,fPmn);
@@ -516,30 +510,39 @@ classdef SingleTrackInit < SingleTrack
                         kGrp{end+1} = find(jj);
                         [D(:,jj),D(jj,:)] = deal(NaN);
                         isF(jj) = true;
-                    end                                              
+                    end                                                                                      
                     
                     % sets the mean coordinates of each unique grouping
                     fPGrp = roundP(cell2mat(cellfun(@(x)...
                                       (mean(fPmn(x,:),1)),kGrp','un',0)));
-                    if obj.nI > 0
+                    if obj.nI > 0   
+                        % downsamples the coordinates (if reqd)
                         fPGrp = obj.downsampleImageCoords(fPGrp,obj.nI);                        
                     end
                     
-                    % sets the row/column indices                    
-                    iRT0 = obj.iMov.iRT{k}{j};
-                    [iR0,iC0] = deal(obj.iMov.iR{k},obj.iMov.iC{k});
-                    iRT = obj.getSRRowIndices(k,j);
-                    
-                    % sets up the sub-region image (only including the
-                    % regions surrounding the likely points)
-                    ILTnw = ILT{k}(iRT,:);
-                    szL = size(ILTnw);
-                    fPGrp = max(1,min(fPGrp,flip(szL)));
-                    BD0 = bwdist(setGroup(fPGrp,szL)) < Dtol;
-                    
-                    % determines the max
-                    iMx = getMaxCoord(ILTnw.*BD0);
-                    BD = bwdist(setGroup(iMx,szL)) < pWD*Dtol;
+                    % retrieves the previous location data
+                    if isempty(obj.prData0)
+                        % set the most likely grouping to be that with the
+                        % highest phase count
+                        iMx = argMax(cellfun(@length,kGrp));
+                    else
+                        % retrieves the previous coordinates
+                        fPpr = obj.prData0.fPosPr{k}{j}(end,:);
+                        if obj.nI > 0
+                            % downsamples the coordinates (if reqd)
+                            fPpr = obj.downsampleImageCoords(fPpr,obj.nI);
+                        end
+                        
+                        % determines the grouping which is closest to the
+                        % previously known location
+                        [Dmn,iMx] = min(sum((fPGrp - fPpr).^2,2).^0.5);
+                        if Dmn > Dtol
+                            % if the distance is too hight, then set the 
+                            % most likely grouping to be that with the
+                            % highest phase count                            
+                            iMx = argMax(cellfun(@length,kGrp));
+                        end
+                    end                                        
                     
                     % calculates the x/y offset of the sub-region
                     xOfs = obj.iMov.iC{k}(1)-1;
@@ -547,28 +550,29 @@ classdef SingleTrackInit < SingleTrack
                     pOfsL = [0,obj.iMov.iRT{k}{j}(1)-1];
                     pOfs = pOfsL + [xOfs,yOfs];
                     
+                    % sets the row/column indices                    
+                    iRT0 = obj.iMov.iRT{k}{j};
+                    [iR0,iC0] = deal(obj.iMov.iR{k},obj.iMov.iC{k});                    
+                    
+                    % sets the groupings which match the most likely                    
+                    rsGrp = ~setGroup(kGrp{iMx},[1,obj.nPhase]);     
+                    fPnw = roundP(fPGrp(iMx,:));
+                    if obj.nI > 0
+                        % upsamples the coordinates (if required)
+                        fPnw = 1 + obj.nI*(1 + 2*(fPnw-1));
+                    end
+                    
                     % resets the coordinates for each phase/frame
-                    for iPh = okPh(:)'
-                        % sets up the phase local image stack
-                        dIssL = cellfun(@(x)(x(iRT,:).*BD),...
-                                                obj.dIss{k,iPh},'un',0);
-                        fPT = zeros(length(dIssL),2);        
-                        
-                        for ii = 1:length(dIssL)
-                            % calculates the coordinate of the max point
-                            fPT(ii,:) = getMaxCoord(dIssL{ii});                           
-                            if obj.nI > 0
-                                fPT(ii,:) = 1 + obj.nI*(1 + 2*(fPT(ii,:)-1));
-                            end
-                            
+                    for iPh = find(rsGrp)
+                        for ii = 1:length(obj.indFrm{iPh})
                             % resets the local blob coordinates
-                            obj.fPosL{iPh}{k,ii}(j,:) = fPT(ii,:);
-                            obj.fPos{iPh}{k,ii}(j,:) = fPT(ii,:) + pOfsL;
-                            obj.fPosG{iPh}{k,ii}(j,:) = fPT(ii,:) + pOfs;
+                            obj.fPosL{iPh}{k,ii}(j,:) = fPnw;
+                            obj.fPos{iPh}{k,ii}(j,:) = fPnw + pOfsL;
+                            obj.fPosG{iPh}{k,ii}(j,:) = fPnw + pOfs;
                         end
                         
                         % re-estimates the sub-region background image
-                        fPTmn = roundP(nanmean(fPT,1));
+                        fPTmn = roundP(nanmean(fPnw,1));
                         IbgTmp = obj.IbgT{iPh}(iR0(iRT0),iC0);
                         IbgNw = obj.estSubRegionBG({IbgTmp},fPTmn);                        
                         obj.Ibg{iPh}{k}(iRT0,:) = IbgNw;                        
@@ -1623,20 +1627,20 @@ classdef SingleTrackInit < SingleTrack
             % fluctuations hasn't been accounted for, then apply the
             % homomorphic transform to the image stack  
             needsCorrect = ~(hasF || obj.isHiV);
-            if ~needsCorrect && hasT
-                [I0,I] = deal(I,cell(length(I),1));
+            if ~needsCorrect && hasT                
                 if ~obj.iMov.is2D
+                    [I0,I] = deal(I,cell(length(I),1));
                     [I{1},H] = applyHMFilter(I0{1});
                     I(2:end) = cellfun(@(x)...
                                 (applyHMFilter(x,H)),I0(2:end),'un',0);
+                            
+                    % clears the original array
+                    clear I0                            
                 end
 
                 % convert and scales the resulting images
                 I = cellfun(@(x)(255*(x-nanmin(x(:)))),I,'un',0);
-                I = cellfun(@(x)(x-nanmedian(x(:))),I,'un',0);
-                
-                % clears the original array
-                clear I0
+                I = cellfun(@(x)(x-nanmedian(x(:))),I,'un',0);                
             end         
             
             % applies the exclusion mask

@@ -61,7 +61,7 @@ pFldStr = {'pData','hSolnT','hTube','hMark','hDir','hMainGUI','mObj',...
            'vidTimer','hGUIOpen','reopenGUI','cType','infoObj','hTrack',...
            'isText','iMov','rtP','rtD','iData','ppDef','frmBuffer',...
            'bgObj','prObj','objDACInfo','iStim','hTT','pColF','isTest',...
-           'fPosNew','vcObj'};
+           'fPosNew','vcObj','mkObj'};
 initObjPropFields(hObject,pFldStr);
 
 % ensures the background detection panel is invisible
@@ -2720,57 +2720,6 @@ end
 % updates all the plot markers
 updateAllPlotMarkers(handles,iMov,~isempty(ImgNw))
 
-% --- updates the object location marker coordinates
-function updateAllPlotMarkers(handles,iMov,hasImg)
-
-% global variables
-global isCalib
-
-% retrieves the important data arrays/structs
-hFig = handles.output;
-% cType = get(hFig,'cType');
-
-% determines if the location/orientation markers are to be plotted
-pltLocT = get(handles.checkShowMark,'value') && hasImg;
-if ishandle(handles.checkShowAngle)
-    pltAngT = get(handles.checkShowAngle,'value') && hasImg;
-else
-    pltAngT = false;
-end
-
-% array indexing & parameters
-if isCalib
-    if isfield(hFig,'rtObj')
-        if isempty(hFig.fPosTmp); return; end     
-    end
-end
-
-% retrieves the updates the region markers (if there is translation)
-if ~isempty(iMov.phInfo) && any(iMov.phInfo.hasT)
-    
-end
-
-% sets the markers for all flies
-if ~isempty(hFig.hMark)    
-    for i = find(iMov.ok(:)')
-        % if the markers have been deleted then re-initialise them
-        initReqd = isempty(hFig.hMark{i}{1}) || ~ishandle(hFig.hMark{i}{1});
-        if (i == 1) && initReqd
-            initMarkerPlots(handles,1)
-        end
-        
-        % sets the plot location marker flag for the current apparatus
-        [pltLoc,pltAng] = deal(pltLocT&&iMov.ok(i),pltAngT&&iMov.ok(i));
-        if isCalib       
-            if isfield(hFig,'fPosTmp')
-                updateIndivMarker(handles,hFig.fPosTmp,i,pltLoc,pltAng,1) 
-            end
-        else
-            updateIndivMarker(handles,hFig.pData,i,pltLoc,pltAng) 
-        end        
-    end
-end
-
 % --- plays the movie from the current frame until A) the end of the 
 %     movies or, B) until the user presses stop 
 function isComplete = showMovie(handles)
@@ -2823,6 +2772,57 @@ while (iFrm + cStp) <= iData.nFrm
         % updates the frame count
         cStp = str2double(get(handles.editFrameStep,'string'));           
     end        
+end
+
+% --- updates the object location marker coordinates
+function updateAllPlotMarkers(handles,iMov,hasImg)
+
+% global variables
+global isCalib
+
+% retrieves the important data arrays/structs
+hFig = handles.output;
+% cType = get(hFig,'cType');
+
+% determines if the location/orientation markers are to be plotted
+pltLocT = get(handles.checkShowMark,'value') && hasImg;
+if ishandle(handles.checkShowAngle)
+    pltAngT = get(handles.checkShowAngle,'value') && hasImg;
+else
+    pltAngT = false;
+end
+
+% array indexing & parameters
+if isCalib
+    if isfield(hFig,'rtObj')
+        if isempty(hFig.fPosTmp); return; end     
+    end
+end
+
+% retrieves the updates the region markers (if there is translation)
+if ~isempty(iMov.phInfo) && any(iMov.phInfo.hasT)
+    
+end
+
+% sets the markers for all flies
+if ~isempty(hFig.hMark)    
+    for i = find(iMov.ok(:)')
+        % if the markers have been deleted then re-initialise them
+        initReqd = isempty(hFig.hMark{i}{1}) || ~ishandle(hFig.hMark{i}{1});
+        if (i == 1) && initReqd
+            initMarkerPlots(handles,1)
+        end
+        
+        % sets the plot location marker flag for the current apparatus
+        [pltLoc,pltAng] = deal(pltLocT&&iMov.ok(i),pltAngT&&iMov.ok(i));
+        if isCalib       
+            if isfield(hFig,'fPosTmp')
+                updateIndivMarker(handles,hFig.fPosTmp,i,pltLoc,pltAng,1) 
+            end
+        else
+            updateIndivMarker(handles,hFig.pData,i,pltLoc,pltAng) 
+        end        
+    end
 end
 
 % --- initialises all the image plot markers 
@@ -3014,7 +3014,7 @@ hMark = findobj(handles.imgAxes,'tag','hMark');
 if ~isempty(hMark); delete(hMark); end
 
 % loops through all the apparatus deleting the tube/fly markers
-for i = 1:length(hMark)    
+for i = 1:length(hMark)
     % deletes any previous fly markers
     hDir = findobj(handles.imgAxes,'tag',sprintf('hDir%i',i));
     if ~isempty(hDir); delete(hDir); end    

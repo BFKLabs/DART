@@ -2,10 +2,10 @@
 function Type = getDetectionType(iMov)
 
 % sets the automatic detection type
-if (~isfield(iMov,'autoP'))
+if ~isfield(iMov,'autoP')
     % no automatic detection (old struct type)
     Type = 'None';    
-elseif (isempty(iMov.autoP))
+elseif isempty(iMov.autoP)
     % no automatic detection (new struct type)
     Type = 'None';
 else
