@@ -1,5 +1,5 @@
 function varargout = FlySolnView(varargin)
-% Last Modified by GUIDE v2.5 03-Jan-2022 19:24:52
+% Last Modified by GUIDE v2.5 06-Feb-2022 18:18:12
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -43,8 +43,8 @@ iData = get(hGUI.output,'iData');
 % initialises the custom object properties
 addObjProps(hObject,'hGUI',hGUI,'iMov',iMov,'iData',iData,'T',[],...
                     'sFac',iData.exP.sFac,'vType',[],'nNaN',[],...
-                    'Dfrm',[],'tTick0',[],'tTickLbl0',[],...
-                    'iPara',initParaStruct);
+                    'Dfrm',[],'tTick0',[],'tTickLbl0',[],'phObj',[],...
+                    'iPara',initParaStruct,'dyLim',0.025);
                                 
 % sets the functions that are to be used outside the GUI
 addObjProps(hObject,'updateFunc',@updatePlotObjects,...
@@ -196,7 +196,8 @@ function menuSelectUpdate(hObject, eventdata, handles)
 
 % initialisations
 isUpdate = true;
-hMenuMet = [get(handles.menuFlyPos,'children');handles.menuAvgSpeed];
+hMenuMet = [get(handles.menuFlyPos,'children');handles.menuAvgSpeed;...
+            handles.menuAvgInt;handles.menuImgTrans];
 hMenu = findobj(hMenuMet,'type','uimenu','checked','on');
 
 % retrieves the menu item that is currently checked
@@ -204,10 +205,12 @@ if isempty(hMenu)
     % if there is no menu item selected, then set the current menu
     isUpdate = true;
     set(hObject,'checked','on')
+    
 elseif hMenu ~= hObject
     % turns off the check for the previous menu, and set the current menu
     set(hMenu,'checked','off')
     set(hObject,'checked','on')
+    
 else
     % set the update flag to false
     isUpdate = isa(eventdata,'char');
@@ -333,9 +336,9 @@ eStr = {'off','on'};
 isChecked = strcmp(get(hObject,'Checked'),'on');
 
 % object handles
+hFig = handles.output;
 hPanelI = handles.panelImg;
 hPanelS = handles.panelStim;
-hFig = handles.output;
 
 % updates the object properties
 set(hObject,'Checked',eStr{2-isChecked})
@@ -373,6 +376,28 @@ end
 resetObjPos(hPanelI,'bottom',y0nw);
 resetObjPos(hPanelI,'height',Hnw);
 set(hPanelI,'Units',hUnitsI)
+
+% -------------------------------------------------------------------------
+function menuPhaseStats_Callback(hObject, eventdata, handles)
+
+% object handles
+hFig = handles.output;
+
+switch get(hObject,'Checked')
+    case 'on'
+        % case is closing an open statistics GUI
+        hFig.phObj.closeGUI([],hFig.phObj);
+        set(hObj,'Checked','off');
+
+        % clears the statistics object
+        hFig.phObj = [];                    
+
+    case 'off'
+        % case is opening the statistics GUI
+        hFig.phObj = InitPhaseStats(hFig);
+        set(hObject,'Checked','on');                    
+
+end
 
 %-------------------------------------------------------------------------%
 %                        FIGURE CALLBACK FUNCTIONS                        %
@@ -473,7 +498,9 @@ end
 
 % creates the new menu item
 bFunc = {@menuSelectUpdate,handles};
-set(handles.menuAvgSpeed,'Callback',bFunc,'UserData',0,'checked','on')    
+set(handles.menuAvgSpeed,'Callback',bFunc,'UserData',0,'checked','on')
+set(handles.menuAvgInt,'Callback',bFunc,'UserData',-1)
+set(handles.menuImgTrans,'Callback',bFunc,'UserData',-2)
 
 % --- initialises the solution file information --- %
 function initPlotObjects(handles,varargin)
@@ -494,6 +521,7 @@ axis(hAxI,'on')
 hGUI = get(hFig,'hGUI');
 iMov = get(hGUI.output,'iMov');
 iData = get(hGUI.output,'iData');
+pInfo = iMov.phInfo;
 
 % sets the fly count (based on tracking type)
 isMTrk = detMltTrkStatus(iMov);
@@ -528,12 +556,14 @@ isInit = isempty(hYLbl);
 iApp = getSelectedMenuItem(handles);
 
 % sets the ylabels
-switch iApp
-    case 0 % case is the average velocity             
+switch iApp    
+    case 0 
+        % case is the average velocity             
         yLimT = [1 nApp] + 0.5*[-1 1];
         yLblStr = 'Region Index';      
         
-    otherwise % case is the positional traces
+    otherwise
+        % case is the positional traces
         yLimT = [1 nFly] + 0.5*[-1 1];
         yLblStr = 'Sub-Region Index';
 end
@@ -628,6 +658,56 @@ end
 % sets the original tick mark/labels
 set(hFig,'tTick0',get(hAxI,'xTick'),'tTickLbl0',get(hAxI,'xTickLabel'))    
     
+% ---------------------------------- %
+% --- PLOT MARKER INITIALISATION --- %
+% ---------------------------------- %
+
+% sets up the plot values
+[ii,Imu] = deal(pInfo.iFrmF,mean(pInfo.DimgF,2));  
+yLim = [floor(min(Imu)),ceil(max(Imu))];                
+yPlt = hFig.dyLim + (1-2*hFig.dyLim)*(Imu-yLim(1))/diff(yLim);
+
+% plots image average intensity line
+hAvgTag = 'hLineAvg';
+[yLo,yHi] = deal(hFig.dyLim*[1,1],(1-hFig.dyLim)*[1,1]);
+plot(hAxI,T(ii)*Tmlt,yPlt,'kx-','tag',hAvgTag,'LineWidth',1,'UserData',1);
+plot(hAxI,xLimT,yLo,'r:','tag',hAvgTag,'LineWidth',1,...
+                  'UserData',2,'Visible','off');
+plot(hAxI,xLimT,yHi,'r:','tag',hAvgTag,'LineWidth',1,...
+                  'UserData',2,'Visible','off');
+
+% sets up the axis limits based on whether there is translation
+if any(pInfo.hasT)
+    % sets the y-axis limits
+    pOfsT = calcImageStackFcn(pInfo.pOfs);
+    yLim = [min(-1,min(pOfsT(:))),max(1,max(pOfsT(:)))];
+
+    % sets the plot values
+    pWL = (1-2*hFig.dyLim)/diff(yLim);
+    tPlt = T(pInfo.iFrm0)*Tmlt;
+    yPltX = hFig.dyLim + pWL*(pOfsT(:,1)-yLim(1));
+    yPltY = hFig.dyLim + pWL*(pOfsT(:,2)-yLim(1));
+    yPlt0 = hFig.dyLim + pWL*([0,0]-yLim(1));
+
+else
+    % case is there is no major translation
+    tPlt = T([1,end])*Tmlt;
+    [yPltX,yPltY,yPlt0] = deal(0.5*[1,1]);
+end
+              
+% plot image translation line
+hLTag = 'hLineTrans';
+plot(hAxI,xLimT,yPlt0,'k','tag',hLTag,'LineWidth',2);
+hPlt = [plot(hAxI,tPlt,yPltX,'b','tag',hLTag,'LineWidth',2);...
+        plot(hAxI,tPlt,yPltY,'r','tag',hLTag,'LineWidth',2)];
+plot(hAxI,xLimT,yLo,'k:','tag',hLTag,'LineWidth',1);
+plot(hAxI,xLimT,yHi,'k:','tag',hLTag,'LineWidth',1);
+
+% creates the legned object
+hLg = legend(hPlt,{'X-Offset';'Y-Offset'});
+set(hLg,'location','best','tag','hLegend','location','northwest',...
+        'Box','off','FontWeight','Bold');%,'Visible','off');
+
 % -------------------------------------- %
 % --- STIMULI MARKER INITIALISATIONS --- %
 % -------------------------------------- %
@@ -707,7 +787,8 @@ updatePlotObjects(handles)
 function updatePlotObjects(handles)
 
 % retrieves the positional data
-hGUI = get(handles.output,'hGUI');
+hFig = handles.output;
+hGUI = get(hFig,'hGUI');
 pData = hGUI.output.pData;
 
 % retrieves the font-sizes
@@ -736,12 +817,14 @@ end
 yDel = 0.05;
 
 % sets the plot metric handles
-hMenuMet = [get(handles.menuFlyPos,'children');handles.menuAvgSpeed];
+hMenuMet = [get(handles.menuFlyPos,'children');handles.menuAvgSpeed;...
+            handles.menuAvgInt;handles.menuImgTrans];
 hMenu = findobj(hMenuMet,'type','uimenu','checked','on');
 
 % retrieves the menu 
 [hAx,iApp] = deal(handles.axesImg,get(hMenu,'UserData'));
-setObjEnable(handles.menuYData,iApp~=0)
+hTitle = get(hAx,'Title');
+setObjEnable(handles.menuYData,iApp>0)
 
 % retrieves the fly positonal data struct
 [T,Tmlt] = deal(get(handles.output,'T'),1/60);
@@ -749,17 +832,12 @@ setObjEnable(handles.menuYData,iApp~=0)
 
 % retrieves the menu item handles
 switch iApp
-    case (0) % case is the average velocity
+    case 0         
+        % case is the average velocity
+        
         % makes all the population plot lines visible and the individual
         % plot line invisible
-        hLine = findobj(hAx,'tag','hLinePop');
-        setObjVisibility(findobj(hAx,'tag','hLineInd'),'off')        
-        setObjVisibility(hLine,'on')        
-          
-        % makes the 2nd line invisible (2D or multi-tracking only)
-        if iMov.is2D
-            setObjVisibility(findobj(hAx,'tag','hLineInd2'),'off'); 
-        end        
+        toggleLineMarker(iMov,hAx,1)             
         
         % sets the y-axis limits and strings
         yTick = 1:nApp;
@@ -791,7 +869,7 @@ switch iApp
         
         % updates the title
         tStr = sprintf('Average Velocity (V_{scale} = %i)',Vmax);
-        set(get(hAx,'Title'),'string',tStr)        
+        set(hTitle,'string',tStr)        
         
         % updates the plot lines for all the apparatus
         for i = 1:nApp
@@ -805,7 +883,61 @@ switch iApp
         % updates the axis limits
         set(hAx,'yLim',[1 nApp]+0.5*[-1.002 1])         
         
-    otherwise % case is the fly position plot
+    case -1
+        % case is the average image intensity        
+        
+        % parameters
+        yLblStr = 'Avg. Pixel Intensity';
+        
+        % toggles the line markers
+        toggleLineMarker(iMov,hAx,2);        
+        
+        % sets up the plot values
+        pInfo = iMov.phInfo;
+        [ii,Imu] = deal(pInfo.iFrmF,mean(pInfo.DimgF,2));  
+        yLim = [floor(min(Imu)),ceil(max(Imu))];                
+        yPlt = hFig.dyLim + (1-2*hFig.dyLim)*(Imu-yLim(1))/diff(yLim);
+        
+        % resets the line properties
+        hLineAvg = findobj(hAx,'tag','hLineAvg','UserData',1);
+        set(hLineAvg,'xdata',T(ii)*Tmlt,'yData',yPlt)                
+        
+        % updates the other object properties
+        set(hAx,'yLim',[0 1])
+        set(findall(hAx,'tag','hYLbl'),'String',yLblStr); 
+        set(hTitle,'string','Average Image Pixel Intensity')
+        
+        % sets the axis limits and strings
+        yTick = [hFig.dyLim,(1-hFig.dyLim)];
+        yStr = arrayfun(@num2str,yLim,'un',0);
+        
+    case -2
+        % case is the image translation        
+        
+        % parameters
+        yLblStr = 'Image Offset (Pixels)';        
+        
+        % toggles the line markers
+        toggleLineMarker(iMov,hAx,3)  
+        
+        % updates the title
+                
+        % sets the y-axis limits
+        pOfsT = calcImageStackFcn(iMov.phInfo.pOfs);
+        yLim = [min(-1,min(pOfsT(:))),max(1,max(pOfsT(:)))];        
+        
+        % updates the other object properties
+        set(hAx,'yLim',[0 1])
+        set(findall(hAx,'tag','hYLbl'),'String',yLblStr);         
+        set(hTitle,'string','Image Translation')
+        
+        % sets the axis limits and strings
+        yTick = [hFig.dyLim,(1-hFig.dyLim)];
+        yStr = arrayfun(@num2str,flip(yLim),'un',0);
+        
+    otherwise
+        % case is the fly position plot
+        
         % makes all the population plot lines invisible and the individual
         % plot line visible        
         isMTrk = detMltTrkStatus(iMov);   
@@ -817,12 +949,10 @@ switch iApp
             yLblStr = 'Sub-Region Index';
         end
         
-        % sets the object visibility
-        hLine = findobj(hAx,'tag','hLineInd'); 
-        setObjVisibility(findobj(hAx,'tag','hLinePop'),'off')                                        
-        set(get(hAx,'Title'),'string',sprintf('Region %i Location',iApp))
-        setObjVisibility(hLine,vType(1))
-        
+        % toggles the line markers
+        toggleLineMarker(iMov,hAx,4)        
+        set(hTitle,'string',sprintf('Region %i Location',iApp))
+                
         % sets the visibility of the 2nd line (if 2D or multi-tracking)
         if iMov.is2D
             setObjVisibility(findobj(hAx,'tag','hLineInd2'),vType(2)); 
@@ -915,6 +1045,13 @@ arrayfun(@(x)(set(x,'yData',yLimF(iy))),hPhase)
 % updates the axis properties
 xLim = [-pDel max(get(hAx,'xlim'))];
 set(hAx,'yticklabel',yStr,'ytick',yTick,'xlim',xLim);
+
+% updates the axis orientation
+if iApp == -1
+    axis(hAx,'xy')
+else
+    axis(hAx,'ij') 
+end
 
 % --- groups the position values (2D expt only)
 function fPos = groupPosValues(iMov,fPos0)
@@ -1128,7 +1265,7 @@ phCol = distinguishable_colors(nPhase);
 
 % creates the phase patch objects
 for i = 1:nPhase
-    xP = (T(iMov.iPhase(i,:))+(dT/2)*[-1,1])*Tmlt;
+    xP = (T(iMov.iPhase(i,:))+(dT/4)*[-1,1])*Tmlt;
     patch(hAxI,xP(ix),yLimT(iy),phCol(i,:),'FaceAlpha',fAlpha,...
                'tag','hPhase','UserData',i,'LineStyle','none');
 end
@@ -1137,7 +1274,8 @@ end
 function iApp = getSelectedMenuItem(handles)
 
 % retrieves the selected menu item object handle
-hMenuMet = [get(handles.menuFlyPos,'children');handles.menuAvgSpeed];
+hMenuMet = [get(handles.menuFlyPos,'children');handles.menuAvgSpeed;...
+            handles.menuAvgInt;handles.menuImgTrans];
 hMenu = findobj(hMenuMet,'checked','on');
 
 % ses the menu selection properties
@@ -1151,6 +1289,29 @@ else
     % retrieves the sub-region indices
     iApp = get(hMenu,'UserData'); 
 end
+
+% --- toggles the line marker visibility properties
+function toggleLineMarker(iMov,hAx,iStr)
+
+% line tag strings
+tStr = {'hLinePop','hLineAvg','hLineTrans','hLineInd'};
+
+% resets the line marker visibility flags
+for i = 1:length(tStr)
+    hLine = findobj(hAx,'tag',tStr{i});
+    setObjVisibility(hLine,iStr==i);
+end
+
+% makes the 2nd line invisible (2D or multi-tracking only)
+if iMov.is2D
+    hLine = findobj(hAx,'tag','hLineInd2');
+    setObjVisibility(hLine,strcmp(tStr{iStr},'hLineInd')); 
+end
+
+% updates the legend visibility
+hLg = findobj(get(hAx,'Parent'),'tag','hLegend');
+setObjVisibility(hLg,strcmp(tStr{iStr},'hLineTrans'))
+set(hLg,'String',{'X-Offset','Y-Offset'})
 
 % --- retrieves the current numerical derivative coefficients
 function [pC,iType] = getNumericalDerivCoeff(handles)

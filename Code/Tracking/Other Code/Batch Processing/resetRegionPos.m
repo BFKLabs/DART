@@ -148,6 +148,11 @@ end
 % --- resets the automatically detected shape coorinates
 function iMov = resetAutoShapeCoords(iMov,dP,iApp)
 
+% if there is no auto shape configuration, then exit the function
+if isempty(iMov.autoP) || strcmp(iMov.autoP.Type,'None')
+    return
+end
+
 % offsets the region coordinates
 iMov.autoP.X0(:,iApp) = iMov.autoP.X0(:,iApp) + dP(1);
 iMov.autoP.Y0(:,iApp) = iMov.autoP.Y0(:,iApp) + dP(2);

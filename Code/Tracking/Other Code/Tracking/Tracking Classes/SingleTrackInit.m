@@ -358,10 +358,7 @@ classdef SingleTrackInit < SingleTrack
             for j = 1:nPh
                 % updates the progress-bar
                 i = iSort(j);
-                wStrNw = sprintf('Moving Object Detection (Phase #%i)',i);
-                
-%                 % REMOVE ME!
-%                 i = 4;
+                wStrNw = sprintf('Moving Object Detection (Phase #%i)',i);                
                 
                 % updates the progress bar
                 pW0 = (j+1)/(3+nPh);
@@ -469,8 +466,12 @@ classdef SingleTrackInit < SingleTrack
 
             % parameters
             pWD = 0.75;
-            Dtol = obj.iMov.szObj(1)/(1+obj.nI);
             okPh = find(obj.iMov.vPhase < 3);
+            if obj.iMov.is2D
+                Dtol = sqrt(2)*obj.iMov.szObj(1)/(1+obj.nI);                
+            else
+                Dtol = obj.iMov.szObj(1)/(1+obj.nI);
+            end
             
             % calculates the overall sub-region status flags
             sFlagMax = calcImageStackFcn(obj.sFlag,'max');
@@ -671,7 +672,7 @@ classdef SingleTrackInit < SingleTrack
             
             % calculates the overall sub-region status flags
             sFlagMax = calcImageStackFcn(obj.sFlag,'max');
-            hasMove = (obj.sFlag{iPh} < 2) & (sFlagMax == 2);
+            hasMove = (obj.sFlag{iPh} == 0) & (sFlagMax >= 1);
                                     
             % -------------------------------------------- %
             % --- INTER-PHASE STATIC OBJECT COMPARISON --- %
@@ -691,7 +692,7 @@ classdef SingleTrackInit < SingleTrack
                 [statObj,Ds] = deal(obj.iMov.flyok,2*Ds);                
             else
                 % otherwise, determine the static objects from the phase                
-                statObj = (obj.sFlag{iPh} < 2) & obj.iMov.flyok;
+                statObj = (obj.sFlag{iPh} == 0) & obj.iMov.flyok;
                 usePrevData = ~isempty(obj.prData0);        
             end
             
@@ -742,7 +743,8 @@ classdef SingleTrackInit < SingleTrack
                 if hasMove(j,k)
                     % otherwise, set the comparison coordinates to the last
                     % phase which the blob moved
-                    fP0 = obj.getLikelyPrevCoord(iPh,k,j);                
+                    fP0 = obj.getLikelyPrevCoord(iPh,k,j);  
+                    
                 elseif usePrevData
                     % case is there are coordinates from the previous
                     % solution file to compare against
@@ -761,6 +763,10 @@ classdef SingleTrackInit < SingleTrack
                         % case is the blob hasn't moved since the start of
                         % the video (over all phases)
                         fP0 = roundP(nanmean(obj.prData0.fPosPr{k}{j},1));
+                        if obj.nI > 0
+                            % downsamples the coordinates (if necessary)
+                            fP0 = obj.downsampleImageCoords(fP0,obj.nI);
+                        end                        
                     else
                         % otherwise, set NaN's for the previous coordinates
                         fP0 = NaN(1,2);                        
@@ -773,15 +779,9 @@ classdef SingleTrackInit < SingleTrack
                 % calculates the most likely static blobs 
                 fPnw0 = obj.calcLikelyStaticBlobs(ZtotL0,fP0,dP,Ds);
                 if ~isnan(fP0(1))
-                    % calculates the downsample coordinates (if required)
-                    if obj.nI > 0
-                        fP0ds = obj.downsampleImageCoords(fP0,obj.nI);
-                    else
-                        fP0ds = fP0;
-                    end
-                    
                     % if there is a comparison value, then determine if the
-                    % new coordinates is close enough                     
+                    % new coordinates is close enough  
+                    fP0ds = fP0;
                     if any(pdist2(fPnw0,fP0ds) > Ds)
                         % if not, then use the lesser image stack
                         ZtotLF = cellfun(@(x)(x(iRT,:)),ZtotF{k},'un',0);
@@ -859,11 +859,6 @@ classdef SingleTrackInit < SingleTrack
             
             % calculates the coordinate of the max-coord
             if ~isnan(fP0mn(1))
-                % down-scales the coordinates (if interpolating)
-                if obj.nI > 0
-                    fP0mn = obj.downsampleImageCoords(fP0mn,obj.nI);
-                end
-                
                 % calculates the distance weighting mask
                 fP0mn = max(1,min(fP0mn,flip(size(Ztot{1}))));
                 Dw = bwdist(setGroup(fP0mn,size(Ztot{1})));
@@ -960,7 +955,7 @@ classdef SingleTrackInit < SingleTrack
             % determines if the surrounding phases have an instance of the
             % blob moving
             for i = 1:length(indP)
-                iNw = find(sFlagP(indP{i})==2,1,fDir{i});
+                iNw = find(sFlagP(indP{i})>0,1,fDir{i});
                 if ~isempty(iNw)
                     % if so, then retrieve the coordinates from this phase
                     iPhS = indP{i}(iNw);
@@ -976,6 +971,9 @@ classdef SingleTrackInit < SingleTrack
             
             % sets the mean location values
             fPF = roundP(nanmean(fP0,1));
+            if obj.nI > 0
+                fPF = obj.downsampleImageCoords(fPF,obj.nI);
+            end
             
         end                    
         
@@ -1134,10 +1132,15 @@ classdef SingleTrackInit < SingleTrack
             nFrmMin = 3;
             nApp = length(obj.iMov.pos);
             obj.mFlag = cell(nApp,1);
-            nFrmPh = diff(obj.iMov.iPhase(iPh,:))+1;
+            nFrmPh = diff(obj.iMov.iPhase(iPh,:))+1;            
             
+            % sets up the distance tolerance flag
             if isfield(obj.iMov,'szObj')
-                obj.Dtol = 0.5*obj.iMov.szObj(1)/(1+obj.nI);
+                if obj.iMov.is2D
+                    obj.Dtol = sqrt(0.5)*obj.iMov.szObj(1)/(1+obj.nI);
+                else
+                    obj.Dtol = 0.5*obj.iMov.szObj(1)/(1+obj.nI);
+                end
             else
                 obj.Dtol = 5;
             end
@@ -1213,7 +1216,7 @@ classdef SingleTrackInit < SingleTrack
                             calcSubRegionProps(obj,IRng,iRT,iCT,nFrmPh)
             
             % parameters and initialisations
-            pYRngTol = 5.0;
+            pYRngTol = 3.5;
             iRTF = cell2mat(iRT(:)');     
             nRT = cellfun(@length,iRT);
             mFlag = zeros(size(iRT));             
@@ -1237,10 +1240,9 @@ classdef SingleTrackInit < SingleTrack
             IRngR0 = cellfun(@(x)(nanmax(IRTL(x,:),[],1)),iRTL,'un',0);
             
             % calculates the baseline estimate
-            YRng0 = cell2cell(cellfun(@(x)([x,NaN]),IRngR0,'un',0),0);
-            [~,~,wPk0] = findpeaks(YRng0(:));            
-            YRng0(isnan(YRng0)) = 0;
-            YBL = imopen(YRng0(:),ones(ceil(max(wPk0))*2,1));   
+            YRng0 = cell2cell(cellfun(@(x)(x),IRngR0,'un',0),0);
+            [~,~,wPk0] = findpeaks(YRng0(:));                        
+            YBL = max(1,imopen(YRng0(:),ones(ceil(max(wPk0))*4,1)));   
             
             % calculates the proportional signal difference
             pYRng = (YRng0(:) - YBL)./YBL;  
@@ -1296,7 +1298,7 @@ classdef SingleTrackInit < SingleTrack
             pTol = nanmedian(pTolGrp(:));
             
             % reduces the proportional difference arrya for each subregion         
-            Q = reshape(pYRng,[length(IRngR0{1})+1,length(iRTL)]);
+            Q = reshape(pYRng,[length(IRngR0{1}),length(iRTL)]);
             
             % calculates the movement status flags:
             %  = 0: blob is completely stationary over the phase
@@ -1612,7 +1614,7 @@ classdef SingleTrackInit < SingleTrack
         end
         
         % --- sets up the image stack for the template analysis
-        function [I,dI,d2I] = setupStatObjStack(obj,I,iPh,iApp) 
+        function [I,dI,d2I] = setupStatObjStack(obj,I,iPh,iApp)             
             
             % retrieves the fluctuation/translation flags
             [hasF,hasT] = deal(obj.getFlucFlag,obj.getTransFlag(iApp));
@@ -1623,9 +1625,11 @@ classdef SingleTrackInit < SingleTrack
             needsCorrect = ~(hasF || obj.isHiV);
             if ~needsCorrect && hasT
                 [I0,I] = deal(I,cell(length(I),1));
-                [I{1},H] = applyHMFilter(I0{1});
-                I(2:end) = cellfun(@(x)...
+                if ~obj.iMov.is2D
+                    [I{1},H] = applyHMFilter(I0{1});
+                    I(2:end) = cellfun(@(x)...
                                 (applyHMFilter(x,H)),I0(2:end),'un',0);
+                end
 
                 % convert and scales the resulting images
                 I = cellfun(@(x)(255*(x-nanmin(x(:)))),I,'un',0);
@@ -1664,6 +1668,11 @@ classdef SingleTrackInit < SingleTrack
             else
                 [dI,d2I] = setupResidualEstStack(I,obj.mdDim);  
                 d2I = cellfun(@(x,b)(b.*x),d2I,Bw,'un',0);
+            end
+            
+            % fills in any rejected regions
+            for i = 1:length(Bw)
+                I{i}(~Bw{i}) = nanmedian(I{i}(Bw{i}));
             end
             
             % applies the exclusion filter
