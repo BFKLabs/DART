@@ -240,7 +240,7 @@ classdef SingleTrack < Track
             
             % pads the array by the movement magnitude
             sz = size(I);
-            dpOfs = ceil(abs(flip(pOfs)));
+            dpOfs = ceil(abs(flip(pOfs)))+2;
             Iex = padarray(I,dpOfs,'both','symmetric');
             
             % translates and sets the final offset image

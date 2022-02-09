@@ -400,7 +400,7 @@ classdef SingleTrackInit < SingleTrack
             % ----------------------------------- %
 
             % determines the overall minimum sub-region flags
-            okPh = obj.iMov.vPhase < 3;            
+            okPh = obj.iMov.vPhase < 3;    
 
             % updates the progressbar
             wStrNw = 'Static Object Detection';
@@ -703,7 +703,7 @@ classdef SingleTrackInit < SingleTrack
             % determine the regions/sub-regions that need to
             % be re-tracked for stationary/low-residual blobs
             [iTube,iApp] = find(statObj);
-            [Ztot0,ZtotF,Ixc] = deal(cell(nApp,1));
+            [Ztot0,ZtotF,Ixc,Bw] = deal(cell(nApp,1));
             nTubeS = length(iTube);
 
             % loops through each of the probable stationary regions 
@@ -729,13 +729,16 @@ classdef SingleTrackInit < SingleTrack
 
                 % sets up the total combine image stack
                 if isempty(ZtotF{k})
+                    Bw0 = getExclusionBin(obj.iMov,size(IL0{1,k}),k);
+                    Bw{k} = bwmorph(obj.downSampleImgStack(Bw0),'erode');
+                    
                     Ixc{k} = cellfun(@(x)(max(0,calcXCorr(obj.hFilt,...
-                           fillArrayNaNs(x)))),obj.dIss{k,iPh},'un',0);
+                           fillArrayNaNs(x))).*Bw{k}),obj.dIss{k,iPh},'un',0);
                     Ztot0{k} = cellfun(@(x,y)...
-                           (normImg(x).*(1-normImg(y))),...
+                           (normImg(x).*(1-normImg(y)).*Bw{k}),...
                             obj.dIss{k,iPh},obj.Iss{k,iPh},'un',0);                       
                     ZtotF{k} = cellfun(@(x,y)...
-                           (x.*normImg(y)),Ztot0{k},Ixc{k},'un',0);                        
+                           (x.*normImg(y).*Bw{k}),Ztot0{k},Ixc{k},'un',0);                        
                 end                    
 
                 % retrieves the total combine image stack for the
@@ -1246,12 +1249,18 @@ classdef SingleTrackInit < SingleTrack
                 iRTL = iRT;
             end            
             
-            % calculates the max range values (across each row) and the
-            % baseline removed signal            
+            % applies a gaussian filter to the range image
             IRng = imfilter(IRng,obj.hSR);
-            IRTL = IRng(iRTF,iCT);
+            if obj.is2D && any(obj.iMov.phInfo.hasT)
+                % if a 2D setup (and translation is detected) then remove
+                % the outside of the image
+                DtolT = max(1,roundP(sqrt(obj.Dtol)));
+                B = ~bwmorph(true(size(IRng)),'erode',DtolT);
+                IRng(B) = nanmedian(IRng(~B));
+            end            
             
-            % calculates the max range values (across each row)         
+            % calculates the max range values (across each row) 
+            IRTL = IRng(iRTF,iCT);
             IRngR0 = cellfun(@(x)(nanmax(IRTL(x,:),[],1)),iRTL,'un',0);
             
             % sets the baseline offset windowing size
@@ -1268,12 +1277,14 @@ classdef SingleTrackInit < SingleTrack
             
             % removes points from the edges (1D only)
             nCol = length(iCT);
-            if ~obj.iMov.is2D
-                % if 1D, then remove any points on the tube edge
-                [szL,dC] = deal([nCol,1],max(1,roundP(obj.Dtol)));                
-                B0 = setGroup((dC+1):(length(iCT)-dC),szL);                
+
+            % if 1D, then remove any points on the tube edge
+            if ~obj.is2D
+                DtolT = roundP(obj.Dtol);
+                [szL,dC] = deal([nCol,1],max(1,roundP(DtolT)));
+                B0 = setGroup((dC+1):(length(iCT)-dC),szL);
                 pYRng(repmat(~B0,length(iRTL),1)) = 0; 
-            end             
+            end
                 
             % calculates the proportional signal difference              
             ii = pYRng > pYRngTol;
@@ -1289,10 +1300,11 @@ classdef SingleTrackInit < SingleTrack
             [ImuF,IsdF] = deal(nanmean(IRngF(:)),nanstd(IRngF(:)));
             
             % calculates the residual tolerance
-            pTol = obj.calcResidualTol(YRng0,YBL,nCol);
+            pTol = obj.calcResidualTol(YRng0,YBL);
             
             % reduces the proportional difference arrya for each subregion         
             Q = reshape(YRng0,[length(IRngR0{1}),length(iRTL)]);
+            if exist('B0','var'); Q(~B0,:) = 0; end
             
             % calculates the movement status flags:
             %  = 0: blob is completely stationary over the phase
@@ -2146,14 +2158,12 @@ classdef SingleTrackInit < SingleTrack
         end  
         
         % --- calculates the residual tolerance from the range signal
-        function pTol = calcResidualTol(YRng0,YBL,nCol)
+        function pTol = calcResidualTol(YRng0,YBL)
 
             % parameters
+            pW = 0.9;
             dTol = 0.1;
-
-            % memory allocation
             dRng = YRng0(:) - YBL(:);
-            nTube = length(dRng)/nCol;
 
             % determines the peaks from the signal
             dRngN = dRng/max(dRng);
@@ -2171,8 +2181,8 @@ classdef SingleTrackInit < SingleTrack
             % sets the indices of the peaks that are considered significant. from these
             % peaks determines the 
             iSig = sort(cell2mat(iGrp(~setGroup(iMin,size(iGrp)))));
-            pTolRng = [max(YRng0(tP(iGrp{iMin}))),min(YRng0(tP(iSig)))];
-            pTol = min(pTolRng(2),mean(pTolRng));
+            pTolR = [max(YRng0(tP(iGrp{iMin}))),min(YRng0(tP(iSig)))];
+            pTol = min(pTolR(2),pTolR(1)+pW*diff(pTolR));
 
         end
         
