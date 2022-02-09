@@ -1,4 +1,5 @@
 classdef SplitSubRegion < handle
+    
     % class properties
     properties
         % main class fields
@@ -70,6 +71,7 @@ classdef SplitSubRegion < handle
     
     % class methods
     methods
+        
         % --- class constructor
         function obj = SplitSubRegion(hFigM)
             

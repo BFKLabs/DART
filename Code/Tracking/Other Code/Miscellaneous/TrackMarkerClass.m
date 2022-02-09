@@ -6,16 +6,18 @@ classdef TrackMarkerClass < handle
         % main class objects
         hFig
         hAx
-        hChkM
+        
+        % main gui object handles
         hChkT
+        hChkM        
         hChkD
         hChkLV
         hEditC
         hEditM
-        hMenuCT
-        propFcn        
+        hMenuCT    
+        hMenuRT
         
-        % object array fields
+        % plot object handles
         hMark
         hTube
         hDir        
@@ -27,17 +29,21 @@ classdef TrackMarkerClass < handle
         pltAngT        
         isMltTrk
         isCG        
+        pColF
         
         % other scalar fields
+        szDel = 5;
         lWid = 1.5;    
         yDelG = 0.35;
         ix = [1,2,2,1];
         iy = [1,1,2,2];
+        isSet = false;
         
     end
     
     % class methods
     methods
+        
         % --- class constructor
         function obj = TrackMarkerClass(hFig,hAx)
            
@@ -52,10 +58,10 @@ classdef TrackMarkerClass < handle
             obj.hChkLV = findall(hFig,'tag','checkLocalView');                        
             obj.hEditC = findall(hFig,'tag','frmCountEdit');
             obj.hEditM = findall(hFig,'tag','movCountEdit');
-            obj.hMenuCT = findall(hFig,'tag','menuCorrectTrans');
             
-            % retrieves the marker properties
-            obj.propFcn = get(obj.hFig,'getMarkerProps');
+            % menu item handles
+            obj.hMenuCT = findall(hFig,'tag','menuCorrectTrans');
+            obj.hMenuRT = findall(hFig,'tag','menuRTTrack');
             
         end
         
@@ -75,9 +81,16 @@ classdef TrackMarkerClass < handle
             obj.isMltTrk = detMltTrkStatus(obj.iMov);
             obj.isCG = isColGroup(obj.iMov);
             
+            % resets the current axes and removes existing tracking markers
+            set(obj.hFig,'CurrentAxes',obj.hAx)            
+            obj.deleteTrackMarkers();            
+            
             % -------------------------------- %
             % --- OBJECT MEMORY ALLOCATION --- %
-            % -------------------------------- %
+            % -------------------------------- %            
+            
+            % axes initialisations
+            hold(obj.hAx,'on')
             
             % array creation 
             if obj.isMltTrk
@@ -107,15 +120,10 @@ classdef TrackMarkerClass < handle
                 % memory allocation
                 A = cellfun(@(x)(cell(size(x,1),1)),xyT,'un',0);
                 [obj.hMark,obj.hTube,obj.hDir] = deal(A);    
-            end            
-            
-            % axes initialisations
-            set(obj.hFig,'CurrentAxes',obj.hAx)            
-            obj.deleteAllMarkers();
-            hold(obj.hAx,'on')
+            end                        
             
             % sets the visibilty flag
-            if nargin == 2
+            if nargin == 1
                 isOn = true;
             else
                 isOn = varargin{1}; 
@@ -148,8 +156,8 @@ classdef TrackMarkerClass < handle
                     hDStr = sprintf('hDir%i',i);
 
                     % sets the plot colour for the tubes
-                    [pCol,fAlpha,edgeCol,pMark,mSz] = ...
-                                        getMarkerProps(obj.iMov,i,j);        
+                    [pCol,fAlpha,eCol,pMark,mSz] = ...
+                                        obj.getMarkerProps(obj.iMov,i,j);        
 
                     % sets the x/y coordinates of the tube regions (either 
                     % for single tracking, or multi-tracking for the first 
@@ -157,14 +165,14 @@ classdef TrackMarkerClass < handle
                     if (j == 1) || ~obj.isMltTrk
                         switch obj.Type
                             case {'GeneralR','Circle'}
-                                % sets the outline coordinates
+                                % case is an automatic shape region
                                 xTube = obj.iMov.autoP.X0(j,iCol) + ...
                                         obj.iMov.autoP.XC;
                                 yTube = obj.iMov.autoP.Y0(j,iCol) + ...
                                         obj.iMov.autoP.YC;
 
                             otherwise
-                                % otherwise set the region based on storage type
+                                % otherwise, case is another region type
                                 if obj.isCG
                                     x = obj.iMov.xTube{i}(j,:) + xOfs;
                                     y = obj.iMov.yTube{i} + yOfs + ...
@@ -176,29 +184,28 @@ classdef TrackMarkerClass < handle
                                 end
 
                                 % sets the final tube outline coordinates
-                                [xTube,yTube] = deal(x(ii),y(jj));
+                                [xTube,yTube] = deal(x(obj.ix),y(obj.iy));
                         end
 
                         % creates the tube region patch
                         obj.hTube{i}{j} = fill(xTube,yTube,pCol,...
                             'tag',hTStr,'FaceAlpha',fAlpha,'EdgeColor',...
-                            edgeCol,'EdgeAlpha',1,'Visible','off',...
+                            eCol,'EdgeAlpha',1,'Visible','off',...
                             'Parent',obj.hAx,'UserData',[i,j]); 
                     end
 
                     % determines if separate colours are being used
                     if obj.iMov.sepCol
                         % if so, retrieve the stored colours
-                        pColF = get(handles.output,'pColF');
-                        if j > length(pColF)
+                        if j > length(obj.pColF)
                             % if there is sufficient colours, then reset the array
                             nMark = length(obj.hMark{i});
-                            pColF = num2cell(distinguishable_colors(nMark,'w'),2);
-                            set(handles.output,'pColF',pColF)
+                            pColF0 = distinguishable_colors(nMark,'w');
+                            obj.pColF = num2cell(pColF0,2);
                         end        
 
                         % retrieves the colour
-                        pCol = pColF{j};
+                        pCol = obj.pColF{j};
                     end
 
                     % creates the fly positional/orientation markers
@@ -222,6 +229,9 @@ classdef TrackMarkerClass < handle
 
             % turns the hold on the axis off
             hold(obj.hAx,'off')            
+        
+            % updates the set flags
+            obj.isSet = true;
             
         end
         
@@ -234,12 +244,27 @@ classdef TrackMarkerClass < handle
             % retrieves the important data arrays/structs
             % cType = get(hFig,'cType');
 
+            % determines if the marker objects are created/valid
+            if isempty(obj.hMark)
+                % if there are no markers, then exit
+                return                
+                
+            elseif ~obj.isMarkerValid()
+                % otherwise, if the markers are not valid then recreate them
+                if get(obj.hChkM,'value')
+                    obj.initTrackMarkers();
+                else
+                    obj.initTrackMarkers(1);
+                end                
+                
+            end
+            
             % retrieves the marker boolean flags
-            obj.pltLocT = get(obj.hChkM,'value') && hasImg;
+            pltLocT0 = get(obj.hChkM,'value') && hasImg;
             if ishandle(obj.hChkD)
-                obj.pltAngT = get(obj.hChkD,'value') && hasImg;
+                pltAngT0 = get(obj.hChkD,'value') && hasImg;
             else
-                obj.pltAngT = false;
+                pltAngT0 = false;
             end
 
             % array indexing & parameters
@@ -249,27 +274,34 @@ classdef TrackMarkerClass < handle
                 end
             end
 
-            % retrieves the updates the region markers (if there is translation)
-            if ~isempty(obj.iMov.phInfo) && any(obj.iMov.phInfo.hasT)
-
-            end
+%             % retrieves the updates the region markers (if there is translation)
+%             if ~isempty(obj.iMov.phInfo) && any(obj.iMov.phInfo.hasT)
+% 
+%             end
 
             % sets the markers for all flies
-            if ~isempty(obj.hFig.hMark)    
+            if ~isempty(obj.hMark)    
                 for i = find(obj.iMov.ok(:)')
                     % if the markers have been deleted then re-initialise
                     initReqd = isempty(obj.hMark{i}{1}) || ...
                                             ~ishandle(obj.hMark{i}{1});
                     if (i == 1) && initReqd
+                        % recreates the tracking markers (if required)
                         obj.initTrackMarkers(1)
                     end
-
+                    
+                    % updates the plot tracking/angle marker objects
+                    obj.pltLocT = pltLocT0 && obj.iMov.ok(i);                    
+                    obj.pltAngT = pltAngT0 && obj.iMov.ok(i);
+                    
                     % sets the plot location marker flag for the current apparatus
                     if isCalib       
+                        % case is updating the calibration points
                         if isfield(obj.hFig,'fPosTmp')
                             obj.updateSingleMarker(i) 
                         end
                     else
+                        % case is updating for a video
                         obj.updateSingleMarker(i) 
                     end
                 end
@@ -281,10 +313,10 @@ classdef TrackMarkerClass < handle
         function updateSingleMarker(obj,ind)
             
             % global variables
-            global isCalb
+            global isCalib szDelX szDelY
             
             % retrieves the position data struct
-            if isCalb
+            if isCalib
                 pData = obj.hFig.fPosTmp;
             else
                 pData = obj.hFig.pData;
@@ -308,7 +340,7 @@ classdef TrackMarkerClass < handle
             hasPhi = isfield(pData,'PhiF') && ~isCalib;                        
             
             % retrieves the sub-region count
-            nFly = length(obj.hMark);
+            nFly = length(obj.hMark{ind});
             cMov = str2double(get(obj.hEditM,'string'));            
             
             % sets the manual calibration flag             
@@ -394,7 +426,8 @@ classdef TrackMarkerClass < handle
 
                     % sets the marker visibility string
                     if cMov == ind(1)
-                        [vStrNwM,vStrNwA] = deal(vStr{(pltLoc)+1},vStr{(pltAng)+1});
+                        vStrNwM = vStr{obj.pltLocT+1};
+                        vStrNwA = vStr{obj.pltAngT+1};
                     else
                         [vStrNwM,vStrNwA] = deal('off');
                     end
@@ -404,7 +437,8 @@ classdef TrackMarkerClass < handle
                     [xFly,yFly] = deal(fPosT(:,1),fPosT(:,2));                        
 
                     % sets the marker visibility string
-                    [vStrNwM,vStrNwA] = deal(vStr{(pltLoc)+1},vStr{(pltAng)+1});
+                    vStrNwM = vStr{obj.pltLocT+1};
+                    vStrNwA = vStr{obj.pltAngT+1};
                 end
 
                 % otherwise, update the marker locations/visibility
@@ -412,7 +446,7 @@ classdef TrackMarkerClass < handle
 %                     % retrieves the manual segmentation data struct
 %                     hMR = findobj(0,'tag','figManualReseg');
 %                     mData = getappdata(hMR,'mData');
-%                     pCol = getMarkerProps(handles,obj.iMov,ind,i);    
+%                     pCol = obj.getMarkerProps(handles,obj.iMov,ind,i);    
 % 
 %                     % determines if any points have been added
 %                     if ~isempty(mData)
@@ -437,7 +471,7 @@ classdef TrackMarkerClass < handle
 %                         end
 %                     else
 %                         % no segmentation data, so use default colour
-%                         pCol = getMarkerProps(handles,iMov,ind,i);
+%                         pCol = obj.getMarkerProps(handles,iMov,ind,i);
 %                     end            
 % 
 %                     % updates the marker
@@ -453,8 +487,8 @@ classdef TrackMarkerClass < handle
                 else
 
                     % updates the location markers
-                    set(obj.hMark{i},'Visible',vStrNwM,'xData',xFly,...
-                                     'yData',yFly);
+                    set(hMarkS{i},'Visible',vStrNwM,...
+                                  'xData',xFly,'yData',yFly);
 
                     % updates the orientation angle markers
                     if hasPhi                        
@@ -471,13 +505,13 @@ classdef TrackMarkerClass < handle
                         % determines if there is a non-NaN orientation angle
                         if ~isnan(PhiNw)
                             % if so, update the arrow head coordinates
-                            obj.updateArrowHeadCoords(obj.hDir{i},...
+                            obj.updateArrowHeadCoords(hDirS{i},...
                                                 [xFly,yFly],PhiNw,1,isF); 
-                            setObjVisibility(obj.hDir{i},vStrNwA)
+                            setObjVisibility(hDirS{i},vStrNwA)
                             
                         else
                             % otherwise, make the marker invisible
-                            setObjVisibility(obj.hDir{i},'off')
+                            setObjVisibility(hDirS{i},'off')
                         end                        
                     end
                 end        
@@ -487,6 +521,9 @@ classdef TrackMarkerClass < handle
         
         % --- deletes all the tracking markers
         function deleteTrackMarkers(obj)
+            
+            % resets the set flag
+            obj.isSet = false;
             
             % if there are no markers, then exit the function
             if isempty(obj.hMark); return; end
@@ -498,13 +535,278 @@ classdef TrackMarkerClass < handle
                 cellfun(@delete,obj.hDir{i});
             end
             
-            % resets the tube/marker handle arrays
+            % resets the tube/marker handle arrays            
             [obj.hMark,obj.hTube,obj.hDir] = deal([]);
+            
+        end                        
+        
+        % --- sets the visibility field for the marker given by Type
+        function setMarkerVis(obj,Type,iApp,state)
+           
+            hObj = getStructField(obj,Type);
+            cellfun(@(x)(setObjVisibility(x,state)),hObj{iApp})
+            
+        end
+
+        % ------------------------------------------ %
+        % --- MAIN GUI OBJECT CALLBACK FUNCTIONS --- %
+        % ------------------------------------------ %
+        
+        % --- show tube region checkbox callback function
+        function checkShowTube(obj,iMov,showUpdate,event)
+           
+            % sets the input arguments
+            obj.iMov = iMov;
+            
+            % retrieves the tube struct arrays
+            mlt = 1;
+            iData = get(obj.hFig,'iData');
+            isLV = get(obj.hChkLV,'value');   
+            
+            % resets the tube regions (if they are invalid)
+            if ~obj.isMarkerValid()  
+                obj.initTrackMarkers(get(obj.hChkT,'Value'))
+            end
+            
+            % retrieves the indices of the sub-regions to be shown
+            if isLV
+                % local view, so get the current sub-region
+                iApp = iData.cMov;
+                
+                % makes the other region objects invisible
+                isOther = ~setGroup(iApp,size(obj.hTube));                
+                cellfun(@(x)(setObjVisibility(x,0)),obj.hTube(isOther))
+
+            else
+                % global view, so show all sub-regions
+                iApp = find(iMov.ok);
+            end            
+            
+            % sets the tube visibility strings
+            for i = iApp(:)'
+                if ~showUpdate
+                    % calculates the frame offset
+                    %  => FINISH ME!
+                    
+                    % sets the marker offsets and other properties
+                    switch obj.Type
+                        case {'GeneralR','Circle'} 
+                            % case is automatic detection
+
+                            % sets the positional offset
+                            if isLV
+                                % case is for local view
+                                xOfs = (iMov.iC{i}(1)-1) - obj.szDel;
+                                yOfs = (iMov.iR{i}(1)-1) - obj.szDel;            
+                            else
+                                % case is for global view
+                                [xOfs,yOfs] = deal(0);    
+                            end
+
+                            % retrieves the global row/column indices
+                            [iCol,iFlyR,~] = getRegionIndices(iMov,i);             
+
+                        otherwise
+                            % case is other region types
+
+                            % sets the positional offset                
+                            if isLV
+                                % case is for local view
+                                if iMov.ok(i)
+                                    % sets the x/y tube region offset
+                                    if size(iMov.xTube{i}([1 end]),1) == 1
+                                        yOfs0 = iMov.iR{i}(1)-1;
+                                        yOfs = min(max(0,yOfs0),obj.szDel);
+                                        xOfs = obj.szDel;
+                                    else
+                                        xOfs0 = iMov.iC{i}(1)-1;
+                                        xOfs = min(max(0,xOfs0),obj.szDel);
+                                        yOfs = obj.szDel;
+                                    end            
+                                end
+                            else
+                                % case is for global view
+                                xOfs = iMov.pos{i}(1);
+                                yOfs = iMov.pos{i}(2);
+                            end       
+
+                            % sets the x/y-coordinates of the sub-region
+                            if isempty(iMov.xTube{i})
+                                % case is the region has never been set
+                                iFlyR = [];                    
+                            else
+                                % otherwise, set the x/y offsets
+                                if size(iMov.xTube{i},1) == 1
+                                    x = (iMov.xTube{i}([1 end]) + xOfs);
+                                else
+                                    y = (iMov.yTube{i}([1 end]) + yOfs);
+                                end
+
+                                % sets the fly indices
+                                iFlyR = 1:length(obj.hTube{i});
+                            end
+                    end        
+
+                    for j = iFlyR(:)'
+                        % retrieves the marker properties            
+                        [pCol,fAlpha,eCol] = obj.getMarkerProps(iMov,i,j);              
+
+                        % sets the tube region patch based on the detection type 
+                        switch obj.Type
+                            case 'GeneralR'
+                                % case is the repeating general patterns
+                                
+                                % sets up the sub-region x-coordinates
+                                dxTube = iMov.autoP.XC - xOfs;
+                                xTube = iMov.autoP.X0(j,iCol) + dxTube;
+                                
+                                % sets up the sub-region y-coordinates
+                                dyTube = iMov.autoP.YC - yOfs;
+                                yTube = iMov.autoP.Y0(j,iCol) + dyTube;     
+
+                            case 'Circle'
+                                % calculates the circle coordinates
+                                [XC,YC] = calcCircleCoords(iMov.autoP,j,iCol);
+
+                                % sets up the sub-region x-coordinates
+                                dxTube = XC - xOfs;
+                                xTube = iMov.autoP.X0(j,iCol) + dxTube;
+                                
+                                % sets up the sub-region y-coordinates
+                                dyTube = YC - yOfs;
+                                yTube = iMov.autoP.Y0(j,iCol) + dyTube;                       
+
+                            otherwise
+                                % case is for the other detection types
+                                if obj.isCG
+                                    x = iMov.xTube{i}(j,:) + xOfs; 
+                                else            
+                                    y = iMov.yTube{i}(j,:) + yOfs; 
+                                end
+
+                                % sets the final tube outline x/y coordinates
+                                [xTube,yTube] = deal(x(obj.ix),y(obj.iy));
+                        end
+
+                        % creates the fly/tube markers
+                        try
+                            set(obj.hTube{i}{j},'xdata',xTube,'ydata',...
+                                    yTube,'FaceAlpha',fAlpha*mlt,...
+                                    'EdgeColor',eCol,'FaceColor',pCol);
+                        catch
+                            % if there was an error, reinitalise
+                            obj.initTrackMarkers(handles,1)
+
+                            % updates the tube location
+                            set(obj.hTube{i}{j},'xdata',xTube,'ydata',...
+                                    yTube,'FaceAlpha',fAlpha*mlt,...
+                                    'EdgeColor',eCol,'FaceColor',pCol);            
+                        end
+                    end    
+                end
+
+                % sets the tube visibility strings
+                if isa(event,'char')
+                    isShow = str2double(event);
+                else
+                    isShow = get(obj.hChkT,'value') && any(i == iApp);        
+                end    
+
+                % sets the visibility fields
+                cellfun(@(x)(setObjVisibility(x,isShow)),obj.hTube{i})
+            end
             
         end        
         
+        % --- show marker checkbox callback function
+        function checkShowMark(obj)
+            
+            % global variables
+            global isCalib            
+            
+            % updates the image axes
+            if isCalib
+                if isfield(handles,'menuRTTrack')
+                    if ~strcmp(get(obj.hMenuRT,'checked'),'on')
+                        objIMAQ = obj.hFig.infoObj.objIMAQ;
+                        updateVideoFeedImage(obj.hFig,objIMAQ)  
+                    end
+                else
+                    % updates the plot markers
+                    obj.updateTrackMarkers(true)
+                end
+            else
+                % initialisations
+                hMarkOn = obj.hMark;
+                isOn = get(obj.hChkM,'Value');
+
+                % if using local image, only turn on markers for that region
+                if get(obj.hChkLV,'Value')
+                    B = ~setGroup(obj.hFig.iData.cMov,size(obj.hMark));
+                    hMarkOff = obj.hMark(B);
+                    hMarkOn = hMarkOn(obj.hFig.iData.cMov);
+                end
+
+                try
+                    % attempts to update the marker visibility
+                    cellfun(@(x)(cellfun(@(y)...
+                                (setObjVisibility(y,isOn)),x)),hMarkOn)
+
+                catch
+                    % if there was an error, recreate the markers and 
+                    % reset their visibility
+                    obj.initTrackMarkers();
+                    cellfun(@(x)(cellfun(@(y)...
+                                (setObjVisibility(y,isOn)),x)),hMarkOn)        
+                end
+
+                % turns off any markers (local view only)
+                if exist('hMarkOff','var')
+                    cellfun(@(x)(cellfun(@(y)...
+                                (setObjVisibility(y,0)),x)),hMarkOff)
+                end    
+            end            
+            
+        end
+        
+        % --- show angle checkbox callback function
+        function checkShowAngle(obj)
+            
+            % initialisations
+            isOn = get(obj.hChkD,'Value');
+            
+            try
+                % attempts to update the marker visibility
+                cellfun(@(x)(cellfun(@(y)...
+                            (setObjVisibility(y,isOn)),x)),obj.hDir)
+            catch
+                % if there was an error, recreate the markers and set their
+                % visibility
+                obj.initTrackMarkers();
+                cellfun(@(x)(cellfun(@(y)...
+                            (setObjVisibility(y,isOn)),x)),obj.hDir)
+            end            
+            
+        end
+        
+        % ------------------------------- %
+        % --- MISCELLANEOUS FUNCTIONS --- %
+        % ------------------------------- %
+        
+        % --- determines if the plot marker objects are valid
+        function isValid = isMarkerValid(obj)
+            
+            if isempty(obj.hTube) || isempty(obj.hTube{1})
+                isValid = false;
+            else
+                isValid = ishandle(obj.hTube{1}{1});
+            end
+            
+        end
+        
     end
     
+    % class static methods
     methods (Static)
         
         % --- updates the coordinate for an arrow head with the coordinates p0 and 
@@ -537,6 +839,69 @@ classdef TrackMarkerClass < handle
             set(hArr,'xdata',xArr,'ydata',yArr);
 
         end        
+       
+        % --- retrieves the tube/fly marker properties (based on the 
+        %     analysis type and the status of the fly/tube region)
+        function [pCol,fAlpha,eCol,pMark,mSz] = getMarkerProps(iMov,i,j)
+
+            % global variables
+            global isCalib
+
+            % initialisations
+            eCol = 'y';
+            cStr = {'pNC','pMov','pStat','pRej'};
+
+            % determines if the tracking parameters have been set
+            A = load(getParaFileName('ProgPara.mat'));
+            if ispc
+                % track parameters have not been set, so initialise
+                mPara = A.trkP.PC;
+            else
+                % track parameters have been set
+                mPara = A.trkP.PC;
+            end
+
+            % sets the plot colour for the tubes
+            if isCalib
+                % determines if the fly has been accepted/rejected
+                if iMov.flyok(j,i) && iMov.ok(i)
+                    % case is fly is accepted
+                    [fAlpha,mSz] = deal(0.1,mPara.pMov.mSz);
+                    [pCol,pMark] = deal(mPara.pMov.pCol,mPara.pMov.pMark);
+                else
+                    % case is fly is rejected
+                    [eCol,fAlpha,mSz] = deal('k',0.50,mPara.pRej.mSz);
+                    [pCol,pMark] = deal(mPara.pRej.pCol,mPara.pRej.pMark);                            
+                end
+            else
+                % resets the status flag (if fly is flagged for rejection)
+                if detMltTrkStatus(iMov)
+                    % case is multi-fly tracking
+                    Status = 1;
+
+                else
+                    % case is single fly tracking
+                    if ~(iMov.flyok(j,i) && iMov.ok(i))
+                        % case is the fly has been rejected
+                        [Status,iMov.Status{i}(j)] = deal(3);
+
+                    elseif isnan(iMov.Status{i}(j))
+                        % case is the status flag has not been set
+                        [Status,iMov.Status{i}(j)] = deal(0);
+
+                    else
+                        % otherwise, set the status flag
+                        Status = iMov.Status{i}(j);
+                    end    
+                end
+
+                % sets the facecolour and marker colour, type and size
+                fAlpha = 0.1*(1 + (Status~=1));   
+                mPF = getStructField(mPara,cStr{1+Status});                
+                [pMark,mSz,pCol] = deal(mPF.pMark,mPF.mSz,mPF.pCol);
+            end
+
+        end
         
     end
     

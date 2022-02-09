@@ -73,7 +73,7 @@ classdef EmptyCheck < handle
             cForm = {'numeric','numeric','numeric','logical','logical'};
             
             % retrieves the tube object handles
-            hTube0 = get(obj.hFigM,'hTube');
+            hTube0 = obj.hFigM.mkObj.hTube;
             obj.hTube = cellfun(@(x)(hTube0{x{1}}{x{2}}),...
                                         num2cell(tData0(:,1:2),2),'un',0);
             cellfun(@(x)(setObjVisibility(x,'on')),obj.hTube)

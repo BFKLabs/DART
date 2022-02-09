@@ -321,17 +321,17 @@ iMov = get(hFig,'iMov');
 iMovH = get(hGUI,'iMov');
 iData = get(hGUI,'iData');
 pData = get(hGUI,'pData');
+rgObj = get(hGUI,'rgObj');
 
 % retrieves the main GUI handles
 hGUIH = guidata(hGUI);
-sFunc = hGUI.setupDivisionFigure;
 cFunc = hGUI.checkShowTube_Callback;
 
 % parameters
 [ii,is2D] = deal([2 1 4 3],is2DCheck(iMov));
 
 % removes the division figure
-feval(get(hGUI,'removeDivisionFigure'),hGUIH.imgAxes)
+rgObj.removeDivisionFigure();
 
 % sets the rotation flag value
 iMov.useRot = get(hObject,'value');
@@ -551,12 +551,11 @@ set(hGUI,'iData',iData,'iMov',iMov);
 [m,n] = deal(iData.sz(1),iData.sz(2));
 set(hGUIH.textFrameSizeS,'string',sprintf('%i %s %i',m,char(215),n));
 
-%
-initFcn = get(hGUI,'initMarkerPlots');
+% initialises the tracking marker objects 
 if get(hGUIH.checkSubRegions,'value')
-    feval(initFcn,hGUIH)
+    hGUI.mkObj.initTrackMarkers()
 else
-    feval(initFcn,hGUIH,1)
+    hGUI.mkObj.initTrackMarkers(1)
 end
 
 % updates the main image
@@ -569,7 +568,7 @@ end
 
 % shows the sub-regions (if the checkbox is selected)
 if get(hGUIH.checkSubRegions,'value')
-    sFunc(iMov,hGUIH,true);
+    rgObj.setupDivisionFigure(true);
 end
 
 % shows the tube regions (if the checkbox is selected)
@@ -752,11 +751,6 @@ trkP = get(hFig,'trkP');
 iMov = get(hFig,'iMov');
 hGUI = get(hFig,'hGUI');
 
-% retrieves the plot marker update function handle
-deleteAllMarkers = get(hGUI,'deleteAllMarkers');
-initMarkerPlots = get(hGUI,'initMarkerPlots');
-updateAllPlotMarkers = get(hGUI,'updateAllPlotMarkers');
-
 % removes the video phase field (if resetting and is set)
 if resetPData
     if isfield(iMov,'vPhase')
@@ -785,11 +779,10 @@ if resetPData && ~isempty(get(hGUI,'pData'))
     end
 end
 
-% loads the program parameter file
-pFile = fullfile(mainProgDir,'Para Files','ProgPara.mat');
+% updates the parameter file
+pFile = getParaFileName('ProgPara.mat');
 A = load(pFile);
-A.bgP.algoType = iMov.bgP.algoType;
-A.trkP = trkP;
+[A.bgP.algoType,A.trkP] = deal(iMov.bgP.algoType,trkP);
 save(pFile,'-struct','A');
 
 % disables the update button
@@ -803,9 +796,9 @@ end
 
 % deletes/re-adds the markers    
 % dispImage(hGUIH);
-deleteAllMarkers(hGUIH)
-initMarkerPlots(hGUIH)
-updateAllPlotMarkers(hGUIH,iMov,true);
+hGUI.mkObj.deleteTrackMarkers()
+hGUI.mkObj.initTrackMarkers()
+hGUI.mkObj.updateTrackMarkers(true);
 
 % % resets the window style back to modal
 % if ~isa(eventdata,'char')

@@ -22,6 +22,7 @@ end
 % --- Executes just before FlyTrack is made visible.
 function FlyTrack_OpeningFcn(hObject, eventdata, handles, varargin)
 
+% sets the figure handle
 handles.output = hObject;
 
 % global variables
@@ -57,17 +58,21 @@ global isMovChange isDetecting isBatch isCalib isRTPChange
 [szDel,bufData,pAR] = deal(5,[],2);
 
 % initialses the custom property field string
-pFldStr = {'pData','hSolnT','hTube','hMark','hDir','hMainGUI','mObj',...
+pFldStr = {'pData','hSolnT','hMainGUI','mObj','vcObj','mkObj','rgObj',...
            'vidTimer','hGUIOpen','reopenGUI','cType','infoObj','hTrack',...
            'isText','iMov','rtP','rtD','iData','ppDef','frmBuffer',...
            'bgObj','prObj','objDACInfo','iStim','hTT','pColF','isTest',...
-           'fPosNew','vcObj','mkObj'};
+           'fPosNew'};
 initObjPropFields(hObject,pFldStr);
 
 % ensures the background detection panel is invisible
 setObjVisibility(handles.menuEstBG,'off')
 setObjVisibility(handles.menuFileBG,'off')
 setObjVisibility(handles.panelBGDetect,'off')
+
+% creates the tracking marker class object
+hObject.rgObj = TrackRegionClass(hObject,handles.imgAxes);
+hObject.mkObj = TrackMarkerClass(hObject,handles.imgAxes);
 
 % ----------------------------------------------------------- %
 % --- FIELD INITIALISATIONS & DIRECTORY STRUCTURE SETTING --- %
@@ -156,16 +161,11 @@ hObject.iData = initDataStruct(handles,ProgDefNew);
 hObject.ppDef = hObject.iData.ProgDef;
 
 % initialises the axes properties
-calcAxesGlobalCoords(handles)
 set(handles.imgAxes,'DrawMode','fast');
 
 % sets all the functions
 addObjProps(hObject,'dispImage',@dispImage,...
             'checkFixRatio_Callback',@checkFixRatio_Callback,...
-            'setupDivisionFigure',@setupDivisionFigure,...
-            'removeDivisionFigure',@removeDivisionFigure,...
-            'deleteAllMarkers',@deleteAllMarkers,...
-            'initMarkerPlots',@initMarkerPlots,...
             'checkShowTube_Callback',@checkShowTube_Callback,...
             'menuViewProgress_Callback',@menuViewProgress_Callback,...
             'menuOpenSoln_Callback',@menuOpenSoln_Callback,...
@@ -174,18 +174,17 @@ addObjProps(hObject,'dispImage',@dispImage,...
             'checkLocalView_Callback',@checkLocalView_Callback,...
             'checkSubRegions_Callback',@checkSubRegions_Callback,...
             'checkShowMark_Callback',@checkShowMark_Callback,...
-            'checkShowAngle_Callback',@checkShowAngle_Callback,...
-            'getMarkerProps',@getMarkerProps,...
+            'checkShowAngle_Callback',@checkShowAngle_Callback,...            
             'FirstButtonCallback',@FirstButtonCallback,...
             'LastButtonCallback',@LastButtonCallback,...
             'PrevButtonCallback',@PrevButtonCallback,...
             'NextButtonCallback',@NextButtonCallback,...
             'CountEditCallback',@CountEditCallback,...
             'ImageParaCallback',@ImageParaCallback,...
-            'updateAllPlotMarkers',@updateAllPlotMarkers,...
             'updateVideoFeedImage',@updateVideoFeedImage,...
             'postWindowSplit',@postWindowSplit,...
-            'menuOptSize_Callback',@menuOptSize_Callback)
+            'menuOptSize_Callback',@menuOptSize_Callback,...
+            'calcAxesGlobalCoords',@calcAxesGlobalCoords)
 
 % runs the fixed ratio callback function
 checkFixRatio_Callback(handles.checkFixRatio, 1, handles)
@@ -317,7 +316,7 @@ switch length(varargin)
 end
 
 % sets the figure resize function
-set(hObject,'ResizeFcn',{@figFlyTrack_ResizeFcn,guidata(hObject)})
+set(hObject,'ResizeFcn',{@figFlyTrack_ResizeFcn,handles})
 
 % centres the figure position
 centreFigPosition(hObject);
@@ -336,7 +335,8 @@ if isCalib
     % initialises the plot markers (if the sub-regions have been set)
     if hObject.iMov.isSet
         setObjEnable(handles.checkShowTube,'on');
-        initMarkerPlots(handles,1); pause(0.01)  
+        hObject.mkObj.initTrackMarkers(1); 
+        pause(0.01)  
     end         
 end
 
@@ -442,7 +442,7 @@ set(hTT,'color','k','BackgroundColor','w',...
 function ok = menuOpenMovie_Callback(hObject, eventdata, handles)
 
 % global variables
-global isBatch isCalib axPos0 pPos0 figPos0
+global isBatch isCalib
 
 % initialisations
 ok = 1;
@@ -666,6 +666,9 @@ if loadImgData(handles, ldData.name, ldData.dir, setMovie, isSolnLoad)
         end
     end
     
+    % recalculates the global axes coordinates
+    calcAxesGlobalCoords(handles)
+    
     if isCalib
         initVideoTimer(handles,false); pause(0.01);     
         setObjEnable(handles.menuVideoFeed,'on')
@@ -830,8 +833,8 @@ if menuOpenMovie_Callback(handles.menuOpenMovie,solnData.fData,handles)
     set(hFig,'iData',iData);    
     
     % deletes all the current markers (if any)
-    deleteAllMarkers(handles)
-    initMarkerPlots(handles);
+    handles.output.mkObj.deleteTrackMarkers()
+    handles.output.mkObj.initTrackMarkers();
     
     % removes the soln progress GUI (if it is on and not batch processing)
     hView = handles.menuViewProgress;
@@ -1171,122 +1174,7 @@ if ~isCalib
 end 
 
 % runs the split window sub-GUI
-% WindowSplit(handles,hProp0);
 RegionConfig(handles,hProp0);
-
-% --- runs the post window split function
-function postWindowSplit(handles,iMov,hProp0,isChange)
-
-% global variables
-global isCalib isMovChange
-
-% sets the axes focus to the main axis and removes the division figure (if
-% already been shown)
-hFig = handles.output;
-iData = get(hFig,'iData');
-
-% determines if the user set the sub-windows
-if isChange           
-    % creates the loadbar
-    hLoad = ProgressLoadbar('Updating Region Information...');
-    
-    % otherwise, reset the sub-image stack progress structs
-    if isCalib      
-        % creates the background object 
-        set(handles.output,'bgObj',CalcBG(handles))
-        
-%         % retrieves the calibration type
-%         cType = get(hFig,'cType');         
-%         if cType == 1
-%             % if calibrating, and is 2D arena, then update the experiment
-%             % location reference field to a 2D value        
-%             rtP = get(hFig,'rtP'); 
-%             if is2DCheck(iMov)
-%                 rtP.indSC.ExLoc.pRef = 'Centre'; 
-%             end
-%         
-%             % determines if the activity grouping indices are correct
-%             if isempty(rtP.combG.ind)
-%                 % initialises the activity groupings (if not set)
-%                 rtP.combG.ind = NaN(sum(iMov.ok),1); 
-%                 
-%             elseif length(rtP.combG.ind) ~= sum(iMov.ok)
-%                 % re-initialises the activity groupings (if not matching)
-%                 rtP.combG.ind = NaN(sum(iMov.ok),1);
-%             end
-% 
-%             % updates the real-time parameter struct
-%             iMov.calcPhi = false;
-%             rtP.combG = getCombSubRegionIndices(iMov,rtP);
-%             set(handles.output,'rtP',rtP)
-% 
-%             % enables the real-time parameter menu item
-%             setObjEnable(handles.menuRTPara,'on')            
-%         end
-        
-    else
-        % otherwise, reset the progress struct
-        iMov = resetProgressStruct(iData,iMov);
-        if ~is2DCheck(iMov); iMov.calcPhi = false; end
-    end         
-    
-    % reinitialises the background image array
-    nTube = getSRCountVec(iMov);
-    iMov.flyok = false(max(nTube),length(iMov.iR));
-    
-    % sets the individual acceptance flags for each group
-    for i = 1:length(nTube)
-        iMov.Status{i}(:) = 0;
-        if iMov.ok(i)
-            iMov.flyok(1:nTube(i),i) = true;
-        end
-    end
-    
-    % initialises the stats/backgrounds arrays
-    iMov.nDS = 1;
-    [iMov.pStats,iMov.Ibg] = deal([]);            
-    if isfield(iMov,'Nsz'); iMov = rmfield(iMov,'Nsz'); end
-    
-    % updates the program data struct video
-    [iData.initSoln,iData.status,iData.isSave] = deal(1,0,true);
-    iData.nMov = iMov.nRow*iMov.nCol;
-            
-    % updates the data structs within the GUI
-    set(handles.output,'iMov',iMov,'iData',iData,'pData',[]);
-    
-    % updates the object properties
-    if isCalib
-        % enables the tube checkbox and segmentation para menu item
-        set(setObjEnable(handles.checkShowTube,'on'),'value',1)        
-        setObjEnable(handles.buttonDetectBackground,'on')
-        
-        % re-initialises the data structs
-        set(handles.output,'fPosNew',[])
-                
-        % complete clears the axis
-        isMovChange = true;
-        set(hFig,'CurrentAxes',handles.imgAxes)                   
-        
-        % re-initialises the plot markers                
-        initMarkerPlots(handles); pause(0.01) 
-        setTrackGUIProps(handles,'PostWindowSplitCalib')
-    else
-        % (re)sets the initial plot markers    
-        initMarkerPlots(handles); pause(0.01)                    
-        setTrackGUIProps(handles,'PostWindowSplit')        
-        checkLocalView_Callback(handles.checkLocalView, 1, handles)
-    end
-    
-    % deletes the loadbar
-    try; delete(hLoad); end
-else    
-    % otherwise, reset the original object properties
-    if isCalib
-        % resets the object properties
-        resetHandleSnapshot(hProp0)        
-        checkShowTube_Callback(handles.checkShowTube, 1, handles)  
-    end
-end
     
 % -------------------------------------------------------------------------
 function menuManualReseg_Callback(hObject, eventdata, handles)
@@ -1530,7 +1418,7 @@ dInfo = get(hFig,'objDACInfo');
 isChecked = strcmp(get(hObject,'checked'),'on');
 
 % determines what dimensionality the experimental regions are
-is2D = is2DCheck(iMov);
+is2D = iMov.is2D;
 
 % updates the properties based on the menu's check mark status
 if isChecked    
@@ -1622,18 +1510,29 @@ TrackingPara(handles.output)
 function figFlyTrack_ResizeFcn(hObject, eventdata, handles)
 
 % global variables
-global updateFlag uTime
-
-% resets the timer
-uTime = tic;
+global updateFlag
 
 % dont allow any update (if flag is set to 2)
 if updateFlag ~= 0
     return
 else
     updateFlag = 2;
-    while toc(uTime) < 0.5
-        java.lang.Thread.sleep(10);
+end
+
+% keep looping until the size stops changing
+sz0 = get(hObject,'Position');
+while 1
+    % pause of a short amount of time...
+    pause(0.25)
+
+    % determines if the figure size has changed
+    sz = get(hObject,'Position');
+    if isequal(sz,sz0)
+        % if not, then exit the loop
+        break
+    else
+        % otherwise, reset the figure size vector
+        sz0 = sz;
     end
 end
 
@@ -1652,7 +1551,7 @@ updateFlag = 2;
 setObjVisibility(hObject,'on');
 
 % ensures the figure doesn't resize again (when maximised)
-pause(0.5);
+pause(0.25);
 updateFlag = 0;
 
 % --- resizes the combining GUI objects
@@ -1728,20 +1627,14 @@ dispImage(handles)
 % --- Executes on button press in checkSubRegions.
 function checkSubRegions_Callback(hObject, eventdata, handles)
 
-% sets/removes division figure based on checkbox value
-if get(hObject,'value')
-    % setting check box, so create division figure
-    iMov = get(handles.output,'iMov');
-    setupDivisionFigure(iMov,handles,true);
-else
-    % unsetting check box, so remove division figure
-    removeDivisionFigure(handles.imgAxes,false)
-end
+% REMOVE ME!
+handles.output.rgObj.checkSubRegions();
 
 % --- Executes on button press in checkLocalView.
 function checkLocalView_Callback(hObject, eventdata, handles, varargin)
 
 % initialisations
+mkObj = handles.output.mkObj;
 updateTube = ~isa(eventdata,'char');
 
 % sets the enable properties of the sub-movie selection
@@ -1774,19 +1667,13 @@ end
 
 % updates the image axis
 if ~updateTube
-    % retrieves the tube/fly location marker handle arrays
-    hMark = get(handles.output,'hMark');
-    hTube = get(handles.output,'hTube');
-
     % makes the tube/fly location markers invisible
-    for i = 1:length(hMark)
+    for i = 1:length(mkObj.hMark)
         try
-            cellfun(@(x)(setObjVisibility(x,'off')),hMark{i});
-            cellfun(@(x)(setObjVisibility(x,'off')),hTube{i});
+            mkObj.setMarkerVis('hMark',i,'off')
+            mkObj.setMarkerVis('hTube',i,'off')
         catch
-            initMarkerPlots(handles,1);
-            hMark = get(handles.output,'hMark');
-            hTube = get(handles.output,'hTube');            
+            mkObj.initTrackMarkers(1);            
         end
     end
 end
@@ -2193,30 +2080,27 @@ if isCalib
     end
 end   
 
-% ---------------------------------------- %
-% --- FLY DETECTION & MARKER FUNCTIONS --- %
-% ---------------------------------------- %
+% ------------------------------------------ %
+% --- MARKER OBJECT VISIBILITY FUNCTIONS --- %
+% ------------------------------------------ %
 
 % --- Executes on button press in checkShowTube.
 function checkShowTube_Callback(hObject, eventdata, handles)
-
-% global variables
-global szDel
 
 % initialisations
 hFig = handles.output;
 
 % retrieves the sub-region struct
-if ~isa(eventdata,'char')
-    showUpdate = ~isa(eventdata,'double');
-    iMov = get(hFig,'iMov');
-else
+if isa(eventdata,'char')
     showUpdate = false;
     if isfield(handles,'iMov')
         iMov = handles.iMov;
     else
         iMov = hFig.iMov;
-    end
+    end    
+else
+    showUpdate = ~isa(eventdata,'double');
+    iMov = get(hFig,'iMov');
 end
 
 % loads the tube-data struct
@@ -2225,207 +2109,24 @@ if ~iMov.isSet
     return
 end
 
-% retrieves the tube struct arrays
-Type = getDetectionType(iMov);
-iData = get(hFig,'iData');
-hTube = get(hFig,'hTube');
-[ii,jj,mlt] = deal([1 2 2 1],[1 1 2 2],1);
-isLocalView = get(handles.checkLocalView,'value');
-
-% resets the tube regions (if they are invalid)
-if ~ishandle(hTube{1}{1})
-    initMarkerPlots(handles,get(hObject,'Value'))
-    hTube = get(hFig,'hTube');
-end
-
-% retrieves the indices of the sub-regions to be shown
-if isLocalView
-    % local view, so get the current sub-region
-    ind = iData.cMov;
-    isOther = ~setGroup(ind,size(hTube));
-    cellfun(@(x)(setObjVisibility(x,0)),hTube(isOther))
-    
-else
-    % global view, so show all sub-regions
-    ind = find(iMov.ok(:)');
-end
-
-% sets the tube visibility strings
-for i = ind
-    if ~showUpdate
-        switch Type
-            case {'GeneralR','Circle'} % case is automatic detection
-                
-                % sets the positional offset
-                if isLocalView
-                    % case is for local view
-                    xOfs = (iMov.iC{ind}(1)-1)-szDel;
-                    yOfs = (iMov.iR{ind}(1)-1)-szDel;            
-                else
-                    % case is for global view
-                    [xOfs,yOfs] = deal(0);    
-                end
-                
-                % retrieves the global row/column indices
-                [iCol,iFlyR,~] = getRegionIndices(iMov,i);             
-                
-            otherwise % case is manual region setting
-                
-                % sets the positional offset                
-                if isLocalView
-                    % case is for local view
-                    if iMov.ok(i)
-                        if size(iMov.xTube{i}([1 end]),1) == 1
-                            yOfs = min(max(0,(iMov.iR{ind}(1)-1)),szDel);
-                            xOfs = szDel;
-                        else
-                            xOfs = min(max(0,(iMov.iC{ind}(1)-1)),szDel);
-                            yOfs = szDel;
-                        end            
-                    end
-                else
-                    % case is for global view
-                    [xOfs,yOfs] = deal(iMov.pos{i}(1),iMov.pos{i}(2));   
-                end       
-
-                % sets the x/y-coordinates of the sub-region
-                if isempty(iMov.xTube{i})
-                    % case is the region has never been set
-                    iFlyR = [];                    
-                else
-                    % otherwise, set the x/y offsets
-                    if size(iMov.xTube{i},1) == 1
-                        x = (iMov.xTube{i}([1 end]) + xOfs);
-                    else
-                        y = (iMov.yTube{i}([1 end]) + yOfs);
-                    end
-
-                    % sets the fly indices
-                    iFlyR = 1:length(hTube{i});
-                end
-        end        
-
-        for j = iFlyR(:)'
-            % retrieves the marker properties            
-            [pCol,fAlpha,edgeCol] = getMarkerProps(iMov,i,j);              
-
-            % sets the tube region patch based on the detection type 
-            switch Type
-                case 'GeneralR'
-                    % case is the repeating general patterns
-                    xTube = iMov.autoP.X0(j,iCol) + iMov.autoP.XC - xOfs;
-                    yTube = iMov.autoP.Y0(j,iCol) + iMov.autoP.YC - yOfs;     
-                    
-                case 'Circle'
-                    % calculates the circle coordinates
-                    [XC,YC] = calcCircleCoords(iMov.autoP,j,iCol);
-                    
-                    % case is the circle/repeating general patterns
-                    xTube = iMov.autoP.X0(j,iCol) + XC - xOfs;
-                    yTube = iMov.autoP.Y0(j,iCol) + YC - yOfs;                       
-                
-                otherwise
-                    % case is for the other detection types
-                    if isColGroup(iMov)
-                        x = (iMov.xTube{i}(j,:) + xOfs); 
-                    else            
-                        y = (iMov.yTube{i}(j,:) + yOfs); 
-                    end
-
-                    % sets the final tube outline x/y coordinates
-                    [xTube,yTube] = deal(x(ii),y(jj));
-            end
-
-            % creates the fly/tube markers
-            try
-                set(hTube{i}{j},'xdata',xTube,'ydata',yTube,'FaceAlpha',...
-                          fAlpha*mlt,'EdgeColor',edgeCol,'FaceColor',pCol);
-            catch
-                % if there was an error, reinitalise
-                initMarkerPlots(handles,1)
-                hTube = get(hFig,'hTube');
-
-                % updates the tube location
-                set(hTube{i}{j},'xdata',xTube,'ydata',yTube,'FaceAlpha',...
-                          fAlpha*mlt,'EdgeColor',edgeCol,'FaceColor',pCol);            
-            end
-        end    
-    end
-    
-    % sets the tube visibility strings
-    if ~isa(eventdata,'char')
-        isShow = (get(hObject,'value') && any(i == ind));        
-    else
-        isShow = str2double(eventdata);
-    end    
-    
-    % sets the visibility fields
-    cellfun(@(x)(setObjVisibility(x,isShow)),hTube{i})
-end
+% runs the show checkbox tube region callback function
+hFig.mkObj.checkShowTube(iMov,showUpdate,eventdata);
 
 % --- Executes on button press in checkShowMark.
 function checkShowMark_Callback(hObject, eventdata, handles)
 
-% global variables
-global isCalib
-
-% object retrieval
-hFig = handles.output;
-
-% updates the image axes
-if isCalib
-    if isfield(handles,'menuRTTrack')
-        if ~strcmp(get(handles.menuRTTrack,'checked'),'on')
-            updateVideoFeedImage(hFig,hFig.infoObj.objIMAQ)  
-        end
-    else
-        % updates the plot markers
-        updateAllPlotMarkers(handles,hFig.iMov,true)
-    end
-else
-    % initialisations
-    isOn = get(hObject,'Value');
-    hMark = get(handles.output,'hMark');
-    
-    % if using local image, only turn on markers for that region
-    if get(handles.checkLocalView,'Value')
-        hMarkOff = hMark(~setGroup(hFig.iData.cMov,size(hMark)));
-        hMark = hMark(hFig.iData.cMov);
-    end
-    
-    try
-        % attempts to update the marker visibility
-        cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOn)),x)),hMark)
-        
-    catch
-        % if there was an error, recreate the markers and set their
-        % visibility
-        initMarkerPlots(handles);
-        cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOn)),x)),hMark)        
-    end
-    
-    % turns off any markers (local view only)
-    if exist('hMarkOff','var')
-        cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,0)),x)),hMarkOff)
-    end    
-end
+% REMOVE ME LATER
+handles.output.mkObj.checkShowMark();
     
 % --- Executes on button press in checkShowAngle.
 function checkShowAngle_Callback(hObject, eventdata, handles)
 
-% initialisations
-isOn = get(hObject,'Value');
-hDir = get(handles.output,'hDir');
+% REMOVE ME LATER
+handles.output.mkObj.checkShowAngle();
 
-try
-    % attempts to update the marker visibility
-    cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOn)),x)),hDir)
-catch
-    % if there was an error, recreate the markers and set their
-    % visibility
-    initMarkerPlots(handles);
-    cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOn)),x)),hDir)
-end
+% ----------------------------------------------- %
+% --- OBJECT INITIAL/FULL DETECTION FUNCTIONS --- %
+% ----------------------------------------------- %
 
 % --- Executes on button press in buttonDetectBackground.
 function buttonDetectBackground_Callback(hObject, eventdata, handles)
@@ -2515,7 +2216,7 @@ if ~isempty(pData)
     set(handles.output,'pData',pData);    
     
     % (re)sets the initial plot 
-    initMarkerPlots(handles,1);       
+    handles.output.mkObj.initTrackMarkers(1);
     pause(0.01)
 
     % retrieves the last segmented frame
@@ -2602,14 +2303,19 @@ iData = get(hFig,'iData');
 
 % updates the frame selection object properties
 if ishandle(handles.frmCountEdit)
+    % determines if the background estimation calculation is currently
+    % being run
     isBGCalc = ~isempty(hFig.bgObj) && hFig.bgObj.isVisible;
-    if isBGCalc
+    if isBGCalc && ~isempty(hFig.bgObj.indFrm)
+        % if so, then retrieve the frame index from bg estimation GUI
         iFrmPh = hFig.bgObj.indFrm{hFig.bgObj.iPara.cPhase};
         cFrm = iFrmPh(hFig.bgObj.iPara.cFrm);
     else
+        % otherwise, retrieve the frame index from the main tracking GUI
         cFrm = str2double(get(handles.frmCountEdit,'string'));  
     end
 else
+    % case is calibration only
     [cFrm,isBGCalc] = deal(1,false);
 end
 
@@ -2668,6 +2374,7 @@ if isempty(hImg)
         axis(handles.imgAxes,'normal')
     end
     
+    % updates the frame index text colour
     if ishandle(handles.frmCountEdit)
         if isempty(ImgNw)
             set(handles.frmCountEdit,'ForegroundColor','r')
@@ -2676,7 +2383,7 @@ if isempty(hImg)
         end    
     end
 else
-    %
+    % updates the axis limits
     if max(get(hAx,'clim')) < 10
         set(hImg,'cData',double(ImgNw))    
     else
@@ -2696,29 +2403,12 @@ else
     end
 end
 
-% --------------------------- %
-% --- TUBE REGION MARKERS --- %
-% --------------------------- %
+% ------------------------------ %
+% --- TRACKING MARKER UPDATE --- %
+% ------------------------------ %
 
-% retrieves the marker handles
-hMark = get(handles.output,'hMark');
-
-% determines if the marker objects are valid
-if isempty(hMark)
-    % if there are no markers, then exit
-    return
-    
-elseif ~ishandle(hMark{1}{1})
-    % otherwise, if the markers are not valid then recreate them
-    if get(handles.checkShowMark,'value')
-        initMarkerPlots(handles)
-    else
-        initMarkerPlots(handles,1)
-    end
-end
-
-% updates all the plot markers
-updateAllPlotMarkers(handles,iMov,~isempty(ImgNw))
+% updates the tracking markers
+hFig.mkObj.updateTrackMarkers(~isempty(ImgNw))
 
 % --- plays the movie from the current frame until A) the end of the 
 %     movies or, B) until the user presses stop 
@@ -2772,744 +2462,6 @@ while (iFrm + cStp) <= iData.nFrm
         % updates the frame count
         cStp = str2double(get(handles.editFrameStep,'string'));           
     end        
-end
-
-% --- updates the object location marker coordinates
-function updateAllPlotMarkers(handles,iMov,hasImg)
-
-% global variables
-global isCalib
-
-% retrieves the important data arrays/structs
-hFig = handles.output;
-% cType = get(hFig,'cType');
-
-% determines if the location/orientation markers are to be plotted
-pltLocT = get(handles.checkShowMark,'value') && hasImg;
-if ishandle(handles.checkShowAngle)
-    pltAngT = get(handles.checkShowAngle,'value') && hasImg;
-else
-    pltAngT = false;
-end
-
-% array indexing & parameters
-if isCalib
-    if isfield(hFig,'rtObj')
-        if isempty(hFig.fPosTmp); return; end     
-    end
-end
-
-% retrieves the updates the region markers (if there is translation)
-if ~isempty(iMov.phInfo) && any(iMov.phInfo.hasT)
-    
-end
-
-% sets the markers for all flies
-if ~isempty(hFig.hMark)    
-    for i = find(iMov.ok(:)')
-        % if the markers have been deleted then re-initialise them
-        initReqd = isempty(hFig.hMark{i}{1}) || ~ishandle(hFig.hMark{i}{1});
-        if (i == 1) && initReqd
-            initMarkerPlots(handles,1)
-        end
-        
-        % sets the plot location marker flag for the current apparatus
-        [pltLoc,pltAng] = deal(pltLocT&&iMov.ok(i),pltAngT&&iMov.ok(i));
-        if isCalib       
-            if isfield(hFig,'fPosTmp')
-                updateIndivMarker(handles,hFig.fPosTmp,i,pltLoc,pltAng,1) 
-            end
-        else
-            updateIndivMarker(handles,hFig.pData,i,pltLoc,pltAng) 
-        end        
-    end
-end
-
-% --- initialises all the image plot markers 
-function initMarkerPlots(handles,varargin)
-
-% global variables
-global yDelG 
-
-% sets the figure handle
-if isfield(handles,'output')
-    hFig = handles.output;
-else
-    hFig = handles.figFlyTrack;
-end
-
-% retrieves the sub-movie data struct
-iMov = get(hFig,'iMov');
-if isempty(iMov.yTube); return; end
-
-% sets the marker sizes and linewidths
-if ispc
-    lWid = 1.5;
-else
-    lWid = 1.5;
-end
-
-% retrieves the data structs
-Type = getDetectionType(iMov);
-isMltTrk = detMltTrkStatus(iMov);
-[ii,jj,yDelG] = deal([1 2 2 1],[1 1 2 2],0.35);
-[nApp,isCG] = deal(length(iMov.iR),isColGroup(iMov));
-
-% array creation 
-if isMltTrk
-    % case is single fly tracking
-    nFlyR = arr2vec(iMov.nFlyR');
-    A = arrayfun(@(x)(cell(x,1)),nFlyR,'un',0);
-
-    % case is single fly tracking
-    if isCG
-        B = cellfun(@(x)(cell(size(x,1),1)),iMov.xTube,'un',0);
-    else
-        B = cellfun(@(x)(cell(size(x,1),1)),iMov.yTube,'un',0);
-    end    
-    
-    % memory allocation
-    [hMark,hTube,hDir] = deal(A,B,A);    
-    
-else
-    % case is single fly tracking
-    if isCG
-        A = cellfun(@(x)(cell(size(x,1),1)),iMov.xTube,'un',0);
-    else
-        A = cellfun(@(x)(cell(size(x,1),1)),iMov.yTube,'un',0);
-    end
-    
-    % memory allocation
-    [hMark,hTube,hDir] = deal(A);    
-end
-
-% sets focus to the image axis
-hAx = handles.imgAxes;
-set(hFig,'CurrentAxes',hAx)
-deleteAllMarkers(handles)
-
-% sets the visibilty flag
-if nargin == 1
-    isOn = true;
-else
-    isOn = varargin{1}; 
-end
-
-% retrieves the checkbox markers
-isOnT = get(handles.checkShowTube,'Value') && isOn;
-isOnM = get(handles.checkShowMark,'Value') && isOn;
-isOnD = get(handles.checkShowAngle,'Value') && isOn;
-
-% resets the markers
-hold(hAx,'on')
-for i = find(iMov.ok(:)')
-    % sets the x/y offset
-    [xOfs,yOfs] = deal((iMov.iC{i}(1)-1),(iMov.iR{i}(1)-1));  
-    
-    switch Type
-        case {'GeneralR','Circle'}
-            % sets the row/column indices
-            [iCol,iFlyR,~] = getRegionIndices(iMov,i);  
-            
-        otherwise
-            iFlyR = 1:length(hMark{i});
-            
-    end
-    
-    for j = iFlyR(:)'
-        % sets the tag strings and the offsets                
-        [hTStr,hMStr] = deal('hTube','hMark');
-        hDStr = sprintf('hDir%i',i);
-        
-        % sets the plot colour for the tubes
-        [pCol,fAlpha,edgeCol,pMark,mSz] = getMarkerProps(iMov,i,j);        
-        
-        % sets the x/y coordinates of the tube regions (either for single
-        % tracking, or multi-tracking for the first iteration)
-        if (j == 1) || ~isMltTrk
-            switch Type
-                case {'GeneralR','Circle'}
-                    % sets the outline coordinates
-                    xTube = iMov.autoP.X0(j,iCol) + iMov.autoP.XC;
-                    yTube = iMov.autoP.Y0(j,iCol) + iMov.autoP.YC;
-
-                otherwise
-                    % otherwise set the region based on storage type
-                    if isCG
-                        x = iMov.xTube{i}(j,:) + xOfs;
-                        y = iMov.yTube{i}+yDelG*[1 -1] + yOfs;             
-                    else
-                        x = iMov.xTube{i} + xOfs;
-                        y = iMov.yTube{i}(j,:)+yDelG*[1 -1] + yOfs;                              
-                    end
-
-                    % sets the final tube outline coordinates
-                    [xTube,yTube] = deal(x(ii),y(jj));
-            end
-
-            % creates the tube region patch
-            hTube{i}{j} = fill(xTube,yTube,pCol,'tag',hTStr,...
-                            'FaceAlpha',fAlpha,'EdgeColor',edgeCol,...
-                            'EdgeAlpha',1,'Visible','off','Parent',hAx,...
-                            'UserData',[i,j]); 
-        end
-        
-        % determines if separate colours are being used
-        if iMov.sepCol
-            % if so, retrieve the stored colours
-            pColF = get(handles.output,'pColF');
-            if j > length(pColF)
-                % if there is sufficient colours, then reset the array
-                nMark = length(hMark{i});
-                pColF = num2cell(distinguishable_colors(nMark,'w'),2);
-                set(handles.output,'pColF',pColF)
-            end        
-            
-            % retrieves the colour
-            pCol = pColF{j};
-        end
-        
-        % creates the fly positional/orientation markers
-        hMark{i}{j} = plot(NaN,NaN,'Color',pCol,'Marker',pMark,...
-                           'MarkerSize',mSz,'Parent',hAx,'Visible','off',...
-                           'LineWidth',lWid,'UserData',[i,j],'tag',hMStr);
-        hDir{i}{j} = patch(NaN,NaN,pCol,'tag',hDStr,'Parent',hAx,...
-                           'UserData',[10,0.33],'Visible','off');
-    end
-end
-
-% sets the object marker visibilities
-cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOnT)),x)),hTube)
-cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOnM)),x)),hMark)
-cellfun(@(x)(cellfun(@(y)(setObjVisibility(y,isOnD)),x)),hDir)
-
-% turns the hold on the axis off
-hold(hAx,'off')
-
-% resets the marker array
-[hFig.hMark,hFig.hTube,hFig.hDir] = deal(hMark,hTube,hDir);
-
-% --- deletes all the image plot markers
-function deleteAllMarkers(handles)
-
-% sets the main GUI figure handle
-if isfield(handles,'output')
-    hFig = handles.output;
-else
-    hFig = handles.figFlyTrack;
-end
-
-% retrieves the sub-movie data struct
-if isempty(hFig.hMark)
-    % if the sub-movies have not been set, then exit the function
-    return
-end
-    
-% deletes any previous tube markers
-hTube = findobj(handles.imgAxes,'tag','hTube');
-if ~isempty(hTube); delete(hTube); end
-
-% deletes any previous fly markers
-hMark = findobj(handles.imgAxes,'tag','hMark');
-if ~isempty(hMark); delete(hMark); end
-
-% loops through all the apparatus deleting the tube/fly markers
-for i = 1:length(hMark)
-    % deletes any previous fly markers
-    hDir = findobj(handles.imgAxes,'tag',sprintf('hDir%i',i));
-    if ~isempty(hDir); delete(hDir); end    
-end
-    
-% resets the tube/marker handle arrays
-[hFig.hMark,hFig.hTube,hFig.hDir] = deal([]);
-
-% ------------------------------------------ %
-% --- SUB-WINDOW/EXCLUSION ROI FUNCTIONS --- %
-% ------------------------------------------ %
-
-% --- creates the new division figure for the apparatus sub-regions -------
-function rPos = setupDivisionFigure(iMov,handles,isSet)
-
-% initialisations
-Type = getDetectionType(iMov);
-if ~isfield(iMov,'isOpt'); iMov.isOpt = false; end
-
-% sets the apparatus dimensions and show number flag (if not provided)
-[nRow,nCol] = deal(iMov.nRow,iMov.nCol);
-if nargin == 3; showNum = true; end
-
-% sets the image axis handle
-if isfield(handles,'imgAxes')
-    hAx = handles.imgAxes;
-else
-    hAx = gca;
-end
-
-% sets the movement flag
-if isfield(handles,'figFlyTrack')
-    % for the main GUI viewing, so don't allow movement of the imrect boxes
-    isMove = false;
-else
-    % otherwise, allow movement of the imrect boxes
-    isMove = true;
-end
-
-% sets the window label font sizes and linewidths
-if ispc
-    [fSize,lWid] = deal(20,1);
-else
-    [fSize,lWid] = deal(26,1.25);    
-end
-
-% turns the axis hold on
-hold(hAx,'on')
-
-%
-if isempty(iMov.autoP)
-    hLine = findall(hAx,'tag','hLine');
-    vLine = findall(hAx,'tag','vLine');
-
-    % sets the horizontal seperators    
-    if isempty(hLine)
-        for i = 1:(nRow-1)
-            for j = 1:nCol 
-                line(hAx,[0 0],[0 0],'color','r','linestyle',':','tag','hLine',...
-                                     'Userdata',[i,j],'linewidth',lWid);
-            end
-        end
-    else
-        setObjVisibility(hLine,'on');
-    end
-
-    % sets the vertical seperators
-    if isempty(vLine)
-        for j = 1:(nCol-1)
-            line(hAx,[0 0],[0 0],'color','r','linestyle',':',...
-                                 'tag','vLine','Userdata',j,'linewidth',lWid);   
-        end
-    else
-        setObjVisibility(vLine,'on');
-    end
-end
-
-% sets the number markers
-if showNum
-    hNum = findall(hAx,'tag','hNum');
-    if isempty(hNum)
-        for i = 1:nRow
-            for j = 1:nCol
-                k = (i-1)*nCol+j;
-                hText = text(0,0,num2str(k),'visible','off','fontweight',...
-                        'bold','fontsize',fSize,'tag','hNum',...
-                        'color','r','parent',hAx);                
-                if ~isempty(iMov.iR)    
-                    if ~iMov.ok(k)
-                        set(hText,'color','k')
-                    end
-                end
-            end
-        end
-    else
-        setObjVisibility(hNum,'on');
-    end
-end
-
-% turns the axis hold off
-hold(hAx,'off')
-
-% sets up the sub-image rectangle windows
-if isSet
-    setupMainFrameRect(iMov,hAx,true);
-    setupIndivFrameRect(handles,iMov,isMove,true);
-else
-    rPos = setupMainFrameRect(iMov,hAx,false);    
-    setupIndivFrameRect(handles,iMov,isMove,false,rPos);
-end
-        
-% --- sets up the main sub-window frame --- %
-function [rPos,hROI] = setupMainFrameRect(iMov,hAx,isSet)
-
-% retrieves the detection type
-Type = getDetectionType(iMov);
-
-% ------------------------------------ %
-% --- OUTER RECTANGLE OBJECT SETUP --- %
-% ------------------------------------ %
-
-% retrieves the outer region handle
-hOuter = findall(hAx,'Tag','hOuter');
-
-% updates the position of the outside rectangle
-if isempty(hOuter)
-    if isSet
-        rPos = iMov.posG;
-        hROI = imrect(hAx,rPos);
-    else    
-        hROI = imrect;    
-    end
-
-    % disables the bottom line of the imrect object
-    set(hROI,'tag','hOuter')
-    setObjVisibility(findobj(hROI,'tag','bottom line'),'off');
-
-    % if moveable, then set the position callback function
-    api = iptgetapi(hROI);
-    api.setColor('r');
-    rPos = api.getPosition();
-
-    % force the imrect object to be fixed
-    setResizable(hROI,false);
-    set(findobj(hROI),'hittest','off')
-
-    % sets the constraint function for the rectangle object
-    fcn = makeConstrainToRectFcn('imrect',rPos(1)+[0 rPos(3)],...
-                                          rPos(2)+[0 rPos(4)]);
-    api.setPositionConstraintFcn(fcn); 
-else
-    setObjVisibility(hOuter,'on')
-    return
-end
-    
-% ---------------------------------- %
-% --- SUB-WINDOW SEPERATOR SETUP --- %
-% ---------------------------------- %
-
-% initialisations
-[nRow,nCol] = deal(iMov.nRow,iMov.nCol);
-
-% sets the region dimension vectors
-pPos = iMov.pos;
-useOuter = cellfun(@isempty,pPos);
-pPos(useOuter) = iMov.posO(useOuter);
-
-%
-if isempty(iMov.autoP)
-    % retrieves the handles to the horizontal/vertical line objects
-    vLine = findobj(hAx,'tag','vLine');
-    hLine = findobj(hAx,'tag','hLine');
-
-    % sets the horizontal 
-    rPos = roundP(rPos,0.1);
-    [L,T,W,H] = deal(rPos(1),rPos(2),rPos(3),rPos(4));
-    yPltV = repmat(T + [0 H],nCol-1,1);
-
-    % sets the horizontal marker regions
-    if iMov.isOpt
-        % memory allocation
-        [yPltH,xPltV] = deal(zeros(nRow-1,2),zeros(nCol-1,2));
-
-        % sets the y locations of the horizontal separators   
-        for i = 1:(nRow-1)
-            % sets the indices of the lower/upper groups
-            [iLo,iHi] = deal((i-1)*nCol+(1:nCol),i*nCol+(1:nCol));
-
-            % sets the locations of the lower top/upper bottom indices
-            yT = max(cellfun(@(x)(sum(x([2 4]))),iMov.pos(iLo)));
-            yB = min(cellfun(@(x)(x(2)),iMov.pos(iHi)));
-
-            % sets the vertical location of the horizontal separator
-            yPltH(i,:) = 0.5*(yT+yB); 
-        end
-
-        % sets the x locations of the vertical separators   
-        for i = 1:(nCol-1)
-            % sets the indices of the left/right groups
-            iLf = nCol*(0:(nRow-1))'+i;
-
-            % sets the locations of the lower top/upper bottom indices
-            xR = max(cellfun(@(x)(sum(x([1 3]))),iMov.pos(iLf)));
-            xL = min(cellfun(@(x)(x(1)),iMov.pos(iLf+1)));
-
-            % sets the horizontal location of the vertical separator
-            xPltV(i,:) = 0.5*(xR+xL);                 
-        end   
-    else    
-        % sets the x locations of the vertical separators  
-        [dW,dH] = deal(W/iMov.nCol,H/iMov.nRow); 
-        xPltV = repmat(L + (1:(nCol-1))'*dW,1,2);    
-    end
-
-    % sets the location of the horizontal seperators
-    xPltH = [L;xPltV(:,1);(L+W)];
-    for i = 1:(nRow-1)        
-        for j = 1:nCol
-            % determines the apparatus index
-            iApp = ((i-1)*nCol + j) + [0 nCol];            
-            yPltH = 0.5*(sum(pPos{iApp(1)}([2 4]))+pPos{iApp(2)}(2));
-
-            % retrieves the line
-            hLineNw = findobj(hLine,'UserData',[i,j]);  
-            set(hLineNw,'xData',xPltH(j+(0:1)),...
-                        'yData',yPltH*[1 1],'Visible','on');
-        end
-    end
-
-    % sets the location of the vertical seperators
-    for j = 1:(nCol-1)
-        vLineNw = findobj(vLine,'UserData',j);    
-        set(vLineNw,'xData',xPltV(j,:),'yData',yPltV(j,:),'Visible','on');
-    end
-end
-    
-% retrieves the handles to the numbers 
-hNum = findobj(hAx,'tag','hNum');
-
-% sets the window index text (if set)
-for i = 1:nRow
-    for j = 1:nCol
-        k = (i-1)*nCol+j;
-        hText = findobj(hNum,'string',num2str(k));
-        if ~isempty(hText)
-            % sets the base x/y location of the text object
-            if isfield(iMov,'iC')
-                if isempty(iMov.iC{k})
-                    X = L+(j-0.5)*dW;
-                    Y = T+(i-0.5)*dH;                    
-                else
-                    X = mean(iMov.iC{k}([1 end]));
-                    Y = mean(iMov.iR{k}([1 end]));
-                end
-            else
-                X = L+(j-0.5)*dW;
-                Y = T+(i-0.5)*dH;
-            end
-            
-            % updates the text object position
-            hEx = get(hText,'Extent');        
-            set(hText,'position',[X-(hEx(3)/2) Y 0],'visible','on')
-        end
-    end
-end    
-
-% --- creates the individual sub-image rectangle frames
-function setupIndivFrameRect(handles,iMov,isMove,isSet,rPos)
-
-% global variables
-global hh
-hh = handles;
-if isfield(handles,'figWinSplit')
-    hGUIF = getappdata(handles.figWinSplit,'hGUI');
-    hAx = hGUIF.imgAxes;
-else
-    hAx = handles.imgAxes;
-end
-
-% sets the number of apparatus to set up
-del = 5;
-nApp = iMov.nRow*iMov.nCol;
-PosNw = zeros(1,4);
-[ix,iy] = deal([1 1 2 2],[1 2 2 1]);
-Type = getDetectionType(iMov);
-
-% sets the colours for the inner rectangles
-if isMove
-    % case is for movable inner objects (different colours)
-    if mod(iMov.nCol,2) == 1
-        col = 'gmyc';    
-    else
-        col = 'gmy';    
-    end
-else
-    % case is for the fixed inner objects (same colours)
-    col = 'g';
-end
-    
-% checks to see if the outer rectangles has just been set
-[xLim,yLim] = deal(get(hAx,'xlim'),get(hAx,'ylim'));
-if nargin == 5
-    % if so, then initialise the locations of the inner rectangles
-    rPosS = cell(nApp,1);
-    [L,T,W,H] = deal(rPos(1),rPos(2),rPos(3),rPos(4));
-    [dW,dH] = deal((W/iMov.nCol),(H/iMov.nRow));    
-    
-    % if there are any negative dimensions, then exit the function
-    if any([dW dH] < 0)
-        return
-    end
-    
-    % calculates the new locations for all apparatus
-    for i = 1:iMov.nRow
-        for j = 1:iMov.nCol
-            % sets the left/right locations of the sub-window
-            PosNw(1) = min(xLim(2),max(xLim(1),L+((j-1)*dW+del)));
-            PosNw(2) = min(yLim(2),max(yLim(1),T+((i-1)*dH+del)));                                               
-            PosNw(3) = (dW-2*del) + min(0,xLim(2)-(PosNw(1)+(dW-2*del)));
-            PosNw(4) = (dH-2*del) + min(0,yLim(2)-(PosNw(2)+(dH-2*del)));      
-            
-            % updates the sub-image position vectos
-            rPosS{(i-1)*iMov.nCol+j} = PosNw;
-        end
-    end
-else
-    % otherwise, use the previous position of the inner/outer rectangles
-    [rPos,rPosS] = deal(iMov.posG,iMov.pos);
-end
-
-% sets the inner rectangle objects for all apparatus
-for i = find(iMov.ok(:)')
-    % determines the new image sub-limits
-    [xLimS,yLimS] = setSubImageLimits(hAx,xLim,yLim,iMov,rPos,i);
-    xLimS = [max(rPos(1),xLimS(1)) min(rPos(1)+rPos(3),xLimS(2))];
-    yLimS = [max(rPos(2),yLimS(1)) min(rPos(2)+rPos(4),yLimS(2))];   
-    
-    % adds the ROI fill objects
-    if isSet
-        hold(hAx,'on')
-        hFill = fill(xLimS(ix),yLimS(iy),'r','facealpha',0,'tag',...
-                     'hFillROI','linestyle','none','parent',hAx);
-        if ~iMov.ok(i); set(hFill,'facealpha',0.2); end
-        hold(hAx,'off')
-    end        
-    
-    % creates the new rectangle object (non-General detection only)
-    if isempty(iMov.autoP)
-        hROI = imrect(hAx,rPosS{i});
-        indCol = mod(i-1,length(col))+1;
-
-        % disables the bottom line of the imrect object
-        set(hROI,'tag','hInner');
-        setObjVisibility(findobj(hROI,'tag','bottom line'),'off');
-
-        % if moveable, then set the position callback function
-        api = iptgetapi(hROI);
-        api.setColor(col(indCol));
-        api.addNewPositionCallback(@roiCallback);         
-    end
-    
-    if isMove                      
-        % sets the position callback function 
-        set(hROI,'UserData',i)                
-        
-        % sets the constraint region for the 
-        fcn = makeConstrainToRectFcn('imrect',xLimS,yLimS);
-        api.setPositionConstraintFcn(fcn);                 
-        
-        % sets the tube seperator lines
-        if isSet
-            %
-            [xTube,yTube] = deal(iMov.xTube{i},iMov.yTube{i});            
-            [xOfs,yOfs] = deal(iMov.pos{i}(1),iMov.pos{i}(2));
-            
-            % retrieves the tube count
-            if iMov.isOpt
-                nTube = size(yTube,1)-1;
-            else
-                nTube = getSRCount(iMov,i)-1;
-            end
-            
-            % sets the x/y coordinates of the tube region
-            xTubeS = repmat(xTube+xOfs,nTube,1)';            
-            yTubeS = 0.5*(yTube(1:end-1,2)+yTube(2:end,1))' + yOfs;            
-            yTubeS = repmat(yTubeS,2,1);
-        else
-            % retrieves the tube count
-            nTube = getSRCount(iMov,i);            
-            
-            % sets the x/y coordinates of the tube region
-            xTubeS = repmat(rPosS{i}(1)+[0 rPosS{i}(3)],nTube-1,1)';
-            yTubeS = rPosS{i}(2) + (rPosS{i}(4)/nTube)*(1:(nTube-1));         
-            yTubeS = repmat(yTubeS,2,1);
-        end
-
-        % plots the tube markers
-        hold(hAx,'on')
-        line(hAx,xTubeS,yTubeS,'color',col(indCol),'linestyle','--','tag',...
-                    sprintf('hTubeEdge%i',i),'UserData','hTube');        
-        hold(hAx,'off')          
-    else                
-        % sets the constraint function for the rectangle object
-        switch Type
-            case {'GeneralR','Circle'}
-                hInner = findall(hAx,'tag','hInner','UserData',i);
-                if isempty(hInner)
-                    
-                    XX = iMov.iC{i}([1,end]);
-                    YY = iMov.iR{i}([1,end]);
-                    [ii,jj] = deal([1,1,2,2,1],[1,2,2,1,1]);
-                    
-                    hold(hAx,'on') 
-                    line(XX(ii),YY(jj),'color','g','tag','hInner',...
-                                       'UserData',i);
-                    hold(hAx,'off')
-                else
-                    setObjVisibility(hInner,'on')
-                end
-                
-            otherwise
-                % force the imrect object to be fixed
-                setResizable(hROI,false);                
-                
-                fcn = makeConstrainToRectFcn('imrect',rPos(1)+[0 rPos(3)],...
-                                                      rPos(2)+[0 rPos(4)]);
-                api.setPositionConstraintFcn(fcn); 
-                set(findobj(hROI),'hittest','off')
-        end
-    end            
-end
-
-% --- removes all the sub-movie division markers from the main axis -------
-function removeDivisionFigure(hAx,forceDelete)
-
-% sets the default input arguments
-if nargin == 1; forceDelete = true; end
-
-% retrieves the m
-tStr = {'hInner','hOuter','hLine','vLine','hNum','hFillROI'};
-for i = 1:length(tStr)
-    eval(sprintf('%s = findobj(hAx,''tag'',''%s'');',tStr{i},tStr{i}));
-end
-
-% retrieves the sub-region object handles
-hTube = findobj(hAx,'UserData','hTube');
-
-% deletes all the tube-markers
-if forceDelete
-    delete(hInner)
-    delete(hOuter)
-    delete(hLine)
-    delete(vLine)
-    delete(hNum)
-    delete(hFillROI)
-    delete(hTube)
-else
-    setObjVisibility(hInner,'off')
-    setObjVisibility(hOuter,'off')
-    setObjVisibility(hLine,'off')
-    setObjVisibility(vLine,'off')
-    setObjVisibility(hNum,'off')
-    setObjVisibility(hFillROI,'off')
-    setObjVisibility(hTube,'off')
-end
-
-% --- inner region movement callback function --- %
-function roiCallback(rPos)
-
-% global variables
-global hh useAuto
-
-% if the window-split GUI is being used
-if isfield(hh,'editLeft')
-    % retrieves the sub-region data struct
-    useAuto = false;
-    iMov = getappdata(hh.figWinSplit,'iMov');
-        
-    % resets the locations of the flies
-    iApp = get(get(gco,'Parent'),'UserData');
-    nTube = getSRCount(iMov,iApp);
-    hTube = findobj(gca,'tag',sprintf('hTubeEdge%i',iApp));
-    dY = diff(rPos(2)+[0 rPos(4)])/nTube;
-    
-    % sets the x/y locations of the tube sub-regions
-    xTubeS = repmat(rPos(1)+[0 rPos(3)],nTube-1,1)';
-    yTubeS = repmat(rPos(2)+(1:(nTube-1))*dY,2,1);
-    
-    % sets the x/y locations of the inner regions
-    for i = 1:length(hTube)
-        set(hTube{i},'xData',xTubeS(:,i),'yData',yTubeS(:,i));
-    end
-    
-    % enables the update button
-    setObjEnable(hh.buttonUpdate,'on')
 end
 
 % ------------------------------------------- %
@@ -3977,6 +2929,120 @@ updateVideoFeedImage(handles.output,objIMAQ)
 % --- MISCELLANEOUS FUNCTIONS --- %
 % ------------------------------- %
 
+% --- runs the post window split function
+function postWindowSplit(handles,iMov,hProp0,isChange)
+
+% global variables
+global isCalib isMovChange
+
+% sets the axes focus to the main axis and removes the division figure (if
+% already been shown)
+hFig = handles.output;
+iData = get(hFig,'iData');
+
+% determines if the user set the sub-windows
+if isChange           
+    % creates the loadbar
+    hLoad = ProgressLoadbar('Updating Region Information...');
+    
+    % otherwise, reset the sub-image stack progress structs
+    if isCalib      
+        % creates the background object 
+        set(handles.output,'bgObj',CalcBG(handles))
+        
+%         % retrieves the calibration type
+%         cType = get(hFig,'cType');         
+%         if cType == 1
+%             % if calibrating, and is 2D arena, then update the experiment
+%             % location reference field to a 2D value        
+%             rtP = get(hFig,'rtP'); 
+%             if is2DCheck(iMov)
+%                 rtP.indSC.ExLoc.pRef = 'Centre'; 
+%             end
+%         
+%             % determines if the activity grouping indices are correct
+%             if isempty(rtP.combG.ind)
+%                 % initialises the activity groupings (if not set)
+%                 rtP.combG.ind = NaN(sum(iMov.ok),1); 
+%                 
+%             elseif length(rtP.combG.ind) ~= sum(iMov.ok)
+%                 % re-initialises the activity groupings (if not matching)
+%                 rtP.combG.ind = NaN(sum(iMov.ok),1);
+%             end
+% 
+%             % updates the real-time parameter struct
+%             iMov.calcPhi = false;
+%             rtP.combG = getCombSubRegionIndices(iMov,rtP);
+%             set(handles.output,'rtP',rtP)
+% 
+%             % enables the real-time parameter menu item
+%             setObjEnable(handles.menuRTPara,'on')            
+%         end
+        
+    else
+        % otherwise, reset the progress struct
+        iMov = resetProgressStruct(iData,iMov);
+        if ~iMov.is2D; iMov.calcPhi = false; end
+    end         
+    
+    % reinitialises the background image array
+    nTube = getSRCountVec(iMov);
+    iMov.flyok = false(max(nTube),length(iMov.iR));
+    
+    % sets the individual acceptance flags for each group
+    for i = 1:length(nTube)
+        iMov.Status{i}(:) = 0;
+        if iMov.ok(i)
+            iMov.flyok(1:nTube(i),i) = true;
+        end
+    end
+    
+    % initialises the stats/backgrounds arrays
+    iMov.nDS = 1;
+    [iMov.pStats,iMov.Ibg] = deal([]);            
+    if isfield(iMov,'Nsz'); iMov = rmfield(iMov,'Nsz'); end
+    
+    % updates the program data struct video
+    [iData.initSoln,iData.status,iData.isSave] = deal(1,0,true);
+    iData.nMov = iMov.nRow*iMov.nCol;
+            
+    % updates the data structs within the GUI
+    set(handles.output,'iMov',iMov,'iData',iData,'pData',[]);
+    
+    % updates the object properties
+    if isCalib
+        % enables the tube checkbox and segmentation para menu item
+        set(setObjEnable(handles.checkShowTube,'on'),'value',1)        
+        setObjEnable(handles.buttonDetectBackground,'on')
+        
+        % re-initialises the data structs
+        set(handles.output,'fPosNew',[])
+                
+        % complete clears the axis
+        isMovChange = true;
+        set(hFig,'CurrentAxes',handles.imgAxes)                   
+        
+        % re-initialises the plot markers                
+        hFig.mkObj.initTrackMarkers(); pause(0.01) 
+        setTrackGUIProps(handles,'PostWindowSplitCalib')
+    else
+        % (re)sets the initial plot markers    
+        hFig.mkObj.initTrackMarkers(); pause(0.01)                    
+        setTrackGUIProps(handles,'PostWindowSplit')        
+        checkLocalView_Callback(handles.checkLocalView, 1, handles)
+    end
+    
+    % deletes the loadbar
+    try; delete(hLoad); end
+else    
+    % otherwise, reset the original object properties
+    if isCalib
+        % resets the object properties
+        resetHandleSnapshot(hProp0)        
+        checkShowTube_Callback(handles.checkShowTube, 1, handles)  
+    end
+end
+
 % --- sets the callback functions for the frame/movie selection objects ---
 function initSelectionProps(handles)
 
@@ -4002,68 +3068,9 @@ for i = 1:length(wStr)
     end
 end
 
-% --- retrieves the tube/fly marker properties (based on the analysis type
-%     and the status of the fly/tube region)
-function [pCol,fAlpha,edgeCol,pMark,mSz] = getMarkerProps(iMov,i,j)
-
-% global variables
-global isCalib mainProgDir
-
-% initialisations
-edgeCol = 'y';
-cStr = {'pNC','pMov','pStat','pRej'};
-
-% determines if the tracking parameters have been set
-A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
-if ispc
-    % track parameters have not been set, so initialise
-    mPara = A.trkP.PC;
-else
-    % track parameters have been set
-    mPara = A.trkP.PC;
-end
-
-% sets the plot colour for the tubes
-if isCalib
-    % determines if the fly has been accepted/rejected
-    if iMov.flyok(j,i) && iMov.ok(i)
-        % case is fly is accepted
-        [fAlpha,mSz] = deal(0.1,mPara.pMov.mSz);
-        [pCol,pMark] = deal(mPara.pMov.pCol,mPara.pMov.pMark);
-    else
-        % case is fly is rejected
-        [edgeCol,fAlpha,mSz] = deal('k',0.50,mPara.pRej.mSz);
-        [pCol,pMark] = deal(mPara.pRej.pCol,mPara.pRej.pMark);                            
-    end
-else
-    % resets the status flag (if the fly is flagged for rejection)
-    if detMltTrkStatus(iMov)
-        % case is multi-fly tracking
-        Status = 1;
-        
-    else
-        % case is single fly tracking
-        if ~(iMov.flyok(j,i) && iMov.ok(i))
-            [Status,iMov.Status{i}(j)] = deal(3);
-            
-        elseif isnan(iMov.Status{i}(j))
-            [Status,iMov.Status{i}(j)] = deal(0);
-            
-        else
-            Status = iMov.Status{i}(j);
-            
-        end    
-    end
-    
-    % sets the facecolour and marker colour, type and size
-    fAlpha = 0.1*(1 + (Status~=1));   
-    mParaFld = getStructField(mPara,cStr{1+Status});
-    [pMark,mSz,pCol] = deal(mParaFld.pMark,mParaFld.mSz,mParaFld.pCol);
-end
-
 % --- calculates the coordinates of the axes with respect to the global
 %     coordinate position system
-function calcAxesGlobalCoords(handles)
+function [axPX,axPY] = calcAxesGlobalCoords(handles)
 
 % global variables
 global axPosX axPosY
@@ -4075,6 +3082,11 @@ axPos = get(handles.imgAxes,'Position');
 % calculates the global x/y coordinates of the
 axPosX = (pPosAx(1)+axPos(1)) + [0,axPos(3)];
 axPosY = (pPosAx(2)+axPos(2)) + [0,axPos(4)];
+
+% sets the output arguments (if required)
+if nargout == 2
+    [axPX,axPY] = deal(axPosX,axPosY);
+end
 
 % --- determines the axes objects the mouse is currently hovering over
 function hPlot = findHoverPlotObj(handles)

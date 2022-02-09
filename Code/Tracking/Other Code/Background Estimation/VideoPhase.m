@@ -177,7 +177,7 @@ classdef VideoPhase < handle
 
                 % calculates the region information
                 [IL,obj.ILF(:,iApp)] = obj.setupRegionInfoStack(iApp);
-                obj.Dimg(obj.iFrm0,iApp) = obj.calcAvgImgIntensity(IL,iApp);                
+                obj.Dimg(obj.iFrm0,iApp) = obj.calcAvgImgIntensity(IL,iApp);
                 
             end            
             
@@ -373,14 +373,7 @@ classdef VideoPhase < handle
             if obj.hasT(iApp)
                 % memory allocation
                 ILT = cell(obj.nFrm0,1);
-                pOfs0 = NaN(obj.nFrm0,2);
-                
-                % calculates the hm-filtered images
-                if ~obj.hasF
-                    obj.hmFilt{iApp} = obj.setupHMFilterW(iApp);
-                    IL = cellfun(@(x)(obj.applyHMFilter...
-                                    (x,obj.hmFilt{iApp})),IL,'un',0); 
-                end                
+                pOfs0 = NaN(obj.nFrm0,2);                
                 
                 % calculates the image offset over the video
                 for k = 1:obj.nFrm0
@@ -670,7 +663,6 @@ classdef VideoPhase < handle
             
             % initialisations
             dFrmMax = 25;
-            iGrpT0 = iGrpT;
             xi = frm0(1):frm0(2);
             
             % keep searching the groupings until the frame gap < dFrmMax
@@ -767,7 +759,6 @@ classdef VideoPhase < handle
             nGrpF = size(iGrpF,1);
             DimgF = cell(nGrpF,1); 
             vPhaseF = zeros(nGrpF,1); 
-            nFrmG = diff(iGrpF,[],2) + 1;
             
             % determines if the phases can be combined/reduced
             for i = 1:nGrpF
@@ -808,16 +799,10 @@ classdef VideoPhase < handle
 
             % calculates the mean frame grouping avg pixel intensities
             DimgFmu = cellfun(@(x)(mean(x,2)),DimgF,'un',0);            
-            Drng = cell2mat(cellfun(@(x)([min(x),max(x)]),DimgFmu,'un',0));
             
             % ------------------------------------ %
             % --- PHASE REDUCTION CALCULATIONS --- %
-            % ------------------------------------ %
-            
-            % parameters
-            nFrmMin = 2;
-            
-            Q = cell(length(vPhaseF),1);
+            % ------------------------------------ %            
             
             % updates the progressbar
             obj.updateSubProgField('Phase Reduction Calculations...',0.25);            
@@ -837,7 +822,7 @@ classdef VideoPhase < handle
                             (calcHistSimMetrics(x,y)),Imet1,Imet2,'un',0)),1);
                     
                     % determines if the 
-                    [joinPhases,b] = obj.checkHistMetrics(Qnw);
+                    [joinPhases,~] = obj.checkHistMetrics(Qnw);
                         
                 elseif all(vPhaseF(ii) == 3)
                     % combine all adjacent untrackable phases
@@ -1327,7 +1312,7 @@ classdef VideoPhase < handle
                 if iscell(obj.Dimg)
                     % case is the data is stored in cell array
                     for i = 1:obj.nApp
-                        obj.Dimg{i}(iFrm,:) = ...
+                        obj.Dimg{i}(iFrm,i) = ...
                                         obj.calcAvgImgIntensity(Imet,i);
                     end
                 else

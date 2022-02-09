@@ -253,8 +253,7 @@ classdef GridDetect < matlab.mixin.SetGet
             setPanelProps(obj.hPanelD,'off')
             
             % sets up the sub-regions
-            setupRegionFcn = obj.hFigM.setupSubRegions;
-            setupRegionFcn(guidata(obj.hFigM),obj.iMov,1,1);
+            obj.hFigM.rgObj.setupRegionConfig(obj.iMov,1,1);
             
             % turns on the region highlight
             obj.hSelS = findobj(obj.hAx,'tag','hInner','UserData',1);
@@ -429,7 +428,7 @@ classdef GridDetect < matlab.mixin.SetGet
             hAPI.setPosition(obj.iMov.pos{iApp});
             
             % updates the ROI coordinates
-            obj.hFigM.roiCallback(obj.iMov.pos{iApp},iApp);
+            obj.hFigM.rgObj.roiCallback(obj.iMov.pos{iApp},iApp);
             
             % updates the move button enabled properties
             setObjEnable(obj.hButC{2},'on')
@@ -494,8 +493,7 @@ classdef GridDetect < matlab.mixin.SetGet
             set(obj.hTxtP,'String',num2str(tPer));
             
             % sets up the sub-regions
-            setupRegionFcn = obj.hFigM.setupSubRegions;
-            setupRegionFcn(guidata(obj.hFigM),iMovNw,true,true);     
+            obj.hFigM.rgObj.setupRegionConfig(iMovNw,1,1);
             
             % removes the hit-test of the inner regions            
             hInner = findall(obj.hAx,'tag','hInner');
@@ -522,10 +520,10 @@ classdef GridDetect < matlab.mixin.SetGet
         end
         
         % --- callback function for selecting the region axes
-        function trackAxesClick(obj,hObj,~)
+        function trackAxesClick(obj,~,~)
             
             % retrieves the current mouse click coordinates
-            mPos = get(obj.hFigTrk,'Position');
+            mPos = get(obj.hFigTrk,'CurrentPoint');
             
             % determines if the 
             if isOverAxes(mPos)

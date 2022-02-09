@@ -47,9 +47,9 @@ bgP = DetectPara.resetDetectParaStruct(A.bgP);
 % sets the input arguments into the gui
 pFldStr = {'hDiff','iMov','iMov0','isMTrk','iData','hSelP','hProp0',...
            'infoObj','cmObj','hTabGrp','jTabGrp','hTab','srObj',...
-           'phObj','gridObj'};
+           'phObj','gridObj','rgObj','axPosX','axPosY'};
 initObjPropFields(hObject,pFldStr);
-addObjProps(hObject,'hGUI',hGUI,'hPropTrack0',hPropTrack0)
+addObjProps(hObject,'hGUI',hGUI,'hPropTrack0',hPropTrack0) 
 
 % ---------------------------------------- %
 % --- FIELD & PROPERTY INITIALISATIONS --- %
@@ -58,6 +58,14 @@ addObjProps(hObject,'hGUI',hGUI,'hPropTrack0',hPropTrack0)
 % sets the data structs into the GUI
 hFig = hGUI.figFlyTrack;
 iMov = get(hFig,'iMov');
+
+% calculates the main axes global coordinates
+[hObject.axPosX,hObject.axPosY] = hFig.calcAxesGlobalCoords(hGUI);
+
+% resets the flags
+hObject.rgObj = get(hFig,'rgObj');
+hObject.rgObj.isMain = false;
+hObject.rgObj.hButU = handles.buttonUpdate;
 
 % sets the 2D region flag (if not set)
 if ~isfield(iMov,'is2D')
@@ -136,7 +144,7 @@ if isSet
             if hObject.iMov.autoP.isAuto
                 % plots the circle regions on the main GUI axes
                 setRegions = false;
-                plotRegionOutlines(handles,hObject.iMov,1)
+                hFig.rgObj.plotRegionOutlines(1)
                 setPatternMenuCheck(handles)      
 
                 % sets the use automatic detection flag
@@ -162,7 +170,7 @@ if isSet
     
     % draw the sub-region division figures (if not auto-detecting)
     if setRegions           
-        setupSubRegions(handles,hObject.iMov,true);
+        hObject.rgObj.setupRegionConfig(hObject.iMov,true);
     end
     
     % sets the GUI to the top
@@ -175,9 +183,8 @@ end
 % sets the function handles into the gui
 addObjProps(hObject,'resetMovQuest',@resetMovQuest,...
                     'resetSubRegionDataStruct',@resetSubRegionDataStruct,...
-                    'setupSubRegions',@setupSubRegions,...
-                    'roiCallback',@roiCallback,...
-                    'deleteSubRegions',@deleteSubRegions)
+                    'initSubPlotStruct',@initSubPlotStruct,...
+                    'getRegionDataStructs',@getRegionDataStructs)
 
 % ---------------------------------- %
 % --- OBJECT & DATA STRUCT SETUP --- %
@@ -424,9 +431,7 @@ end
 useAuto = false;
 hFig = handles.output;
 hFig.iMov.isSet = false;
-
-% removes the sub-regions
-deleteSubRegions(handles)
+hFig.rgObj.deleteRegionConfig();
 
 % resets the data struct and the object properties
 set(hFig,'iData',initDataStruct(hFig.iMov))
@@ -476,7 +481,7 @@ if ~isempty(hGrid)
 end
 
 % deletes the sub-regions from tracking gui axes
-deleteSubRegions(handles)
+hFig.rgObj.deleteRegionConfig()
 if ~isempty(hGUI)
     % removes all the circle regions from the main GUI (if they exist)
     hOut = findall(hGUI.imgAxes,'tag','hOuter');
@@ -523,20 +528,20 @@ if isShow
 end
 
 % -------------------------------------------------------------------------
-function menuShowRegion_Callback(hObject, eventdata, handles)
+function menuShowRegion_Callback(hObject, ~, handles)
 
 % toggles the menu item
 toggleMenuCheck(hObject)
 
 % plots the region outlines
-plotRegionOutlines(handles)
+handles.output.rgObj.plotRegionOutlines()
 
 % -------------------------------------- %
 % --- AUTOMATIC DETECTION MENU ITEMS --- %
 % -------------------------------------- %
 
 % -------------------------------------------------------------------------
-function menuUseAuto_Callback(hObject, eventdata, handles)
+function menuUseAuto_Callback(hObject, ~, handles)
 
 % global variables
 global useAuto isChange
@@ -551,7 +556,7 @@ iData = get(hFig,'iData');
 useAuto = strcmp(get(hObject,'checked'),'off');
 if useAuto
     % removes the sub-regions
-    deleteSubRegions(handles)
+    hFig.rgObj.deleteRegionConfig()
 else
     % disables the show region menu item and removes the regions
     if iData.is2D        
@@ -563,7 +568,7 @@ else
     end
     
     % resets the sub-regions on the main GUI axes    
-    setupSubRegions(handles,iMov,true);    
+    hFig.rgObj.setupRegionConfig(iMov,true);    
 end    
 
 % updates the menu item properties
@@ -604,7 +609,7 @@ end
 gridObj = GridDetect(hFig);
 if gridObj.iFlag == 3
     % if the user cancelled, then exit
-    setupSubRegions(handles,iMov0,true);
+    hFig.rgObj.setupRegionConfig(iMov0,true);
     return
 end
 
@@ -616,7 +621,7 @@ while cont
     if isempty(iMovNw)
         % if user cancelled then exit the loop after closing para gui  
         set(hFig,'iMov',iMov0)
-        setupSubRegions(handles,iMov0,true);
+        hFig.rgObj.setupRegionConfig(iMov0,true);
         gridObj.closeGUI();
         return
     end
@@ -647,9 +652,9 @@ pause(0.05);
 
 % updates the sub-regions (if updating)
 if isUpdate
-    setupSubRegions(handles,gridObj.iMov,true);
+    hFig.rgObj.setupRegionConfig(gridObj.iMov,true);
     for iApp = find(gridObj.iMov.ok(:)')
-        resetRegionPropDim(hFig,gridObj.iMov.pos{iApp},iApp)
+        hFig.rgObj.resetRegionPropDim(gridObj.iMov.pos{iApp},iApp)
     end
 end
 
@@ -1242,7 +1247,7 @@ iMov.is2D = hFig.iData.is2D;
 [iMov.isSet,iMov.iR] = deal(true,[]);
 
 % creates the sub-regions
-iMov = setupSubRegions(handles,iMov);
+iMov = hFig.rgObj.setupRegionConfig(iMov);
 
 % enable the update button, but disable the use automatic region and show
 % region menu items
@@ -1296,400 +1301,6 @@ end
 % resets the sub-movie data struct
 iMov.pInfo = getDataSubStruct(handles);
 set(hFig,'iMov',iMov)
-
-%-------------------------------------------------------------------------%
-%                       SUB-REGION OUTLINE FUNCTIONS                      %
-%-------------------------------------------------------------------------%
-
-% --- sets up the sub-regions 
-function iMov = setupSubRegions(handles,iMov,isSet,isAutoDetect)
-
-% sets the setup flag
-if ~exist('isSet','var'); isSet = false; end
-if ~exist('isAutoDetect','var'); isAutoDetect = false; end
-
-% removes any previous sub-regions
-deleteSubRegions(handles)
-
-% determines if the regions have been set
-if isSet
-    % otherwise, setup the outer frame from the previous values
-    setupMainFrameRect(handles,iMov);
-    
-    % calculates the outside region coordinates if they haven't been set
-    if ~isfield(iMov,'posO')
-        iMov.posO = resetOutsidePos(iMov);
-    end
-else
-    % if not, then prompt the user to set them up
-    iMov.posG = setupMainFrameRect(handles);
-    iMov = initSubPlotStruct(handles,iMov);
-    
-    % resets the sub-movie data struct
-    set(handles.output,'iMov',iMov)    
-end
-
-% resets the tube count/use flags (multi-fly tracking only)
-if detMltTrkStatus(iMov)
-    % case is 
-    if isempty(iMov.nFlyR)
-        pInfo = getRegionDataStructs(iMov);
-        iMov.nTubeR = ones(iMov.nRow,iMov.nCol);
-        iMov.nFlyR = pInfo.nFly;        
-    end    
-end
-
-% removes any previous markers and updates
-iMov = createSubRegions(handles,iMov,isSet,isAutoDetect);
-
-% --- creates the subplot regions and line objects
-function iMov = createSubRegions(handles,iMov,isSet,isAutoDetect)
-
-% global variables
-global xGap yGap pX pY pH pW
-
-% sets the setup flag
-if ~exist('isAutoDetect','var'); isAutoDetect = false; end
-
-% ------------------------------------------- %
-% --- INITIALISATIONS & MEMORY ALLOCATION --- %
-% ------------------------------------------- %
-
-% initialisations
-[xGap,yGap] = deal(5,5);
-[pX,pY,pH,pW] = deal(zeros(iMov.nCol*iMov.nRow,1));
-
-% retrieves the GUI objects
-hFig = handles.output;
-hGUI = get(hFig,'hGUI');
-hAx = hGUI.imgAxes;
-hold(hAx,'on')
-
-% sets the region position vectors
-[rPosS,nApp] = deal(iMov.pos,numel(iMov.pos));
-
-% sets the 2D region flag
-is2DSetup = iMov.is2D;
-
-% ------------------------------ %
-% --- VERTICAL LINE CREATION --- %
-% ------------------------------ %
-
-% memory allocation
-xVL = cell(iMov.nCol-1,1);
-hVL = cell(1,iMov.nCol-1);
-yVL = iMov.posG(2) + [0 iMov.posG(4)];
-
-% sets the position vector
-if ~isempty(iMov.pos)
-    pPos = iMov.pos;
-    pPos(~iMov.ok) = iMov.posO(~iMov.ok);
-end
-
-% only set up the vertical lines if there is more than one column
-for i = 2:iMov.nCol
-    % sets the x-location of the lines
-    if ~isempty(iMov.pos)
-        % sets the indices of the groups to the left of the line
-        iLf = iMov.nCol*(0:(iMov.nRow-1)) + (i-1);
-
-        % sets the locations of the lower top/upper bottom indices
-        xR = max(cellfun(@(x)(sum(x([1 3]))),pPos(iLf)));
-        xL = min(cellfun(@(x)(x(1)),pPos(iLf+1)));  
-
-        % sets the horizontal location of the vertical separator
-        xVL{i-1} = 0.5*(xR+xL)*[1 1];
-    else
-        % if there is no position data, then use the outer region
-        xVL{i-1} = iMov.posO{i}(1)*[1 1];
-    end
-
-    % creates the line object and sets the flags
-    hVL{i-1} = imline(hAx,xVL{i-1},yVL);
-    set(hVL{i-1},'tag','hVert');
-    set(findobj(hVL{i-1},'tag','bottom line'),'visible','off','UserData',i-1);
-    set(findobj(hVL{i-1},'tag','end point 1'),'hittest','off');
-    set(findobj(hVL{i-1},'tag','end point 2'),'hittest','off');
-
-    % updates the 
-    api = iptgetapi(hVL{i-1});
-    api.setColor('r')
-    api.addNewPositionCallback(@vertCallback); 
-
-    % sets the position constraint function
-    fcn = makeConstrainToRectFcn('imline',getVertXLim(iMov,i),yVL);
-    api.setPositionConstraintFcn(fcn);           
-end
-
-% -------------------------------- %
-% --- HORIZONTAL LINE CREATION --- %
-% -------------------------------- %    
-
-% only set up the horizontal lines if there is more than one column
-for j = 1:iMov.nCol
-    % sets the x-location of the lines
-    if iMov.nCol == 1
-        % case is there is only one column group
-        xHL = iMov.posO{j};
-    else
-        % case is there are multiple column groups
-        switch j
-            case 1
-                xHL = [iMov.posO{j}(1),xVL{j}(1)];
-
-            case iMov.nCol
-                xHL = [xVL{j-1}(1),sum(iMov.posO{j}([1,3]))];
-
-            otherwise
-                xHL = [xVL{j-1}(1),xVL{j}(1)];
-
-        end        
-    end
-
-    % creates the line objects
-    for i = 2:iMov.nRow
-        % sets the y-location of the line
-        if ~isempty(iMov.pos)
-            [iLo,iHi] = deal((i-2)*iMov.nCol+j,(i-1)*iMov.nCol+j);
-            yHL = 0.5*(sum(pPos{iLo}([2 4])) + ...
-                       sum(pPos{iHi}(2)))*[1 1];
-        else
-            k = (i-1)*iMov.nCol + j;
-            yHL = iMov.posO{k}(2)*[1 1];
-        end
-
-        % creates the line object and sets the properties
-        hHL = imline(hAx,xHL,yHL);
-        set(hHL,'tag','hHorz','UserData',[i,j]);
-        setObjVisibility(findobj(hHL,'tag','bottom line'),'off'); 
-        set(findobj(hHL,'tag','end point 1'),'hittest','off');
-        set(findobj(hHL,'tag','end point 2'),'hittest','off');        
-
-        % updates the 
-        api = iptgetapi(hHL);
-        api.setColor('r')
-        api.addNewPositionCallback(@horzCallback); 
-
-        % sets the position constraint function
-        fcn = makeConstrainToRectFcn('imline',xHL,getHorzYLim(iMov,i,j));
-        api.setPositionConstraintFcn(fcn);             
-
-        % sets the left-coordinate into the corresponding vertical line
-        if (j > 1)
-            uD = [get(hVL{j-1},'UserData');{api,1,i,j}];
-            set(hVL{j-1},'UserData',uD);
-        end
-
-        % sets the right-coordinate into the corresponding vertical line
-        if (j < iMov.nCol)
-            uD = [get(hVL{j},'UserData');{api,2,i,j}];
-            set(hVL{j},'UserData',uD);            
-        end
-    end
-end
-
-% ----------------------------------- %
-% --- TUBE REGION OBJECT CREATION --- %
-% ----------------------------------- %
-
-% case is for movable inner objects (different colours)
-if (mod(iMov.nCol,2) == 1)
-    col = 'gmyc';    
-else
-    col = 'gmy';    
-end
-
-% sets the inner rectangle objects for all apparatus
-for i = find(iMov.ok(:)')
-    % sets the row/column indices
-    iCol = mod(i-1,iMov.nCol) + 1;
-    iRow = floor((i-1)/iMov.nCol) + 1;
-    
-    % sets the sub-region limits
-    xLimS = getRegionXLim(iMov,hAx,iCol);
-    yLimS = getRegionYLim(iMov,hAx,iRow,iCol);
-
-    % adds the ROI fill objects (if already set)
-    if isSet
-        [ix,iy] = deal([1 1 2 2],[1 2 2 1]);
-        hFill = fill(xLimS(ix),yLimS(iy),'r','facealpha',0,'tag',...
-                 'hFillROI','linestyle','none','parent',hAx,'UserData',i);
-                 
-        % if the region is rejected, then set the facecolour to red
-        if ~iMov.ok(i)
-            set(hFill,'facealpha',0.2)
-        end
-    end       
-    
-    % retrieves the new fly count index
-    nTubeNw = getSRCount(iMov,i);
-    indCol = mod(i-1,length(col))+1;  
-    xTubeS0 = rPosS{i}(1)+[0 rPosS{i}(3)];
-    xTubeS = repmat(xTubeS0,nTubeNw-1,1)';
-    
-    % sets the proportional height/width values
-    pX(i) = (iMov.pos{i}(1)-iMov.posO{i}(1))/iMov.posO{i}(3);
-    pY(i) = (iMov.pos{i}(2)-iMov.posO{i}(2))/iMov.posO{i}(4);
-    pW(i) = iMov.pos{i}(3)/iMov.posO{i}(3);
-    pH(i) = iMov.pos{i}(4)/iMov.posO{i}(4);   
-    
-    % creates the new rectangle object
-    if is2DSetup
-        % calculates the vertical tube region coordinates
-        xiN = num2cell(1:nTubeNw)';
-        yTube0 = linspace(rPosS{i}(2),sum(rPosS{i}([2,4])),nTubeNw+1)';
-        yTubeS = num2cell([yTube0(1:end-1),yTube0(2:end)],2);
-        
-        % calculates the sub-region outline coordinates
-        pPos{i} = cellfun(@(x)([xTubeS0(1)+xGap,x(1)+yGap,...
-                     diff(xTubeS0)-2*xGap,diff(x)-2*yGap]),yTubeS,'un',0);
-        
-        % case is 2D setup expt
-        switch iMov.mShape
-            case 'Rect'
-                % case is using rectangular shapes
-                cFcnType = 'imrect';
-                hROI = cellfun(@(x)(imrect(hAx,x)),pPos{i},'un',0);
-                
-            case 'Circ'
-                % case is using circular shapes
-                cFcnType = 'imellipse';
-                
-                % creates the circle objects
-                hROI = cell(length(pPos{i}),1);
-                for j = 1:length(pPos{i})
-                    % resets the position of the circle object
-                    [szObj,p0] = deal(pPos{i}{j}(3:4),pPos{i}{j}(1:2));                    
-                    pPos{i}{j}(3:4) = min(szObj); 
-                    pPos{i}{j}(1) = p0(1)+(szObj(1)-pPos{i}{j}(3))/2;
-                    pPos{i}{j}(2) = p0(2)+(szObj(2)-pPos{i}{j}(4))/2;
-                    
-                    % creates the circle object
-                    hROI{j} = imellipse(hAx,pPos{i}{j});
-                    setFixedAspectRatioMode(hROI{j},true);
-                end
-        end        
-        
-        % updates the ROI object properties
-        cellfun(@(h,x)(set(h,'tag','hInner','UserData',[i,x])),hROI,xiN);
-        
-        % if moveable, then set the position callback function
-        for j = 1:length(hROI)
-            api = iptgetapi(hROI{j});
-            api.setColor(col(indCol));
-            api.addNewPositionCallback(@roiCallback2D);            
-            
-            % sets the constraint region for the inner regions
-            fcn = makeConstrainToRectFcn(cFcnType,xLimS,yTubeS{j});
-            api.setPositionConstraintFcn(fcn);             
-        end
-        
-        % resets the axes properties
-        set(hAx,'Layer','Bottom','SortMethod','childorder')
-        
-    else
-        % case is 1D setup expt
-        hROI = imrect(hAx,iMov.pos{i});          
-
-        % disables the bottom line of the imrect object
-        set(hROI,'tag','hInner','UserData',i);
-        setObjVisibility(findobj(hROI,'tag','bottom line'),'off');
-
-        % if moveable, then set the position callback function
-        api = iptgetapi(hROI);
-        api.setColor(col(indCol));
-        
-        if isAutoDetect        
-            % retrieves the marker object handles
-            hObj = findall(hROI);            
-            isM = strContains(get(hObj,'Tag'),'marker');
-            
-            % turns off the object visibility/hit-test
-            set(hObj,'hittest','off')
-            setObjVisibility(hObj(isM),0)
-        else
-            % sets the constraint region for the inner regions
-            api.addNewPositionCallback(@roiCallback);   
-            fcn = makeConstrainToRectFcn('imrect',xLimS,yLimS);
-            api.setPositionConstraintFcn(fcn); 
-        end
-
-        % creates the individual tube markers        
-        yTubeS = rPosS{i}(2) + (rPosS{i}(4)/nTubeNw)*(1:(nTubeNw-1));            
-        plot(hAx,xTubeS,repmat(yTubeS,2,1),[col(indCol),'--'],'tag',...
-                        sprintf('hTubeEdge%i',i),'UserData','hTube');     
-    end
-end
-
-% turns the axis hold off
-hold(hAx,'off')
-
-% --- removes the sub-regions
-function deleteSubRegions(handles)
-
-% retrieves the GUI objects
-hGUI = get(handles.output,'hGUI');
-if isempty(hGUI); return; end
-
-% removes all the division marker objects
-hAx = hGUI.imgAxes;
-delete(findobj(hAx,'tag','hOuter'));
-delete(findobj(hAx,'tag','hVert'));
-delete(findobj(hAx,'tag','hHorz'));
-delete(findobj(hAx,'tag','hNum'));
-delete(findobj(hAx,'tag','hInner'));
-delete(findobj(hAx,'tag','hFillROI'));
-
-% deletes all the tube-markers
-delete(findobj(hAx,'UserData','hTube'));
-
-% --- sets up the main sub-window frame --- %
-function rPos = setupMainFrameRect(handles,iMov)
-
-% retrieves the GUI objects
-isInit = nargin == 1;
-hGUI = get(handles.output,'hGUI');
-hAx = hGUI.imgAxes;
-szFrm = getCurrentImageDim;
-
-% ------------------------------------ %
-% --- OUTER RECTANGLE OBJECT SETUP --- %
-% ------------------------------------ %
-
-% updates the position of the outside rectangle 
-if isInit
-    hROI = imrect(hAx);    
-else
-    hROI = imrect(hAx,iMov.posG);
-end
-
-% disables the bottom line of the imrect object
-set(hROI,'tag','hOuter')
-setObjVisibility(findobj(hROI,'tag','bottom line'),'off');
-
-% if moveable, then set the position callback function
-api = iptgetapi(hROI);
-api.setColor('r');
-rPos0 = deal(api.getPosition());
-
-% determines if the outer region is feasible
-xL = min(max(1,[rPos0(1),sum(rPos0([1,3]))]),(szFrm(2)-1));
-yL = min(max(1,[rPos0(2),sum(rPos0([2,4]))]),(szFrm(1)-1));
-rPos = [xL(1),yL(1),[(xL(2)-xL(1)),(yL(2)-yL(1))]+1];
-
-% resets the region if there is a change in size
-if ~isequal(rPos,rPos0)
-    api.setPosition(rPos);
-end
-
-% force the imrect object to be fixed
-setResizable(hROI,false);
-set(findobj(hROI),'hittest','off')
-
-% sets the constraint function for the rectangle object
-fcn = makeConstrainToRectFcn('imrect',rPos(1)+[0 rPos(3)],...
-                                      rPos(2)+[0 rPos(4)]);
-api.setPositionConstraintFcn(fcn); 
 
 %-------------------------------------------------------------------------%
 %                             OTHER FUNCTIONS                             %
@@ -2453,560 +2064,6 @@ end
 set(handles.output,'iData',iData)
 
 % --------------------------------- %
-% --- OBJECT CALLBACK FUNCTIONS --- %
-% --------------------------------- %
-
-% --- the callback function for moving the vertical seperator
-function vertCallback(lPos)
-
-% global variables
-global isUpdating
-isUpdating = true;
-
-% retrieves the sub-region data struct
-hFig = findall(0,'tag','figRegionSetup');
-iMov = get(hFig,'iMov');
-hGUIH = get(hFig,'hGUI');
-handles = guidata(hFig);
-
-% retrieves the object handle and the index of the line
-hVL = get(gco,'parent');
-iVL = get(findall(hVL,'tag','bottom line'),'UserData');
-
-% updates the attached horizontal line properties
-uD = get(hVL,'UserData');
-for i = 1:size(uD)
-    % updates the position of the attached line
-    lPos0 = uD{i,1}.getPosition;
-    lPos0(uD{i,2},1) = lPos(1,1);
-    uD{i,1}.setPosition(lPos0);
-    
-    % sets the position constraint function    
-    yLimNw = getHorzYLimNw(iMov,hGUIH.imgAxes,uD{i,3},uD{i,4});
-    fcn = makeConstrainToRectFcn('imline',lPos0(:,1),yLimNw);
-    uD{i,1}.setPositionConstraintFcn(fcn);      
-end
-
-% updates the position of the inner regions
-updateInnerRegions(iMov,hGUIH.imgAxes,iVL,true)
-setObjEnable(handles.buttonUpdate,'on')
-
-% resets the flag
-isUpdating = false;
-
-% --- the callback function for moving the horizontal seperator
-function horzCallback(lPos)
-
-% global variables
-global isUpdating
-
-% determines if an object updating is taking place already
-if isUpdating
-    % if already updating, then exit the function
-    return
-else
-    % otherwise, flag that updating is occuring
-    isUpdating = true;
-end
-
-% retr
-iVL = get(get(gco,'parent'),'UserData');
-
-% retrieves the sub-region data struct
-hFig = findall(0,'tag','figRegionSetup');
-iMov = get(hFig,'iMov');
-hGUIH = get(hFig,'hGUI');
-handles = guidata(hFig);
-
-% updates the position of the inner regions
-updateInnerRegions(iMov,hGUIH.imgAxes,iVL,false)
-setObjEnable(handles.buttonUpdate,'on')
-
-% resets the flag to false
-isUpdating = false;
-
-% --- the callback function for moving the 2D inner tube regions
-function roiCallback2D(rPos)
-
-% retrieves the sub-region data object
-hFig = findall(0,'tag','figRegionSetup');
-srObj = get(hFig,'srObj');
-
-% retrieves the object handle
-hROI = get(gco,'Parent');
-uData = get(hROI,'UserData');
-
-% enables the update button
-hh = guidata(findall(0,'tag','figRegionSetup'));
-setObjEnable(hh.buttonUpdate,1)
-
-% add in code here to update region coordinates
-%  - fill out autoP field
-
-% determines if running the callback function is valid
-if isempty(srObj)
-    % sub-region struct has not been set, so exit
-    return
-elseif ~srObj.isOpen
-    % sub-region GUI is closed, so exit
-    return
-end
-
-% retrieves the marker line objects 
-hMarkR = srObj.hMarkR{uData(2),uData(1)};
-
-% initialisation
-srObj.isUpdating = true;
-
-% updates the marker object positions
-switch srObj.mShape
-    case 'Rect'
-        % case is rectangular regions
-
-        % rectangle parameters
-        [p0nw,W,H] = deal(rPos(1:2),rPos(3),rPos(4));  
-        
-        % sets up the constraint function
-        [xLim,yLim] = deal(p0nw(1)+[0,W],p0nw(2)+[0,H]);
-        fcn = makeConstrainToRectFcn('imline',xLim,yLim);
-
-        % resets the vertical marker lines
-        pWid = W*cumsum(srObj.pWid{uData(2),uData(1)});         
-        for i = find(~cellfun(@isempty,hMarkR(:,1)))'
-            % recalculates the new position of the markers
-            pNw = [(p0nw(1)+pWid(i)*[1;1]),(p0nw(2)+H*[0;1])];
-            
-            % resets the object properties
-            hAPI = iptgetapi(hMarkR{i,1});              
-            hAPI.setPosition(pNw);  
-            hAPI.setPositionConstraintFcn(fcn);   
-        end
-        
-        % resets the horizontal marker lines
-        pHght = H*cumsum(srObj.pHght{uData(2),uData(1)}); 
-        for i = find(~cellfun(@isempty,hMarkR(:,2)))'
-            % recalculates the new position of the markers
-            pNw = [(p0nw(1)+W*[0;1]),(p0nw(2)+pHght(i)*[1;1])];
-            
-            % resets the object properties
-            hAPI = iptgetapi(hMarkR{i,2});
-            hAPI.setPosition(pNw);            
-            hAPI.setPositionConstraintFcn(fcn);            
-        end
-            
-    case 'Circ'
-        % case is circular regions
-        
-        % circle parameters
-        Rnw = rPos(3)/2;
-        p0nw = rPos(1:2)+Rnw;
-        
-        % resets the marker line objects
-        phiP = srObj.pPhi{uData(2),uData(1)};
-        for i = 1:length(hMarkR)
-            hAPIR = iptgetapi(hMarkR{i});  
-            pNw = [p0nw;(p0nw+Rnw*[cos(phiP(i)),sin(phiP(i))])];
-            hAPIR.setPosition(pNw);            
-        end
-end
-
-% resets the update flag
-srObj.isUpdating = false;
-
-% --- the callback function for moving the inner tube regions
-function roiCallback(rPos,iApp)
-
-% global variables
-global iAppInner isUpdating
-
-% initialisations
-hFig = findall(0,'tag','figRegionSetup');
-iMov = get(hFig,'iMov');
-handles = guidata(hFig);
-
-% sets the apparatus index
-if ~exist('iApp','var')
-    iApp = get(get(gco,'Parent'),'UserData');
-    if (iscell(iApp)) || (length(iApp) ~= 1)
-        iApp = iAppInner; 
-    end
-end
-
-% retrieves the sub-region data struct
-nTube = getSRCount(iMov,iApp);
-
-% resets the locations of the flies
-hAx = findall(findobj(0,'tag','figFlyTrack'),'type','axes');
-hTube = findobj(hAx,'tag',sprintf('hTubeEdge%i',iApp));
-dY = diff(rPos(2)+[0 rPos(4)])/nTube;
-
-% sets the x/y locations of the tube sub-regions
-xTubeS = repmat(rPos(1)+[0 rPos(3)],nTube-1,1)';
-yTubeS = repmat(rPos(2)+(1:(nTube-1))*dY,2,1);
-
-% sets the x/y locations of the inner regions
-for i = 1:length(hTube)
-    set(hTube(i),'xData',xTubeS(:,i),'yData',yTubeS(:,i));
-end
-
-% if not updating, then reset the proportional dimensions
-if ~isUpdating
-    % retrieves the sub-region data struct
-    resetRegionPropDim(hFig,rPos,iApp);   
-    
-    % enables the update button
-    setObjEnable(handles.buttonUpdate,'on')
-end 
-
-% --- resets the region proportional dimensions
-function resetRegionPropDim(hFig,rPos,iApp)
-
-% global variables
-global pX pY pW pH
-
-% field retrieval
-iMov = get(hFig,'iMov');
-hGUIH = get(hFig,'hGUI');
-
-% sets the row/column indices
-iRow = floor((iApp-1)/iMov.nCol) + 1;
-iCol = mod((iApp-1),iMov.nCol) + 1;
-
-% retrieves the x/y limits of the region
-xLim = getRegionXLim(iMov,hGUIH.imgAxes,iCol);
-yLim = getRegionYLim(iMov,hGUIH.imgAxes,iRow,iCol);
-
-% recalculates the proportional dimensions
-[W,H] = deal(diff(xLim),diff(yLim));
-[pX(iApp),pY(iApp)] = deal((rPos(1)-xLim(1))/W,(rPos(2)-yLim(1))/H);
-[pW(iApp),pH(iApp)] = deal(rPos(3)/W,rPos(4)/H);
-
-% --- updates the position of the inner regions (if the vertical/horizontal
-%     line objects are being moved)
-function updateInnerRegions(iMov,hAx,iL,isVert)
-
-% global variables
-global pH pW pX pY iAppInner
-
-% updates the inner region based on the line being moved
-if isVert
-    % case is moving a vertical line    
-    for j = 1:2
-        % sets the indices of the inner regions being affected        
-        xLim = getRegionXLim(iMov,hAx,iL+(j-1));
-        iApp = (1:iMov.nCol:length(iMov.pos)) + (iL + (j-2));
-        
-        % updates the position of the regions and their constraint regions
-        for i = 1:iMov.nRow
-            % retrieves the handle of the inner object
-            iAppInner = iApp(i);
-            hInner = findall(hAx,'tag','hInner','UserData',iApp(i));
-            
-            % retrieves the height limits of the 
-            yLim = getRegionYLim(iMov,hAx,i,iL+(j-1));
-            
-            % retrieves the in
-            if ~isempty(hInner)
-                api = iptgetapi(hInner);
-                inPos = api.getPosition();
-
-                % sets the new inner region position            
-                inPos(1) = xLim(1) + pX(iApp(i))*diff(xLim);              
-                inPos(3) = pW(iApp(i))*diff(xLim);
-
-                % sets the constraint region for the inner regions
-                api.setPosition(inPos);
-                fcn = makeConstrainToRectFcn('imrect',xLim,yLim);
-                api.setPositionConstraintFcn(fcn);
-            end
-        end
-    end
-else
-    % case is moving a horizontal line   
-    for j = 1:2
-        % retrieves the height limits of the 
-        iApp = (iL(1)+(j-3))*iMov.nCol + iL(2);
-        yLim = getRegionYLim(iMov,hAx,iL(1)+(j-2),iL(2));
-        xLim = getRegionXLim(iMov,hAx,iL(2));
-        
-        % retrieves the handle of the inner object
-        iAppInner = iApp;
-        hInner = findall(hAx,'tag','hInner','UserData',iApp);   
-        
-        % retrieves the in
-        if ~isempty(hInner)
-            api = iptgetapi(hInner);
-            inPos = api.getPosition();
-
-            % sets the new inner region position            
-            inPos(2) = yLim(1) + pY(iApp)*diff(yLim);              
-            inPos(4) = pH(iApp)*diff(yLim);
-
-            % sets the constraint region for the inner regions
-            api.setPosition(inPos);
-            fcn = makeConstrainToRectFcn('imrect',xLim,yLim);
-            api.setPositionConstraintFcn(fcn);
-        end
-    end
-end
-
-% ------------------------------------- %
-% --- REGION/OBJECT LIMIT FUNCTIONS --- %
-% ------------------------------------- %
-
-% --- retrieves the horizontal seperator line limits (original)
-function yLim = getHorzYLim(iMov,iRow,iCol,varargin)
-
-% global variables
-global yGap
-
-% memory allocation
-yLim = zeros(1,2);
-yGapNw = 3*(nargin == 3)*yGap;
-
-% sets the lower limit
-if iRow == 2
-    yLim(1) = iMov.posG(2) + yGapNw;
-else
-    iL = (iRow-2)*iMov.nCol + iCol;    
-    yLim(1) = iMov.pos{iL}(2) + yGapNw;
-end
-
-% sets the upper limit
-if iRow == iMov.nRow
-    yLim(2) = sum(iMov.posG([2 4])) - yGapNw;
-else
-    iU = iRow*iMov.nCol + iCol;
-    yLim(2) = iMov.pos{iU}(2) - yGapNw;
-end
-
-% --- retrieves the horizontal seperator line limits (callback function)
-function yLim = getHorzYLimNw(iMov,hAx,iRow,iCol)
-
-% global variables
-global yGap
-
-% memory allocation
-[yLim,yGapNw] = deal(zeros(1,2),3*yGap);
-
-% sets the lower limit
-if (iRow == 2)
-    yLim(1) = iMov.posG(2) + yGapNw;
-else
-    apiLo = iptgetapi(findall(hAx,'tag','hHorz','UserData',[iRow-1,iCol]));
-    lPos = apiLo.getPosition();
-    yLim(1) = lPos(1,2) + yGapNw;    
-end
-
-% sets the upper limit
-if (iRow == iMov.nRow)
-    yLim(2) = sum(iMov.posG([2 4])) - yGapNw;
-else
-    apiHi = iptgetapi(findall(hAx,'tag','hHorz','UserData',[iRow+1,iCol]));
-    lPos = apiHi.getPosition();
-    yLim(2) = lPos(1,2) - yGapNw;
-end
-
-% --- retrieves the vertical seperator line limits (original)
-function xLim = getVertXLim(iMov,iCol,varargin)
-
-% global variables
-global xGap
-
-% memory allocation and other initialisations
-xLim = zeros(1,2);
-xGapNw = 3*(nargin == 2)*xGap;
-
-% sets the lower limit
-if iCol == 2
-    xLim(1) = iMov.posG(1) + xGapNw;
-else
-    xLim(1) = iMov.posO{iCol-1}(1) + xGapNw;
-end
-
-% sets the upper limit
-if iCol == iMov.nCol
-    xLim(2) = sum(iMov.posG([1 3])) - xGapNw;
-else
-    xLim(2) = iMov.posO{iCol+1}(1) - xGapNw;
-end
-
-% --- returns the x-limits of the sub-region
-function xLim = getRegionXLim(iMov,hAx,iCol)
-
-% memory allocation
-xLim = zeros(1,2);
-
-% gets the lower limit based on the row count
-if iCol == 1
-    % sets the lower limit to be the bottom
-    xLim(1) = iMov.posG(1);
-else
-    % retrieves the position of the lower line region
-    api = iptgetapi(get(findall(hAx,'tag','bottom line','UserData',iCol-1),'parent'));
-    lPosL = api.getPosition();
-    
-    % sets the lower limit
-    xLim(1) = lPosL(1,1);
-end
-
-% gets the upper limit based on the row count
-if iCol == iMov.nCol
-    % sets the upper limit to be the top
-    xLim(2) = sum(iMov.posG([1 3]));
-else
-    % retrieves the position of the upper line region
-    api = iptgetapi(get(findall(hAx,'tag','bottom line','UserData',iCol),'parent'));
-    lPosR = api.getPosition();
-    
-    % sets the upper limit
-    xLim(2) = lPosR(1,1);    
-end
-
-% --- returns the y-limits of the sub-region
-function yLim = getRegionYLim(iMov,hAx,iRow,iCol)
-
-% memory allocation
-yLim = zeros(1,2);
-
-% gets the lower limit based on the row count
-if iRow == 1
-    % sets the lower limit to be the bottom
-    yLim(1) = iMov.posG(2);
-else
-    % retrieves the position of the lower line region
-    api = iptgetapi(findall(hAx,'tag','hHorz','UserData',[iRow,iCol]));
-    lPosLo = api.getPosition();
-    
-    % sets the lower limit
-    yLim(1) = lPosLo(1,2);
-end
-
-% gets the upper limit based on the row count
-if iRow == iMov.nRow
-    % sets the upper limit to be the top
-    yLim(2) = sum(iMov.posG([2 4]));
-else
-    % retrieves the position of the upper line region
-    api = iptgetapi(findall(hAx,'tag','hHorz','UserData',[iRow+1,iCol]));
-    lPosHi = api.getPosition();
-    
-    % sets the upper limit
-    yLim(2) = lPosHi(1,2);    
-end
-
-% --------------------------------- %
-% --- REGION PLOTTING FUNCTIONS --- %
-% --------------------------------- %
-
-% --- plots the circle regions on the main GUI to enable visualisation
-function plotRegionOutlines(handles,iMov,forceUpdate)
-
-% initialisations
-hFig = handles.output;
-hGUI = get(hFig,'hGUI');
-hAx = hGUI.imgAxes;
-
-% retrieves the sub-region and main GUI handles data struct
-if ~exist('forceUpdate','var'); forceUpdate = false; end
-if ~exist('iMov','var'); iMov = get(hFig,'iMov'); end
-
-% sets the circle visibility based on the checked status
-hOut = findall(hAx,'tag','hOuter');
-if strcmp(get(handles.menuShowRegion,'checked'),'on') || forceUpdate
-    % menu item is checked, so makes the regions visible
-    if isempty(hOut)        
-        % creates the outlines based on the type
-        switch iMov.autoP.Type
-            case 'Circle'           
-                createCircleOutlines(hAx,iMov);
-                
-            case 'GeneralR'
-                createGeneralOutlines(hAx,iMov);
-        end              
-    else
-        % otherwise, make the circles visible
-        setObjVisibility(hOut,'on')
-    end
-else
-    % otherwise, make the circular regions invisible
-    setObjVisibility(hOut,'off')
-end
-
-% --- creates the circle outlines
-function createCircleOutlines(hAx,iMov)
-
-% adds a hold to the axis
-hold(hAx,'on');
-
-% sets the X/Y coordinates of the circle centres
-eStr = {'off','on'};
-[X,Y] = deal(iMov.autoP.X0,iMov.autoP.Y0);
-[XC,YC] = deal(iMov.autoP.XC,iMov.autoP.YC);
-
-% retrieves the group indices
-if isfield(iMov,'pInfo')    
-    iGrp = iMov.pInfo.iGrp;
-else
-    iGrp = ones(size(X));
-end
-
-% retrieves the patch colours
-tCol = getAllGroupColours(max(iGrp(:)));
-
-% loops through all the sub-regions plotting the general objects  
-[nRow,nCol] = size(X);
-for iCol = 1:nCol
-    % creates the new fill objects for each valid region    
-    for k = 1:nRow
-        % calculates the new coordinates and plots the circle
-        pCol = tCol(iGrp(k,iCol)+1,:);
-        [xP,yP] = deal(X(k,iCol)+XC,Y(k,iCol)+YC);
-        fill(xP,yP,pCol,'tag','hOuter','UserData',[iCol,k],...
-                   'facealpha',0.25,'LineWidth',1,'Parent',hAx,...
-                   'visible',eStr{1+(iGrp(k,iCol)>0)})
-    end
-end  
-
-% removes the hold
-hold(hAx,'off');
-
-% --- creates the general object outlines
-function createGeneralOutlines(hAx,iMov)
-
-% adds a hold to the axis
-hold(hAx,'on');
-
-% sets the object location/outline coordinates
-aP = iMov.autoP;
-eStr = {'off','on'};
-[X0,Y0,XC,YC] = deal(aP.X0,aP.Y0,aP.XC,aP.YC);
-
-% retrieves the group indices
-if isfield(iMov,'pInfo')    
-    iGrp = iMov.pInfo.iGrp;
-else
-    iGrp = ones(size(X0));
-end
-
-% retrieves the patch colours
-tCol = getAllGroupColours(max(iGrp(:)));
-
-% loops through all the sub-regions plotting the general objects  
-[nRow,nCol] = size(X0);
-for iCol = 1:nCol    
-    for k = 1:nRow
-        pCol = tCol(iGrp(k,iCol)+1,:);
-        fill(X0(k,iCol)+XC,Y0(k,iCol)+YC,pCol,'tag','hOuter',...
-                   'UserData',[iCol,k],'facealpha',0.25,'LineWidth',1,...
-                   'Parent',hAx,'Visible',eStr{1+(iGrp(k,iCol)>0)})
-    end
-end 
-
-% removes the hold
-hold(hAx,'off');
-
-% --------------------------------- %
 % ---- MISCELLANEOUS FUNCTIONS ---- %
 % --------------------------------- %
 
@@ -3175,7 +2232,7 @@ else
     menuShowRegion_Callback(handles.menuShowRegion, [], handles)
     
     % resets the sub-regions on the main GUI axes
-    setupSubRegions(handles,iMov0,true);    
+    hFig.rgObj.setupRegionConfig(iMov0,true);    
 end
 
 % makes the Window Splitting GUI visible again
@@ -3217,7 +2274,8 @@ if isempty(iMov0.iR)
     set(hFig,'iMov',iMov0);
 else
     % otherwise set the original to be the test data struct
-    iMov = iMov0; clear iMov0
+    iMov = iMov0; 
+    clear iMov0
 end
     
 % retrieves the region information parameter struct
@@ -3227,7 +2285,7 @@ iMov.pInfo = getDataSubStruct(handles);
 setObjVisibility(hFig,'off'); pause(0.05)
 
 % removes any previous markers and updates from the main GUI axes
-deleteSubRegions(handles)
+hFig.rgObj.deleteRegionConfig();
 
 % --- retrieves the region estimate image stack
 function I = getRegionEstImageStack(handles,hGUI,iMov)

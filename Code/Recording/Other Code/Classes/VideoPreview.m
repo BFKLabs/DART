@@ -91,7 +91,7 @@ classdef VideoPreview < handle
             if obj.initPreviewImage(cbFcn)           
                 % if the sub-regions have been set then recreate the markers
                 if obj.iMov.isSet
-                    obj.hFig.initMarkerPlots(obj.hGUI,0)
+                    obj.hFig.mkObj.initTrackMarkers(0)
                 end      
                 
                 % updates the video status
@@ -124,8 +124,8 @@ classdef VideoPreview < handle
             
             % if the sub-regions have been set then recreate the markers
             if obj.iMov.isSet
-                initFcn = get(obj.hFig,'initMarkerPlots');
-                initFcn(obj.hGUI,get(obj.hGUI.checkShowTube,'Value'))
+                showTube = get(obj.hGUI.checkShowTube,'Value');
+                obj.hFig.mkObj.initTrackMarkers(showTube);
                 
                 if get(obj.hGUI.checkShowTube,'Value')
                     chkFcn = get(obj.hFig,'checkShowTube_Callback');

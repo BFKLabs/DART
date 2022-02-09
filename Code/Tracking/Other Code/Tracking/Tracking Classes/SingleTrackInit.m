@@ -57,7 +57,7 @@ classdef SingleTrackInit < SingleTrack
         mdDim = 30*[1,1];        
         seOpen = ones(21,1);
         hF = fspecial('gaussian',10,3);
-        hSR = fspecial('disk',1);
+        hSR = fspecial('disk',2);
         
         zTolS = 2.5;
         zTolJ = 3.5;
@@ -1003,7 +1003,7 @@ classdef SingleTrackInit < SingleTrack
             % sets up the raw/residual image stacks            
             for i = find(obj.iMov.ok(:)')
                 % retrieves the region image stack
-                IL(:,i) = obj.getRegionImageStack(Img,iFrm,i,isHiV);
+                IL(:,i) = obj.getRegionImageStack(Img,iFrm,i,isHiV);                
                 
                 % calculates the 
                 IbgTnw = calcImageStackFcn(IL(:,i),'max');
@@ -1018,6 +1018,11 @@ classdef SingleTrackInit < SingleTrack
             IRng = cellfun(@(x)(calcImageStackFcn...
                                 (x,'range')),num2cell(IL,1),'un',0);
             
+            % REMOVE ME LATER
+            if any(iPh == [4,12,19])
+                a = 1;
+            end
+                            
             % ----------------------------------------- %
             % --- DETECTION ESTIMATION CALCULATIONS --- %            
             % ----------------------------------------- %            
@@ -1153,7 +1158,7 @@ classdef SingleTrackInit < SingleTrack
             if nFrmPh <= nFrmMin
                 obj.mFlag = num2cell(zeros(size(obj.iMov.flyok)),1);
                 return
-            end            
+            end                   
             
             % attempts to calculate the coordinates of the moving objects            
             for iApp = find(obj.iMov.ok(:)')
@@ -1173,22 +1178,28 @@ classdef SingleTrackInit < SingleTrack
                 IR0 = cellfun(@(x)(Bw.*x),IR0,'un',0);
                 
                 % sets the sub-region row/column indices
-                [iRT,iCT] = obj.getSubRegionIndices(iApp,size(IL0{1},2));
+                [iRT,iCT] = obj.getSubRegionIndices(iApp,size(IL0{1},2));                             
                 
                 % sets up the search mask for each sub-region
                 [obj.mFlag{iApp},obj.Imu(iApp,iPh),...
                 obj.Isd(iApp,iPh),obj.pTolF(iApp,iPh)] = ...
-                        obj.calcSubRegionProps(IRng{iApp},iRT,iCT,nFrmPh);                
+                            obj.calcSubRegionProps(IRng{iApp},iRT,iCT);
                 obj.mFlag{iApp}(~obj.iMov.flyok(:,iApp)) = 0;
                 
                 % tracks the blobs for each sub-region
                 for iT = find(obj.mFlag{iApp}(:)' > 0)
                     % sets up the range binary mask
-                    BRng = IRng{iApp}(iRT{iT},iCT);
+                    BRng = Bw(iRT{iT},iCT);
+                    
+                    %
+                    if isequal([iPh,iApp,iT],[4,4,3])
+                        a = 1;
+                    end                       
                     
                     % calculates the most like moving blob locations
+                    pTolT = obj.pTolF(iApp,iPh);
                     IRL = cellfun(@(x)(x(iRT{iT},iCT)),IR0,'un',0);
-                    fPnw = obj.trackMovingBlobs(IRL,BRng,obj.Dtol);
+                    fPnw = obj.trackMovingBlobs(IRL,BRng,obj.Dtol,pTolT);
                     
                     % sets the tracked coordinates
                     if ~isempty(fPnw)  
@@ -1217,13 +1228,13 @@ classdef SingleTrackInit < SingleTrack
         
         % --- calculates the sub-region properties
         function [mFlag,ImuF,IsdF,pTol] = ...
-                            calcSubRegionProps(obj,IRng,iRT,iCT,nFrmPh)
+                            calcSubRegionProps(obj,IRng,iRT,iCT)
             
             % parameters and initialisations
             pYRngTol = 3.5;
             iRTF = cell2mat(iRT(:)');     
             nRT = cellfun(@length,iRT);
-            mFlag = zeros(size(iRT));             
+            mFlag = zeros(size(iRT));                                      
             
             % sets the local indices of the sub-region row indices
             if obj.nI > 0
@@ -1233,7 +1244,7 @@ classdef SingleTrackInit < SingleTrack
             else
                 % case is there is no downsampling
                 iRTL = iRT;
-            end
+            end            
             
             % calculates the max range values (across each row) and the
             % baseline removed signal            
@@ -1243,13 +1254,28 @@ classdef SingleTrackInit < SingleTrack
             % calculates the max range values (across each row)         
             IRngR0 = cellfun(@(x)(nanmax(IRTL(x,:),[],1)),iRTL,'un',0);
             
-            % calculates the baseline estimate
-            YRng0 = cell2cell(cellfun(@(x)(x),IRngR0,'un',0),0);
-            [~,~,wPk0] = findpeaks(YRng0(:));                        
-            YBL = max(1,imopen(YRng0(:),ones(ceil(max(wPk0))*4,1)));   
+            % sets the baseline offset windowing size
+            if ~isfield(obj.iMov,'szObj') || any(isnan(obj.iMov.szObj))
+                nOpen = ceil(length(IRngR0{1})/4);
+            else
+                nOpen = 2*obj.iMov.szObj(1);                
+            end
             
-            % calculates the proportional signal difference
-            pYRng = (YRng0(:) - YBL)./YBL;  
+            % calculates the baseline estimate            
+            YRng0 = cell2cell(cellfun(@(x)(x),IRngR0,'un',0),0);              
+            YBL = max(1,imopen(YRng0(:),ones(nOpen,1)));
+            pYRng = (YRng0(:) - YBL)./YBL;
+            
+            % removes points from the edges (1D only)
+            nCol = length(iCT);
+            if ~obj.iMov.is2D
+                % if 1D, then remove any points on the tube edge
+                [szL,dC] = deal([nCol,1],max(1,roundP(obj.Dtol)));                
+                B0 = setGroup((dC+1):(length(iCT)-dC),szL);                
+                pYRng(repmat(~B0,length(iRTL),1)) = 0; 
+            end             
+                
+            % calculates the proportional signal difference              
             ii = pYRng > pYRngTol;
             if ~any(ii)
                 % if the proportional difference is too low, then all blobs
@@ -1262,52 +1288,16 @@ classdef SingleTrackInit < SingleTrack
             IRngF = IRng(iRTF,iCT);
             [ImuF,IsdF] = deal(nanmean(IRngF(:)),nanstd(IRngF(:)));
             
-            %
-            iGrp = getGroupIndex(ii);
-            pTolGrp = zeros(length(iGrp),2);
-            pp = pchip(1:length(pYRng),YRng0);
-            
-            %
-            for i = 1:length(iGrp)
-                % calculates the signal left side limit location
-                if (iGrp{i}(1) == 1) || isnan(pYRng(iGrp{i}(1)-1))
-                    % point is infeasible 
-                    pTolGrp(i,1) = NaN;
-                else
-                    %
-                    iLim = iGrp{i}(1)+[-1,0];                    
-                    pYL = pYRng(iLim);                    
-                    xNw = iLim(1) + (pYRngTol - pYL(1))/diff(pYL);
-                    
-                    % calculates the interpolated value
-                    pTolGrp(i,1) = ppval(pp,xNw);
-                end
-                
-                % calculates the signal right side limit location
-                if (iGrp{i}(end)==length(ii)) || isnan(pYRng(iGrp{i}(end)+1))
-                    % point is infeasible
-                    pTolGrp(i,1) = NaN;
-                else
-                    %
-                    iLim = iGrp{i}(end)+[0,1];
-                    pYL = pYRng(iLim);                    
-                    xNw = iLim(1) + (pYRngTol - pYL(1))/diff(pYL); 
-                    
-                    % calculates the interpolated value
-                    pTolGrp(i,2) = ppval(pp,xNw);                    
-                end
-            end       
-            
-            % calculates the mean pixel tolerances over all peaks
-            pTol = nanmedian(pTolGrp(:));
+            % calculates the residual tolerance
+            pTol = obj.calcResidualTol(YRng0,YBL,nCol);
             
             % reduces the proportional difference arrya for each subregion         
-            Q = reshape(pYRng,[length(IRngR0{1}),length(iRTL)]);
+            Q = reshape(YRng0,[length(IRngR0{1}),length(iRTL)]);
             
             % calculates the movement status flags:
             %  = 0: blob is completely stationary over the phase
             %  = 2: blob has moved a significant distance              
-            mFlag(any(Q > pYRngTol,1)) = 2;
+            mFlag(any(Q > pTol,1)) = 2;
             
         end
         
@@ -1380,12 +1370,12 @@ classdef SingleTrackInit < SingleTrack
             
             % calculates the residual z-scores
             pPR = obj.pStats.IR(:,iPh);
-            ImuF = num2cell(obj.Imu(:,iPh));
-            IsdF = num2cell(obj.Isd(:,iPh));
-            ZRC = cellfun(@(x,mu,sd)((x-mu)/sd),pPR,ImuF,IsdF,'un',0)';
-            
-            % calculates the mean z-scores (over all frames)
-            ZR = combineNumericCells(cellfun(@(x)(nanmean(x,2)),ZRC,'un',0));
+%             ImuF = num2cell(obj.Imu(:,iPh));
+%             IsdF = num2cell(obj.Isd(:,iPh));
+%             ZRC = cellfun(@(x,mu,sd)((x-mu)/sd),pPR,ImuF,IsdF,'un',0)';
+%             
+%             % calculates the mean z-scores (over all frames)
+%             ZR = combineNumericCells(cellfun(@(x)(nanmean(x,2)),ZRC,'un',0));
             
             % -------------------------------- %
             % --- FLY TEMPLATE CALCULATION --- %
@@ -1420,7 +1410,7 @@ classdef SingleTrackInit < SingleTrack
             % if the blob filter has been calculated, then exit
             if ~isempty(obj.hFilt)
                 % determines the blobs that haven't moved far over the phase
-                obj.setStatusFlag(Zflag,ZR,Drng,isSig,iPh);
+                obj.setStatusFlag(Zflag,Drng,isSig,iPh);
                 return
             end
                                     
@@ -1452,7 +1442,7 @@ classdef SingleTrackInit < SingleTrack
             obj.iMov.szObj = pBB(3:4);       
             
             % determines the blobs that haven't moved far over the phase
-            obj.setStatusFlag(Zflag,ZR,Drng,isSig,iPh);           
+            obj.setStatusFlag(Zflag,Drng,isSig,iPh);           
             
             % updates the progressbar
             obj.hProg.Update(3+obj.wOfsL,'Region Analysis Complete',1);            
@@ -1499,17 +1489,10 @@ classdef SingleTrackInit < SingleTrack
         end
         
         % --- determines the final status flags for each blob
-        function setStatusFlag(obj,sFlag0,ZR,Drng,allSig,iPh)
+        function setStatusFlag(obj,sFlag0,Drng,allSig,iPh)
         
             % determines which blobs have moved appreciably
-            isMove = Drng > obj.iMov.szObj(1)/2;
-            
-            % re-classify any blobs with low overall residual z-scores, but
-            % is flagged to have moved, as being stationary 
-            %  --> this is a secondary check (after the moving object
-            %      detection) to ensure that any "moving" objects has
-            %      a decent residual magnitude
-            sFlag0((ZR < obj.zTolS) & isMove) = 0;
+            isMove = Drng > obj.iMov.szObj(1)/2;            
             
             % re-classify blobs that have medium z-scores, but significant
             % movement, as being completely stationary
@@ -2024,10 +2007,10 @@ classdef SingleTrackInit < SingleTrack
     methods (Static)
         
         % --- tracks the movng blobs from the residual image
-        function [fPos,pIR] = trackMovingBlobs(IRL,BRng,dTol)
+        function [fPos,pIR] = trackMovingBlobs(IRL,BRng,dTol,pTol)
 
             % initialisations
-            pWT = 0.9;
+            pIRTol = 1/3;
             [nFrm,szL] = deal(length(IRL),size(IRL{1}));
             [fPos,pIR] = deal(NaN(nFrm,2),NaN(nFrm,1));            
 
@@ -2035,23 +2018,22 @@ classdef SingleTrackInit < SingleTrack
             IRL = cellfun(@(x)(x.*BRng),IRL,'un',0);
 
             % retrieves the maxima for each frame                
-            iGrp = cellfun(@(x)(find(imregionalmax(x))),IRL,'un',0);
-
+            iGrp = cellfun(@(x)(find(imregionalmax(x))),IRL,'un',0);            
+            isSig = cellfun(@(x,y)(any(x(y)>pTol)),IRL,iGrp);            
+            
             % determines the moving blob properties for each region
-            for i = 1:length(IRL)
-                if ~isempty(iGrp{i})
-                    % calculates the most
-                    [pMx,iS] = sort(IRL{i}(iGrp{i}),'descend');
-                    pTolNw = pWT*pMx(1);
-
+            for i = find(isSig(:)')
+                % calculates the most
+                [pMx,iS] = sort(IRL{i}(iGrp{i}),'descend');
+                if pMx(1) > pTol                
                     % determines how many prominent maxima there are
-                    ii = pMx >= pTolNw;
+                    ii = pMx >= pTol;
                     if sum(ii) == 1
                         % case is there is one prominent maxima
                         iGrp{i} = iGrp{i}(iS(1));
                     else
                         % case is there are multiple prominent maxima
-                        BL = IRL{i} >= pTolNw;
+                        BL = IRL{i} >= pTol;
                         [jGrp,pC] = getGroupIndex(BL,'Centroid');
                         AGrp = cellfun(@length,jGrp)/dTol;
                         IGrp = cellfun(@(x)(mean(IRL{i}(x))),jGrp);
@@ -2062,9 +2044,46 @@ classdef SingleTrackInit < SingleTrack
                         iGrp{i} = sub2ind(szL,pCmx(2),pCmx(1));
                     end                       
 
-                    % sets the pixel intensity and coordinates                        
+                    % sets the pixel intensity and coordinates
                     pIR(i) = IRL{i}(iGrp{i});    
                     [fPos(i,2),fPos(i,1)] = ind2sub(szL,iGrp{i});
+                end
+            end
+            
+            % determines if there are any "missing" frames (frames where
+            % the max pixel intensity is less than tolerance
+            if any(~isSig)
+                % if so, then match the points close to the mean location
+                fPosMn = [];
+                if mean(isSig) >= 0.5
+                    dfPos = range(fPos(isSig,:),1);
+                    if all(dfPos <= dTol)
+                        fPosMn = nanmean(fPos(isSig,:),1);
+                    end
+                end
+                
+                %
+                for i = find(~isSig(:)')
+                    % calculates the local maxima objective function values
+                    if isempty(fPosMn)
+                        DP = 1;
+                    else
+                        [yP,xP] = ind2sub(szL,iGrp{i});
+                        DP = max(1,pdist2([xP,yP],fPosMn)/dTol).^2;                        
+                    end
+
+                    % sets the pixel intensity and coordinates
+                    iMx = argMax(IRL{i}(iGrp{i})./DP);
+                    pIR(i) = IRL{i}(iGrp{i}(iMx)); 
+                    [fPos(i,2),fPos(i,1)] = ind2sub(szL,iGrp{i}(iMx));                    
+                end
+                
+                % if there are any points with low pixel intensity
+                % (relative to the max) then reset their coordinates
+                ii = pIR/max(pIR) < pIRTol;
+                if any(ii)
+                    fPosFix = roundP(nanmean(fPos(~ii,:),1));
+                    fPos(ii,:) = repmat(fPosFix,sum(ii),1);
                 end
             end
 
@@ -2124,7 +2143,38 @@ classdef SingleTrackInit < SingleTrack
             
             fP = roundP(((fP0-1)/nI - 1)/2 + 1);
             
-        end            
+        end  
+        
+        % --- calculates the residual tolerance from the range signal
+        function pTol = calcResidualTol(YRng0,YBL,nCol)
+
+            % parameters
+            dTol = 0.1;
+
+            % memory allocation
+            dRng = YRng0(:) - YBL(:);
+            nTube = length(dRng)/nCol;
+
+            % determines the peaks from the signal
+            dRngN = dRng/max(dRng);
+            [yP,tP,~,pP] = findpeaks(dRngN);
+
+            % clusters these groups using the DBSCAN clustering algorithm
+            QP = max(0,[yP,pP]);
+            jdx = DBSCAN(QP,dTol,1);
+
+            % determines the cluster most like to represent the baseline peaks
+            iGrp = arrayfun(@(x)(find(jdx==x)),(1:max(jdx))','un',0);
+            RGrp = cellfun(@(x)(sum(nanmean(QP(x,:),1).^2)),iGrp);
+            iMin = argMin(RGrp);
+
+            % sets the indices of the peaks that are considered significant. from these
+            % peaks determines the 
+            iSig = sort(cell2mat(iGrp(~setGroup(iMin,size(iGrp)))));
+            pTolRng = [max(YRng0(tP(iGrp{iMin}))),min(YRng0(tP(iSig)))];
+            pTol = min(pTolRng(2),mean(pTolRng));
+
+        end
         
     end
 end

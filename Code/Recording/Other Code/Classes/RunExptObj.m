@@ -297,9 +297,8 @@ classdef RunExptObj < handle
             end      
 
             % if there are no markers, then initialise them
-            if isempty(getappdata(obj.hMain,'hMark'))
-                uFunc = getappdata(obj.hMain,'initMarkerPlots');
-                uFunc(obj.hMain);
+            if isempty(obj.hMain.mkObj.hTube)
+                obj.hMain.mkObj.initTrackMarkers();
             end
 
             % creates the tracking GUI and enables the show marker checkbox
@@ -519,7 +518,7 @@ classdef RunExptObj < handle
                 % if so, ensure the markers are invisible
                 hCheck = findobj(obj.hMain,'tag','checkShowMarkers');
                 set(setObjEnable(hCheck,'off'),'value',0)   
-                hMark = getappdata(obj.hMain,'hMark');
+                hMark = obj.hMain.mkObj.hMark;
                 for i = 1:length(hMark)
                     cellfun(@(x)(setObjVisibility(x,'off')),hMark{i})
                 end 

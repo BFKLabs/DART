@@ -19,7 +19,6 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         checkShowMark
         menuOpenSoln
         menuViewProgress        
-        initMarkerPlots
         
         % boolean flags and parameters        
         setupOK = true;
@@ -358,7 +357,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             end            
             
             % resets the plot markers back to their current status
-            obj.initMarkerPlots(obj.hGUI,1)
+            obj.hFig.mkObj.initTrackMarkers(1)
 
             % updates the GUI properties
             setTrackGUIProps(obj.hGUI,'PostSolnLoadBP')
@@ -819,7 +818,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             % initialises the plot markers to their current status
             if obj.bData(iDir).movOK(iFile) ~= 0
                 set(obj.hFig,'iMov',obj.iMov);
-                obj.initMarkerPlots(obj.hGUI,1)
+                obj.hFig.mkObj.initTrackMarkers(1);
             end         
             
             % makes the waitbar figure visible again
@@ -1137,7 +1136,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             
             % function handle strings
             fldStr = fieldnames(get(obj.hFig));
-            fcnStr = {'initMarkerPlots','checkShowTube','checkShowMark',...
+            fcnStr = {'checkShowTube','checkShowMark',...
                       'menuViewProgress','menuOpenSoln','dispImage'};
                   
             % retrieves all functions in the fcnStr list

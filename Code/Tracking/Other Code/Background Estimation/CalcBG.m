@@ -111,6 +111,10 @@ classdef CalcBG < handle
         % --- opens the background analysis gui
         function openBGAnalysis(obj)
             
+            % global parameters
+            global updateFlag
+            updateFlag = 2;
+            
             % makes the main gui invisible
             setObjVisibility(obj.hFig,'off'); pause(0.05);
             
@@ -139,16 +143,21 @@ classdef CalcBG < handle
             obj.isVisible = true;
             obj.updateManualTrackTable()
             
+            % resets the update flag
+            pause(0.1);
+            updateFlag = 0;            
+            
         end        
         
         % --- close the background analysis gui
         function closeBGAnalysis(obj)
             
             % global variables
-            global isMovChange
-            
+            global isMovChange updateFlag
+                        
             % initialisations
             hgui = obj.hGUI;
+            updateFlag = 2;
             
             % removes the menu check
             hh = guidata(obj.hFig);
@@ -292,10 +301,15 @@ classdef CalcBG < handle
             % sets the menu item visibiity properties
             setObjVisibility(hgui.panelBGDetect,'off') 
             setObjVisibility(hgui.panelOuter,'on')            
-            obj.setMenuVisibility(false);                   
+            obj.setMenuVisibility(false);            
             
             % makes the main tracking gui visible again
             setObjVisibility(obj.hFig,'on'); 
+            
+            % resets the update flag
+            pause(0.1);
+            updateFlag = 0;
+
         end        
         
         % -------------------------------------------- %
@@ -2539,7 +2553,7 @@ classdef CalcBG < handle
             mP = roundP(get(obj.hAx,'CurrentPoint'));
 
             % determines if the mouse is over any sub-regions
-            hTube = cell2cell(get(obj.hFig,'hTube'));
+            hTube = cell2cell(obj.hFig.mkObj.hTube(:));
             P = cellfun(@(x)([get(x,'xdata'),...
                               get(x,'ydata')]),hTube(:),'un',0);            
             

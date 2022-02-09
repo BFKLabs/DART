@@ -492,7 +492,7 @@ for i = find(hGUI.output.iMov.ok(:)')
     hMenuNw = uimenu(hMenuP,'Label',sprintf('Region %i',i)); 
     
     % sets the menu item callback function
-    bFunc = @(hMenuNw,e)FlySolnView('menuSelectUpdate',hMenuNw,[],handles);                       
+    bFunc = {@menuSelectUpdate,handles};
     set(setObjEnable(hMenuNw,mStr),'Callback',bFunc,'UserData',i)    
 end
 

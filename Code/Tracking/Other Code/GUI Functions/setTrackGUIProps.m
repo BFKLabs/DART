@@ -22,13 +22,12 @@ iMov = get(hFig,'iMov');
 iData = get(hFig,'iData');
 pData = get(hFig,'pData');
 cType = get(hFig,'cType');
+mkObj = get(hFig,'mkObj');
+rgObj = get(hFig,'rgObj');
 isTest = get(hFig,'isTest');
 
 % retrieves the gui functions
 dispImage = get(hFig,'dispImage');
-deleteAllMarkers = get(hFig,'deleteAllMarkers');
-removeDivisionFigure = get(hFig,'removeDivisionFigure');
-initMarkerPlots = get(hFig,'initMarkerPlots');
 checkShowTube_Callback = get(hFig,'checkShowTube_Callback');
 checkShowMark_Callback = get(hFig,'checkShowMark_Callback');
 FirstButtonCallback = get(hFig,'FirstButtonCallback');
@@ -245,11 +244,12 @@ switch (typeStr)
         if iMov.isSet
             % resets the plot markers
             setDetectEnable(handles,'on',[1 4])            
-            initMarkerPlots(handles)
+            mkObj.initTrackMarkers()
             set(handles.checkShowTube,'value',1)
         else
             % deletes the temporary image stacks        
-            deleteAllMarkers(handles)
+            mkObj.deleteTrackMarkers()
+            
         end          
         
     case ('PostSolnLoad') % case is before opening a solution file    
@@ -288,7 +288,7 @@ switch (typeStr)
             
         else
             % otherwise, initialise the plot markers
-            initMarkerPlots(handles,1)            
+            mkObj.initTrackMarkers(1)            
         end
         
         % updates the translation correction menu item
@@ -674,10 +674,10 @@ switch (typeStr)
             get(handles.checkShowMark,'value') || ...
             get(handles.checkShowAngle,'value'))
             % updates and reshows the markers
-            initMarkerPlots(handles)
+            mkObj.initTrackMarkers()
         else
             % updates the markers, but makes them invisible
-            initMarkerPlots(handles,1)
+            mkObj.initTrackMarkers(1)
         end
     
         % updates the tube regions and 
@@ -687,7 +687,7 @@ switch (typeStr)
     case ('PreViewProj') % case is before the projection view GUI is opened
         % sets up the division figure (if not already set)
         if (get(handles.checkSubRegions,'value'))
-            removeDivisionFigure(handles.imgAxes)
+            rgObj.removeDivisionFigure()
         else
             set(handles.checkSubRegions,'value',1)
         end                
@@ -705,7 +705,7 @@ switch (typeStr)
         % sub-region figure        
         if (iMov.isSet) && (get(handles.checkSubRegions,'value'))
             set(handles.checkSubRegions,'value',0);
-            removeDivisionFigure(handles.imgAxes)
+            rgObj.removeDivisionFigure()
         end     
         
         % disables the sub-region button
