@@ -679,7 +679,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             if strContains(obj.iMov.bgP.algoType,'single')
                 % case is single object tracking
                 trkObjF = SingleTrackFull(obj.iData);                 
-                set(trkObjF,'wOfs',1+obj.isMultiBatch);
+                set(trkObjF,'wOfsL',1+obj.isMultiBatch);
                                 
             else
                 % case is single object tracking                
@@ -763,6 +763,10 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             
             % determines if the background estimate needs to be calculated
             if obj.isCalcBG
+                % disables the marker/angle checkboxes
+                setObjEnable(obj.hGUI.checkShowMark,0)
+                setObjEnable(obj.hGUI.checkShowAngle,0)
+                
                 % detects the new video phases
                 obj.detectVideoPhases();  
                 if ~obj.calcOK
@@ -788,8 +792,12 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                                     'MultiTrack',obj.iData,'Init'); 
                 end                                                       
                 
+                % collapses the waitbar figure
+                obj.hProg.setLevelCount(4+obj.isMultiBatch);
+                
                 % runs the initial tracking/background estimate
                 set(trkObjI,'prData0',prData);
+                set(trkObjI,'wOfsL',1+obj.isMultiBatch);                
                 trkObjI.calcInitEstimate(obj.iMov,obj.hProg);                
 
                 % if the user cancelled, then exit                                
@@ -835,7 +843,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         % --- detects the fly locations over all phases
         function detectVideoPhases(obj)
             
-            % collapses the waitbar figure            
+            % collapses the waitbar figure
             dLvl = 1 + obj.isMultiBatch;
             obj.hProg.setLevelCount(2+dLvl);
 
@@ -935,7 +943,10 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             
             % retrieves the important data struct from the tracking GUI
             obj.pData0 = get(obj.hFig,'pData');
-            obj.iMov = get(obj.hFig,'iMov');                        
+            obj.iMov = get(obj.hFig,'iMov');   
+            
+            % resets the detection parameters
+            obj.iMov.bgP = DetectPara.getDetectionPara(obj.iMov);
             
             % if the solution tracking GUI is open then reset it
             hTrack = findall(0,'tag','figFlySolnView');

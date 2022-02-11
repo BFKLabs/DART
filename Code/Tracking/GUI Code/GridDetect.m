@@ -526,7 +526,7 @@ classdef GridDetect < matlab.mixin.SetGet
             mPos = get(obj.hFigTrk,'CurrentPoint');
             
             % determines if the 
-            if isOverAxes(mPos)
+            if isOverAxes(mPos,obj.hFigM.axPosX,obj.hFigM.axPosY)
                 % determines the plot objects the mouse is currently over
                 mStr = {'tag','hInner'};
                 hInner = findAxesHoverObjects(obj.hFigTrk,mStr,obj.hAx);  
@@ -634,15 +634,15 @@ classdef GridDetect < matlab.mixin.SetGet
         % --- gets the background filter parameter filter
         function pVal = getFiltPara(obj,pFld)
             
-            pVal = getStructField(obj.hFigM.iMov.bgP.pSingle,pFld);
+            pVal = getTrackingPara(obj.hFigM.iMov.bgP,'pSingle',pFld);
             
         end
         
         % --- sets the background filter parameter filter
         function setFiltPara(obj,pFld,pVal)
            
-            bgP = obj.hFigM.iMov.bgP.pSingle;
-            obj.hFigM.iMov.bgP.pSingle = setStructField(bgP,pFld,pVal);
+            bgP = obj.hFigM.iMov.bgP;
+            obj.hFigM.iMov.bgP = setTrackingPara(bgP,'pSingle',pFld,pVal);
             
         end        
         

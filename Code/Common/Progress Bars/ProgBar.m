@@ -155,7 +155,7 @@ classdef ProgBar < matlab.mixin.SetGet
         end
         
         % --- callback function for clicking the cancel button
-        function cancelClick(obj,hObject,eventdata)
+        function cancelClick(obj,hObject,~)
             
             % updates the cancellation flag
             obj.isCancel = true;

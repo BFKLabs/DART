@@ -5,12 +5,12 @@ function pOfsT = calcFrameOffset(phInfo,iFrmR,iAppR)
 if ~exist('iAppR','var'); iAppR = 1:length(phInfo.pOfs); end
 
 % memory allocation
-pOfsT = zeros(length(phInfo.pOfs),2);
+pOfsT = zeros(length(iAppR),2);
 
 % field retrieval
-for iApp = iAppR(:)'
-    if phInfo.hasT(iApp)
-        p = phInfo.pOfs{iApp};
-        pOfsT(iApp,:) = interp1(phInfo.iFrm0,p,iFrmR,'linear','extrap');
+for i = 1:length(iAppR)
+    if phInfo.hasT(iAppR(i))
+        p = phInfo.pOfs{iAppR(i)};
+        pOfsT(i,:) = interp1(phInfo.iFrm0,p,iFrmR,'linear','extrap');
     end
 end

@@ -9,6 +9,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
         Img
         prData
         iPara
+        trkP
         iFrmR
         
         % boolean/other scalar flags
@@ -48,10 +49,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
         nI
         dTol
         isHV
-        rPmxTol = 0.8;
-        pTolW = 0.6;
-        pTolPh = 5;
-        nPr = 5;
+        nPr = 5;  
         
     end
     
@@ -152,12 +150,16 @@ classdef PhaseTrack < matlab.mixin.SetGet
             obj.iPr1 = arrayfun(@(x)(max(1,x-obj.nPr):(x-1)),xiF,'un',0);            
             
             % sets up the image filter (if required)
-            [bgP,obj.hS] = deal(obj.iMov.bgP.pSingle,[]);
+            obj.hS = [];
+            bgP = getTrackingPara(obj.iMov.bgP,'pSingle');
             if isfield(bgP,'useFilt')
                 if bgP.useFilt
                     obj.hS = fspecial('disk',bgP.hSz);
                 end
             end
+            
+            % retrieves the tracking parameters
+            obj.trkP = getTrackingPara(obj.iMov.bgP,'pTrack');
             
             % initialises the progressbar
             wStr = 'Residual Calculations (Initialising)';
@@ -264,6 +266,9 @@ classdef PhaseTrack < matlab.mixin.SetGet
         % --- segments a sub-region with a moving object
         function [fP,IP] = segmentSubRegion(obj,Img,fPr0,IPr0,indR)
             
+            % parameters
+            pTolW = 0.6;
+            
             % memory allocation   
             IPr = IPr0;
             nFrm = length(Img);                        
@@ -312,7 +317,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
 
                 % sets the frame pixel intensity tolerance
                 if isnan(pTol0)
-                    pTolB = obj.pTolW*Pmx(1);
+                    pTolB = pTolW*Pmx(1);
                 else
                     pTolB = pTol0;
                 end
@@ -321,8 +326,8 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 ii = Pmx >= pTolB;
                 if sum(ii) == 0
                     % case is there are no prominent objects
-                    if isempty(fPrNw)
-                        if Pmx(2)/Pmx(1) < obj.rPmxTol
+                    if isempty(fPrNw)                        
+                        if Pmx(2)/Pmx(1) < obj.trkP.rPmxTol
                             iPnw = iPmx{i}(iS(1));
                             [fP(i,2),fP(i,1)] = ind2sub(szL,iPnw);
                         end
@@ -664,7 +669,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             % determines if mean of any of the frame images are outside the
             % tolerance, pTolPh (=5)
             ImgLmn = cellfun(@(x)(nanmean(x(:))),ImgL);
-            isOK = abs(ImgLmn-Iref) < obj.pTolPh;  
+            isOK = abs(ImgLmn-Iref) < obj.trkP.pTolPh;  
             if any(~isOK)
                 % if so, then reset the 
                 ImgL(~isOK) = cellfun(@(x,dy)(x-(dy-Iref)),...

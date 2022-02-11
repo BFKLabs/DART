@@ -16,6 +16,7 @@ classdef VideoPhase < handle
         rMet
         iFrm0
         Dimg0
+        phsP
         
         % image/region arrays
         sz0
@@ -41,9 +42,7 @@ classdef VideoPhase < handle
         
         % phase detection fields
         iPhase
-        vPhase        
-        pTolLo = 35;
-        pTolHi = 230;        
+        vPhase                
         
         % homomorphic filter parameters
         aHM = 0;
@@ -52,12 +51,11 @@ classdef VideoPhase < handle
         hmFilt
         
         % other fixed parameters
-        Dtol = 2;
-        nPhaseMx = 100;
-        nImgR = 10;
-        nFrm0 = 10;
+        Dtol
+        nPhaseMx = 100;        
         nPhMax = 5;
-        szDS = 1000;
+        nFrm0 = 10;
+        szDS = 800;
         szBig = 1400; 
         dnFrmMin = 25; 
         isFeasVid = true;
@@ -120,7 +118,7 @@ classdef VideoPhase < handle
             obj.nDS = max(floor(obj.sz0/obj.szDS)) + 1;
             
             % sets up the image filter
-            bgP = obj.iMov.bgP.pSingle;
+            bgP = getTrackingPara(obj.iMov.bgP,'pSingle');
             if bgP.useFilt
                 obj.hS = fspecial('disk',bgP.hSz);
             end
@@ -154,7 +152,7 @@ classdef VideoPhase < handle
         % --------------------------------- %
         
         % --- runs the phase detection algorithm
-        function runPhaseDetect(obj,varargin)
+        function runPhaseDetect(obj,varargin)            
             
             % runs the pre-initial detection. if theres an issue then exit
             if ~obj.preDetectSetup(nargin==2)
@@ -162,7 +160,7 @@ classdef VideoPhase < handle
             end                        
             
             % updates the progressbar
-            obj.updateProgField('Region Property Calculations',0.5);
+            obj.updateProgField('Region Property Calculations',0.5);            
             
             % calculates the initial information for each region 
             for iApp = 1:obj.nApp
@@ -199,6 +197,9 @@ classdef VideoPhase < handle
             
             % initialisations
             ok = true;
+            
+            % retrieves the phase tracking parameters
+            obj.phsP = getTrackingPara(obj.iMov.bgP,'pPhase');            
             
             % creates the progress bar (if not provided)
             if initPB
@@ -257,7 +258,8 @@ classdef VideoPhase < handle
             
             % determines if the video is trackable
             Imu = cellfun(@(x)(nanmean(x(:))),obj.Img0);
-            obj.isFeasVid = any((Imu > obj.pTolLo) & (Imu < obj.pTolHi));
+            obj.isFeasVid = any((Imu > obj.phsP.pTolLo) & ...
+                                (Imu < obj.phsP.pTolHi));
             
             % updates the progressbar
             obj.updateSubProgField('Image Estimate Read Complete',1);
@@ -280,7 +282,7 @@ classdef VideoPhase < handle
             
             % determines the frames which are feasible
             ImgMu = cellfun(@(x)(nanmean(x(:))),obj.Img0);
-            isOK = (ImgMu > obj.pTolLo) & (ImgMu < obj.pTolHi);
+            isOK = (ImgMu > obj.phsP.pTolLo) & (ImgMu < obj.phsP.pTolHi);
             [i0,i1] = deal(find(isOK,1,'first'),find(isOK,1,'last'));                
             
             % updates the progressbar
@@ -760,6 +762,25 @@ classdef VideoPhase < handle
             DimgF = cell(nGrpF,1); 
             vPhaseF = zeros(nGrpF,1); 
             
+            if nGrpF > obj.nPhaseMx
+                % if there are a large number of phases, then flag the 
+                % video as having high pixel fluctuation
+                obj.hasF = true;                
+                [iPhaseF,vPhaseF] = deal([1,obj.iFrm0(end)],1); 
+
+                % sets up the hm filter masks
+                [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);
+                obj.hmFilt = cellfun(@(ir,ic)(...
+                                obj.setupHMFilterW(ir,ic)),iR,iC,'un',0);
+
+                % set the final class field values
+                [obj.iPhase,obj.vPhase] = deal(iPhaseF,vPhaseF);
+
+                % updates the progress bar and exits the function
+                obj.updateSubProgField('Final Grouping Check Complete',1);                
+                return
+            end
+            
             % determines if the phases can be combined/reduced
             for i = 1:nGrpF
                 % retrieves the non-sparse frames for the current group
@@ -778,8 +799,8 @@ classdef VideoPhase < handle
                 else
                     % otherwise, determine if the mean pixel intensity is 
                     % either too high or too low for tracking
-                    if any(DimgF{i}(:)<obj.pTolLo) || ...
-                                    any(DimgF{i}(:)>obj.pTolHi)
+                    if any(DimgF{i}(:)<obj.phsP.pTolLo) || ...
+                                    any(DimgF{i}(:)>obj.phsP.pTolHi)
                         % the mean pixel intensity is either too high/low.
                         % therefore, flag that the phase is untrackable
                         vPhaseF(i) = 3;
@@ -1179,8 +1200,9 @@ classdef VideoPhase < handle
             [Img,sImg] = deal(cell(nPhase,1));            
             
             % sets the frame indices
+            nImgR = obj.phsP.nImgR;
             [obj.iMov.vPhase,obj.iMov.iPhase] = deal(obj.vPhase,obj.iPhase);
-            iFrmR = getPhaseFrameIndices(obj.iMov,obj.nImgR,obj.iPhase);                
+            iFrmR = getPhaseFrameIndices(obj.iMov,nImgR,obj.iPhase);                
             
             % reads the frames for each 
             for i = 1:nPhase                           

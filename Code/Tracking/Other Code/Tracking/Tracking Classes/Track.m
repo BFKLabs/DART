@@ -72,11 +72,7 @@ classdef Track < matlab.mixin.SetGet
             if nargout == 2
                 isOK = ~cellfun(@(x)(all(isnan(x(:)))),Img);
             end
-                  
-            % updates the progressbar
-            wStr = 'Sub-Image Stack Read Complete';
-            obj.hProg.Update(3+obj.wOfs,wStr,0.5);
-            
+                              
             % if requested, return the first cell array element
             if nargin == 3; Img = Img{1}; end
             
@@ -88,7 +84,7 @@ classdef Track < matlab.mixin.SetGet
             % updates the progressbar
             wStr = sprintf('Sub-Image Stack Reading (Frame %i of %i)',...
                            iFrm,nFrm);
-            obj.hProg.Update(3+obj.wOfs,wStr,0.5*iFrm/(1+nFrm));
+            obj.hProg.Update(3+obj.wOfsL,wStr,0.5*iFrm/nFrm);
                         
             % retrieves the images for all frames in the array, iFrm
             Img = double(getDispImage(obj.iData,obj.iMov,iFrmG,0));             

@@ -1251,6 +1251,12 @@ function menuAnalyOpt_Callback(hObject, eventdata, handles)
 % runs the tracking analysis options
 AnalyOpt(handles.output)
 
+% -------------------------------------------------------------------------
+function menuTrackOpt_Callback(hObject, eventdata, handles)
+
+% runs the tracking parameter dialog
+DetectParaDialog(handles.output);
+
 % ----------------------- %
 % --- VIEW MENU ITEMS --- %
 % ----------------------- %
@@ -1260,8 +1266,9 @@ function menuCorrectTrans_Callback(hObject, eventdata, handles)
 
 switch get(hObject,'Checked')
     case 'off'
-        % case is turning off the image correction
+        % case is turning on the image correction
         set(hObject,'Checked','on')
+        handles.output.mkObj.resetRegionOutlines();
         
     case 'on'
         % case is turning off the image correction

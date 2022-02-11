@@ -76,17 +76,14 @@ if ~isfield(iMov,'ddD')
     iMov.ddD = [];
 end
 
-% sets the fly region parameters (if not set)
-if isfield(iMov,'bgP')
-    if ~isfield(iMov.bgP,'algoType')
-        iMov.bgP.algoType = 'bgs-single';
-    elseif strcmp(iMov.bgP.algoType,'svm-single')
-        iMov.bgP.algoType = 'bgs-single';
-    end
+% resets/initialises the background parameter struct
+if isfield(iMov,'bgP') && ~isempty(iMov.bgP)
+    % retrieves the background parameter field
+    iMov.bgP = DetectPara.resetDetectParaStruct(iMov.bgP);
+else
+    % otherwise, initialise the detection parameter struct
+    iMov.bgP = DetectPara.initDetectParaStruct('All');
 end
-
-%
-
 
 % resets any old format automatic detection fields
 if ~isempty(iMov.autoP)

@@ -122,9 +122,9 @@ classdef InitPhaseStats < handle
             xLim = iFrm([1,end]);
             xTickStr = arrayfun(@(x)(num2str(x)),xLim,'un',0);
             
-            % ------------------------------- %
-            % --- INFORMATION TABLE PANEL --- %
-            % ------------------------------- %            
+            % -------------------------- %
+            % --- MAIN FIGURE OBJECT --- %
+            % -------------------------- %            
             
             % sets the figure position
             fPos = [100,100,obj.widFig,obj.hghtFig];            

@@ -949,7 +949,7 @@ classdef CalcBG < handle
                     % case is the raw residual image
 
                     % reads the image
-                    bgP = obj.getTrackingPara;
+                    bgP = obj.getTrackingPara();
                     if bgP.useFilt
                         Img0 = imfiltersym(Img0,hS);
                     end
@@ -1323,12 +1323,8 @@ classdef CalcBG < handle
         % -----------------------------------------------------------------
         function menuPara(obj, ~, ~)
 
-            % runs the reflection glare parameter GUI
-            bgPnw = BackgroundPara(obj.iMov);
-            if ~isempty(bgPnw)
-                % updates the parameter data struct
-                obj.iMov.bgP = bgPnw;
-            end        
+            % runs the tracking parameter dialog
+            DetectParaDialog(obj);
             
         end   
         
@@ -2296,8 +2292,9 @@ classdef CalcBG < handle
             end
             
             % retrieves the image filter
-            if obj.iMov.bgP.pSingle.useFilt
-                hS = fspecial('disk',obj.iMov.bgP.pSingle.hSz);
+            bgP = obj.getTrackingPara();
+            if bgP.useFilt
+                hS = fspecial('disk',bgP.hSz);
             else
                 hS = [];
             end
@@ -2703,10 +2700,11 @@ classdef CalcBG < handle
                      
             if detMltTrkStatus(obj.iMov)
                 % case is multi-tracking
-                bgP = obj.iMov.bgP.pMulti;
+                bgP = getTrackingPara(obj.iMov.bgP,'pMulti');
+                
             else
                 % case is single-tracking
-                bgP = obj.iMov.bgP.pSingle;
+                bgP = getTrackingPara(obj.iMov.bgP,'pSingle');
             end
             
             % retrieves the struct sub-field (if provided)
@@ -2721,12 +2719,12 @@ classdef CalcBG < handle
                      
             if detMltTrkStatus(obj.iMov)
                 % case is multi-tracking
-                obj.iMov.bgP.pMulti = ...
-                            setStructField(obj.iMov.bgP.pMulti,pFld,pVal);
+                obj.iMov.bgP = ...
+                        setTrackingPara(obj.iMov.bgP,'pMulti',pFld,pVal);
             else
                 % case is single-tracking
-                obj.iMov.bgP.pSingle = ...
-                            setStructField(obj.iMov.bgP.pSingle,pFld,pVal);
+                obj.iMov.bgP = ...
+                        setTrackingPara(obj.iMov.bgP,'pSingle',pFld,pVal);
             end
             
         end      

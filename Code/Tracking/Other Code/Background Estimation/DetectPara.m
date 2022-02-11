@@ -1,9 +1,10 @@
 classdef DetectPara
+    
     methods (Static)
         % --- sets the detection parameter data struct
         function bgP = getDetectionPara(iMov)
 
-            if isfield(iMov,'bgP')
+            if isfield(iMov,'bgP') && ~isempty(iMov.bgP)
                 % retrieves the background parameter field
                 bgP = DetectPara.resetDetectParaStruct(iMov.bgP);
             else
@@ -16,9 +17,6 @@ classdef DetectPara
         % --- resets the detection parameter struct
         function bgP = resetDetectParaStruct(bgP)
 
-            % global variables
-            global mainProgDir            
-            
             % initialisations
             fStr = fieldnames(bgP);
 
@@ -76,7 +74,9 @@ classdef DetectPara
                                 iRmv = cellfun(@(x)(...
                                             ~any(strcmp(fStrS0,x))),fStrS);
                                 for j = find(iRmv(:))'
-                                    sFld0 = rmfield(sFld0,fStrS{j});
+                                    if isfield(sFld0,fStrS{j})
+                                        sFld0 = rmfield(sFld0,fStrS{j});
+                                    end
                                 end
 
                                 % resets the sub-field of the data struct
@@ -90,7 +90,7 @@ classdef DetectPara
             % updates the parameter file (if required)
             if resaveFile
                 % retrieves the parameter file name
-                pFile = fullfile(mainProgDir,'Para Files','ProgPara.mat');  
+                pFile = getParaFileName('ProgPara.mat');  
                 
                 % updates the file with the new parameters
                 A = load(pFile);
@@ -108,7 +108,8 @@ classdef DetectPara
 
                     % initialisations
                     bgP = struct();
-                    fStr = {'algoType','pPhase','pSingle','pMulti'};
+                    fStr = {'algoType','pPhase','pInit',...
+                            'pTrack','pSingle'};
 
                     % sets all the sub-fields for the parameter struct
                     for i = 1:length(fStr)
@@ -116,23 +117,27 @@ classdef DetectPara
                             fStr{i},'initDetectParaStruct',fStr{i}));
                     end
 
-                case 'algoType' % case is the algorithm type
-
+                case 'algoType' 
+                    % case is the algorithm type
                     bgP = 'bgs-single';
 
-                case 'pPhase' % case is the phase detection parameters
+                case 'pPhase' 
+                    % case is the phase detection parameters
+                    bgP = struct('nImgR',10,'Dtol',2,...
+                                 'pTolLo',35,'pTolHi',230);
 
-                    bgP = struct('histTol',0.125,'rsmeTol',0.04,...
-                                 'nImgR',10,'nFrmMin',15);
+                case 'pInit' 
+                    % case is initial detection parameters
+                    bgP = struct('nFrmMin',5,'pYRngTol',3.5,'pIRTol',0.35);
 
-                case 'pSingle' % case is single object detection parameters
-
+                case 'pTrack' 
+                    % case is full tracking parameters
+                    bgP = struct('rPmxTol',0.8,'pTolPh',5);
+                    
+                case 'pSingle' 
+                    % case is full tracking parameters
                     bgP = struct('hSz',3,'useFilt',true);
-
-                case 'pMulti' % case is multi object detection parameters
-
-                    bgP = struct('szFilt',8,'pwFilt',3,'isFixed',true,...
-                                 'hSz',3,'useFilt',true);        
+                    
             end        
         end
     

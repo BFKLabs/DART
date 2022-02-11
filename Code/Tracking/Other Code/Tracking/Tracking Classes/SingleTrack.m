@@ -67,11 +67,12 @@ classdef SingleTrack < Track
                                         
             end     
             
-        	% other parameters                         
+        	% other parameters     
+            obj.hS = [];
             obj.Dtol = 5;                
             
             % sets the image filter
-            [bgP,obj.hS] = deal(obj.iMov.bgP.pSingle,[]);
+            bgP = getTrackingPara(obj.iMov.bgP,'pSingle');
             if isfield(bgP,'hSz')
                 if bgP.useFilt
                     obj.hS = fspecial('disk',bgP.hSz);

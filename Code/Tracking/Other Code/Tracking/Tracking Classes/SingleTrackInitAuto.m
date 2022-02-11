@@ -16,7 +16,12 @@ classdef SingleTrackInitAuto < SingleTrackInit
         yTube
         xTube
         posO
-        nTubeBest      
+        nTubeBest  
+        
+        % other parameter fields
+        pW = 0.5;
+        pTolShape = 0.1; 
+        seOpen = ones(21,1);
         
     end
     
