@@ -142,8 +142,9 @@ classdef DummyVideo < handle
             obj.incrementFrameCount();            
             
             % reads the new frame with the current frame
-            Inw = obj.getCurrentFrame();
-            set(obj.hImage,'CData',Inw)
+            Inw = obj.getCurrentFrame();            
+            set(obj.hImage,'CData',Inw); 
+            pause(0.005);
             
             % runs the preview update function (if set)
             if ~isempty(obj.previewUpdateFcn)

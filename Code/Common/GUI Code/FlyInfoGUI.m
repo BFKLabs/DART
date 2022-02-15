@@ -110,8 +110,7 @@ classdef FlyInfoGUI < handle
                 cbFcn = {@obj.popupChange,obj};
                 obj.hPopup = uicontrol(obj.hPanel,'Units','Pixels',...
                                        'Position',ppPos,'String',lStr,...
-                                       'Callback',cbFcn);
-                
+                                       'Callback',cbFcn);                
             end
             
             % sets the grouping indices
@@ -142,7 +141,8 @@ classdef FlyInfoGUI < handle
                 % memory allocation
                 nFly = size(obj.ok,1);
                 iGrpC = arr2vec(obj.iGrp')';  
-                nFlyR = arr2vec(obj.iMov.pInfo.nFly')';
+                nFlyR = cellfun(@(x)(size(x,2)),obj.snTot.Px);
+                nFlyR(~obj.iMov.ok) = NaN;                
                 
                 % sets the grouping indices
                 iCol = zeros(nFly,length(iGrpC));
@@ -362,12 +362,12 @@ classdef FlyInfoGUI < handle
             tableUpdating = true;
 
             % sets the cell selection callback function (non background estimate)
-            indNw = [evnt.getFirstRow+1,evnt.getColumn+1];
+            iNw = [evnt.getFirstRow+1,evnt.getColumn+1];
 
             % retrieves the ok flags and the indices of the altered cell
-            newValue = obj.jTable.getValueAt(indNw(1)-1,indNw(2)-1);
-            if isempty(newValue); newValue = false; end
-            obj.ok(indNw(1),indNw(2)) = newValue;
+            nwValue = obj.jTable.getValueAt(iNw(1)-1,iNw(2)-1);
+            if isempty(nwValue); nwValue = false; end
+            obj.ok(iNw(1),iNw(2)) = nwValue;
 
             % updates the sub-region data struct
             if ~isempty(obj.snTot)                
@@ -381,38 +381,73 @@ classdef FlyInfoGUI < handle
                 else 
                     % case is updating non-group trace fields
                     iApp = get(obj.hGUI.popupAppPlot,'value');    
-                    if iApp == indNw(2)
+                    if iApp == iNw(2)
                         % updates the trace object visibility field
                         hFigM = obj.hFigMain;
-                        hPos = findall(hFigM,'UserData',indNw(1),...
+                        hPos = findall(hFigM,'UserData',iNw(1),...
                                              'Tag','hPos');
-                        setObjVisibility(hPos,newValue);
+                        setObjVisibility(hPos,nwValue);
 
                         % updates the fill object visibility field
-                        hGrpF = findall(hFigM,'UserData',indNw(1),...
+                        hGrpF = findall(hFigM,'UserData',iNw(1),...
                                               'tag','hGrpFill');
-                        setObjVisibility(hGrpF,newValue);
+                        setObjVisibility(hGrpF,nwValue);
                         
-                        bgC = obj.bgCol{indNw(1),indNw(2)};
+                        bgC = obj.bgCol{iNw(1),iNw(2)};
                         set(hGrpF,'FaceColor',bgC.getColorComponents([]))
                     end
+                    
+                    % updates the flag within the solution data struct
+                    iTabR = getappdata(obj.hFigMain,'iTab');
+                    sInfo = getappdata(obj.hFigMain,'sInfo');
+                    sInfo{iTabR}.snTot.iMov.flyok(iNw(1),iNw(2)) = nwValue;
+                    setappdata(obj.hFigMain,'sInfo',sInfo)
+                    
                 end
             else
                 % updates the sub-region data struct
                 [cbObj,hGUIM] = deal(obj.hGUI,obj.hGUI.hGUI);
                 cbObj.iMov.flyok = obj.ok;    
-                cbObj.iMov.ok(indNw(2)) = any(cbObj.iMov.flyok(:,indNw(2)));   
+                cbObj.iMov.ok(iNw(2)) = any(cbObj.iMov.flyok(:,iNw(2)));   
 
-                % retrieves the tube show check callback function 
-                cFuncStr = 'checkShowTube_Callback';
-                cFunc = get(hGUIM.figFlyTrack,cFuncStr);
-                cFunc2 = get(hGUIM.checkFlyMarkers,'Callback');
+                % retrieves the tube show check callback function
+                if cbObj.isCalib
+                    % field retrieval
+                    vcObj = cbObj.vcObj;
+                    
+                    % updates the flags
+                    vcObj.iMov.flyok = obj.ok;
+                    vcObj.iMov.ok = cbObj.iMov.ok;
+                    
+                    % resets the sub-region outlines                       
+                    hGUIM.output.iMov.flyok = obj.ok;
+                    vcObj.showRegion(vcObj.hChkH{1})
+                    
+                    % resets the calibration fill region colours
+                    if nwValue
+                        fColT = vcObj.fCol0;
+                    else
+                        fColT = vcObj.fCol{1};
+                    end
+                    
+                    % updates the fill colour
+                    vcObj.updateFillColour(fColT,iNw(2),iNw(1));
+                    
+                    % updates the plot marker visibility properties
+                    hMarkT = cbObj.hFig.mkObj.hMark{iNw(2)}{iNw(1)};
+                    setObjVisibility(hMarkT,nwValue);
+                    pause(0.01);
+                    
+                else
+                    cFunc = get(hGUIM.figFlyTrack,'checkShowTube_Callback');
+                    cFunc2 = get(hGUIM.checkFlyMarkers,'Callback');
 
-                % updates the tubes visibility
-                hGUIM.output.iMov.flyok = obj.ok;
-                cFunc(hGUIM.checkShowTube,num2str(...
+                    % updates the tubes visibility
+                    hGUIM.output.iMov.flyok = obj.ok;
+                    cFunc(hGUIM.checkShowTube,num2str(...
                                 get(hGUIM.checkTubeRegions,'value')),hGUIM)   
-                cFunc2(hGUIM.checkFlyMarkers,[])    
+                    cFunc2(hGUIM.checkFlyMarkers,[]) 
+                end
             end
             
             % resets the update flag

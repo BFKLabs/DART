@@ -27,7 +27,7 @@ hasTime = ~isempty(iiT);
 
 % not separating by day, so determine if column exists
 i0 = find(cellfun(@(x)(size(x,1)>1),Y{1,1}{1}),1,'first');
-if (isnumeric(Y{1}{1}{i0}(1)))
+if isnumeric(Y{1}{1}{i0}(1))
     % case is for numerical time data
     hasTSP0 = diff(Y{1,1}{1}{i0}(1:2,1)) == 0;
 else
@@ -36,7 +36,7 @@ else
 end
 
 % determines if the day index column has been included
-if (sepDay)
+if sepDay
     % separating by day, so no day index column
     hasTSP = false;
 else
@@ -44,10 +44,11 @@ else
 end
 
 % determines the number of days each experiment runs for
-if (all(cellfun(@isempty,Y{1,2})))
+if all(cellfun(@isempty,Y{1,2}))
     nDay = ones(length(Y{1,1}{1}),1);
 else
-    nDay = cellfun(@(x,y)((size(x,2)-1)/(size(y,2)-(1+hasTSP0))),Y{1,2}{1},Y{1,1}{1});
+    nDay = cellfun(@(x,y)((size(x,2)-1)/...
+                        (size(y,2)-(1+hasTSP0))),Y{1,2}{1},Y{1,1}{1});
     nDay = nDay(:)';
 end
 
@@ -63,7 +64,7 @@ tSp = tSp((1+(~hasTSP)):2);
 
 % determines the number of flies for each genotype/experiment
 ii = cellfun(@length,xDep) > 1;
-if (any(ii))
+if any(ii)
     plotD = getappdata(handles.figDataOutput,'plotD');
     gStr = eval(sprintf('plotD.%s',xDep{find(ii,1,'first')}{2}));
     nGrp = length(gStr);
@@ -73,8 +74,8 @@ if (any(ii))
     
     nFly = num2cell(cellfun(@(x)(size(x,2)/nGrp),iFly,'un',0),2);
     gStrF = cellfun(@(x)(repmat(gStr,1,x{1})),nFly,'un',0);
-    tStrF = cellfun(@(z)([{'Fly #'},cell2cell(cellfun(@(y)([{num2str(y)},...
-            repmat({' '},1,nGrp-1)]),num2cell(1:z{1}),'un',0),0)]),nFly,'un',0);
+    tStrF = cellfun(@(z)([{'Fly #'},cell2cell(arrayfun(@(y)([{num2str(y)},...
+            repmat({' '},1,nGrp-1)]),1:z{1},'un',0),0)]),nFly,'un',0);
     
     mStrF = cellfun(@(x,y,z)({[z;[tSp(1:end-1),tStr,y]]}),...
                                 appName,gStrF(:)',tStrF(:)','un',0);    
@@ -94,11 +95,12 @@ end
                 
 % retrieves the time unit string/multiplier
 [timeStr,tMlt,tRnd] = getOutputTimeValues(handles.popupUnits);
-if (~isnan(tMlt))
+if ~isnan(tMlt)
     tStr = sprintf('Time %s',timeStr); 
 else
     xVar = field2cell(pData.oP.xVar,'Var');
-    xDepS = cellfun(@(x)(x{1}),field2cell(pData.oP.yVar(mIndG),'xDep'),'un',0);
+    xDepS = cellfun(@(x)...
+                (x{1}),field2cell(pData.oP.yVar(mIndG),'xDep'),'un',0);
     tStr = pData.oP.xVar(strcmp(xDepS{1},xVar)).Name;
 end
 
@@ -111,17 +113,14 @@ mStrB = reshape(iData.fName(mIndG(iOrder)),1,length(iOrder));
 
 % sets the metric/genotype combination strings
 mStrMG = cellfun(@(x)(cellfun(@(y)(cell2cell({{'Genotype',y};{...
-        'Metric',x}})),appName,'un',0)),mStrB,'un',0);          
+        'Metric',x};{NaN,NaN}})),appName,'un',0)),mStrB,'un',0);          
     
 % if there is more than one experiment, then append the title for each    
-if (nExp > 1)
-    % experiment index array
-    xiE = num2cell(1:nExp);
-    
+if nExp > 1
     % appends the new strings onto the titles
     for i = 1:length(mStrMG)
-        mStrMG{i} = cellfun(@(x)(cellfun(@(y)(combineCellArrays(...
-                x,{'Experiment #',num2str(y)},0)),xiE,...
+        mStrMG{i} = cellfun(@(x)(arrayfun(@(y)(combineCellArrays(...
+                x,{'Experiment #',num2str(y)},0)),1:nExp,...
                 'un',0)),mStrMG{i},'un',0);        
     end    
 else
@@ -132,10 +131,10 @@ else
 end    
         
 % sets the main title string (depending on whether data is split by day)
-if (sepDay)
+if sepDay
     % sets the day index title strings
-    mStrD = cellfun(@(x)(cellfun(@(xx)(sprintf('Day #%i',xx)),num2cell(1:x),...
-                    'un',0)),num2cell(nDay),'un',0);        
+    mStrD = arrayfun(@(x)(arrayfun(@(xx)(sprintf('Day #%i',xx)),1:x,...
+                    'un',0)),nDay,'un',0);        
     
     % sets the combined fly/day title strings
     mStrFD = cellfun(@(x)(cellfun(@(xx,yy)(cell2cell(cellfun(@(X)(...
@@ -147,10 +146,11 @@ if (sepDay)
         isOK = true(length(mStrFD{i}),1);
 
         for j = 1:length(mStrFD{i})
-            if (nFly{i}{j} > 0)
-                if (~isnan(tMlt))
-                    mStrFD{i}{j}{1+(nGrp>1),1+hasTSP} = tStr;
-                end
+            if nFly{i}{j} > 0
+%                 mStrFD{i}{j} = combineCellArrays({NaN},mStrFD{i}{j},0);
+%                 if ~isnan(tMlt)
+%                     mStrFD{i}{j}{1+(nGrp>1),1+hasTSP} = tStr;
+%                 end
             else
                 isOK(j) = false;
                 mStrFD{i}{j} = [];
@@ -169,16 +169,15 @@ if (sepDay)
     % sets the main title combination strings
     mStr = cellfun(@(x)(cell2cell(cellfun(@(xx,yy)(cell2cell(cellfun(...
            @(X,Y)(combineCellArrays({NaN},combineCellArrays(X,[{'';tStr},Y],...
-           0))),xx,yy,'un',0),0)),x,mStrFD,'un',0),0)),...
-           mStrMG,'un',0);                   
+           0))),xx,yy,'un',0),0)),x,mStrFD,'un',0),0)),mStrMG,'un',0);                   
 else    
 % sets the time string    
     for i = 1:length(mStrF)
         isOK = true(length(mStrF{i}),1);
 
         for j = 1:length(mStrF{i})
-            if (nFly{i}{j} > 0)
-                if (~isnan(tMlt))
+            if nFly{i}{j} > 0
+                if ~isnan(tMlt)
                     mStrF{i}{j}{1+(nGrp>1),1+hasTSP} = tStr;
                 end
             else
@@ -227,18 +226,19 @@ isOK = cellfun(@(x)(~cellfun(@isempty,x)),YR{1},'un',0);
 tData = cell(nApp,1);
 for i = 1:nApp
     % retrieves the time vector from the raw data array
-    tData{i}(isOK{i}) = cellfun(@(x)(x(:,1+hasTSP)),YR{1}{i}(isOK{i}),'un',0);
+    tData{i}(isOK{i}) = cellfun(@(x)...
+                        (x(:,1+hasTSP)),YR{1}{i}(isOK{i}),'un',0);
     
     %
     for j = reshape(find(isOK{i}),1,sum(isOK{i}))
-        if (isnan(tRnd))
-            if (isnumeric(tData{i}{j}))
+        if isnan(tRnd)
+            if isnumeric(tData{i}{j})
                 tData{i}{j} = num2cell(tData{i}{j});
             end
         else        
             % converts the time signals to strings
             tData{i}{j} = roundP((tData{i}{j}-tData{i}{j}(1))*tMlt,tRnd);
-            switch (tRnd)
+            switch tRnd
                 case (1)
                     tData{i}{j} = num2strC(tData{i}{j},'%i');
                 case (0.1)
@@ -253,7 +253,7 @@ for i = 1:nApp
 end
     
 % sets the signal data arrays depending on whether data is split by day
-if (sepDay)
+if sepDay
     % sets the fly count sum array
     nFlyC = cellfun(@(x)([0,cumsum(nDay.*cell2mat(x)*nGrp)]),nFly,'un',0);
     nFlyS = cellfun(@(x)(x(end)),nFlyC);
@@ -269,7 +269,8 @@ if (sepDay)
         for i = 1:length(iFlyN) 
             % sets the column indices
             i2 = iFlyN(i);
-            iC = (iC0+1) + (1:(nFly{j}{i2}*nDay(i2)*nGrp)) + (nFlyC{j}(i)+2*(i-1));  
+            iC = (iC0+1) + (1:(nFly{j}{i2}*nDay(i2)*nGrp)) + ...
+                                                    (nFlyC{j}(i)+2*(i-1));  
             
             % sets the data into the arrays
             if (~isempty(iC))            
@@ -280,8 +281,9 @@ if (sepDay)
 
                     % sets the data values
                     mData{k}(iRnw,iC(1)-1) = tData{j}{i};
-                    if (iscell(YRnw))
-                        mData{k}(iRnw,iC) = cellfun(@(x)(roundP(x,pR)),YRnw,'un',0);
+                    if iscell(YRnw)
+                        mData{k}(iRnw,iC) = ...
+                                cellfun(@(x)(roundP(x,pR)),YRnw,'un',0);
                     else
                         mData{k}(iRnw,iC) = num2cell(roundP(YRnw,pR));
                     end
@@ -307,18 +309,20 @@ else
         for i = 1:length(iFlyN)        
             % sets the column indices  
             i2 = iFlyN(i);
-            iC = (iC0+1) + (1:nFly{j}{i2}*nGrp) + (nFlyC{j}(i2)+2*(i-1)) + hasTSP*(i-1);
+            iC = (iC0+1) + (1:nFly{j}{i2}*nGrp) + ...
+                            (nFlyC{j}(i2)+2*(i-1)) + hasTSP*(i-1);
 
             % sets the data for each metric
-            if (~isempty(iC))
+            if ~isempty(iC)
                 for k = 1:length(YR)    
                     YRnw = YR{k}{j}{i2}(:,(2+hasTSP):end);
                     iRnw = 1:size(YRnw,1);
 
                     % sets the data values
-                    if (hasTSP)
-                        if (isnumeric(YR{k}{j}{i2}(1,1)))
-                            mData{k}(iRnw,iC(1)-2) = num2cell(YR{k}{j}{i2}(:,1)); 
+                    if hasTSP
+                        if isnumeric(YR{k}{j}{i2}(1,1))
+                            mData{k}(iRnw,iC(1)-2) = ...
+                                        num2cell(YR{k}{j}{i2}(:,1)); 
                         else
                             mData{k}(iRnw,iC(1)-2) = YR{k}{j}{i2}(:,1); 
                         end                
@@ -326,8 +330,9 @@ else
                     
                     % sets the time vector
                     mData{k}(iRnw,iC(1)-1) = tData{j}{i};                                                    
-                    if (iscell(YRnw))
-                        mData{k}(iRnw,iC) = cellfun(@(x)(roundP(x,pR)),YRnw,'un',0);
+                    if iscell(YRnw)
+                        mData{k}(iRnw,iC) = ...
+                                cellfun(@(x)(roundP(x,pR)),YRnw,'un',0);
                     else
                         mData{k}(iRnw,iC) = num2cell(roundP(YRnw,pR));
                     end
@@ -335,8 +340,8 @@ else
                     % sets the number indices
                     indN{k}(iRnw,iC(1)-((1+hasTSP):1)) = 1+~isnan(tMlt);                
                     indN{k}(iRnw,iC) = 1;  
-                    if (hasTSP); indN{k}(iRnw,iC(1)-2) = 1; end
-                    if (~hasTime); indN{k}(iRnw,iC(1)-1) = 0; end
+                    if hasTSP; indN{k}(iRnw,iC(1)-2) = 1; end
+                    if ~hasTime; indN{k}(iRnw,iC(1)-1) = 0; end
                 end
             end
         end        
@@ -380,7 +385,7 @@ end
 % reduces the array
 Data(iiFN) = {''};
 
-%
+% clears extraneous variables
 clear iiF isN 
 pause(0.05);
 

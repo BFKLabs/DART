@@ -17,7 +17,7 @@ else
         while (1)
             try
                 % attempts to append to the output file
-                xlsappend(fFile,nwBlk,sName) 
+                xlsappend(fFile,DataNw,sName) 
                 break
             catch ME
                 % if there error was due to a locked file, then close

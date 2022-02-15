@@ -218,7 +218,8 @@ classdef ProgBar < matlab.mixin.SetGet
             % resets the figure/panel heights
             try
                 resetObjPos(obj.hPanel,'height',mlt*obj.dY*nLvlC,1)
-                resetObjPos(obj.hFig,'height',mlt*obj.dY*nLvlC,1)   
+                resetObjPos(obj.hFig,'height',mlt*obj.dY*nLvlC,1)
+                resetObjPos(obj.hFig,'bottom',-mlt*obj.dY*nLvlC,1)
             catch
                 return
             end
@@ -228,7 +229,7 @@ classdef ProgBar < matlab.mixin.SetGet
             hRow = roundP((hPos(4) - 10)/obj.dY);
 
             % resets the locations of all the sub-units
-            for i = 1:nObj        
+            for i = 1:nObj
                 % retrieves the new object handles for the current row
                 A = cellfun(@(x)(...
                         sprintf('obj.hObj(i).%s',x)),obj.fldNames,'un',0);

@@ -152,7 +152,7 @@ iProg = getappdata(getappdata(handles.figDataOutput,'hGUI'),'iProg');
 
 % determines if any of the data sheet tabs are empty
 ii = find(cellfun(@isempty,iData.tData.Data));
-if (~isempty(ii))
+if ~isempty(ii)
     % if so, then create a warning message for the user
     wStr = sprintf('The following data tab sheets are empty:\n\n');
     for i = reshape(ii,1,length(ii))
@@ -177,14 +177,14 @@ fType = {'*.xlsx','Excel Spreadsheet (*.xlsx)';...
 
 % prompts the user for the movie filename
 [fName,fDir,fIndex] = uiputfile(fType,'Save Data File',iProg.OutData);
-if (fIndex == 0)
+if fIndex == 0
     % if the user cancelled, then exit the function
     return
 else
     % if outputting to xlsx file, then 
-    if (fIndex == 1)
+    if fIndex == 1
         [N,Nmax] = deal(cellfun(@(x)(numel(x)),iData.tData.Data),0.5e6);
-        if (sum(N) > Nmax)
+        if sum(N) > Nmax
             % if the data is too large, then output a warning
             wStr = {'Warning! Data is too large to output to .xlsx file.';
                     'Data will be output to a .csv file instead.'};
@@ -201,12 +201,12 @@ wStr = sprintf('Outputting %s Data File',fStr{fIndex});
 h = ProgressLoadbar(wStr); pause(0.05);
 
 % sets the file name based on the output file type
-if (fIndex == 1)
+if fIndex == 1
     % case is an .xlsx file
     fFile = fullfile(fDir,fName);
     
     % deletes the file if it exists
-    if (exist(fFile,'file')); delete(fFile); end
+    if exist(fFile,'file'); delete(fFile); end
 else
     % case is a .csv file
     fNameP = getFileName(fName); 
@@ -217,15 +217,15 @@ for i = 1:iData.nTab
     % updates the loadbar string
     wStrNw = sprintf(['%s (Sheet Tab %i of %i - String Data ',...
                            'Conversion)'],wStr,i,iData.nTab);
-    if (~updateLoadbar(h,wStrNw))    
+    if ~updateLoadbar(h,wStrNw)    
         break
     end       
     
     % only output if the data sheet is not empty
     iSel = iData.tData.iSel(i);
-    if (~isempty(iData.tData.Data{i}{iSel}))        
+    if ~isempty(iData.tData.Data{i}{iSel})      
         % resets all numeric strings to numerical values
-        if (~isempty(iData.tData.DataN{i}{iSel}))
+        if ~isempty(iData.tData.DataN{i}{iSel})
             DataNw = iData.tData.DataN{i}{iSel};        
         else                        
             DataNw = iData.tData.Data{i}{iSel};        
@@ -257,62 +257,6 @@ end
 
 % turns on warnings again
 warning on all
-
-% --- writes the data to an excel spreadsheet file
-function writeXLSFile(fFile,DataNw,sName,h)
-
-% initialisations
-[blkSz,i0] = deal(100000,25);
-[nRow,nCol] = size(DataNw);
-
-% outputs the data to file
-nRC = nRow*nCol;
-if nRC < blkSz 
-    % if so, then write the file as one block
-    writeXLSData(fFile,DataNw,sName,0);
-
-else
-    % otherwise, write the data to file in blocks
-    nBlk = ceil(nRC/blkSz);
-    rwSz = 1 + ceil((nRow-i0)/nBlk);
-    wStr = h.StatusMessage(1:end-1);
-    
-    % loops through each block outputting the data to file
-    for i = 1:nBlk
-        % updates the loadbar message
-        updateLoadbar(h,sprintf('%s, Block %i of %i)',wStr,i,nBlk));        
-
-        % sets the indices of the new block
-        if i == 1
-            indBlk = 1:i0;
-        else
-            indBlk = (i0 + (i-2)*rwSz+1):min(nRow, i0 + (i-1)*rwSz);
-        end
-
-        % sets the new data block for output. resets any columns that
-        % have non-cell columns
-        nwBlk = DataNw(indBlk,:);
-        ii = cellfun(@(x)(all(cellfun(@ischar,x))),num2cell(nwBlk,1));            
-        if any(ii)
-            nwBlk(:,ii) = cellfun(@(x)({str2double(x)}),nwBlk(:,ii));
-        end
-            
-        % outputs the data to file
-        if ~writeXLSData(fFile,nwBlk,sName,i > 1)
-		return
-	end
-    end
-    
-    % kills any external excel processes (if any are running)
-    if ispc; closeExcelProcesses(); end
-    
-    % if a CSV file has been created as well, then delete it
-    [fDir,fName,~] = fileparts(fFile);
-    fFileCSV = fullfile(fDir,sprintf('%s.csv',fName));
-    if exist(fFileCSV,'file')
-        delete(fFileCSV)
-    end
-end
 
 % -------------------------------------------------------------------------
 function menuExit_Callback(hObject, eventdata, handles)
@@ -888,7 +832,7 @@ function tableCellEdit(hObject, eventdata)
 global canEditCell
 
 % if the indices are empty, then exit
-if ((isempty(eventdata.Indices)) || (~canEditCell))
+if isempty(eventdata.Indices) || ~canEditCell
     return; 
 end
 
@@ -899,16 +843,16 @@ iData = getappdata(handles.figDataOutput,'iData');
 [nwVal,nwData,updateSheet] = deal(eventdata.NewData,[],false);
 
 % sets the parameter index (based on the table that was editted)
-if (get(hObject,'UserData') == 0)    
+if get(hObject,'UserData') == 0  
     % case is the statistical test table
     pInd = 1;
-    if (~isnan(iData.tData.stInd{iData.cTab}(iRow,1)))
+    if ~isnan(iData.tData.stInd{iData.cTab}(iRow,1))
         nwData = iRow;
     end
 else
     % case is the metric data table
     pInd = 1 + iData.tData.mSel(iData.cTab);
-    switch (pInd)
+    switch pInd
         case (2) % case is the population metrics
             mInd = find(iData.tData.iPara{iData.cTab}{pInd}{2}(iRow,:))';
             nwData = [iRow*ones(length(mInd),1),mInd];
@@ -923,30 +867,30 @@ end
 
 % updates the order array
 iPara = iData.tData.iPara{iData.cTab}{pInd};
-if (iCol == 2)
-    if (nwVal)
+if iCol == 2
+    if nwVal
         % adds the indices associated with the metric
-        if (~isempty(nwData))
+        if ~isempty(nwData)
             updateSheet = true;
             iPara{1} = [iPara{1};nwData];
         end
     else
         % ensures the statistical test type cell is empty
-        if (pInd == 1)
+        if pInd == 1
             Data = get(handles.tableStatTest,'Data');
             Data{iRow,3} = '';
             set(handles.tableStatTest,'Data',Data);
         end
         
         % removes the indices associated with the metric
-        if (~isempty(iPara{1}))
+        if ~isempty(iPara{1})
             updateSheet = any(iPara{1}(:,1) == iRow);
             iPara{1} = iPara{1}(iPara{1}(:,1) ~= iRow,:);
         end
     end
     
     % updates the data alignment panel properties
-    if (get(handles.radioStatTest,'value'))        
+    if get(handles.radioStatTest,'value')        
         setPanelProps(handles.panelDataAlign,eStr{1+(length(iPara{1})>1)})        
     end
 else
@@ -964,7 +908,7 @@ setappdata(handles.figDataOutput,'iData',iData);
 
 % updates the current tab
 updateOrderList(handles)
-if (updateSheet); updateSheetData(handles,true); end
+if updateSheet; updateSheetData(handles,true); end
 
 % --- Executes when selected cell(s) is changed in the metric table objects
 function metTableCellSelect(hObject, eventdata)
@@ -1138,7 +1082,7 @@ end
 function tableExptInc_CellEditCallback(hObject, eventdata, handles)
 
 % if the indices are empty, then exit
-if (isempty(eventdata.Indices)); return; end
+if isempty(eventdata.Indices); return; end
 iData = getappdata(handles.figDataOutput,'iData');
 
 % retrieves the row/column indices
@@ -1147,7 +1091,7 @@ iData.expOut(eventdata.Indices(1),iData.cTab) = eventdata.NewData;
 hChk = handles.checkSepByExpt;
 
 % determins if any of the inclusion indices have been set
-if (~any(Y))
+if ~any(Y)
     % if not, then output an error
     eStr = sprintf('Error! Data output must include at least one %s.',xStr);
     waitfor(errordlg(eStr,'Output Selection Error','modal'))    
@@ -1158,7 +1102,7 @@ if (~any(Y))
     set(hObject,'Data',Data)
 else    
     % updates the enabled properties of the checkbox
-    [uData,eStr] = deal(isempty(get(hChk,'UserData')),{'off','on'});
+    uData = isempty(get(hChk,'UserData'));
 
     % resets the checkbox enabled properties
     isOK = uData && (sum(iData.expOut(:,iData.cTab)) > 1);
@@ -1176,7 +1120,7 @@ else
     setappdata(handles.figDataOutput,'iData',iData)    
     
     % updates the sheet data
-    if (detIfHasData(iData)); updateSheetData(handles,true); end
+    if detIfHasData(iData); updateSheetData(handles,true); end
 end
 
 % --------------------------------------- %
@@ -2011,7 +1955,7 @@ end
 AT(cellfun(@isempty,AT)) = {''};
 
 % --- sets the final statistic test string arrays
-function A = setStatStringArray(iData,pData,pStr,tStr,Type,nGrpY)        
+function A = setStatStringArray(iData,pData,pStr,tStr,Type,nGrpY)
 
 % sets the p-value array    
 switch (Type)
@@ -2164,6 +2108,62 @@ end
 % --- SHEET DATA OUTPUT FUNCTIONS --- %
 % ----------------------------------- %
 
+% --- writes the data to an excel spreadsheet file
+function writeXLSFile(fFile,DataNw,sName,h)
+
+% initialisations
+[blkSz,i0] = deal(100000,25);
+[nRow,nCol] = size(DataNw);
+
+% outputs the data to file
+nRC = nRow*nCol;
+if nRC < blkSz 
+    % if so, then write the file as one block
+    writeXLSData(fFile,DataNw,sName,0);
+
+else
+    % otherwise, write the data to file in blocks
+    nBlk = ceil(nRC/blkSz) + 1;
+    rwSz = 1 + ceil((nRow-i0)/(nBlk-1));
+    wStr = h.StatusMessage(1:end-1);
+    
+    % loops through each block outputting the data to file
+    for i = 1:nBlk
+        % updates the loadbar message
+        updateLoadbar(h,sprintf('%s, Block %i of %i)',wStr,i,nBlk));        
+
+        % sets the indices of the new block
+        if i == 1
+            indBlk = 1:i0;
+        else
+            indBlk = (i0 + (i-2)*rwSz+1):min(nRow, i0 + (i-1)*rwSz);
+        end
+
+        % sets the new data block for output. resets any columns that
+        % have non-cell columns
+        nwBlk = DataNw(indBlk,:);
+        ii = cellfun(@(x)(all(cellfun(@ischar,x))),num2cell(nwBlk,1));            
+        if any(ii)
+            nwBlk(:,ii) = cellfun(@(x)({str2double(x)}),nwBlk(:,ii));
+        end
+            
+        % outputs the data to file
+        if ~writeXLSData(fFile,nwBlk,sName,i > 1)
+            return
+        end
+    end
+    
+    % kills any external excel processes (if any are running)
+    if ispc; closeExcelProcesses(); end
+    
+    % if a CSV file has been created as well, then delete it
+    [fDir,fName,~] = fileparts(fFile);
+    fFileCSV = fullfile(fDir,sprintf('%s.csv',fName));
+    if exist(fFileCSV,'file')
+        delete(fFileCSV)
+    end
+end
+
 % --- updates the data tab information
 function updateSheetInfo(handles,varargin)
 
@@ -2208,15 +2208,15 @@ jTab = getappdata(getSheetTableHandle(handles),'jTable');
 % other initialisations
 iSel = iData.tData.iSel(iData.cTab);
 iPara = iData.tData.iPara{iData.cTab}{iSel};
-[Y,A,Data,eStr,h] = deal(iData.Y{iSel},iPara{1},[],{'off','on'},[]);
+[Y,A,Data,h] = deal(iData.Y{iSel},iPara{1},[],[]);
 
 % sets the tab worksheet data cell array
-if (~isRecalc)
+if ~isRecalc
     % if not recalculating, then retrieve the stored values 
     Data = iData.tData.Data{iData.cTab}{iSel};
-elseif (~isempty(iPara{1}))
+elseif ~isempty(iPara{1})
     % creates the load bar    
-    if (nargin == 2)
+    if nargin == 2
         h = ProgressLoadbar('Initialising Data Table Array...');
     end
     
@@ -2226,7 +2226,7 @@ elseif (~isempty(iPara{1}))
     % data array needs to be recreated
     DataN = [];
     try
-        switch (iSel)
+        switch iSel
             case (1) % case is the statistical test
                 % determines the output variables indices 
                 [stInd,A] = deal(iData.tData.stInd{iData.cTab},iPara{1});
@@ -2272,7 +2272,7 @@ elseif (~isempty(iPara{1}))
         end                          
 
         %
-        if (~any(iSel == [5 6]))
+        if ~any(iSel == [5 6])
             isN = find(cellfun(@isnumeric,Data));
             Data(isN(cellfun(@isnan,Data(isN)))) = {''}; 
         end
