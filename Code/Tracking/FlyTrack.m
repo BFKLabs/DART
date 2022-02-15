@@ -184,7 +184,9 @@ addObjProps(hObject,'dispImage',@dispImage,...
             'updateVideoFeedImage',@updateVideoFeedImage,...
             'postWindowSplit',@postWindowSplit,...
             'menuOptSize_Callback',@menuOptSize_Callback,...
-            'calcAxesGlobalCoords',@calcAxesGlobalCoords)
+            'menuAllowResize_Callback',@menuAllowResize_Callback,...
+            'calcAxesGlobalCoords',@calcAxesGlobalCoords,...
+            'figFlyTrack_ResizeFcn',@figFlyTrack_ResizeFcn)
 
 % runs the fixed ratio callback function
 checkFixRatio_Callback(handles.checkFixRatio, 1, handles)
@@ -312,7 +314,7 @@ switch length(varargin)
         set(handles.textFrameSizeS,'string',nwStr)    
         
         % creates the preview object
-        hObject.prObj = VideoPreview(hObject,0);                
+        hObject.prObj = VideoPreview(hObject,0);           
 end
 
 % sets the figure resize function
@@ -1337,6 +1339,9 @@ updateFlag = 0;
 % -------------------------------------------------------------------------
 function menuAllowResize_Callback(hObject, eventdata, handles)
 
+% sets the default input arguments
+if ~exist('handles','var'); handles = guidata(hObject); end
+
 % initialisations
 vStr = {'off','on'};
 isChecked = strcmp(get(hObject,'Checked'),'on');
@@ -1542,6 +1547,9 @@ while 1
         sz0 = sz;
     end
 end
+
+% sets the input variables (if not provided)
+if ~exist('handles','var'); handles = guidata(hObject); end
 
 % parameters
 [pPos,Y0] = deal(get(handles.panelOuter,'position'),10);

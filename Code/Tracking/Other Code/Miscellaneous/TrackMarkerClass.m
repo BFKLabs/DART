@@ -9,9 +9,10 @@ classdef TrackMarkerClass < handle
         
         % main gui object handles
         hChkT
-        hChkM        
+        hChkM
         hChkD
         hChkLV
+        hChkBGM
         hEditC
         hEditM
         hMenuCT    
@@ -59,7 +60,7 @@ classdef TrackMarkerClass < handle
             obj.hChkD = findall(hFig,'tag','checkShowAngle'); 
             obj.hChkLV = findall(hFig,'tag','checkLocalView');                        
             obj.hEditC = findall(hFig,'tag','frmCountEdit');
-            obj.hEditM = findall(hFig,'tag','movCountEdit');
+            obj.hEditM = findall(hFig,'tag','movCountEdit');                        
             
             % menu item handles
             obj.hMenuCT = findall(hFig,'tag','menuCorrectTrans');
@@ -195,7 +196,7 @@ classdef TrackMarkerClass < handle
 
                         % creates the tube region patch
                         obj.hTube{i}{j} = fill(obj.xTube{i}{j},...
-                            obj.xTube{i}{j},pCol,'tag',hTStr,...
+                            obj.yTube{i}{j},pCol,'tag',hTStr,...
                             'FaceAlpha',fAlpha,'EdgeColor',...
                             eCol,'EdgeAlpha',1,'Visible','off',...
                             'Parent',obj.hAx,'UserData',[i,j]); 
@@ -266,8 +267,14 @@ classdef TrackMarkerClass < handle
                 
             end
             
-            % retrieves the marker boolean flags
-            pltLocT0 = get(obj.hChkM,'value') && hasImg;
+            % retrieves the marker boolean flag
+            if isCalib
+                pltLocT0 = get(obj.hChkBGM,'value') && hasImg;
+            else
+                pltLocT0 = get(obj.hChkM,'value') && hasImg;
+            end
+            
+            % retrieves the angle marker boolean flag
             if ishandle(obj.hChkD)
                 pltAngT0 = get(obj.hChkD,'value') && hasImg;
             else
@@ -277,7 +284,7 @@ classdef TrackMarkerClass < handle
             % array indexing & parameters
             if isCalib
                 if isfield(obj.hFig,'rtObj')
-                    if isempty(obj.hFig.fPosTmp); return; end     
+                    if isempty(obj.hFig.fPosNew); return; end     
                 end
             end
 
@@ -300,7 +307,7 @@ classdef TrackMarkerClass < handle
                     % current apparatus
                     if isCalib       
                         % case is updating the calibration points
-                        if isfield(obj.hFig,'fPosTmp')
+                        if isprop(obj.hFig,'fPosNew')
                             obj.updateRegionMarkers(i) 
                         end
                     else
@@ -320,7 +327,7 @@ classdef TrackMarkerClass < handle
             
             % retrieves the position data struct
             if isCalib
-                pData = obj.hFig.fPosTmp;
+                pData = obj.hFig.fPosNew;
             else
                 pData = obj.hFig.pData;
             end
@@ -349,7 +356,8 @@ classdef TrackMarkerClass < handle
             % sets the manual calibration flag             
             if isCalib
                 % case is calibration
-                manReseg = false;
+                [cFrm,manReseg] = deal(1,false);
+                
             else
                 % case is video tracking
                 manReseg = ~isempty(findall(0,'tag','figManualReseg'));
@@ -403,25 +411,24 @@ classdef TrackMarkerClass < handle
                 end
                 
             else
-                % sets the global fly locations
+                % case is full video tracking
                 if isCalib
-                    % case is calibration 
-                    fPos = pData{ind(1)} + dpOfs;
+                    fPos = num2cell(pData{ind(1)},2);
                 else
-                    % case is full video tracking
                     fPos = cellfun(@(x)...
-                                    (x(cFrm,:)),pData.fPos{ind(1)},'un',0);               
-                    if obj.isCG
-                        pOfs0 = [obj.iMov.iC{ind(1)}(1)-1,0];
-                        pOfs = repmat(pOfs0,length(cFrm),1);            
-                    else
-                        pOfs0 = [0,obj.iMov.iR{ind(1)}(1)-1];
-                        pOfs = repmat(pOfs0,length(cFrm),1);
-                    end
-
-                    % adds on the positional offset
-                    fPos = cellfun(@(x)(x+pOfs+dpOfs(1,:)),fPos,'un',0);
+                                (x(cFrm,:)),pData.fPos{ind(1)},'un',0);
                 end
+                            
+                if obj.isCG
+                    pOfs0 = [obj.iMov.iC{ind(1)}(1)-1,0];
+                    pOfs = repmat(pOfs0,length(cFrm),1);            
+                else
+                    pOfs0 = [0,obj.iMov.iR{ind(1)}(1)-1];
+                    pOfs = repmat(pOfs0,length(cFrm),1);
+                end
+
+                % adds on the positional offset
+                fPos = cellfun(@(x)(x+pOfs+dpOfs(1,:)),fPos,'un',0);
             end   
             
             % ------------------------------------- %
@@ -429,16 +436,19 @@ classdef TrackMarkerClass < handle
             % ------------------------------------- %            
             
             for i = 1:nFly
+                % retrieves the acceptance flag
+                fok = obj.hFig.iMov.flyok(i,ind);
+                
                 % determines if the local view is being plotted
                 if pltLV  
                     % sets the local fly coordinates'    
-                    fPosT = fPosL{i};
+                    fPosT = fPosL{i};                    
                     [xFly,yFly] = deal(fPosT(:,1)-szDelX,fPosT(:,2)-szDelY);
 
                     % sets the marker visibility string
                     if cMov == ind(1)
-                        vStrNwM = vStr{obj.pltLocT+1};
-                        vStrNwA = vStr{obj.pltAngT+1};
+                        vStrNwM = vStr{(fok && obj.pltLocT) + 1};
+                        vStrNwA = vStr{(fok && obj.pltAngT) + 1};
                     else
                         [vStrNwM,vStrNwA] = deal('off');
                     end
@@ -448,8 +458,8 @@ classdef TrackMarkerClass < handle
                     [xFly,yFly] = deal(fPosT(:,1),fPosT(:,2));                        
 
                     % sets the marker visibility string
-                    vStrNwM = vStr{obj.pltLocT+1};
-                    vStrNwA = vStr{obj.pltAngT+1};
+                    vStrNwM = vStr{(fok && obj.pltLocT) + 1};
+                    vStrNwA = vStr{(fok && obj.pltAngT) + 1};
                 end
 
                 % otherwise, update the marker locations/visibility
@@ -764,15 +774,17 @@ classdef TrackMarkerClass < handle
             
             % updates the image axes
             if isCalib
-                if isfield(handles,'menuRTTrack')
-                    if ~strcmp(get(obj.hMenuRT,'checked'),'on')
-                        objIMAQ = obj.hFig.infoObj.objIMAQ;
-                        updateVideoFeedImage(obj.hFig,objIMAQ)  
-                    end
-                else
-                    % updates the plot markers
-                    obj.updateTrackMarkers(true)
-                end
+                % updates the plot markers
+                obj.updateTrackMarkers(true)
+                
+%                 if isfield(handles,'menuRTTrack')
+%                     if ~strcmp(get(obj.hMenuRT,'checked'),'on')
+%                         objIMAQ = obj.hFig.infoObj.objIMAQ;
+%                         updateVideoFeedImage(obj.hFig,objIMAQ)  
+%                     end
+%                 else
+% 
+%                 end
             else
                 % initialisations
                 hMarkOn = obj.hMark;

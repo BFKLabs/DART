@@ -22,6 +22,8 @@ classdef VideoPreview < handle
         
         % other parameters
         tPause = 1;
+        initMarkers = false;
+        
     end
     
     % class methods
@@ -56,8 +58,8 @@ classdef VideoPreview < handle
         % ------------------------------------------------- %      
         
         % --- starts the video preview
-        function startTrackPreview(obj)
-                        
+        function startTrackPreview(obj,createMark)               
+            
             % resets the running flag
             cbFcn = [];
             obj.isOn = true;   
@@ -89,11 +91,6 @@ classdef VideoPreview < handle
             set(obj.hGUI.checkShowTube,'Value',0)
             setObjEnable(obj.hGUI.menuAnalysis,'off');
             if obj.initPreviewImage(cbFcn)           
-                % if the sub-regions have been set then recreate the markers
-                if obj.iMov.isSet
-                    obj.hFig.mkObj.initTrackMarkers(0)
-                end      
-                
                 % updates the video status
                 pause(obj.tPause)
                 if obj.isOn
@@ -299,6 +296,12 @@ classdef VideoPreview < handle
             set(obj.hImage,'CDataMapping','scaled')
             set(obj.hAx,'xtick',[],'ytick',[],'xticklabel',[],...
                         'yticklabel',[],'xLim',xL,'yLim',yL) 
+        
+            % if the sub-regions have been set then recreate the markers
+            if obj.initMarkers
+                obj.hFig.mkObj.initTrackMarkers(0)
+                obj.initMarkers = false;
+            end                    
                     
             % updates the axis to image format
             pause(0.05);
@@ -347,7 +350,7 @@ classdef VideoPreview < handle
             
             % updates the video calibration trace data
             if ~isempty(obj.vcObj)
-                obj.vcObj.appendTraceData(event)
+                obj.vcObj.newCalibFrame(event)
             end
                 
         end
@@ -363,7 +366,7 @@ classdef VideoPreview < handle
             
             % updates the video calibration trace data
             if ~isempty(obj.vcObj)
-                obj.vcObj.appendTraceData(event)
+                obj.vcObj.newCalibFrame(event)
             end            
             
         end

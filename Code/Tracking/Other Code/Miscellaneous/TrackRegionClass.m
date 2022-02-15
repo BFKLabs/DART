@@ -384,7 +384,7 @@ classdef TrackRegionClass < handle
         end
 
         % --- creates the individual sub-image rectangle frames
-        function setupIndivFrameRect(obj,rPos)            
+        function setupIndivFrameRect(obj,rPos)
 
             % sets the number of apparatus to set up
             nApp = obj.iMov.nRow*obj.iMov.nCol;
@@ -1081,7 +1081,7 @@ classdef TrackRegionClass < handle
             % updates the position of the inner regions
             obj.updateInnerRegions(iVL,false)
             setObjEnable(obj.hButU,'on')
-
+            
             % resets the flag to false
             obj.isUpdating = false;
 

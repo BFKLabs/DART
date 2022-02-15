@@ -347,10 +347,7 @@ classdef GridDetect < matlab.mixin.SetGet
         end
         
         % --- region move up/down button callback function
-        function moveButton(obj,hObj,~)
-            
-            % global variables
-            global isUpdating
+        function moveButton(obj,hObj,~)            
             
             % initialisations
             iApp = obj.getRegionIndex();     
@@ -416,9 +413,9 @@ classdef GridDetect < matlab.mixin.SetGet
                     
                     % resets the horizontal marker location
                     lPos(:,2) = yH;
-                    isUpdating = true;
+                    obj.hFigM.rgObj.isUpdating = true;
                     apiH.setPosition(lPos); pause(0.05);
-                    isUpdating = false;
+                    obj.hFigM.rgObj.isUpdating = false;
                 end
             end            
             
@@ -470,6 +467,9 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % flag that the calculations were unsuccessful
             obj.iFlag = get(hObj,'UserData');
+            set(obj.hFigTrk,'WindowButtonDownFcn',[])
+            
+            % flag that the calculations were successful 
             uiresume(obj.hFig);
             obj.closeGUI();
             

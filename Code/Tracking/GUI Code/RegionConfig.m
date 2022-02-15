@@ -1298,6 +1298,11 @@ elseif ~isa(eventdata,'char')
     setObjEnable(hObject,'off');
 end
 
+% creates the background object 
+if ~isempty(hFig.bgObj)
+    hFig.bgObj.vcObj = [];
+end
+
 % resets the sub-movie data struct
 iMov.pInfo = getDataSubStruct(handles);
 set(hFig,'iMov',iMov)

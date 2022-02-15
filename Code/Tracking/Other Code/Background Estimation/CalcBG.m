@@ -73,9 +73,10 @@ classdef CalcBG < handle
         pStats
         pData
         iFrm    
+        vcObj
         statsObj
         phaseObj
-        dpOfs
+        dpOfs       
         
     end
     
@@ -126,22 +127,42 @@ classdef CalcBG < handle
                         start(infoObj.objIMAQ); pause(0.05); 
                     end                
                 end
-            end
-            
-            % toggles the normal/background estimate panel visibilities
-            obj.resetGUIDimensions(true)              
+            else
+                % toggles the normal/background estimate panel visibilities
+                obj.resetGUIDimensions(true)                 
+            end                         
             
             % initialises the class fields
             obj.initClassFields()
             obj.initLikelyPlotMarkers()
-            obj.initObjProps()        
-            obj.setManualObjProps('off')
-            pause(0.05);
+            obj.isVisible = true;
+            
+            % updates the properties based on the tracking type
+            if obj.isCalib                
+                % determines if the video calibration object is set
+                if isempty(obj.vcObj)
+                    % if not, then initialise the object
+                    obj.vcObj = BGCalibObj(obj.hFig);
+                else
+                    % otherwise, open the calibration view
+                    obj.vcObj.openCalibView();
+                end
+                
+                % sets the file menu items
+                obj.setMenuVisibility(true);
+                setObjVisibility(obj.hGUI.menuPhaseStats,0);
+                setObjVisibility(obj.hGUI.menuShowStats,0);
+                
+            else
+                % case is normal video tracking
+                obj.initObjProps()        
+                obj.setManualObjProps('off')                
+                obj.updateManualTrackTable()
+            end
             
             % makes the main gui visible again
-            setObjVisibility(obj.hFig,'on');   
-            obj.isVisible = true;
-            obj.updateManualTrackTable()
+            pause(0.05);
+            setObjVisibility(obj.hFig,'on');               
             
             % resets the update flag
             pause(0.1);
@@ -208,6 +229,9 @@ classdef CalcBG < handle
                         stop(infoObj.objIMAQ); pause(0.05); 
                     end
                 end
+                
+                % runs the calibration 
+                setObjVisibility(obj.vcObj.hPanelO,0);
                 
             else
                 dispFcn = get(obj.hFig,'dispImage');
@@ -300,8 +324,8 @@ classdef CalcBG < handle
                                    
             % sets the menu item visibiity properties
             setObjVisibility(hgui.panelBGDetect,'off') 
-            setObjVisibility(hgui.panelOuter,'on')            
-            obj.setMenuVisibility(false);            
+            setObjVisibility(hgui.panelOuter,'on') 
+            obj.setMenuVisibility(false);                      
             
             % makes the main tracking gui visible again
             setObjVisibility(obj.hFig,'on'); 
@@ -445,19 +469,23 @@ classdef CalcBG < handle
                      'buttonRemoveManual','buttonUpdateManual'};                   
             for i = 1:length(cbObj)
                 hObj = eval(sprintf('obj.hGUI.%s;',cbObj{i}));
-                cbFcn = eval(sprintf('@obj.%s',cbObj{i}));
-                set(hObj,'Callback',cbFcn)
+                if ishandle(hObj)
+                    cbFcn = eval(sprintf('@obj.%s',cbObj{i}));
+                    set(hObj,'Callback',cbFcn)
+                end
             end            
                  
             % objects with cell selection callback functions
             csObj = {'tableFlyUpdate'};
             for i = 1:length(csObj)
                 hObj = eval(sprintf('obj.hGUI.%s;',csObj{i}));
-                cbFcn = eval(sprintf('@obj.%s',csObj{i}));
-                set(hObj,'CellSelectionCallback',cbFcn)
+                if ishandle(hObj)
+                    cbFcn = eval(sprintf('@obj.%s',csObj{i}));
+                    set(hObj,'CellSelectionCallback',cbFcn)
+                end
             end                 
             
-        end           
+        end                           
         
         % --- initialises the class fields when starting bg detection mode
         function initClassFields(obj)
@@ -554,7 +582,7 @@ classdef CalcBG < handle
             % toggles the normal/background estimate panel visiblities
             setObjVisibility(hgui.panelOuter,'off')
             setObjVisibility(hgui.panelBGDetect,'on')            
-            obj.setMenuVisibility(true);                       
+            obj.setMenuVisibility(true);
             
             % updates the frame/edit count count
             setPanelProps(hgui.panelPhaseSelect,'off')
@@ -1283,7 +1311,7 @@ classdef CalcBG < handle
 
             % turns off the normal mode menu items
             setObjVisibility(obj.hGUI.menuEstBG,openBG)
-            setObjVisibility(obj.hGUI.menuFileBG,openBG)
+            setObjVisibility(obj.hGUI.menuFileBG,openBG)            
 
             % determines if the git-menu item is present
             hGitP = findall(obj.hGUI.figFlyTrack,'tag','hGitP');
@@ -1391,6 +1419,29 @@ classdef CalcBG < handle
                     obj.statsObj = InitTrackStats(obj);
                     set(hMenu,'Checked','on');
             end
+            
+        end
+        
+        % --- resets the figure width
+        function resetFigWidth(obj,isOn)
+            
+            % retrieves the outer panel position vector
+            pPos = get(obj.vcObj.hPanelO,'Position');            
+            setObjVisibility(obj.hFig,0); pause(0.05);
+            
+            % resets the figure width
+            dWid = (2*isOn - 1)*(pPos(3) + obj.vcObj.dX);
+            resetObjPos(obj.hFig,'Width',dWid,1);
+            resetObjPos(obj.hFig,'Left',-dWid/2,1);
+            
+            % resets the left position of the figure
+            fPosM = get(obj.hFig,'Position');
+            if fPosM(1) < obj.vcObj.dX
+                resetObjPos(obj.hFig,'Left',obj.vcObj.dX);
+            end
+            
+            % makes the figure visible again
+            setObjVisibility(obj.hFig,1);
             
         end
         
@@ -1775,7 +1826,7 @@ classdef CalcBG < handle
 
                     % updates the popup image type list
                     iSel0 = get(obj.hGUI.popupImgType,'Value');
-                    if any(iSel0 == [2])  
+                    if any(iSel0 == 2)  
                         % if there was a change, then update the main image
                         obj.updateMainImage()
                     end   
@@ -1893,7 +1944,7 @@ classdef CalcBG < handle
         % ---------------------------------- %
         
         % --- Executes on button press in buttonUpdateEst.
-        function buttonUpdateEst(obj, hObj, ~)
+        function buttonUpdateEst(obj, ~, ~)
 
             % global variables
             global wOfs1
