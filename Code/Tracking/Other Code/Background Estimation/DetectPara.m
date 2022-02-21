@@ -109,7 +109,7 @@ classdef DetectPara
                     % initialisations
                     bgP = struct();
                     fStr = {'algoType','pPhase','pInit',...
-                            'pTrack','pSingle'};
+                            'pTrack','pSingle','pMulti'};
 
                     % sets all the sub-fields for the parameter struct
                     for i = 1:length(fStr)
@@ -132,11 +132,15 @@ classdef DetectPara
 
                 case 'pTrack' 
                     % case is full tracking parameters
-                    bgP = struct('rPmxTol',0.8,'pTolPh',5);
+                    bgP = struct('rPmxTol',0.8,'pTolPh',5,'pWQ',1);
                     
                 case 'pSingle' 
                     % case is full tracking parameters
                     bgP = struct('hSz',3,'useFilt',true);
+                    
+                case 'pMulti'
+                    % case is multi-tracking parameters
+                    bgP = struct('isFixed',0,'hSz',3,'useFilt',true);
                     
             end        
         end

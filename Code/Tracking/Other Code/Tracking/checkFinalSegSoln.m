@@ -493,7 +493,8 @@ while cont
         if (iFrm == 1) || any(isnan([X(iFrm-1),Y(iFrm-1)]))
             DW = bwdist(setGroup(roundP(fPosMn),size(IBG)));
         else
-            DW = bwdist(setGroup([X(iFrm-1),Y(iFrm-1)],size(IBG))); 
+            fXY = roundP([X(iFrm-1),Y(iFrm-1)]);
+            DW = bwdist(setGroup(fXY,size(IBG))); 
         end
         
         % calculates the distance weighted local image

@@ -28,8 +28,8 @@ if isempty(pOpt0)
 end
 
 % sets up the x/y coordinate values
-D = floor(size(I,1)/2);
-[X,Y] = meshgrid(-D:D);
+D = flip((size(I)-1)/2);
+[X,Y] = meshgrid(-D(1):D(1),-D(2):D(2));
 
 % parameters
 pLB = [-255.0,-255.0, 0.0, 0.0];

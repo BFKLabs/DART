@@ -82,7 +82,8 @@ classdef SplitSubRegion < handle
             
             % sets the axes handles
             obj.hFigT = findall(0,'tag','figFlyTrack');
-            obj.hAx = findall(obj.hFigT,'Type','Axes');
+            hPanelI = findall(obj.hFigT,'Tag','panelImg');
+            obj.hAx = findall(hPanelI,'Type','Axes');
             
             % determines if the sub-region split data field is set
             if isfield(obj.iMov,'srData')

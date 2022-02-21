@@ -132,8 +132,11 @@ classdef EmptyCheck < handle
                                     'FontWeight','bold',...
                                     'Callback',cbFcnB);
                                 
+            % retrieves the main axes image handle
+            hPanelP = findall(obj.hFigM,'tag','panelImg');
+            hAx = findall(hPanelP,'type','axes');
+            
             % creates the plot markers
-            hAx = findall(obj.hFigM,'type','axes');
             hold(hAx,'on')
             obj.hMark = plot(hAx,NaN,NaN,'yo','MarkerSize',obj.mSz,...
                                  'tag','hMarkE');

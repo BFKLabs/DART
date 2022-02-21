@@ -1072,10 +1072,6 @@ classdef CalcBG < handle
                 close(h);
             end
             
-            % makes the tracking menu item invisible again
-            if isprop(obj.trkObj,'hMenuM')
-                obj.trkObj.updateImageAxes();
-            end            
             
         end
         
@@ -1147,7 +1143,8 @@ classdef CalcBG < handle
                     % retrieves the position coord (non-hi var phase only)
                     if isFeas; fPosNw = fpos{iApp,iFrmNw}; end
                     
-                    for iT = find(imov.flyok(:,iApp))'
+                    xiT = 1:getSRCount(imov,iApp);
+                    for iT = find(imov.flyok(xiT,iApp))'
                         % updates the marker locations
                         if ~isFeas
                             % case is a hi-variance phase
@@ -1185,7 +1182,7 @@ classdef CalcBG < handle
             
         end
         
-        % retrieves the parameter and sub-image data structs
+        % --- retrieves the parameter and sub-image data structs
         function setButtonProps(obj,Type)
 
             % retrieves the parameter and sub-image data structs
@@ -1420,30 +1417,7 @@ classdef CalcBG < handle
                     set(hMenu,'Checked','on');
             end
             
-        end
-        
-        % --- resets the figure width
-        function resetFigWidth(obj,isOn)
-            
-            % retrieves the outer panel position vector
-            pPos = get(obj.vcObj.hPanelO,'Position');            
-            setObjVisibility(obj.hFig,0); pause(0.05);
-            
-            % resets the figure width
-            dWid = (2*isOn - 1)*(pPos(3) + obj.vcObj.dX);
-            resetObjPos(obj.hFig,'Width',dWid,1);
-            resetObjPos(obj.hFig,'Left',-dWid/2,1);
-            
-            % resets the left position of the figure
-            fPosM = get(obj.hFig,'Position');
-            if fPosM(1) < obj.vcObj.dX
-                resetObjPos(obj.hFig,'Left',obj.vcObj.dX);
-            end
-            
-            % makes the figure visible again
-            setObjVisibility(obj.hFig,1);
-            
-        end
+        end        
         
         % ---------------------------------------- %
         % --- IMAGE STACK SIZE/SETUP CALLBACKS --- %
@@ -2806,6 +2780,29 @@ classdef CalcBG < handle
             
         end        
     
+        % --- resets the figure width
+        function resetFigWidth(obj,isOn)
+            
+            % retrieves the outer panel position vector
+            pPos = get(obj.vcObj.hPanelO,'Position');            
+            setObjVisibility(obj.hFig,0); pause(0.05);
+            
+            % resets the figure width
+            dWid = (2*isOn - 1)*(pPos(3) + obj.vcObj.dX);
+            resetObjPos(obj.hFig,'Width',dWid,1);
+            resetObjPos(obj.hFig,'Left',-dWid/2,1);
+            
+            % resets the left position of the figure
+            fPosM = get(obj.hFig,'Position');
+            if fPosM(1) < obj.vcObj.dX
+                resetObjPos(obj.hFig,'Left',obj.vcObj.dX);
+            end
+            
+            % makes the figure visible again
+            setObjVisibility(obj.hFig,1);
+            
+        end        
+        
     end
     
     % static class methods

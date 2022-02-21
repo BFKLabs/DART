@@ -140,9 +140,17 @@ classdef FlyInfoGUI < handle
             else
                 % memory allocation
                 nFly = size(obj.ok,1);
-                iGrpC = arr2vec(obj.iGrp')';  
-                nFlyR = cellfun(@(x)(size(x,2)),obj.snTot.Px);
-                nFlyR(~obj.iMov.ok) = NaN;                
+                iGrpC = arr2vec(obj.iGrp')'; 
+                
+                % retrieves the sub-region count for each region
+                if isempty(obj.snTot) || isempty(obj.snTot.Px)
+                    nFlyR = arr2vec(getSRCount(obj.iMov)')';
+                else
+                    nFlyR = cellfun(@(x)(size(x,2)),obj.snTot.Px);
+                end
+                
+                % removes any rejected regions
+                nFlyR(~obj.iMov.ok) = NaN;
                 
                 % sets the grouping indices
                 iCol = zeros(nFly,length(iGrpC));

@@ -588,7 +588,7 @@ classdef TrackRegionClass < handle
             if obj.isMltTrk
                 % case is 
                 if isempty(obj.iMov.nFlyR)
-                    pInfo = obj.hFigM.getRegionDataStructs(obj.iMov);
+                    pInfo = obj.hFigRS.getRegionDataStructs(obj.iMov);
                     obj.iMov.nTubeR = ones(obj.iMov.nRow,obj.iMov.nCol);
                     obj.iMov.nFlyR = pInfo.nFly;        
                 end    
@@ -763,7 +763,7 @@ classdef TrackRegionClass < handle
                 yLimS = obj.getRegionYLim(iRow,iCol);
 
                 % adds the ROI fill objects (if already set)
-                if obj.isSet
+                if obj.iMov.isSet
                     % creates the fill object
                     hFill = fill(xLimS(obj.ix),yLimS(obj.iy),'r',...
                          'facealpha',0,'tag','hFillROI','linestyle',...
@@ -789,7 +789,7 @@ classdef TrackRegionClass < handle
                 obj.pH(i) = wY*obj.iMov.pos{i}(4);   
 
                 % creates the new rectangle object
-                if obj.iMov.is2D
+                if obj.iMov.is2D || obj.isMltTrk
                     % calculates the vertical tube region coordinates
                     xiN = num2cell(1:nTubeNw)';
                     widPos = sum(rPosS{i}([2,4]));

@@ -579,13 +579,43 @@ classdef PhaseTrack < matlab.mixin.SetGet
         
         % ---------------------------------- %
         % --- IMAGE STACK SETUP FUNCTION --- %
-        % ---------------------------------- %                                   
+        % ---------------------------------- %   
+        
+        % --- sets up the image weights
+        function Qw = setupImageWeights(obj,Img)
+            
+            % sets the CDF pixel weighting threshold
+            if isfield(obj.iMov.bgP.pTrack,'pWQ')
+                pWQ = obj.iMov.bgP.pTrack.pWQ;
+            else
+                pWQ = 1;
+            end
+            
+            % sets up the weighting matrices (depending on whether there is
+            % uniform or pixel intensity weighting)
+            if pWQ < 1
+                % calculates the image stack statistics
+                ImgT = cell2mat(Img(:));                        
+                B = ImgT > 0;
+                [Imu,Isd] = deal(nanmean(ImgT(B)),nanstd(ImgT(B)));
+                                
+                % calculates the image weight (preference given to lower
+                % pixel intensities - removes effect of glare)
+                pCDF = cellfun(@(x)(normcdf(x,Imu,Isd)),Img,'un',0);
+                Qw = cellfun(@(x)(min(1,1-(x-pWQ)/(1-pWQ)).^2),pCDF,'un',0);
+            else
+                % otherwise, use uniform weighting arrays
+                Qw = cellfun(@(x)(ones(size(x))),Img,'un',0);
+            end
+            
+        end
         
         % --- sets up the residual image stack
         function IR = setupResidualStack(obj,Img,ImgBG)
             
             % calculates the image stack residual
-            IR = cellfun(@(x)(ImgBG-x),Img,'un',0);
+            Qw = obj.setupImageWeights(Img);                
+            IR = cellfun(@(x,q)(q.*(ImgBG-x)),Img,Qw,'un',0);
             isOK = ~cellfun(@(x)(all(isnan(x(:)))),IR);
             
             % removes any NaN values from the image

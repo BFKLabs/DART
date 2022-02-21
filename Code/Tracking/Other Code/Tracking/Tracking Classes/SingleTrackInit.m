@@ -50,7 +50,8 @@ classdef SingleTrackInit < SingleTrack
         usePTol 
         pTolQ = 5;
         pSigMin = 0.5;
-        mdDim = 30*[1,1];        
+        nOpenRng = 15;
+        mdDim = 30*[1,1];         
         hSR = fspecial('disk',2);        
         
     end
@@ -1011,7 +1012,7 @@ classdef SingleTrackInit < SingleTrack
         end                    
         
         % --- tracks the movng blobs from the residual image
-        function [fPos,pIR] = trackMovingBlobs(obj,IRL,IL,BRng,dTol,pTol)
+        function [fPos,pIR] = trackMovingBlobs(obj,IRL,BRng,dTol,pTol)
             
             % initialisations            
             [nFrm,szL] = deal(length(IRL),size(IRL{1}));
@@ -1104,7 +1105,8 @@ classdef SingleTrackInit < SingleTrack
         function IL = analysePhase(obj,Img,iPh,isHiV)
                 
             % parameters
-            [pRngTol,pIminTol,pTolMax] = deal(60,50,80);
+            ImaxTol = 230;
+            [pRngTol,pIminTol,pTolMax] = deal(60,60,80);
             
             % memory allocation            
             iFrm = obj.indFrm{iPh};
@@ -1143,7 +1145,8 @@ classdef SingleTrackInit < SingleTrack
             % intensity values 
             Bacc = cellfun(@(x,y,z)((...
                     (x > prctile(x(:),pRngTol)) & ...
-                    (y < prctile(y(:),pIminTol)))),...
+                    (y < prctile(y(:),pIminTol)) & ...
+                    (z < ImaxTol))),...
                     IRng0,Imin,Imax,'un',0);
                       
             % sets up the adjusted range image stack (adjusted so only high
@@ -1353,9 +1356,9 @@ classdef SingleTrackInit < SingleTrack
                     
                     % calculates the most like moving blob locations
                     pTolT = obj.pTolF(iApp,iPh);
-                    IL = cellfun(@(x)(x(iRT{iT},iCT)),IL0,'un',0);
+%                     IL = cellfun(@(x)(x(iRT{iT},iCT)),IL0,'un',0);
                     IRL = cellfun(@(x)(x(iRT{iT},iCT)),IR0,'un',0);                    
-                    fPnw = obj.trackMovingBlobs(IRL,IL,BRng,obj.Dtol,pTolT);
+                    fPnw = obj.trackMovingBlobs(IRL,BRng,obj.Dtol,pTolT);
                     
                     % sets the tracked coordinates
                     if ~isempty(fPnw)  
@@ -1389,7 +1392,7 @@ classdef SingleTrackInit < SingleTrack
             % parameters and initialisations            
             iRTF = unique(cell2mat(iRT(:)'));     
             nRT = cellfun(@length,iRT);
-            mFlag = zeros(size(iRT));                                      
+            mFlag = zeros(size(iRT));            
             
             % sets the local indices of the sub-region row indices
             if obj.nI > 0
@@ -1409,10 +1412,12 @@ classdef SingleTrackInit < SingleTrack
                 DtolT = max(1,roundP(sqrt(obj.Dtol)));
                 B = ~bwmorph(true(size(IRng)),'erode',DtolT);
                 IRng(B) = nanmedian(IRng(~B));
-            end            
+            end                                    
             
-            % calculates the max range values (across each row) 
-            IRngR0 = cellfun(@(x)(nanmax(IRng(x,iCT),[],1)),iRT,'un',0);
+            % calculates the max range values (across each row). this is 
+            % performed on an image with the open transform removed
+            IRngOp = IRng - imopen(IRng,ones(obj.nOpenRng));
+            IRngR0 = cellfun(@(x)(nanmax(IRngOp(x,iCT),[],1)),iRT,'un',0);
             
             % sets the baseline offset windowing size
             if ~isfield(obj.iMov,'szObj') || any(isnan(obj.iMov.szObj))
@@ -1448,13 +1453,16 @@ classdef SingleTrackInit < SingleTrack
                 
             % calculates the mean/std dev range values
             IRngF = IRng(iRTF,iCT);
-            [ImuF,IsdF] = deal(nanmean(IRngF(:)),nanstd(IRngF(:)));
+            [ImuF,IsdF] = deal(nanmean(IRngF(:)),nanstd(IRngF(:)));            
             
             % calculates the residual tolerance
-            pTol = obj.calcResidualTol(YRng0,YBL);
+            IRngRF = cellfun(@(x)(nanmax(IRng(x,iCT),[],1)),iRT,'un',0);
+            YRngF = cell2cell(cellfun(@(x)(x),IRngRF,'un',0),0);            
+            YBLF = max(1,imopen(YRngF(:),ones(nOpen,1)));                        
+            pTol = obj.calcResidualTol(YRngF,YBLF);
             
             % reduces the proportional difference arrya for each subregion         
-            Q = reshape(YRng0,[length(IRngR0{1}),length(iRTL)]);
+            Q = reshape(YRngF,[length(IRngRF{1}),length(iRTL)]);
             if exist('B0','var'); Q(~B0,:) = 0; end
             
             % calculates the movement status flags:
@@ -1756,7 +1764,7 @@ classdef SingleTrackInit < SingleTrack
         end
         
         % --- sets up the image stack for the template analysis
-        function [I,dI,d2I] = setupStatObjStack(obj,I,iPh,iApp)             
+        function [I,dI,d2I] = setupStatObjStack(obj,I,iPh,iApp)
             
             % retrieves the fluctuation/translation flags
             [hasF,hasT] = deal(obj.getFlucFlag,obj.getTransFlag(iApp));
@@ -1915,17 +1923,18 @@ classdef SingleTrackInit < SingleTrack
             % memory allocation
             nApp = length(obj.iMov.iR);
             nMet = length(fieldnames(obj.pStats));
+            nTube = num2cell(arr2vec(getSRCount(obj.iMov)'))';
             [tData,obj.pData] = deal(cell(nMet,1));
                         bgP = getTrackingPara(obj.iMov.bgP,'pSingle');
             wStr0 = {'Tracking Quality Calculations','Analysing Frame'};
             
+            % resets the progressbar level count
+            obj.hProg.setLevelCount(2);            
+            
             % resets the waitbar figure
             for i = 1:length(wStr0)
                 obj.hProg.Update(1,wStr0{i},0);
-            end
-            
-            % resets the progressbar level count
-            obj.hProg.setLevelCount(2);
+            end            
             
             % sets up the image filter object
             if bgP.useFilt
@@ -1954,8 +1963,9 @@ classdef SingleTrackInit < SingleTrack
                 % determines if there are any missing data values                                        
                 iFrm = obj.indFrm{iPh};
                 isHV = obj.iMov.vPhase(iPh) > 1;
-                nPhase = length(obj.iMov.vPhase);             
-                fok = repmat(num2cell(obj.iMov.flyok,1)',1,nPhase);
+                nPhase = length(obj.iMov.vPhase);
+                fok = repmat(cellfun(@(x,n)(x(1:n)),num2cell...
+                            (obj.iMov.flyok,1),nTube,'un',0),nPhase,1)';
                                 
                 % determines if there are any missing residual image stacks
                 % for any region (in the current phase)

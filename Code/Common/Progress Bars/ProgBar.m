@@ -219,11 +219,11 @@ classdef ProgBar < matlab.mixin.SetGet
             try
                 resetObjPos(obj.hPanel,'height',mlt*obj.dY*nLvlC,1)
                 resetObjPos(obj.hFig,'height',mlt*obj.dY*nLvlC,1)
-                resetObjPos(obj.hFig,'bottom',-mlt*obj.dY*nLvlC,1)
+                resetObjPos(obj.hFig,'bottom',-mlt*obj.dY*nLvlC,1)                
             catch
                 return
-            end
-
+            end      
+            
             % determines the number of rows in the new waitbar figure
             hPos = get(obj.hPanel,'Position');
             hRow = roundP((hPos(4) - 10)/obj.dY);
@@ -245,6 +245,7 @@ classdef ProgBar < matlab.mixin.SetGet
             end
 
             % makes the waitbar figure visible again
+            refresh(obj.hFig);
             pause(0.05);            
             
         end

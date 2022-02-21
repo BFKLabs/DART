@@ -70,6 +70,7 @@ classdef VideoPhase < handle
         vCosTol = 0.95;
         xi2Tol = 0.15;
         dHistTol = 20;
+        pOfsMin = 0.4;
         
     end
     
@@ -152,7 +153,7 @@ classdef VideoPhase < handle
         % --------------------------------- %
         
         % --- runs the phase detection algorithm
-        function runPhaseDetect(obj,varargin)            
+        function runPhaseDetect(obj,varargin)
             
             % runs the pre-initial detection. if theres an issue then exit
             if ~obj.preDetectSetup(nargin==2)
@@ -199,7 +200,7 @@ classdef VideoPhase < handle
             ok = true;
             
             % retrieves the phase tracking parameters
-            obj.phsP = getTrackingPara(obj.iMov.bgP,'pPhase');            
+            obj.phsP = getTrackingPara(obj.iMov.bgP,'pPhase');
             
             % creates the progress bar (if not provided)
             if initPB
@@ -292,7 +293,7 @@ classdef VideoPhase < handle
             
             % if there is significant translation, then determine which 
             % regions have significant shift            
-            if any(abs(roundP(pOfs0)) > 0)
+            if any(abs(pOfs0) > obj.pOfsMin)
                 obj.hasT(:) = true;
             end
 %                 
@@ -1151,13 +1152,23 @@ classdef VideoPhase < handle
             
             % if the user cancelled, then exit the function
             if ~obj.calcOK; return; end
+            
+            % determines which frames are a) not empty, and b) not all NaNs
+            isOK = ~cellfun(@isempty,Img(:));
+            isOK(isOK) = ~cellfun(@(x)(all(isnan(x(:)))),Img(isOK));
                     
             % adds in any missing image frames
-            for i = find(cellfun(@isempty,Img(:)'))                                
-                iDir = (i == 1) - 2;
-                while isempty(Img{i})
+            for i = find(~isOK')                                
+                iDir = 2*(i == 1) - 1;
+                while true
+                    % reads in the new frame
                     obj.iFrm0(i) = obj.iFrm0(i) + iDir;
-                    Img{i} = obj.getImageFrame(obj.iFrm0(i));
+                    ImgNw = obj.getImageFrame(obj.iFrm0(i));
+                    
+                    if ~isempty(ImgNw) && ~all(isnan(ImgNw(:)))
+                        Img{i} = ImgNw;
+                        break
+                    end
                 end
             end
             
@@ -1315,7 +1326,10 @@ classdef VideoPhase < handle
         function Dmn = calcDist(obj,iFrm)
             
             DimgFrm = obj.getDimg(iFrm);
-            Dmn = mean(DimgFrm,2);
+            
+            xi = 1:size(DimgFrm,2);
+            pW = repmat(xi/sum(xi),size(DimgFrm,1),1);
+            Dmn = sum(pW.*DimgFrm,2);
             
         end        
         
@@ -1334,8 +1348,12 @@ classdef VideoPhase < handle
                 if iscell(obj.Dimg)
                     % case is the data is stored in cell array
                     for i = 1:obj.nApp
-                        obj.Dimg{i}(iFrm,i) = ...
-                                        obj.calcAvgImgIntensity(Imet,i);
+                        Dnew = obj.calcAvgImgIntensity(Imet,i);
+                        if size(obj.Dimg{i},2) == length(Dnew)
+                            obj.Dimg{i}(iFrm,:) = Dnew;
+                        else
+                            obj.Dimg{i}(iFrm,i) = Dnew;
+                        end
                     end
                 else
                     % case is the data is stored in a sparse array

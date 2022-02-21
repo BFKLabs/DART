@@ -1299,8 +1299,8 @@ elseif ~isa(eventdata,'char')
 end
 
 % creates the background object 
-if ~isempty(hFig.bgObj)
-    hFig.bgObj.vcObj = [];
+if ~isempty(hGUI.output.bgObj)
+    hGUI.output.bgObj.vcObj = [];
 end
 
 % resets the sub-movie data struct

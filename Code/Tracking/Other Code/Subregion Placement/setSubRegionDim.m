@@ -37,7 +37,7 @@ if isempty(iSubW)
 end
 
 % creates the sub-regions based on the experiment assay type
-if is2DSetup
+if is2DSetup || detMltTrkStatus(iMov)
     % --------------------------- %
     % --- 2D EXPERIMENT SETUP --- %
     % --------------------------- %

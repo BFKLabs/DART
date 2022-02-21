@@ -257,9 +257,12 @@ classdef DetectParaDialog < handle
                 end
             end
             
-            % updates the parameter struct into the main object
+            % updates the parameter struct into the main object            
             obj.sObj.iMov.bgP = obj.bgP;
-            
+            if isfield(obj.sObj,'isChange')
+                obj.sObj.isChange = true;
+            end
+                
             % resets the update button enabled properties
             setObjEnable(obj.hButC{1},0)                
             
@@ -279,8 +282,11 @@ classdef DetectParaDialog < handle
             end
             
             % resets the parameter struct
-            obj.bgP = obj.bgP0;            
+            obj.bgP = obj.bgP0;     
             obj.sObj.iMov.bgP = obj.bgP;
+            if isfield(obj.sObj,'isChange')
+                obj.sObj.isChange = true;
+            end
             
             % resets the parameter editbox strings
             for i = 1:length(obj.pType)
@@ -380,14 +386,17 @@ classdef DetectParaDialog < handle
                 % -------------------------------- %                
 
                 case 'rPmxTol'
-                    % ??
+                    % Max. Residual Prominent Peak Ratio
                     nwLim = [0.7,0.99];                    
                     
                 case 'pTolPh'
                     % Max Ref. Image Pixel Intensity Offset
                     nwLim = [2,10];
                     
-                
+                case 'pWQ'
+                    % Residual Image Weighting Threshold
+                    nwLim = [0.1,1];                
+                    
             end
             
         end
@@ -441,8 +450,9 @@ classdef DetectParaDialog < handle
                     % case is the phase detection parameters
                     pType = 'pTrack';
                     tStr = {'Max. Residual Prominent Peak Ratio',...
-                            'Max Reference Image Pixel Intensity Offset'};
-                    pStr = {'rPmxTol','pTolPh'};     
+                            'Max Reference Image Pixel Intensity Offset',...
+                            'Residual Image Weighting Threshold'};
+                    pStr = {'rPmxTol','pTolPh','pWQ'};     
                     ttStr = {
                         sprintf(['the maximum ratio between the 1st ',...
                         'and 2nd ranked residual local maxima.\n %s ',...
@@ -451,8 +461,13 @@ classdef DetectParaDialog < handle
                         sprintf(['max difference avg. pixel intensity ',...
                         'difference from the reference image.\n %s ',...
                         'otherwise, image is corrected by relative ',...
-                        'median intensity.'],a)
-                    };                    
+                        'median intensity.'],a),...
+                        sprintf(['the residual image weight mask  ',...
+                        'thresholding values.\n %s values approaching ',...
+                        '1 will treat image pixels equally.\n %s',...
+                        'lower parameter values will favour darker ',...
+                        'image regions.'],a,a)                        
+                    }; 
                     
             end
             

@@ -9,7 +9,8 @@ elseif isstruct(hGUI)
 end
 
 % retrieves the gui image object handle
-hImg = findall(hGUI,'type','image');
+hPanelI = findall(hGUI,'tag','panelImg');
+hImg = findall(hPanelI,'type','image');
 if isempty(hImg)
     % if there is no image, return a NaN array
     frmSz = NaN(1,2);

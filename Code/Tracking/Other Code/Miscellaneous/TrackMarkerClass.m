@@ -706,11 +706,11 @@ classdef TrackMarkerClass < handle
                                 
                                 % sets up the sub-region x-coordinates
                                 dxTube = iMov.autoP.XC - xOfs;
-                                xTube = iMov.autoP.X0(j,iCol) + dxTube;
+                                xT = iMov.autoP.X0(j,iCol) + dxTube;
                                 
                                 % sets up the sub-region y-coordinates
                                 dyTube = iMov.autoP.YC - yOfs;
-                                yTube = iMov.autoP.Y0(j,iCol) + dyTube;     
+                                yT = iMov.autoP.Y0(j,iCol) + dyTube;     
 
                             case 'Circle'
                                 % calculates the circle coordinates
@@ -718,11 +718,11 @@ classdef TrackMarkerClass < handle
 
                                 % sets up the sub-region x-coordinates
                                 dxTube = XC - xOfs;
-                                xTube = iMov.autoP.X0(j,iCol) + dxTube;
+                                xT = iMov.autoP.X0(j,iCol) + dxTube;
                                 
                                 % sets up the sub-region y-coordinates
                                 dyTube = YC - yOfs;
-                                yTube = iMov.autoP.Y0(j,iCol) + dyTube;                       
+                                yT = iMov.autoP.Y0(j,iCol) + dyTube;                       
 
                             otherwise
                                 % case is for the other detection types
@@ -733,21 +733,21 @@ classdef TrackMarkerClass < handle
                                 end
 
                                 % sets the final tube outline x/y coordinates
-                                [xTube,yTube] = deal(x(obj.ix),y(obj.iy));
+                                [xT,yT] = deal(x(obj.ix),y(obj.iy));
                         end
 
                         % creates the fly/tube markers
                         try
-                            set(obj.hTube{i}{j},'xdata',xTube,'ydata',...
-                                    yTube,'FaceAlpha',fAlpha*mlt,...
+                            set(obj.hTube{i}{j},'xdata',xT,'ydata',...
+                                    yT,'FaceAlpha',fAlpha*mlt,...
                                     'EdgeColor',eCol,'FaceColor',pCol);
                         catch
                             % if there was an error, reinitalise
                             obj.initTrackMarkers(handles,1)
 
                             % updates the tube location
-                            set(obj.hTube{i}{j},'xdata',xTube,'ydata',...
-                                    yTube,'FaceAlpha',fAlpha*mlt,...
+                            set(obj.hTube{i}{j},'xdata',xT,'ydata',...
+                                    yT,'FaceAlpha',fAlpha*mlt,...
                                     'EdgeColor',eCol,'FaceColor',pCol);            
                         end
                     end    

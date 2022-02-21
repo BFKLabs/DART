@@ -7,7 +7,9 @@ iCol = mod(iApp-1,iMov.nCol)+1;
 iRow = floor((iApp-1)/iMov.nCol)+1;
 
 % retrieves the fly count array
-if isfield(iMov,'pInfo')
+if detMltTrkStatus(iMov)
+    iFlyR = 1;
+elseif isfield(iMov,'pInfo')
     % case is the new sub-region data struct format
     if iMov.is2D        
         iFlyR = find(iMov.pInfo.iGrp(:,iApp)>0);
