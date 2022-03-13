@@ -1531,23 +1531,6 @@ else
     updateFlag = 2;
 end
 
-% keep looping until the size stops changing
-sz0 = get(hObject,'Position');
-while 1
-    % pause of a short amount of time...
-    pause(0.25)
-
-    % determines if the figure size has changed
-    sz = get(hObject,'Position');
-    if isequal(sz,sz0)
-        % if not, then exit the loop
-        break
-    else
-        % otherwise, reset the figure size vector
-        sz0 = sz;
-    end
-end
-
 % sets the input variables (if not provided)
 if ~exist('handles','var'); handles = guidata(hObject); end
 
@@ -2218,7 +2201,11 @@ else
 end
 
 % sets the GUI properties
+try
 setTrackGUIProps(handles,'PreFlyDetect')
+catch
+    % FIX ME!
+end
 
 % sets the tracking object fields
 trkObj.segEntireVideo(handles,iMov,pData);
@@ -2840,8 +2827,11 @@ iMov = struct('pos',[1 1 1 1],'posG',[],'Ibg',[],'ddD',[],...
               'isSet',false,'ok',true,'tempSet',false,'isOpt',false,...
               'useRot',false,'rotPhi',90,'calcPhi',false,'sepCol',false,...
               'vGrp',[],'sRate',5,'nDS',1,'mShape','Rect','phInfo',[]);
-iMov.sgP = iData.sgP;          
-          
+
+% sets the parameter sub-struct fields
+iMov.bgP = DetectPara.initDetectParaStruct('All');        
+iMov.sgP = iData.sgP;
+
 % --- sets the experimental parameters struct/field values --- %
 function exP = setExpPara(handles,exP)
 
