@@ -612,8 +612,8 @@ classdef VideoPhase < handle
                 % calculates estimated pixel intensity average and
                 % compares it with the actual value
                 iNw = [indG(i-1,2),indG(i,1)];                
-                D0 = obj.calcDist(iNw(1));
-                Dact = obj.calcDist(iNw(2));
+                D0 = obj.calcDist(iNw(1),1);
+                Dact = obj.calcDist(iNw(2),1);
                 [dT,Vest] = deal(diff(iNw),pGrp(i-1));
 
                 % determines if the the frame groups can be combined  
@@ -622,8 +622,8 @@ classdef VideoPhase < handle
                 elseif abs(Vest) < pTolMin
                     % if the gradient of the previous frame group is
                     % low, then compare the estimated/actual distances
-                    Dpr = obj.calcDist(iFrmGrp{i-1});
-                    Dnw = obj.calcDist(iFrmGrp{i});
+                    Dpr = obj.calcDist(iFrmGrp{i-1},1);
+                    Dnw = obj.calcDist(iFrmGrp{i},1);
                     dD = pdist2(Dpr,Dnw);
                     
                     inTol = max(dD(:)) < obj.Dtol;
@@ -946,10 +946,15 @@ classdef VideoPhase < handle
 
             % calculates the difference in the distance values
             Davg = obj.calcDist(iFrmG0);
-            dDavg = abs(diff(Davg));
-            iDiff = find(dDavg > obj.Dtol);
-            
+            if obj.hasSR
+                dDavg = max(abs(diff(Davg,[],1)),[],2);
+                Davg = mean(Davg,2);
+            else
+                dDavg = abs(diff(Davg));
+            end
+
             % determines if there is a major difference in pixel intensity
+            iDiff = find(dDavg > obj.Dtol);
             if isempty(iDiff)
                 % if there is no major difference, then 
                 [~,jmn] = min(abs(repmat(Davg,1,2) - Davg([1,end])'),[],2);
@@ -1040,7 +1045,7 @@ classdef VideoPhase < handle
                                 
                 % the differences in the mean image metrics versus the
                 % candidate frames
-                Dnw = obj.calcDist(iFrmNw0);
+                Dnw = obj.calcDist(iFrmNw0,1);
                 dD = D0-Dnw;
                 dDmx = max(abs(dD),[],1);
                 imn = argMin(dDmx);
@@ -1300,11 +1305,20 @@ classdef VideoPhase < handle
             if obj.isBig
                 % case is a big frame is being analysed
                 pOfs = -flip(fastreg(I,Iref)); 
-                IT = imtranslate(I,-pOfs);
+                IT = imtranslate(I,-pOfs);                
             else
                 % case is a smaller frame is being analysed
                 IT = imregister(I,Iref,'translation',obj.rOpt,obj.rMet); 
                 pOfs = -flip(fastreg(IT,I));             
+            end
+            
+            % calculates the average difference between the reference image
+            % and the original/translated images
+            dImg = cellfun(@(x)(nanmean(abs(x(:)-Iref(:)))),{I,IT});
+            if argMin(dImg) == 1
+                % if the original image has a lower difference, then flag
+                % that the image is static
+                pOfs = [0,0];
             end
 
             % removes the regions where translation has occured
@@ -1323,13 +1337,17 @@ classdef VideoPhase < handle
         end           
         
         % --- calculates the mean distance for a given frame, iFrm
-        function Dmn = calcDist(obj,iFrm)
+        function Dmn = calcDist(obj,iFrm,varargin)
             
             DimgFrm = obj.getDimg(iFrm);
             
-            xi = 1:size(DimgFrm,2);
-            pW = repmat(xi/sum(xi),size(DimgFrm,1),1);
-            Dmn = sum(pW.*DimgFrm,2);
+            if obj.hasSR && (nargin == 2)
+                Dmn = DimgFrm;
+            else
+                xi = ones(1,size(DimgFrm,2));
+                pW = repmat(xi/sum(xi),size(DimgFrm,1),1);
+                Dmn = sum(pW.*DimgFrm,2);
+            end
             
         end        
         

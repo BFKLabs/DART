@@ -1,7 +1,10 @@
 function Im = setGroup(Ig,dim,isInv)
 
 % converts the 
-if (~iscell(Ig))
+if isempty(Ig)
+    Im = false(dim);
+    return
+elseif ~iscell(Ig)
     Ig = {Ig};
 end
 

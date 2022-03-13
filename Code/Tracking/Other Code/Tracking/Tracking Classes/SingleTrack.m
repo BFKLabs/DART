@@ -239,6 +239,13 @@ classdef SingleTrack < Track
         % --- applies the image translation 
         function IT = applyImgTrans(I,pOfs)
             
+            % if image is empty or all NaNs then exit with original image
+            N = min(10,min(size(I)));
+            if isempty(I) || all(isnan(arr2vec(I(1:N,1:N))))
+                IT = I;
+                return;
+            end
+            
             % pads the array by the movement magnitude
             sz = size(I);
             dpOfs = ceil(abs(flip(pOfs)))+2;

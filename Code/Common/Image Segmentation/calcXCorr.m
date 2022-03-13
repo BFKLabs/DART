@@ -1,6 +1,11 @@
 % --- calculates the x-correlation of the image, I, with the template, IT
 function Ixc = calcXCorr(IT,I,D,varargin)
 
+if all(isnan(I(:)))
+    Ixc = zeros(size(I));
+    return
+end
+
 % sets the default input arguments
 if ~exist('D','var')
     D = 2*ceil((size(IT) - 1)/2);

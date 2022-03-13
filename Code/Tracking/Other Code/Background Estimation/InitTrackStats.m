@@ -169,7 +169,7 @@ classdef InitTrackStats < handle
                             'Right','Style','Text');             
             
             % creates the popupmenu object
-            cbFcn = {@obj.popupChangeMetric,obj};
+            cbFcn = @obj.popupChangeMetric;
             ppPos = [sum(txtPos([1,3])),y0,obj.widPopup,obj.hghtPopup];
             lStr = {'Residual (Raw)','Residual (Median-Adjusted)'}';
             obj.hPopupM = uicontrol(obj.hPanelT,'Units','Pixels',...
@@ -181,7 +181,7 @@ classdef InitTrackStats < handle
             x0 = obj.dX+sum(ppPos([1,3]));
             chkStr = 'Show Highlight Marker';
             chkPos = [x0,y0,obj.widCheck,obj.hghtCheck];
-            cbFcn = {@obj.checkShowHighlight,obj};
+            cbFcn = @obj.checkShowHighlight;
             obj.hCheckH = uicontrol(obj.hPanelT,'Style','CheckBox',...
                             'Units','Pixels','Position',chkPos,...
                             'FontUnits','pixels','FontWeight','bold',...
@@ -209,7 +209,7 @@ classdef InitTrackStats < handle
             
             % creates the popupmenu object
             lStr = obj.setupRegionString();
-            cbFcn = {@obj.popupChangeRegion,obj};
+            cbFcn = @obj.popupChangeRegion;
             ppPos = [sum(txtPos([1,3])),obj.dX,obj.widPopup,obj.hghtPopup];            
             obj.hPopupR = uicontrol(obj.hPanelI,'Units','Pixels',...
                                    'Style','PopupMenu','Value',1,...
@@ -220,7 +220,7 @@ classdef InitTrackStats < handle
             x0 = obj.dX+sum(ppPos([1,3]));
             chkStr = 'Show Statistics Summary';
             chkPos = [x0,obj.dX,obj.widCheck,obj.hghtCheck];
-            cbFcn = {@obj.checkShowSummary,obj};
+            cbFcn = @obj.checkShowSummary;
             obj.hCheckM = uicontrol(obj.hPanelI,'Style','CheckBox',...
                             'Units','Pixels','Position',chkPos,...
                             'FontUnits','pixels','FontWeight','bold',...
@@ -234,6 +234,157 @@ classdef InitTrackStats < handle
             % creates the table object
             obj.setupTableData();   
             obj.createTableObject(true);                        
+            
+        end        
+        
+        % -------------------------- %
+        % --- CALLBACK FUNCTIONS --- %
+        % -------------------------- %            
+        
+        % --- popup menu region selection callback function
+        function popupChangeRegion(obj, ~, ~)
+            
+            % updates the table data
+            if get(obj.hCheckM,'Value')
+                obj.setupSummaryData();
+            else
+                obj.setupTableData();
+            end
+            
+            % updates the table with the new data            
+            obj.resetTableData();
+            
+        end        
+        
+        % --- popup menu metric selection callback function
+        function popupChangeMetric(obj, ~, ~)
+            
+            % updates the table with the new data
+            obj.setupTableData();
+            obj.resetTableData()
+            
+        end
+        
+        % --- checkbox show summary callback function
+        function checkShowSummary(obj, hCheck, ~)
+            
+            % updates the other object enabled properties
+            isShow = get(hCheck,'Value');
+            setObjEnable(obj.hTextM,~isShow);
+            setObjEnable(obj.hPopupM,~isShow);
+            setObjEnable(obj.hCheckH,~isShow);
+            
+            % updates the table with the new data
+            if isShow
+                % sets the summary table data
+                obj.setupSummaryData();
+                
+                % removes 
+                set(obj.hCheckH,'Value',0)
+                obj.checkShowHighlight(obj.hCheckH, [], obj)
+            else
+                % sets the normal table data
+                obj.setupTableData();
+            end
+            
+            % updates the table with the new data
+            obj.createTableObject(false);            
+            
+        end
+        
+        % --- checkbox show summary callback function
+        function checkShowHighlight(obj, hCheck, ~) 
+            
+            hMarkH = findall(obj.hAx,'tag','hMarkH');
+            setObjVisibility(hMarkH,get(hCheck,'Value'))
+            
+        end
+        
+        % --- table cell selection callback function
+        function tableCellSelect(obj, jTable, ~)
+            
+            % if the summary data is showing, then exit
+            if get(obj.hCheckM,'Value'); return; end
+            
+            % parameters
+            iColGap = 4;
+            
+            % retrieves the selected row/column indices
+            iRow = jTable.getSelectedRow + 1;
+            iCol = jTable.getSelectedColumn + 1;
+                        
+            % if the row/column indices is invalid, or a gap, then exit            
+            if isempty(iRow) || isempty(iCol) || (iCol == iColGap)
+                return
+            end            
+            
+            % sets the global frame index
+            switch iCol
+                case 1
+                    % case is the overall maximum
+                    iFrmG = obj.iMin(iRow);
+                    
+                case 2
+                    % case is the overall minimum
+                    iFrmG = obj.iMax(iRow);
+                    
+                case 3
+                    % case is the average 
+                    return
+                    
+                otherwise
+                    % case is the regular frame 
+                    iFrmG = iCol - iColGap;
+            end
+                  
+            % determines the phase/frame 
+            iFrmT = [0;cumsum(cellfun(@length,obj.bgObj.indFrm))];
+            iPhase = find(iFrmG <= iFrmT(2:end),1,'first');
+            iFrm = iFrmG - iFrmT(iPhase);   
+            
+            % updates the selected frame
+            obj.bgObj.iPara.cFrm = iFrm;
+            obj.bgObj.iPara.cPhase = iPhase;
+            obj.bgObj.iPara.nFrm = length(obj.bgObj.indFrm{iPhase});
+            
+            % updates the display
+            set(obj.bgObj.hGUI.editPhaseCount,'String',num2str(iPhase))
+            set(obj.bgObj.hGUI.editFrameCount,'String',num2str(iFrm))            
+            obj.bgObj.editPhaseCount(obj.bgObj.hGUI.editPhaseCount, [])
+            
+            % updates the highlight marker
+            setObjEnable(obj.hCheckH,'on');
+            obj.updateHighlightMarker(iPhase,iFrm,iRow);
+            
+        end
+        
+        % --- resets the table data values
+        function tableCellChange(obj, ~, evnt)
+            
+            % if updating, then exit
+            if obj.isUpdating; return; end
+            
+            % retrieves the altered row/column indices
+            [iRow,iCol] = deal(evnt.getFirstRow,evnt.getColumn);            
+
+            % resets the cell table value
+            obj.isUpdating = true;
+            pause(0.05);
+            
+            obj.jTable.setValueAt(obj.Data{iRow+1,iCol+1},iRow,iCol);
+            obj.isUpdating = false;
+            
+        end
+        
+        % --- deletes the GUI
+        function closeGUI(obj, ~, ~)
+            
+            % deletes the marker 
+            hMarkH = findall(obj.hAx,'tag','hMarkH');
+            if ~isempty(hMarkH); delete(hMarkH); end
+           
+            % deletes the GUI
+            delete(obj.hFig);
             
         end        
         
@@ -283,10 +434,10 @@ classdef InitTrackStats < handle
             
             % sets the table callback function
             jTM = handle(obj.jTable,'callbackproperties');            
-            cbFcnC = {@obj.tableCellSelect,obj};
+            cbFcnC = @obj.tableCellSelect;
             addJavaObjCallback(jTM,'MouseClickedCallback',cbFcnC);  
 
-%             cbFcnT = {@obj.tableCellChange,obj};            
+%             cbFcnT = @obj.tableCellChange;            
 %             addJavaObjCallback(jTableMod,'TableChangedCallback',cbFcnT)
             
             % creates the table cell renderer
@@ -619,161 +770,6 @@ classdef InitTrackStats < handle
     
     % static class methods
     methods (Static)
-        
-        % -------------------------- %
-        % --- CALLBACK FUNCTIONS --- %
-        % -------------------------- %        
-        
-        % --- popup menu region selection callback function
-        function popupChangeRegion(~, ~, obj)
-            
-            % updates the table data
-            if get(obj.hCheckM,'Value')
-                obj.setupSummaryData();
-            else
-                obj.setupTableData();
-            end
-            
-            % updates the table with the new data            
-            obj.resetTableData();
-            
-        end        
-        
-        % --- popup menu metric selection callback function
-        function popupChangeMetric(~, ~, obj)
-            
-            % updates the table with the new data
-            obj.setupTableData();
-            obj.resetTableData()
-            
-        end
-        
-        % --- checkbox show summary callback function
-        function checkShowSummary(hCheck, ~, obj)
-            
-            % updates the other object enabled properties
-            isShow = get(hCheck,'Value');
-            setObjEnable(obj.hTextM,~isShow);
-            setObjEnable(obj.hPopupM,~isShow);
-            setObjEnable(obj.hCheckH,~isShow);
-            
-            % updates the table with the new data
-            if isShow
-                % sets the summary table data
-                obj.setupSummaryData();
-                
-                % removes 
-                set(obj.hCheckH,'Value',0)
-                obj.checkShowHighlight(obj.hCheckH, [], obj)
-            else
-                % sets the normal table data
-                obj.setupTableData();
-            end
-            
-            % updates the table with the new data
-            obj.createTableObject(false);            
-            
-        end
-        
-        % --- checkbox show summary callback function
-        function checkShowHighlight(hCheck, ~, obj) 
-            
-            hMarkH = findall(obj.hAx,'tag','hMarkH');
-            setObjVisibility(hMarkH,get(hCheck,'Value'))
-            
-        end
-        
-        % --- table cell selection callback function
-        function tableCellSelect(jTable, ~, obj)
-            
-            % if the summary data is showing, then exit
-            if get(obj.hCheckM,'Value'); return; end
-            
-            % parameters
-            iColGap = 4;
-            
-            % retrieves the selected row/column indices
-            iRow = jTable.getSelectedRow + 1;
-            iCol = jTable.getSelectedColumn + 1;
-                        
-            % if the row/column indices is invalid, or a gap, then exit            
-            if isempty(iRow) || isempty(iCol) || (iCol == iColGap)
-                return
-            end            
-            
-            % sets the global frame index
-            switch iCol
-                case 1
-                    % case is the overall maximum
-                    iFrmG = obj.iMin(iRow);
-                    
-                case 2
-                    % case is the overall minimum
-                    iFrmG = obj.iMax(iRow);
-                    
-                case 3
-                    % case is the average 
-                    return
-                    
-                otherwise
-                    % case is the regular frame 
-                    iFrmG = iCol - iColGap;
-            end
-                  
-            % determines the phase/frame 
-            iFrmT = [0;cumsum(cellfun(@length,obj.bgObj.indFrm))];
-            iPhase = find(iFrmG <= iFrmT(2:end),1,'first');
-            iFrm = iFrmG - iFrmT(iPhase);   
-            
-            % updates the selected frame
-            obj.bgObj.iPara.cFrm = iFrm;
-            obj.bgObj.iPara.cPhase = iPhase;
-            obj.bgObj.iPara.nFrm = length(obj.bgObj.indFrm{iPhase});
-            
-            % updates the display
-            set(obj.bgObj.hGUI.editPhaseCount,'String',num2str(iPhase))
-            set(obj.bgObj.hGUI.editFrameCount,'String',num2str(iFrm))            
-            obj.bgObj.editPhaseCount(obj.bgObj.hGUI.editPhaseCount, [])
-            
-            % updates the highlight marker
-            setObjEnable(obj.hCheckH,'on');
-            obj.updateHighlightMarker(iPhase,iFrm,iRow);
-            
-        end
-        
-        % --- resets the table data values
-        function tableCellChange(~, evnt, obj)
-            
-            % if updating, then exit
-            if obj.isUpdating; return; end
-            
-            % retrieves the altered row/column indices
-            [iRow,iCol] = deal(evnt.getFirstRow,evnt.getColumn);            
-
-            % resets the cell table value
-            obj.isUpdating = true;
-            pause(0.05);
-            
-            obj.jTable.setValueAt(obj.Data{iRow+1,iCol+1},iRow,iCol);
-            obj.isUpdating = false;
-            
-        end
-        
-        % --- deletes the GUI
-        function closeGUI(~,~,obj)
-            
-            % deletes the marker 
-            hMarkH = findall(obj.hAx,'tag','hMarkH');
-            if ~isempty(hMarkH); delete(hMarkH); end
-           
-            % deletes the GUI
-            delete(obj.hFig);
-            
-        end            
-        
-        % ------------------------------- %
-        % --- MISCELLANEOUS FUNCTIONS --- %
-        % ------------------------------- %           
         
         % --- converts the numeric values to strings
         function yStr = setValueStr(yVal)

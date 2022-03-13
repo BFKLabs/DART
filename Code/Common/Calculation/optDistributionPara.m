@@ -27,17 +27,22 @@ end
 % --- calculates the optimisation objective function
 function [F,pMLE,pOut] = optFunc(xNw,Y,N,iMx,x,dType)
 
+% parameters
+nMin = 5;
+
 % calculates the distribution parameter estimate
 x(iMx) = xNw;
 ii = (Y >= x(1)) & (Y <= x(2));
-pMLE = mle(Y(ii),'distribution',dType);
+
+if sum(ii) < nMin
+    F = 1e6;
+    return
+else
+    pMLE = mle(Y(ii),'distribution',dType);
+end
 
 % calculates te 
-try
 [Nc,Xedge] = histcounts(Y,N);
-catch
-    a = 1;
-end
 
 % calculates the mle/pdf estimates
 xi = 0.5*(Xedge(1:end-1) + Xedge(2:end));

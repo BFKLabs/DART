@@ -52,7 +52,8 @@ classdef SingleTrackInit < SingleTrack
         pSigMin = 0.5;
         nOpenRng = 15;
         mdDim = 30*[1,1];         
-        hSR = fspecial('disk',2);        
+        hSR = fspecial('disk',2);   
+        okFrm
         
     end
     
@@ -195,12 +196,12 @@ classdef SingleTrackInit < SingleTrack
             nT = getSRCountVec(obj.iMov);
             nApp = numel(nT);
             
-             % field re-initialisation
-             if isfield(obj.iMov,'hFilt')
-                 obj.hFilt = obj.iMov.hFilt;  
-             else
+            % field re-initialisation
+            if isfield(obj.iMov,'hFilt')
+                obj.hFilt = obj.iMov.hFilt;  
+            else
                 obj.hFilt = [];   
-             end
+            end
             
             % phase dependent object memory allocation
             A = cell(nPh,1);           
@@ -674,6 +675,7 @@ classdef SingleTrackInit < SingleTrack
             % calculates the overall sub-region status flags
             sFlagMax = calcImageStackFcn(obj.sFlag,'max');
             hasMove = (obj.sFlag{iPh} == 0) & (sFlagMax >= 1);
+            isOK = cellfun(@(x)(~all(isnan(x(:)))),IL0(:,1));
                                     
             % -------------------------------------------- %
             % --- INTER-PHASE STATIC OBJECT COMPARISON --- %
@@ -854,8 +856,8 @@ classdef SingleTrackInit < SingleTrack
                 fPBG = cellfun(@(x)(x(j,:)),obj.fPosL{iPh}(k,:)','un',0);
                 
                 % estimates the sub-region background image
-                ILR0 = cellfun(@(x)(x(iRT0,:)),IL0(:,k),'un',0);
-                IbgL = obj.estSubRegionBG(ILR0,cell2mat(fPBG));
+                ILR0 = cellfun(@(x)(x(iRT0,:)),IL0(isOK,k),'un',0);
+                IbgL = obj.estSubRegionBG(ILR0,cell2mat(fPBG(isOK)));
                 obj.IbgT{iPh}(obj.iMov.iR{k}(iRT0),iC0) = IbgL;  
             end
             
@@ -902,13 +904,18 @@ classdef SingleTrackInit < SingleTrack
             
             % ----------------------------------------- %
             % --- MOST LIKELY STATIC BLOC DETECTION --- %
-            % ----------------------------------------- %            
+            % ----------------------------------------- %   
+            
+            % parameters
+            pTile = 75;
             
             % calcualtes the mean image stack values. from this determine
             % the local maxima linear indices
             ZtotMn = calcImageStackFcn(Ztot);
+            ZtotMx = calcImageStackFcn(Ztot,'max');
+            ZtotMnMx = ZtotMn.*ZtotMx;
             BedgeMn = bwmorph(true(size(Ztot{1})),'remove');
-            iGrpMn = find(~BedgeMn.*imregionalmax(ZtotMn)); 
+            iGrpMn = find(~BedgeMn.*imregionalmax(ZtotMnMx)); 
             
             % if there are no valid candidates, then exit the function
             if isempty(iGrpMn)
@@ -918,8 +925,9 @@ classdef SingleTrackInit < SingleTrack
             
             % sorts the peaks by mask value. remove any peaks that are
             % significantly less than the maximum value
-            [ZtotMnS,iS] = sort(ZtotMn(iGrpMn),'descend');
-            iS = iS(ZtotMnS/ZtotMnS(1) > zTol);
+            Qtot = ZtotMnMx(iGrpMn);
+            [QtotS,iS] = sort(Qtot,'descend');
+            iS = iS(QtotS/QtotS(1) > zTol);
             iGrpMn = iGrpMn(iS);
             
             % if there is ambiguity in the most likely blob location, then
@@ -927,21 +935,20 @@ classdef SingleTrackInit < SingleTrack
             if length(iGrpMn) > 1
                 % thresholds the image for the lower tolerance (removes any
                 % local maxima on the image edge)
-                Btmp = ~BedgeMn.*(ZtotMn > zTol*ZtotMnS(1));
+                Btmp = ~BedgeMn.*(ZtotMnMx > zTol*QtotS(1));
                 jGrpMn = getGroupIndex(Btmp);                
                 
                 % calculates the objective values for each thresholded blob
-                AGrpMn = cellfun(@(x)(sqrt(length(x))/dTol),jGrpMn,'un',0);
-                ZGrpMn = cellfun(@(x,y)(x.*max(ZtotMn(y))),AGrpMn,jGrpMn);
+                ZGrpMn = cellfun(@(x)(prctile(ZtotMnMx(x),pTile)),jGrpMn);
                 
                 % determines the peak point within the most likely blob
                 iMx = argMax(ZGrpMn);
-                jMx = argMax(ZtotMn(jGrpMn{iMx}));
+                jMx = argMax(ZtotMnMx(jGrpMn{iMx}));
                 iGrpMn = jGrpMn{iMx}(jMx);
             end
             
             % calculates the location of the most likely static blob
-            [yPC,xPC] = ind2sub(size(ZtotMn),iGrpMn);
+            [yPC,xPC] = ind2sub(size(ZtotMnMx),iGrpMn);
             
             % ----------------------------------- %
             % --- FRAME STATIC BLOC DETECTION --- %
@@ -1056,7 +1063,8 @@ classdef SingleTrackInit < SingleTrack
             
             % determines if there are any "missing" frames (frames where
             % the max pixel intensity is less than tolerance
-            if any(~isSig)
+            notSig = ~isSig & obj.okFrm;
+            if any(notSig)
                 % if so, then match the points close to the mean location
                 fPosMn = [];
                 if mean(isSig) >= 0.5
@@ -1067,7 +1075,7 @@ classdef SingleTrackInit < SingleTrack
                 end
                 
                 %
-                for i = find(~isSig(:)')
+                for i = find(notSig(:)')
                     % calculates the local maxima objective function values
                     if isempty(fPosMn)
                         DP = 1;
@@ -1141,13 +1149,15 @@ classdef SingleTrackInit < SingleTrack
                                 (x,'min')),num2cell(IL,1),'un',0); 
             IRng0 = cellfun(@(x,y)(x-y),Imax,Imin,'un',0);
             
+            % calculates the homo-morphic filtered images
+            Ihmf = cellfun(@(x)(applyHMFilter(x)),Imin,'un',0);
+            
             % determines the regions which have high range/low pixel
             % intensity values 
             Bacc = cellfun(@(x,y,z)((...
                     (x > prctile(x(:),pRngTol)) & ...
                     (y < prctile(y(:),pIminTol)) & ...
-                    (z < ImaxTol))),...
-                    IRng0,Imin,Imax,'un',0);
+                    (z < ImaxTol))),IRng0,Ihmf,Imax,'un',0);
                       
             % sets up the adjusted range image stack (adjusted so only high
             % range values with low min pixel intensities are analysed) 
@@ -1303,8 +1313,9 @@ classdef SingleTrackInit < SingleTrack
             
             % memory allocation
             nApp = length(obj.iMov.pos);
-            obj.mFlag = cell(nApp,1);
-            nFrmPh = diff(obj.iMov.iPhase(iPh,:))+1;            
+            obj.mFlag = cell(nApp,1);            
+            nFrmPh = diff(obj.iMov.iPhase(iPh,:))+1;      
+            obj.okFrm = obj.checkFrameFeas(I(:,1));
             
             % sets up the distance tolerance flag
             if isfield(obj.iMov,'szObj')
@@ -1768,6 +1779,7 @@ classdef SingleTrackInit < SingleTrack
             
             % retrieves the fluctuation/translation flags
             [hasF,hasT] = deal(obj.getFlucFlag,obj.getTransFlag(iApp));
+            I(~obj.okFrm) = {zeros(size(I{1}))};
             
             % if the region has significant translation, and the image
             % fluctuations hasn't been accounted for, then apply the
@@ -1925,7 +1937,7 @@ classdef SingleTrackInit < SingleTrack
             nMet = length(fieldnames(obj.pStats));
             nTube = num2cell(arr2vec(getSRCount(obj.iMov)'))';
             [tData,obj.pData] = deal(cell(nMet,1));
-                        bgP = getTrackingPara(obj.iMov.bgP,'pSingle');
+            bgP = getTrackingPara(obj.iMov.bgP,'pSingle');
             wStr0 = {'Tracking Quality Calculations','Analysing Frame'};
             
             % resets the progressbar level count
@@ -2213,7 +2225,9 @@ classdef SingleTrackInit < SingleTrack
 
             % parameters
             pW = 1.2;
-            dTol = 0.075;            
+            dTol = 0.075;
+            d2Tol = 0.005;
+            pMuTol = 0.5;
 
             % determines the peaks from the signal
             dRng = YRng0(:) - YBL(:);
@@ -2222,6 +2236,23 @@ classdef SingleTrackInit < SingleTrack
 
             % clusters these groups using the DBSCAN clustering algorithm
             QP = max(0,[yP,pP]);
+            
+            % determines the initial search neighbourhood size
+            while 1
+                % calculates the 2D histogram count. from this, determine
+                % the binary grouping that contains the origin point
+                N = histcounts2(QP(:,1),QP(:,2),roundP(1/dTol))';
+                [~,BN] = detGroupOverlap(N > 0,setGroup([1,1],size(N)));                
+                if mean(diag(BN)) > pMuTol
+                    % if the neighbourhood size is too large then reduce it
+                    dTol = dTol - d2Tol;
+                else
+                    % otherwise, exit the loop
+                    break
+                end
+            end
+            
+            % runs the clustering algorithm
             jdx = DBSCAN(QP,dTol,1);
 
             % determines the cluster most like to represent the baseline peaks
@@ -2234,6 +2265,18 @@ classdef SingleTrackInit < SingleTrack
             iSig = sort(cell2mat(iGrp(~setGroup(iMin,size(iGrp)))));
             pTol0 = [max(YRng0(tP(iGrp{iMin}))),min(YRng0(tP(iSig)))];
             pTol = pW*mean(pTol0);
+            
+        end
+        
+        % --- determines the frame feasibility
+        function okFrm = checkFrameFeas(IL)
+            
+            % ensures the images are stored in a cell array
+            if ~iscell(IL); IL = {IL}; end
+            
+            % determines which frames are feasible (no NaN frames)
+            N = 10;
+            okFrm = ~cellfun(@(x)(all(isnan(arr2vec(x(1:N,1:N))))),IL);
             
         end
         

@@ -85,10 +85,8 @@ switch (pType)
 end
 
 % 
-if ~isempty(vout)
-    for i = 1:length(vout)
-        varargout(i) = {vout{i}};
-    end
+if nargout
+    varargout = {h};    
 end
 
 %-------------------------------------------------------------------------%

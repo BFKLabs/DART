@@ -20,6 +20,7 @@ classdef CalcBG < handle
         ImgFrm0
         ImgC
         ok0
+        vPhase0
         
         % array dimensioning
         nApp
@@ -71,7 +72,6 @@ classdef CalcBG < handle
         axPosX 
         axPosY
         pStats
-        pData
         iFrm    
         vcObj
         statsObj
@@ -462,7 +462,7 @@ classdef CalcBG < handle
                      'buttonUpdateStack','frmFirstPhase','frmPrevPhase',...
                      'frmNextPhase','frmLastPhase','editPhaseCount',...      
                      'frmFirstFrame','frmPrevFrame','frmNextFrame',...
-                     'frmLastFrame','editFrameCount',...
+                     'frmLastFrame','editFrameCount','checkTrackPhase',...
                      'checkFilterImg','editFilterSize','popupImgType',...
                      'checkTubeRegions','checkFlyMarkers',...
                      'buttonUpdateEst','buttonAddManual',...
@@ -630,6 +630,7 @@ classdef CalcBG < handle
             % sets the phase detection related object properties
             if phaseDetected
                 % sets the frame index arrays
+                obj.vPhase0 = obj.iMov.vPhase;
                 nPhase = length(obj.iMov.vPhase);
                 obj.indFrm = getPhaseFrameIndices...
                                             (obj.iMov,obj.trkObj.nFrmR);                                                                          
@@ -645,7 +646,7 @@ classdef CalcBG < handle
                 obj.setVideoInfoProps()
                 iFrm0 = num2str(obj.indFrm{1}(1));
                 set(obj.hGUI.editFrameCount,'string','1')          
-                set(obj.hGUI.textCurrentFrame,'string',iFrm0)                          
+                set(obj.hGUI.textCurrentFrame,'string',iFrm0)                
                 
             else
                 % clears the frame count string
@@ -794,15 +795,17 @@ classdef CalcBG < handle
             % case is the background has been calculated
             if ~isempty(obj.iMov.Ibg)
                 if ~isempty(obj.iMov.Ibg{obj.iPara.cPhase})
-                    if isempty(obj.trkObj.IbgT0)
+                    if ~isfield(obj.trkObj,'IbgT0') || ...
+                        isempty(obj.trkObj.IbgT0)
                         popStrNw = {'Background';...
-                                    'Residual'};
+                                    'Residual';...
+                                    'Cross-Correlation'};
                     else
                         popStrNw = {'Background (Raw)';...
                                     'Background (Filled)';...
                                     'Residual (Raw)';...
                                     'Residual (Filled)';...
-                                    'Template Cross-Correlation'};
+                                    'Cross-Correlation'};
                     end
                             
                     % adds the strings to array
@@ -975,6 +978,12 @@ classdef CalcBG < handle
                       'Residual (Raw)',...
                       'Residual (Filled)'}
                     % case is the raw residual image
+                    
+                    % scales the image (if required)
+                    if isfield(obj.iMov,'pImg')
+                        pI = obj.iMov.pImg(iPhase,:);
+                        Img0 = pI(2)*(Img0 - pI(1));
+                    end
 
                     % reads the image
                     bgP = obj.getTrackingPara();
@@ -1020,7 +1029,7 @@ classdef CalcBG < handle
                         
                     end
                     
-                case {'Template Cross-Correlation'}
+                case {'Cross-Correlation'}
                   
                     % creates a progressbar
                     wStr = 'Setting Up Cross-Correlation Mask';
@@ -1035,7 +1044,7 @@ classdef CalcBG < handle
                     % applies the image filter (if used)
                     if bgP.useFilt
                         Img0 = imfiltersym(Img0,hS);
-                    end
+                    end                    
                     
                     % calculates the region x-correlation image
                     InwL = obj.setupXCorrImage(Img0);                     
@@ -1091,9 +1100,13 @@ classdef CalcBG < handle
                 Bw = getExclusionBin(obj.iMov,size(IL{1}),i);                
                 
                 % calculates the image cross-correlation
-                dI = setupResidualEstStack(IL,mdDim);
-                IxcL{i} = Bw.*max(0,calcXCorr(obj.iMov.hFilt,...
-                                        fillArrayNaNs(dI{1})));
+                if obj.isMTrk
+                    IxcL{i} = calcXCorr(-obj.iMov.IsubT,IL{1});
+                else
+                    dI = setupResidualEstStack(IL,mdDim);
+                    IxcL{i} = Bw.*max(0,calcXCorr(obj.iMov.hFilt,...
+                                          fillArrayNaNs(dI{1}))); 
+                end
             end
             
         end
@@ -1106,19 +1119,30 @@ classdef CalcBG < handle
             imov = obj.iMov; 
             
             % other initialisations
-            [iPhase,iFrmNw,pCol] = deal(ipara.cPhase,ipara.cFrm,'g');            
-
+            [iPhase,iFrmNw] = deal(ipara.cPhase,ipara.cFrm);            
+            if isequal(colormap(obj.hAx),colormap('jet'))
+                [pCol,lWid] = deal('r',2);
+            else
+                [pCol,lWid] = deal('g',2);
+            end
+            
             % sets the marker properties            
-            if ispc
-                [pMark,obj.mSz] = deal('o',10);
-            else                
-                [pMark,obj.mSz] = deal('*',8);
-            end                
+            if obj.isMTrk
+                [pMark,obj.mSz] = deal('.',12);
+            else
+                if ispc
+                    [pMark,obj.mSz] = deal('o',10);
+                else                
+                    [pMark,obj.mSz] = deal('*',8);
+                end
+            end
             
             % marker coordinate arrays
+            vStr = {'off','on'};
             fpos = obj.fPos{iPhase};  
             isFeas = ~isempty(fpos);
-
+            showMark = get(obj.hGUI.checkFlyMarkers,'Value');
+            
             % updates the fly markers for all apparatus
             for iApp = 1:length(imov.iR)
                 % retrieves the position values
@@ -1130,13 +1154,14 @@ classdef CalcBG < handle
                     fPosNw = fpos{iApp,iFrmNw};
                     [iCol,~,iRow] = getRegionIndices(obj.iMov,iApp);
                     set(obj.hMark{iApp}{1},'xdata',fPosNw(:,1),...
-                                           'ydata',fPosNw(:,2))                                                                                 
+                                           'ydata',fPosNw(:,2),...
+                                           'Visible',vStr{1+showMark})                                                                                 
 
                     % updates the other properties                        
                     if imov.flyok(iRow,iCol)
                         set(obj.hMark{iApp}{1},'marker',pMark,...
                                     'color',pCol,'markersize',obj.mSz,...
-                                    'linewidth',2);                                
+                                    'linewidth',lWid);                                
                     end
                     
                 else   
@@ -1191,9 +1216,9 @@ classdef CalcBG < handle
             ipara = obj.iPara;
             
             % parameters
-            pCol = {'k','b','m','r',[153 51 0]/255,'k'};
-            pType = {'Low Variance','High Variance','Untrackable',...
-                     'Invalid','Small','Direct'};                        
+            pCol = {'k','b','m','r'};
+            pType = {'Low Variance','High Variance',...
+                     'Untrackable','Rejected'};
 
             % variance string toolstrings
             ttStr = {sprintf(['* Low pixel intensity variance within phase.\n',...
@@ -1206,15 +1231,9 @@ classdef CalcBG < handle
                               '--> Pixel range is either too low or mean pixel intensity too low/high',...
                               '--> Fly locations determined by interpolating from surrounding phases.\n',...
                               '--> Tracking efficacy will be low.']);...
-                     sprintf(['* Invalid video phase.\n',...
-                              '--> Severe issues with the lighting in video phase.\n',...
-                              '--> No tracking will be undertaken.']);...
-                     sprintf(['* Small experimental regions.\n',...
-                              '--> Fly locations determined by SVM statistical classification.\n',...
-                              '--> Tracking efficacy should be high.']); 
-                     sprintf(['* Direct analysis phase.\n',...
-                              '--> Fly location determined by direct analysis.\n',...
-                              '--> Tracking efficacy should be high if arena is small.'])}; 
+                     sprintf(['* Reject phase.\n',...
+                              '--> Phase has been manually rejected by the user.\n',...
+                              '--> No tracking will be undertaken.'])};
 
             % sets local and global frame indices
             [cPhase,cFrm] = deal(ipara.cPhase,ipara.cFrm);
@@ -1231,7 +1250,6 @@ classdef CalcBG < handle
                 vP = imov.vPhase(cPhase);
                 [cX,nX] = deal(cPhase,length(obj.indFrm));
                 iPhaseNw = obj.iMov.iPhase(cPhase,:);
-                nFrm = diff(iPhaseNw) + 1; 
                 nFrmPh = length(obj.indFrm{cPhase});
                 
                 % sets the phase count and variance type
@@ -1246,6 +1264,11 @@ classdef CalcBG < handle
                 set(hgui.textPhaseFrames,'string',num2str(nFrmPh))
                 set(hgui.textStartFrame,'string',num2str(iPhaseNw(1)))
                 set(hgui.textEndFrame,'string',num2str(iPhaseNw(2)))                 
+                
+                % updates the tracking phase checkbox object
+                set(hgui.checkTrackPhase,'Value',vP<4);                
+                setObjEnable(hgui.checkTrackPhase,obj.vPhase0(cPhase)<4)
+                setObjEnable(hgui.checkFlyMarkers,vP<4);
                 
                 % updates the image type and properties
                 if ~isempty(obj.fPos)
@@ -1529,6 +1552,7 @@ classdef CalcBG < handle
             obj.iPara.cFrm = 1;
             obj.frameSet = true;            
             [obj.isAllUpdate,obj.hasUpdated] = deal(true,false);   
+            obj.vPhase0 = obj.iMov.vPhase;
             
             % sets the phase index
             okPh = imov.vPhase < 3;
@@ -1555,8 +1579,7 @@ classdef CalcBG < handle
             setPanelProps(hgui.panelPhaseSelect,'on');            
             if ~obj.isCalib
                 % sets the frame index arrays
-                obj.indFrm = getPhaseFrameIndices...
-                                            (obj.iMov,obj.trkObj.nFrmR);                
+                obj.indFrm = field2cell(simgs,'iFrm');                
             end                              
             
             % disables the manual tracking panel
@@ -1674,6 +1697,40 @@ classdef CalcBG < handle
         
         end
             
+        % --- Executes on update checkTrackPhase
+        function checkTrackPhase(obj, hObject, ~)
+            
+            % flag that a change has been made
+            obj.isChange = true;
+            iPh = obj.iPara.cPhase;
+            isOn = get(hObject,'Value');            
+                        
+            % updates the phase flag            
+            if isOn
+                obj.iMov.vPhase(iPh) = obj.vPhase0(iPh);
+            else
+                obj.iMov.vPhase(iPh) = 4;                                
+                
+                % if the tubes are on, then remove them
+                if get(obj.hGUI.checkFlyMarkers,'value')
+                    set(obj.hGUI.checkFlyMarkers,'value',false)
+                    obj.checkFlyMarkers(obj.hGUI.checkFlyMarkers, [])
+                end
+            end
+            
+            % updates the phase object colours (if info GUI is open)
+            if ~isempty(obj.phaseObj)
+                obj.phaseObj.updatePatchColour(iPh);
+            end
+            
+            % updates the fly marker enabled properties
+            setObjEnable(obj.hGUI.checkFlyMarkers,isOn)
+            
+            % updates the button properties            
+            obj.setButtonProps('Phase')
+            
+        end
+        
         % --------------------------------- %
         % --- FRAME SELECTION CALLBACKS --- %
         % --------------------------------- %
@@ -1932,14 +1989,6 @@ classdef CalcBG < handle
                 return
             end
 
-            % progressbar strings
-            wStr = {'Reading Initial Image Stack',...
-                    'Tracking Moving Objects',...
-                    'Tracking Stationary Objects'};    
-            if obj.isMTrk
-                wStr{end} = 'Background Image Estimation';
-            end
-
             % retrieves the sub-image data struct
             if initDetectCompleted(obj.iMov)
                 % if the background images have been calculated, then 
@@ -1974,16 +2023,16 @@ classdef CalcBG < handle
 
             % creates the waitbar figure
             if obj.isMTrk
-                % case is tracking multiple objects
-                
-                % creates the progressbar figure            
-                h = ProgBar(wStr,'Multiple Object Background Estimation'); 
-                
-                % calculates the initial location estimates
-                obj.trkObj.calcInitEstimate(obj.iMov,h); 
+                % case is tracking multiple objects                                
+                h = [];
                 
             else
-                % case is tracking a single object                
+                % case is tracking a single object    
+                
+                % progressbar strings
+                wStr = {'Reading Initial Image Stack',...
+                        'Tracking Moving Objects',...
+                        'Tracking Stationary Objects'};                  
                 
                 % creates the progressbar figure            
                 h = ProgBar(wStr,'Single Object Background Estimation'); 
@@ -1992,21 +2041,27 @@ classdef CalcBG < handle
                 obj.trkObj.hFilt = [];
                 obj.trkObj.calcInitEstimate(obj.iMov,h);                                 
             end
+            
+            % calculates the initial location estimates
+            obj.trkObj.calcInitEstimate(obj.iMov,h);             
 
             % calculates the background image estimate
             [ok,imov] = deal(obj.trkObj.calcOK,obj.trkObj.iMov);
             if ok     
                 % updates and closes the waitbar figure
-                if ~h.Update(2,'Segmentation Complete',1)
-                    h.closeProgBar();
-                end        
+                if ~isempty(h)
+                    if ~h.Update(2,'Segmentation Complete',1)
+                        h.closeProgBar();
+                    end        
+                end
                 
                 % if segmentation was successful, then update the 
                 % sub-image data struct
                 obj.iMov = imov;
                 obj.ok0 = imov.flyok;                              
                 obj.Ibg = cell(length(imov.vPhase),1);
-                obj.iMov.hFilt = obj.trkObj.hFilt;                
+                obj.iMov.hFilt = obj.trkObj.hFilt;     
+                obj.vPhase0 = obj.iMov.vPhase;
                 
                 % updates the sub-region data struct in the main gui
                 set(obj.hGUI.figFlyTrack,'iMov',imov)
@@ -2014,14 +2069,13 @@ classdef CalcBG < handle
                 % likely/potential object locations
                 obj.fPos = obj.trkObj.fPosG;
                 obj.pStats = obj.trkObj.pStats;
-                obj.pData = obj.trkObj.pData;               
-
+                
                 % updates the list box properties but clears the list
                 set(obj.hGUI.tableFlyUpdate,'Data',[])
-                setObjEnable(obj.hGUI.menuShowStats,'on');
-                setPanelProps(obj.hGUI.panelManualSelect,'on')                   
+                setPanelProps(obj.hGUI.panelManualSelect,'on')                
+                setObjEnable(obj.hGUI.menuPhaseStats,'on')
                 setObjEnable(obj.hGUI.buttonRemoveManual,'off')
-                setObjEnable(obj.hGUI.menuPhaseStats,'on')            
+                setObjEnable(obj.hGUI.menuShowStats,~obj.isMTrk);
                 
                 % deletes any all potential object markers 
                 if ~isempty(obj.hMarkAll)
@@ -2044,7 +2098,7 @@ classdef CalcBG < handle
                 
                 % updates the frame/phase object properties
                 obj.setButtonProps('Frame')
-                obj.setButtonProps('Phase')                
+                obj.setButtonProps('Phase')
 
                 % updates the other flags indicating success
                 [obj.isChange,obj.hasUpdated] = deal(true);

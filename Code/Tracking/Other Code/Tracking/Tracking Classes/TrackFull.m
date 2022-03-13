@@ -86,6 +86,7 @@ classdef TrackFull < Track
             
             % determines the phase order (low-variance phases to be
             % segmented first)
+            validPh = obj.iMov.vPhase < 4;
             [~,obj.iPhaseS] = sort(obj.iMov.vPhase);            
             
             % ensures the progressbar is visible
@@ -93,8 +94,15 @@ classdef TrackFull < Track
             
             % segments the objects from start phase to end
             for i = obj.iPhase0:obj.nPhase
+                % sets the phase to be segmented
+                j = obj.iPhaseS(i);                
+                
                 % updates the progessbar (if it exists)
-                if ~isempty(obj.hProg)
+                if ~validPh(j)
+                    % if the phase is rejected, then exit the loop 
+                    break
+                    
+                elseif ~isempty(obj.hProg)
                     % updates the progressbar phase field
                     wStrNw = sprintf('%s (Phase %i of %i)',...
                                         obj.wStr{obj.wOfs1},i,obj.nPhase);
@@ -106,10 +114,7 @@ classdef TrackFull < Track
                         % otherwise, reset the other progressbar fields
                         obj.resetProgBarFields(1);
                     end
-                end
-                
-                % sets the phase to be segmented
-                j = obj.iPhaseS(i);
+                end                
                 
                 % resets the progress struct
                 switch obj.iMov.vPhase(j)
@@ -178,7 +183,11 @@ classdef TrackFull < Track
                 
             else
                 % otherwise, retrieve the data from the tracking object
-                fPosPr = obj.fObj{iPhase-1}.fPos;
+                if obj.iMov.vPhase(iPhase-1) == 4
+                    fPosPr = [];
+                else
+                    fPosPr = obj.fObj{iPhase-1}.fPos;
+                end
             end
             
             % sets the previous data from the current tracking state
@@ -259,6 +268,12 @@ classdef TrackFull < Track
                 % retrieves & sets the new image stack 
                 iFrmR = obj.sProg.iFrmR{i};
                 Img = obj.getImageStack(iFrmR);
+                
+                % scales the image stack (if required)
+                if isfield(obj.iMov,'pImg')
+                    pI = obj.iMov.pImg(iPhase,:);
+                    Img = cellfun(@(x)(pI(2)*(x-pI(1))),Img,'un',0);
+                end
                 
                 % applies the image filter (if required)
                 if ~isempty(obj.hS)

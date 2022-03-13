@@ -384,7 +384,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                     else
                         % case is the blob has moved an infeasible distance
                         fP(i,:) = fPrNw(end,:);
-                        fPR = roundP(fP(i,:));
+                        fPR = min(max(1,roundP(fP(i,:))),flip(szL));
                         IP(i) = Img{i}(sub2ind(szL,fPR(2),fPR(1)));
                     end
                 else
@@ -466,7 +466,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                                     fP(i,:) = fPrNw(end,:);                                    
                                 end
                                 
-                                fPR = roundP(fP(i,:));
+                                fPR = min(max(1,roundP(fP(i,:))),flip(szL));
                                 iPEst = sub2ind(szL,fPR(2),fPR(1));
                                 [IP(i),iMx] = deal(Img{i}(iPEst),NaN);
                             end
