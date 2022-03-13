@@ -1354,10 +1354,17 @@ classdef SingleTrackInit < SingleTrack
                 % sets the sub-region row/column indices
                 [iRT,iCT] = obj.getSubRegionIndices(iApp,size(IL0{1},2));
                 
+                % sets the image stack based on the type
+                if obj.iMov.is2D
+                    ImgS = IR0;
+                else
+                    ImgS = IRng(iApp);
+                end
+                
                 % sets up the search mask for each sub-region
                 [obj.mFlag{iApp},obj.Imu(iApp,iPh),...
                 obj.Isd(iApp,iPh),obj.pTolF(iApp,iPh)] = ...
-                            obj.calcSubRegionProps(IRng{iApp},iRT,iCT);
+                            obj.calcSubRegionProps(ImgS,iRT,iCT);
                 obj.mFlag{iApp}(~obj.iMov.flyok(:,iApp)) = 0;
                 
                 % tracks the blobs for each sub-region
@@ -1398,12 +1405,15 @@ classdef SingleTrackInit < SingleTrack
         
         % --- calculates the sub-region properties
         function [mFlag,ImuF,IsdF,pTol] = ...
-                            calcSubRegionProps(obj,IRng,iRT,iCT)
+                            calcSubRegionProps(obj,Isub,iRT,iCT)
             
             % parameters and initialisations            
             iRTF = unique(cell2mat(iRT(:)'));     
             nRT = cellfun(@length,iRT);
-            mFlag = zeros(size(iRT));            
+            mFlag = zeros(size(iRT));     
+            
+            % ensures the images are stored in a cell array
+            if ~iscell(Isub); Isub = {Isub}; end
             
             % sets the local indices of the sub-region row indices
             if obj.nI > 0
@@ -1416,19 +1426,23 @@ classdef SingleTrackInit < SingleTrack
             end            
             
             % applies a gaussian filter to the range image
-            IRng = imfilter(IRng,obj.hSR);
+            Isub = cellfun(@(x)(imfilter(x,obj.hSR)),Isub,'un',0);
             if obj.is2D && any(obj.iMov.phInfo.hasT)
                 % if a 2D setup (and translation is detected) then remove
                 % the outside of the image
                 DtolT = max(1,roundP(sqrt(obj.Dtol)));
-                B = ~bwmorph(true(size(IRng)),'erode',DtolT);
-                IRng(B) = nanmedian(IRng(~B));
+                B = ~bwmorph(true(size(Isub{1})),'erode',DtolT);                
+                for i = 1:length(Isub)
+                    Isub{i}(B) = nanmedian(Isub{i}(~B));
+                end
             end                                    
             
             % calculates the max range values (across each row). this is 
             % performed on an image with the open transform removed
-            IRngOp = IRng - imopen(IRng,ones(obj.nOpenRng));
-            IRngR0 = cellfun(@(x)(nanmax(IRngOp(x,iCT),[],1)),iRT,'un',0);
+            szOpen = ones(obj.nOpenRng);
+            IRngOp = cellfun(@(x)(x - imopen(x,szOpen)),Isub(:)','un',0);
+            IRngR0 = cellfun(@(x)(nanmax(cell2mat(cellfun(@(y)...
+                            (y(x,iCT)),IRngOp,'un',0)),[],1)),iRT,'un',0);
             
             % sets the baseline offset windowing size
             if ~isfield(obj.iMov,'szObj') || any(isnan(obj.iMov.szObj))
@@ -1438,7 +1452,7 @@ classdef SingleTrackInit < SingleTrack
             end
             
             % calculates the baseline estimate            
-            YRng0 = cell2cell(cellfun(@(x)(x),IRngR0,'un',0),0);              
+            YRng0 = max(1,cell2cell(cellfun(@(x)(x),IRngR0,'un',0),0));              
             YBL = max(1,imopen(YRng0(:),ones(nOpen,1)));
             pYRng = (YRng0(:) - YBL)./YBL;
             
@@ -1463,17 +1477,19 @@ classdef SingleTrackInit < SingleTrack
             end                
                 
             % calculates the mean/std dev range values
-            IRngF = IRng(iRTF,iCT);
-            [ImuF,IsdF] = deal(nanmean(IRngF(:)),nanstd(IRngF(:)));            
+            IsubF0 = cellfun(@(x)(x(iRTF,iCT)),Isub,'un',0);
+            IsubF = cell2mat(IsubF0(:)');
+            [ImuF,IsdF] = deal(nanmean(IsubF(:)),nanstd(IsubF(:)));            
             
             % calculates the residual tolerance
-            IRngRF = cellfun(@(x)(nanmax(IRng(x,iCT),[],1)),iRT,'un',0);
-            YRngF = cell2cell(cellfun(@(x)(x),IRngRF,'un',0),0);            
+            IsubMx = cellfun(@(x)(nanmax(cell2mat(cellfun(@(y)...
+                        (y(x,iCT)),Isub(:)','un',0)),[],1)),iRT,'un',0);
+            YRngF = cell2cell(cellfun(@(x)(x),IsubMx,'un',0),0);            
             YBLF = max(1,imopen(YRngF(:),ones(nOpen,1)));                        
-            pTol = obj.calcResidualTol(YRngF,YBLF);
+            pTol = obj.calcResidualTol(max(1,YRngF),YBLF);
             
-            % reduces the proportional difference arrya for each subregion         
-            Q = reshape(YRngF,[length(IRngRF{1}),length(iRTL)]);
+            % reduces the proportional difference array for each subregion         
+            Q = reshape(YRngF,[length(IsubMx{1}),length(iRTL)]);
             if exist('B0','var'); Q(~B0,:) = 0; end
             
             % calculates the movement status flags:
