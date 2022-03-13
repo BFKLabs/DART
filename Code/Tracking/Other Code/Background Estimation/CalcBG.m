@@ -77,6 +77,7 @@ classdef CalcBG < handle
         statsObj
         phaseObj
         dpOfs       
+        cMapJet
         
     end
     
@@ -1064,7 +1065,11 @@ classdef CalcBG < handle
             end
             
             % updates the colormap type
-            colormap(obj.hAx,cMapType);
+            if strcmp(cMapType,'jet')
+                obj.cMapJet = colormap(obj.hAx,cMapType);
+            else
+                colormap(obj.hAx,cMapType);
+            end
 
             % updates the markers (if they exist)
             if ~isempty(obj.fPos)
@@ -1120,10 +1125,10 @@ classdef CalcBG < handle
             
             % other initialisations
             [iPhase,iFrmNw] = deal(ipara.cPhase,ipara.cFrm);            
-            if isequal(colormap(obj.hAx),colormap('jet'))
-                [pCol,lWid] = deal('r',2);
+            if isequal(colormap(obj.hAx),obj.cMapJet)
+                [pCol,lWid] = deal('r',3);
             else
-                [pCol,lWid] = deal('g',2);
+                [pCol,lWid] = deal('g',3);
             end
             
             % sets the marker properties            
