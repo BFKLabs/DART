@@ -28,6 +28,6 @@ else
     msgbox('Finish Me!')
 end
 
-
-R0 = floor(0.9 * mean(mean(diff(Y0,[],1)))/2);
+% sets the final data struct
+R0 = floor(0.9 * mean(mean(diff(Y0,[],1)))/2)*size(X0);
 autoP = struct('X',X0,'Y',Y0,'R',R0,'Type','Circle','B',[]);

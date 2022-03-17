@@ -14,7 +14,7 @@ indStim = [];
 % -------------------------------------- %
 
 % check to see if any of the devices are connected to apparatus/tubes
-if (~isempty(rtD.rtP.Stim))
+if ~isempty(rtD.rtP.Stim)
     % determines the stimuli criteria
     [rtD,checkStim] = detStimCriteria(iMov,rtD,h);
     
@@ -48,7 +48,7 @@ cellfun(@(x,y)(set(x,'string',y)),getappdata(h,'hDataT'),datStr);
 cellfun(@(x,y)(set(x,'string',y)),getappdata(h,'hTotT'),totStr); 
             
 % sets the population status colours            
-if (isC2A)            
+if isC2A   
     % sets the channel to apparatus index connections (based on type)
     iChC = rtD.rtP.Stim.C2A;
     
@@ -61,7 +61,7 @@ if (isC2A)
 end
     
 % updates the tracking duration string (if required)
-if (getappdata(h,'isTrack'))
+if getappdata(h,'isTrack')
     [~,~,tS] = calcTimeDifference(roundP(rtD.T(rtD.ind)));
     tStrNw = sprintf('%s:%s:%s:%s',tS{1},tS{2},tS{3},tS{4});
     set(getappdata(h,'hTime'),'string',tStrNw)
@@ -84,16 +84,16 @@ nCh = length(iCh);
 % loops through all of the channels determining the channel statuses
 for i = 1:nCh
     dT = (rtD.T(rtD.ind)-rtD.Tofs);
-    if (dT <= rtD.rtP.Stim.Twarm)
+    if dT <= rtD.rtP.Stim.Twarm
         % the apparatus is stimulating
         nwTime = sprintf('%i s',roundP(rtD.rtP.Stim.Twarm-dT));
         statStr(:,i) = {nwTime;'Warm-Up Phase'};
         statCol(:,i) = repmat({[1 0 1]},2,1); 
-    elseif (any(rtD.sStatus(iCh(i),2) == 1))
+    elseif any(rtD.sStatus(iCh(i),2) == 1)
         % the apparatus is stimulating
         statStr(:,i) = {'***';'Stimulating'};
         statCol(:,i) = repmat({'r'},2,1);
-    elseif (rtD.Tcool(iCh(i)) > 0)
+    elseif rtD.Tcool(iCh(i)) > 0
         % the apparatus is cooling down
         nwTime = sprintf('%i s',roundP(rtD.Tcool(iCh(i)),1));
         statStr(:,i) = {nwTime;'Cooling Down'};
@@ -121,12 +121,12 @@ function [rtD,checkStim] = detStimCriteria(iMov,rtD,h)
 [Stim,ind] = deal(rtD.rtP.Stim,rtD.ind);
 
 % determines which type of connection is being used
-if (rtD.T(ind) < Stim.Twarm)
+if rtD.T(ind) < Stim.Twarm
     % if still in the warm-up phase, then exit the function
     return
 else
     % otherwise, check the channels have been set
-    switch (Stim.cType)
+    switch Stim.cType
         case ('Ch2App') % case is connecting channel to apparatus
             % check which channels have been set
             iCh = find(~isnan(Stim.C2A));
@@ -161,7 +161,7 @@ checkStim = true;
 [isCont,isAll] = deal(strcmp(Stim.sType,'Cont'),strcmp(Stim.bType,'All'));
 
 % determines if the stimuli criteria conditions have been met
-if (isC2A)
+if isC2A
     % --------------------------------------------- %
     % --- CHANNEL-TO-APPARATUS STIMULI CRITERIA --- %
     % --------------------------------------------- %
@@ -173,10 +173,10 @@ if (isC2A)
     for i = 1:length(iCh)
         % only check the criteria if either running continuous stimulation
         % or (if running single stimulation) if the device is open
-        if ((isCont) || all(rtD.sStatus(iCh(i),:) == 0)) && (rtD.Tcool(i) == 0)
+        if (isCont || all(rtD.sStatus(iCh(i),:)==0)) && (rtD.Tcool(i)==0)
             cMet = false(length(mInd),1);
             for j = 1:length(mInd)
-                switch (mInd(j))
+                switch mInd(j)
                     case (1) % case is population inactivity                           
                         cMet(j) = rtD.pInact(ind,iApp(i)) > popSC.Ptol;                                                
                     case (2) % case is mean inactivity duration
@@ -411,7 +411,7 @@ datStr = cellfun(@(x)(sprintf('%.2f',x)),num2cell(V),'un',0);
 function [X,L] = retRelFlyPosition(Pnw,iMov,sInd,sFac,is2D)
 
 % calculates the relative fly position 
-if (is2D)
+if is2D
     % case is a 2D experimental arena        
     x0 = iMov.autoP.X(sInd(2),sInd(1));
     y0 = iMov.autoP.Y(sInd(2),sInd(1));

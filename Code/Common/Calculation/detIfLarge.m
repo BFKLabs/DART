@@ -9,7 +9,7 @@ switch getDetectionType(iMov)
             [szC,szR] = deal(cellfun(@length,iMov.iC),cellfun(@length,iMov.iR));
             isLarge = Nsz > max(max(szC),max(szR))/4;
         else
-            isLarge = Nsz > iMov.autoP.R/2;
+            isLarge = any(Nsz > iMov.autoP.R/2);
         end        
     case ('General')
         isLarge = Nsz > max(cellfun(@length,iMov.iC))/4;

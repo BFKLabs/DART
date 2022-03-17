@@ -58,7 +58,12 @@ for i = iApp(:)'
     % calculates the x/y coordinates (wrt the circle centres)
     dPx{i} = Px{i}(:,fok{i})/sFac - repmat(arr2vec(X0(indG))',nFrm,1);
     dPy{i} = Py{i}(:,fok{i})/sFac - repmat(arr2vec(Y0(indG))',nFrm,1);
-    Rad{i} = (iMov.autoP.R-1)*ones(sum(fok{i}),1);
+    
+    if length(iMov.autoP.R) == 1
+        Rad{i} = (iMov.autoP.R-1)*ones(sum(fok{i}),1);
+    else
+        Rad{i} = iMov.autoP.R(indG)-1;
+    end
 end
 
 % ---------------------------- %

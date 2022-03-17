@@ -253,9 +253,6 @@ end
 % --- updates the real-time axis plot and menu items
 function updateRTPlot(hObject,tStr,yStr,yLim)
 
-% parameters
-vStr = {'off','on'};
-
 % retrieves the tracking stats GUI handles
 handles = guidata(hObject);
 hGUI = getappdata(handles.figTrackStats,'hGUI');
@@ -273,21 +270,21 @@ end
 
 % updates the stimulus marker y-extent
 hStim = findobj(handles.axesProgress,'tag','hStimMark');
-if (~isempty(hStim))
+if ~isempty(hStim)
     set(hStim,'yData',[0 yLim])
 end
 
 % if the connection type is channel to apparatus, then update the criteria
 % marker on the real-time tracking plot
 gType = get(hObject,'tag');
-if (getappdata(handles.figTrackStats,'isC2A'))
+if getappdata(handles.figTrackStats,'isC2A')
     % initialisations   
     yData = getCritValue(getappdata(hGUI,'rtP'),gType);
     hCrit = findall(handles.axesProgress,'tag','hCrit');   
     isCheck = strcmp(get(handles.menuDispCrit,'checked'),'on');
     
     % sets the fill object y-values
-    if (isnan(yData))
+    if isnan(yData)
         % no fill object to be shown
         yy = NaN(1,2);
     else
@@ -329,7 +326,7 @@ function updateFigObjPos(hMenu,handles)
 % parameters
 [X0,Y0] = deal(10);
 [HfigT,WfigT] = deal(60,20);
-[eStr,scrSz] = deal({'off','on'},get(0,'screensize'));
+scrSz = get(0,'screensize');
 
 % toggles the check markers
 if strcmp(get(hMenu,'checked'),'on')

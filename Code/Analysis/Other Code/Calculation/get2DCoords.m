@@ -1,15 +1,15 @@
 % --- scales the position values back to pixel values for a given apparatus
 function [dPx,dPy,Rad,ind,dp0] = get2DCoords(snTot,iApp,iR)
 
-%
-if (~isfield(snTot,'Type'))
+% sets the solution file type
+if ~isfield(snTot,'Type')
     Type = 0;
 else
     Type = snTot.Type;
 end
 
-%
-if (isempty(iApp))    
+% field retrieval
+if isempty(iApp)    
     [Px,Py,iMov,sFac,iApp] = deal(snTot.Px,snTot.Py,snTot.iMov,1,1);
 else    
     [Px,Py,iMov] = deal(snTot.Px(iApp),snTot.Py(iApp),snTot.iMov);
@@ -26,7 +26,7 @@ opt = optimset('display','none');
 
 % sets the row offset
 R = iMov.autoP.R;
-Rmax = R + dR;
+Rmax = max(R(:) + dR);
 
 % determines the non-rejected fly tubes
 fok = cellfun(@(x,y)(~isnan(x(1,:)) & ~isnan(y(1,:))),Px,Py,'un',0);
