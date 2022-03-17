@@ -27,7 +27,7 @@ function CircPara_OpeningFcn(hObject, eventdata, handles, varargin)
 handles.output = hObject;
 
 % global variables
-global hQ R
+global R
 
 % initialses the custom property field string
 pFldStr = {'hGUI','iMov','X','Y'};
@@ -39,7 +39,6 @@ iMov = varargin{2};
 X = varargin{3};
 Y = varargin{4};
 R = varargin{5};
-hQ = varargin{6};
 
 % sets the input variables/data structs into the GUI
 set(hObject,'hGUI',hGUI)
@@ -49,8 +48,6 @@ set(hObject,'Y',Y)
 
 % sets the editbox string and button enabled properties
 set(handles.editCircRad,'string',num2str(R))
-set(handles.editWeightIndex,'string',num2str(hQ))
-setObjEnable(handles.buttonRecalcCirc,'off')
 
 % plots the circle regions on the main GUI
 plotCircleRegions(handles)
@@ -66,12 +63,10 @@ uiwait(handles.figCircPara);
 function varargout = CircPara_OutputFcn(hObject, eventdata, handles) 
 
 % global variables
-global iMov hQ uChoice
+global iMov
 
 % Get default command line output from handles structure
 varargout{1} = iMov;
-varargout{2} = hQ;
-varargout{3} = uChoice;
 
 %-------------------------------------------------------------------------%
 %                        FIGURE CALLBACK FUNCTIONS                        %
@@ -98,51 +93,15 @@ else
     set(hObject,'string',num2str(R));      
 end
 
-% --- executes on the callback of editWeightIndex
-function editWeightIndex_Callback(hObject, eventdata, handles)
-
-% global variables
-global hQ
-
-% check to see if the new value is valid
-nwVal = str2double(get(hObject,'string'));
-if chkEditValue(nwVal,[0.01 1.00],0)
-    % if it is, then update the data struct
-    hQ = nwVal;    
-    setObjEnable(handles.buttonRecalcCirc,'on')
-else
-    % otherwise, reset to the last valid value
-    set(hObject,'string',num2str(hQ));      
-end
-
 % ---------------------------------------- %
 % --- BUTTON OBJECT CALLBACK FUNCTIONS --- %
 % ---------------------------------------- %
-
-% --- Executes on button press in buttonRecalcCirc.
-function buttonRecalcCirc_Callback(hObject, eventdata, handles)
-
-% global variables
-global uChoice iMov
-
-% retrieves the main GUI axes handle data struct
-hFig = handles.output;
-hGUI = get(hFig,'hGUI');
-hGUIM = get(hGUI.output,'hGUI');
-
-% retrieves the main GUI handles data struct
-hOut = findall(hGUIM.imgAxes,'tag','hOuter');
-if ~isempty(hOut); setObjVisibility(hOut,'off'); end
-
-% sets the user choice and closes the window
-[uChoice,iMov] = deal('Recalc',[]); 
-delete(hFig) 
 
 % --- Executes on button press in buttonCont.
 function buttonCont_Callback(hObject, eventdata, handles)
 
 % global variables
-global uChoice iMov R 
+global iMov R 
 
 % retrieves the sub-image data struct and circle centre X/Y coordinates
 hFig = handles.output;
@@ -162,8 +121,8 @@ phi = linspace(0,2*pi,101)';
 [iMov.isSet,iMov.ok] = deal(true,true(iMov.nRow*iMov.nCol,1));
 
 % sets up the automatic detection parameters
-iMov.autoP = struct('X0',X,'Y0',Y,'XC',R*cos(phi),'YC',R*sin(phi),...
-                    'B',[],'R',R,'Type','Circle');
+iMov.autoP = struct('X0',X,'Y0',Y,'XC',cos(phi),'YC',sin(phi),...
+                    'B',[],'R',R*ones(size(X)),'Type','Circle');
 iMov.autoP.B = cell(nApp,1);
 
 % determines the lower bound of the offset distance between the arenas
@@ -232,14 +191,13 @@ yMax = max(cellfun(@max,iMov.iR));
 iMov.posG = [[xMin yMin]-pDel,[(xMax-xMin),(yMax-yMin)]+2*pDel];
 
 % sets the user choice and closes the window
-[uChoice,iMov] = deal('Cont',iMov); 
 delete(handles.figCircPara)
 
 % --- Executes on button press in buttonCancel.
 function buttonCancel_Callback(hObject, eventdata, handles)
 
 % global variables
-global uChoice iMov
+global iMov
 
 % retrieves the main GUI axes handle data struct
 hGUI = get(handles.output,'hGUI');
@@ -250,7 +208,7 @@ hOut = findall(hGUIM.imgAxes,'tag','hOuter');
 if ~isempty(hOut); delete(hOut); end
 
 % sets the user choice and closes the window
-[uChoice,iMov] = deal('Cancel',[]); 
+iMov = []; 
 delete(handles.figCircPara)
 
 %-------------------------------------------------------------------------%
@@ -264,6 +222,7 @@ function plotCircleRegions(handles)
 global R
 
 % retrieves the X/Y coordinates of the circles
+lWid = 1;
 hFig = handles.output;
 X = get(hFig,'X');
 Y = get(hFig,'Y');
@@ -313,7 +272,7 @@ for iCol = 1:nApp
             % outline marker needs to be created 
             pCol = tCol(iGrp(j)+1,:);
             fill(xP,yP,pCol,'tag','hOuter','UserData',[iCol,j],...
-                       'facealpha',0.25,'LineWidth',1.5,'Parent',hAx)  
+                       'facealpha',0.25,'LineWidth',lWid,'Parent',hAx)  
         else
             % otherwise, coordinates of outline
             hP = findobj(hOut,'UserData',[iCol,j]);

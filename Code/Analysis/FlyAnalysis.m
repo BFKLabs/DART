@@ -24,17 +24,17 @@ end
 function FlyAnalysis_OpeningFcn(hObject, ~, handles, varargin)
 
 % global variables
-global mainProgDir isDocked initDock regSz  
+global isDocked initDock regSz  
 global updateFlag canSelect isAnalysis isUpdating
 [isDocked,initDock,canSelect,isAnalysis] = deal(true);
-isUpdating = false;
-updateFlag = 2; pause(0.1); 
+[isUpdating,updateFlag] = deal(false,2);
 
 % Choose default command line output for FlyAnalysis
 handles.output = hObject;
 
 % retrieves the regular size of the GUI
 regSz = get(handles.panelPlot,'position');
+pause(0.1);
 
 % creates the load bar
 h = ProgressLoadbar('Initialising Analysis GUI...');
@@ -43,7 +43,7 @@ h = ProgressLoadbar('Initialising Analysis GUI...');
 setappdata(hObject,'sPara',initSubRegionStruct)
 
 % loads the global analysis parameters from the program parameter file
-A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+A = load(getParaFileName('ProgPara.mat'));
 gPara = A.gPara;
 setappdata(hObject,'gPara',gPara)
 
@@ -53,26 +53,13 @@ setappdata(hObject,'gPara',gPara)
 
 % sets the DART object handles (if provided) and the program directory
 switch length(varargin)
-    case (0) % case is running full program from command line
-        [hDART,ProgDefNew,mainProgDir] = deal([],[],pwd);           
-        
     case (1) % case is running the program from DART main
         % sets the input argument and the open GUI (makes invisible)
         hDART = varargin{1};    
                 
         % retrieves the program default struct
         ProgDefNew = getappdata(hDART.figDART,'ProgDefNew');
-        setObjVisibility(hDART.figDART,'off')                      
-        
-    otherwise % case is any other number of input arguments
-        % displays an error message
-        eStr = ['Error! Incorrect number of input arguments.',...
-                'Exiting Tracking GUI...'];
-        waitfor(errordlg(eStr,'Analysis GUI Initialisation Error','modal'))
-        
-        % deletes the GUI and exits the function
-        delete(hObject)
-        return
+        setObjVisibility(hDART.figDART,'off')        
 end
 
 % initialisation of the program data struct
@@ -750,14 +737,14 @@ end
 function menuResetPara_Callback(~, ~, handles)
 
 % global variables
-global tDay mainProgDir
+global tDay
 
 % prompts the user if they wish to reset the parameter struct. 
 qStr = 'Are you sure you want to reset the Global Parameters?';
 uChoice = questdlg(qStr,'Reset Global Parameters?','Yes','No','Yes');
 if strcmp(uChoice,'Yes')
     % if so, then re-initialise the global parameter struct
-    A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+    A = load(getParaFileName('ProgPara.mat'));
     gPara = A.gPara;    
     tDay = gPara.Tgrp0;
         
@@ -1408,9 +1395,6 @@ canSelect = true;
 % --- initialises the program data struct
 function iData = initDataStruct(handles,ProgDefNew)
 
-% global variables
-global mainProgDir
-
 % initialises the format structs and calculates the fixed metrics
 iData = struct('fmtStr',[],'ProgDef',[],'indExpt',[]);
        
@@ -1440,7 +1424,7 @@ else
         set(hDART.buttonFlyAnalysis,'UserData',ProgDefNew)
         
         % updates the program default file
-        progFile = fullfile(mainProgDir,'Para Files','ProgDef.mat');    
+        progFile = getParaFileName('ProgDef.mat');
         save(progFile,'ProgDef');
     end    
     
@@ -1640,12 +1624,9 @@ resetObjPos(h.panelOuter,'Height',fPos(4) - 2*dY)
 %     B) the directories listed in the file are valid 
 function ProgDef = initProgDef(handles)
 
-% global variables
-global mainProgDir
-
 % sets the program default file name
-progFileDir = fullfile(mainProgDir,'Para Files');
-progFile = fullfile(progFileDir,'ProgDef.mat');
+progFile = getParaFileName('ProgDef.mat');
+progFileDir = fileparts(progFile);
 
 % creates the directory (if it doesn't exist)
 if ~exist(progFileDir,'dir'); mkdir(progFileDir); end
@@ -1667,7 +1648,7 @@ else
             ProgDef = ProgParaAnalysis(handles.figFlyAnalysis,[],1);
         case 'Automatically'
             % user chose to setup automatically then create the directories            
-            ProgDef = setupAutoDir(mainProgDir,progFile);
+            ProgDef = setupAutoDir(progFile);
             pause(0.05); % pause required otherwise program crashes?
     end
 end
@@ -1733,10 +1714,10 @@ if any(~isExist)
 end
 
 % --- function that automatically sets up the default directories 
-function ProgDef = setupAutoDir(progDir,progFile)
+function ProgDef = setupAutoDir(progFile)
 
-% otherwise, create the
-baseDir = fullfile(progDir,'Data Files');
+% retrieves the base data files directory
+baseDir = getProgFileName('Data Files');
 
 % sets the default directory names
 a.DirSoln = fullfile(baseDir,'Solution Files (Video)');
@@ -2374,8 +2355,8 @@ if snTot(1).iMov.is2D
     else        
         % sets the region string 
         switch iMov.autoP.Type
-            case 'Circle'
-                setupStrS = 'Circle';
+            case {'Circle','Rectangle'}
+                setupStrS = iMov.autoP.Type;
             case 'GeneralR'
                 setupStrS = 'General Repeating';            
             case 'GeneralC'

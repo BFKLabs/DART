@@ -1,11 +1,11 @@
 % --- determines if the object is large relative to the experimental region
 function isLarge = detIfLarge(iMov,Nsz)
 
-switch (getDetectionType(iMov))
+switch getDetectionType(iMov)
     case ('None')
         isLarge = Nsz > max(cellfun(@length,iMov.iC))/4;
-    case ('Circle')
-        if (isempty(iMov.autoP))
+    case {'Circle','Rectangle'}
+        if isempty(iMov.autoP)
             [szC,szR] = deal(cellfun(@length,iMov.iC),cellfun(@length,iMov.iR));
             isLarge = Nsz > max(max(szC),max(szR))/4;
         else

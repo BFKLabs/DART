@@ -1,11 +1,8 @@
 % --- determines the valid serial control device information
 function [pStr,iPathID] = detValidSerialDeviceInfo(comAvail,sStr)
 
-% global variables
-global mainProgDir
-
 % determines the attached usb devices
-utDir = fullfile(mainProgDir,'Code','Common','Utilities','Serial Builds');
+utDir = getProgFileName('Code','Common','Utilities','Serial Builds');
 ufFile = fullfile(utDir,'devcon.exe');
 [~,a] = system(sprintf('"%s" find "%s"',ufFile,'USB*'));
 
@@ -18,14 +15,14 @@ c = cellfun(@(x)(strContains(x,sStr)),b);
 ind = NaN(length(comAvail),1);
 for i = 1:length(ind)
     indNw = find(c & ~cellfun(@isempty,(strfind(b,comAvail{i}))));
-    if (~isempty(indNw))
+    if ~isempty(indNw)
         ind(i) = indNw;
     end
 end
 
 % sets the final matches (com port name and drive letter)
 ii = ~isnan(ind);
-if (any(ii))
+if any(ii)
     % retrieves the device path ID strings
     d = b(ind(ii));
     [iPathID,vpStr,cName] = deal(cell(length(d),1));

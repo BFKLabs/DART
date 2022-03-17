@@ -90,13 +90,10 @@ setObjEnable(handles.buttonRemoveDevice,~isempty(iSel))
 % --- Executes on button press in buttonAddDevice.
 function buttonAddDevice_Callback(hObject, eventdata, handles)
 
-% global variables
-global mainProgDir
-
 % prompts the user if they actually want to add the device name
 uChoice = questdlg(['Are you sure you want to add the device name to the ',...
                     'search list?'],'Add Device Name?','Yes','No','Yes');
-if (~strcmp(uChoice,'Yes'))
+if ~strcmp(uChoice,'Yes')
     % if the user cancelled, then exit
     return
 end
@@ -105,8 +102,9 @@ end
 setObjVisibility(handles.figDeviceNames,'off'); pause(0.05)
 
 % updates the parameter file
+pFile = getParaFileName('ProgPara.mat');
 sDev = [get(handles.tableDeviceName,'Data');{getDeviceString(handles)}];
-save(fullfile(mainProgDir,'Para Files','ProgPara.mat'),'sDev','-append');
+save(pFile,'sDev','-append');
 
 % disables the add/remove buttons and clears the device name editbox
 setObjEnable(hObject,'off')
@@ -120,16 +118,13 @@ setObjVisibility(handles.figDeviceNames,'on');
 % --- Executes on button press in buttonRemoveDevice.
 function buttonRemoveDevice_Callback(hObject, eventdata, handles)
 
-% global variables
-global mainProgDir
-
 % determines the row that has been selected
 jTable = getappdata(handles.figDeviceNames,'jTable');
 iSel = jTable.getSelectedRows + 1;
 
 % prompts the user if they actually want to remove the device name
 Data = get(handles.tableDeviceName,'Data');
-if (strcmp(Data{iSel},'STMicroelectronics STLink Virtual COM Port'))
+if strcmp(Data{iSel},'STMicroelectronics STLink Virtual COM Port')
     % outputs and error to screen and exits
     eStr = 'This is a default serial device type and can''t be removed.';
     waitfor(errordlg(eStr,'Device Removal Error','modal'))
@@ -138,7 +133,7 @@ else
     % prompts the user if they actually want to add the device name
     uChoice = questdlg(['Are you sure you want to remove the device name from the ',...
                         'search list?'],'Remove Device Name?','Yes','No','Yes');
-    if (~strcmp(uChoice,'Yes'))
+    if ~strcmp(uChoice,'Yes')
         % if the user cancelled, then exit
         return
     end    
@@ -149,7 +144,8 @@ setObjVisibility(handles.figDeviceNames,'off'); pause(0.05)
 
 % updates the parameter file
 sDev = Data((1:length(Data)) ~= iSel);
-save(fullfile(mainProgDir,'Para Files','ProgPara.mat'),'sDev','-append');
+pFile = getParaFileName('ProgPara.mat');
+save(pFile,'sDev','-append');
 
 % disables the add/remove buttons and clears the device name editbox
 setObjEnable(hObject,'off')
@@ -177,12 +173,9 @@ setObjVisibility(hGUI,'on');
 % --- initialises the GUI object properties
 function initObjProps(handles,sStr)
 
-% global variables
-global mainProgDir
-
 % retrieves the serial device strings from the parameter file
-if (nargin == 1)
-    A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+if nargin == 1
+    A = load(getParaFileName('ProgPara.mat'));
     sStr = A.sDev;
 end
 

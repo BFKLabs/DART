@@ -3,7 +3,6 @@ function [D1,D2] = getRegionDataStructs(iMov,appPara)
 
 % initialisations
 [D1,D2] = deal([]);
-is2D = is2DCheck(iMov);
 isNewFormat = isfield(iMov,'pInfo');
 
 if isfield(iMov,'is2D')

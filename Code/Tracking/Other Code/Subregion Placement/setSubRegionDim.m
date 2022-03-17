@@ -1,9 +1,6 @@
 % --- sets the sub-region dimensions
 function [iMov,ok] = setSubRegionDim(iMov,hGUI)
 
-% global variables
-global useAuto
-
 % allocates memory for the movie struct
 ok = true;
 [iMov.pos,iMov.iC,iMov.iR,iMov.iCT,iMov.iRT,iMov.xTube,...
@@ -87,14 +84,16 @@ if is2DSetup || detMltTrkStatus(iMov)
     end
     
     % sets up the region parameters
-    if ~useAuto        
-        iMov.autoP = setupAutoDetectPara(iMov,cell2cell(pPos,0));   
-    end  
+    iMov.autoP = pos2para(iMov,cell2cell(pPos,0));   
     
     % updates the region maps
     if isfield(iMov,'srData')
         if ~isempty(iMov.srData)
-            iMov = createRegionIndexMap(iMov);
+            if strcmp(iMov.srData.Type,iMov.mShape)
+                iMov = createRegionIndexMap(iMov);
+            else
+                iMov.srData = [];
+            end
         end
     end
     

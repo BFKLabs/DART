@@ -2026,6 +2026,11 @@ classdef CalcBG < handle
                 set(obj.trkObj,'Img0',obj.ImgC)
             end
 
+            % closes the acceptance/rejection flag gui (if open)
+            if strcmp(get(obj.hGUI.menuFlyAccRej,'Checked'),'on')            
+                obj.menuFlyAccRej(obj.hGUI.menuFlyAccRej, [])
+            end            
+            
             % creates the waitbar figure
             if obj.isMTrk
                 % case is tracking multiple objects                                
@@ -2043,8 +2048,7 @@ classdef CalcBG < handle
                 h = ProgBar(wStr,'Single Object Background Estimation'); 
                 
                 % calculates the initial location estimates
-                obj.trkObj.hFilt = [];
-                obj.trkObj.calcInitEstimate(obj.iMov,h);                                 
+                obj.trkObj.hFilt = [];                                
             end
             
             % calculates the initial location estimates

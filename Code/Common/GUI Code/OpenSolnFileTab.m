@@ -2007,8 +2007,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
                     setupType = 'No Shape';
                 else
                     switch iMov.autoP.Type
-                        case 'Circle'
-                            setupType = 'Circle';
+                        case {'Circle','Rectangle'}
+                            setupType = iMov.autoP.Type;
                         case 'GeneralR'
                             setupType = 'General Repeating';            
                         case {'GeneralC','General'}

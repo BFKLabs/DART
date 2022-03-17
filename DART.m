@@ -58,7 +58,7 @@ mainProgDir = pwd;
 scrSz = getPanelPosPix(0,'Pixels','ScreenSize');
 
 % loads the global analysis parameters from the program parameter file
-A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+A = load(getParaFileName('ProgPara.mat'));
 [tDay,hDay] = deal(A.gPara.Tgrp0,A.gPara.TdayC);
 
 % Update handles structure
@@ -125,7 +125,7 @@ varargout{1} = [];
 function menuUpdateProg_Callback(~, eventdata, handles)
 
 % global variables
-global isFull isAnalyDir mainProgDir 
+global isFull isAnalyDir 
 [isFull,isAnalyDir] = deal(false);
 
 % sets the full program default struct into the menuDART GUI
@@ -168,15 +168,16 @@ else
 end
     
 % otherwise, set up the temporary directory string name
-tmpDir = fullfile(mainProgDir,'Temp Files');    
+tmpDir = getProgFileNameDART('Temp Files');
     
 % initialises the loadbar
 h = ProgressLoadbar('Unzipping Program Files...');
 set(h.Control,'CloseRequestFcn',[]);
 
 % memory allocation
+progDir = getProgFileNameDART();
 sName = {'Analysis','Common','Combine','Recording','Tracking'};
-[progDir,fileDir,sDir] = deal(mainProgDir,tmpDir,cell(length(sName),1));
+[fileDir,sDir] = deal(tmpDir,cell(length(sName),1));
 
 % unzips the file to the temporary directory
 unzip(zFile, tmpDir);
@@ -254,7 +255,7 @@ ExeUpdate(handles.figDART)
 function menuOutputProg_Callback(~, ~, handles)
 
 % global variables
-global isFull mainProgDir
+global isFull
 
 % sets the full program default struct into the menuDART GUI
 ProgDef = getappdata(handles.figDART,'ProgDef');
@@ -283,7 +284,7 @@ if zIndex == 0
 end
 
 % sets up the temporary file directory
-tmpDir = fullfile(mainProgDir,'Temp Files');
+tmpDir = getProgFileNameDART('Temp Files');
 zFile = fullfile(zDir,zName);
 mkdir(tmpDir)
 
@@ -319,11 +320,11 @@ for i = 1:length(sName)
     switch sName{i}
         case ('DART Main') 
             % case is the main DART directory
-            copyAllFiles(mainProgDir,nwDir{i},1);            
+            copyAllFiles(getProgFileNameDART(),nwDir{i},1);            
 
         case {'External Files','Para Files'} 
-            % case is the external/parameter files
-            copyAllFiles(fullfile(mainProgDir,sName{i}),nwDir{i});                        
+            % case is the external/parameter files            
+            copyAllFiles(getProgFileNameDART(sName{i}),nwDir{i});                        
 
         case ('Analysis Functions')
             % case is the analysis functions
@@ -331,7 +332,7 @@ for i = 1:length(sName)
 
         otherwise
             % case is the other code directories
-            copyAllFiles(fullfile(mainProgDir,'Code',sName{i}),nwDir{i});            
+            copyAllFiles(getProgFileNameDART('Code',sName{i}),nwDir{i});            
     end
 end
 
@@ -357,16 +358,14 @@ warning(wState);
 % -------------------------------------------------------------------------
 function menuDeployExe_Callback(~, ~, handles)
 
-% global variables
-global mainProgDir
-
 % prompts the user to set the output directory
-outDir = uigetdir(mainProgDir,'Set The Executable Output Directory');
+dDir = getProgFileNameDART();
+outDir = uigetdir(dDir,'Set The Executable Output Directory');
 if outDir ~= 0
     % runs the executable creation code
     hFig = handles.figDART;
     ProgDef = getappdata(hFig,'ProgDef');    
-    createDARTExecutable(mainProgDir,outDir,ProgDef)
+    createDARTExecutable(dDir,outDir,ProgDef)
 end
 
 % -------------------------------------------------------------------------
@@ -388,9 +387,6 @@ end
 % -------------------------------------------------------------------------
 function menuAddPackage_Callback(~, ~, ~)
 
-% global variables
-global mainProgDir
-
 % prompts the user for the external package
 [fName,fDir,fIndex] = uigetfile({'*.dpkg','DART Package (*.dpkg)'},...
                                  'Select DART Package',pwd);
@@ -400,7 +396,7 @@ if fIndex == 0
 end
 
 % sets the output directory
-fDirOut = fullfile(mainProgDir,'Code','External Apps',getFileName(fName));
+fDirOut = getProgFileNameDART('Code','External Apps',getFileName(fName));
 if ~exist(fDirOut,'dir')
     mkdir(fDirOut);
 end
@@ -492,9 +488,6 @@ warning(wState);
 % --- Executes on button press in buttonExitButton.
 function buttonExitButton_Callback(~, ~, handles)
 
-% global variables
-global mainProgDir
-
 % turns off all warnings
 wState = warning('off','all');
 
@@ -502,17 +495,17 @@ wState = warning('off','all');
 if ~isdeployed            
     % creates a loadbar figure
     h = ProgressLoadbar('Closing Down DART Program...');  
-    pbDir = fileparts(which('ProgressDialog'));
+    pbDir = fileparts(which('ProgressDialog'));    
     
     % removes the main code directories
-    rmpath(mainProgDir)
-    updateSubDirectories(fullfile(mainProgDir,'Code'),'remove')
-    updateSubDirectories(fullfile(mainProgDir,'Git'),'remove')
-    updateSubDirectories(fullfile(mainProgDir,'External Files'),'remove')
-    updateSubDirectories(fullfile(mainProgDir,'Para Files'),'remove')
+    rmpath(getProgFileNameDART())
+    updateSubDirectories(getProgFileNameDART('Code'),'remove')
+    updateSubDirectories(getProgFileNameDART('Git'),'remove')
+    updateSubDirectories(getProgFileNameDART('External Files'),'remove')
+    updateSubDirectories(getProgFileNameDART('Para Files'),'remove')
     
     % removes the xlwrite java files to the path
-    cDir = fullfile(mainProgDir,'Code','Common');
+    cDir = getProgFileNameDART('Code','Common');
     jDirXL = fullfile(cDir,'File Exchange','xlwrite','poi_library');
     if exist(jDirXL,'dir')
         try
@@ -568,12 +561,9 @@ warning(wState);
 % --- sets up all the default program directories --- %
 function ProgDef = setupAllDefaultDir(defFile)
 
-% global variables
-global mainProgDir
-
 % if the default file hasn't been provided, then set the default name
 if nargin == 0
-    defFile = fullfile(mainProgDir,'Para Files','ProgDef.mat'); 
+    defFile = getParaFileName('ProgDef.mat');
 end
 
 % allocates memory for the program default struct
@@ -614,7 +604,7 @@ strAnl.TempFile = {'Analysis','2 - Temporary Files'};
 strAnl.TempData = {'Analysis','3 - Temporary Data'};
 
 % creates the new data directories from the structs listed above
-dataDir = fullfile(mainProgDir,'Data');
+dataDir = getProgFileNameDART('Data');
 ProgDef.DART = createDataDir(strDART,dataDir);      
 ProgDef.Recording = createDataDir(strRec,dataDir);      
 ProgDef.Tracking = createDataDir(strTrk,dataDir);
@@ -693,13 +683,10 @@ end
 %     user to reset the default directories --- %
 function ProgDef = checkAllDefaultDir(handles,ProgDef)
 
-% global variables
-global mainProgDir
-
 % retrieves the struct field names
 hDART = handles.figDART;
 fldNames = fieldnames(ProgDef);
-defFile = fullfile(mainProgDir,'Para Files','ProgDef.mat');
+defFile = getParaFileName('ProgDef.mat');
 
 % loops through all of the program directories determining if the default
 % directories exist. if they do not, then run the program default GUI
@@ -986,9 +973,9 @@ end
 
 % global variables
 mainProgDir = mainDir;
+defFile = getParaFileName('ProgDef.mat');
     
 % loads the default parameter files
-defFile = fullfile(mainProgDir,'Para Files','ProgDef.mat');
 if exist(defFile,'file')
     % if so, loads the program preference file and set the program
     % preferences (based on the OS type)
@@ -1012,7 +999,7 @@ end
 
 % determines if the analysis functions folder exists in the main program
 % directory (this will occur after the initial setup)
-analyDir = fullfile(mainProgDir,'Analysis Functions');
+analyDir = getProgFileNameDART('Analysis Functions');
 if exist(analyDir,'dir')
      % if is does, then copy the folder to the correct location and remove
      % the directory from the main folder
@@ -1063,7 +1050,7 @@ for i = 1:length(BData)
     if i ~= length(BData)    
         % searches for the program main file
         fNameNw = sprintf('%s.m',BData{i}{2});
-        fMatch = fileNameMatchSearch(fNameNw,mainProgDir);            
+        fMatch = fileNameMatchSearch(fNameNw,getProgFileNameDART());            
 
         % retrieves the program defaults (depending on OS)
         ProgDefNw = getStructField(ProgDef,BData{i}{1});
@@ -1186,15 +1173,13 @@ warning(wState)
 % --- updates the log-file with the new information
 function updateLogFile(zFile)
 
-% global variables
-global mainProgDir
-
 % determines the zip-file name parts
 [~,fName,fExtn] = fileparts(zFile);
 
 % resaves the log-file
 [Time,File] = deal(clock,[fName,fExtn]);
-save(fullfile(mainProgDir,'Para Files','Update Log.mat'),'File','Time')
+logFile = getParaFileName('Update Log.mat');
+save(logFile,'File','Time')
 
 % --- wrapper function for determining if a string has a pattern. this is
 %     necessary because there are 2 different ways of determining this
@@ -1226,3 +1211,17 @@ setenv(vName,'');
 
 % runs the string from the command line
 [~,~] = system(cmdStr);
+
+% --- retrieves the full name of a program directory or file
+function pFile = getProgFileNameDART(varargin)
+
+% global variables
+global mainProgDir
+
+% sets the base program folder path
+pFile = mainProgDir;
+
+% sets the full program file name path
+for i = 1:length(varargin)
+    pFile = fullfile(pFile,varargin{i});
+end

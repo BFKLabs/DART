@@ -2,12 +2,9 @@
 %     tree, starting at the main directory, mainDir
 function bpDir = detBatchProcessDir(mainDir)
 
-% global variables
-global mainProgDir
-
 % sets the working directory to be the search directory
 if (nargin == 0)
-    mainDir = mainProgDir;
+    mainDir = getProgFileName();
 end
 
 % memory allocation and initialisations

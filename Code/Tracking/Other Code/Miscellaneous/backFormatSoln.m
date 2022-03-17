@@ -87,20 +87,7 @@ end
 
 % resets any old format automatic detection fields
 if ~isempty(iMov.autoP)
-    if strcmp(iMov.autoP.Type,'Circle')
-        % determines if circle detection uses the old format (update if so)
-        if isfield(iMov.autoP,'X')
-            % resets the centre coordinate fields
-            iMov.autoP.X0 = iMov.autoP.X;
-            iMov.autoP.Y0 = iMov.autoP.Y;
-            iMov.autoP = rmfield(iMov.autoP,{'X','Y'});
-            
-            % sets the outline coordinates
-            phi = linspace(0,2*pi,101)';
-            iMov.autoP.XC = iMov.autoP.R*cos(phi);
-            iMov.autoP.YC = iMov.autoP.R*sin(phi);
-        end
-    end
+    iMov.autoP = backFormatRegionParaStruct(iMov.autoP);
 end
 
 % sets the fly region parameters (if not set)

@@ -1387,9 +1387,8 @@ setappdata(handles.figMultCombInfo,'iPara',iPara)
 % --- updates the combined experimental info fields
 function updateSolnInfo(handles)
 
-% global variables
-global mainProgDir
-a = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+% loads the global parameter file
+a = load(getParaFileName('ProgPara.mat'));
 
 % parameters
 tDay = a.gPara.Tgrp0;

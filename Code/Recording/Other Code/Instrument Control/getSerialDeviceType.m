@@ -4,9 +4,8 @@ function sType = getSerialDeviceType(pStr,sStr,vpStr,varargin)
 % sets the default input arguments
 if nargin < 2; sStr = 'Default'; end
 
-% global variables
-global mainProgDir 
-utDir = fullfile(mainProgDir,'Code','Common','Utilities','Serial Builds');
+% sets the utility directory/file name
+utDir = getProgFileName('Code','Common','Utilities','Serial Builds');
 ufFile = fullfile(utDir,'devcon.exe');
 
 % sets up the controller handle and boardname string

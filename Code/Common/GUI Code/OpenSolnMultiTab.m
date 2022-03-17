@@ -115,10 +115,7 @@ classdef OpenSolnMultiTab < dynamicprops & handle
         end
         
         % --- initialises the tab panel object properties
-        function initObjProps(obj)
-            
-            % global variables
-            global mainProgDir
+        function initObjProps(obj)            
             
             % object retrieval
             handles = obj.hGUI;            

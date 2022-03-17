@@ -75,6 +75,10 @@ classdef SplitSubRegion < handle
         % --- class constructor
         function obj = SplitSubRegion(hFigM)
             
+            % creates a loadbar
+            wStr = 'Setting Up Split Region Plot Objects...';
+            hProg = ProgressLoadbar(wStr);
+            
             % sets the input arguments
             obj.hFigM = hFigM;            
             obj.iMov = get(hFigM,'iMov');
@@ -86,7 +90,7 @@ classdef SplitSubRegion < handle
             obj.hAx = findall(hPanelI,'Type','Axes');
             
             % determines if the sub-region split data field is set
-            if isfield(obj.iMov,'srData')
+            if isfield(obj.iMov,'srData') && ~isempty(obj.iMov.srData)
                 % if so, then determine if the data is valid
                 srData = obj.iMov.srData;
                 switch obj.mShape
@@ -130,6 +134,9 @@ classdef SplitSubRegion < handle
             
             % creates the figure 
             obj.initObjProps();
+            
+            % closes the loadbar
+            delete(hProg);
             
         end
         
@@ -404,11 +411,13 @@ classdef SplitSubRegion < handle
             [iP,jP] = deal(obj.iFlyS,obj.iAppS);
             isFix = obj.isFixed(iP,jP);
             
-            % updates the 
+            % memory allocation for the split region data struct
+            srData = struct('Type',obj.mShape,'isFix',isFix,'useSR',true);
+            
+            % sets the region shape specific fields
             switch obj.mShape
                 case 'Rect'
                     % case is rectangular regions
-                    srData = struct('pHght',[],'pWid',[],'isFix',isFix);
                     if isFix                        
                         srData.pWid = obj.pWidF;
                         srData.pHght = obj.pHghtF;
@@ -419,7 +428,6 @@ classdef SplitSubRegion < handle
                     
                 case 'Circ'
                     % case is circular regions
-                    srData = struct('pPhi',[],'isFix',isFix);
                     if isFix
                         srData.pPhi = obj.pPhiF;
                     else
@@ -428,9 +436,13 @@ classdef SplitSubRegion < handle
                     
             end
             
-            % updates the sub-region data struct within the main GUI
+            % updates the sub-region data struct within the main GUI            
             obj.iMov.srData = srData;
             set(obj.hFigM,'iMov',obj.iMov);
+            
+            % enables the split region use menu item
+            hGUI = guidata(obj.hFigM);
+            set(hGUI.menuUseSplit,'Checked','On','Enable','On');
             
             % disables the update button
             setObjEnable(obj.hBut{1},0);

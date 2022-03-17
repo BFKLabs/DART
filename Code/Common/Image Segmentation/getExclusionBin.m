@@ -1,10 +1,10 @@
 % --- retrieves the exclusion binary mask (based on the exclusion type)
 function Bw = getExclusionBin(iMov,sz,iApp,iFly,varargin)
 
-% global variables
-global is2D
-if isempty(is2D) 
-    is2D = is2DCheck(iMov); 
+% case is a 1D region
+if ~iMov.is2D
+    Bw = bwmorph(true(sz),'erode');
+    return
 end
 
 % sets the exclusion binary mask based on the region detection type
@@ -12,7 +12,7 @@ switch getDetectionType(iMov)
     case 'None'
         Bw = bwmorph(true(sz),'erode');
         
-    case 'Circle'
+    case {'Circle','Rectangle'}
         % otherwise, return the local exclusion binary
         if nargin == 3
             Bw = logical(iMov.autoP.B{iApp});

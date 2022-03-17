@@ -50,13 +50,7 @@ classdef ExptCompObj < handle
             % loops through all experiments 
             for i = 1:obj.nExp    
                 % sets the region string (based on type/detection method)
-                if isempty(sInfo{i}.snTot.iMov.autoP)
-                    % case is there is no automatic detection
-                    regStr = 'None';
-                else
-                    % case is there is automatic detection
-                    regStr = sInfo{i}.snTot.iMov.autoP.Type;
-                end    
+                regStr = getDetectionType(sInfo{i}.snTot.iMov);
 
                 % determine if stimuli was delivered for the experiment
                 if sInfo{i}.hasStim

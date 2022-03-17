@@ -63,15 +63,12 @@ varargout{1} = handles.output;
 function tableDeviceInfo_CellSelectionCallback(hObject, eventdata, handles)
 
 % if the indices are empty, then exit
-if (isempty(eventdata.Indices)); return; end
-
-% global variables
-global mainProgDir
+if isempty(eventdata.Indices); return; end
 
 % sets the selected row/column indices and serial build directory
 Data = get(hObject,'Data');
 [iRow,iCol] = deal(eventdata.Indices(1),eventdata.Indices(2));
-utilDir = fullfile(mainProgDir,'Code','Common','Utilities','Serial Builds');
+utilDir = getProgFileName('Code','Common','Utilities','Serial Builds');
 
 % only enable updating if the type column has been selected (and the
 % serial device is a V1 serial controller)
@@ -80,7 +77,7 @@ if (iCol == 4) && ~strcmp(Data{iRow,3},'N/A')
     [fName,fDir,fIndex] = uigetfile(...
         {'*.bin','Serial Device Binary Files (*.bin)'},...
          'Select A Serial Device Binary File',utilDir);    
-    if (fIndex)
+    if fIndex
         % creates a loadbar
         h = ProgressLoadbar('Updating Serial Device Binary File...');
                 
@@ -147,11 +144,8 @@ setObjVisibility(hGUI,'on');
 % --- initialises the GUI object properties
 function initObjProps(handles)
 
-% global variables
-global mainProgDir
-
 % retrieves the serial device strings from the parameter file
-A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+A = load(getParaFileName('ProgPara.mat'));
 sStr = A.sDev;
 
 % initialisations

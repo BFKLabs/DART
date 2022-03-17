@@ -1,6 +1,6 @@
 % --- determines an estimate of the circle centres/radii from the 2D
 %     cross-correlation of the candidate image with a circle template
-function [iMov,R,X,Y,ok] = detImageCircles(Istack,iMov,hQ)
+function [iMov,R,X,Y,ok] = detImageCircles(Istack,iMov)
 
 % creates the waitbar figure
 h = ProgBar('Reading Estimation Image Stack','Automatic Region Detection'); 
@@ -14,7 +14,7 @@ I = setupRegionEstimateImage(iMov,Istack);
 
 % if it failed, then try the old algorithm
 if ~ok
-    [iMov,R,X,Y,ok] = detImageCirclesPrev(I,iMov,hQ);    
+    [iMov,R,X,Y,ok] = detImageCirclesPrev(I,iMov);    
 end
     
 %-------------------------------------------------------------------------%
@@ -124,7 +124,7 @@ pTol = 0.05;
 nCircTol = 2*prod(dim);
 
 % calculates the normalised image and mean/std dev
-Itmp = 255*normImg(removeImageMedianBL(I,1,1));
+Itmp = 255*normImg(applyHMFilter(I));
 [Imn,Isd] = deal(nanmean(Itmp(:)),nanstd(Itmp(:)));
 
 %
@@ -188,9 +188,13 @@ for i = 1:length(II)
     Ixc{i} = IxcT(2*Rmax0+(1:sz(1)),2*Rmax0+(1:sz(2)));
 end
 
+% sets the edge binary mask (remove points from within this region)
+nDil = max(3,floor(Rmax0/4));
+Bedge = bwmorph(bwmorph(true(sz),'remove'),'dilate',nDil);
+
 % determines the regional maxima from the lowest entropy xcorr image
 imn = argMin(cellfun(@entropy,Ixc));
-iMx0 = find(imregionalmax(Ixc{imn}));
+iMx0 = find(imregionalmax(Ixc{imn}) & ~Bedge);
 [yMx0,xMx0] = ind2sub(sz,iMx0);
 
 % sorts the xcorr maxima points in descending order (by x-corr values)
@@ -301,12 +305,13 @@ Rmax = roundP(nanmin(Dc(:))/2);
 
 % --- determines an estimate of the circle centres/radii from the 2D
 %     cross-correlation of the candidate image with a circle template
-function [iMov,R,X,Y,ok] = detImageCirclesPrev(I,iMov,hQ)
+function [iMov,R,X,Y,ok] = detImageCirclesPrev(I,iMov)
 
 % global variables
 global RnwTol Rmax 
 
 % parameters and memory allocation
+hQ = 0.25;
 nTubeMx = getSRCountMax(iMov);
 [RnwTol,rDelMin,rDelMax,ok] = deal(10,1,5,true);
 [nApp,R,dR] = deal(iMov.nRow*iMov.nCol,NaN,5);

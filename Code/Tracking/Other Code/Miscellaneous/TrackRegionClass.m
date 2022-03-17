@@ -16,7 +16,8 @@ classdef TrackRegionClass < handle
         % plot object fields
         hMark
         hTube
-        hDir           
+        hDir
+        hROI
         
         % other class fields
         iMov
@@ -33,7 +34,11 @@ classdef TrackRegionClass < handle
         pX 
         pY 
         pH 
-        pW        
+        pW      
+        
+        % other fields 
+        hVL
+        xHL
         
         % plot parmeters
         lWid
@@ -43,8 +48,8 @@ classdef TrackRegionClass < handle
         xGap = 5;
         yGap = 5;        
         fAlpha = 0.2;
-        ix = [1,1,2,2];
-        iy = [1,2,2,1];
+        ix = [1,1,2,2,1];
+        iy = [1,2,2,1,1];
         
     end
     
@@ -60,8 +65,7 @@ classdef TrackRegionClass < handle
             obj.isMain = true;
             
             % retrieves the other main GUI object handles
-            obj.hChkSR = findall(hFig,'tag','checkSubRegions');   
-            obj.hMenuSR = findall(hFig,'tag','menuShowRegion');            
+            obj.hChkSR = findall(hFig,'tag','checkSubRegions');                           
                         
             % sets the window label font sizes and linewidths
             if ispc
@@ -94,7 +98,7 @@ classdef TrackRegionClass < handle
 
             % sets the movement flag
             if obj.isMain
-                % for the main GUI viewing, so don't allow movement of the imrect boxes
+                % for the main GUI viewing, so don't allow box movement 
                 obj.isMove = false;
             else
                 % otherwise, allow movement of the imrect boxes
@@ -104,38 +108,36 @@ classdef TrackRegionClass < handle
             % turns the axis hold on
             hold(obj.hAx,'on')
 
-            %
-            if isempty(obj.iMov.autoP)
-                hLine = findall(obj.hAx,'tag','hLine');
-                vLine = findall(obj.hAx,'tag','vLine');
+            % retrieves the vertical/horizontal line handles
+            hLine = findall(obj.hAx,'tag','hLine');
+            vLine = findall(obj.hAx,'tag','vLine');
 
-                % sets the horizontal seperators    
-                if isempty(hLine)
-                    % if the objects don't exist, then create them
-                    for i = 1:(nRow-1)
-                        for j = 1:nCol 
-                            line(obj.hAx,[0 0],[0 0],'color','r',...
-                                    'linestyle',':','tag','hLine',...
-                                    'Userdata',[i,j],'linewidth',obj.lWid);
-                        end
-                    end
-                else
-                    % otherwise, make the regions visible
-                    setObjVisibility(hLine,'on');
-                end
-
-                % sets the vertical seperators
-                if isempty(vLine)
-                    % if the objects don't exist, then create them
-                    for j = 1:(nCol-1)
+            % sets the horizontal seperators    
+            if isempty(hLine)
+                % if the objects don't exist, then create them
+                for i = 1:(nRow-1)
+                    for j = 1:nCol 
                         line(obj.hAx,[0 0],[0 0],'color','r',...
-                                'linestyle',':','tag','vLine',...
-                                'Userdata',j,'linewidth',obj.lWid);   
+                                'linestyle',':','tag','hLine',...
+                                'Userdata',[i,j],'linewidth',obj.lWid);
                     end
-                else
-                    % otherwise, make the object visible
-                    setObjVisibility(vLine,'on');
                 end
+            else
+                % otherwise, make the regions visible
+                setObjVisibility(hLine,'on');
+            end
+
+            % sets the vertical seperators
+            if isempty(vLine)
+                % if the objects don't exist, then create them
+                for j = 1:(nCol-1)
+                    line(obj.hAx,[0 0],[0 0],'color','r',...
+                            'linestyle',':','tag','vLine',...
+                            'Userdata',j,'linewidth',obj.lWid);   
+                end
+            else
+                % otherwise, make the object visible
+                setObjVisibility(vLine,'on');
             end
 
             % sets the number markers
@@ -193,9 +195,9 @@ classdef TrackRegionClass < handle
                 if ~isempty(hObj)
                     % deletes/makes the plot object invisible
                     if forceDelete
-                        delete(obj.hTube)
+                        delete(hObj)
                     else
-                        setObjVisibility(obj.hTube,'off')
+                        setObjVisibility(hObj,'off')
                     end
                 end
             end
@@ -281,74 +283,73 @@ classdef TrackRegionClass < handle
             useOuter = cellfun(@isempty,pPos);
             pPos(useOuter) = obj.iMov.posO(useOuter);
 
-            if isempty(obj.iMov.autoP)
-                % retrieves the handles to the horizontal/vertical lines
-                vLine = findobj(obj.hAx,'tag','vLine');
-                hLine = findobj(obj.hAx,'tag','hLine');
+            % retrieves the handles to the horizontal/vertical lines
+            vLine = findobj(obj.hAx,'tag','vLine');
+            hLine = findobj(obj.hAx,'tag','hLine');
 
-                % sets the horizontal 
-                rPos = roundP(rPos,0.1);
-                [L,T,W,H] = deal(rPos(1),rPos(2),rPos(3),rPos(4));
-                yPltV = repmat(T + [0 H],nCol-1,1);
+            % sets the horizontal 
+            rPos = roundP(rPos,0.1);
+            [L,T,W,H] = deal(rPos(1),rPos(2),rPos(3),rPos(4));
+            yPltV = repmat(T + [0 H],nCol-1,1);
 
-                % sets the horizontal marker regions
-                if obj.iMov.isOpt
-                    % memory allocation
-                    [yPltH,xPltV] = deal(zeros(nRow-1,2),zeros(nCol-1,2));
+            % sets the horizontal marker regions
+            if obj.iMov.isOpt
+                % memory allocation
+                [yPltH,xPltV] = deal(zeros(nRow-1,2),zeros(nCol-1,2));
 
-                    % sets the y locations of the horizontal separators   
-                    for i = 1:(nRow-1)
-                        % sets the indices of the lower/upper groups
-                        iLo = (i-1)*nCol+(1:nCol)';
-                        iHi = i*nCol+(1:nCol);
+                % sets the y locations of the horizontal separators   
+                for i = 1:(nRow-1)
+                    % sets the indices of the lower/upper groups
+                    iLo = (i-1)*nCol+(1:nCol)';
+                    iHi = i*nCol+(1:nCol);
 
-                        % sets the locations of the lower top/upper bottom indices
-                        yT = max(cellfun(@(x)(sum(x([2 4]))),obj.iMov.pos(iLo)));
-                        yB = min(cellfun(@(x)(x(2)),obj.iMov.pos(iHi)));
+                    % sets locations of lower top/upper bottom indices
+                    yT = max(cellfun(@(x)(sum(x([2 4]))),obj.iMov.pos(iLo)));
+                    yB = min(cellfun(@(x)(x(2)),obj.iMov.pos(iHi)));
 
-                        % sets the vertical location of the horizontal separator
-                        yPltH(i,:) = 0.5*(yT+yB); 
-                    end
-
-                    % sets the x locations of the vertical separators   
-                    for i = 1:(nCol-1)
-                        % sets the indices of the left/right groups
-                        iLf = nCol*(0:(nRow-1))'+i;
-
-                        % sets the locations of the lower top/upper bottom indices
-                        xR = max(cellfun(@(x)(sum(x([1 3]))),obj.iMov.pos(iLf)));
-                        xL = min(cellfun(@(x)(x(1)),obj.iMov.pos(iLf+1)));
-
-                        % sets the horizontal location of the vertical separator
-                        xPltV(i,:) = 0.5*(xR+xL);                 
-                    end   
-                else    
-                    % sets the x locations of the vertical separators  
-                    [dW,dH] = deal(W/obj.iMov.nCol,H/obj.iMov.nRow); 
-                    xPltV = repmat(L + (1:(nCol-1))'*dW,1,2);    
+                    % sets vertical location of horizontal separator
+                    yPltH(i,:) = 0.5*(yT+yB); 
                 end
 
-                % sets the location of the horizontal seperators
-                xPltH = [L;xPltV(:,1);(L+W)];
-                for i = 1:(nRow-1)        
-                    for j = 1:nCol
-                        % determines the apparatus index
-                        iApp = ((i-1)*nCol + j) + [0 nCol];            
-                        yPltH = 0.5*(sum(pPos{iApp(1)}([2 4]))+...
-                                         pPos{iApp(2)}(2));
+                % sets the x locations of the vertical separators   
+                for i = 1:(nCol-1)
+                    % sets the indices of the left/right groups
+                    iLf = nCol*(0:(nRow-1))'+i;
 
-                        % retrieves the line
-                        hLineNw = findobj(hLine,'UserData',[i,j]);  
-                        set(hLineNw,'xData',xPltH(j+(0:1)),...
-                                    'yData',yPltH*[1 1],'Visible','on');
-                    end
-                end
+                    % sets locations of lower top/upper bottom indices
+                    xR = max(cellfun(@(x)(sum(x([1 3]))),obj.iMov.pos(iLf)));
+                    xL = min(cellfun(@(x)(x(1)),obj.iMov.pos(iLf+1)));
 
-                % sets the location of the vertical seperators
-                for j = 1:(nCol-1)
-                    vLineNw = findobj(vLine,'UserData',j);    
-                    set(vLineNw,'xData',xPltV(j,:),'yData',yPltV(j,:),'Visible','on');
+                    % sets horizontal location of vertical separator
+                    xPltV(i,:) = 0.5*(xR+xL);                 
+                end   
+            else    
+                % sets the x locations of the vertical separators  
+                [dW,dH] = deal(W/obj.iMov.nCol,H/obj.iMov.nRow); 
+                xPltV = repmat(L + (1:(nCol-1))'*dW,1,2);    
+            end
+
+            % sets the location of the horizontal seperators
+            xPltH = [L;xPltV(:,1);(L+W)];
+            for i = 1:(nRow-1)
+                for j = 1:nCol
+                    % determines the apparatus index
+                    iApp = ((i-1)*nCol + j) + [0 nCol];            
+                    yPltH = 0.5*(sum(pPos{iApp(1)}([2 4]))+...
+                                     pPos{iApp(2)}(2));
+
+                    % retrieves the line
+                    hLineNw = findobj(hLine,'UserData',[i,j]);  
+                    set(hLineNw,'xData',xPltH(j+(0:1)),...
+                                'yData',yPltH*[1 1],'Visible','on');
                 end
+            end
+
+            % sets the location of the vertical seperators
+            for j = 1:(nCol-1)
+                vLineNw = findobj(vLine,'UserData',j);    
+                set(vLineNw,'xData',xPltV(j,:),...
+                            'yData',yPltV(j,:),'Visible','on');
             end
 
             % retrieves the handles to the numbers 
@@ -376,7 +377,8 @@ classdef TrackRegionClass < handle
 
                         % updates the text object position
                         hEx = get(hText,'Extent');        
-                        set(hText,'position',[X-(hEx(3)/2) Y 0],'visible','on')
+                        set(hText,'position',[X-(hEx(3)/2) Y 0],...
+                                  'visible','on')
                     end
                 end
             end    
@@ -457,24 +459,24 @@ classdef TrackRegionClass < handle
                     hold(obj.hAx,'off')
                 end        
 
-                % creates the new rectangle object (non-General detection only)
-                if isempty(obj.iMov.autoP)
-                    hROI = imrect(obj.hAx,rPosS{i});
+                % creates the new rectangle object (region config only)
+                if ~obj.iMov.isSet
+                    hROIF = imrect(obj.hAx,rPosS{i});
                     indCol = mod(i-1,length(col))+1;
 
                     % disables the bottom line of the imrect object
-                    set(hROI,'tag','hInner');
-                    setObjVisibility(findobj(hROI,'tag','bottom line'),'off');
+                    set(hROIF,'tag','hInner');
+                    setObjVisibility(findobj(hROIF,'tag','bottom line'),0);
 
                     % if moveable, then set the position callback function
-                    api = iptgetapi(hROI);
+                    api = iptgetapi(hROIF);
                     api.setColor(col(indCol));
                     api.addNewPositionCallback(@obj.roiCallback);         
                 end
 
                 if obj.isMove                      
                     % sets the position callback function 
-                    set(hROI,'UserData',i)                
+                    set(hROIF,'UserData',i)                
 
                     % sets the constraint region for the 
                     fcn = makeConstrainToRectFcn('imrect',xLimS,yLimS);
@@ -522,9 +524,10 @@ classdef TrackRegionClass < handle
                 else                
                     % sets the constraint function for the rectangle object
                     switch obj.Type
-                        case {'GeneralR','Circle'}
+                        case {'GeneralR','Circle','Rectangle'}
                             % retrieves the inner region object handles
-                            hInner = findall(obj.hAx,'tag','hInner','UserData',i);
+                            hInner = findall(obj.hAx,'tag','hInner',...
+                                                     'UserData',i);
                             if isempty(hInner)
                                 % create the objects if the don't exist
                                 XX = obj.iMov.iC{i}([1,end]);
@@ -540,11 +543,11 @@ classdef TrackRegionClass < handle
 
                         otherwise
                             % force the imrect object to be fixed
-                            setResizable(hROI,false);                
+                            setResizable(hROIF,false);                
                             fcn = makeConstrainToRectFcn('imrect',...
-                                  rPos(1)+[0 rPos(3)],rPos(2)+[0 rPos(4)]);
+                                  rPos(1)+[0,rPos(3)],rPos(2)+[0,rPos(4)]);
                             api.setPositionConstraintFcn(fcn); 
-                            set(findobj(hROI),'hittest','off')
+                            set(findobj(hROIF),'hittest','off')
                     end
                 end            
             end
@@ -581,7 +584,11 @@ classdef TrackRegionClass < handle
                 % if not, then prompt the user to set them up
                 hGUI = guidata(obj.hFigRS);
                 obj.iMov.posG = obj.setupMainFrameRect();
-                obj.iMov = obj.hFigRS.initSubPlotStruct(hGUI,obj.iMov);                
+                obj.iMov = obj.hFigRS.initSubPlotStruct(hGUI,obj.iMov);
+                
+                if ~obj.isMain
+                    obj.hFigRS.iMov = obj.iMov;
+                end
             end        
             
             % resets the tube count/use flags (multi-fly tracking only)
@@ -619,9 +626,12 @@ classdef TrackRegionClass < handle
             % --- VERTICAL LINE CREATION --- %
             % ------------------------------ %
 
+            % tag strings
+            tStr = {'end point 1','end point 2'};
+            
             % memory allocation
             xVL = cell(obj.iMov.nCol-1,1);
-            hVL = cell(1,obj.iMov.nCol-1);
+            obj.hVL = cell(1,obj.iMov.nCol-1);  
             yVL = obj.iMov.posG(2) + [0 obj.iMov.posG(4)];
 
             % sets the position vector
@@ -649,47 +659,48 @@ classdef TrackRegionClass < handle
                 end
 
                 % creates the line object and sets the flags
-                hVL{i-1} = imline(obj.hAx,xVL{i-1},yVL);
-                set(hVL{i-1},'tag','hVert');
-                set(findobj(hVL{i-1},'tag','end point 1'),'hittest','off');
-                set(findobj(hVL{i-1},'tag','end point 2'),'hittest','off');
+                obj.hVL{i-1} = imline(obj.hAx,xVL{i-1},yVL);
+                set(obj.hVL{i-1},'tag','hVert');
+                set(findobj(obj.hVL{i-1},'tag',tStr{1}),'hittest','off');
+                set(findobj(obj.hVL{i-1},'tag',tStr{2}),'hittest','off');
 
                 % sets the bottom line invisible
-                hLineBL = findobj(hVL{i-1},'tag','bottom line');
+                hLineBL = findobj(obj.hVL{i-1},'tag','bottom line');
                 set(hLineBL,'visible','off','UserData',i-1);
                 
-                % updates the 
-                api = iptgetapi(hVL{i-1});
+                % updates the marker properties/callback function
+                api = iptgetapi(obj.hVL{i-1});
                 api.setColor('r')
                 api.addNewPositionCallback(@obj.vertCallback); 
 
                 % sets the position constraint function
-                yLimVL = obj.getVertXLim(i);
-                fcn = makeConstrainToRectFcn('imline',yLimVL,yVL);
-                api.setPositionConstraintFcn(fcn);           
+                obj.setVertMarkerConstrainFcn(i);                
             end
 
             % -------------------------------- %
             % --- HORIZONTAL LINE CREATION --- %
-            % -------------------------------- %    
+            % -------------------------------- % 
+            
+            % memory allocation
+            obj.xHL = cell(obj.iMov.nCol,1);
 
             % only set up the horizontal lines if more than one column
             for j = 1:obj.iMov.nCol
                 % sets the x-location of the lines
                 if obj.iMov.nCol == 1
                     % case is there is only one column group
-                    xHL = obj.iMov.posO{j};
+                    obj.xHL{j} = obj.iMov.posO{j};
                 else
                     % case is there are multiple column groups
                     switch j
                         case 1
-                            xHL = [obj.iMov.posO{j}(1),xVL{j}(1)];
+                            obj.xHL{j} = [obj.iMov.posO{j}(1),xVL{j}(1)];
 
                         case obj.iMov.nCol
-                            xHL = [xVL{j-1}(1),sum(obj.iMov.posO{j}([1,3]))];
+                            obj.xHL{j} = [xVL{j-1}(1),sum(obj.iMov.posO{j}([1,3]))];
 
                         otherwise
-                            xHL = [xVL{j-1}(1),xVL{j}(1)];
+                            obj.xHL{j} = [xVL{j-1}(1),xVL{j}(1)];
 
                     end        
                 end
@@ -708,11 +719,11 @@ classdef TrackRegionClass < handle
                     end
 
                     % creates the line object and sets the properties
-                    hHL = imline(obj.hAx,xHL,yHL);
+                    hHL = imline(obj.hAx,obj.xHL{j},yHL);
                     set(hHL,'tag','hHorz','UserData',[i,j]);                     
                     set(findobj(hHL,'tag','end point 1'),'hittest','off');
                     set(findobj(hHL,'tag','end point 2'),'hittest','off');        
-
+                    
                     % makes the bottom line object invisible
                     hLineBL = findobj(hHL,'tag','bottom line');
                     setObjVisibility(hLineBL,'off');
@@ -720,23 +731,21 @@ classdef TrackRegionClass < handle
                     % updates the 
                     api = iptgetapi(hHL);
                     api.setColor('r')
-                    api.addNewPositionCallback(@obj.horzCallback); 
-
-                    % sets the position constraint function
-                    xLimHL = obj.getHorzYLim(i,j);
-                    fcn = makeConstrainToRectFcn('imline',xHL,xLimHL);
-                    api.setPositionConstraintFcn(fcn);             
-
+                    api.addNewPositionCallback(@obj.horzCallback);
+                    
+                    % sets the horizontal marker constraint function
+                    obj.setHorzMarkerConstrainFcn(hHL,i,j);
+                    
                     % sets the left-coordinate for the vertical line
                     if j > 1
-                        uD = [get(hVL{j-1},'UserData');{api,1,i,j}];
-                        set(hVL{j-1},'UserData',uD);
+                        uD = [get(obj.hVL{j-1},'UserData');{api,1,i,j}];
+                        set(obj.hVL{j-1},'UserData',uD);
                     end
 
                     % sets the right-coordinate for the vertical line
                     if j < obj.iMov.nCol
-                        uD = [get(hVL{j},'UserData');{api,2,i,j}];
-                        set(hVL{j},'UserData',uD);            
+                        uD = [get(obj.hVL{j},'UserData');{api,2,i,j}];
+                        set(obj.hVL{j},'UserData',uD);            
                     end
                 end
             end
@@ -744,6 +753,9 @@ classdef TrackRegionClass < handle
             % ----------------------------------- %
             % --- TUBE REGION OBJECT CREATION --- %
             % ----------------------------------- %
+            
+            % memory allocation
+            obj.hROI = cell(size(obj.iMov.ok));
 
             % case is for movable inner objects (different colours)
             if mod(obj.iMov.nCol,2) == 1
@@ -797,16 +809,14 @@ classdef TrackRegionClass < handle
                     yTubeS = num2cell([yTube0(1:end-1),yTube0(2:end)],2);
 
                     % calculates the sub-region outline coordinates
-                    pPos{i} = cellfun(@(x)([xTubeS0(1)+obj.xGap,...
-                            x(1)+obj.yGap,diff(xTubeS0)-2*obj.xGap,...
-                            diff(x)-2*obj.yGap]),yTubeS,'un',0);
+                    pPos{i} = obj.getRegionPosVec(i);
 
                     % case is 2D setup expt
                     switch obj.iMov.mShape
                         case 'Rect'
                             % case is using rectangular shapes
                             cFcnType = 'imrect';
-                            hROI = cellfun(@(x)...
+                            obj.hROI{i} = cellfun(@(x)...
                                     (imrect(obj.hAx,x)),pPos{i},'un',0);
 
                         case 'Circ'
@@ -814,7 +824,7 @@ classdef TrackRegionClass < handle
                             cFcnType = 'imellipse';
 
                             % creates the circle objects
-                            hROI = cell(length(pPos{i}),1);
+                            obj.hROI{i} = cell(length(pPos{i}),1);
                             for j = 1:length(pPos{i})
                                 % retrieves the original dimensions
                                 p0 = pPos{i}{j}(1:2);
@@ -828,21 +838,34 @@ classdef TrackRegionClass < handle
                                 pPos{i}{j}(3:4) = min(szObj); 
                                     
                                 % creates the circle object
-                                hROI{j} = imellipse(obj.hAx,pPos{i}{j});
-                                setFixedAspectRatioMode(hROI{j},true);
+                                obj.hROI{i}{j} = ...
+                                            imellipse(obj.hAx,pPos{i}{j});
+                                setFixedAspectRatioMode(obj.hROI{i}{j},1);
                             end
                     end        
 
                     % updates the ROI object properties
-                    cellfun(@(h,x)(set...
-                            (h,'tag','hInner','UserData',[i,x])),hROI,xiN);
+                    cellfun(@(h,x)(set(h,'tag','hInner',...
+                                    'UserData',[i,x])),obj.hROI{i},xiN);
 
                     % if moveable, then set the position callback function
-                    for j = 1:length(hROI)
-                        api = iptgetapi(hROI{j});
+                    for j = 1:length(obj.hROI{i})
+                        api = iptgetapi(obj.hROI{i}{j});
                         api.setColor(col(indCol));
-                        api.addNewPositionCallback(@obj.roiCallback2D);            
+                        api.addNewPositionCallback(@obj.roiCallback2D); 
+                        
+                        % retrieves the children objects and their tags
+                        hChild = get(obj.hROI{i}{j},'Children');
+                        tStr = get(hChild,'tag');
 
+                        % removes the bottom line
+                        isBL = strcmp(tStr,'bottom line');
+                        setObjVisibility(hChild(isBL),0)
+                        
+                        % removes the marker objects
+                        isMark = strContains(tStr,'marker');
+                        arrayfun(@(x)(set(x,'MarkerSize',1)),hChild(isMark))
+                        
                         % sets the constraint region for the inner regions
                         fcn = makeConstrainToRectFcn...
                                                 (cFcnType,xLimS,yTubeS{j});
@@ -854,20 +877,20 @@ classdef TrackRegionClass < handle
 
                 else
                     % case is 1D setup expt
-                    hROI = imrect(obj.hAx,obj.iMov.pos{i});          
-                    hLineBL = findobj(hROI,'tag','bottom line');
+                    obj.hROI{i} = imrect(obj.hAx,obj.iMov.pos{i});          
+                    hLineBL = findobj(obj.hROI{i},'tag','bottom line');
                     
                     % disables the bottom line of the imrect object
                     setObjVisibility(hLineBL,'off');
-                    set(hROI,'tag','hInner','UserData',i);                    
+                    set(obj.hROI{i},'tag','hInner','UserData',i);                    
 
                     % if moveable, then set the position callback function
-                    api = iptgetapi(hROI);
+                    api = iptgetapi(obj.hROI{i});
                     api.setColor(col(indCol));
 
                     if obj.isAutoDetect
                         % retrieves the marker object handles
-                        hObj = findall(hROI);            
+                        hObj = findall(obj.hROI{i});            
                         isM = strContains(get(hObj,'Tag'),'marker');
 
                         % turns off the object visibility/hit-test
@@ -895,11 +918,13 @@ classdef TrackRegionClass < handle
         end
         
         % --- removes the sub-regions
-        function deleteRegionConfig(obj)
+        function deleteRegionConfig(obj,varargin)
 
             % retrieves the GUI objects
-            hGUI = get(obj.hFigRS,'hGUI');
-            if isempty(hGUI); return; end
+            try
+                hGUI = get(obj.hFigRS,'hGUI');
+                if isempty(hGUI); return; end
+            end
 
             % removes all the division marker objects
             delete(findobj(obj.hAx,'tag','hOuter'));
@@ -912,41 +937,16 @@ classdef TrackRegionClass < handle
             % deletes all the tube-markers
             delete(findobj(obj.hAx,'UserData','hTube'));
 
+            % removes the sub-region viewing menu object
+            if ~isempty(varargin)
+                obj.hMenuSR = [];
+            end
+            
         end
         
         % ------------------------------------- %
         % --- SUB-REGION PLOTTING FUNCTIONS --- %
         % ------------------------------------- %                
-
-        % --- plots the circle regions on the main GUI to enable visualisation
-        function plotRegionOutlines(obj,forceUpdate)
-
-            % retrieves the sub-region and main GUI handles data struct
-            if ~exist('forceUpdate','var'); forceUpdate = false; end             
-
-            % sets the circle visibility based on the checked status
-            hOut = findall(obj.hAx,'tag','hOuter');
-            if strcmp(get(obj.hMenuSR,'checked'),'on') || forceUpdate
-                % menu item is checked, so makes the regions visible
-                if isempty(hOut)        
-                    % creates the outlines based on the type
-                    switch obj.iMov.autoP.Type
-                        case 'Circle'           
-                            obj.createCircleOutlines();
-
-                        case 'GeneralR'
-                            obj.createGeneralOutlines();
-                    end              
-                else
-                    % otherwise, make the circles visible
-                    setObjVisibility(hOut,'on')
-                end
-            else
-                % otherwise, make the circular regions invisible
-                setObjVisibility(hOut,'off')
-            end
-
-        end
 
         % --- creates the circle outlines
         function createCircleOutlines(obj)
@@ -956,9 +956,14 @@ classdef TrackRegionClass < handle
 
             % sets the X/Y coordinates of the circle centres
             eStr = {'off','on'};
+            R = obj.iMov.autoP.R;
             [X,Y] = deal(obj.iMov.autoP.X0,obj.iMov.autoP.Y0);
-            [XC,YC] = deal(obj.iMov.autoP.XC,obj.iMov.autoP.YC);
+            [XC0,YC0] = deal(obj.iMov.autoP.XC,obj.iMov.autoP.YC);
 
+            % determines if the circle coordinates need to be scaled
+            [nRow,nCol] = size(X);
+            sclC = ((nRow*nCol) > 1) && (numel(R) > 1);
+            
             % retrieves the group indices
             if isfield(obj.iMov,'pInfo')    
                 iGrp = obj.iMov.pInfo.iGrp;
@@ -970,16 +975,23 @@ classdef TrackRegionClass < handle
             tCol = getAllGroupColours(max(iGrp(:)));
 
             % loops through all the sub-regions plotting the general objects  
-            [nRow,nCol] = size(X);
             for iCol = 1:nCol
                 % creates the new fill objects for each valid region    
                 for k = 1:nRow
+                    % sets the plot values
+                    if sclC
+                        [XC,YC] = deal(R(k,iCol)*XC0,R(k,iCol)*YC0);
+                    else
+                        [XC,YC] = deal(XC0,YC0);
+                    end
+                    
                     % calculates the new coordinates and plots the circle
                     pCol = tCol(iGrp(k,iCol)+1,:);
+                    isVis = eStr{1+(iGrp(k,iCol)>0)};
                     [xP,yP] = deal(X(k,iCol)+XC,Y(k,iCol)+YC);
                     fill(xP,yP,pCol,'tag','hOuter','UserData',[iCol,k],...
-                           'facealpha',0.25,'LineWidth',1,'Parent',obj.hAx,...
-                           'visible',eStr{1+(iGrp(k,iCol)>0)})
+                           'facealpha',0.25,'LineWidth',obj.lWid,...
+                           'Parent',obj.hAx,'visible',isVis)
                 end
             end  
 
@@ -1037,11 +1049,11 @@ classdef TrackRegionClass < handle
             obj.isUpdating = true;
 
             % retrieves the object handle and the index of the line
-            hVL = get(gco,'parent');
-            iVL = get(findall(hVL,'tag','bottom line'),'UserData');
+            hVL0 = get(gco,'parent');
+            iVL = get(findall(hVL0,'tag','bottom line'),'UserData');
 
             % updates the attached horizontal line properties
-            uD = get(hVL,'UserData');
+            uD = get(hVL0,'UserData');
             for i = 1:size(uD)
                 % updates the position of the attached line
                 lPos0 = uD{i,1}.getPosition;
@@ -1089,11 +1101,16 @@ classdef TrackRegionClass < handle
 
         % --- the callback function for moving the 2D inner tube regions
         function roiCallback2D(obj,rPos)
+            
+            % if updating then exit
+            if obj.isUpdating
+                return
+            end
 
             % retrieves the sub-region data object
             srObj = get(obj.hFigRS,'srObj');
-            hROI = get(gco,'Parent');
-            uData = get(hROI,'UserData');
+            hROInw = get(gco,'Parent');
+            uData = get(hROInw,'UserData');
 
             % enables the update button
             setObjEnable(obj.hButU,1)
@@ -1101,14 +1118,136 @@ classdef TrackRegionClass < handle
             % add in code here to update region coordinates
             %  - fill out autoP field
 
-            % determines if running the callback function is valid
-            if isempty(srObj)
-                % sub-region struct has not been set, so exit
-                return
-            elseif ~srObj.isOpen
-                % sub-region GUI is closed, so exit
-                return
+            % updates the region markers based on type
+            if ~isempty(srObj) && srObj.isOpen
+                % case is the split region marker is being updated
+                obj.updateSplitRegionMarker(uData,rPos)
+            else
+                % case is a region config marker is being updated
+                try
+                    [iApp,iTube] = deal(uData(1),uData(2));
+                catch
+                    return
+                end
+                
+                % updates the positional marker vector
+                obj.hFigRS.iMov.autoP.pPos{iTube,iApp} = rPos;
+                if strcmp(obj.iMov.pInfo.mShape,'Circle')
+                    % ensures the shape is circular
+                    rPos(3:4) = max(rPos(3:4));
+                    obj.hFigRS.iMov.autoP.pPos{iTube,iApp} = rPos;                    
+                    
+                    % resets the region position
+                    obj.isUpdating = true;
+                    api = iptgetapi(hROInw);
+                    api.setPosition(rPos);
+                    obj.isUpdating = false;
+                end
+                
+                % resets the sub-region limits
+                obj.resetRegionLimits2D(iApp,iTube);
+                obj.resetMarkerLimits2D(iApp);
             end
+
+        end
+        
+        % --- resets the 2D horizontal/vertical region marker limits
+        function resetMarkerLimits2D(obj,iApp)
+            
+            % sets the row/column indices
+            iRow = floor((iApp-1)/obj.iMov.nCol) + 1;
+            iCol = mod((iApp-1),obj.iMov.nCol) + 1;
+            
+            % updates the vertical markers
+            if obj.iMov.nCol > 1
+                ii = iCol + [0,1];                
+                for i = ii((ii > 1) & (ii <= obj.iMov.nCol))
+                    obj.setVertMarkerConstrainFcn(i)
+                end
+            end
+            
+            %
+            if obj.iMov.nRow > 1
+%                 % FINISH ME!
+%                 set(hHL,'tag','hHorz','UserData',[i,j]); 
+%                 obj.setHorzMarkerConstrainFcn(hHL,i,j);
+            end            
+            
+        end
+        
+        % --- resets the 2D region limits
+        function resetRegionLimits2D(obj,iApp,iT)                          
+            
+            % sets the row/column indices
+            iRow = floor((iApp-1)/obj.iMov.nCol) + 1;
+            iCol = mod((iApp-1),obj.iMov.nCol) + 1;
+
+            % retrieves the x/y limits of the region
+            xLT = obj.getRegionXLim(iCol);
+            yLT = obj.getRegionYLim(iRow,iCol);
+            
+            if iT > 1
+                % resets the upper region limits
+                yL0 = obj.getRegionLimits2D(yLT,iApp,iT-1);
+                obj.setRegionConstrainFcn(obj.hROI{iApp}{iT-1},xLT,yL0);
+                
+                % resets the current region limits
+                yL1 = obj.getRegionLimits2D(yLT,iApp,iT);
+                obj.setRegionConstrainFcn(obj.hROI{iApp}{iT},xLT,yL1);                
+            end
+               
+            if iT < size(obj.iMov.flyok,1)
+                % resets the upper region limits
+                yL1 = obj.getRegionLimits2D(yLT,iApp,iT);
+                obj.setRegionConstrainFcn(obj.hROI{iApp}{iT},xLT,yL1);
+                
+                % resets the current region limits
+                yL2 = obj.getRegionLimits2D(yLT,iApp,iT+1);
+                obj.setRegionConstrainFcn(obj.hROI{iApp}{iT+1},xLT,yL2);
+            end
+                
+            
+        end        
+        
+        % --- resets the 2d region limit marker objects
+        function yL = getRegionLimits2D(obj,yLT,iApp,iT)
+            
+            % initialisations
+            nRow = obj.iMov.pInfo.nRow;            
+            
+            % 
+            if nRow == 1
+                % case is there is only one sub-region
+                yL = yLT;
+            else                
+                % case is there is more than one sub-region
+                switch iT
+                    case 1
+                        % case is sub-region is on first row 
+                        pP2 = obj.getRegionPosVec(iApp,iT+1);                        
+                        yL = [yLT(1),floor(pP2(2))];
+
+                    case nRow
+                        % case is sub-region is on last row
+                        pP0 = obj.getRegionPosVec(iApp,iT-1);
+                        yL = [sum(pP0([2,4])),yLT(2)];
+
+                    otherwise
+                        % case is sub-region is on other row
+                        pP0 = obj.getRegionPosVec(iApp,iT-1);
+                        pP2 = obj.getRegionPosVec(iApp,iT+1);
+                        yL = [sum(pP0([2,4])),floor(pP2(2))];
+                end
+            end
+            
+        end
+        
+        % --- the split-region region markers
+        function updateSplitRegionMarker(obj,uData,rPos)
+
+            % updates the region marker
+            srObj = get(obj.hFigRS,'srObj');
+            obj.updateSubRegionMarker(uData,rPos)
 
             % retrieves the marker line objects 
             hMarkR = srObj.hMarkR{uData(2),uData(1)};
@@ -1169,8 +1308,8 @@ classdef TrackRegionClass < handle
             end
 
             % resets the update flag
-            srObj.isUpdating = false;
-
+            srObj.isUpdating = false;            
+            
         end
         
         % --- the callback function for moving the inner tube regions
@@ -1315,20 +1454,36 @@ classdef TrackRegionClass < handle
             yLim = zeros(1,2);
             yGapNw = 3*(nargin == 3)*obj.yGap;
 
-            % sets the lower limit
-            if iRow == 2
-                yLim(1) = obj.iMov.posG(2) + yGapNw;
+            % sets the limits based on the experiment region type
+            if obj.iMov.is2D
+                % case is a 2D expt setup            
+            
+                % retrieves coordinate arrays for the lower columns
+                pPLo = obj.getRegionPosVec(iCol-1);
+                pPHi = obj.getRegionPosVec(iCol);
+                                
+                % sets the lower/upper limits
+                yLim = [max(cellfun(@(x)(sum(x([2,4]))),pPLo)),...
+                        min(cellfun(@(x)(x(2)),pPHi))];                
+                
             else
-                iL = (iRow-2)*obj.iMov.nCol + iCol;    
-                yLim(1) = obj.iMov.pos{iL}(2) + yGapNw;
-            end
+                % case is a 1D expt setup
+                
+                % sets the lower limit
+                if iRow == 2
+                    yLim(1) = obj.iMov.posG(2) + yGapNw;
+                else
+                    iL = (iRow-2)*obj.iMov.nCol + iCol;    
+                    yLim(1) = obj.iMov.pos{iL}(2) + yGapNw;
+                end
 
-            % sets the upper limit
-            if iRow == obj.iMov.nRow
-                yLim(2) = sum(obj.iMov.posG([2 4])) - yGapNw;
-            else
-                iU = iRow*obj.iMov.nCol + iCol;
-                yLim(2) = obj.iMov.pos{iU}(2) - yGapNw;
+                % sets the upper limit
+                if iRow == obj.iMov.nRow
+                    yLim(2) = sum(obj.iMov.posG([2 4])) - yGapNw;
+                else
+                    iU = iRow*obj.iMov.nCol + iCol;
+                    yLim(2) = obj.iMov.pos{iU}(2) - yGapNw;
+                end
             end
 
         end
@@ -1376,18 +1531,34 @@ classdef TrackRegionClass < handle
             xLim = zeros(1,2);
             xGapNw = 3*(nargin == 2)*obj.xGap;
 
-            % sets the lower limit
-            if iCol == 2
-                xLim(1) = obj.iMov.posG(1) + xGapNw;
-            else
-                xLim(1) = obj.iMov.posO{iCol-1}(1) + xGapNw;
-            end
+            % sets the limits based on the experiment region type
+            if obj.iMov.is2D
+                % case is a 2D expt setup
 
-            % sets the upper limit
-            if iCol == obj.iMov.nCol
-                xLim(2) = sum(obj.iMov.posG([1 3])) - xGapNw;
+                % retrieves coordinate arrays for the lower/upper columns
+                pPLo = obj.getRegionPosVec(iCol-1);
+                pPHi = obj.getRegionPosVec(iCol);
+                
+                % sets the lower/upper limits
+                xLim = [max(cellfun(@(x)(sum(x([1,3]))),pPLo)),...
+                        min(cellfun(@(x)(x(1)),pPHi))];
+                
             else
-                xLim(2) = obj.iMov.posO{iCol+1}(1) - xGapNw;
+                % case is a 1D expt setup
+                
+                % sets the lower limit
+                if iCol == 2
+                    xLim(1) = obj.iMov.posG(1) + xGapNw;
+                else
+                    xLim(1) = obj.iMov.posO{iCol-1}(1) + xGapNw;
+                end
+
+                % sets the upper limit
+                if iCol == obj.iMov.nCol
+                    xLim(2) = sum(obj.iMov.posG([1 3])) - xGapNw;
+                else
+                    xLim(2) = obj.iMov.posO{iCol+1}(1) - xGapNw;
+                end
             end
 
         end        
@@ -1485,11 +1656,80 @@ classdef TrackRegionClass < handle
                 obj.removeDivisionFigure(false)                
             end
             
+        end   
+        
+        % ------------------------------------------ %
+        % --- MARKER CONSTRAINT FUNCTION UPDATES --- %
+        % ------------------------------------------ %
+        
+        % --- sets the region constraint function
+        function setRegionConstrainFcn(obj,hObj,xLim,yLim)
+
+            % retrieves the constraint shape type
+            switch obj.iMov.pInfo.mShape
+                case 'Circle'
+                    % case is a circular region
+                    cType = 'imellipse';
+                    
+                case 'Rectangle'
+                    % case is a rectangular region
+                    cType = 'imrect';
+                    
+                otherwise
+                    % case is a general polygon region
+                    cType = 'impoly';
+                    
+            end
+            
+            % sets up the constraint function
+            fcn = makeConstrainToRectFcn(cType,xLim,yLim);
+
+            % resets the position constraint function
+            api = iptgetapi(hObj);
+            api.setPositionConstraintFcn(fcn);                 
+
+        end                
+        
+        % --- sets the vertical marker constraint function
+        function setVertMarkerConstrainFcn(obj,iCol)
+
+            % sets up the constraint function
+            yLimVL = obj.getVertXLim(iCol);
+            yVL = obj.iMov.posG(2) + [0 obj.iMov.posG(4)];
+            fcn = makeConstrainToRectFcn('imline',yLimVL,yVL);
+            
+            % updates the constraint function            
+            api = iptgetapi(obj.hVL{iCol-1});
+            api.setPositionConstraintFcn(fcn);          
+
         end        
+        
+        % --- sets the horizontal marker constraint function
+        function setHorzMarkerConstrainFcn(obj,hObj,iRow,iCol)
+
+            % sets the position constraint function
+            xHLT = obj.xHL{iCol};
+            xLimHL = obj.getHorzYLim(iRow,iCol);            
+            fcn = makeConstrainToRectFcn('imline',xHLT,xLimHL);
+
+            % updates the constraint function
+            api = iptgetapi(hObj);
+            api.setPositionConstraintFcn(fcn);             
+
+        end                
         
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %
         % ------------------------------- %        
+        
+        % --- sets the marker object visibility flags
+        function setMarkerVisibility(obj,isVis)
+            
+            %
+            hInner = findall(obj.hAx,'tag','hInner');
+            setObjVisibility(hInner,isVis);
+            
+        end
         
         % --- sets the limits of the sub-region
         function [xLim,yLim] = setSubImageLimits(obj,xAxL,yAxL,rPos,iApp)
@@ -1552,7 +1792,29 @@ classdef TrackRegionClass < handle
             xLim = [max(xAxL(1),xLim(1)) min(xAxL(2),xLim(2))];
             yLim = [max(yAxL(1),yLim(1)) min(yAxL(2),yLim(2))];    
 
-        end
+        end        
+        
+        % --- retrieves the region position vector
+        function pP = getRegionPosVec(obj,iApp,iTube)
+            
+            % retrieves the data based on the usage type
+            if obj.isMain
+                % case is accessing from the main GUI
+                if exist('iTube','var')
+                    pP = obj.iMov.autoP.pPos{iTube,iApp};
+                else
+                    pP = obj.iMov.autoP.pPos(:,iApp);                    
+                end
+            else
+                % case is accessing from the region config GUI
+                if exist('iTube','var')
+                    pP = obj.hFigRS.iMov.autoP.pPos{iTube,iApp};
+                else
+                    pP = obj.hFigRS.iMov.autoP.pPos(:,iApp);                    
+                end
+            end
+            
+        end        
         
     end
 

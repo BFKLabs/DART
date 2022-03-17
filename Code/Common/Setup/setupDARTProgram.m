@@ -2,18 +2,12 @@
 %     into their designated locations --- %
 function ok = setupDARTProgram()
 
-% global variables
-global mainProgDir
-
 % un-zips the zip file into the temporary data directory
 warning off all
 
 % sets the default search directory
-if isempty(mainProgDir)
-    dDir = pwd;
-else
-    dDir = mainProgDir;
-end
+dDir = getProgFileName();
+if isempty(dDir); dDir = pwd; end
         
 % sets the program .zip file for the program setup
 [tmpDir,ok] = deal(fullfile(pwd,'Temp Files'),false);

@@ -1,9 +1,6 @@
 % --- centres the figure position to the screen's centre
 function centreFigPosition(hFig,varargin)
 
-% global variables
-global mainProgDir
-
 % resets the GUI name to include the program directory
 [showFig,updateTitle] = deal(true);
 
@@ -20,7 +17,7 @@ end
 % updates the figure title (if required)
 if updateTitle
     % retrieves the original/program names
-    [~,pName] = fileparts(mainProgDir);
+    [~,pName] = fileparts(getProgFileName());
     [progName, origName] = deal(sprintf('(%s)',pName), get(hFig,'Name'));
 
     % removes any previous program name tags from the title

@@ -120,7 +120,7 @@ switch iDim
     case 1
         % case is the row reduction
         switch iMov.autoP.Type
-            case 'Circle'
+            case {'Circle','Rectangle'}
                 % case is the circular setup
                 iMov.autoP.B{iApp} = iMov.autoP.B{iApp}(indNw,:);                
                 
@@ -133,7 +133,7 @@ switch iDim
     case 2
         % case is the column reduction
         switch iMov.autoP.Type
-            case 'Circle'
+            case {'Circle','Rectangle'}
                 % case is the circular setup 
                 iMov.autoP.B{iApp} = iMov.autoP.B{iApp}(:,indNw);
                 

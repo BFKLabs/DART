@@ -92,10 +92,7 @@ classdef ExeUpdateClass < handle
         % --------------------------------- %
         
         % --- Executes on button press in buttonApplyUpdate.
-        function buttonApplyUpdateCB(obj,hObject,~)
-         
-            % global variables
-            global mainProgDir
+        function buttonApplyUpdateCB(obj,hObject,~)         
             
             % if running DART via executable, then warn the user that will close
             if isdeployed
@@ -180,16 +177,13 @@ classdef ExeUpdateClass < handle
         % --- checks the status of the current update file
         function iStatus = checkCurrentUpdateStatus(obj)
 
-            % global variables
-            global mainProgDir
-
             % creates a loadbar
             h = ProgressLoadbar('Checking Current Executable Versions...');
             
             % initialisations
             iStatus = 0;
             obj.exeFile = which('ExeUpdate.exe');
-            obj.dartFile = fullfile(mainProgDir,'DART.ctf');
+            obj.dartFile = getProgFileName('DART.ctf');
             obj.tempDir = fullfile(fileparts(obj.exeFile),'TempFiles');
             obj.statusFile = fullfile(obj.tempDir,'Status.mat');
 

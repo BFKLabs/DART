@@ -171,9 +171,6 @@ delete(hFig)
 % --- initialises the GUI objects
 function initGUIObjects(handles)
 
-% global variables
-global mainProgDir
-
 % retrieves the final analysis function names
 hFig = handles.figAnalyFunc;
 
@@ -182,7 +179,7 @@ fcnName = sort(getappdata(hFig,'fName'));
 fcnData = [fcnName,num2cell(true(length(fcnName),1))];
 
 % sets the external app field string
-pkgDir = fullfile(mainProgDir,'Code','External Apps');
+pkgDir = getProgFileName('Code','External Apps');
 if exist(pkgDir,'dir')
     % if it exists, then determine the valid packages
     fDir = dir(pkgDir);

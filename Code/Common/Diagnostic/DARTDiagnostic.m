@@ -61,9 +61,6 @@ varargout{1} = [];
 % --- function that determines if the 
 function totStr = checkSystemConfig()
 
-% global variables
-global mainProgDir
-
 % memory allocation
 wState = warning('off','all');
 [nCheck,a,recOK,warnOK,trkOK] = deal(4,'',true,true,true);

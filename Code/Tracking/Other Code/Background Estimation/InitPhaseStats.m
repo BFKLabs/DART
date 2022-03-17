@@ -516,7 +516,7 @@ classdef InitPhaseStats < handle
                 if uD(2) == 0
                     ImuT = obj.Imu{2}{uD(1)};
                 else
-                    indG = obj.bgObj.iMov.srData.indG;                                
+                    indG = obj.bgObj.iMov.srData.indG;
                     ImuT = obj.Imu{3}{sum(abs(indG - uD),2) == 0};
                 end
                 

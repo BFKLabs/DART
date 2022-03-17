@@ -1,5 +1,5 @@
 function varargout = RegionConfig(varargin)
-% Last Modified by GUIDE v2.5 27-Oct-2021 22:34:13
+% Last Modified by GUIDE v2.5 16-Mar-2022 19:01:56
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -29,8 +29,8 @@ handles.output = hObject;
 
 % global variables
 global isMouseDown isMenuOpen p0
-global isChange useAuto mainProgDir isCalib frmSz0 isUpdating
-[isMouseDown,isMenuOpen,isChange,isUpdating,useAuto] = deal(false);
+global isChange isCalib frmSz0 isUpdating
+[isMouseDown,isMenuOpen,isChange,isUpdating] = deal(false);
 p0 = [];
 
 % sets the input variables
@@ -41,7 +41,7 @@ hPropTrack0 = varargin{2};
 hLoad = ProgressLoadbar('Initialising Region Setting GUI...');
 
 % loads the background parameter struct from the program parameter file
-A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+A = load(getParaFileName('ProgPara.mat'));
 bgP = DetectPara.resetDetectParaStruct(A.bgP);
 
 % sets the input arguments into the gui
@@ -61,11 +61,13 @@ iMov = get(hFig,'iMov');
 
 % calculates the main axes global coordinates
 [hObject.axPosX,hObject.axPosY] = hFig.calcAxesGlobalCoords(hGUI);
+hFig.rgObj.hMenuSR = handles.menuShowRegion;
 
 % resets the flags
 hObject.rgObj = get(hFig,'rgObj');
 hObject.rgObj.isMain = false;
 hObject.rgObj.hButU = handles.buttonUpdate;
+hObject.rgObj.hMenuSR = handles.menuShowRegion;
 
 % sets the 2D region flag (if not set)
 if ~isfield(iMov,'is2D')
@@ -82,7 +84,12 @@ end
 
 % sets the manual region shape flag (if not set)
 if ~isfield(iMov,'mShape')
-    iMov.mShape = 'Rect';
+    iMov.mShape = 'Circ';
+end
+
+% initialises an empty automatic detection parameter field
+if ~isfield(iMov,'autoP') || isempty(iMov.autoP)
+    iMov.autoP = pos2para(iMov);
 end
 
 % determines if the user is using multi-fly tracking
@@ -122,62 +129,60 @@ if isSet
     if ~isfield(hObject.iMov,'pInfo')
         hObject.iMov.pInfo = getDataSubStruct(handles);
         hObject.iMov.is2D = hObject.iData.is2D;
+    end   
+    
+    % sets the 2D flag (if not set)
+    if ~isfield(hObject.iMov,'is2D')
+        hObject.iMov.is2D = hObject.iData.is2D;
     end
     
-    % if the binary mask field (for the 2D circle automatic placement) has 
-    % not been set in iMov, then set the field and mark a change
-    if ~isfield(hObject.iMov,'autoP'); hObject.iMov.autoP = []; end    
+    % checks that the 2D regional information field is set properly
+    if hObject.iData.is2D
+        if ~isempty(hObject.iMov.autoP.X0)
+            [hObject.iMov.autoP,isUpdated] = ...
+                            backFormatRegionParaStruct(hObject.iMov.autoP);
+            setObjEnable(handles.buttonUpdate,isUpdated)
+        end
+    end
     
     % if the movie has already been set, then set the window properties and
     % disable the set button
     setObjEnable(handles.buttonSetRegions,'on')        
-    
-    % sets the fields based on the 
-    [setRegions,is2Dset] = deal(true,is2DCheck(hObject.iMov));
-    if is2Dset                
-        if ~isempty(hObject.iMov.autoP)
-            % initialises the isAuto flag (if not set already)
-            if ~isfield(hObject.iMov.autoP,'isAuto')
-                hObject.iMov.autoP.isAuto = true;
-            end
-                        
-            if hObject.iMov.autoP.isAuto
-                % plots the circle regions on the main GUI axes
-                setRegions = false;
-                hFig.rgObj.plotRegionOutlines(1)
-                setPatternMenuCheck(handles)      
-
-                % sets the use automatic detection flag
-                useAuto = true;
-            else
-                % sets the default region type
-                mType = hObject.iMov.autoP.Type(1:4);                
-                hMenu0 = findall(handles.menuRegionShape,'type','uimenu');
-                
-                % turns off/on the correct markers
-                arrayfun(@(x)(set(x,'Checked','off')),hMenu0);
-                set(findall(hMenu0,'tag',mType),'Checked','on');
-            end
-        end          
-    end    
-    
+        
     % sets the other object properties
-    setMenuCheck(handles.menuUseAuto,useAuto);
-    setMenuCheck(handles.menuShowInner,~hObject.iData.is2D);
-    setMenuCheck(handles.menuShowRegion,hObject.iData.is2D);
-    setObjEnable(handles.menuView,hObject.iMov.isSet)
-    setObjEnable(handles.menuSplitRegion,hObject.iMov.isSet)
+    useSR = false;
+    is2D = hObject.iData.is2D;
+    setMenuCheck(handles.menuShowInner,~is2D);
+    setMenuCheck(handles.menuShowRegion,is2D);
+    setObjEnable(handles.menuView,hObject.iMov.isSet)   
+    
+    % sets check mark for the split region use flag
+    if isfield(iMov,'srData') && ~isempty(iMov.srData)
+        % sets the checkmark flag
+        if isfield(hObject.iMov.srData,'useSR')
+            useSR = hObject.iMov.srData.useSR;
+        else
+            [useSR,hObject.iMov.srData.useSR] = deal(false);
+            setObjEnable(handles.buttonUpdate,1);
+        end
+        
+        % updates the menu item checkmark
+        setObjEnable(handles.menuConfigSetup,1);
+    end
+    
+    % sets the menu splitting enabled properties (sub-region information
+    % must be set and expt must be 2D)
+    setObjEnable(handles.menuSplitRegion,hObject.iMov.isSet && is2D)
+    setMenuCheck(setObjEnable(handles.menuUseSplit,useSR),useSR);
     
     % draw the sub-region division figures (if not auto-detecting)
-    if setRegions           
-        hObject.rgObj.setupRegionConfig(hObject.iMov,true);
-    end
+    hObject.rgObj.setupRegionConfig(hObject.iMov,true);        
     
     % sets the GUI to the top
     uistack(hObject,'top')      
 else
     % otherwise, initialise the data struct
-    hObject.iData = initDataStruct(iMov);
+    hObject.iData = initDataStruct();
 end
 
 % sets the function handles into the gui
@@ -210,20 +215,20 @@ initObjProps(handles,true);
 % --- HOUSE-KEEPING EXERCISES --- %
 % ------------------------------- %
 
+% Update handles structure
+guidata(hObject, handles);
+
 % closes the loadbar
 try; close(hLoad); end
 
 % centres the gui to the middle of the string
-centreFigPosition(hObject);
+optFigPosition([hFig,hObject])
 
 % turns off all warnings and makes the gui visible (prevents warning message)
 wState = warning('off','all');
 setObjVisibility(hObject,'on');
 pause(0.05);
 warning(wState)
-
-% Update handles structure
-guidata(hObject, handles);
 
 % UIWAIT makes RegionConfig wait for user response (see UIRESUME)
 % uiwait(handles.figRegionSetup);
@@ -415,9 +420,6 @@ end
 % --------------------------------------------------------------------
 function menuReset_Callback(hObject, eventdata, handles)
 
-% global variables
-global useAuto
-
 % prompts the user if they wish to proceed
 qStr = {'Are you sure you want to reset the current configuration?';...
         'The operation can not be reversed.'};
@@ -428,9 +430,11 @@ if ~strcmp(uChoice,'Yes')
 end
 
 % object handles
-useAuto = false;
 hFig = handles.output;
 hFig.iMov.isSet = false;
+[hFig.iMov.autoP,hFig.rgObj.iMov.autoP] = deal(pos2para(hFig.iMov));
+
+% deletes the configuration regions
 hFig.rgObj.deleteRegionConfig();
 
 % resets the data struct and the object properties
@@ -450,7 +454,7 @@ if strcmp(get(handles.buttonUpdate,'enable'),'on')
             'Update Sub-Regions?','Yes','No','Cancel','Yes');
     switch uChoice
         case ('Yes') % case is the user wants to update movie struct
-            if strcmp(get(handles.menuUseAuto,'checked'),'off')
+            if strcmp(get(handles.buttonUpdate,'Enable'),'on')
                 buttonUpdate_Callback(handles.buttonUpdate, 1, handles);
             end
             
@@ -481,7 +485,7 @@ if ~isempty(hGrid)
 end
 
 % deletes the sub-regions from tracking gui axes
-hFig.rgObj.deleteRegionConfig()
+hFig.rgObj.deleteRegionConfig(1)
 if ~isempty(hGUI)
     % removes all the circle regions from the main GUI (if they exist)
     hOut = findall(hGUI.imgAxes,'tag','hOuter');
@@ -534,55 +538,14 @@ function menuShowRegion_Callback(hObject, ~, handles)
 toggleMenuCheck(hObject)
 
 % plots the region outlines
-handles.output.rgObj.plotRegionOutlines()
-
-% -------------------------------------- %
-% --- AUTOMATIC DETECTION MENU ITEMS --- %
-% -------------------------------------- %
-
-% -------------------------------------------------------------------------
-function menuUseAuto_Callback(hObject, ~, handles)
-
-% global variables
-global useAuto isChange
-isChange = true;
-
-% retrieves the main GUI handle data struct
-hFig = handles.output;
-iMov = get(hFig,'iMov');
-iData = get(hFig,'iData');
-
-% performs the action based on the menu item checked status 
-useAuto = strcmp(get(hObject,'checked'),'off');
-if useAuto
-    % removes the sub-regions
-    hFig.rgObj.deleteRegionConfig()
-else
-    % disables the show region menu item and removes the regions
-    if iData.is2D        
-        setMenuCheck(setObjEnable(handles.menuShowRegion,'off'),'on')
-        menuShowRegion_Callback(handles.menuShowRegion, [], handles)
-    else
-        setMenuCheck(setObjEnable(handles.menuShowInner,'off'),'off')
-        menuShowInner_Callback(handles.menuShowInner, [], handles)
-    end
-    
-    % resets the sub-regions on the main GUI axes    
-    hFig.rgObj.setupRegionConfig(iMov,true);    
-end    
-
-% updates the menu item properties
-toggleMenuCheck(hObject);
-updateMenuItemProps(handles)
-
-% makes the Window Splitting GUI visible again
-uistack(hFig,'top')  
+isShow = strcmp(get(hObject,'Checked'),'on');
+handles.output.rgObj.setMarkerVisibility(isShow);
 
 % ----------------------------------------- %
 % --- 1D AUTOMATIC DETECTION MENU ITEMS --- %
 % ----------------------------------------- %
 
-% --------------------------------------------------------------------
+% -------------------------------------------------------------------------
 function menuDetGrid_Callback(hObject, eventdata, handles)
 
 % field retrieval
@@ -669,9 +632,6 @@ delete(h)
 % -------------------------------------------------------------------------
 function menuDetCircle_Callback(hObject, eventdata, handles)
 
-% initialisations
-[cont,isUpdate,hQ] = deal(true,false,0.25);
-
 % retrieves the automatic detection algorithm objects
 [iMov,hGUI,~] = initAutoDetect(handles);
 if isempty(iMov); return; end
@@ -681,43 +641,35 @@ I = getRegionEstImageStack(handles,hGUI,iMov);
 if isempty(I)
     setObjVisibility(handles.output,'on');
     return
-end
-
-% keep looping until either the user is satified or cancels
-while cont
+else
     % run the automatic region detection algorithm 
-    [iMovNw,R,X,Y,ok] = detImageCircles(I,iMov,hQ);
+    [iMovNw,R,X,Y,ok] = detImageCircles(I,iMov);
     if ok   
-        % if successful, run the circle parameter GUI        
-        [iMovNw,hQ,uChoice] = CircPara(handles,iMovNw,X,Y,R,hQ); 
-        switch uChoice
-            case ('Cont') 
-                % user is continuing, so exit loop with update
-                [cont,isUpdate] = deal(false,true);
-                
-            case ('Cancel') 
-                % user cancelled, so exit loop with no update
-                cont = false;
-        end
-        
-    else
-        % the user cancelled, so exit the loop
-        cont = false;
+        % if successful, run the circle parameter GUI   
+        iMovNw = CircPara(handles,iMovNw,X,Y,R); 
     end
 end
 
-% resets/updates the pattern menu checkmark
-if isempty(iMovNw)
-    % not successful, so use check the existing pattern type
-    setPatternMenuCheck(handles)
-    
-else
-    % successful, so update the check to the new pattern type
-    resetPatternMenuCheck(hObject)
-end
+% performs the post automatic detection updates
+postAutoDetectUpdate(handles,iMov,iMovNw,~isempty(iMovNw));
+
+% -------------------------------------------------------------------------
+function menuDetRect_Callback(hObject, eventdata, handles)
+
+% FINISH ME!
+eStr = 'This feature is still under construction...';
+waitfor(msgbox(eStr,'Finish Me!','modal'))
+return
+
+% retrieves the automatic detection algorithm objects
+[iMov,hGUI,~] = initAutoDetect(handles);
+if isempty(iMov); return; end
+
+% retrieves the region estimate image stack
+I = getRegionEstImageStack(handles,hGUI,iMov); 
 
 % performs the post automatic detection updates
-postAutoDetectUpdate(handles,iMov,iMovNw,isUpdate);
+postAutoDetectUpdate(handles,iMov,iMovNw,~isempty(iMovNw));
 
 % -------------------------------------------------------------------------
 function menuDetGeneral_Callback(hObject, eventdata, handles)
@@ -744,16 +696,6 @@ catch
     iMovNw = [];  
 end
 
-% resets/updates the pattern menu checkmark
-if isempty(iMovNw)
-    % not successful, so use check the existing pattern type
-    setPatternMenuCheck(handles)
-    
-else
-    % successful, so update the check to the new pattern type
-    resetPatternMenuCheck(hObject)
-end
-
 % performs the post automatic detection updates
 postAutoDetectUpdate(handles,iMov,iMovNw,~isempty(iMovNw));
 
@@ -763,52 +705,49 @@ function menuDetGeneralCust_Callback(hObject, eventdata, handles)
 % FINISH ME!
 showUnderDevelopmentMsg()
 
-% ------------------------------- %
-% --- REGION SHAPE MENU ITEMS --- %
-% ------------------------------- %
+% ----------------------------------- %
+% --- REGION SPLITTING MENU ITEMS --- %
+% ----------------------------------- %
 
-% --- toggles the shape menu check items
-function toggleShapeMenuCheck(hMenu)
+% -------------------------------------------------------------------------
+function menuUseSplit_Callback(hObject, eventdata, handles)
 
-% determines the currently selected menu item
-hMenu0 = findall(get(hMenu,'Parent'),'Checked','on');
+% toggles the checkmark
+toggleMenuCheck(hObject)
 
-% toggles the menu check item
-set(hMenu0,'Checked','off');
-set(hMenu,'Checked','on');
+% updates the check flag
+hFig = handles.output;
+hFig.iMov.srData.useSR = strcmp(get(hObject,'Checked'),'on');
 
-% --------------------------------------------------------------------
-function menuShapeRect_Callback(hObject, eventdata, handles)
+% enables the update button
+setObjEnable(handles.buttonUpdate,1);
 
-% toggles the shape menu check items
-toggleShapeMenuCheck(hObject)
-
-% updates the shape flag
-handles.output.iMov.mShape = 'Rect';
-
-% --------------------------------------------------------------------
-function menuShapeCirc_Callback(hObject, eventdata, handles)
-
-% toggles the shape menu check items
-toggleShapeMenuCheck(hObject)
-
-% updates the shape flag
-handles.output.iMov.mShape = 'Circ';
-
-% --------------------------------------------------------------------
-function menuShapePoly_Callback(hObject, eventdata, handles)
-
-% toggles the shape menu check items
-toggleShapeMenuCheck(hObject)
-
-% updates the shape flag
-handles.output.iMov.mShape = 'Poly';
-
-% --------------------------------------------------------------------
-function menuSplitRegion_Callback(hObject, eventdata, handles)
+% -------------------------------------------------------------------------
+function menuConfigSetup_Callback(hObject, eventdata, handles)
 
 % splits the sub-region
 hFig = handles.output;
+
+% ensures that the shape f
+iMov = get(hFig,'iMov');
+if isfield(iMov,'srData') && ~isempty(iMov.srData)
+    if isfield(iMov.srData,'Type')
+        % resets the sub
+        if ~strcmp(iMov.mShape,iMov.srData.Type)
+            hFig.iMov.srData = [];
+        end
+    else
+        % case is the type field hasn't be set (force reset)
+        hFig.iMov.srData = [];
+    end
+end
+
+% if there is no split region data, then disable the split menu item
+if isfield(hFig.iMov,'srData') && isempty(hFig.iMov.srData)
+    setMenuCheck(setObjEnable(handles.menuUseSplit,0),0)
+end
+
+% runs the sub-region splitting GUI
 set(hFig,'srObj',SplitSubRegion(hFig));
 
 %-------------------------------------------------------------------------%
@@ -831,29 +770,31 @@ resetConfigAxes(handles)
 % --- updates the menu item properties (based on current selections)
 function updateMenuItemProps(handles)
 
-% global variables
-global useAuto
-
 % initialisations
 hFig = handles.output;
 iMov = get(hFig,'iMov');
 iData = get(hFig,'iData');
-showInner = ~useAuto && ~iData.is2D;
-isMltTrk = detMltTrkStatus(iMov);
+
+% retrieves the boolean flags
+showInner = ~iData.is2D;
+hasSR = isfield(iMov,'srData') && ~isempty(iMov.srData);
 
 % sets the menu item enabled properties
 setObjEnable(handles.menuReset,iMov.isSet);
 setObjEnable(handles.menuView,iMov.isSet);
 setObjEnable(handles.menuAutoPlace,iMov.isSet);
-setObjEnable(handles.menuSplitRegion,iMov.isSet);
-setObjEnable(handles.menuRegionShape,iData.is2D || isMltTrk);
+
+%
+setObjEnable(handles.menuSplitRegion,iMov.isSet && iData.is2D);
+setObjEnable(handles.menuUseSplit,iMov.isSet && iData.is2D && hasSR);
+setObjEnable(handles.menuConfigSetup,iMov.isSet && iData.is2D);
 
 % if the regions are not set, then exit
 if ~iMov.isSet; return; end
 
 % updates the enabled properties of the view items
 setObjEnable(handles.menuShowInner,showInner);
-setObjEnable(handles.menuShowRegion,useAuto && iData.is2D);
+setObjEnable(handles.menuShowRegion,iData.is2D);
 
 % turns off the show inner check mark (if not showing inned regions)
 if ~showInner
@@ -861,7 +802,6 @@ if ~showInner
 end
 
 % updates the enabled properties of the detection menu items
-setObjEnable(handles.menuUseAuto,1)
 setObjEnable(handles.menuDetectSetup1D,~iData.is2D);
 setObjEnable(handles.menuDetectSetup2D,iData.is2D);
 
@@ -984,6 +924,57 @@ if chkEditValue(nwVal,nwLim,true,'exactVal',eVal,'exactMlt',pMlt)
 else
     % otherwise, revert back to the previous valid value
     set(hObj,'String',num2str(getStructField(pInfo,pStr)))
+end
+
+% --- callback function for the parameter editbox update
+function popupParaUpdate(hObj, ~, handles)
+
+% initialisations
+hFig = handles.output;
+pStr = get(hObj,'UserData');
+pInfo = getDataSubStruct(handles);
+[lStr,iSel] = deal(get(hObj,'String'),get(hObj,'Value'));
+
+% updates the parameter in the data struct
+pInfo = setStructField(pInfo,pStr,lStr{iSel});
+setDataSubStruct(handles,pInfo);
+
+% performs further actions based on the parameter
+switch pStr
+    case 'mShape'
+        % updates the shape field
+        hFig.iMov.mShape = lStr{iSel}(1:4);
+        
+        % case is the region shape string
+        if hFig.iMov.isSet
+            % creates the loadbar figure
+            hProg = ProgressLoadbar('Resetting Rectangular Regions...');
+
+            % removes the automatic detection region outlines (if selected)
+            hFig.rgObj.iMov.pInfo.Type = lStr{iSel};
+            hFig.iMov.pInfo = hFig.rgObj.iMov.pInfo;
+
+            % toggles the shape menu check items
+            hFig.rgObj.deleteRegionConfig();
+            hFig.iMov = hFig.rgObj.setupRegionConfig(hFig.iMov,1);
+
+            % determines if the split-region information is set
+            if isfield(hFig.iMov,'srData') && ~isempty(hFig.iMov.srData)
+                % determines if current and split region shape is set
+                if strcmp(hFig.iMov.mShape,hFig.iMov.srData.Type)
+                    setObjEnable(handles.menuUseSplit,1)
+                else
+                    hFig.iMov.srData.useSR = false;
+                    setMenuCheck(setObjEnable(handles.menuUseSplit,0),0)
+                end
+            end
+            
+            % enables the update button
+            setObjEnable(handles.buttonUpdate,1)
+
+            % deletes the loadbar figure
+            delete(hProg);
+        end
 end
 
 % --- callback function for the group name table update
@@ -1229,11 +1220,7 @@ end
 % --- Executes on button press in buttonSetRegions.
 function buttonSetRegions_Callback(hObject, eventdata, handles)
 
-% global variables
-global useAuto
-
 % retrieves the main GUI and sub-image region data structs
-useAuto = false;
 hFig = handles.output;
 hGUI = get(hFig,'hGUI');
 iMov = get(hFig,'iMov');
@@ -1251,7 +1238,6 @@ iMov = hFig.rgObj.setupRegionConfig(iMov);
 
 % enable the update button, but disable the use automatic region and show
 % region menu items
-setMenuCheck(setObjEnable(handles.menuUseAuto,'off'),'off');
 setMenuCheck(setObjEnable(handles.menuShowInner,'on'),'on');
 setObjEnable(handles.buttonUpdate,'on');
 
@@ -1267,7 +1253,7 @@ updateMenuItemProps(handles);
 function ok = buttonUpdate_Callback(hObject, eventdata, handles)
 
 % global variables
-global isChange useAuto
+global isChange
 
 % retrieves the main gui handles and sub-movie data struct
 hFig = handles.output;
@@ -1280,14 +1266,15 @@ if isfield(iMov,'xcP')
     iMov = rmfield(iMov,'xcP'); 
 end
 
-% if using the automatic detection, disable the button and exit
-if iMov.is2D
-    if strcmp(get(handles.menuUseAuto,'checked'),'on') || useAuto
-        set(hFig,'iMov',iMov)
-        setObjEnable(hObject,'off'); 
-        return
-    end
-end
+% % if using the automatic detection, disable the button and exit
+% if iMov.is2D
+%     if strcmp(get(handles.menuUseAuto,'checked'),'on') || iMov.autoP.isAuto
+%         ok = true;
+%         set(hFig,'iMov',iMov)
+%         setObjEnable(hObject,'off'); 
+%         return
+%     end
+% end
 
 % sets the final sub-region dimensions into the data struct
 [iMov,ok] = setSubRegionDim(iMov,hGUI);
@@ -1432,7 +1419,8 @@ set(hTabGrp,'SelectedTab',hTab{1+iData.is2D});
 % ------------------------- %
 
 % callback function
-cbFcn = {@editParaUpdate,handles};
+cbFcnEdit = {@editParaUpdate,handles};
+cbFcnPopup = {@popupParaUpdate,handles};
 nameFcn = {@tableGroupName,handles};
 
 % sets up the parameter editbox 
@@ -1444,7 +1432,7 @@ for i = 1:length(tStr)
     hEdit = findall(hPanel{i},'style','edit');
     for j = 1:length(hEdit)
         % retrieves the parameter values for the current editbox        
-        set(hEdit(j),'Callback',cbFcn)
+        set(hEdit(j),'Callback',cbFcnEdit)
         
         % updates the editbox parameter value (if values exist)
         if ~isempty(pVal)
@@ -1456,10 +1444,26 @@ for i = 1:length(tStr)
             if strcmp(pStr,'nGrp')
                 setObjEnable(hEdit(j),pVal.nRow*pVal.nCol > 1)
             end
-            
-            % sets the editbox callback function (initialising only)
-            if isInit
-                set(hEdit(j),'Callback',cbFcn)
+        end
+    end
+    
+    % retrieves the popup objects for the panel
+    hPopup = findall(hPanel{i},'style','popupmenu');
+    for j = 1:length(hPopup)
+        % updates the editbox parameter value (if values exist)
+        if ~isempty(pVal)
+            % retrieves the parameter string
+            pStr = get(hPopup(j),'UserData');
+            if ~isempty(pStr)
+                % retrieves the current parameter value
+                pValNw = getStructField(pVal,pStr);
+
+                % determines the selected index
+                iSel = find(strcmp(get(hPopup(j),'String'),pValNw));
+                if isempty(iSel); iSel = 1; end            
+                
+                % updates the popup-menu properties
+                set(hPopup(j),'Value',iSel,'Callback',cbFcnPopup)
             end
         end
     end
@@ -1746,43 +1750,6 @@ regionSet = all(any(grpSet,1)) && all(any(grpSet,2));
 canSet = grpNameSet && regionSet;
 setObjEnable(handles.buttonSetRegions,canSet)
 
-% --- sets the pattern menu item check mark
-function setPatternMenuCheck(handles,Type)
-
-% initialisations
-hFig = handles.output;
-iData = get(hFig,'iData');
-
-% sets the default input arguments
-if ~exist('Type','var')
-    Type = getDetectionType(hFig.iMov);
-end
-
-% sets the parent menu item
-if iData.is2D
-    hMenuP = handles.menuDetectSetup2D;
-else
-    hMenuP = handles.menuDetectSetup1D;
-end
-
-% sets the check mark for the corresponding menu item
-hMenu = findall(hMenuP,'UserData',Type);
-if ~isempty(hMenu)
-    setMenuCheck(hMenu,'on')
-end
-
-% if successful, then set the ratio check
-function resetPatternMenuCheck(hMenu)
-
-% determines the currented checked menu item
-hMenuC = findall(get(hMenu,'Parent'),'Checked','on');
-
-% if the current checked item isn't the new one, then reset the checkmarks
-if ~isequal(hMenu,hMenuC)
-    setMenuCheck(hMenuC,'off');
-    setMenuCheck(hMenu,'on');
-end
-
 % ------------------------------- %
 % ---- CONFIG AXES FUNCTIONS ---- %
 % ------------------------------- %
@@ -2008,10 +1975,11 @@ end
 % ------------------------------- %
 
 % --- initialises the data struct
-function iData = initDataStruct(iMov)
+function iData = initDataStruct()
 
 % parameters
 nFlyMx = 10;
+mShape = 'Circle';
 
 % initialises the common data struct
 A = struct('nRow',1,'nCol',1,'nGrp',1,'gName',[],'iGrp',1);
@@ -2019,7 +1987,8 @@ A.gName = {'Group #1'};
 
 % sets the setup dependent sub-fields
 B = setStructField(A,{'nFlyMx','nFly'},{nFlyMx,nFlyMx});
-C = setStructField(A,{'nRowG','nColG','gType'},{1,1,1});
+C = setStructField(A,{'nRowG','nColG','gType','mShape'},{1,1,1,mShape});
+C.pPos = [];
 
 % data struct initialisations
 iData = struct('D1',B,'D2',C,'is2D',false,'isFixed',false);
@@ -2139,13 +2108,55 @@ end
 % sets up the sub-region acceptance flags
 if iMov.is2D
     % case is a 2D expt setup
+    
+    % parameters
+    dGrp0 = 5;
+    nRow = iMov.pInfo.nRow;
+    
+    % sets up the acceptance flag array    
     iMov.flyok = iMov.pInfo.iGrp > 0;
+    iMov.autoP.pPos = cell(size(iMov.flyok));
+    
+    % sets up the position vector for each sub-region
+    for j = 1:size(iMov.flyok,2)
+        % retrieves the region dimensions
+        dGrp = dGrp0;
+        [L0,B0] = deal(iMov.pos{j}(1),iMov.pos{j}(2));
+        [W0,H0] = deal(iMov.pos{j}(3),iMov.pos{j}(4));
+        
+        % sets the offset dimensions 
+        [L,B,W] = deal(L0+dGrp/2,B0+dGrp/2,W0-dGrp);
+        H = (H0 - nRow*dGrp)/nRow;
+        
+        % if using circle regions, then ensure width and height match
+        if strcmp(iMov.pInfo.mShape,'Circle')
+            if W > H
+                % case is the width is greater than height
+                dW = W - H;
+                [L,W] = deal(L+dW/2,W-dW);                
+            else
+                % case is the height is greater than width
+                dH = H - W;
+                [B,H] = deal(B+dH/2,H-dH);
+                dGrp = dGrp + dH; 
+            end
+        end
+        
+        % sets the position vector for each row
+        for i = 1:nRow
+            y0 = B + (i-1)*(H+dGrp);
+            iMov.autoP.pPos{i,j} = [L,y0,W,H];
+        end
+    end
     
 else
     % case is a 1D expt setup
+    
+    % determines the number of flies in each region grouping
     iGrp = arr2vec(iMov.pInfo.iGrp')';
     nFly = (iGrp>0).*arr2vec(iMov.pInfo.nFly')';    
     
+    % sets up the acceptance flag array
     szF = [max(nFly),1];
     flyok = arrayfun(@(x)(setGroup(1:x,szF)),nFly,'un',0);
     iMov.flyok = cell2mat(flyok);
@@ -2215,22 +2226,27 @@ hFig = handles.output;
 
 % determines if the user decided to update or not
 if isUpdate
+    % sets the region position vectors (2D expts only)
+    if iMovNw.is2D
+        iMovNw.autoP.pPos = para2pos(iMovNw.autoP);
+    end
+    
     % if the user updated the solution, then update the data struct
     isChange = true;
-    set(hFig,'iMov',iMovNw);
-
-    % updates the menu properties
-    setMenuCheck(setObjEnable(handles.menuUseAuto,'on'),'on')
+    set(hFig,'iMov',iMovNw);    
+    
+    % updates the menu properties     
     setMenuCheck(setObjEnable(handles.menuShowRegion,'on'),'off')
     
     % shows the regions on the main GUI
-    menuShowRegion_Callback(handles.menuShowRegion, [], handles)
+    resetRegionShape(handles,iMovNw);
+    hFig.rgObj.setupRegionConfig(iMovNw,true);        
     
     % global variables
     setObjEnable(handles.buttonUpdate,'on')
 else
     % updates the menu properties
-    setMenuCheck(setObjEnable(handles.menuUseAuto,'off'),'off')
+    setObjEnable(handles.menuSplitRegion,hFig.iMov.isSet && iMovNw.is2D)
     setMenuCheck(setObjEnable(handles.menuShowRegion,'off'),'on')    
     
     % shows the tube regions
@@ -2274,17 +2290,16 @@ if isempty(iMov0.iR)
     end
         
     % retrieves the sub-region data struct and 
-    iMov = get(hFig,'iMov');
-    if isfield(iMov,'autoP'); iMov = rmfield(iMov,'autoP'); end
+    iMov = get(hFig,'iMov');    
     set(hFig,'iMov',iMov0);
 else
     % otherwise set the original to be the test data struct
-    iMov = iMov0; 
-    clear iMov0
+    iMov = iMov0;
 end
     
 % retrieves the region information parameter struct
 iMov.pInfo = getDataSubStruct(handles);
+iMov.autoP = pos2para(iMov,iMov0.autoP.pPos);
 
 % makes the GUI invisible (for the duration of the calculations)
 setObjVisibility(hFig,'off'); pause(0.05)
@@ -2341,3 +2356,21 @@ else
         I{i} = double(getDispImage(iData,iMov,xi(i),false,hGUI));
     end
 end
+
+% --- fixes the region shape popup item
+function resetRegionShape(handles,iMov)
+
+% sets the region shape strings
+switch iMov.autoP.Type
+    case {'Circle','Rectangle'}
+        % case is a circle or rectangle
+        mShape = iMov.autoP.Type;
+
+    otherwise
+        % case is a general polygon
+        mShape = 'Polygon';
+end
+
+% resets the popup-menu selection
+lStr = get(handles.popupRegionShape,'String');
+set(handles.popupRegionShape,'Value',find(strcmp(lStr,mShape)));

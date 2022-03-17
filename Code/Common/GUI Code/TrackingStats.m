@@ -40,13 +40,16 @@ else
 end
 
 % initialises the loadbar
-if (~isExpt)
+if ~isExpt
     h = ProgressLoadbar('Initialising Tracking GUI...');
 end
 
+% retrieves the sub-region data struct
+[iPara,iMov] = setPlotDataStruct(getappdata(hGUI,'iMov'));
+
 % sets the input arguments
-setappdata(hObject,'iMov',getappdata(hGUI,'iMov'));
-setappdata(hObject,'iPara',setPlotDataStruct());
+setappdata(hObject,'iMov',iMov);
+setappdata(hObject,'iPara',iPara);
 setappdata(hObject,'hGUI',hGUI);
 setappdata(hObject,'isExpt',isExpt);
 setappdata(hObject,'isTrack',strcmp(get(hGUI,'tag'),'figFlyTrack'))
@@ -368,8 +371,8 @@ set(handles.figTrackStats,'position',[fPos(1:2),Wfig,Hfig])
 function handles = initGUIObjects(handles)
 
 % global variables
-global is2D TlimRT sFin sStart
-[TlimRT,sFin,sStart,Vtol] = deal(60,[],[],10*(1+is2D));
+global TlimRT sFin sStart
+[TlimRT,sFin,sStart] = deal(60,[],[]);
 
 % retrieves the caller program GUI handles and sub-region data struct
 [hFig,hPanel] = deal(handles.figTrackStats,handles.panelTrackStats);
@@ -377,6 +380,9 @@ hGUI = getappdata(hFig,'hGUI');
 iMov = getappdata(hFig,'iMov');
 rtP = getappdata(hGUI,'rtP');
 isT = getappdata(handles.figTrackStats,'isTrack');
+
+% sets the velocity tolerance
+Vtol = 10*(1+iMov.is2D);
 
 % retrieves the sub-region data struct
 nFlyR = getSRCountVec(iMov);
@@ -404,17 +410,17 @@ sTotStr = {'Last Shock Event','Shock Count',...
 
 % set the show stimulus shock field flag to true only if the calling
 % program GUI is FlyRecord, and the experiment type is Sleep Deprivation
-if (~isempty(Stim))
+if ~isempty(Stim)
     % determines if the experiment was a sleep-deprivation expt (which is
     % not a test and ALL the USB channels have been set)
-    if (strcmp(Stim.cType,'Ch2App'))
+    if strcmp(Stim.cType,'Ch2App')
         [isC2A,isC2T] = deal(any(~isnan(Stim.C2A)),false);
     else
         [isC2A,isC2T] = deal(false,any(all(~isnan(Stim.C2T),2)));
     end   
     
     % if running single stimuli, then set the stimuli finish flag array
-    if (strcmp(Stim.sType,'Single'))
+    if strcmp(Stim.sType,'Single')
         sFin = zeros(size(Stim.C2A,1),2);
         sStart = zeros(size(Stim.C2A,1),1);
     end
@@ -429,18 +435,18 @@ setappdata(handles.figTrackStats,'isC2T',isC2T)
 setappdata(handles.figTrackStats,'showStim',isC2A)
 
 % if runningg an experiment, prevent the user from closing the GUI
-if (getappdata(hFig,'isExpt'))    
-    if (isfield(handles,'menuFile'))
+if getappdata(hFig,'isExpt')
+    if isfield(handles,'menuFile')
         delete(handles.menuFile)
         handles = rmfield(handles,'menuFile');        
     end    
 end
 
 % determines if the display criteria menu item is to be kept
-isExLoc = (isC2T && rtP.indSC.isExLoc);
-if (~(isC2A || isExLoc))
+isExLoc = isC2T && rtP.indSC.isExLoc;
+if ~(isC2A || isExLoc)
     % no condition are met, so remove the display criteria menu item
-    if (isfield(handles,'menuDispCrit'))
+    if isfield(handles,'menuDispCrit')
         delete(handles.menuDispCrit)
         handles = rmfield(handles,'menuDispCrit');        
     end
@@ -460,7 +466,7 @@ elseif isExLoc
     
     % case is displaying the experiment location markers
     hGUIH = guidata(hGUI);
-    switch (get(hGUI,'tag'))
+    switch get(hGUI,'tag')
         case ('figFlyTrack') % case is the Tracking GUI
             hAx = hGUIH.imgAxes;
         case ('figFlyRecord') % case is the Recording GUI
@@ -469,7 +475,7 @@ elseif isExLoc
     
     % creates the markers based on the arena dimensionality
     hold(hAx,'on')
-    if (is2D)
+    if iMov.is2D
         % case is 2D experimental regions
         phi = linspace(0,2*pi,65);
         [cP,sP,isLE] = deal(cos(phi),sin(phi),strcmp(ExLoc.pRef,'Edge'));
@@ -477,7 +483,7 @@ elseif isExLoc
         
         % sets the radius increment value
         R = iMov.autoP.R;
-        if (isMM); dR = pX(1); else, dR = pX(2)*R; end
+        if isMM; dR = pX(1); else, dR = pX(2)*R; end
         
         % sets the fill objects coordinates        
         ii = ~all(isnan(iC2T),2);
@@ -536,7 +542,7 @@ elseif isExLoc
 end
 
 % removes stimulation count menu item (if not connecting channel to tube)
-if (~isC2T)
+if ~isC2T
     if (isfield(handles,'menuStimCount'))
         delete(handles.menuStimCount)
         handles = rmfield(handles,'menuStimCount');
@@ -544,7 +550,7 @@ if (~isC2T)
 end
 
 % updates the strings for the menu items (if using 2D regions)
-if (is2D)
+if iMov.is2D
     set(handles.menuFlyPos1,'label','Fly Position (Centre)')
     set(handles.menuFlyPos2,'label','Fly Position (Edge)')
 end
@@ -724,10 +730,10 @@ hStatT = cell(nTotS,size(iGrp,1));
 % ------------------------- %      
 
 % sets the initial vertical offset
-if (isC2A)
+if isC2A
     % case is a population stimuli connection
     Y0 = (pSepH{1+isT}(2)+1);
-elseif (isT)
+elseif isT
     % case is the duration counter is visible
     Y0 = pSepH{1}(2);
 else
@@ -736,8 +742,8 @@ else
 end
     
 % sets the mean information fields y-offset
-if (~isC2T); showSD = false; end
-if (~isC2A); showPD = false; end
+if ~isC2T; showSD = false; end
+if ~isC2A; showPD = false; end
 
 % sets the column header titles for all subregions
 j0 = 0;
@@ -1106,10 +1112,12 @@ hMenu = num2cell(findobj(hParent,'type','uimenu'));
 hMenuC = hMenu{cellfun(@(x)(strcmp(get(x,'checked'),'on')),hMenu)};
 
 % --- initialises the plot data struct
-function iPara = setPlotDataStruct()
+function [iPara,iMov] = setPlotDataStruct(iMov)
 
-% global variables
-global is2D
+% sets the 2D flag (if not already set)
+if ~isfield(iMov,'is2D')
+    iMov.is2D = is2DCheck(iMov);
+end
 
 % allocates memory for the data struct
-iPara = struct('tDur',300,'vMax',10*(1+is2D));
+iPara = struct('tDur',300,'vMax',10*(1+iMov.is2D));

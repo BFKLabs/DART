@@ -303,7 +303,7 @@ hTabGrpD = findall(handles.panelDataOuter,'tag','sheetTabGrp');
 hTabGrpM = findall(handles.panelMetricInfo,'tag','metricTabGrp');
 
 % if there is only one tab, then output an error then exit
-if (iData.nTab == 1)
+if iData.nTab == 1
     eStr = 'Error! Data output must include at least one worksheet';
     waitfor(errordlg(eStr,'Tab Deletion Error','modal'))
     return 
@@ -314,7 +314,7 @@ end
 % prompts the user if they want to delete the selected tab
 uChoice = questdlg('Are you sure you want to delete the selected tab?',...
                    'Delete Sheet Tab','Yes','No','Yes');
-if (~strcmp(uChoice,'Yes'))
+if ~strcmp(uChoice,'Yes')
     % if the user cancelled, then exit the function
     return
 end
@@ -392,7 +392,7 @@ if (~isempty(nwStr))
     end
        
     % determines if the new tab name is valid
-    if (~isempty(eStr))
+    if ~isempty(eStr)
         % if not, output an error to screen and re-run the function
         waitfor(errordlg(eStr,'Invalid Tab Name','modal'))
         menuRenameTab_Callback(handles.menuRenameTab, [], handles)
@@ -837,7 +837,7 @@ if isempty(eventdata.Indices) || ~canEditCell
 end
 
 % retrieves the row index
-[handles,eStr] = deal(guidata(hObject),{'off','on'});
+handles = guidata(hObject);
 [iRow,iCol] = deal(eventdata.Indices(1),eventdata.Indices(2));
 iData = getappdata(handles.figDataOutput,'iData');
 [nwVal,nwData,updateSheet] = deal(eventdata.NewData,[],false);
@@ -891,7 +891,7 @@ if iCol == 2
     
     % updates the data alignment panel properties
     if get(handles.radioStatTest,'value')        
-        setPanelProps(handles.panelDataAlign,eStr{1+(length(iPara{1})>1)})        
+        setPanelProps(handles.panelDataAlign,length(iPara{1})>1)        
     end
 else
     % case is updating the SEM inclusion checkbox
@@ -1042,7 +1042,7 @@ iData.appOut(eventdata.Indices(1),iData.cTab) = eventdata.NewData;
 hChk = handles.checkSepByApp;
 
 % determins if any of the inclusion indices have been set
-if (~any(Y))
+if ~any(Y)
     % if not, then output an error
     eStr = sprintf('Error! Data output must include at least one %s.',xStr);
     waitfor(errordlg(eStr,'Output Selection Error','modal'))    
@@ -1054,14 +1054,14 @@ if (~any(Y))
 else    
     % updates the enabled properties of the checkbox
     [iSel,iSelT] = getSelectedIndexType(handles);
-    [uData,eStr] = deal(isempty(get(hChk,'UserData')),{'off','on'});   
+    uData = isempty(get(hChk,'UserData'));   
     
     % resets the checkbox enabled properties
     isOK = (iSel==2) && all(iSelT ~= [5 6 nMetG]) && uData && (sum(Y) > 1);        
     setObjEnable(hChk,isOK)        
     
     % updates the checkbox flag and array value (if not ok)
-    if (~isOK)
+    if ~isOK
         % removes the check label for the separation                 
         mSel = iData.tData.mSel(iData.cTab);
         iData.tData.altChk{iData.cTab}{mSel}(get(hChk,'Max')) = false;
@@ -2516,15 +2516,13 @@ end
 % --- initialises the GUI objects 
 function handles = initGUIObjects(handles,metType,hasTest)
 
-% global variables
-global mainProgDir
-
 % retrieves the data structs
-hGUI = getappdata(handles.figDataOutput,'hGUI');
-iData = getappdata(handles.figDataOutput,'iData');
-snTot = getappdata(handles.figDataOutput,'snTot');
-plotD = getappdata(handles.figDataOutput,'plotD');
-pData = getappdata(handles.figDataOutput,'pData');
+hFig = handles.figDataOutput;
+hGUI = getappdata(hFig,'hGUI');
+iData = getappdata(hFig,'iData');
+snTot = getappdata(hFig,'snTot');
+plotD = getappdata(hFig,'plotD');
+pData = getappdata(hFig,'pData');
 
 % turns off all the warnings (for the tab group creation)
 warning off all
@@ -2532,7 +2530,7 @@ warning off all
 % updates the data struct with the 
 mInd = find(any(metType,1));
 iData.tData.mSel = mInd(1);
-setappdata(handles.figDataOutput,'iData',iData)          
+setappdata(hFig,'iData',iData)          
 
 % --------------------------------------- %
 % --- USER INFO GROUP INITIALISATIONS --- %
@@ -2566,7 +2564,7 @@ set(handles.tableGroupInc,'Data',[iData.appName,num2cell(iData.appOut)],...
 
 % initialisations
 [sDN,dD] = deal(iData.fName(hasTest),cell(length(mInd)+1,1));
-[nStrS,eStr] = deal(length(sDN),{'off','on'});
+nStrS = length(sDN);
 
 % initialises the table data cell arrays
 for i = 1:length(dD)
@@ -2849,7 +2847,7 @@ end
 function updateButtonProps(handles)
 
 % initialisations
-[eStr,hList] = deal({'off','on'},handles.listMetricOrder);
+hList = handles.listMetricOrder;
 [iSel,nList] = deal(get(hList,'value'),length(get(hList,'string')));
 
 % updates the button enabled properties
@@ -2942,7 +2940,7 @@ global nMetG
 hCheck = findall(handles.panelManualData,'style','checkbox');
 
 % sets the metric parameter index
-[iSelT,eStr] = deal(iData.tData.iSel(iData.cTab),{'off','on'});
+iSelT = iData.tData.iSel(iData.cTab);
 
 % updates the checkbox values
 for i = 1:length(hCheck)

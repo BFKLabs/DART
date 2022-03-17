@@ -26,11 +26,11 @@ function AnalyOpt_OpeningFcn(hObject, eventdata, handles, varargin)
 handles.output = hObject;
 
 % global variables
-global mainProgDir resetPData isCalib
+global resetPData isCalib
 resetPData = false;
 
 % determines if the tracking parameters have been set
-A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+A = load(getParaFileName('ProgPara.mat'));
 if ~isfield(A,'trkP')
     % track parameters have not been set, so initialise
     trkP = initTrackPara();
@@ -53,7 +53,7 @@ end
 % resets the algorithm type (from svm-single to bgs-single)
 if resetPara
     % if there is no background parameters, then load from file
-    pFile = fullfile(mainProgDir,'Para Files','ProgPara.mat');  
+    pFile = getParaFileName('ProgPara.mat');
     A = load(pFile);
     
     % ensures that the algorithm type field has been set correctly
@@ -743,7 +743,7 @@ setObjEnable(handles.buttonUpdate,'on')
 function buttonUpdate_Callback(hObject, eventdata, handles)
 
 % global variables
-global mainProgDir resetPData
+global resetPData
 
 % retrieves the main GUI handle and closed loop parameter structs 
 hFig = handles.output;

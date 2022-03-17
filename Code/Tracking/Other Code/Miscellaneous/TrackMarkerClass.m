@@ -24,6 +24,8 @@ classdef TrackMarkerClass < handle
         hDir    
         xTube
         yTube
+        xOfs
+        yOfs
         
         % other class fields
         iMov
@@ -143,16 +145,16 @@ classdef TrackMarkerClass < handle
             % resets the markers
             for i = find(obj.iMov.ok(:)')
                 % sets the x/y offset
-                xOfs = obj.iMov.iC{i}(1) - 1;
-                yOfs = obj.iMov.iR{i}(1) - 1;  
+                obj.xOfs = obj.iMov.iC{i}(1) - 1;
+                obj.yOfs = obj.iMov.iR{i}(1) - 1;  
 
                 switch obj.Type
-                    case {'GeneralR','Circle'}
+                    case {'GeneralR','Circle','Rectangle'}
                         % sets the row/column indices
                         [iCol,iFlyR,~] = getRegionIndices(obj.iMov,i);  
 
                     otherwise
-                        iFlyR = 1:length(obj.hMark{i});
+                        [iFlyR,iCol] = deal(1:length(obj.hMark{i}),NaN);
 
                 end
 
@@ -169,30 +171,8 @@ classdef TrackMarkerClass < handle
                     % for single tracking, or multi-tracking for the first 
                     % iteration)
                     if (j == 1) || ~obj.isMltTrk
-                        switch obj.Type
-                            case {'GeneralR','Circle'}
-                                % case is an automatic shape region
-                                obj.xTube{i}{j} = obj.iMov.autoP.XC + ...
-                                        obj.iMov.autoP.X0(j,iCol);
-                                obj.yTube{i}{j} = obj.iMov.autoP.YC + ...
-                                        obj.iMov.autoP.Y0(j,iCol);
-
-                            otherwise
-                                % otherwise, case is another region type
-                                if obj.isCG
-                                    x = obj.iMov.xTube{i}(j,:) + xOfs;
-                                    y = obj.iMov.yTube{i} + yOfs + ...
-                                            obj.yDelG*[1,-1];             
-                                else
-                                    x = obj.iMov.xTube{i} + xOfs;
-                                    y = obj.iMov.yTube{i}(j,:) + yOfs + ...
-                                            obj.yDelG*[1,-1];                              
-                                end
-
-                                % sets the final tube outline coordinates
-                                obj.xTube{i}{j} = x(obj.ix);
-                                obj.yTube{i}{j} = y(obj.iy);
-                        end
+                        % sets up the sub-region coordinates
+                        obj.setSubRegionCoords(i,j,iCol);                    
 
                         % creates the tube region patch
                         obj.hTube{i}{j} = fill(obj.xTube{i}{j},...
@@ -201,7 +181,7 @@ classdef TrackMarkerClass < handle
                             eCol,'EdgeAlpha',1,'Visible','off',...
                             'Parent',obj.hAx,'UserData',[i,j]); 
                     end
-
+                    
                     % determines if separate colours are being used
                     if obj.iMov.sepCol
                         % if so, retrieve the stored colours
@@ -240,6 +220,46 @@ classdef TrackMarkerClass < handle
         
             % updates the set flags
             obj.isSet = true;
+            
+        end
+        
+        % --- sets up the x/y coordinates for a specific sub-region
+        function setSubRegionCoords(obj,iApp,iFly,iCol)            
+            
+            switch obj.Type
+                case {'GeneralR','Circle'}
+                    % case is an automatic shape region
+                    obj.xTube{iApp}{iFly} = obj.iMov.autoP.XC + ...
+                            obj.iMov.autoP.X0(iFly,iCol);
+                    obj.yTube{iApp}{iFly} = obj.iMov.autoP.YC + ...
+                            obj.iMov.autoP.Y0(iFly,iCol);
+
+                case 'Rectangle'
+                    % case is a rectangular region
+                    xTube0 = [0,obj.iMov.autoP.W(iFly,iApp)] + ...
+                            obj.iMov.autoP.X0(iFly,iApp);
+                    obj.xTube{iApp}{iFly} = xTube0(obj.ix);
+                        
+                    yTube0 = [0,obj.iMov.autoP.H(iFly,iApp)] + ...
+                            obj.iMov.autoP.Y0(iFly,iApp);                        
+                    obj.yTube{iApp}{iFly} = yTube0(obj.iy);
+                        
+                otherwise
+                    % otherwise, case is another region type
+                    if obj.isCG
+                        x = obj.iMov.xTube{iApp}(iFly,:) + obj.xOfs;
+                        y = obj.iMov.yTube{iApp} + obj.yOfs + ...
+                                obj.yDelG*[1,-1];             
+                    else
+                        x = obj.iMov.xTube{iApp} + obj.xOfs;
+                        y = obj.iMov.yTube{iApp}(iFly,:) + obj.yOfs + ...
+                                obj.yDelG*[1,-1];                              
+                    end
+
+                    % sets the final tube outline coordinates
+                    obj.xTube{iApp}{iFly} = x(obj.ix);
+                    obj.yTube{iApp}{iFly} = y(obj.iy);
+            end  
             
         end
         
@@ -538,7 +558,7 @@ classdef TrackMarkerClass < handle
                 end        
             end            
             
-        end
+        end                
         
         % --- deletes all the tracking markers
         function deleteTrackMarkers(obj)
@@ -638,17 +658,17 @@ classdef TrackMarkerClass < handle
                     
                     % sets the marker offsets and other properties
                     switch obj.Type
-                        case {'GeneralR','Circle'} 
+                        case {'GeneralR','Circle','Rectangle','Polygon'} 
                             % case is automatic detection
 
                             % sets the positional offset
                             if isLV
                                 % case is for local view
-                                xOfs = (iMov.iC{i}(1)-1) - obj.szDel;
-                                yOfs = (iMov.iR{i}(1)-1) - obj.szDel;            
+                                xOfs0 = (iMov.iC{i}(1)-1) - obj.szDel;
+                                yOfs0 = (iMov.iR{i}(1)-1) - obj.szDel;            
                             else
                                 % case is for global view
-                                [xOfs,yOfs] = deal(0);    
+                                [xOfs0,yOfs0] = deal(0);    
                             end
 
                             % retrieves the global row/column indices
@@ -664,18 +684,18 @@ classdef TrackMarkerClass < handle
                                     % sets the x/y tube region offset
                                     if size(iMov.xTube{i}([1 end]),1) == 1
                                         yOfs0 = iMov.iR{i}(1)-1;
-                                        yOfs = min(max(0,yOfs0),obj.szDel);
-                                        xOfs = obj.szDel;
+                                        yOfs0 = min(max(0,yOfs0),obj.szDel);
+                                        xOfs0 = obj.szDel;
                                     else
                                         xOfs0 = iMov.iC{i}(1)-1;
-                                        xOfs = min(max(0,xOfs0),obj.szDel);
-                                        yOfs = obj.szDel;
+                                        xOfs0 = min(max(0,xOfs0),obj.szDel);
+                                        yOfs0 = obj.szDel;
                                     end            
                                 end
                             else
                                 % case is for global view
-                                xOfs = iMov.pos{i}(1);
-                                yOfs = iMov.pos{i}(2);
+                                xOfs0 = iMov.pos{i}(1);
+                                yOfs0 = iMov.pos{i}(2);
                             end       
 
                             % sets the x/y-coordinates of the sub-region
@@ -685,9 +705,9 @@ classdef TrackMarkerClass < handle
                             else
                                 % otherwise, set the x/y offsets
                                 if size(iMov.xTube{i},1) == 1
-                                    x = (iMov.xTube{i}([1 end]) + xOfs);
+                                    x = (iMov.xTube{i}([1 end]) + xOfs0);
                                 else
-                                    y = (iMov.yTube{i}([1 end]) + yOfs);
+                                    y = (iMov.yTube{i}([1 end]) + yOfs0);
                                 end
 
                                 % sets the fly indices
@@ -705,11 +725,11 @@ classdef TrackMarkerClass < handle
                                 % case is the repeating general patterns
                                 
                                 % sets up the sub-region x-coordinates
-                                dxTube = iMov.autoP.XC - xOfs;
+                                dxTube = iMov.autoP.XC - xOfs0;
                                 xT = iMov.autoP.X0(j,iCol) + dxTube;
                                 
                                 % sets up the sub-region y-coordinates
-                                dyTube = iMov.autoP.YC - yOfs;
+                                dyTube = iMov.autoP.YC - yOfs0;
                                 yT = iMov.autoP.Y0(j,iCol) + dyTube;     
 
                             case 'Circle'
@@ -717,19 +737,28 @@ classdef TrackMarkerClass < handle
                                 [XC,YC] = calcCircleCoords(iMov.autoP,j,iCol);
 
                                 % sets up the sub-region x-coordinates
-                                dxTube = XC - xOfs;
+                                dxTube = XC - xOfs0;
                                 xT = iMov.autoP.X0(j,iCol) + dxTube;
                                 
                                 % sets up the sub-region y-coordinates
-                                dyTube = YC - yOfs;
+                                dyTube = YC - yOfs0;
                                 yT = iMov.autoP.Y0(j,iCol) + dyTube;                       
 
+                            case 'Rectangle'
+                                % sets up the sub-region x-coordinates
+                                xC = [0,iMov.autoP.W(j,iCol)] - xOfs0;
+                                xT = iMov.autoP.X0(j,iCol) + xC(obj.ix);
+                                
+                                % sets up the sub-region x-coordinates
+                                yC = [0,iMov.autoP.H(j,iCol)] - yOfs0;
+                                yT = iMov.autoP.Y0(j,iCol) + yC(obj.iy);                                
+                                
                             otherwise
                                 % case is for the other detection types
                                 if obj.isCG
-                                    x = iMov.xTube{i}(j,:) + xOfs; 
+                                    x = iMov.xTube{i}(j,:) + xOfs0; 
                                 else            
-                                    y = iMov.yTube{i}(j,:) + yOfs; 
+                                    y = iMov.yTube{i}(j,:) + yOfs0; 
                                 end
 
                                 % sets the final tube outline x/y coordinates

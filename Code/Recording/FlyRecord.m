@@ -38,7 +38,7 @@ if ~isempty(hT)
 end
 
 % global variables
-global defVal minISI isAddPath nFrmRT mainProgDir runTrack
+global defVal minISI isAddPath nFrmRT runTrack
 [defVal,minISI,nFrmRT] = deal(5,60,150);
 [isAddPath,runTrack] = deal(false);
 
@@ -297,9 +297,6 @@ ProgDefaultDef(handles.figFlyRecord,'Recording');
 % -------------------------------------------------------------------------
 function menuExit_Callback(hObject, eventdata, handles)
 
-% global variables
-global mainProgDir
-
 % prompts the user if they wish to close the recording gui
 selection = questdlg('Are you sure you want to close the Recording GUI?',...
                      'Close Recording GUI?','Yes','No','Yes');
@@ -357,19 +354,9 @@ if strcmp(selection,'Yes')
         delete(hVidPara)
     end
 
-    % deletes the imageseg and exits the program        
+    % deletes the imageseg and makes the main DART GUI visible again
     delete(handles.figFlyRecord)                
-    if isempty(hDART)            
-        % removes the loaded directories from the directory path
-        wState = warning('off','all');
-        updateSubDirectories(fullfile(mainProgDir,'GUI Code'),'remove') 
-        updateSubDirectories(fullfile(mainProgDir,'Other Code'),'remove') 
-        updateSubDirectories(fullfile(mainProgDir,'Para Files'),'remove') 
-        warning(wState);
-    else
-        % otherwise, make the main DART GUI visible again
-        setObjVisibility(hDART,'on');
-    end
+    setObjVisibility(hDART,'on');    
 end
 
 % -------------------------- %
@@ -664,12 +651,9 @@ iPara.iDelay.pMax = 2.0;
 %     B) the directories listed in the file are valid --- %
 function ProgDef = initProgDef(handles)
 
-% global variables
-global mainProgDir
-
 % sets the program default file name
-progFileDir = fullfile(mainProgDir,'Para Files');
-progFile = fullfile(progFileDir,'ProgDef.mat');
+progFile = getParaFileName('ProgDef.mat');
+progFileDir = fileparts(progFile);
 
 % determines if the program defaults have been set
 if (~exist(progFileDir,'dir')); mkdir(progFileDir); end
@@ -691,7 +675,7 @@ else
             
         case ('Automatically')
             % user chose to setup automatically then create the directories            
-            ProgDef = setupAutoDir(mainProgDir,progFile);
+            ProgDef = setupAutoDir(progFile);
             pause(0.05); % pause required otherwise program crashes?
     end
 end
@@ -753,10 +737,10 @@ if any(~isExist)
 end
 
 % --- function that automatically sets up the default directories --- %
-function ProgDef = setupAutoDir(progDir,progFile)
+function ProgDef = setupAutoDir(progFile)
 
-% otherwise, create the
-baseDir = fullfile(progDir,'Data Files');
+% sets the base data file directory path
+baseDir = getProgFileName('Data Files');
 
 % sets the default directory names
 a.DirMov = fullfile(baseDir,'Recorded Movies');

@@ -27,8 +27,7 @@ function AboutDART_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for AboutDART
 handles.output = hObject;
 
-% global variables
-global mainProgDir
+% field retrieval
 hAx = handles.axesLogo;
 
 % Update handles structure
@@ -51,11 +50,11 @@ end
 
 % determines if the update log-file exists
 if isdeployed
-    a = dir(fullfile(mainProgDir,'DART.exe'));
+    a = dir(getProgFileName('DART.exe'));
     set(handles.textLastTime,'string',a.date)
     set(handles.textLastName,'string','Executable Version')
 else
-    logFile = fullfile(mainProgDir,'Para Files','Update Log.mat');
+    logFile = getParaFileName('Update Log.mat');
     if (exist(logFile,'file'))
         % if the file exists, load it and set the info fields
         A = load(logFile);

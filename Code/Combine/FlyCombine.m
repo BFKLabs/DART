@@ -24,7 +24,7 @@ end
 function FlyCombine_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % global variables
-global mainProgDir isDocked initDock scrSz updateFlag regSz isAnalysis
+global isDocked initDock scrSz updateFlag regSz isAnalysis
 isAnalysis = false;
 [isDocked,initDock] = deal(true);
 updateFlag = 2; pause(0.1); 
@@ -45,12 +45,6 @@ set(hObject,'position',[10 (scrSz(4)-pos(4)) pos(3) pos(4)]);
 
 % sets the DART object handles (if provided) and the program directory
 switch length(varargin) 
-    case (0) % case is running full program from command line
-        [hDART,ProgDefNew,mainProgDir] = deal([],[],pwd);  
-        figName = 'DART Fly Experiment Data Output Program (Test Mode)';
-        set(hObject,'name',figName) 
-        setappdata(hObject,'hGUIOpen',[])
-        
     case (1) % case is running the program from DART main
         % sets the input argument and the open GUI (makes invisible)
         hDART = varargin{1};

@@ -1,10 +1,8 @@
 % --- creates the split region index map mask
 function iMov = createRegionIndexMap(iMov)
 
-% global variables
-global frmSz0
-
 % memory allocation
+frmSz0 = getCurrentImageDim();
 [aP,sD] = deal(iMov.autoP,iMov.srData);
 [nFly,nApp] = size(aP.X0);
 [Imap,iGrp] = deal(zeros(frmSz0),cell(nFly,nApp));
@@ -91,8 +89,12 @@ end
 
 % sets the global mapping indices
 nGrp = cellfun(@length,iGrp);
-iMov.srData.indG = cell2mat(arrayfun(@(i,n)...
-            ([i*ones(n,1),(1:n)']),(1:length(nGrp))',nGrp,'un',0));
+[nRow,nCol] = deal(iMov.pInfo.nRow,iMov.pInfo.nCol);
+[xiR,xiC] = deal(repmat((1:nCol),nRow,1),repmat((1:nRow)',1,nCol));
+
+% sets the global index array
+iMov.srData.indG = arrayfun(@(xiR,xiC,n)...
+            ([repmat([xiR,xiC],n,1),(1:n)']),xiR,xiC,nGrp,'un',0);
 
 % resets the map/group fields
 [iMov.srData.Imap,iMov.srData.iGrp] = deal(Imap,iGrp);

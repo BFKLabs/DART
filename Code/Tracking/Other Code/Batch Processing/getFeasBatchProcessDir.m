@@ -5,12 +5,9 @@
 %     number of solution files is less than the current number of movies
 function [bpData,isSeg] = getFeasBatchProcessDir(sDir,redoAll) 
 
-% global variables
-global mainProgDir
-
 % sets the search directory to be the working directory (if not provided)
 if nargin == 0
-    sDir = mainProgDir;
+    sDir = getProgFileName();
 end
 
 % creates the waitbar figure

@@ -1495,9 +1495,6 @@ setappdata(hFig,'oPara',oPara);
 % --- initialises the file information fields --- %
 function initFileInfo(handles)
 
-% global variable
-global mainProgDir
-
 % sets the base file directory/output names
 hFig = handles.figExptSave;
 hPanel = handles.panelFileInfo;

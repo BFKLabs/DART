@@ -52,7 +52,7 @@ set(setObjVisibility(hObject,'off'),'position',figPosNw);
 pause(0.05);
 
 % global variables
-global szDel mainProgDir bufData pAR frmSz0
+global szDel bufData pAR frmSz0
 global isMovChange isDetecting isBatch isCalib isRTPChange
 [isMovChange,isDetecting,isBatch,isRTPChange] = deal(false);
 [szDel,bufData,pAR] = deal(5,[],2);
@@ -83,10 +83,6 @@ cType = 0;
 
 % sets the DART object handles (if provided) and the program directory
 switch length(varargin) 
-    case 0 
-        % case is running full program from command line
-        [ProgDefNew,mainProgDir] = deal([],pwd);
-        
     case 1 
         % case is running the program from DART main
         
@@ -139,17 +135,6 @@ end
 
 % updates the calibration type
 set(hObject,'cType',cType)        
-
-% adds the ImageSeg/image processing code directories
-if isempty(hObject.hGUIOpen)
-    wState = warning('off','all');
-    updateSubDirectories(fullfile(mainProgDir,'GUI Code'),'add')
-    updateSubDirectories(fullfile(mainProgDir,'Other Code'),'add')
-    updateSubDirectories(fullfile(mainProgDir,'Para Files'),'add')
-    updateSubDirectories(fullfile(mainProgDir,'External Files'),'add')
-    updateSubDirectories(fullfile(mainProgDir,'Common'),'add')
-    warning(wState)
-end
     
 % creates the load bar
 if nargin < 2
@@ -193,7 +178,7 @@ checkFixRatio_Callback(handles.checkFixRatio, 1, handles)
 
 % sets the image stack executable (if it doesn't exist, then set empty
 % array for the name)
-imgExe = fullfile(mainProgDir,'Code','Common','Utilities','ImageStack.exe');
+imgExe = getProgFileName('Code','Common','Utilities','ImageStack.exe');
 if exist(imgExe,'file')
     % initialises the frame update timer object
 %     bufData = initFrameBuffer(handles,imgExe);
@@ -960,7 +945,7 @@ ProgDefaultDef(handles.output,'Tracking');
 function menuExit_Callback(hObject, eventdata, handles)
 
 % global variables
-global isCalib isMovChange mainProgDir bufData isRTPChange
+global isCalib isMovChange bufData isRTPChange
 
 % initialiations
 hFig = handles.output;
@@ -1065,29 +1050,21 @@ if strcmp(uChoice,'Yes')
     
     % deletes the figure and exits the program
     delete(hFig)                
-    if isempty(hGUIOpen)
-        wState = warning('off','all');
-        updateSubDirectories(fullfile(mainProgDir,'GUI Code'),'add')
-        updateSubDirectories(fullfile(mainProgDir,'Other Code'),'add')
-        updateSubDirectories(fullfile(mainProgDir,'Para Files'),'add')
-        updateSubDirectories(fullfile(mainProgDir,'External Files'),'add')
-        updateSubDirectories(fullfile(mainProgDir,'Common'),'add')
-        warning(wState)
-    else
-        hFig = findall(0,'tag',hGUIOpen,'type','figure');
-        switch hGUIOpen
-            case 'figFlyRecord'                
-                % check to see if opening GUI from Fly Record or the 
-                % Combined Experiment GUI
-                if reopenGUI
-                    % case is from fly record, so reopen GUI
-                    setObjVisibility(hFig,'on')    
-                end
-                
-            case 'figDART'
-                % otherwise, reopen the GUI                
-                setObjVisibility(hFig,'on')
-        end
+
+    % reopens the main GUI
+    hFig = findall(0,'tag',hGUIOpen,'type','figure');
+    switch hGUIOpen
+        case 'figFlyRecord'                
+            % check to see if opening GUI from Fly Record or the 
+            % Combined Experiment GUI
+            if reopenGUI
+                % case is from fly record, so reopen GUI
+                setObjVisibility(hFig,'on')    
+            end
+
+        case 'figDART'
+            % otherwise, reopen the GUI                
+            setObjVisibility(hFig,'on')
     end        
 end
 
@@ -1625,7 +1602,7 @@ dispImage(handles)
 % --- Executes on button press in checkSubRegions.
 function checkSubRegions_Callback(hObject, eventdata, handles)
 
-% REMOVE ME!
+handles.output.rgObj.isMain = true;
 handles.output.rgObj.checkSubRegions();
 
 % --- Executes on button press in checkLocalView.
@@ -2474,12 +2451,9 @@ end
 %     B) the directories listed in the file are valid --- %
 function ProgDef = initProgDef(handles)
 
-% global variables
-global mainProgDir
-
 % sets the program default file name
-progFileDir = fullfile(mainProgDir,'Para Files');
-progFile = fullfile(progFileDir,'ProgDef.mat');
+progFile = getParaFileName('ProgDef.mat');
+progFileDir = fileparts(progFile);
 
 % determines if the program defaults have been set
 if ~exist(progFileDir,'dir'); mkdir(progFileDir); end
@@ -2777,9 +2751,6 @@ indGrp = floor(bufData.iL/bufData.fDel)+4;
 % --- initialises the program data struct
 function iData = initDataStruct(handles,ProgDefNew)
 
-% global variables
-global mainProgDir
-
 % creates the data struct
 iData = struct('cFrm',1,'cMov',1,'cStep',1,'Status',0,...
            'nFrmMax',50,'nFrm',0,'nMov',0,'Frm0',NaN,...
@@ -2788,7 +2759,7 @@ iData = struct('cFrm',1,'cMov',1,'cStep',1,'Status',0,...
        
 % sets the sub-fields        
 if isempty(ProgDefNew)
-    pFile = fullfile(mainProgDir,'Para Files','ProgDef.mat');
+    pFile = getParaFileName('ProgDef.mat');
     if exist(pFile,'file')
         A = load(pFile);
         iData.ProgDef = A.ProgDef.Tracking;
@@ -2805,11 +2776,8 @@ iData.exP = setExpPara(handles);
 % --- initialises the sub-movie data struct
 function iMov = initMovStruct(iData)
 
-% global variables
-global mainProgDir 
-
 % determines if the tracking parameters have been set
-A = load(fullfile(mainProgDir,'Para Files','ProgPara.mat'));
+A = load(getParaFileName('ProgPara.mat'));
 if ~isfield(A,'trkP')
     % track parameters have not been set, so initialise
     trkP = initTrackPara();
@@ -2826,7 +2794,7 @@ iMov = struct('pos',[1 1 1 1],'posG',[],'Ibg',[],'ddD',[],...
               'sgP',[],'Status',[],'tempName',[],'autoP',[],'bgP',[],...
               'isSet',false,'ok',true,'tempSet',false,'isOpt',false,...
               'useRot',false,'rotPhi',90,'calcPhi',false,'sepCol',false,...
-              'vGrp',[],'sRate',5,'nDS',1,'mShape','Rect','phInfo',[]);
+              'vGrp',[],'sRate',5,'nDS',1,'mShape','Circ','phInfo',[]);
 
 % sets the parameter sub-struct fields
 iMov.bgP = DetectPara.initDetectParaStruct('All');        
