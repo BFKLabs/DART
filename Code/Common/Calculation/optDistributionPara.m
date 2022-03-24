@@ -41,8 +41,9 @@ else
     pMLE = mle(Y(ii),'distribution',dType);
 end
 
-% calculates te 
-[Nc,Xedge] = histcounts(Y,N);
+% calculates the histogram counts
+xi = linspace(0,max(Y),N+1);
+[Nc,Xedge] = histcounts(Y,xi);
 
 % calculates the mle/pdf estimates
 xi = 0.5*(Xedge(1:end-1) + Xedge(2:end));
@@ -52,8 +53,12 @@ Ypdf = Nc/(length(Y)*diff(xi([1,2])));
 switch dType
     case 'normal'
         Yest = normpdf(xi,pMLE(1),pMLE(2));
+    case 'lognormal'
+        Yest = lognpdf(xi,pMLE(1),pMLE(2));        
+    case 'weibull'
+        Yest = wblpdf(xi,pMLE(1),pMLE(2));           
     case 'ev'
-        Yest = evpdf(xi,pMLE(1),pMLE(2));
+        Yest = evpdf(xi,pMLE(1),pMLE(2));        
 end
 
 % calculates the object function value

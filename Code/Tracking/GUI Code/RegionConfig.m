@@ -1,5 +1,5 @@
 function varargout = RegionConfig(varargin)
-% Last Modified by GUIDE v2.5 16-Mar-2022 19:01:56
+% Last Modified by GUIDE v2.5 17-Mar-2022 12:27:36
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -182,14 +182,13 @@ if isSet
     uistack(hObject,'top')      
 else
     % otherwise, initialise the data struct
-    hObject.iData = initDataStruct();
+    hObject.iData = initDataStruct(hObject.iMov);
 end
 
 % sets the function handles into the gui
 addObjProps(hObject,'resetMovQuest',@resetMovQuest,...
                     'resetSubRegionDataStruct',@resetSubRegionDataStruct,...
-                    'initSubPlotStruct',@initSubPlotStruct,...
-                    'getRegionDataStructs',@getRegionDataStructs)
+                    'initSubPlotStruct',@initSubPlotStruct)
 
 % ---------------------------------- %
 % --- OBJECT & DATA STRUCT SETUP --- %
@@ -206,6 +205,22 @@ if hObject.isMTrk
     % updates the text label
     hEdit = findall(handles.panel1D,'UserData','nFlyMx');
     set(hEdit,'string','Fixed Region Fly Count: ')
+
+    % initialises the shape popup menu 
+    hCheck = findall(handles.panel1D,'UserData','isFixed');
+    
+    % initialises the shape popup menu 
+    hPopup = findall(handles.panel1D,'UserData','mShape');
+    lStr = get(hPopup,'String');
+    
+    if isfield(hObject.iMov,'pInfo')
+        set(hCheck,'Value',hObject.iMov.pInfo.isFixed);    
+        set(hPopup,'Value',find(strcmp(lStr,hObject.iMov.pInfo.mShape)));
+    else
+        set(hCheck,'Value',true);
+        set(hPopup,'Value',find(strcmp(lStr,hObject.iData.D1.mShape)));
+    end    
+    
 end
 
 % initialises the object properties
@@ -467,7 +482,7 @@ if strcmp(get(handles.buttonUpdate,'enable'),'on')
 end
 
 % loads the movie struct
-hFig = handles.output;
+hFig = handles.figRegionSetup;
 hGUI = get(hFig,'hGUI');
 iMov = get(hFig,'iMov');
 hProp0 = get(hFig,'hProp0');
@@ -777,24 +792,26 @@ iData = get(hFig,'iData');
 
 % retrieves the boolean flags
 showInner = ~iData.is2D;
+isMltTrk = detMltTrkStatus(iMov);
 hasSR = isfield(iMov,'srData') && ~isempty(iMov.srData);
 
 % sets the menu item enabled properties
 setObjEnable(handles.menuReset,iMov.isSet);
 setObjEnable(handles.menuView,iMov.isSet);
-setObjEnable(handles.menuAutoPlace,iMov.isSet);
+setObjEnable(handles.menuAutoPlace,iMov.isSet && ~isMltTrk);
 
-%
-setObjEnable(handles.menuSplitRegion,iMov.isSet && iData.is2D);
-setObjEnable(handles.menuUseSplit,iMov.isSet && iData.is2D && hasSR);
-setObjEnable(handles.menuConfigSetup,iMov.isSet && iData.is2D);
+% updates the split region menu item enabled properties
+isFeas = iData.is2D || isMltTrk;
+setObjEnable(handles.menuSplitRegion,iMov.isSet && isFeas);
+setObjEnable(handles.menuConfigSetup,iMov.isSet && isFeas);
+setObjEnable(handles.menuUseSplit,iMov.isSet && hasSR && isFeas );
 
 % if the regions are not set, then exit
 if ~iMov.isSet; return; end
 
 % updates the enabled properties of the view items
 setObjEnable(handles.menuShowInner,showInner);
-setObjEnable(handles.menuShowRegion,iData.is2D);
+setObjEnable(handles.menuShowRegion,isFeas);
 
 % turns off the show inner check mark (if not showing inned regions)
 if ~showInner
@@ -802,7 +819,7 @@ if ~showInner
 end
 
 % updates the enabled properties of the detection menu items
-setObjEnable(handles.menuDetectSetup1D,~iData.is2D);
+setObjEnable(handles.menuDetectSetup1D,~isFeas);
 setObjEnable(handles.menuDetectSetup2D,iData.is2D);
 
 % --- callback function for the parameter editbox update
@@ -976,6 +993,23 @@ switch pStr
             delete(hProg);
         end
 end
+
+% --- callback function for the parameter editbox update
+function checkParaUpdate(hObj, ~, handles)
+
+% initialisations
+% hFig = handles.output;
+pStr = get(hObj,'UserData');
+pInfo = getDataSubStruct(handles);
+isChk = get(hObj,'Value');
+
+% updates the parameter in the data struct
+pInfo = setStructField(pInfo,pStr,isChk);
+setDataSubStruct(handles,pInfo);
+
+% % removes the automatic detection region outlines (if selected)
+% hFig.rgObj.iMov.pInfo = getDataSubStruct(handles);
+% hFig.iMov.pInfo = hFig.rgObj.iMov.pInfo;
 
 % --- callback function for the group name table update
 function tableGroupName(hTable, eventdata, handles)
@@ -1322,7 +1356,7 @@ if isMltTrk
     set(handles.textSRCount,'String','Max Fly Count Per Region: ');
     
     % resets the GUI objects
-    dY = 20;
+    dY = 50;
     hPanel = findall(handles.panel1D,'type','uipanel');
     arrayfun(@(x)(resetObjPos(x,'Bottom',-dY,1)),hPanel)
     
@@ -1421,6 +1455,7 @@ set(hTabGrp,'SelectedTab',hTab{1+iData.is2D});
 % callback function
 cbFcnEdit = {@editParaUpdate,handles};
 cbFcnPopup = {@popupParaUpdate,handles};
+cbFcnCheck = {@checkParaUpdate,handles};
 nameFcn = {@tableGroupName,handles};
 
 % sets up the parameter editbox 
@@ -1447,25 +1482,46 @@ for i = 1:length(tStr)
         end
     end
     
-    % retrieves the popup objects for the panel
-    hPopup = findall(hPanel{i},'style','popupmenu');
-    for j = 1:length(hPopup)
-        % updates the editbox parameter value (if values exist)
-        if ~isempty(pVal)
-            % retrieves the parameter string
-            pStr = get(hPopup(j),'UserData');
-            if ~isempty(pStr)
-                % retrieves the current parameter value
-                pValNw = getStructField(pVal,pStr);
+    % initialises the popup objects for the panel
+    if iData.is2D || isMltTrk
+        hPopup = findall(hPanel{i},'style','popupmenu');
+        for j = 1:length(hPopup)
+            % updates the editbox parameter value (if values exist)
+            if ~isempty(pVal)
+                % retrieves the parameter string
+                pStr = get(hPopup(j),'UserData');
+                if ~isempty(pStr)
+                    % retrieves the current parameter value
+                    pValNw = getStructField(pVal,pStr);
 
-                % determines the selected index
-                iSel = find(strcmp(get(hPopup(j),'String'),pValNw));
-                if isempty(iSel); iSel = 1; end            
-                
-                % updates the popup-menu properties
-                set(hPopup(j),'Value',iSel,'Callback',cbFcnPopup)
+                    % determines the selected index
+                    iSel = find(strcmp(get(hPopup(j),'String'),pValNw));
+                    if isempty(iSel); iSel = 1; end            
+
+                    % updates the popup-menu properties
+                    set(hPopup(j),'Value',iSel,'Callback',cbFcnPopup)
+                end
             end
         end
+    end
+    
+    % initialises the popup objects for the panel
+    if isMltTrk
+        hCheck = findall(hPanel{i},'style','checkbox');
+        for j = 1:length(hCheck)
+            % updates the editbox parameter value (if values exist)
+            if ~isempty(pVal)
+                % retrieves the parameter string
+                pStr = get(hCheck(j),'UserData');
+                if ~isempty(pStr)
+                    % retrieves the current parameter value
+                    isChk = getStructField(pVal,pStr);          
+
+                    % updates the popup-menu properties
+                    set(hCheck(j),'Value',isChk,'Callback',cbFcnCheck)
+                end
+            end
+        end    
     end
     
     % retrieves the group name table handle
@@ -1975,7 +2031,7 @@ end
 % ------------------------------- %
 
 % --- initialises the data struct
-function iData = initDataStruct()
+function iData = initDataStruct(iMov)
 
 % parameters
 nFlyMx = 10;
@@ -1989,6 +2045,11 @@ A.gName = {'Group #1'};
 B = setStructField(A,{'nFlyMx','nFly'},{nFlyMx,nFlyMx});
 C = setStructField(A,{'nRowG','nColG','gType','mShape'},{1,1,1,mShape});
 C.pPos = [];
+
+% sets the extra fields for multi-tracking
+if detMltTrkStatus(iMov)
+    [B.mShape,B.isFixed,B.pPos] = deal('Circle',true,[]);
+end
 
 % data struct initialisations
 iData = struct('D1',B,'D2',C,'is2D',false,'isFixed',false);
@@ -2106,7 +2167,7 @@ for i = 1:nRow
 end
 
 % sets up the sub-region acceptance flags
-if iMov.is2D
+if iMov.is2D || detMltTrkStatus(iMov)
     % case is a 2D expt setup
     
     % parameters
@@ -2126,10 +2187,10 @@ if iMov.is2D
         
         % sets the offset dimensions 
         [L,B,W] = deal(L0+dGrp/2,B0+dGrp/2,W0-dGrp);
-        H = (H0 - nRow*dGrp)/nRow;
+        H = (H0 - nRow*dGrp)/nRow;        
         
         % if using circle regions, then ensure width and height match
-        if strcmp(iMov.pInfo.mShape,'Circle')
+        if strcmp(iMov.autoP.Type,'Circ')
             if W > H
                 % case is the width is greater than height
                 dW = W - H;

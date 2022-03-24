@@ -60,6 +60,7 @@ end
 % events took place and uses these to determine the effective time bands
 h.Update(1+wOfs,'Determining Time Bin Indices...',1/(2+nApp));
 iTs = cellfun(@(x)(find(Ttot<x,1,'last')),Ts,'un',0);
+iTs(cellfun(@isempty,iTs)) = {1};
 
 % resets the stimuli event/after times to account to remove any of the
 % empty index cells

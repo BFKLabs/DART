@@ -593,11 +593,9 @@ classdef TrackRegionClass < handle
             
             % resets the tube count/use flags (multi-fly tracking only)
             if obj.isMltTrk
-                % case is 
                 if isempty(obj.iMov.nFlyR)
-                    pInfo = obj.hFigRS.getRegionDataStructs(obj.iMov);
+                    obj.iMov.nFlyR = obj.iMov.pInfo.nFly;        
                     obj.iMov.nTubeR = ones(obj.iMov.nRow,obj.iMov.nCol);
-                    obj.iMov.nFlyR = pInfo.nFly;        
                 end    
             end
             
@@ -863,8 +861,9 @@ classdef TrackRegionClass < handle
                         setObjVisibility(hChild(isBL),0)
                         
                         % removes the marker objects
-                        isMark = strContains(tStr,'marker');
-                        arrayfun(@(x)(set(x,'MarkerSize',1)),hChild(isMark))
+                        mSz = ceil(mean(pPos{i}{j}(3:4))/100);
+                        hMarkC = hChild(strContains(tStr,'marker'));
+                        arrayfun(@(x)(set(x,'MarkerSize',mSz)),hMarkC)
                         
                         % sets the constraint region for the inner regions
                         fcn = makeConstrainToRectFcn...
@@ -1176,7 +1175,7 @@ classdef TrackRegionClass < handle
         end
         
         % --- resets the 2D region limits
-        function resetRegionLimits2D(obj,iApp,iT)                          
+        function resetRegionLimits2D(obj,iApp,iT)
             
             % sets the row/column indices
             iRow = floor((iApp-1)/obj.iMov.nCol) + 1;
@@ -1247,7 +1246,7 @@ classdef TrackRegionClass < handle
 
             % updates the region marker
             srObj = get(obj.hFigRS,'srObj');
-            obj.updateSubRegionMarker(uData,rPos)
+%             obj.updateSubRegionMarker(uData,rPos)
 
             % retrieves the marker line objects 
             hMarkR = srObj.hMarkR{uData(2),uData(1)};

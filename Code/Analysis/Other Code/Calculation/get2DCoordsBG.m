@@ -59,9 +59,12 @@ for i = iApp(:)'
     dPx{i} = Px{i}(:,fok{i})/sFac - repmat(arr2vec(X0(indG))',nFrm,1);
     dPy{i} = Py{i}(:,fok{i})/sFac - repmat(arr2vec(Y0(indG))',nFrm,1);
     
+    % sets the radii values for each sub-region in the group
     if length(iMov.autoP.R) == 1
+        % case is there is a constant radii value
         Rad{i} = (iMov.autoP.R-1)*ones(sum(fok{i}),1);
     else
+        % case is radii have been set for each sub-region
         Rad{i} = iMov.autoP.R(indG)-1;
     end
 end

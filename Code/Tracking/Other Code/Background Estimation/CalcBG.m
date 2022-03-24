@@ -1126,7 +1126,7 @@ classdef CalcBG < handle
             % other initialisations
             [iPhase,iFrmNw] = deal(ipara.cPhase,ipara.cFrm);            
             if isequal(colormap(obj.hAx),obj.cMapJet)
-                [pCol,lWid] = deal('r',3);
+                [pCol,lWid] = deal('k',3);
             else
                 [pCol,lWid] = deal('g',3);
             end

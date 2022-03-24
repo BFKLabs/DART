@@ -197,7 +197,7 @@ classdef DetectParaDialog < handle
             % ------------------------------ % 
             
             % initialisations
-            bStr = {'Update Changes','Reset Default','Close Window'};
+            bStr = {'Update Changes','Restore Default','Close Window'};
             bFcn = {@obj.updatePara,@obj.useDefaultPara,@obj.closeGUI};  
                         
             % creates the button objects

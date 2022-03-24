@@ -128,7 +128,7 @@ classdef DetectPara
 
                 case 'pInit' 
                     % case is initial detection parameters
-                    bgP = struct('nFrmMin',5,'pYRngTol',3.5,'pIRTol',0.35);
+                    bgP = struct('nFrmMin',3,'pYRngTol',3.5,'pIRTol',0.35);
 
                 case 'pTrack' 
                     % case is full tracking parameters

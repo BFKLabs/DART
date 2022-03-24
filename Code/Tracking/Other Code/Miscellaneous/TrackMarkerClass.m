@@ -227,7 +227,21 @@ classdef TrackMarkerClass < handle
         function setSubRegionCoords(obj,iApp,iFly,iCol)            
             
             switch obj.Type
-                case {'GeneralR','Circle'}
+                case 'Circle'
+                    %
+                    if numel(obj.iMov.autoP.R) == 1
+                        RC = obj.iMov.autoP.R;
+                    else
+                        RC = obj.iMov.autoP.R(iFly,iCol);
+                    end
+                    
+                    % case is an automatic shape region
+                    obj.xTube{iApp}{iFly} = RC*obj.iMov.autoP.XC + ...
+                            obj.iMov.autoP.X0(iFly,iCol);
+                    obj.yTube{iApp}{iFly} = RC*obj.iMov.autoP.YC + ...
+                            obj.iMov.autoP.Y0(iFly,iCol);
+                
+                case 'GeneralR'
                     % case is an automatic shape region
                     obj.xTube{iApp}{iFly} = obj.iMov.autoP.XC + ...
                             obj.iMov.autoP.X0(iFly,iCol);

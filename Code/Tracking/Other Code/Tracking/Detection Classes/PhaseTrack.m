@@ -326,8 +326,11 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 ii = Pmx >= pTolB;
                 if sum(ii) == 0
                     % case is there are no prominent objects
-                    if isempty(fPrNw)                        
-                        if Pmx(2)/Pmx(1) < obj.trkP.rPmxTol
+                    if isempty(fPrNw)     
+                        if length(Pmx) == 1
+                            iPnw = iPmx{i}(1);
+                            [fP(i,2),fP(i,1)] = ind2sub(szL,iPnw);
+                        elseif Pmx(2)/Pmx(1) < obj.trkP.rPmxTol
                             iPnw = iPmx{i}(iS(1));
                             [fP(i,2),fP(i,1)] = ind2sub(szL,iPnw);
                         end
