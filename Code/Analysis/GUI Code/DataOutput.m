@@ -2198,6 +2198,9 @@ function updateSheetData(handles,isRecalc,varargin)
 global allowSelect
 allowSelect = true;
 
+% turns all warnings
+wState = warning('off','all');
+
 % retrieves the data struct
 iData = getappdata(handles.figDataOutput,'iData');
 pData = getappdata(handles.figDataOutput,'pData');
@@ -2358,7 +2361,8 @@ if nargin == 2; setObjVisibility(hTab,'on'); end
 
 % deletes the loadbar
 enableDisableFig(handles.figDataOutput,'on');
-try; delete(h); end; pause(0.1);        
+try; delete(h); end; pause(0.1);  
+warning(wState);
 
 % --- sets the final data array for output to the worksheet
 function setFinalSheetData(handles,jTab,Data,colN,cTab)
