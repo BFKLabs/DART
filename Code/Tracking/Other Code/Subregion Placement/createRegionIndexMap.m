@@ -97,4 +97,14 @@ iMov.srData.indG = arrayfun(@(xiR,xiC,n)...
             ([repmat([xiR,xiC],n,1),(1:n)']),xiR,xiC,nGrp,'un',0);
 
 % resets the map/group fields
+iMov.srData.iGrpL = cell(size(iGrp));
 [iMov.srData.Imap,iMov.srData.iGrp] = deal(Imap,iGrp);
+
+% sets the mapping indices local to each region
+for i = 1:length(iGrp)
+    ImapT = Imap(iMov.iR{i},iMov.iC{i});
+    iMov.srData.iGrpL{i} = cell(size(iGrp{i}));
+    for j = 1:length(iGrp{i})
+        iMov.srData.iGrpL{i}{j} = find(ImapT == j);
+    end
+end

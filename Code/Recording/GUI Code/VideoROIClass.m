@@ -542,7 +542,7 @@ classdef VideoROIClass < handle
             
             % retrieves the initial image
             obj.Img0 = obj.getSnapShot();
-            while nanmedian(obj.Img0(:)) > ImgMdTol
+            while median(obj.Img0(:),'omitnan') > ImgMdTol
                 % pauses for the required time
                 pause(tPause);
                 

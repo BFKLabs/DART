@@ -20,25 +20,25 @@ hAx = [hAx1,hAx2];
 hold(hAx1,'on'); hold(hAx2,'on');
 
 % adds the errorbars/limits for the 1st axis
-if (~isempty(ySEM))
+if ~isempty(ySEM)
     % SEM values included, so add error bar
-    [yMax1b,Y1ax] = deal(nanmax(yMax(1),max(Y1+ySEM)),Y1+ySEM);
+    [yMax1b,Y1ax] = deal(max(yMax(1),max(Y1+ySEM),'omitnan'),Y1+ySEM);
 else
     % no SEM values included
-    [yMax1b,Y1ax] = deal(nanmax(yMax(1),max(Y1)),Y1);
+    [yMax1b,Y1ax] = deal(max(yMax(1),max(Y1),'omitnan'),Y1);
 end
 
 % adds the errorbars/limits for the 2nd axis
-if (~isempty(zSEM))
+if ~isempty(zSEM)
     % SEM values included, so add error bar
-    yMax2b = nanmax(yMax(2),max(Y2+zSEM));
+    yMax2b = max(yMax(2),max(Y2+zSEM),'omitnan');
 else
     % no SEM values included
-    yMax2b = nanmax(yMax(2),max(Y2));
+    yMax2b = max(yMax(2),max(Y2),'omitnan');
 end
 
 % resets the 
-if (nargin >= 8)            
+if nargin >= 8            
     yMax1 = setStandardYAxis(hAx1,Y1ax,nTick0,yMax1b);    
     yMax2 = setStandardYAxis(hAx2,Y2,nTick0,yMax2b);
 else

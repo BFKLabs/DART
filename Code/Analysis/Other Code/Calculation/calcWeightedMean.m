@@ -24,7 +24,7 @@ end
     
 % calculates the mean
 Ytol = 0.1;
-Ymn0 = nanmean(Y,1);
+Ymn0 = mean(Y,1,'omitnan');
 
 % resets the weight array depending if it has been set or not
 if (~calcW)
@@ -40,11 +40,11 @@ for i = 1:nIter
     % calculates the new weights
     Ymn0Pr = Ymn0;
     W = Wp./((Y - repmat(Ymn0,sz(1),1)).^2 + 1); 
-    W = W./repmat(nansum(W),sz(1),1);
+    W = W./repmat(sum(W,'omitnan'),sz(1),1);
         
     % calculates the new mean    
-    Ymn0 = nansum(W.*Y,1);
-    if (abs(Ymn0 - Ymn0Pr) < Ytol)
+    Ymn0 = sum(W.*Y,1,'omitnan');
+    if abs(Ymn0 - Ymn0Pr) < Ytol
         % if the change in the mean is less than tolerance, then exit the
         % loop
         break

@@ -21,9 +21,9 @@ end
 
 % estimates the median/amplitude
 if isempty(pOpt0)
-    I(isnan(I)) = nanmedian(I(:));
-    Ymd = nanmedian(I(:));
-    Yamp = nanmax(I(:)) - nanmin(I(:));
+    I(isnan(I)) = median(I(:),'omitnan');
+    Ymd = median(I(:),'omitnan');
+    Yamp = max(I(:),'omitnan') - min(I(:),'omitnan');
     pOpt0 =  [   Ymd,  Yamp,  1, 1];
 end
 

@@ -604,9 +604,9 @@ classdef InitTrackStats < handle
                 yMet(:,~indOK) = NaN;                
                 
                 % determines the min/max metric values                
-                [yMin,obj.iMin(iSR,iMet)] = nanmin(yMet,[],2);
-                [yMax,obj.iMax(iSR,iMet)] = nanmax(yMet,[],2);
-                yMean = nanmean(yMet,2);
+                [yMin,obj.iMin(iSR,iMet)] = min(yMet,[],2,'omitnan');
+                [yMax,obj.iMax(iSR,iMet)] = max(yMet,[],2,'omitnan');
+                yMean = mean(yMet,2,'omitnan');
             
                 % sets the final table data
                 iCol = (iMet-1)*(length(sStr)+1);
@@ -662,9 +662,9 @@ classdef InitTrackStats < handle
             yMet(:,~indOK) = NaN;
             
             % determines the min/max/mean metric values
-            [yMin,obj.iMin] = nanmin(yMet,[],2);
-            [yMax,obj.iMax] = nanmax(yMet,[],2);
-            yMean = nanmean(yMet,2);
+            [yMin,obj.iMin] = min(yMet,[],2,'omitnan');
+            [yMax,obj.iMax] = max(yMet,[],2,'omitnan');
+            yMean = mean(yMet,2,'omitnan');
             
             % sets the final table data
             obj.Data = cell(xiSR(end),size(yMet,2)+4);

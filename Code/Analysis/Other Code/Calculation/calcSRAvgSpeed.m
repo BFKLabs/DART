@@ -6,7 +6,7 @@ function [V,Vsd,Vtot] = calcSRAvgSpeed(P,cP,N,indF,indS,is2D,varargin)
 [nAvg,cType,nGrp] = deal(cP.nAvg,cP.cType,str2double(cP.nGrp));
 
 % sets the number of frames that each signal (should!) have
-if (nargin == 6)
+if nargin == 6
     nFrm = max(cellfun(@(x)(size(x,1)),P{1}(:)));
     nDay = size(P{1},1);
 else
@@ -16,15 +16,15 @@ end
     
 
 % memory allocation
-if (isempty(indF)); indF = cell(nDay,nGrp); end
-if (isempty(indS)); indS = cell(nDay,nGrp); end
+if isempty(indF); indF = cell(nDay,nGrp); end
+if isempty(indS); indS = cell(nDay,nGrp); end
 
 % sets up the temporary time vector
 Tall = -(N(1)+nAvg):N(2);
 
 % determines if there are any frames to calculate values for
 [V,Vsd,Vtot] = deal(cell(nDay,nGrp));
-if (nFrm == 0)
+if nFrm == 0
     % if not, then exit the function
     return    
 end
@@ -36,15 +36,16 @@ ind = cellfun(@(x)(max(1,x-nAvg):x),num2cell((nAvg+1):nFrm)','un',0);
 % calculated as the average speed over the previous nAvg frames)
 for i = 1:nDay
     for j = 1:nGrp
-        if (isempty(P{1}{i,j}))
+        if isempty(P{1}{i,j})
             % if the array is empty, then set a NaN array
             [V{i,j},Vsd{i,j}] = deal(NaN(length(ind),1));
         else
-            % sets the signal values for the current group and calculates the
-            % average speed trace
-            if (is2D)
+            % sets the signal values for the current group and calculates 
+            % the average speed trace
+            if is2D
                 [V{i,j},Vsd{i,j},Vtot{i,j}] = calcGroupSRAvgSpeed(...
-                        P{1}{i,j},P{2}{i,j},Tall,cType,indF{i,j},indS{i,j},ind);
+                        P{1}{i,j},P{2}{i,j},Tall,cType,...
+                        indF{i,j},indS{i,j},ind);
             else           
                 [V{i,j},Vsd{i,j},Vtot{i,j}] = calcGroupSRAvgSpeed(...
                         P{1}{i,j},[],Tall,cType,indF{i,j},indS{i,j},ind);
@@ -64,8 +65,8 @@ function [V,Vsd,Vtot] = calcGroupSRAvgSpeed(Px,Py,Ttot,cType,indF,indS,indB)
 if (isempty(Py))
     % calculates the binned distances from the summed absolute
     % difference in the x-locations
-    Vt = cellfun(@(x)(nansum(abs(diff(Px(x,:),1)),1)/...
-                    diff(Ttot(x([1 end])))),indB,'un',0);
+    Vt = cellfun(@(x)(sum(abs(diff(Px(x,:),1)),1,'omitnan')/...
+                    diff(Ttot(x([1,end])))),indB,'un',0);
 else
     % sets the binned x/y locations 
     PxB = cellfun(@(x)(Px(x,:)),indB,'un',0);
@@ -73,15 +74,15 @@ else
     dT = cellfun(@(x)(diff(Ttot(x([1 end])))),indB,'un',0);
 
     % calculates the total distance travelled using Phythagoras
-    Vt = cellfun(@(x,y,z)(nansum(sqrt(diff(x,[],1).^2 + ...
-                diff(y,[],1).^2),1))/z,PxB,PyB,dT,'un',0);        
+    Vt = cellfun(@(x,y,z)(sum(sqrt(diff(x,[],1).^2 + ...
+                diff(y,[],1).^2),1,'omitnan'))/z,PxB,PyB,dT,'un',0);
 end
 
 % sets the total signal array
 Vtot = cell2mat(Vt);
 
 %
-if (~isempty(indS))
+if ~isempty(indS)
     iGrp = cellfun(@(x)(find(indS == x)),num2cell(unique(indS)),'un',0);
     
     VtotF = cell(1,length(iGrp));
@@ -94,14 +95,14 @@ if (~isempty(indS))
     
     % calculates the signal SEM values
     N = cellfun(@(x)(sum(~isnan(x(1,:)))),VtotF,'un',0);
-    Vsd = cellfun(@(x)(nanstd(x,[],2)),VtotF,'un',0)/sqrt(N);
+    Vsd = cellfun(@(x)(std(x,[],2,'omitnan')),VtotF,'un',0)/sqrt(N);
     
     % runs the averageing function (based on type)
-    switch (lower(cType))
+    switch lower(cType)
         case ('mean') % case is calculating average speed
-            V = cellfun(@(x)(nanmean(x,2)),VtotF,'un',0);
+            V = cellfun(@(x)(mean(x,2,'omitnan')),VtotF,'un',0);
         case ('median') % case is calculating median speed
-            V = cellfun(@(x)(nanmedian(x,2)),VtotF,'un',0);
+            V = cellfun(@(x)(median(x,2,'omitnan')),VtotF,'un',0);
     end
 
 %     % converts the cell arrays to numerical arrays
@@ -112,7 +113,7 @@ if (~isempty(indS))
     Vsd = cell2mat(reshape(Vsd,[1 1 length(Vsd)]));
 else
     % sets the indices of the traces belonging to each fly
-    if (isempty(indF))
+    if isempty(indF)
         VtotF = Vtot;
     else
         iGrp = cellfun(@(x)(find(indF == x)),num2cell(1:max(indF)),'un',0);
@@ -121,7 +122,7 @@ else
         VtotF = NaN(size(Vtot,1),max(indF));
         for i = 1:length(iGrp)
             % determines the traces belonging to the current fly
-            if (~isempty(iGrp{i}))   
+            if ~isempty(iGrp{i})  
                 VtotF(:,i) = mean(Vtot(:,iGrp{i}),2); 
             end
         end
@@ -129,13 +130,13 @@ else
 
     % calculates the signal SEM values
     N = sum(~isnan(VtotF(1,:)));
-    Vsd = nanstd(VtotF,[],2)./sqrt(sum(~isnan(VtotF(1,:))));
+    Vsd = std(VtotF,[],2,'omitnan')./sqrt(sum(~isnan(VtotF(1,:))));
 
     % runs the averageing function (based on type)
-    switch (lower(cType))
+    switch lower(cType)
         case ('mean') % case is calculating average speed
-            V = nanmean(Vtot,2);
+            V = mean(Vtot,2,'omitnan');
         case ('median') % case is calculating median speed
-            V = nanmedian(Vtot,2);
+            V = median(Vtot,2,'omitnan');
     end
 end

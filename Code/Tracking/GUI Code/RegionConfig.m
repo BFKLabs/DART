@@ -22,7 +22,7 @@ end
 
 
 % --- Executes just before RegionConfig is made visible.
-function RegionConfig_OpeningFcn(hObject, eventdata, handles, varargin)
+function RegionConfig_OpeningFcn(hObject, ~, handles, varargin)
 
 % Choose default command line output for RegionConfig
 handles.output = hObject;
@@ -859,7 +859,7 @@ switch pStr
         
     case 'nFlyMx'
         % case is the maximum fly count
-        nwLim = [1,50];
+        nwLim = [1,100];
         
     case 'nRowG'
         % case is the grid row count
@@ -1578,7 +1578,9 @@ updateMenuItemProps(handles);
 % --------------------------------- %
 
 % updates the table data
-if ~iData.is2D; updateRegionInfoTable(handles); end
+if ~(iData.is2D || isMltTrk)
+    updateRegionInfoTable(handles); 
+end
 
 % auto-resizes the table columns
 if isInit; autoResizeTableColumns(handles.tableRegionInfo1D); end

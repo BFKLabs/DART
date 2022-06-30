@@ -889,7 +889,7 @@ if ~snTot.iMov.is2D && ~oPara.outY
 end
 
 % removes any other extraneous fields
-snTot = rmfield(snTot,{'pMapPx','pMapPy','iExpt'});
+snTot = rmfield(snTot,{'iExpt'});
 
 % saves the file
 hProg.Update(2,'Outputting Matlab Solution File...',0.5); 
@@ -1386,9 +1386,10 @@ function snTot = updateRegionInfo(snTot)
 
 % retrieves the region data struct fields
 iMov = snTot.iMov;
+isMltTrk = detMltTrkStatus(iMov);
 
 % updates the setup dependent fields
-if iMov.is2D
+if iMov.is2D || isMltTrk
     % resets the group index array/count
     iGrp0 = iMov.pInfo.iGrp;    
     iMov.pInfo.iGrp(:) = 0;    
@@ -1396,7 +1397,14 @@ if iMov.is2D
     % sets the grouping indices
     indG = 1;
     for i = 1:max(iGrp0(:))
-        ii = (iGrp0 == i) & iMov.flyok;
+        % determine the feasible groups that below to the current group
+        % index (indG)
+        ii = (iGrp0 == i);
+        if ~isMltTrk
+            ii = ii && iMov.flyok; 
+        end
+
+        % updates the group index (if valid)
         if iMov.ok(i) && any(ii(:))
             iMov.pInfo.iGrp(ii) = indG;
             indG = indG + 1;

@@ -25,6 +25,7 @@ classdef VideoPhase < handle
         Img0
         ILF
         Dimg
+        Imu
         
         % other class fields
         hS
@@ -255,12 +256,17 @@ classdef VideoPhase < handle
             
             % determines if there is any significant translation over 
             % the video            
-            obj.isBig = any(size(obj.Img0{1}) > obj.szBig);  
+            obj.isBig = any(size(obj.Img0{1}) > obj.szBig); 
+            
+            % calculates the mean image intensity over all image regions
+            [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);
+            obj.Imu = cell2mat(cellfun(@(x)(cellfun(@(ir,ic)(mean...
+                        (arr2vec(x(ir,ic)),'omitnan')),iR,iC)),...
+                        obj.Img0(:)','un',0));
             
             % determines if the video is trackable
-            Imu = cellfun(@(x)(nanmean(x(:))),obj.Img0);
-            obj.isFeasVid = any((Imu > obj.phsP.pTolLo) & ...
-                                (Imu < obj.phsP.pTolHi));
+            obj.isFeasVid = any((obj.Imu(:) > obj.phsP.pTolLo) & ...
+                                (obj.Imu(:) < obj.phsP.pTolHi));
             
             % updates the progressbar
             obj.updateSubProgField('Image Estimate Read Complete',1);
@@ -282,7 +288,7 @@ classdef VideoPhase < handle
             obj.hasT = false(1,obj.nApp);            
             
             % determines the frames which are feasible
-            ImgMu = cellfun(@(x)(nanmean(x(:))),obj.Img0);
+            ImgMu = max(obj.Imu,[],1)';
             isOK = (ImgMu > obj.phsP.pTolLo) & (ImgMu < obj.phsP.pTolHi);
             [i0,i1] = deal(find(isOK,1,'first'),find(isOK,1,'last'));                
             
@@ -334,7 +340,7 @@ classdef VideoPhase < handle
             %  A) phases in avg. pixel intensity, or
             %  B) severe fluctuation in avg. pixel intensity
             ImgI = cellfun(@(x)(dsimage(x,obj.nDS)),obj.Img0,'un',0);   
-            obj.Dimg0 = cellfun(@(x)(nanmean(x(:))),ImgI);
+            obj.Dimg0 = cellfun(@(x)(mean(x(:),'omitnan')),ImgI);
             Dmu = pdist2(obj.Dimg0(:),obj.Dimg0(:));
             iFrmG0 = obj.estPhaseFrameGroups(Dmu,obj.iFrm0);
 
@@ -350,7 +356,7 @@ classdef VideoPhase < handle
             % updates the progressbar           
             wStrF = 'Video Property Detection Complete';
             obj.calcOK = ~obj.updateSubProgField(wStrF,1);
-            obj.Dtol = 2+obj.hasF;
+            obj.Dtol = 5+obj.hasF;
             
         end
         
@@ -671,7 +677,11 @@ classdef VideoPhase < handle
             % keep searching the groupings until the frame gap < dFrmMax
             while 1
                 % determines the frames that have been analysed
-                iFrmD = find(obj.Dimg(xi,1)) + (xi(1)-1);                      
+                if iscell(obj.Dimg)
+                    iFrmD = find(obj.Dimg{1}(xi,1)) + (xi(1)-1);                      
+                else
+                    iFrmD = find(obj.Dimg(xi,1)) + (xi(1)-1);                                          
+                end
                 
                 % determines if there are any large frame gaps remaining
                 dFrmD = diff(iFrmD);           
@@ -703,7 +713,14 @@ classdef VideoPhase < handle
                     else
                         % otherwise, determine if the phase limit is valid
                         % (i.e., there is a change in pixel tolerance)
-                        dD = abs(diff(mean(full(obj.Dimg(jGrpT,:)),2)));
+                        if iscell(obj.Dimg)
+                            dD = abs(diff...
+                                    (mean(full(obj.Dimg{1}(jGrpT,:)),2)));
+                        else
+                            dD = abs(diff...
+                                    (mean(full(obj.Dimg(jGrpT,:)),2)));                            
+                        end
+                            
                         isAdd = dD > obj.Dtol;
                     end
                     
@@ -732,7 +749,7 @@ classdef VideoPhase < handle
             
             % calculates the 
             DGrp = cellfun(@(x)(obj.getDimg(x)),iFrmGrp,'un',0);
-            DGrpMn = cellfun(@(x)(nanmean(x,2)),DGrp,'un',0);
+            DGrpMn = cellfun(@(x)(mean(x,2,'omitnan')),DGrp,'un',0);
             
             % calculates the linear fits for each frame grouping
             pGrp = NaN(length(iFrmGrp),1);
@@ -840,8 +857,9 @@ classdef VideoPhase < handle
                     iFrmL = [iGrpF(ii(1),2),iGrpF(ii(2),1)];
                     [~,Imet1] = obj.getRegionImageStack(iFrmL(1)); 
                     [~,Imet2] = obj.getRegionImageStack(iFrmL(2));
-                    Qnw = nanmean(cell2mat(cellfun(@(x,y)...
-                            (calcHistSimMetrics(x,y)),Imet1,Imet2,'un',0)),1);
+                    Qnw = mean(cell2mat(cellfun(@(x,y)...
+                            (calcHistSimMetrics(x,y)),Imet1,...
+                            Imet2,'un',0)),1,'omitnan');
                     
                     % determines if the 
                     [joinPhases,~] = obj.checkHistMetrics(Qnw);
@@ -1314,7 +1332,7 @@ classdef VideoPhase < handle
             
             % calculates the average difference between the reference image
             % and the original/translated images
-            dImg = cellfun(@(x)(nanmean(abs(x(:)-Iref(:)))),{I,IT});
+            dImg = cellfun(@(x)(mean(abs(x(:)-Iref(:)),'omitnan')),{I,IT});
             if argMin(dImg) == 1
                 % if the original image has a lower difference, then flag
                 % that the image is static
@@ -1387,11 +1405,11 @@ classdef VideoPhase < handle
             % calculates the average image intensity (based on type)
             if obj.hasSR
                 % case is there is sub-region data set
-                D = cell2mat(cellfun(@(y)(cellfun(@(x)...
-                        (nanmean(x(y))),I)),obj.iGrpSR{iApp}(:),'un',0))';                
+                D = cell2mat(cellfun(@(y)(cellfun(@(x)(mean(x(y),...
+                        'omitnan')),I)),obj.iGrpSR{iApp}(:),'un',0))';                
             else
                 % case is there is no sub-region setup (single region)
-                D = cellfun(@(x)(nanmean(x(:))),I)';
+                D = cellfun(@(x)(mean(x(:),'omitnan')),I)';
             end
             
         end                

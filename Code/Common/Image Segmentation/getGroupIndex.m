@@ -1,29 +1,30 @@
+% --- retrieves the linear indices + other properties for the blob objects
+%     from the binary mask, Im
 function [iGrp,varargout] = getGroupIndex(Im,varargin)
 
-a = char(39);
-
-%
-pstr = [a,'PixelIdxList',a];
-if (~isempty(varargin))
-    for i = 1:length(varargin)
-        pstr = [pstr,sprintf(',%s%s%s',a,varargin{i},a)];
+% sets the region properties array
+pStr = {'PixelIdxList'};
+if ~isempty(varargin)
+    % ensures the input arguments have the correct format
+    if iscell(varargin{1})
+        varargin = varargin{1};
     end
+    
+    % sets the final property string array
+    pStr = [pStr;varargin(:)];
 end
 
-%
-fstr = sprintf('regionprops(bwlabel(Im),%s);',pstr);
-s = eval(fstr);
+% calculates the object region properties
+s = regionprops(bwlabel(logical(Im)),pStr);
 
-%
-iGrp = {};
-[iGrp{1:length(s),1}] = deal(s.PixelIdxList);
+% retrieves the pixel index list
+iGrp = arrayfun(@(x)(x.PixelIdxList),s,'un',0);
 
-%
-for i = 1:(nargout-1)
-    a = {};
-    fstr = sprintf('deal(s.%s);',varargin{i});
-    
-    [a{1:length(s),1}] = eval(fstr);
-    a = cell2mat(a);
-    varargout{i} = a;
+% sets the other output property values
+if nargout > 1
+    varargout = cell(nargout-1,1);
+    for i = 1:(nargout-1)
+        Pout = arrayfun(@(x)(x.(varargin{i})),s,'un',0);
+        varargout{i} = cell2mat(Pout);
+    end
 end

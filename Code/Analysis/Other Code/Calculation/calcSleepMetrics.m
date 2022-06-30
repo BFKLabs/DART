@@ -28,7 +28,7 @@ Y(jj,:) = logical(cell2mat(I(jj)));
 
 % determines the groups of indices which correspond to the fly being
 % inactive (false values in the temporary array)
-Tmn = cellfun(@(x)(nanmean(Ttot(x))),indB);
+Tmn = cellfun(@(x)(mean(Ttot(x),'omitnan')),indB);
 iGrp = cellfun(@(x)(getGroupIndex(x)),num2cell(~Y,1),'un',0);
 
 % for each fly, determine which periods of inactivation were longer than
@@ -49,7 +49,7 @@ end
 iMap = find(~isnan(Tmn));
 indGrp = detTimeGroupIndices(Tmn,snTot.iExpt(1).Timing.T0,nGrp,Tgrp0,true);
 indGrp = cellfun(@(x)(iMap(x)),indGrp,'un',0);
-Tgrp = cellfun(@(x)(nanmean(Tmn(x))),indGrp);
+Tgrp = cellfun(@(x)(mean(Tmn(x),'omitnan')),indGrp);
 
 % calculates the sleep bouts/durations
 YY = cellfun(@(x)(num2cell(~Y(x,:),1)),indGrp,'un',0);

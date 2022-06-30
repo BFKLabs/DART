@@ -5,7 +5,21 @@ function gName = getRegionGroupNames(snTot)
 pInfo = snTot.iMov.pInfo;
 [gName0,cID] = deal(pInfo.gName,snTot.cID);
 
-if snTot.iMov.is2D
+if detMltTrkStatus(snTot.iMov)
+    % case is a multi-experiment    
+
+    % sets the final data/column headers
+    ii = ~cellfun(@isempty,snTot.cID);
+    iReg = cellfun(@(x)(unique(x(:,1))),snTot.cID(ii),'un',0);
+    nReg = max(cell2mat(iReg));
+    gName = cell(nReg,1);
+    
+    % sets the group names (for each grouping)
+    for i = 1:length(iReg)
+        gName(iReg{i}) = gName0(i);
+    end    
+    
+elseif snTot.iMov.is2D
     % case is a 2D experiment    
     
     % sets the final data/column headers

@@ -13,38 +13,34 @@ if ~isfield(iMov,'pInfo')
     iGrp0 = cellfun(@(x)(getMatchingGroupIndex(gName,x)),gNameS);
     iGrp = cell2mat(arrayfun(@(x)(x*ones(nFly,1)),iGrp0(:)','un',0));
     
-else
-    if iMov.is2D
-        iGrp = iMov.pInfo.iGrp;
-    else
-        iGrp0 = arr2vec(iMov.pInfo.iGrp')';
-        iGrp = repmat(iGrp0,size(iMov.flyok,1),1);
-    end
-    
-%     % case is 2D with the new format
-%     
-%     if exist('iApp','var')
-%         
-%     end
+else    
+    %
+    isMltTrk = detMltTrkStatus(iMov);
     
     % determines the matchinging grouping indices for each region
-    if iMov.is2D
+    if iMov.is2D || isMltTrk
+        iGrp = iMov.pInfo.iGrp;
         isOK = iGrp > 0;
+        
         iGrp(isOK) = cellfun(@(x)...
                 (getMatchingGroupIndex(gName,x)),gName(iGrp(isOK)));
     else
+%         iGrp0 = arr2vec(iMov.pInfo.iGrp')';
+%         iGrp = repmat(iGrp0,size(iMov.flyok,1),1);                
         [~,~,iC] = unique(gName,'stable');
         iGrp = repmat(iC(:)',size(iMov.flyok,1),1);
         iGrp(:,~iMov.ok) = 0;
     end
             
     % removes any rejected flies
-    if exist('iApp','var')
-        iGrp(~iMov.flyok(:,iApp)) = 0;
-        iGrp = iGrp(:,iApp);
-    else
-        iGrp(~iMov.flyok) = 0;
-    end            
+    if ~isMltTrk
+        if exist('iApp','var')
+            iGrp(~iMov.flyok(:,iApp)) = 0;
+            iGrp = iGrp(:,iApp);
+        else
+            iGrp(~iMov.flyok) = 0;
+        end            
+    end
 end 
 
 % --- determines the first match group index value

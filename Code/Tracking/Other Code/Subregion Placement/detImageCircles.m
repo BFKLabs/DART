@@ -77,7 +77,7 @@ try
     Rmax = calcMaxRadii(X0,Y0);
     
     % sets the final x/y centre coordinates and the maximum radii
-    R = min(Rmax,nanmax(R0(:))-1);
+    R = min(Rmax,max(R0(:),[],'omitnan')-1);
     [X,Y] = deal(X0+pOfs(1),Y0+pOfs(2));
     
     % sets the lower/upper tolerances on the radii    
@@ -125,12 +125,12 @@ nCircTol = 2*prod(dim);
 
 % calculates the normalised image and mean/std dev
 Itmp = 255*normImg(applyHMFilter(I));
-[Imn,Isd] = deal(nanmean(Itmp(:)),nanstd(Itmp(:)));
+[Imn,Isd] = deal(mean(Itmp(:),'omitnan'),std(Itmp(:),[],'omitnan'));
 
 %
 ZI = normcdf(Itmp,Imn,Isd);
 BZ = (ZI >= pTol) & (ZI <= (1-pTol));
-Itmp(~BZ) = nanmedian(Itmp(BZ));
+Itmp(~BZ) = median(Itmp(BZ),'omitnan');
 
 % calculate the circle regions using the object polarity type, Type
 for i = 1:length(Type)
@@ -297,7 +297,7 @@ function Rmax = calcMaxRadii(xC,yC)
 P = [xC(:),yC(:)]; 
 Dc = pdist2(P,P); 
 Dc(logical(eye(size(Dc)))) = NaN;
-Rmax = roundP(nanmin(Dc(:))/2);
+Rmax = roundP(min(Dc(:),[],'omitnan')/2);
 
 %-------------------------------------------------------------------------%
 %                    OLD DETECTION ALGORITHM FUNCTIONS                    %

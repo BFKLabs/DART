@@ -2105,8 +2105,12 @@ for i = 1:length(Imap)
     % creates the new tree node (if required)
     if isAdd
         % sets up the node string
+        try
         nodeStr0 = getNodeString(fStr{i},fVal{Imap(i)});
         nodeStr = setHTMLColourString('kb',nodeStr0,1);
+        catch
+            a = 1;
+        end
         
         % creates the new node      
         hNodeNw = createUITreeNode(nodeStr,nodeStr,[],false);
@@ -2181,6 +2185,10 @@ switch fStr
     case 'Spec'
         % case is special experiments
         switch fVal
+            case 'MT'
+                % case is multi-tracking
+                nodeStr = 'Multi-Tracking';
+            
             case 'None'
                 % case is duration independent
                 nodeStr = 'Non-Speciality Functions';
@@ -2344,8 +2352,8 @@ iMov = snTot(1).iMov;
 % avg expt duration
 Ts = arrayfun(@(x)(x.T{1}(1)),snTot);
 Tf = arrayfun(@(x)(x.T{end}(end)),snTot);
-[~,~,tStr] = calcTimeDifference(60*roundP(mean(Tf-Ts)/60));
-durStr = sprintf('%s Days, %s Hours, %s Mins',tStr{1},tStr{2},tStr{3});
+[~,~,tStr] = calcTimeDifference(roundP(mean(Tf-Ts)));
+durStr = sprintf('%s:%s:%s:%s (DD:HH:MM:SS)',tStr{1},tStr{2},tStr{3},tStr{4});
 
 % expt setup type
 if snTot(1).iMov.is2D

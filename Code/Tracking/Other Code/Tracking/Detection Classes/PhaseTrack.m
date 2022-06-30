@@ -544,9 +544,9 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 end
                 
                 % updates the x/y coordinate limits
-                IPr = IP(i);
-                xL = [nanmin(fPL(1),xL(1)),nanmax(fPL(1),xL(2))];
-                yL = [nanmin(fPL(2),yL(1)),nanmax(fPL(2),yL(2))];                
+                [IPr,nFlag] = deal(IP(i),'omitnan');
+                xL = [min(fPL(1),xL(1),nFlag),max(fPL(1),xL(2),nFlag)];
+                yL = [min(fPL(2),yL(1),nFlag),max(fPL(2),yL(2),nFlag)];                
             end
             
             % resets the x/y-limits
@@ -600,8 +600,9 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 % calculates the image stack statistics
                 ImgT = cell2mat(Img(:));                        
                 B = ImgT > 0;
-                [Imu,Isd] = deal(nanmean(ImgT(B)),nanstd(ImgT(B)));
-                                
+                Imu = mean(ImgT(B),'omitnan');
+                Isd = std(ImgT(B),[],'omitnan');
+                
                 % calculates the image weight (preference given to lower
                 % pixel intensities - removes effect of glare)
                 pCDF = cellfun(@(x)(normcdf(x,Imu,Isd)),Img,'un',0);
@@ -697,11 +698,11 @@ classdef PhaseTrack < matlab.mixin.SetGet
             
             % calculates the background/local images from the stack    
             ImgBG = obj.iMov.Ibg{obj.iPh}{iApp};             
-            Iref = nanmean(ImgBG(:));
+            Iref = mean(ImgBG(:),'omitnan');
             
             % determines if mean of any of the frame images are outside the
             % tolerance, pTolPh (=5)
-            ImgLmn = cellfun(@(x)(nanmean(x(:))),ImgL);
+            ImgLmn = cellfun(@(x)(mean(x(:),'omitnan')),ImgL);
             isOK = abs(ImgLmn-Iref) < obj.trkP.pTolPh;  
             if any(~isOK)
                 % if so, then reset the 

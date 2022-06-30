@@ -103,7 +103,7 @@ classdef ResetVideoPara < handle
                 
                 % fills in any gaps
                 isN = isnan(obj.Ibg{i});
-                obj.Ibg{i}(isN) = nanmedian(obj.Ibg{i}(~isN));
+                obj.Ibg{i}(isN) = median(obj.Ibg{i}(~isN));
                 
                 % retrieves the experiment scale factor
                 obj.sFac(i) = obj.fObj.sInfo{i}.snTot.sgP.sFac;                

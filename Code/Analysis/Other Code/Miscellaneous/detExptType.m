@@ -16,10 +16,11 @@ function isFeas = detExptType(snTot,fType)
 %   = 1 - Time Independent
 %   = 2 - Short Experiment
 %   = 3 - Long Experiment
-% -> Element 4 - Data Dimensionality
-%   = 1 - Dimension Independent
+% -> Element 4 - Experiment Assay Type
+%   = 1 - Assay Independent
 %   = 2 - 1D Data Only
 %   = 3 - 2D Data Only
+%   = 4 - Multi-Tracking
 % -> Element 5 - Special Requirements
 %   = 1 - Requires Multi Phase Stimuli Protocol
 %   = 2 - Requires Orientation Angle Values

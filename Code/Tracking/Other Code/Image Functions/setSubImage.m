@@ -32,4 +32,4 @@ szDelX = iC(1)-iMov.iC{iApp}(1);
 szDelY = iR(1)-iMov.iR{iApp}(1);
 
 % sets the sub-image
-ImgS = Img(iR,iC);
+ImgS = Img(iR,iC,:);

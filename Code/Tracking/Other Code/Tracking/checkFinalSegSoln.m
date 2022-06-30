@@ -86,7 +86,7 @@ switch iMov.Status{iApp}(iTube)
         end         
         
         % determines if there are any points outside the 
-        fPosMn = nanmedian(fP,1);
+        fPosMn = median(fP,1,'omitnan');
         DPosMn = pdist2(fP,fPosMn)/dTol;
         
         % determines if there is any significant movement
@@ -130,10 +130,8 @@ end
 % --- checks the position data for any NaN frames
 function [iMov,pData] = frameNaNCheck(obj,iMov,pData,iApp,iTube)
 
-% global variables
-global Nsz
-
 % field retrieval
+Dtol = mean(obj.iMov.szObj);
 [handles,iData] = deal(obj.hGUI,obj.iData);
 
 % determines the frame count for the current video
@@ -189,7 +187,7 @@ if any(ii == 1)
                 end
                                     
                 D = sqrt(sum(diff(fPosNw(iX,:),[],1).^2));
-                if (D < 3*Nsz/2)
+                if (D < Dtol)
                     % if the distance between the start/end points is small
                     % then interpolate between the missing values
                     fPosNw(iGrp{i},1) = interp1(iX,fPosNw(iX,1),iGrp{i});
@@ -229,8 +227,9 @@ if any(ii == 1)
         end
         
         % resets the positions into the local/global position data array
+        nT = size(fPosNw,1);
         pData.fPos{iApp}{iTube} = fPosNw;              
-        pData.fPosL{iApp}{iTube} = fPosNw - repmat([xOfs,yOfs],nFrm,1);
+        pData.fPosL{iApp}{iTube} = fPosNw - repmat([xOfs,yOfs],nT,1);
     end
 end
 
@@ -393,7 +392,7 @@ end
 %     else
 %         % if there is only low probability values, then is probably fixed
 %         % in location (see locations to be median of coordinates)
-%         [X(:),Y(:)] = deal(nanmedian(X),nanmedian(Y));
+%         [X(:),Y(:)] = deal(median(X,'omitnan'),median(Y,'omitnan'));
 %     end
 % end
  
@@ -438,7 +437,7 @@ if isfield(iMov,'szObj')
 end
 
 % calculates the distance between the coordinates and the median point
-fPosMn = [nanmedian(X),nanmedian(Y)];
+fPosMn = [median(X,'omitnan'),median(Y,'omitnan')];
 if is2D
     dPos = sqrt((X-fPosMn(1)).^2 + (Y-fPosMn(2)).^2);
 else
@@ -608,12 +607,7 @@ if nargin == 3
 else
     % calculates the mean/std deviation of the group metric values
     IPosT = cellfun(@(x)(x(indF,1)),IPos,'un',0);  
-    ZPos = cellfun(@(x)(x/nanmedian(x)),IPosT,'un',0);
-    
-%     %
-%     pMu = cellfun(@nanmean,IPosT,'un',0);
-%     pSD = cellfun(@nanstd,IPosT,'un',0);    
-%     ZPos = cellfun(@(x,mu,sd)(normcdf(x,mu,sd)),IPosT,pMu,pSD,'un',0);
+    ZPos = cellfun(@(x)(x/median(x,'omitnan')),IPosT,'un',0);    
 end
 
 % ----------------------- %
@@ -628,7 +622,7 @@ iR = 1:15;
 
 % calculates the cwt and sums the power spectrums for the high-freq rows
 Y = cwt(X-mean(X));
-Pcwt = nanmean(abs(Y(iR,:)),1);
+Pcwt = mean(abs(Y(iR,:)),1,'omitnan');
 
 % --- sets up the extrapolation signal
 function y = setupExtrapSig(x,nPts)

@@ -6,7 +6,7 @@ if nargin < 3; N = 1; end
 
 % fills in any gaps
 B = isnan(I);
-I(B) = nanmedian(I(~B));
+I(B) = median(I(~B),'omitnan');
 
 % updates the median background image
 for i = 1:N

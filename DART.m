@@ -395,10 +395,20 @@ if fIndex == 0
     return
 end
 
+% ensures the external apps folder exists (create and add if not)
+fDirExApp = getProgFileNameDART('Code','External Apps');
+if ~exist(fDirExApp,'dir')
+    mkdir(fDirExApp);
+    pause(0.05);
+    addpath(fDirExApp);    
+end
+
 % sets the output directory
-fDirOut = getProgFileNameDART('Code','External Apps',getFileName(fName));
+fDirOut = fullfile(fDirExApp,getFileName(fName));
 if ~exist(fDirOut,'dir')
     mkdir(fDirOut);
+    pause(0.05);
+    addpath(fDirOut);
 end
 
 % runs the package installer

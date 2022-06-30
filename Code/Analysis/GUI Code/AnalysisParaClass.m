@@ -790,11 +790,11 @@ classdef AnalysisParaClass < handle
             
             % retrieves the GUI object width dimensions
             obj.hasTab = ~cellfun(@isempty,obj.hObj);
-            wObj = cellfun(@(x)(retObjDimPos(x,3)),obj.hObj(1:2),'un',0);            
+            wObj = cellfun(@(x)(retObjDimPos(x,3)),obj.hObj(1:2),'un',0);
             
             % determines the maximum object widths over all objects/types
             for i = 1:2
-                for j = 1:length(obj.hObj{i})
+                for j = find(~cellfun(@isempty,obj.hObj{i})')
                     if length(obj.hObj{i}{j}) == 1
                         % case is a boolean parameter
                         wMax(3) = max(wMax(3),wObj{i}{j});
@@ -907,26 +907,7 @@ classdef AnalysisParaClass < handle
                         end
                     end
                 end
-            end           
-            
-%             % ---------------------------- %
-%             % --- PANEL RE-POSITIONING --- %
-%             % ---------------------------- %                        
-
-%             % resets the figure height/bottom coordinates
-%             [fPos,obj.yNew] = deal(get(obj.hFig,'Position'),obj.pOfs);
-%             Hfunc = 3*obj.hOfs2 + (3/2)*obj.pOfs;
-%             Hfig = (Hfunc + 2*obj.pOfs) + (sum(obj.HObjS)+sum(HObj)) + ...
-%                                           sum(obj.hasTab(1:2))*obj.hTabOfs;
-
-%             % recalculates the figure bottom location
-%             if (fPos(2) < obj.B0)        
-%                 bNew = obj.B0;
-%             elseif fPos(2) > (obj.scrSz(4)-(Hfig+obj.B0))
-%                 bNew = (obj.scrSz(4)-(Hfig+obj.B0));
-%             else
-%                 bNew = fPos(2);
-%             end           
+            end                                
 
             % ------------------------ %            
             % --- TIME LIMIT PANEL --- %
@@ -1250,13 +1231,16 @@ classdef AnalysisParaClass < handle
             end            
             
             % memory allocation
-            nPara = length(p);
+            nPara = length(p);            
             obj.hObj{iType} = cell(nPara,1);            
             if nPara == 0
                 % if there are no parameters, then exit
                 return
                 
             else   
+                % retrieves the fixed parameter flags
+                iFree = find(~field2cell(p,'isFixed',1));
+                
                 % sets the update parameter indices
                 if strcmp(Type,'Spec')
                     % case is a speciality parameter field                    
@@ -1264,13 +1248,13 @@ classdef AnalysisParaClass < handle
                     
                 else
                     % determines the unique parameter type fields
-                    tStr = field2cell(p,'Tab');        
+                    tStr = field2cell(p(iFree),'Tab');        
                     [tStrU,~,C] = unique(tStr);
                     if isempty(tStrU{1}); tStrU{1} = '1 - General'; end
 
                     % determines the unique parameter indices
                     xiU = 1:length(tStrU);
-                    tInd = arrayfun(@(x)(find(C == x)),xiU,'un',0);
+                    tInd = arrayfun(@(x)(iFree(C == x)),xiU,'un',0);
                     ind = combineNumericCells...
                                 (cellfun(@(x)(x(end:-1:1)),tInd,'un',0));                
                 end                                
@@ -1370,6 +1354,38 @@ classdef AnalysisParaClass < handle
                                         (hTabNw,p(i),i,iType,yNw,{i,Type});
                             
                     end
+                end                
+            end
+            
+            % if plotting/calculation parameters, then set the initial
+            % parameter enabled properties (based on initial values)
+            if iType < 3
+                % determines the parameters with enabled prop fields
+                Enable = field2cell(p,'Enable');
+                indE = ~cellfun(@isempty,Enable);
+                if ~any(indE); return; end
+    
+                % determines the indices of the parent parameter objects
+                % and runs the parameter enabled check
+                iSelP0 = cellfun(@(x)(x{1}),Enable(indE),'un',0);
+                isC = cellfun(@iscell,iSelP0);
+                iSelP0(isC) = cellfun(@(x)(cell2mat(x)),iSelP0(isC),'un',0);
+                
+                % resets the enabled properties for the associated objects
+                iSelP = unique(cell2mat(iSelP0'));
+                for i = iSelP(iSelP>0)'                    
+                    p = obj.resetParaEnable(p,i);               
+                end
+                    
+                % resets the parameters
+                switch iType 
+                    case 1
+                        % case is the calculation parameters
+                        obj.pData.cP = p;
+                        
+                    case 2
+                        % case is the plotting parameters
+                        obj.pData.pP = p;                        
                 end
                 
             end
@@ -1795,12 +1811,11 @@ classdef AnalysisParaClass < handle
         function setupCalcPlotPara(obj,hTabP,p,indP,iType,yNew,uD)
          
             % sets the new height and increments the index
-            isValid = true;
-            [Name,TTstr] = deal(p.Name,p.TTstr);
-            [Value,Enable] = deal(p.Value,p.Enable);
+            [isValid,Enable] = deal(true,p.Enable);
+            [Name,TTstr,Value] = deal(p.Name,p.TTstr,p.Value);
             
             % creates the objects for all of the parameters in the group
-            switch (p.Type)                                
+            switch p.Type
                 case ('Number') % case is a numeric parameter
                     % creates the title and editbox object
                     obj.hObj{iType}{indP}{1} = ...
@@ -1844,22 +1859,22 @@ classdef AnalysisParaClass < handle
                                     'Callback',cbFcn,'UserData',uD)       
             end        
             
-            % resets the enabled properties of the objects
-            if ~isempty(Enable)
-                % disables the object if the enabled field is NaN
-                if iscell(Enable{1})
-                    isOn = true;
-                else
-                    isOn = all(~isnan(Enable{1}));
-                end
-                    
-                cellfun(@(x)(setObjEnable(x,isOn)),obj.hObj{iType}{indP})
-            else
-                % otherwise, enable the object
-                try
-                    cellfun(@(x)(setObjEnable(x,1)),obj.hObj{iType}{indP})
-                end
-            end
+%             % resets the enabled properties of the objects
+%             if ~isempty(Enable)
+%                 % disables the object if the enabled field is NaN
+%                 if iscell(Enable{1})
+%                     isOn = true;
+%                 else
+%                     isOn = all(~isnan(Enable{1}));
+%                 end
+%                     
+%                 cellfun(@(x)(setObjEnable(x,isOn)),obj.hObj{iType}{indP})
+%             else
+%                 % otherwise, enable the object
+%                 try
+%                     cellfun(@(x)(setObjEnable(x,1)),obj.hObj{iType}{indP})
+%                 end
+%             end
             
         end             
         
@@ -2103,9 +2118,14 @@ classdef AnalysisParaClass < handle
                     else
                         enInd = p(i).Enable{3};
                     end           
+                    
+                    % converts any numeric cell arrays to a numeric array
+                    if iscell(pInd) && isnumeric(pInd{1})
+                        [pInd,onInd] = deal(cell2mat(pInd),cell2mat(onInd));
+                    end
 
-                    % if the parameter index matches that being changed, then update
-                    % the enabled properties of the objects
+                    % if the parameter index matches that being changed, 
+                    % then update the enabled properties of the objects
                     if iscell(pInd)
                         % retrieves the current parameter value
                         if (strcmp(p(i).Type,'List'))
@@ -2122,35 +2142,39 @@ classdef AnalysisParaClass < handle
                     
                     elseif any(pInd == iSel)
                         % sets the parameter indices and enabled strings
-                        isOn = true; 
-                        [Type,Value] = field2cell(p(pInd),{'Type','Value'});
-                        hObjP = cellfun(@(x)(findall(obj.hFig,'tag',x)),...
-                                        field2cell(p(pInd),'Para'),'un',0);                  
+                        isOn = true;
+                        pT = {'Type','Value','isFixed','Para'}; 
+                        [Type,Val,isF,pP] = field2cell(p(pInd),pT);
+                        hObjP = cellfun(@(x)...
+                                (findall(obj.hFig,'tag',x)),pP,'un',0);
 
                         for k = 1:length(Type)
                             % retrieves the current value of the parameter
                             switch Type{k}
-                                case ('List') % 
-                                    if (iscell(Value{k}))
-                                        pVal = Value{k}{1};
+                                case {'List','FixedList'} % 
+                                    if iscell(Val{k})
+                                        pVal = Val{k}{1};
                                     else
-                                        pVal = Value{k};
+                                        pVal = Val{k};
                                     end
                                 case ('Boolean') %
-                                    pVal = Value{k} + 1;
+                                    pVal = Val{k} + 1;
                             end
 
                             % sets the indices to check
-                            if (iscell(onInd))
+                            if iscell(onInd)
                                 % index array is a cell array
                                 onIndNw = onInd{k};
                             else
                                 % index array is a numerical array
-                                onIndNw = onInd;
+                                onIndNw = onInd(k);
                             end
 
                             % sets the new enabled flag
-                            if strcmp(get(hObjP{k},'enable'),'on')                
+                            if isF{k}
+                                isOn = isOn && any(pVal == onIndNw);
+                                
+                            elseif strcmp(get(hObjP{k},'enable'),'on')                
                                 isOn = isOn && any(pVal == onIndNw);
 
                             elseif enInd(k)

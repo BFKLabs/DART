@@ -46,8 +46,8 @@ end
 nFrm = size(PxNw{1},1);
 [xMean,yMean] = deal(cell(1,nApp));
 for i = 1:length(PxNw)
-    xMean{i} = num2cell(nanmean(PxNw{i},1)');
-    yMean{i} = num2cell(nanmean(PyNw{i},1)');
+    xMean{i} = num2cell(mean(PxNw{i},1,'omitnan')');
+    yMean{i} = num2cell(mean(PyNw{i},1,'omitnan')');
 end
 
 % sets the x/y coordinates of the circle centres

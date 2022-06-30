@@ -59,5 +59,5 @@ for i = 1:size(pMn,1)
 end
 
 % sets the final map values (remove any large distance points
-[Dmin,ImapL] = nanmin(D,[],3);
+[Dmin,ImapL] = min(D,[],3,'omitnan');
 ImapL(Dmin>dTol) = 0;

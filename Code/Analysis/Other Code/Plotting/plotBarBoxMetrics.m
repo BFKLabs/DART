@@ -77,20 +77,18 @@ else
     uData0 = get(hAx,'UserData');
     
     % creates the box plot and retrieves the max value
-    if (pP.plotErr)
+    if pP.plotErr
         % outliers are included
         hBox = boxplot(Y,'sym','r*');
-        yLim = [nanmin(Y(~isinf(Y))),nanmax(Y(~isinf(Y)))];          
-%         Ymin = nanmin(Y(:));
+        yLim = [min(Y(~isinf(Y)),[],'omitnan'),...
+                max(Y(~isinf(Y)),[],'omitnan')];          
     else
         % outliers are not included
         hBox = boxplot(Y,'sym','r');
         yLim = [min(cellfun(@(x)(min(get(x,'yData'))),num2cell(hBox(2,:)))),...
                 max(cellfun(@(x)(max(get(x,'yData'))),num2cell(hBox(1,:))))];        
     end
-    
-%     if (nanmin(Y(:)) < 0); yLim(1) = Ymin; end    
-    
+        
     % expands the boxplot width
     yLim = yLim + 0.025*diff(yLim)*[-1 1];
     expandBoxPlot(hBox)
@@ -115,7 +113,7 @@ end
 
 % sets the x/y-axis limits
 xLim = xi([1 end]) + 0.5*[-1 1];
-if (all(isnan(Y(:))) || all(isnan(yL)))
+if all(isnan(Y(:))) || all(isnan(yL))
     set(hAx,'xlim',xLim,'ylim',[0 1],'xtick',xi)            
 else
     if (length(yL) == 1); yL = [0,yL]; end
@@ -125,8 +123,9 @@ end
 % if there is a large range of sleep latency values, then change the
 % graphs y-axis scale to log
 YY = Y(~isinf(Y));
-if (log10(nanmax(YY(:)+1)/max(1,nanmin(YY(:)))) >= 3)
-    set(hAx,'ylim',[max(1,nanmin(YY(:))),max(get(hAx,'ylim'))],'yscale','log')
+if (log10(max(YY(:)+1,[],'omitnan')/max(1,min(YY(:),[],'omitnan'))) >= 3)
+    yLim = [max(1,min(YY(:),[],'omitnan')),max(get(hAx,'ylim'))];
+    set(hAx,'ylim',yLim,'yscale','log')
 end
 
 % ------------------------------- %

@@ -48,6 +48,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
     
     % class methods
     methods
+        
         % class constructor
         function obj = OpenSolnFileTab(baseObj)
             
@@ -82,7 +83,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % objects with normal callback functions
             cbObj = {'buttonSetDir','buttonAddSoln','buttonClearExpt',...
                      'buttonClearAll','buttonShowProtocol',...
-                     'buttonHideProtocol','menuCombExpt','menuScaleFactor'};
+                     'buttonHideProtocol','menuCombExpt',...
+                     'menuScaleFactor','menuLoadExtnData'};
             for i = 1:length(cbObj)
                 hObj = getStructField(obj.hGUI,cbObj{i});
                 cbFcn = eval(sprintf('@obj.%sCB',cbObj{i}));
@@ -997,7 +999,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
                             snTotNw.cID = setupFlyLocID(snTotNw.iMov);
 
                             % removes any y-axis data (1D analysis only)
-                            if ~snTotNw.iMov.is2D
+                            if ~(snTotNw.iMov.is2D || ...
+                                             detMltTrkStatus(snTotNw.iMov))
                                 snTotNw.Py = [];
                             end                               
                             
@@ -1339,13 +1342,21 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % runs the video parameter reset dialog
             ResetVideoPara(obj);
             
-        end
+        end                
     
         % ---- callback function for the combine experiment menu item
         function menuCombExptCB(obj, ~, ~)
             
             % runs the experiment concatenation dialog
             ConcatExptClass(obj);
+            
+        end
+        
+        % ---- callback function for the setting external data fields
+        function menuLoadExtnDataCB(obj, ~, ~)
+            
+            % runs the video parameter reset dialog
+            ExtnData(obj);
             
         end
         
@@ -1807,7 +1818,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
 
             % initialisations
             pFileStr = 'N/A';
-            exStr = {'1D','2D'};
+            exStr = {'1D','2D','MT'};
             typeStr = {'soln','ssol','msol'};
 
             % sets the solution file type strings/fields
@@ -1832,12 +1843,21 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 stimStr = 'No Stimuli';
             end
 
+            % sets the experiment type flag
+            if detMltTrkStatus(sInfoEx.snTot.iMov)
+                % case is multi-tracking
+                iEx = 3;
+            else
+                % case is single tracking
+                iEx = 1 + sInfoEx.is2D;
+            end            
+            
             % sets the 
             rowData = cell(1,6);
             rowData{1} = sInfoEx.expFile;
             rowData{2} = pFileStr;
             rowData{3} = typeStr{sInfoEx.iTab};
-            rowData{4} = exStr{1+sInfoEx.is2D};
+            rowData{4} = exStr{iEx};
             rowData{5} = stimStr;
             rowData{6} = sInfoEx.tDurS;
 
@@ -1909,6 +1929,18 @@ classdef OpenSolnFileTab < dynamicprops & handle
         % --- group the selected files by their unique directories
         function [fDirS,fNameS] = groupSelectedFiles(sFile)
 
+            % --- strips out the numeric components of the name string
+            function fStrNN = getNonNumericString(fStr)
+
+                % splits the string into alphanumeric characters
+                fStrSp = rmvEmptyCells(regexp(fStr,'\W','split'));
+                isNN = isnan(cellfun(@str2double,fStrSp));
+
+                % rejoins the final string
+                fStrNN = strjoin(fStrSp(isNN),' ');
+
+            end            
+            
             % retrieves the file directory/name strings
             fDir0 = cellfun(@(x)(fileparts(x)),sFile,'un',0);
             fName0 = cellfun(@(x)(getFileName(x,1)),sFile,'un',0);
@@ -1917,7 +1949,32 @@ classdef OpenSolnFileTab < dynamicprops & handle
             [fDirS,~,iC] = unique(fDir0);
             fNameS = arrayfun(@(x)(fName0(iC==x)),1:max(iC),'un',0);
 
-        end
+            % checks each directory to ensure that the experiments naming
+            % conventions (within experiments) are consistent
+            for i = 1:length(fDirS)
+                % splits the the file names into their non-numeric parts
+                fNameSB = cellfun(@(x)...
+                            (getNonNumericString(x)),fNameS{i},'un',0);
+                [fNameSBU,~,iC] = unique(fNameSB,'stable');
+                
+                % determines if there is more than one experiment grouping
+                % in the current directory
+                nFName = length(fNameSBU);
+                if nFName == 1
+                    % if not, then use the origin
+                    [fDirS{i},fNameS{i}] = deal(fDirS(i),fNameS(i));
+                else
+                    xiF = (1:nFName)';
+                    fDirS{i} = repmat(fDirS(i),nFName,1);                    
+                    fNameS{i} = arrayfun(@(x)(fNameS{i}(iC==x)),xiF,'un',0);
+                end
+            end
+                
+            % sets the final directory/file name arrays
+            fDirS = cell2cell(fDirS(:));
+            fNameS = cell2cell(fNameS(:));
+            
+        end                
         
         % --- determines the next solution file index
         function iIDnw = getNextSolnIndex(sInfo)
@@ -1937,6 +1994,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
 
             % initialises the parameter struct
             nVid = length(snTot.T);
+            wState = warning('off','all');
             iPara = struct('iApp',1,'indS',[],'indF',[],...
                            'Ts',[],'Tf',[],'Ts0',[],'Tf0',[]);
 
@@ -1950,6 +2008,9 @@ classdef OpenSolnFileTab < dynamicprops & handle
             [iPara.Tf,iPara.Tf0] = ...
                                deal(calcTimeString(T0,snTot.T{end}(end)));
 
+            % resets the warning mode
+            warning(wState);
+                           
         end
         
         % --- initialises the solution file information --- %
@@ -1960,15 +2021,21 @@ classdef OpenSolnFileTab < dynamicprops & handle
             iMov = snTot.iMov;
 
             % sets the experimental case string
-            switch snTot.iExpt.Info.Type
-                case {'RecordStim','StimRecord'}
-                    eCase = 'Recording & Stimulus';        
-                case ('RecordOnly')
-                    eCase = 'Recording Only';
-                case ('StimOnly')
-                    eCase = 'Stimuli Only';        
-                case ('RTTrack')
-                    eCase = 'Real-Time Tracking';
+            if detMltTrkStatus(iMov)
+                % case is multi-fly tracking
+                eCase = 'Multi-Fly Tracking';
+            else
+                % case is single-fly tracking
+                switch snTot.iExpt.Info.Type
+                    case {'RecordStim','StimRecord'}
+                        eCase = 'Recording & Stimulus';        
+                    case ('RecordOnly')
+                        eCase = 'Recording Only';
+                    case ('StimOnly')
+                        eCase = 'Stimuli Only';        
+                    case ('RTTrack')
+                        eCase = 'Real-Time Tracking';
+                end
             end
 
             % updates the solution information (based on the file type)
@@ -1988,15 +2055,15 @@ classdef OpenSolnFileTab < dynamicprops & handle
             end
 
             % calculates the experiment duration (rounded to nearest min)
-            dT = roundP((snTot.T{end}(end)-snTot.T{1}(1))/60,1)*60;
+            Tfin = floor(snTot.T{end}(end));
+            dT = roundP(Tfin-snTot.T{1}(1));
             [~,~,Tstr] = calcTimeDifference(dT);
 
             % calculates the experiment count/duration strings
             nExpt = num2str(length(snTot.T));
-            TstrTot = sprintf('%s Days, %s Hours, %s Mins',...
-                                                Tstr{1},Tstr{2},Tstr{3});
+            TstrTot = sprintf('%s:%s:%s:%s',Tstr{1},Tstr{2},Tstr{3},Tstr{4});
             T0vec = calcTimeString(snTot.iExpt.Timing.T0,0);
-            Tfvec = calcTimeString(snTot.iExpt.Timing.T0,snTot.T{end}(end));
+            Tfvec = calcTimeString(snTot.iExpt.Timing.T0,Tfin);
             txtStart = datestr(sInfo.iPara.Ts0,'mmm dd, YYYY HH:MM AM');
             txtFinish = datestr(sInfo.iPara.Tf0,'mmm dd, YYYY HH:MM AM');
 
@@ -2029,7 +2096,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             
             % removes any sub-second values
             T0vec(end) = roundP(T0vec(end));
-            Tfvec(end) = roundP(Tfvec(end));
+            Tfvec(end) = floor(Tfvec(end));
 
             % sets the experiment information fields
             expInfo = struct('ExptType',eCase,'ExptDur',TstrTot,...
@@ -2109,14 +2176,18 @@ classdef OpenSolnFileTab < dynamicprops & handle
     methods (Access = private)
         
         % --- sets a class object field
-    	function SetDispatch(obj, propname, varargin)            
+    	function SetDispatch(obj, propname, varargin)  
+            
             obj.baseObj.(propname) = varargin{:};
+            
         end
         
         % --- gets a class object field
         function varargout = GetDispatch(obj, propname)
+            
             varargout{:} = obj.baseObj.(propname);
-        end
+            
+        end               
         
     end    
 end

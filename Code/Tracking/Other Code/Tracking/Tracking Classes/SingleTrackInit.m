@@ -27,6 +27,7 @@ classdef SingleTrackInit < SingleTrack
         fPosG
         tPara
         sFlag
+        sFlagMax
         pStats
         pData       
         useP
@@ -49,11 +50,13 @@ classdef SingleTrackInit < SingleTrack
         isHiV
         usePTol 
         pTolQ = 5;
+        pTolMin = 5;
         pSigMin = 0.5;
         nOpenRng = 15;
+        nFrmMin = 10;
+        dyRngMin = 17.5;
         mdDim = 30*[1,1];         
-        hSR = fspecial('disk',2);   
-        okFrm
+        hSR = fspecial('disk',2);           
         
     end
     
@@ -397,6 +400,7 @@ classdef SingleTrackInit < SingleTrack
 
             % determines the overall minimum sub-region flags
             okPh = obj.iMov.vPhase < 3;    
+            obj.setupOverallStatusFlags();
 
             % updates the progressbar
             wStrNw = 'Static Object Detection';
@@ -452,6 +456,16 @@ classdef SingleTrackInit < SingleTrack
             
         end        
         
+        % --- sets up the overall movement status flags
+        function setupOverallStatusFlags(obj)
+                    
+            % determines the max status flags of the feasible frames (must
+            % have a phase duration > nFrmMin);
+            isOK = (diff(obj.iMov.iPhase,[],2) + 1) > obj.nFrmMin;  
+            obj.sFlagMax = calcImageStackFcn(obj.sFlag(isOK),'max');
+            
+        end
+            
         % --- determines if stationary blobs are consistent over all phases
         function checkStationaryBlobs(obj)
             
@@ -470,9 +484,8 @@ classdef SingleTrackInit < SingleTrack
             end
             
             % calculates the overall sub-region status flags
-            okPh = find(obj.iMov.vPhase < 3);
-            sFlagMax = calcImageStackFcn(obj.sFlag,'max');
-            [iTube,iApp] = find((sFlagMax == 1) & obj.iMov.flyok);
+            okPh = find(obj.iMov.vPhase < 3);            
+            [iTube,iApp] = find((obj.sFlagMax == 1) & obj.iMov.flyok);
             
             % loops through each of stationary objects determining if the
             % location of the blob is stationary over all phases/frames
@@ -568,7 +581,7 @@ classdef SingleTrackInit < SingleTrack
                         end
                         
                         % re-estimates the sub-region background image
-                        fPTmn = roundP(nanmean(fPnw,1));
+                        fPTmn = roundP(mean(fPnw,1,'omitnan'));
                         IbgTmp = obj.IbgT{iPh}(iR0(iRT0),iC0);
                         IbgNw = obj.estSubRegionBG({IbgTmp},fPTmn);                        
                         obj.Ibg{iPh}{k}(iRT0,:) = IbgNw;                        
@@ -592,7 +605,7 @@ classdef SingleTrackInit < SingleTrack
             
             % determines if any of the images in the phase are completely
             % untrackable (either too dark or too bright)
-            ImgMd = cellfun(@(x)(nanmedian(x(:))),obj.Img{iPh});
+            ImgMd = cellfun(@(x)(median(x(:),'omitnan')),obj.Img{iPh});
             if any(ImgMd <= ILim(1)) || any(ImgMd >= ILim(2))
                 % resets the coordinates for each sub-region to NaNs
                 for i = 1:length(obj.fPos{iPh})
@@ -672,9 +685,8 @@ classdef SingleTrackInit < SingleTrack
             nApp = length(obj.iMov.iR);
             Ds = obj.iMov.szObj(1)/2;
             
-            % calculates the overall sub-region status flags
-            sFlagMax = calcImageStackFcn(obj.sFlag,'max');
-            hasMove = (obj.sFlag{iPh} == 0) & (sFlagMax >= 1);
+            % calculates the overall sub-region status flags            
+            hasMove = (obj.sFlag{iPh} == 0) & (obj.sFlagMax >= 1);
             isOK = cellfun(@(x)(~all(isnan(x(:)))),IL0(:,1));
                                     
             % -------------------------------------------- %
@@ -796,7 +808,8 @@ classdef SingleTrackInit < SingleTrack
                     if calcStat
                         % case is the blob hasn't moved since the start of
                         % the video (over all phases)
-                        fP0 = roundP(nanmean(obj.prData0.fPosPr{k}{j},1));
+                        fP0 = roundP(mean...
+                                (obj.prData0.fPosPr{k}{j},1,'omitnan'));
                         if obj.nI > 0
                             % downsamples the coordinates (if necessary)
                             fP0 = obj.downsampleImageCoords(fP0,obj.nI);
@@ -1011,7 +1024,7 @@ classdef SingleTrackInit < SingleTrack
             end
             
             % sets the mean location values
-            fPF = roundP(nanmean(fP0,1));
+            fPF = roundP(mean(fP0,1,'omitnan'));
             if obj.nI > 0
                 fPF = obj.downsampleImageCoords(fPF,obj.nI);
             end
@@ -1070,7 +1083,7 @@ classdef SingleTrackInit < SingleTrack
                 if mean(isSig) >= 0.5
                     dfPos = range(fPos(isSig,:),1);
                     if all(dfPos <= dTol)
-                        fPosMn = nanmean(fPos(isSig,:),1);
+                        fPosMn = mean(fPos(isSig,:),1,'omitnan');
                     end
                 end
                 
@@ -1094,13 +1107,13 @@ classdef SingleTrackInit < SingleTrack
                 % (relative to the max) then reset their coordinates
                 ii = pIR/max(pIR) < obj.iniP.pIRTol;
                 if any(ii)
-                    fPosFix = roundP(nanmean(fPos(~ii,:),1));
+                    fPosFix = roundP(mean(fPos(~ii,:),1,'omitnan'));
                     fPos(ii,:) = repmat(fPosFix,sum(ii),1);
                 end
             end
 
             % scales the maxima by the median pixel intensity
-            Imn = cellfun(@(x)(nanmedian(x(:))),IRL);
+            Imn = cellfun(@(x)(median(x(:),'omitnan')),IRL);
             pIR = (pIR-Imn)./max(1,Imn);
 
         end                
@@ -1168,14 +1181,14 @@ classdef SingleTrackInit < SingleTrack
             for i = 1:obj.nApp
                 % fills in any missing range values with the median image
                 BZ = IRng{i} == 0;
-                IRng{i}(BZ) = nanmedian(IRng0{i}(BZ));
+                IRng{i}(BZ) = median(IRng0{i}(BZ),'omitnan');
                 
                 % calculates the background estimate and residuals
                 IBG = IbgTF0(obj.iMov.iR{i},obj.iMov.iC{i});
                 
                 % determines if there are any regions which were rejected,
                 % but had a very large range value)
-                Brmv = ~Bacc{i} & (IRng0{i}>prctile(IRng0{i},pTolMax));
+                Brmv = ~Bacc{i} & (IRng0{i} > prctile(IRng0{i},pTolMax));
                 if any(Brmv(:))
                     % if such regions exist, then interpolated clear and
                     % re-interpolate these regions
@@ -1365,15 +1378,15 @@ classdef SingleTrackInit < SingleTrack
                 [obj.mFlag{iApp},obj.Imu(iApp,iPh),...
                 obj.Isd(iApp,iPh),obj.pTolF(iApp,iPh)] = ...
                             obj.calcSubRegionProps(ImgS,iRT,iCT);
-                obj.mFlag{iApp}(~obj.iMov.flyok(:,iApp)) = 0;
+                obj.mFlag{iApp}(~obj.iMov.flyok(:,iApp)) = 0;                    
                 
                 % tracks the blobs for each sub-region
+                pTolT = obj.pTolF(iApp,iPh);
                 for iT = find(obj.mFlag{iApp}(:)' > 0)
                     % sets up the range binary mask
                     BRng = Bw(iRT{iT},iCT);                  
                     
-                    % calculates the most like moving blob locations
-                    pTolT = obj.pTolF(iApp,iPh);
+                    % calculates the most like moving blob locations                    
 %                     IL = cellfun(@(x)(x(iRT{iT},iCT)),IL0,'un',0);
                     IRL = cellfun(@(x)(x(iRT{iT},iCT)),IR0,'un',0);                    
                     fPnw = obj.trackMovingBlobs(IRL,BRng,obj.Dtol,pTolT);
@@ -1433,7 +1446,7 @@ classdef SingleTrackInit < SingleTrack
                 DtolT = max(1,roundP(sqrt(obj.Dtol)));
                 B = ~bwmorph(true(size(Isub{1})),'erode',DtolT);                
                 for i = 1:length(Isub)
-                    Isub{i}(B) = nanmedian(Isub{i}(~B));
+                    Isub{i}(B) = median(Isub{i}(~B),'omitnan');
                 end
             end                                    
             
@@ -1441,8 +1454,8 @@ classdef SingleTrackInit < SingleTrack
             % performed on an image with the open transform removed
             szOpen = ones(obj.nOpenRng);
             IRngOp = cellfun(@(x)(x - imopen(x,szOpen)),Isub(:)','un',0);
-            IRngR0 = cellfun(@(x)(nanmax(cell2mat(cellfun(@(y)...
-                            (y(x,iCT)),IRngOp,'un',0)),[],1)),iRT,'un',0);
+            IRngR0 = cellfun(@(x)(max(cell2mat(cellfun(@(y)(y(x,iCT)),...
+                            IRngOp,'un',0)),[],1,'omitnan')),iRT,'un',0);
             
             % sets the baseline offset windowing size
             if ~isfield(obj.iMov,'szObj') || any(isnan(obj.iMov.szObj))
@@ -1453,8 +1466,17 @@ classdef SingleTrackInit < SingleTrack
             
             % calculates the baseline estimate            
             YRng0 = max(1,cell2cell(cellfun(@(x)(x),IRngR0,'un',0),0));              
-            YBL = max(1,imopen(YRng0(:),ones(nOpen,1)));
-            pYRng = (YRng0(:) - YBL)./YBL;
+            YBL = max(1,imopen(YRng0(:),ones(nOpen,1)));            
+            dYRng0 = YRng0(:) - YBL;
+            if max(dYRng0) < obj.dyRngMin
+                % if the absolute range difference is too low, then all 
+                % blobs are probably stationary over all frames so exit
+                [ImuF,IsdF,pTol] = deal(NaN);
+                return                
+            else
+                % otherwise, calculate the proportional range
+                pYRng = dYRng0./YBL;
+            end
             
             % removes points from the edges (1D only)
             nCol = length(iCT);
@@ -1479,11 +1501,12 @@ classdef SingleTrackInit < SingleTrack
             % calculates the mean/std dev range values
             IsubF0 = cellfun(@(x)(x(iRTF,iCT)),Isub,'un',0);
             IsubF = cell2mat(IsubF0(:)');
-            [ImuF,IsdF] = deal(nanmean(IsubF(:)),nanstd(IsubF(:)));            
+            ImuF = mean(IsubF(:),'omitnan');
+            IsdF = std(IsubF(:),[],'omitnan');
             
             % calculates the residual tolerance
-            IsubMx = cellfun(@(x)(nanmax(cell2mat(cellfun(@(y)...
-                        (y(x,iCT)),Isub(:)','un',0)),[],1)),iRT,'un',0);
+            IsubMx = cellfun(@(x)(max(cell2mat(cellfun(@(y)(y(x,iCT)),...
+                            Isub(:)','un',0)),[],1,'omitnan')),iRT,'un',0);
             YRngF = cell2cell(cellfun(@(x)(x),IsubMx,'un',0),0);            
             YBLF = max(1,imopen(YRngF(:),ones(nOpen,1)));                        
             pTol = obj.calcResidualTol(max(1,YRngF),YBLF);
@@ -1592,11 +1615,21 @@ classdef SingleTrackInit < SingleTrack
                                 pPR,num2cell(obj.pTolF(:,iPh)),'un',0)');                                                    
             isSig = (pSig >= obj.pSigMin) | (pvSig > 0);
             
-            % calculates the distance range 
-            DrngC = cellfun(@(x)(sqrt(sum(calcImageStackFcn...
-                    (x,'range').^2,2))),num2cell(obj.fPosL{iPh},2),'un',0);
-            Drng = combineNumericCells(DrngC(:)');            
+            % calculates the distance range (fills in any missing phases
+            % with NaN values)
+            DrngC0 = cellfun(@(x)(calcImageStackFcn...
+                        (x,'range')),num2cell(obj.fPosL{iPh},2),'un',0); 
+            DrngC0(cellfun(@isempty,DrngC0)) = {NaN(1,2)};                    
             
+            % calculates the range of each fly over all phases
+            if obj.is2D
+                DrngC = cellfun(@(x)(sqrt(sum(x.^2,2))),DrngC0,'un',0);
+            else
+                DrngC = cellfun(@(x)(x(:,1)),DrngC0,'un',0);               
+            end
+            
+            Drng = combineNumericCells(DrngC(:)');
+                
             % if the blob filter has been calculated, then exit
             if ~isempty(obj.hFilt)
                 % determines the blobs that haven't moved far over the phase
@@ -1622,7 +1655,7 @@ classdef SingleTrackInit < SingleTrack
             end
             
             % creates the object filter
-            pFiltTot = nanmedian(cell2mat(pFilt),1);
+            pFiltTot = median(cell2mat(pFilt),1,'omitnan');
             pFiltTot(1) = 2*floor(pFiltTot(1)/2)+1;            
             obj.hFilt = -fspecial('log',pFiltTot(1),pFiltTot(2));
             
@@ -1682,7 +1715,8 @@ classdef SingleTrackInit < SingleTrack
         function setStatusFlag(obj,sFlag0,Drng,allSig,iPh)
         
             % determines which blobs have moved appreciably
-            isMove = Drng > obj.iMov.szObj(1)/2;            
+            isShort = diff(obj.iMov.iPhase(iPh,:)) <= obj.nFrmMin;
+            isMove = Drng > (3/4)*obj.iMov.szObj(1); 
             
             % re-classify blobs that have medium z-scores, but significant
             % movement, as being completely stationary
@@ -1691,7 +1725,7 @@ classdef SingleTrackInit < SingleTrack
             % re-classify blobs that high z-scores, but insigificant
             % movement, as being partially moving
             isS2 = sFlag0 == 2;
-            sFlag0(isS2 & ~isMove) = 1; 
+            sFlag0(isS2 & ~isMove) = 1 - isShort; 
             
             % if a blob is flagged as significant and moving, but not all
             % frames were significant, then flag as being stationary
@@ -1813,8 +1847,8 @@ classdef SingleTrackInit < SingleTrack
                 end
 
                 % convert and scales the resulting images
-                I = cellfun(@(x)(255*(x-nanmin(x(:)))),I,'un',0);
-                I = cellfun(@(x)(x-nanmedian(x(:))),I,'un',0);                
+                I = cellfun(@(x)(255*(x-min(x(:),[],'omitnan'))),I,'un',0);
+                I = cellfun(@(x)(x-median(x(:),'omitnan')),I,'un',0);                
             end         
             
             % applies the exclusion mask
@@ -1850,7 +1884,7 @@ classdef SingleTrackInit < SingleTrack
             
             % fills in any rejected regions
             for i = 1:length(Bw)
-                I{i}(~Bw{i}) = nanmedian(I{i}(Bw{i}));
+                I{i}(~Bw{i}) = median(I{i}(Bw{i}),'omitnan');
             end
             
             % applies the exclusion filter
@@ -2058,7 +2092,8 @@ classdef SingleTrackInit < SingleTrack
                     % calculates the phase metrics mean/std values
                     Ytot = cell2mat(cellfun(@(x,i)(x(i,:)),...
                                             tData{i},fok,'un',0));
-                    [Ymn,Ysd] = deal(nanmean(Ytot(:)),nanstd(Ytot(:)));
+                    Ymn = mean(Ytot(:),'omitnan');
+                    Ysd = std(Ytot(:),[],'omitnan');
                     
                     % sets the probability values
                     for j = 1:size(tData{i},1)
@@ -2083,7 +2118,8 @@ classdef SingleTrackInit < SingleTrack
             for i = 1:size(obj.pData{1},1)
                 % groups the metrics and calculates the max/median
                 A = cellfun(@(y)(cell2mat(y(i,:))),obj.pData,'un',0)';
-                Amd = cell2mat(cellfun(@(x)(nanmedian(x,2)),A,'un',0));
+                Amd = cell2mat(cellfun(@(x)...
+                                    (median(x,2,'omitnan')),A,'un',0));
                 
                 % determines which objects have low overall scores
                 nT = size(Amd,1);
@@ -2092,7 +2128,7 @@ classdef SingleTrackInit < SingleTrack
                 isAnom(xiT(~isOK),i) = (Amd(~isOK,2) < obj.pTolQ);
 
                 % calculates the average quality value
-                Qval(xiT,i) = nanmean([Amd(:,1),Amd(:,2)],2);                
+                Qval(xiT,i) = mean([Amd(:,1),Amd(:,2)],2,'omitnan');
             end
             
             % determines if there are any NaN quality values
@@ -2173,9 +2209,9 @@ classdef SingleTrackInit < SingleTrack
             % determines the min/max values surrounding the point
             IP = NaN(size(fP,1),1);
             if isMax
-                IP(isOK) = cellfun(@(x)(nanmax(x(:))),IsubS);
+                IP(isOK) = cellfun(@(x)(max(x(:),[],'omitnan')),IsubS);
             else
-                IP(isOK) = cellfun(@(x)(nanmin(x(:))),IsubS);
+                IP(isOK) = cellfun(@(x)(min(x(:),[],'omitnan')),IsubS);
             end
         end          
         
@@ -2202,7 +2238,7 @@ classdef SingleTrackInit < SingleTrack
 
             % returns the objective function value surrounding the maxima
             iM = bwmorph(setGroup(iM,size(I)),'thicken');
-            F = nanmean(nonzeros(Ixc(iM)));
+            F = mean(nonzeros(Ixc(iM)),'omitnan');
 
         end            
         
@@ -2273,11 +2309,11 @@ classdef SingleTrackInit < SingleTrack
 
             % determines the cluster most like to represent the baseline peaks
             iGrp = arrayfun(@(x)(find(jdx==x)),(1:max(jdx))','un',0);
-            RGrp = cellfun(@(x)(sum(nanmean(QP(x,:),1).^2)),iGrp);
+            RGrp = cellfun(@(x)(sum(mean(QP(x,:),1,'omitnan').^2)),iGrp);
             iMin = argMin(RGrp);
 
-            % sets the indices of the peaks that are considered significant. from these
-            % peaks determines the 
+            % sets the indices of the peaks that are significant. from 
+            % these peaks determines the threhold tolerance
             iSig = sort(cell2mat(iGrp(~setGroup(iMin,size(iGrp)))));
             pTol0 = [max(YRng0(tP(iGrp{iMin}))),min(YRng0(tP(iSig)))];
             pTol = pW*mean(pTol0);

@@ -20,7 +20,8 @@ jj = cellfun(@length,iS) >= min(max(1,nM),max(1,nM/2));
 
 % calculates the mean location for the given time periods
 if (any(jj))
-    Ys(jj,:) = cell2mat(cellfun(@(x)(nanmean(Y(x,:),1)),iS(jj),'un',0));
+    Ys(jj,:) = cell2mat(cellfun(@(x)...
+                            (mean(Y(x,:),1,'omitnan')),iS(jj),'un',0));
 else    
     Ys(xi,:) = Y(xi,:);
 end

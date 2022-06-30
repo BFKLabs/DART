@@ -1,5 +1,5 @@
 % --- optimises the position of the figures given in hFigL
-function optFigPosition(hFigL)
+function optFigPosition(hFigL,iDim)
 
 %
 switch length(hFigL)
@@ -15,10 +15,12 @@ switch length(hFigL)
         % retrieves the screena and figure position vectors
         scrSz = getPanelPosPix(0,'Pixels','ScreenSize');
         pFig = cell2mat(arrayfun(@(x)(get(x,'Position')),hFigL(:),'un',0));
+        pOverlap = sum(pFig(:,3:4),1)./scrSz(3:4);        
         
         % determines which alignment is optimal
-        pOverlap = sum(pFig(:,3:4),1)./scrSz(3:4);
-        iDim = argMin(pOverlap);
+        if ~exist('iDim','var')c
+            iDim = argMin(pOverlap);
+        end
         
         %
         if iDim == 1        

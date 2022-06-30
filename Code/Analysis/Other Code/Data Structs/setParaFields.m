@@ -3,7 +3,7 @@ function p = setParaFields(varargin)
 
 % sets/initialises the parameter struct (based on the input arguments)
 p = struct('Tab',[],'Name',[],'Type','None','Value',[],'Para',[],...
-           'Lim',[],'Enable',[],'TTstr',[]);
+           'Lim',[],'Enable',[],'TTstr',[],'isFixed',false);
 if (nargin == 1)    
     % initialises the parameter struct (for each apparatus)        
     p = repmat(p,varargin{1},1);
@@ -11,6 +11,7 @@ else
     % sets the name, type and parameter string fields
     Value = varargin{3};
     [Type,p.Type] = deal(varargin{2}); 
+    p.isFixed = strContains(p.Type,'Fixed');
     
     % sets the tab name (if provided)
     if (isempty(varargin{1}))
@@ -62,12 +63,12 @@ else
             % determines if there is a matching field within the
             % calculation parameter struct. if so, then updates the
             % value/parameter strings of the data struct
-            if (~isempty(pStr))
-                if (strcmp(pStr,'appName'))
+            if ~isempty(pStr)
+                if strcmp(pStr,'appName')
                     p.Value = pStr;
                 else
                     ii = cellfun(@(x)(strcmp(x,pStr)),field2cell(pData.cP,'Para'));
-                    if (any(ii)) 
+                    if any(ii)
                         p.Value = pData.cP(ii).Value{1};   
                     end            
                 end
@@ -75,7 +76,7 @@ else
         otherwise
             % case is the other parameter type
             [p.Para,p.Name,p.Value] = deal(varargin{4},varargin{5},Value);
-            if (strcmp(Type,'Number')); p.Lim = varargin{6}; end            
-            if (nargin == 7); p.Enable = varargin{7}; end             
+            if strcmp(Type,'Number'); p.Lim = varargin{6}; end            
+            if (nargin == 7); p.Enable = varargin{7}; end 
     end
 end

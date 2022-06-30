@@ -7,7 +7,7 @@ function phi = calcLocalImageAngle(A,N,B0)
 
 % determines the most likely points from the image
 if ~exist('B0','var')
-    B0 = (IL > nanmedian(IL(:))) & (IL ~= 0);
+    B0 = (IL > median(IL(:),'omitnan')) & (IL ~= 0);
     if (sum(B0(:)) < N/2)
         % if the thresholded image is too small, then rethreshold with so 
         % that the binary has a decent size

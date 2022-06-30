@@ -20,7 +20,7 @@ end
 % End initialization code - DO NOT EDIT
 
 % --- Executes just before FlyTrack is made visible.
-function FlyTrack_OpeningFcn(hObject, eventdata, handles, varargin)
+function FlyTrack_OpeningFcn(hObject, ~, handles, varargin)
 
 % sets the figure handle
 handles.output = hObject;
@@ -70,10 +70,9 @@ setObjVisibility(handles.menuEstBG,'off')
 setObjVisibility(handles.menuFileBG,'off')
 setObjVisibility(handles.panelBGDetect,'off')
 
-% creates the tracking marker class object
+% creates the region marker class object
 hObject.rgObj = TrackRegionClass(hObject,handles.imgAxes);
-hObject.mkObj = TrackMarkerClass(hObject,handles.imgAxes);
-
+    
 % ----------------------------------------------------------- %
 % --- FIELD INITIALISATIONS & DIRECTORY STRUCTURE SETTING --- %
 % ----------------------------------------------------------- %
@@ -343,7 +342,7 @@ guidata(hObject, handles);
 % uiwait(handles.figFlyTrack);
     
 % --- Outputs from this function are returned to the command line.
-function varargout = FlyTrack_OutputFcn(hObject, eventdata, handles) 
+function varargout = FlyTrack_OutputFcn(~, ~, handles) 
 
 varargout{1} = handles.output;
 
@@ -352,7 +351,7 @@ varargout{1} = handles.output;
 %-------------------------------------------------------------------------%
 
 % --- Executes on mouse motion over figure - except title and menu.
-function figFlyTrack_WindowButtonMotionFcn(hObject, eventdata, handles)
+function figFlyTrack_WindowButtonMotionFcn(~, ~, handles)
 
 % object handles
 if isfield(handles,'output')
@@ -622,7 +621,7 @@ end
 % clears and turns off the axis
 if ~isBatch
     axis off; cla        
-end
+end    
 
 % % resets the snapshot data struct
 % if cType > 0
@@ -633,8 +632,7 @@ end
 % with the previous loaded movie (only if a movie has been loaded)
 if loadImgData(handles, ldData.name, ldData.dir, setMovie, isSolnLoad)
     % if not loading the solution file but the sub-region struct is set, 
-    % then reset the progress data struct       
-    iMov = get(handles.output,'iMov');    
+    % then reset the progress data struct
     set(handles.output,'bgObj',CalcBG(handles))
     set(findobj(handles.panelAppInfo,'style','checkbox'),'value',0)
     set(findall(handles.panelFlyDetect,'style','checkbox'),'value',0);
@@ -683,10 +681,9 @@ if loadImgData(handles, ldData.name, ldData.dir, setMovie, isSolnLoad)
         end
 
         % resets the progress struct (if the sub-regions have been set)
-        if iMov.isSet
+        if hFig.iMov.isSet
             % resets the sub-region data struct
-            iMov = resetProgressStruct(handles.output.iData,iMov); 
-            set(handles.output,'iMov',iMov);
+            hFig.iMov = resetProgressStruct(hFig.iData,hFig.iMov); 
         end
     end    
     
@@ -788,8 +785,14 @@ if exist(sFile,'file')
     % loads the summary file
     sData = load(sFile);
 
+    % retrieves the video index
+    if sData.iExpt.Video.nCount == 1
+        iVid = 1;
+    else
+        iVid = getVideoFileIndex(solnData.fData.name);   
+    end    
+    
     % retrieves the video index/time stamp
-    iVid = getVideoFileIndex(solnData.fData.name);        
     tStampV = checkVideoTimeStamps(sData.tStampV,sData.iExpt.Timing.Tp);
     iData.Tv = tStampV{iVid};
     
@@ -873,7 +876,7 @@ end
 % ----------------------- %
 
 % -------------------------------------------------------------------------
-function menuSaveSoln_Callback(hObject, eventdata, handles)
+function menuSaveSoln_Callback(~, ~, handles)
 
 % retrieves the image data/mesh structs
 hFig = handles.output;
@@ -930,19 +933,19 @@ try; close(h); end
 % ------------------------ %
 
 % -------------------------------------------------------------------------
-function menuConvertVideo_Callback(hObject, eventdata, handles)
+function menuConvertVideo_Callback(~, ~, handles)
 
 % runs the video conversion GUI
 ConvertVideo(handles.output.iData.ProgDef);
 
 % -------------------------------------------------------------------------
-function menuProgPara_Callback(hObject, eventdata, handles)
+function menuProgPara_Callback(~, ~, handles)
 
 % runs the program default GUI
 ProgDefaultDef(handles.output,'Tracking');
 
 % -------------------------------------------------------------------------
-function menuExit_Callback(hObject, eventdata, handles)
+function menuExit_Callback(~, ~, handles)
 
 % global variables
 global isCalib isMovChange bufData isRTPChange
@@ -1073,13 +1076,13 @@ end
 % --------------------------- %
 
 % -------------------------------------------------------------------------
-function menuStimInfo_Callback(hObject, eventdata, handles)
+function menuStimInfo_Callback(~, ~, handles)
 
 % runs the stimulus
 StimInfo(handles)
 
 % -------------------------------------------------------------------------
-function menuViewProgress_Callback(hObject, eventdata, handles)
+function menuViewProgress_Callback(hObject, ~, handles)
 
 % global variables
 global isDetecting isBatch
@@ -1136,7 +1139,7 @@ else
 end
 
 % -------------------------------------------------------------------------
-function menuWinsplit_Callback(hObject, eventdata, handles)
+function menuWinsplit_Callback(~, ~, handles)
 
 % global variables
 global isCalib
@@ -1156,7 +1159,7 @@ end
 RegionConfig(handles,hProp0);
     
 % -------------------------------------------------------------------------
-function menuManualReseg_Callback(hObject, eventdata, handles)
+function menuManualReseg_Callback(~, ~, handles)
 
 % turns off the tube regions (if they are on)
 if get(handles.checkShowTube,'value')
@@ -1168,7 +1171,7 @@ end
 ManualResegment(handles)
 
 % -------------------------------------------------------------------------
-function menuSetupBatch_Callback(hObject, eventdata, handles)
+function menuSetupBatch_Callback(~, ~, handles)
 
 % % global variables
 % global isBatch
@@ -1190,7 +1193,7 @@ if ~isempty(bpObj.bData)
 end
 
 % -------------------------------------------------------------------------
-function menuMultiBatch_Callback(hObject, eventdata, handles)
+function menuMultiBatch_Callback(~, ~, handles)
 
 % creates the batch processing object
 bpObj = SingleTrackBP(handles,true);
@@ -1200,7 +1203,7 @@ if ~isempty(bpObj.bData)
 end
 
 % -------------------------------------------------------------------------
-function menuSplitVideo_Callback(hObject, eventdata, handles)
+function menuSplitVideo_Callback(~, ~, handles)
 
 % runs the video splitting GUI
 hFig = handles.output;
@@ -1212,7 +1215,7 @@ if isChange
 end
 
 % -------------------------------------------------------------------------
-function menuAnalyOpt_Callback(hObject, eventdata, handles)
+function menuAnalyOpt_Callback(~, ~, handles)
 
 % % if the tube regions are shown, then hide them
 % if get(handles.checkShowTube,'value')
@@ -1231,7 +1234,7 @@ function menuAnalyOpt_Callback(hObject, eventdata, handles)
 AnalyOpt(handles.output)
 
 % -------------------------------------------------------------------------
-function menuTrackOpt_Callback(hObject, eventdata, handles)
+function menuTrackOpt_Callback(~, ~, handles)
 
 % runs the tracking parameter dialog
 DetectParaDialog(handles.output);
@@ -1241,7 +1244,7 @@ DetectParaDialog(handles.output);
 % ----------------------- %
 
 % -------------------------------------------------------------------------
-function menuCorrectTrans_Callback(hObject, eventdata, handles)
+function menuCorrectTrans_Callback(hObject, ~, handles)
 
 switch get(hObject,'Checked')
     case 'off'
@@ -1257,8 +1260,27 @@ end
 % updates the image
 dispImage(handles);
 
+% --------------------------------------------------------------------
+function menuUseGray_Callback(hObject, eventdata, handles)
+
+% toggles the check item
+toggleMenuCheck(hObject);
+
+% updates the RBG flag
+hFig = handles.output;
+hFig.iMov.useRGB = ~strcmp(get(hObject,'Checked'),'on');
+
+% updates the flag in the BG detection field (if open)
+if hFig.bgObj.isVisible
+    hFig.bgObj.iMov.useRGB = hFig.iMov.useRGB;
+    hFig.bgObj.updateMainImage();
+else
+    % updates the image
+    dispImage(handles)    
+end
+
 % -------------------------------------------------------------------------
-function menuOptSize_Callback(hObject, eventdata, handles)
+function menuOptSize_Callback(~, ~, handles)
 
 % global variables
 global updateFlag
@@ -1291,7 +1313,7 @@ resetFigPosition(hFig)
 updateFlag = 0;
 
 % -------------------------------------------------------------------------
-function menuMaxSize_Callback(hObject, eventdata, handles)
+function menuMaxSize_Callback(~, ~, handles)
 
 % global variables
 global updateFlag
@@ -1314,7 +1336,7 @@ warning(wState);
 updateFlag = 0;
 
 % -------------------------------------------------------------------------
-function menuAllowResize_Callback(hObject, eventdata, handles)
+function menuAllowResize_Callback(hObject, ~, handles)
 
 % sets the default input arguments
 if ~exist('handles','var'); handles = guidata(hObject); end
@@ -1337,7 +1359,7 @@ set(handles.output,'Resize',vStr{~isChecked+1})
 % --------------------------- %
 
 % -------------------------------------------------------------------------
-function menuVideoFeed_Callback(hObject, eventdata, handles)
+function menuVideoFeed_Callback(hObject, ~, handles)
 
 % retrieves the video timer object
 hFig = handles.output;
@@ -1386,13 +1408,13 @@ else
 end
 
 % -------------------------------------------------------------------------
-function menuVideoProps_Callback(hObject, eventdata, handles)
+function menuVideoProps_Callback(~, ~, handles)
 
 % runs the video parameter sub-GUI
 VideoPara(handles.output.hMainGUI)
 
 % -------------------------------------------------------------------------
-function menuRTTrack_Callback(hObject, eventdata, handles)
+function menuRTTrack_Callback(hObject, ~, handles)
 
 % global variables
 global is2D tLastFeed stimTS iEventS tRTStart objDRT
@@ -1477,7 +1499,7 @@ else
 end  
 
 % -------------------------------------------------------------------------
-function menuRTPara_Callback(hObject, eventdata, handles)
+function menuRTPara_Callback(~, ~, handles)
 
 % turns off the video feed (if it is on)
 if strcmp(get(handles.menuVideoFeed,'checked'),'on')
@@ -1496,7 +1518,7 @@ TrackingPara(handles.output)
 % ----------------------------- %
 
 % --- Executes when figFlyTrack is resized.
-function figFlyTrack_ResizeFcn(hObject, eventdata, handles)
+function figFlyTrack_ResizeFcn(hObject, ~, handles)
 
 % global variables
 global updateFlag
@@ -1572,7 +1594,7 @@ calcAxesGlobalCoords(h)
 % --------------------------------- %
 
 % --- Executes on button press in toggleVideo.
-function toggleVideo_Callback(hObject, eventdata, handles)
+function toggleVideo_Callback(hObject, ~, handles)
 
 %
 if get(hObject,'value')
@@ -1600,7 +1622,7 @@ dispImage(handles)
 % --------------------------------------------- %
 
 % --- Executes on button press in checkSubRegions.
-function checkSubRegions_Callback(hObject, eventdata, handles)
+function checkSubRegions_Callback(~, ~, handles)
 
 handles.output.rgObj.isMain = true;
 handles.output.rgObj.checkSubRegions();
@@ -1654,7 +1676,7 @@ if ~updateTube
 end
 
 % --- Executes on button press in checkReject.
-function checkReject_Callback(hObject, eventdata, handles)
+function checkReject_Callback(hObject, ~, handles)
 
 % global variables
 global isCalib
@@ -1688,7 +1710,7 @@ end
 % --------------------------------------------------- %
 
 % --- Executes on editing in editFrameStep
-function editFrameStep_Callback(hObject, eventdata, handles)
+function editFrameStep_Callback(hObject, ~, handles)
 
 % retrieves the image data struct
 hFig = handles.output;
@@ -1702,7 +1724,7 @@ else
 end
 
 % --- callback function for the first frame/sub-movie button --------------
-function FirstButtonCallback(hObject, eventdata, handles)
+function FirstButtonCallback(hObject, ~, handles)
 
 % global variables
 global isCalib
@@ -1752,7 +1774,7 @@ else
 end
 
 % --- callback function for the last frame/sub-movie button ---------------
-function LastButtonCallback(hObject, eventdata, handles, varargin)
+function LastButtonCallback(hObject, ~, handles, varargin)
 
 % global variables
 global isCalib
@@ -1807,7 +1829,7 @@ else
 end
 
 % --- callback function for the previous frame/sub-movie button -----------
-function PrevButtonCallback(hObject, eventdata, handles)
+function PrevButtonCallback(hObject, ~, handles)
 
 % global variables
 global isCalib
@@ -1868,7 +1890,7 @@ else
 end
 
 % --- callback function for the next frame/sub-movie button ---------------
-function NextButtonCallback(hObject, eventdata, handles, varargin)
+function NextButtonCallback(hObject, ~, handles, varargin)
 
 % global variables
 global isCalib 
@@ -1933,7 +1955,7 @@ else
 end
 
 % --- Executes on editting the frame/sub-movie edit box -------------------
-function CountEditCallback(hObject, eventdata, handles, varargin)
+function CountEditCallback(hObject, ~, handles, varargin)
 
 % global variables
 global isCalib
@@ -2006,7 +2028,7 @@ end
 % ---------------------------------------------- %
 
 % --- Executes on editing in editScaleFactor
-function editScaleFactor_Callback(hObject, eventdata, handles)
+function editScaleFactor_Callback(hObject, ~, handles)
 
 % global variables
 global isCalib isRTPChange
@@ -2030,7 +2052,7 @@ else
 end
 
 % --- Executes on button press in textScaleFactor -------------------------
-function textScaleFactor_Callback(hObject, eventdata, handles)
+function textScaleFactor_Callback(~, ~, handles)
 
 % global variables
 global isCalib
@@ -2060,7 +2082,7 @@ end
 % ------------------------------------------ %
 
 % --- Executes on button press in checkShowTube.
-function checkShowTube_Callback(hObject, eventdata, handles)
+function checkShowTube_Callback(~, eventdata, handles)
 
 % initialisations
 hFig = handles.output;
@@ -2088,13 +2110,13 @@ end
 hFig.mkObj.checkShowTube(iMov,showUpdate,eventdata);
 
 % --- Executes on button press in checkShowMark.
-function checkShowMark_Callback(hObject, eventdata, handles)
+function checkShowMark_Callback(~, ~, handles)
 
 % REMOVE ME LATER
 handles.output.mkObj.checkShowMark();
     
 % --- Executes on button press in checkShowAngle.
-function checkShowAngle_Callback(hObject, eventdata, handles)
+function checkShowAngle_Callback(~, ~, handles)
 
 % REMOVE ME LATER
 handles.output.mkObj.checkShowAngle();
@@ -2104,7 +2126,7 @@ handles.output.mkObj.checkShowAngle();
 % ----------------------------------------------- %
 
 % --- Executes on button press in buttonDetectBackground.
-function buttonDetectBackground_Callback(hObject, eventdata, handles)
+function buttonDetectBackground_Callback(~, ~, handles)
 
 % global variables
 global isCalib
@@ -2156,7 +2178,7 @@ end
 hFig.bgObj.openBGAnalysis();
 
 % --- Executes on button press in buttonDetectFly.
-function buttonDetectFly_Callback(hObject, eventdata, handles)
+function buttonDetectFly_Callback(~, eventdata, handles)
 
 % gets a snap-shot of the figure object properties
 hProp0 = getHandleSnapshot(handles);
@@ -2178,11 +2200,7 @@ else
 end
 
 % sets the GUI properties
-try
 setTrackGUIProps(handles,'PreFlyDetect')
-catch
-    % FIX ME!
-end
 
 % sets the tracking object fields
 trkObj.segEntireVideo(handles,iMov,pData);
@@ -2223,13 +2241,13 @@ checkShowTube_Callback(handles.checkShowTube, eventdata, handles)
 % -------------------------------------- %
 
 % --- Executes on button press in axesCoordCheck --------------------------
-function axesCoordCheck_Callback(hObject, eventdata, handles)
+function axesCoordCheck_Callback(~, ~, handles)
 
 % sets the axes properties
 setTrackGUIProps(handles,'AxesCoordCheck')
 
 % --- Executes on button press in checkFixRatio ---------------------------
-function checkFixRatio_Callback(hObject, eventdata, handles)
+function checkFixRatio_Callback(hObject, ~, handles)
 
 % global variables
 global isCalib
@@ -2249,13 +2267,13 @@ else
 end
 
 % --- Executes on button press in gridMajorCheck --------------------------
-function gridMajorCheck_Callback(hObject, eventdata, handles)
+function gridMajorCheck_Callback(~, ~, handles)
 
 % gets the state of the toggle button
 setTrackGUIProps(handles,'MajorGridCheck')
 
 % --- Executes on button press in gridMinorCheck --------------------------
-function gridMinorCheck_Callback(hObject, eventdata, handles)
+function gridMinorCheck_Callback(~, ~, handles)
 
 % gets the state of the toggle button
 setTrackGUIProps(handles,'MinorGridCheck')
@@ -2306,11 +2324,11 @@ switch nargin
     case 2 % case is the movie is playing
         % retrieves new image from the image stack (loaded from movie show)
         [iNw,ImgS] = deal(varargin{1}{1},varargin{1}{2});   
-        if size(ImgS{iNw},3) == 3
-            ImgNw = rgb2gray(ImgS{iNw});
-        else
+%         if size(ImgS{iNw},3) == 3
+%             ImgNw = rgb2gray(ImgS{iNw});
+%         else
             ImgNw = ImgS{iNw};
-        end
+%         end
 
         % sets the sub-image (if required)
         if get(handles.checkLocalView,'value')
@@ -2319,7 +2337,7 @@ switch nargin
         
     otherwise % case is a normal image update
         isSub = get(handles.checkLocalView,'value');
-        ImgNw = double(getDispImage(iData,iMov,cFrm,isSub,handles));         
+        ImgNw = getDispImage(iData,iMov,cFrm,isSub,handles,1);        
 end
 
 % applies the image correction (if required)
@@ -2363,7 +2381,7 @@ if isempty(hImg)
     end
 else
     % updates the axis limits
-    if max(get(hAx,'clim')) < 10
+    if max(ImgNw(:)) < 10
         set(hImg,'cData',double(ImgNw))    
     else
         set(hImg,'cData',uint8(ImgNw))    
@@ -2387,8 +2405,10 @@ end
 % ------------------------------ %
 
 % updates the tracking markers
-hFig.mkObj.updateTrackMarkers(~isempty(ImgNw))
-
+if ~isempty(hFig.mkObj)
+    hFig.mkObj.updateTrackMarkers(~isempty(ImgNw))
+end
+    
 % --- plays the movie from the current frame until A) the end of the 
 %     movies or, B) until the user presses stop 
 function isComplete = showMovie(handles)
@@ -2434,7 +2454,7 @@ while (iFrm + cStp) <= iData.nFrm
                
         % sets the movie frame index number    
         isSub = get(handles.checkLocalView,'value');
-        ImgNw = getDispImage(iData,iMov,iFrm,isSub,handles); 
+        ImgNw = getDispImage(iData,iMov,iFrm,isSub,handles,1); 
         dispImage(handles,ImgNw,1)   
         pause(0.01)                
         
@@ -2595,7 +2615,7 @@ set(bufData.tObjFile,'Period',0.1,'ExecutionMode','FixedRate',...
                      'TasksToExecute',inf);         
          
 % --- sets the frame loading function --- %
-function checkFrameUpdate(obj,event,handles)
+function checkFrameUpdate(obj,~,handles)
 
 % global variables
 global bufData indGrpNw
@@ -2660,7 +2680,7 @@ catch ME
 end
 
 % --- sets the frame loading function --- %
-function checkFileOutput(obj,event,handles)
+function checkFileOutput(obj,~,~)
 
 % global variables
 global bufData indGrpNw
@@ -2788,8 +2808,8 @@ end
 
 % Sub-Movie Data Struct
 iMov = struct('pos',[1 1 1 1],'posG',[],'Ibg',[],'ddD',[],...
-              'nRow',[],'nCol',[],'nPath',trkP.nPath,...                            
-              'nTube',[],'nTubeR',[],'nFly',[],'nFlyR',[],...              
+              'nRow',[],'nCol',[],'nPath',trkP.nPath,'hasRGB',false,...
+              'useRGB',false,'nTube',[],'nTubeR',[],'nFly',[],'nFlyR',[],...
               'iR',[],'iC',[],'iRT',[],'iCT',[],'xTube',[],'yTube',[],...
               'sgP',[],'Status',[],'tempName',[],'autoP',[],'bgP',[],...
               'isSet',false,'ok',true,'tempSet',false,'isOpt',false,...

@@ -368,10 +368,9 @@ if showStats
     [i1,i2] = deal([1,1,2,2,1],[1,2,2,1,1]);    
 
     % sets the y-axis limits
-    if all(isnan(dpImg(:)))
-        yL = [-1,1];
-    else
-        yL = [nanmin(dpImg(:)),nanmax(dpImg(:))] + [-1,1];
+    yL = [-1,1];    
+    if ~all(isnan(dpImg(:)))
+        yL = [min(dpImg(:),[],'omitnan'),max(dpImg(:),[],'omitnan')] + yL;
     end
 
     % creates the line plots

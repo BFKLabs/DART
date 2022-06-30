@@ -435,7 +435,7 @@ classdef ConcatExptClass < handle
             % concatenates the data for each of the other experiments
             for i = 2:length(sInfoC)
                 % combines the other fields
-                dT = nanmedian(diff(sInfoNw.snTot.T{end}));
+                dT = median(diff(sInfoNw.snTot.T{end}),'omitnan');
                 tOfs = obj.dtExpt(indC(i)) + sInfoNw.snTot.T{end}(end);
                 TNw = cellfun(@(x)(x+tOfs),sInfoC{i}.snTot.T,'un',0);
                 

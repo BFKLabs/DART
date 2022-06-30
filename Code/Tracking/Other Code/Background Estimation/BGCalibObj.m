@@ -202,8 +202,8 @@ classdef BGCalibObj < handle
             % calculates the vertical offset
             obj.yOfs = cellfun(@(x)(cellfun...
                             (@(y)(y(1)-1),x)),obj.iMov.iRT,'un',0);            
-            obj.nOpen = cellfun(@(x)...
-                (roundP(2*nanmedian(cellfun(@length,x)))),obj.iMov.iRT);
+            obj.nOpen = cellfun(@(x)(roundP(2*median(cellfun...
+                            (@length,x),'omitnan'))),obj.iMov.iRT);
                         
             % sets up the range values/index arrays
             [obj.indR,obj.YRng,obj.dYRng] = deal(cell(1,obj.nApp));
@@ -726,7 +726,7 @@ classdef BGCalibObj < handle
             Tnw = datevec(eData.Timestamp);
             ImgNw = double(eData.Data);
             obj.Tt(obj.iStp) = etime(Tnw,obj.T0);
-            obj.Imu(obj.iStp) = nanmean(ImgNw(:));
+            obj.Imu(obj.iStp) = mean(ImgNw(:),'omitnan');
             
             % determines if there has been a significant shift in the
             % average pixel intensity, then reset the fields
@@ -779,8 +779,9 @@ classdef BGCalibObj < handle
                     [ILT,ImaxL] = deal(IL{i}(iRT,:),obj.Imax{i}(iRT,:));
                     
                     % if not, then update the min/max values
-                    obj.Imin{i}(iRT,:) = nanmin(ILT,obj.Imin{i}(iRT,:));
-                    obj.Imax{i}(iRT,:) = nanmax(ILT,ImaxL);
+                    nFlag = 'omitnan';
+                    obj.Imin{i}(iRT,:) = min(ILT,obj.Imin{i}(iRT,:),nFlag);
+                    obj.Imax{i}(iRT,:) = max(ILT,ImaxL,nFlag);
 
                     % updates the range values for the sub-region
                     obj.updateRangeValues(iRT,i,j);                        
@@ -894,7 +895,7 @@ classdef BGCalibObj < handle
             
             % calculates the normalised signals
             RngN = YRng0/max(YRng0);
-            dRngN = obj.dYRng{iApp}/nanmax(obj.dYRng{iApp});
+            dRngN = obj.dYRng{iApp}/max(obj.dYRng{iApp},[],'omitnan');
             
             % determines the peaks from the signal
             [yP,tP,~,pP] = findpeaks(dRngN);
@@ -903,13 +904,13 @@ classdef BGCalibObj < handle
             QP = max(0,[yP,pP,RngN(tP)]);
             jdx = DBSCAN(QP,dTolCl,1);
 
-            % determines the cluster most like to represent the baseline peaks
+            % determines the cluster most like to represent baseline peaks
             iGrp = arrayfun(@(x)(find(jdx==x)),(1:max(jdx))','un',0);
-            RGrp = cellfun(@(x)(sum(nanmean(QP(x,:),1).^2)),iGrp);
+            RGrp = cellfun(@(x)(sum(mean(QP(x,:),1,'omitnan').^2)),iGrp);
             iMin = argMin(RGrp);
 
-            % sets the indices of the peaks that are considered significant. from these
-            % peaks determines the 
+            % sets the indices of the peaks that are significant. from 
+            % these peaks determines the threshold level
             iSig = sort(cell2mat(iGrp(~setGroup(iMin,size(iGrp)))));
             pTol0 = [max(YRng0(tP(iGrp{iMin}))),min(YRng0(tP(iSig)))];
             pTol = pW*mean(pTol0);
@@ -926,7 +927,7 @@ classdef BGCalibObj < handle
             
             % removes the baseline image from the image
             IRngMx = max(IRng,[],2);            
-            IRngMx(isnan(IRngMx)) = nanmedian(IRngMx);
+            IRngMx(isnan(IRngMx)) = median(IRngMx,'omitnan');
             IRngBL = repmat(imopen(IRngMx,szOpen),1,size(IRng,2));            
             dIRng = max(0,IRng - IRngBL)./max(1,IRngBL);
             

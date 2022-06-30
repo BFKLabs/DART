@@ -135,13 +135,13 @@ szImg = [1,1,length(iR)*length(iC)];
 
 % calculates the final reference image (from the original image) 
 IGrpF = cellfun(@(x)(getPointSubImages(I,x,szL)),num2cell(pMax,2),'un',0);
-IRefF = nanmedian(cell2mat(reshape(IGrpF,szImg)),3);
+IRefF = median(cell2mat(reshape(IGrpF,szImg)),3,'omitnan');
 BRefF = sauvolaThresh(IRefF, szL, 0);
 
 % determines the sub-region shape based on its relative pixel intensity to
 % the outside of the reference image
 Bout = bwmorph(true(szL),'remove');
-isRev = nanmean(BRefF(Bout)) > 0.5;
+isRev = mean(BRefF(Bout),'omitnan') > 0.5;
 if isRev
     % the sub-region is darker than the outside
     B0 = imfill(bwmorph(rmvGroups(~BRefF),'majority'),'holes');
@@ -692,7 +692,7 @@ while 1
     
     % sets the new values for the fitting process
     [xC,yC,WC] = deal(x0(ok),y0(ok),W(ok).^2);
-    WC = WC/nansum(WC);
+    WC = WC/sum(WC,'omitnan');
     
     % calculates the initial fit values
     [cf,gof] = fit(xC(:),yC(:),fittype('poly2'),'Weight',WC(:));  

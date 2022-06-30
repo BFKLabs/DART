@@ -2,9 +2,10 @@ function cID = setupFlyLocID(iMov,isSave)
 
 % sets the default input arguments
 if ~exist('isSave','var'); isSave = false; end
+isMltTrk = detMltTrkStatus(iMov);
 
 % sets up the ID flags for each grouping
-if iMov.is2D
+if iMov.is2D || isMltTrk
     % case is a 2D experiment setup    
     iGrp = iMov.pInfo.iGrp;
     
@@ -21,13 +22,31 @@ if iMov.is2D
 
     % loops through each group setting the row/column/group indices    
     for i = 1:length(iC)
-        [iy,ix] = find(iGrp==i);
-        cID{iC(i)} = [cID{iC(i)};[iy,ix,i*ones(length(ix),1)]];
+        % determines the regions with the current grouping           
+        if isMltTrk
+            % case is for multi-tracking
+            idx = find(iGrp==i);
+            cIDnw0 = cellfun(@(x,y)([x*ones(sum(y),1),find(y(:))]),...
+                                    num2cell(idx),iMov.flyok(idx),'un',0);
+            cIDnw = cell2mat(cIDnw0(:));
+        else
+            % case is 2D single tracking            
+            [iy,ix] = find(iGrp==i);
+            cIDnw = [iy,ix,i*ones(length(ix),1)];
+        end
+        
+        % appends the indices to the overall array
+        cID{iC(i)} = [cID{iC(i)};cIDnw];
     end
     
     % sorts the ID arrays by column and then by row (for each unique group)
     for i = 1:nGrp
-        cID{i} = sortrows(cID{i},[2,1]);
+        if isMltTrk
+            cID{i} = sortrows(cID{i},[1,2]);
+
+        else
+            cID{i} = sortrows(cID{i},[2,1]);
+        end
     end
 else
     % case is a 1D experiment setup

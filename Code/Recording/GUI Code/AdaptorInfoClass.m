@@ -115,7 +115,7 @@ classdef AdaptorInfoClass < handle
             [obj.Wmax,obj.Hmax] = deal(scrSz(3),scrSz(4));   
             
             % external device initialisations
-            obj.extnObj = feval('runExternPackage','ExtnDevices');
+            obj.extnObj = feval('runExternPackage','ExtnDevices');            
             
             % sets the program default directory struct
             switch get(obj.hFigM,'tag')

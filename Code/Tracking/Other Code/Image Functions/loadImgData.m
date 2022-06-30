@@ -41,6 +41,7 @@ if exist(fStr,'file')
                 mObj = ffmsReader();
                 [~,~] = mObj.open(fStr,0);        
             otherwise
+                mObj = VideoReader(fStr);
                 [V,~] = mmread(fStr,inf,[],false,true,'');
         end
         
@@ -81,7 +82,7 @@ switch fExtn
         while 1            
             try 
                 % reads a new frame. 
-                read(mObj,iData.nFrmT);
+                I = read(mObj,iData.nFrmT);
                 break
             catch
                 % if there was an error, reduce the frame count
@@ -103,10 +104,11 @@ switch fExtn
         iData.sz = size(ITmp);
         iData.exP.FPS = 1000/(mean(diff(tTmp)));                          
         
-        while 1            
+        while 1
             try 
                 % reads a new frame. 
-                [~,~] = mObj.getFrame(iData.nFrmT - 1);
+                [V,~] = mObj.getFrame(iData.nFrmT - 1);
+                I = V.frames(1).cdata;
                 break
             catch
                 % if there was an error, reduce the frame count
@@ -120,8 +122,21 @@ switch fExtn
         iData.nFrmT = abs(V.nrFramesTotal);
         isVidObj = false;
         
+        % sets the time-span for the frame and reads it from file
+        iFrm0 = roundP(iData.nFrmT/2);
+        tFrm = iFrm0/iData.exP.FPS + (1/(2*iData.exP.FPS))*[-1 1];
+        [VT,~] = mmread(fStr,[],tFrm,false,true,'');
+        I = VT.frames(1).cdata;
+        
 end
 warning(wState);
+
+% determines if the video is multi-channel (video open only)
+if isprop(mObj,'VideoFormat')
+    iMov.hasRGB = strcmp(mObj.VideoFormat,'RGB24');
+else
+    iMov.hasRGB = false;
+end
 
 % sets the movie/solution file directory summary file names
 sStrM = fullfile(fDir,getSummFileName(fDir));
@@ -210,7 +225,7 @@ if isfield(iMov,'useRot')
 end
 
 % calculates an estimate of the sampling rate from the time stamps
-FPSest = 1/nanmedian(diff(iData.Tv));
+FPSest = 1/median(diff(iData.Tv),'omitnan');
 if rectifyRatio(iData.exP.FPS/FPSest) > 1.1
     % if there is a major discrepancy, then determine if the calculated
     % sampling rate is better than the stated value
@@ -306,6 +321,13 @@ set(hFig,'iData',iData);
 % resizes the gui
 resizeFlyTrackGUI(hFig)
 
+% creates the tracking marker class object
+if detMltTrkStatus(iMov)
+    hFig.mkObj = MultiTrackMarkerClass(hFig,handles.imgAxes);
+else
+    hFig.mkObj = TrackMarkerClass(hFig,handles.imgAxes);
+end
+
 % updates the GUI properties (if not batch processing)
 if ~isBatch
     % determines if there is an executable for loading the image stacks    
@@ -337,6 +359,12 @@ if ~isBatch
 
     % updates the GUI
     setTrackGUIProps(handles,'PostImageLoad')
+
+    % updates the use grayscale menu item properties
+    eStr = {'off','on'};
+    set(handles.menuUseGray,'Checked',eStr{1+(~iMov.useRGB)})
+    setObjVisibility(handles.menuUseGray,iMov.hasRGB);
+    setObjEnable(handles.menuUseGray,iMov.hasRGB)
     
     % sets the GUI properties after loading the image
     hFig.checkFixRatio_Callback(handles.checkFixRatio, [], handles)

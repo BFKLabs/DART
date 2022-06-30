@@ -109,47 +109,55 @@ for i = 1:length(iMov.iR)
     % --------------------------- %
     
     % reshapes the coordinates
-    iMov = resetAutoShapeCoords(iMov,dpOfs,i);    
+    if iMov.is2D
+        iMov = resetAutoShapeCoords(iMov,dpOfs,i);
+    end
     
 end
 
 % --- resets the binary mask
 function iMov = resetExclusionBin(iMov,indNw,iApp,iDim)
 
-switch iDim
-    case 1
-        % case is the row reduction
-        switch iMov.autoP.Type
-            case {'Circle','Rectangle'}
-                % case is the circular setup
-                iMov.autoP.B{iApp} = iMov.autoP.B{iApp}(indNw,:);                
-                
-            case {'GeneralR','GeneralC'}
-                % case is the general region setup
-                iMov.autoP.BT{iApp} = iMov.autoP.BT{iApp}(indNw,:);
-                
-        end    
-        
-    case 2
-        % case is the column reduction
-        switch iMov.autoP.Type
-            case {'Circle','Rectangle'}
-                % case is the circular setup 
-                iMov.autoP.B{iApp} = iMov.autoP.B{iApp}(:,indNw);
-                
-            case {'GeneralR','GeneralC'}
-                % case is the general region setup
-                iMov.autoP.BT{iApp} = iMov.autoP.BT{iApp}(:,indNw);
-                
-        end                 
+% function is only applicable for 2D expts
+if iMov.is2D
+    switch iDim
+        case 1
+            % case is the row reduction
+            switch iMov.autoP.Type
+                case {'Circle','Rectangle'}
+                    % case is the circular setup
+                    iMov.autoP.B{iApp} = iMov.autoP.B{iApp}(indNw,:);                
 
+                case {'GeneralR','GeneralC'}
+                    % case is the general region setup
+                    iMov.autoP.BT{iApp} = iMov.autoP.BT{iApp}(indNw,:);
+
+            end    
+
+        case 2
+            % case is the column reduction
+            switch iMov.autoP.Type
+                case {'Circle','Rectangle'}
+                    % case is the circular setup 
+                    iMov.autoP.B{iApp} = iMov.autoP.B{iApp}(:,indNw);
+
+                case {'GeneralR','GeneralC'}
+                    % case is the general region setup
+                    iMov.autoP.BT{iApp} = iMov.autoP.BT{iApp}(:,indNw);
+
+            end                 
+
+    end
 end
 
 % --- resets the automatically detected shape coorinates
 function iMov = resetAutoShapeCoords(iMov,dP,iApp)
 
-% if there is no auto shape configuration, then exit the function
 if isempty(iMov.autoP) || strcmp(iMov.autoP.Type,'None')
+    % if there is no auto shape configuration, then exit the function
+    return
+elseif isempty(iMov.autoP.X0)
+    % if there are no coordinate field data, then exit the function
     return
 end
 

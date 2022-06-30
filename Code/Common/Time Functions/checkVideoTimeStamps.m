@@ -2,8 +2,8 @@ function tStampV = checkVideoTimeStamps(tStampV,Tp)
 
 % initialisations
 nExpt = length(tStampV);
-dT = cellfun(@(x)(nanmedian(diff(x))),tStampV);
-dTmd = nanmedian(dT);
+dT = cellfun(@(x)(median(diff(x),'omitnan')),tStampV);
+dTmd = median(dT,'omitnan');
 
 % check each of the videos 
 for i = 1:nExpt

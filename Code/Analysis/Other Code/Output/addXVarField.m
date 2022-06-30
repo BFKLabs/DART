@@ -12,7 +12,7 @@ function oP = addXVarField(oP,Name,Var,Type)
 
 % sets the new data struct
 xVarNw = struct('Name',Name,'Var',Var,'Type','Other');
-if (exist('Type','var')); xVarNw.Type = Type; end
+if exist('Type','var'); xVarNw.Type = Type; end
 
 % appends to the new metric data struct to the overall data struct
 oP.xVar = [oP.xVar;xVarNw];

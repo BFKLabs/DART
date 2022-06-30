@@ -123,7 +123,7 @@ else
 
     % calculates the extrapolated signal value
     if any(isnan(zf))
-        xExt = nanmean(x);
+        xExt = mean(x,'omitnan');
     else
         xExt = filter([0 0], -a, 0, zf);
     end

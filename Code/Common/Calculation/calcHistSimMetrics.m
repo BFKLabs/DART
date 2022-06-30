@@ -47,12 +47,12 @@ for i = 1:length(sType)
             
         case 'chi2'
             % case is the chi-squared distance
-            Q(i) = 2*nansum(((N1a-N2a).^2)./(N1a+N2a));
+            Q(i) = 2*sum(((N1a-N2a).^2)./(N1a+N2a),'omitnan');
             
         case 'jsd'
             % case is the jensen-shannon divergence distance
             QD = 2./(N1a + N2a);
-            Q(i) = nansum(N1a.*log(QD.*N1a) + N2a.*log(QD.*N2a));
+            Q(i) = sum(N1a.*log(QD.*N1a) + N2a.*log(QD.*N2a),'omitnan');
     end
 end
 

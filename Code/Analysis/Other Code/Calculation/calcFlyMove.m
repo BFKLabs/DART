@@ -34,7 +34,7 @@ isMove = cellfun(@(x)(x >= vAct),Vnw,'un',0);
 
 % calculates the overall average and active speed/displacements
 dTnwT = cellfun(@(x)(repmat(dTnw,1,size(x,2))),Dnw,'un',0);
-Vtot = cellfun(@(x)(sum(x,1)/dTall),Dnw,'un',0);
-Dmove = cellfun(@(x,y)(sum(x.*y,1)),Dnw,isMove,'un',0);
-Vmove = cellfun(@(x,y,z)(sum(x.*z,1)./sum(y.*z,1)),...
+Vtot = cellfun(@(x)(sum(x,1,'omitnan')/dTall),Dnw,'un',0);
+Dmove = cellfun(@(x,y)(sum(x.*y,1,'omitnan')),Dnw,isMove,'un',0);
+Vmove = cellfun(@(x,y,z)(sum(x.*z,1,'omitnan')./sum(y.*z,1,'omitnan')),...
                                     Dnw,dTnwT,isMove,'un',0);

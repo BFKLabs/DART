@@ -135,8 +135,7 @@ D = cellfun(@(xx)([zeros(1,size(xx,2));cell2mat(cellfun(@(x)(sum(...
 for i = 1:nApp
     % calculates the distance travelled over the time bands (the first
     % row is compensated for the previous video distance)
-    Dnw = cell2mat(cellfun(@(x)(nansum(D{i}(x,:),1)),...
-                                            indB,'un',0));
+    Dnw = cell2mat(cellfun(@(x)(sum(D{i}(x,:),1,'omitnan')),indB,'un',0));
     Dnw(1,:) = Dnw(1,:) + D0{i};
         
     % calculates the average speed over the time bin

@@ -49,14 +49,14 @@ end
 function V = calcBinnedAbsSpeed(Px,Py,Ttot,flyok,indB)
 
 % calculates the movement based on whether the y-distances are included
-if (isempty(Py))
+if isempty(Py)
     % calculates the binned distances from the summed absolute
     % difference in the x-locations
 %     if (sum(flyok) == size(Px,2))
-        V = cellfun(@(x)(nansum(abs(diff(Px(x,:),1)),1)/...
+        V = cellfun(@(x)(sum(abs(diff(Px(x,:),1)),1,'omitnan')/...
                         diff(Ttot(x([1 end])))),indB,'un',0);        
 %     else
-%         V = cellfun(@(x)(nansum(abs(diff(Px(x,flyok),1)),1)/...
+%         V = cellfun(@(x)(sum(abs(diff(Px(x,flyok),1,'omitnan')),1)/...
 %                         diff(Ttot(x([1 end])))),indB,'un',0);
 %     end
 else
@@ -71,8 +71,8 @@ else
 
     % calculates the total distance travelled using Phythagoras
     dT = cellfun(@(x)(diff(Ttot(x([1 end])))),indB,'un',0);
-    V = cellfun(@(x,y,z)(nansum(sqrt(diff(x,[],1).^2 + ...
-                diff(y,[],1).^2),1))/z,PxB,PyB,dT,'un',0);        
+    V = cellfun(@(x,y,z)(sum(sqrt(diff(x,[],1).^2 + ...
+                diff(y,[],1).^2),1,'omitnan'))/z,PxB,PyB,dT,'un',0);        
 end
 
 % --- calculates the movement using the absolute distance
@@ -113,15 +113,17 @@ end
 function D = calcBinnedAbsDist(Px,Py,flyok,indB)
 
 % calculates the absolute binned distance
-if (isempty(Py))
-    if (sum(flyok) == size(Px,2))
-        D = cellfun(@(x)(nansum(abs(diff(Px(x,:),1)),1)),indB,'un',0);
+if isempty(Py)
+    if sum(flyok) == size(Px,2)
+        D = cellfun(@(x)(sum...
+                (abs(diff(Px(x,:),1)),1,'omitnan')),indB,'un',0);
     else
-        D = cellfun(@(x)(nansum(abs(diff(Px(x,flyok),1)),1)),indB,'un',0);
+        D = cellfun(@(x)(sum...
+                (abs(diff(Px(x,flyok),1)),1,'omitnan')),indB,'un',0);
     end
 else
     % sets the binned x/y locations 
-    if (sum(flyok) == size(Px,2))
+    if sum(flyok) == size(Px,2)
         PxB = cellfun(@(x)(Px(x,:)),indB,'un',0);
         PyB = cellfun(@(x)(Py(x,:)),indB,'un',0);            
     else
@@ -130,8 +132,8 @@ else
     end
         
     % calculates the summed distances travelled over each time bin
-    D = cellfun(@(x,y)(nansum(sqrt(diff(x,[],1).^2 + ...
-                    diff(y,[],1).^2),1)),PxB,PyB,'un',0);
+    D = cellfun(@(x,y)(sum(sqrt(diff(x,[],1).^2 + ...
+                    diff(y,[],1).^2),1,'omitnan')),PxB,PyB,'un',0);
 end
 
 % ----------------------------------------------- %

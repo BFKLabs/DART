@@ -69,7 +69,7 @@ N = min(120,iPlateau);
 function Ynorm = calcBaseNormSignal(Y,nBase)
 
 % calculates the mean signal
-Ymn = nanmean(Y,2);
+Ymn = mean(Y,2,'omitnan');
 
 % divides the mean signal by the baseline section of the signal
 Ynorm = (Ymn/mean(Ymn(1:nBase))) - 1;

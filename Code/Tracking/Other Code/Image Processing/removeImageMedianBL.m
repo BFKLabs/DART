@@ -19,7 +19,7 @@ if isLoVar
     % case is a low-variance phase
     szImg = [1,1,numel(Img)];
     ImgComb = cell2mat(reshape(Img,szImg));
-    ImgBG = {medianBGImageEst(nanmean(ImgComb,3),h)};
+    ImgBG = {medianBGImageEst(mean(ImgComb,3,'omitnan'),h)};
     
 else
     % case is a non low-variance phase

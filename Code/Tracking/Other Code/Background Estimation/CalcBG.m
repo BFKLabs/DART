@@ -799,7 +799,8 @@ classdef CalcBG < handle
                     if ~isfield(obj.trkObj,'IbgT0') || ...
                         isempty(obj.trkObj.IbgT0)
                         popStrNw = {'Background';...
-                                    'Residual';...
+                                    'Residual (Raw)';...
+                                    'Residual (Filtered)';...
                                     'Cross-Correlation'};
                     else
                         popStrNw = {'Background (Raw)';...
@@ -917,11 +918,12 @@ classdef CalcBG < handle
             
             % reads the new frame
             imgType = obj.getSelectedImageType();
+            isRaw = strContains(imgType,'Raw');
             if obj.isCalib
                 Img0 = obj.ImgC{1}{ipara.cFrm};
             else
                 iFrmS = obj.indFrm{iPhase}(ipara.cFrm);
-                Img0 = double(getDispImage(idata,imov,iFrmS,false));
+                Img0 = double(getDispImage(idata,imov,iFrmS,false,[],1));                                
             end
             
             % sets the image            
@@ -939,6 +941,10 @@ classdef CalcBG < handle
                       'Background (Filled)'} 
                     % case is the background estimate                    
 
+                    if size(Img0,3) == 3
+                        Img0 = double(rgb2gray(uint8(Img0)));
+                    end
+                    
                     % sets the background image based on the detection type
                     if strcmp(getDetectionType(imov),'GeneralR')
                         % retrieves the background image array      
@@ -952,17 +958,26 @@ classdef CalcBG < handle
                         
                     else
                         % retrieves the background image type
-                        if strContains(imgType,'Raw')
-                            IbgI = obj.trkObj.Ibg0{iPhase};
+                        if obj.isMTrk
+                            if strContains(imgType,'Raw')
+                                IbgI = imov.IbgR(:,iPhase);
+                            else
+                                IbgI = imov.Ibg(:,iPhase);
+                            end
                         else
-                            IbgI = imov.Ibg{iPhase};
+                            if strContains(imgType,'Raw')
+                                IbgI = obj.trkObj.Ibg0{iPhase};
+                            else
+                                IbgI = imov.Ibg{iPhase};
+                            end
                         end
                         
-                        % sets the 
+                        % sets the final background image
                         if obj.iMov.phInfo.hasF || ...
-                                            (obj.iMov.vPhase(iPhase) > 1)
-                            Imd = median(cellfun(@(x)(nanmedian(x(:))),IbgI));
-                            ImgC0 = Img0 - (nanmedian(Img0(:))+Imd);
+                                        (obj.iMov.vPhase(iPhase) > 1)
+                            Imd = median(cellfun(@(x)(...
+                                        median(x(:),'omitnan')),IbgI));
+                            ImgC0 = Img0 - (median(Img0(:),'omitnan')+Imd);
                             
                             Iofs = true;
                         else
@@ -972,13 +987,18 @@ classdef CalcBG < handle
                         
                         % creates composite image from the phase bg images                       
                         Inw = createCompositeImage(ImgC0,imov,IbgI); 
-                        if Iofs; Inw = Inw - nanmin(Inw(:)); end
+                        if Iofs; Inw = Inw - min(Inw(:),[],'omitnan'); end
                     end   
                     
                 case {'Residual',...
                       'Residual (Raw)',...
-                      'Residual (Filled)'}
+                      'Residual (Filled)',...
+                      'Residual (Filtered)'}
                     % case is the raw residual image
+                    
+                    if size(Img0,3) == 3
+                        Img0 = double(rgb2gray(uint8(Img0)));
+                    end
                     
                     % scales the image (if required)
                     if isfield(obj.iMov,'pImg')
@@ -988,12 +1008,12 @@ classdef CalcBG < handle
 
                     % reads the image
                     bgP = obj.getTrackingPara();
-                    if bgP.useFilt
+                    if bgP.useFilt && ~isRaw
                         Img0 = imfiltersym(Img0,hS);
                     end
 
                     % case is the low-variance phase
-                    cMapType = 'jet';
+                    cMapType = 'jet';                    
                     isHV = obj.iMov.vPhase(iPhase) == 2;
                     ILs = arrayfun(@(x)(getRegionImgStack...
                           (obj.iMov,Img0,iFrmS,x,isHV)),1:obj.nApp,'un',0);
@@ -1013,11 +1033,19 @@ classdef CalcBG < handle
                         
                     else                        
                         % retrieves the background image type
-                        if strContains(imgType,'Raw')
-                            IbgI = obj.trkObj.Ibg0{iPhase};
+                        if obj.isMTrk
+                            if isRaw
+                                IbgI = imov.IbgR(:,iPhase);
+                            else
+                                IbgI = imov.Ibg(:,iPhase);
+                            end
                         else
-                            IbgI = imov.Ibg{iPhase};
-                        end       
+                            if isRaw
+                                IbgI = obj.trkObj.Ibg0{iPhase};
+                            else
+                                IbgI = imov.Ibg{iPhase};
+                            end       
+                        end
                         
                         % reshapes the local image array
                         ILs = reshape(ILs,size(IbgI));                        
@@ -1037,16 +1065,20 @@ classdef CalcBG < handle
                     hLoad = ProgressLoadbar(wStr);
                     pause(0.05);
                     
+                    if size(Img0,3) == 3
+                        Img0 = double(rgb2gray(uint8(Img0)));
+                    end               
+                    
                     % calculates the image/template gradient masks
                     cLim = [0,1];
-                    cMapType = 'jet';
-                    Img0(isnan(Img0)) = nanmedian(Img0(:));
+                    cMapType = 'jet';                    
+                    Img0(isnan(Img0)) = median(Img0(:),'omitnan');
                     
                     % applies the image filter (if used)
-                    if bgP.useFilt
+                    if bgP.useFilt && ~obj.isMTrk
                         Img0 = imfiltersym(Img0,hS);
-                    end                    
-                    
+                    end          
+                        
                     % calculates the region x-correlation image
                     InwL = obj.setupXCorrImage(Img0);                     
                     
@@ -1106,6 +1138,8 @@ classdef CalcBG < handle
                 
                 % calculates the image cross-correlation
                 if obj.isMTrk
+                    BO = ~(obj.iMov.Bedge{i} | obj.iMov.Binner{i});                    
+                    IL{1}(BO) = median(IL{1}(~BO),'omitnan');
                     IxcL{i} = calcXCorr(-obj.iMov.IsubT,IL{1});
                 else
                     dI = setupResidualEstStack(IL,mdDim);
@@ -1118,13 +1152,9 @@ classdef CalcBG < handle
         
         % --- initialises the temporary fly markers
         function updateObjMarkers(obj)
-
-            % retrieves the sub-movie data struct
-            ipara = obj.iPara;
-            imov = obj.iMov; 
             
             % other initialisations
-            [iPhase,iFrmNw] = deal(ipara.cPhase,ipara.cFrm);            
+            [iPhase,iFrmNw] = deal(obj.iPara.cPhase,obj.iPara.cFrm);            
             if isequal(colormap(obj.hAx),obj.cMapJet)
                 [pCol,lWid] = deal('k',3);
             else
@@ -1149,21 +1179,25 @@ classdef CalcBG < handle
             showMark = get(obj.hGUI.checkFlyMarkers,'Value');
             
             % updates the fly markers for all apparatus
-            for iApp = 1:length(imov.iR)
+            for iApp = 1:length(obj.iMov.iR)
                 % retrieves the position values
                 if obj.isMTrk
                     % if there is no location data, then exit
                     if ~isFeas; return; end
                     
+                    % resets the markers (if they are invalid)
+                    if (iApp == 1) && ~isvalid(obj.hMark{iApp}{1})
+                        obj.initLikelyPlotMarkers();
+                    end
+                    
                     % updates the marker locations                    
                     fPosNw = fpos{iApp,iFrmNw};
-                    [iCol,~,iRow] = getRegionIndices(obj.iMov,iApp);
                     set(obj.hMark{iApp}{1},'xdata',fPosNw(:,1),...
                                            'ydata',fPosNw(:,2),...
-                                           'Visible',vStr{1+showMark})                                                                                 
-
-                    % updates the other properties                        
-                    if imov.flyok(iRow,iCol)
+                                           'Visible',vStr{1+showMark})
+                                       
+                    % updates the other properties
+                    if obj.iMov.flyok{iApp}
                         set(obj.hMark{iApp}{1},'marker',pMark,...
                                     'color',pCol,'markersize',obj.mSz,...
                                     'linewidth',lWid);                                
@@ -1173,8 +1207,8 @@ classdef CalcBG < handle
                     % retrieves the position coord (non-hi var phase only)
                     if isFeas; fPosNw = fpos{iApp,iFrmNw}; end
                     
-                    xiT = 1:getSRCount(imov,iApp);
-                    for iT = find(imov.flyok(xiT,iApp))'
+                    xiT = 1:getSRCount(obj.iMov,iApp);
+                    for iT = find(obj.iMov.flyok(xiT,iApp))'
                         % updates the marker locations
                         if ~isFeas
                             % case is a hi-variance phase
@@ -1187,7 +1221,7 @@ classdef CalcBG < handle
                         end
 
                         % updates the other properties                        
-                        if imov.flyok(iT,iApp)
+                        if obj.iMov.flyok(iT,iApp)
                             set(obj.hMark{iApp}{iT},'marker',pMark,...
                                         'color',pCol,'markersize',obj.mSz);                                
                         end
@@ -1319,7 +1353,7 @@ classdef CalcBG < handle
             manualResizeFlyTrackGUI(hgui.figFlyTrack,'width',fWid)     
             
             % updates the left position of the image axes
-            resetObjPos(hgui.panelImg,'left',sum(pPos([1,3]))+dx)            
+            resetObjPos(hgui.panelImg,'left',sum(pPos([1,3]))+dx) 
             
         end
         
@@ -1386,8 +1420,8 @@ classdef CalcBG < handle
 
             % updates the change flag wrt the ok flags
             obj.iMov.ddD = [];
-            obj.isChange = obj.isChange || (sum(abs(double(obj.ok0(:))-...
-                                        double(obj.iMov.flyok(:))))>0);
+%             obj.isChange = obj.isChange || (sum(abs(double(obj.ok0(:))-...
+%                                         double(obj.iMov.flyok(:))))>0);
 
             % if there is a change/update then prompt the user if they wish
             % to proceed with updating the changes
@@ -1542,7 +1576,7 @@ classdef CalcBG < handle
                 obj.ImgC = {Img};
                 obj.indFrm = {1:length(Img)};
                 
-            else
+            else                
                 % retrieves the current frame from file                                
                 [imov,simgs,~] = getEstimateImageStack(idata,imov); 
                 if isempty(simgs)
@@ -1969,8 +2003,14 @@ classdef CalcBG < handle
             % sets the marker visibility for all apparatus
             for i = 1:length(obj.hMark)
                 indFly = 1:getSRCount(obj.iMov,i);
-                cellfun(@(x,isOn)(setObjVisibility(x,isOn)),...
-                        obj.hMark{i},num2cell(isOK & fok(indFly,i)))
+                
+                if iscell(fok)
+                    cellfun(@(x,isOn)(setObjVisibility(x,isOn)),...
+                            obj.hMark{i},num2cell(isOK & fok{i}(indFly)))                    
+                else
+                    cellfun(@(x,isOn)(setObjVisibility(x,isOn)),...
+                            obj.hMark{i},num2cell(isOK & fok(indFly,i)))
+                end
             end
         
         end
@@ -2112,6 +2152,12 @@ classdef CalcBG < handle
                 % updates the other flags indicating success
                 [obj.isChange,obj.hasUpdated] = deal(true);
                 [obj.isAllUpdate,obj.uList] = deal(false,[]);
+                
+%                 % updates the other fields
+%                 if obj.isMTrk
+%                     obj.trkObj.getFinalTrackingInfo(obj);
+%                     obj.updateMainImage()
+%                 end
             end
         
         end
@@ -2409,7 +2455,8 @@ classdef CalcBG < handle
                     if obj.isCalib
                         Img0 = obj.ImgC{1}{iFrmR(i)};
                     else
-                        Img0 = double(getDispImage(obj.iData,obj.iMov,iFrmG,0));
+                        Img0 = double(getDispImage...
+                                    (obj.iData,obj.iMov,iFrmG,0));
                     end
                         
                     obj.ImgM{iPh}{iFrmR(i)} = imfiltersym(Img0,hS);
@@ -2704,14 +2751,14 @@ classdef CalcBG < handle
             % combines the background image over all regions
             for i = 1:length(obj.iMov.iR)
                 IbgNw(obj.iMov.iR{i},obj.iMov.iC{i}) = ...
-                    nanmax(IbgNw(obj.iMov.iR{i},obj.iMov.iC{i}),...
-                           obj.iMov.Ibg{iSel}{i});
+                    max(IbgNw(obj.iMov.iR{i},obj.iMov.iC{i}),...
+                           obj.iMov.Ibg{iSel}{i},'omitnan');
             end
 
             % sets the other remaining pixel values
 %             isN = isnan(IbgNw);
 %             IbgNw(isN) = obj.ImgFrm0(isN);
-%             IbgNw(isN) = nanmedian(IbgNw(~isN));
+%             IbgNw(isN) = median(IbgNw(~isN),'omitnan');
             
             % updates the array in the background image cell array
             obj.Ibg{iSel} = IbgNw;

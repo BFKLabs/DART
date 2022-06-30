@@ -77,7 +77,8 @@ if isPhi
     [nTube,Ymx] = deal(size(P,1),180-(1/2^16));
     [pMap.xMin,pMap.xMax] = deal(-Ymx*ones(nTube,1),Ymx*ones(nTube,1));
 else
-    [pMap.xMin,pMap.xMax] = deal(nanmin(P,[],2),nanmax(P,[],2));    
+    pMap.xMin = min(P,[],2,'omitnan');
+    pMap.xMax = max(P,[],2,'omitnan');
 end
 
 % normalises the pixel values
@@ -166,5 +167,6 @@ if ~isempty(P)
     [pMap.nFly,pMap.nFrame] = size(P);
     
     % sets the min/max x-values
-    [pMap.xMin,pMap.xMax] = deal(nanmin(P,[],2),nanmax(P,[],2));    
+    pMap.xMin = min(P,[],2,'omitnan');    
+    pMap.xMax = max(P,[],2,'omitnan');
 end

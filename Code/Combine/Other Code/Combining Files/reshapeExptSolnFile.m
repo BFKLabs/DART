@@ -17,6 +17,7 @@ snTot.cID = setupFlyLocID(iMov,true);
 nGrp = length(snTot.cID);
 [Px,Py] = deal(cell(nGrp,1));
 [Px0,Py0] = deal(snTot.Px,snTot.Py);
+isMltTrk = detMltTrkStatus(iMov);
 
 % initialises data for the orientation angle data values
 if calcPhi
@@ -28,7 +29,18 @@ end
 for i = 1:nGrp
     % groups the data values based on setup type
     [iRow,iCol] = deal(snTot.cID{i}(:,1),snTot.cID{i}(:,2));
-    if iMov.is2D
+    if isMltTrk
+        % case is a multi-tracking expt
+        Px{i} = getGroupValuesMT(Px0,iRow,iCol);
+        Py{i} = getGroupValuesMT(Py0,iRow,iCol);
+
+        % retrieves the orientation angle data values
+        if calcPhi
+            Phi{i} = getGroupValuesMT(Phi0,iRow,iCol);
+            AxR{i} = getGroupValuesMT(AxR0,iRow,iCol);
+        end                      
+        
+    elseif iMov.is2D
         % case is a 2D expt setup  
         
         % retrieves the positional values (if they exist)
@@ -57,6 +69,12 @@ end
 if ~isempty(snTot.Px); snTot.Px = Px; end
 if ~isempty(snTot.Py); snTot.Py = Py; end
 if calcPhi; [snTot.Phi,snTot.AxR] = deal(Phi,AxR); end
+
+% --- retrieves the values from the array, Z for the grid row/column
+%     indices, iRow/iCol (for a 2D expt setup)
+function Zf = getGroupValuesMT(Z,iRow,iCol)
+
+Zf = cell2mat(arrayfun(@(ir,ic)(Z{ir}(:,ic)),iRow,iCol,'un',0)');
 
 % --- retrieves the values from the array, Z for the grid row/column
 %     indices, iRow/iCol (for a 2D expt setup)

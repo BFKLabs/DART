@@ -16,7 +16,7 @@ end
 while (1)
     % reads in the new line
     nwLine = fgetl(fid);   
-    if (~ischar(nwLine))
+    if ~ischar(nwLine)
         % if the new line is an end-of-file, then exit the loop
         break
     else
@@ -28,10 +28,3 @@ end
 
 % closes the data file
 a = fclose(fid);
-
-
-
-
-
-
-

@@ -65,7 +65,8 @@ end
 function IGC = calcGroupingMetrics(I,iBest,indC)
 
 IG = cellfun(@(x,y)(x(y)),num2cell(I,1),num2cell(iBest,1),'un',0);
-IGC = cellfun(@(x)(nanmean(nanmax(cell2mat(IG(x)),[],2))),indC);
+IGC = cellfun(@(x)(mean(max...
+                (cell2mat(IG(x)),[],2,'omitnan'),'omitnan')),indC);
 
 % --- calculates the max correlation values between the images I1 & I2
 function IxcMx = calcMaxCorr(I1,I2)

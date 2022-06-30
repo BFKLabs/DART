@@ -24,5 +24,5 @@ end
 %
 for i = 1:nFrm
     B = isnan(I{i});
-    I{i}(B) = nanmean(I{i}(~B));
+    I{i}(B) = mean(I{i}(~B),'omitnan');
 end

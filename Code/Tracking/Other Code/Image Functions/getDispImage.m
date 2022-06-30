@@ -1,11 +1,22 @@
 % --- retrieves the image to be displayed on the main image axes ----------
-function Img = getDispImage(iData,iMov,cFrm,isSub,handles)
+function Img = getDispImage(iData,iMov,cFrm,isSub,handles,varargin)
 
 % global variables
 global bufData
 
 % checks if the movie file data has been set
 frameSet = false;
+
+% sets the use grayscale flag
+if isempty(varargin)
+    useRGB = false;
+else
+    if isfield(iMov,'useRGB')
+        useRGB = iMov.useRGB;
+    else
+        useRGB = true;
+    end
+end
 
 % check to see if the buffer data has been set. if so, then check to see if
 % the frame stacks have been set correctly. if such data is available, then
@@ -62,7 +73,7 @@ if ~frameSet
                 mObj = iData.mObj;
             else
                 % retrieves the main gui handle (if not provided)
-                if nargin < 5
+                if (nargin < 5) || isempty(handles)
                     handles = guidata(findall(0,'tag','figFlyTrack'));
                 end
                 
@@ -78,7 +89,9 @@ if ~frameSet
                
             % reads the new image (converts to grayscale if truecolor)
             Img = read(mObj,cFrmT); 
-            if size(Img,3) == 3; Img = rgb2gray(Img); end            
+            if (size(Img,3) == 3) && ~useRGB
+                Img = rgb2gray(Img); 
+            end            
             
         case '.mkv' 
             % case is matroska video format
@@ -97,7 +110,9 @@ if ~frameSet
             
             % reads the new image (converts to grayscale if truecolor)            
             Img = mObj.getFrame(cFrmT-1);
-            if size(Img,3) == 3; Img = rgb2gray(Img); end
+            if (size(Img,3) == 3) && ~useRGB
+                Img = rgb2gray(Img); 
+            end
             
             
         otherwise
@@ -108,10 +123,13 @@ if ~frameSet
                 [V,~] = mmread(iData.movStr,[],tFrm,false,true,'');            
 
                 % converts the RGB image to grayscale
-                if (isempty(V.frames))
+                if isempty(V.frames)
                     Img = [];
-                else
-                    Img = rgb2gray(V.frames(1).cdata);        
+                else 
+                    Img = V.frames(1).cdata;
+                    if (size(Img,3) == 3) && ~useRGB
+                        Img = rgb2gray(Img);
+                    end
                 end
                 
             catch ME
@@ -157,3 +175,4 @@ if isSub && ~isempty(Img)
     Img = setSubImage(handles,Img);
 end
 
+a = 1;

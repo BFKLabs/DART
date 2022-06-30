@@ -45,15 +45,17 @@ if (isempty(Xsig)); Xsig = (1:length(Ysig))'; end
 % retrieves the current axes handle
 hAx = getCurrentAxesProp;
 
-%
+% creates the fill objects for each non-NaN group
 hold on;
 for i = 1:length(iGrp)
-    %
+    % retrieves the indices for the current non-NaN group
     kk = iGrp{i};
 
     % sets the signal upper/lower limits
     XsigNw = Xsig(kk);
-    if (size(Ysem,2) == 1)
+    if iscell(Ysem)
+        [YL,YU] = deal(Ysem{1}(kk),Ysem{2}(kk));        
+    elseif (size(Ysem,2) == 1)
         [YL,YU] = deal(Ysig(kk)-Ysem(kk),Ysig(kk)+Ysem(kk));
     else
         [YL,YU] = deal(Ysem(kk,1),Ysem(kk,2));

@@ -37,9 +37,10 @@ for j = 1:length(b)
     end
 end
 
-% calculates the mean pre-stimuli SEM signal     
+% calculates the mean pre-stimuli SEM signal
+xiT = 1:tBefore;
 if ~iscell(plotD.Y_sem); plotD.Y_sem = num2cell(plotD.Y_sem,1); end
-plotD.Y0_sem = cellfun(@(x)(nanmean(x(1:tBefore,:),1)),plotD.Y_sem,'un',0); 
+plotD.Y0_sem = cellfun(@(x)(mean(x(xiT,:),1,'omitnan')),plotD.Y_sem,'un',0); 
 
 % sets the fitted amplitude error values
 for k = 1:length(b)

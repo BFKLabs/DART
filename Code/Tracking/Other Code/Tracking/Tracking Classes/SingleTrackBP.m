@@ -124,7 +124,8 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             % retrieves the comparison image for each batch processing 
             % object (only for missing datasets)
             for i = 1:length(obj.bData)
-                if isempty(obj.bData(i).Img0)            
+                if ~isfield(obj.bData(i),'Img0') || ...
+                                        isempty(obj.bData(i).Img0)            
                     % retrieves the candidate frame
                     fStr = obj.bData(i).mName{1};
                     Img0 = obj.getFeasComparisonImage(fStr); 
@@ -154,7 +155,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                     if ~isempty(Img0)
                         % if a frame has been read, then determine if the
                         % pixel intensity is feasible
-                        Imd = nanmedian(Img0(:));
+                        Imd = median(Img0(:),'omitnan');
                         if prod(sign(pLim-Imd)) == -1                        
                             % if feasible, then exit
                             break

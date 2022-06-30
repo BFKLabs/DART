@@ -66,39 +66,39 @@ for i = ii
     fNw = fName{i}((length(vName)+2):end);
     switch (fNw)    
         case ('mn') % case is the mean            
-            A = cellfun(@(x)(nanmean(x,3)),Y,'un',0);
+            A = cellfun(@(x)(mean(x,3,'omitnan')),Y,'un',0);
         case ('md') % case is the median
-            A = cellfun(@(x)(nanmedian(x,3)),Y,'un',0);
+            A = cellfun(@(x)(median(x,3,'omitnan')),Y,'un',0);
         case ('lq') % case is the lower quartile       
             A = cellfun(@(x)(quantile(x,0.25,3)),Y,'un',0);            
         case ('uq') % case is the upper quartile           
             A = cellfun(@(x)(quantile(x,0.75,3)),Y,'un',0);
         case ('rng') % case is the range            
-            A = cellfun(@(x)(range(x,3)),Y,'un',0);
+            A = cellfun(@(x)(rangewr(x,3)),Y,'un',0);
         case ('ci') % case is the 95% confidence interval            
             A = cellfun(@(x)(prctile(x,[2.5,97.5],3)),Y,'un',0);            
         case ('sd') % case is the standard deviation            
-            A = cellfun(@(x)(nanstd(x,[],3)),Y,'un',0);            
+            A = cellfun(@(x)(std(x,[],3,'omitnan')),Y,'un',0);            
         case ('sem') % case is the standard error mean
             N = cellfun(@(x)(size(x,3)),Y,'un',0);
-            A = cellfun(@(x,n)(nanstd(x,[],3)/sqrt(n)),Y,N,'un',0);            
+            A = cellfun(@(x,n)(std(x,[],3,'omitnan')/sqrt(n)),Y,N,'un',0);            
         case ('min') % case is the minimum
-            A = cellfun(@(x)(nanmin(x,[],3)),Y,'un',0);            
+            A = cellfun(@(x)(min(x,[],3,'omitnan')),Y,'un',0);            
         case ('max') % case is the maximum            
-            A = cellfun(@(x)(nanmax(x,[],3)),Y,'un',0);                
+            A = cellfun(@(x)(max(x,[],3,'omitnan')),Y,'un',0);                
     end
         
     % determines if the data has been combined over all data
-    if (useAll)
+    if useAll
         % if so, then set the valid (non-NaN) time points
-        if (isempty(isN)); isN = ~isnan(A{1}); end
+        if isempty(isN); isN = ~isnan(A{1}); end
         
         % sets the final values
         A = cellfun(@(x)(x(isN,:)),A,'un',0);
     end    
     
     % updates the plot data struct with the new values
-    switch (cType)
+    switch cType
         case (6)
             eval(sprintf('p.%s_%s = cell2mat(A);',vName,fNw));
         case {3,4}

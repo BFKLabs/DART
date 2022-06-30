@@ -260,11 +260,19 @@ for i = 1:length(fStr)
     set(hEdit,'Callback',cbFcn,'String',num2str(pVal))
 end
 
-% determines the frames that have been tracked
+% the current phase and first valid region index
 nPh = length(iMov.vPhase);
 iPh = iMov.iPhase(trkObj.iPhaseS,:);
 iApp0 = find(trkObj.iMov.ok,1,'first');
-iTube0 = find(trkObj.iMov.flyok(:,iApp0),1,'first');
+
+% retrieves the first valid tube index
+if iscell(trkObj.iMov.flyok)
+    iTube0 = find(trkObj.iMov.flyok{iApp0},1,'first');
+else
+    iTube0 = find(trkObj.iMov.flyok(:,iApp0),1,'first');
+end
+
+% determines which frames have been tracked
 isTrk = ~isnan(trkObj.pData.fPos{iApp0}{iTube0}(:,1));
 
 % determines the total number of stacks per phase

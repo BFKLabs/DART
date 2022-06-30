@@ -82,9 +82,10 @@ classdef Track < matlab.mixin.SetGet
         function Img = getNewImage(obj,iFrm,iFrmG,nFrm)
             
             % updates the progressbar
+            pW = 0.5*(1+(obj.isMulti && obj.isBGCalc));
             wStr = sprintf('Sub-Image Stack Reading (Frame %i of %i)',...
                            iFrm,nFrm);
-            obj.hProg.Update(3+obj.wOfsL,wStr,0.5*iFrm/nFrm);
+            obj.hProg.Update(3+obj.wOfsL,wStr,pW*iFrm/nFrm);
                         
             % retrieves the images for all frames in the array, iFrm
             Img = double(getDispImage(obj.iData,obj.iMov,iFrmG,0));             
@@ -128,7 +129,7 @@ classdef Track < matlab.mixin.SetGet
             if isempty(ii); return; end
 
             % fill in the missing time stamp frames
-            dT = nanmedian(diff(T));
+            dT = median(diff(T),'omitnan');
             for i = 1:length(ii)
                 if ii(i) > 1
                     % case is 

@@ -302,7 +302,7 @@ D = sqrt(dx.^2 + dy.^2);
 ac = dot(xx,yy,2)./sum(xx.^2,2);
 
 % sets the sideways movement ratio and overall displacement
-Rmx = [(1-nansum((ac.^2.*D)/sum(D))),sum(D)];
+Rmx = [(1-sum((ac.^2.*D)/sum(D),'omitnan')),sum(D)];
 
 % --------------------------------- %
 % --- EVENT METRIC CALCULATIONS --- %

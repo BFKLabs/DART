@@ -387,11 +387,7 @@ for i = 1:nFile
     indNw = arrayfun(@(x)(find(x == iSolnAdd.indOut{i})),kk,'un',0);
     
     % sets the final apparatus names
-    appName = appOut(1:length(indNw));
-   
-%     % updates the region data struct
-%     snTot = updateRegionInfo(snTot);
-%     snTot = reshapeExptSolnFile(snTot);
+    appName = appOut(1:length(indNw));   
     
     % removes any extraneous fields    
     snTot = reduceExptSolnFiles(snTot,indNw,appName);

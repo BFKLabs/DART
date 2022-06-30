@@ -280,6 +280,11 @@ if sepData
     end
 end
 
+% resets the multi-tracking status to 2D
+if detMltTrkStatus(snTot.iMov)
+    snTot.iMov.is2D = true;
+end
+
 % closes the waitbar figure
 if wOfs == 0
     try; h.closeProgBar(); end

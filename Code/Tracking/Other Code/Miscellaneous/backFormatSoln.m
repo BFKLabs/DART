@@ -35,9 +35,9 @@ if ~isfield(iMov,'autoP')
     iMov.autoP = [];
 end
 
-% sets the fly region parameters (if not set)
-if ~isfield(iMov,'pStats')
-    iMov.pStats = [];
+% sets the use RGB flag (if not set)
+if ~isfield(iMov,'useRGB')
+    iMov.useRGB = false;
 end
 
 % sets the fly region parameters (if not set)

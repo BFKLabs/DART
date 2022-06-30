@@ -981,7 +981,7 @@ classdef SplitSubRegion < handle
                 
                 % removes any previous markers
                 if ~isempty(obj.hMarkR{j})
-                    try; 
+                    try
                         ii = ~cellfun(@isempty,obj.hMarkR{j});
                         cellfun(@delete,obj.hMarkR{j}(ii)); 
                     end

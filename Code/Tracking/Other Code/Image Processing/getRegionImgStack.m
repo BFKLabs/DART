@@ -34,9 +34,9 @@ if hasF || isHiV
     % histogram matching to the reference image
     h = phInfo.hmFilt{iApp};
     Imet = cellfun(@(x)(applyHMFilterWrapper(x,h)),IL(:),'un',0); 
-    IL = cellfun(@(x)(x-nanmedian(x(:))),Imet,'un',0);                
+    IL = cellfun(@(x)(x - median(x(:),'omitnan')),Imet,'un',0);
     if ~hasT && (nargout == 2)
-        BL = cellfun(@(x)(x<nanmean(x(:))),IL,'un',0);
+        BL = cellfun(@(x)(x < mean(x(:),'omitnan')),IL,'un',0);
     end
 
 elseif (nargout == 2)
@@ -52,7 +52,7 @@ if hasT
                         IL(:),num2cell(pOfsT,2),'un',0);
 
     if phInfo.hasF && (nargout == 2)
-        BL = cellfun(@(x)(x<nanmean(x(:))),IL,'un',0);
+        BL = cellfun(@(x)(x < mean(x(:),'omitnan')),IL,'un',0);
     end                                
 end
 

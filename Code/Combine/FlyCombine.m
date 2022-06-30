@@ -1,5 +1,5 @@
 function varargout = FlyCombine(varargin)
-% Last Modified by GUIDE v2.5 02-Nov-2021 21:47:05
+% Last Modified by GUIDE v2.5 24-Jun-2022 00:21:50
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -173,6 +173,12 @@ SaveMultiExptFile(handles.figFlyCombine)
 % ------------------- %
 
 % -------------------------------------------------------------------------
+function menuLoadExtnData_Callback(hObject, eventdata, handles)
+
+% runs the video parameter reset dialog
+ExtnData(handles.figFlyCombine);
+
+% -------------------------------------------------------------------------
 function menuClearData_Callback(hObject, eventdata, handles)
 
 % prompts the user if they really want to clear all the data
@@ -185,90 +191,6 @@ end
 
 % resets the combine gui by clearing all objects
 resetCombineGUI(handles)
-
-% --- resets the combine GUI objects
-function resetCombineGUI(handles)
-
-% global variables
-global isUpdating
-
-% field retrieval
-hFig = handles.figFlyCombine;
-hTabGrp = getappdata(hFig,'hTabGrp');
-
-% other parameters
-nRow = 4;
-nExp = length(get(hTabGrp,'Children'));
-
-% ------------------------------- %
-% --- FIELD RE-INITIALISATION --- %
-% ------------------------------- %
-
-% if the information GUI is open, then close it
-hGUIInfo = getappdata(hFig,'hGUIInfo');
-if ~isempty(hGUIInfo)
-    hGUIInfo.closeFigure();
-    setappdata(hFig,'hGUIInfo',[]);
-end
-
-% resets the other fields
-setappdata(hFig,'sInfo',[]);
-setappdata(hFig,'iTab',1);
-
-% --------------------------------- %
-% --- OBJECT RE-INITIALISATIONS --- %
-% --------------------------------- %
-
-% object handles
-hPanelO = handles.panelOuter;
-hTable = handles.tableAppInfo;
-hAx = {handles.axesImg,handles.axesStim};
-hPanelP = findall(hPanelO,'type','uipanel');
-
-% ensures the first experiment tab is selected
-if get(get(hTabGrp,'SelectedTab'),'UserData') > 1
-    isUpdating = true;
-    hTab = findall(hTabGrp,'type','uitab','UserData',1);
-    set(hTabGrp,'SelectedTab',hTab);
-    set(hPanelO,'Parent',hTab);
-    pause(0.05)
-    isUpdating = false;
-end
-
-% removes any subsequent tabs from the tab group
-for i = 2:nExp
-    % deletes the tab    
-    hTabR = findall(hTabGrp,'type','uitab','UserData',i);
-    delete(hTabR)
-end
-
-% resets the group name table
-colHdr = {'Sub-Region Group Name','Include?'};
-rowHdr = arrayfun(@(x)(sprintf('Group #%i',x)),(1:nRow)','un',0);
-set(hTable,'Data',cell(nRow,2),'RowName',rowHdr,'ColumnName',colHdr,...
-           'BackgroundColor',ones(nRow,3))
-autoResizeTableColumns(hTable)
-
-% retrieves the valid popup menu, label and editbox object handles
-hObjL = [findall(hPanelO,'style','text');...
-        findall(hPanelO,'style','edit')];
-hObjL = hObjL(arrayfun(@(x)(get(x,'UserData')),hObjL) > 0);
-hObjP = findall(hPanelO,'style','popupmenu');
-
-% resets the 
-arrayfun(@(x)(set(x,'String','')),hObjL)
-arrayfun(@(x)(set(x,'String',' ','Value',1)),hObjP)
-arrayfun(@(x)(setPanelProps(x,'off')),hPanelP)
-
-% clears the axes
-cellfun(@(x)(cla(x)),hAx);
-cellfun(@(x)(axis(x,'off')),hAx);
-cellfun(@(x)(delete(findall(x,'tag','hYLbl'))),hAx);
-
-% disables the save/clear data menu items
-setObjEnable(handles.menuSaveExpt,'off');
-setObjEnable(handles.menuClearData,'off');
-setObjEnable(handles.menuPlotData,'off');
 
 % -------------------------------------------------------------------------
 function menuProgPara_Callback(hObject, eventdata, handles)
@@ -414,11 +336,11 @@ if isUpdating; return; end
 
 % object retrieval
 hFig = handles.figFlyCombine;
-sInfo = getappdata(hFig,'sInfo');
+sInfo0 = getappdata(hFig,'sInfo');
 hGUIInfo0 = getappdata(hFig,'hGUIInfo');
 
 % deletes any previous information GUIs
-if isempty(sInfo)
+if isempty(sInfo0)
     % no data is loaded, so exit function
     return
     
@@ -454,9 +376,19 @@ set(handles.panelOuter,'Parent',hObj)
 
 % creates a variable region information GUI
 sInfo = getCurrentExptInfo(hFig);
-hGUIInfo = FlyInfoGUI(handles,sInfo.snTot,[],false);   
-setappdata(hFig,'hGUIInfo',hGUIInfo);
+if detMltTrkStatus(sInfo.snTot.iMov)
+    hGUIInfo = MultiFlyCheckTrack(hFig,sInfo.snTot); 
+else
+    hGUIInfo = FlyInfoGUI(handles,sInfo.snTot,[],false);   
+end
 
+% updates the information gui field in the main gui
+setappdata(hFig,'hGUIInfo',hGUIInfo)
+
+if isempty(eventdata)
+    resetPlotObjects(handles)
+end
+    
 % resets the experiment information fields
 updateExptInfoFields(handles,sInfo)
 updatePlotObjects(handles,sInfo)
@@ -469,12 +401,15 @@ popupTimeVal(hPopup, [], handles)
 
 % makes the GUI visible
 updateFlag = 0;
-setObjVisibility(hGUIInfo.hFig,'on');
 figFlyCombine_ResizeFcn(hFig,[],handles)
 pause(0.05);
 
 % closes the loadbar
 try; delete(h); end
+
+% sets the gui visibility
+uistack(hGUIInfo.hFig,'top')
+setObjVisibility(hGUIInfo.hFig,'on');
 
 % --- executes on update editSolnDir
 function editSolnDir_Callback(hObject, eventdata, handles)
@@ -516,15 +451,27 @@ pause(0.05);
 calcPhi = isfield(snTot,'Phi');
 Tmlt = getTimeScale(snTot.T{end}(end));
 nFrm = sum(cellfun(@length,snTot.T));
-
-% recalculates the global variables
-nFly = getMaxPlotObjCount(iMov);
-xLimTot = [snTot.T{1}(1) snTot.T{end}(end)]*Tmlt;
-yLimTot = [1 nFly]+0.5*[-1 1];
-pStep = 10^max(floor(log10(nFrm))-3,0);
+isMltTrk = detMltTrkStatus(iMov);
+use2D = iMov.is2D || isMltTrk;
 
 % sets up the popup menu strings
-if iMov.is2D
+if isMltTrk
+    % case is multi-tracking;    
+
+    % sets the fly indices for each region
+    hGUIInfo = getappdata(hFig,'hGUIInfo');
+    iFlyF = hGUIInfo.setupMultiTrackIndices(iMov);
+    
+    popStr0 = cell(length(iMov.pInfo.nFly),1);
+    for i = 1:length(popStr0)
+        popStr0{i} = cellfun(@(x)(sprintf('Region %i (Fly %i-%i)',...
+                            i,x(1),x(end))),iFlyF{i},'un',0);
+    end
+    
+    % converts the array to a straight cell array
+    popStr = cell2cell(popStr0,1);
+    
+elseif iMov.is2D
     % case is the 2D experimental setup
     xiC = 1:iMov.pInfo.nCol;
     popStr = arrayfun(@(x)(sprintf('Column #%i',x)),xiC(:),'un',0);
@@ -532,6 +479,12 @@ else
     % case is the 1D experimental setup
     popStr = setup1DRegionNames(iMov.pInfo,1);
 end
+
+% recalculates the global variables
+nFly = getMaxPlotObjCount(iMov);
+xLimTot = [snTot.T{1}(1) snTot.T{end}(end)]*Tmlt;
+yLimTot = [1 nFly]+0.5*[-1 1];
+pStep = 10^max(floor(log10(nFrm))-3,0);
 
 % initialises the popup menu
 set(handles.popupAppPlot,'string',popStr,'value',1)
@@ -543,7 +496,8 @@ T = cell2mat(snTot.T); T = T(ii);
 % snTot.isDay = {isDay(ii)};
 
 % updates the axis x-limits
-xLim0 = Tmlt*[0 T(end)];
+Tfin = min(vec2sec(getCurrentExptDur(sInfo.iPara)),T(end));
+xLim0 = Tmlt*[0 Tfin];
 xLim = xLim0 + 0.001*diff(xLim0)*[-1 1];
 set(hAx,'xlim',xLim)
 
@@ -578,9 +532,18 @@ end
 if calcPhi; Phi = Px; end
 
 % sets the acceptance flags (dependent on expt setup type)
-if iMov.is2D
-    % case is a 2D setup
-    isOK = any(iMov.flyok,1);
+if isMltTrk
+    % case is multi-tracking
+    fok = combineNumericCells(iMov.flyok);
+else
+    % case is single tracking
+    fok = iMov.flyok;
+end
+    
+% determines which regions are feasible
+if use2D
+    % case is a 2D/multi-tracking setup
+    isOK = any(fok,1);
 else
     % case is a 1D setup
     isOK = ~strcmp(sInfo.gName,'* REJECTED *');
@@ -590,14 +553,14 @@ end
 for i = 1:length(Px)
     if isOK(i)
         Px{i} = snTot.Px{i}(ii,:)/sFac; 
-        if iMov.is2D
+        if use2D
             % if 2D analysis, then set the y-locations as well
             Py{i} = snTot.Py{i}(ii,:)/sFac; 
             if i == 1; T = T(1:(end-1)); end        
         end
 
         % calculates the population speed
-        V{i} = calcPopVel(T,Px{i},Py{i},iMov.flyok(:,i));
+        V{i} = calcPopVel(T,Px{i},Py{i},fok(:,i));
 
         % sets the orientation angles (if calculated)
         if calcPhi; Phi{i} = snTot.Phi{i}(ii,:); end
@@ -619,15 +582,17 @@ if calcPhi; setappdata(hFig,'Phi',Phi); end
 % sets the absolute time values on the time scale
 setAbsTimeAxis(hAx,T,snTot)
 
-% resets the axis properties
-set(hAx,'ytick',(1:nFly)','yLim',[1 nFly] + 0.5*[-1 1],'linewidth',1.5)
-resetXTickMarkers(hAx);
-
-if iMov.is2D
+if isMltTrk
+    lblStr = 'Fly Index';
+elseif iMov.is2D
     lblStr = 'Grid Row Number';
 else
     lblStr = 'Sub-Region Index';
 end
+
+% resets the axis properties
+set(hAx,'ytick',(1:nFly)','yLim',[1 nFly] + 0.5*[-1 1],'linewidth',1.5)
+resetXTickMarkers(hAx);
 
 % updates the axis/label properties
 hLbl = ylabel(hAx,lblStr,'FontUnits','pixels','tag','hYLbl');
@@ -641,8 +606,8 @@ axis(hAx,'on')
 % updates the menu properties
 setObjEnable(handles.menuPlotData,'on')
 updateViewMenu(handles,handles.menuViewXData,1)
-setObjEnable(handles.menuViewYData,snTot.iMov.is2D)
-setObjEnable(handles.menuViewXYData,snTot.iMov.is2D)
+setObjEnable(handles.menuViewYData,use2D)
+setObjEnable(handles.menuViewXYData,use2D)
 
 % updates the position plot
 updatePosPlot(handles,1)
@@ -696,9 +661,12 @@ nAppMx = 9;
 snTot = sInfo.snTot;
 hFig = handles.figFlyCombine;
 hTabGrp = getappdata(hFig,'hTabGrp');
+isMltTrk = detMltTrkStatus(snTot.iMov);
 
 % sets the group name strings
-if snTot.iMov.is2D
+if isMltTrk
+    [cHdr0,gStr] = deal('Region Grouping Names','Region');
+elseif snTot.iMov.is2D
     [cHdr0,gStr] = deal('2D Arena Grouping Names','Column');
 else
     [cHdr0,gStr] = deal('1D Region Grouping Names','Region');
@@ -709,7 +677,7 @@ iok = snTot.iMov.ok(:);
 Data = [sInfo.gName(:) num2cell(iok)];
 
 % sets the table row headers
-if snTot.iMov.is2D
+if snTot.iMov.is2D || isMltTrk
     lblStr = 'Group Name: ';
     rowName = cellfun(@(x)(sprintf('%s #%i',gStr,x)),...
                             num2cell(1:size(Data,1)),'un',0);  
@@ -877,7 +845,7 @@ bgCol = getTableBGColours(handles,sInfo);
 set(hObject,'BackgroundColor',bgCol)
 
 % determines if the individual fly info gui is open            
-if ~isempty(hGUIInfo)
+if ~isempty(hGUIInfo) && isa(hGUIInfo,'FlyInfoGUI')
     % if so, then update the grouping colours
     jT = hGUIInfo.jTable;
     for j = 1:size(bgCol,1)
@@ -1138,7 +1106,7 @@ if ok
         return
     else
         % otherwise, create the error string
-        maxFeasDur = vec2str(sec2vec(sInfo.tDur));
+        maxFeasDur = vec2str(getCurrentExptDur(iParaNw));
         currExptDur = vec2str(getCurrentEditDur(handles));
         eStr = sprintf(['Error! The entered experiment duration is ',...
                         'not feasible:\n\n %s Entered Duration = %s',...
@@ -1158,7 +1126,12 @@ set(hObject,'string',num2str(tExpt0(iType)));
 function moveLimitMarker(pNew,handles,Type,varargin)
 
 % global variables
-global xLimTot
+global xLimTot isUpdating
+
+% if updating the marker elsewhere, then exit
+if isUpdating
+    return
+end
 
 % initialisations
 pDel = 1e-4;
@@ -1289,10 +1262,17 @@ set(findobj(hPanel,'UserData',5),'value',Tvec(5)+1)
 function resetLimitMarker(hAx,xNew,Type)
 
 % global variables
-global yLimTot
+global yLimTot isUpdating
+
+% updates the update flag
+isUpdating = true;
+pause(0.01)
 
 api = iptgetapi(findobj(hAx,'tag',Type));
 api.setPosition([xNew',yLimTot']);
+
+% resets the update flag
+isUpdating = false;
 
 % --- resets the limit marker regions
 function resetLimitMarkerRegion(hAx,xLimNew,Type)
@@ -1335,6 +1315,7 @@ nRowMxT = max(nRowMx);
 xLim = [0,1];
 hPos = findall(hAx,'tag','hPos');
 has2D = any(cellfun(@(x)(x.is2D),sInfo));
+hasMT = any(cellfun(@(x)(detMltTrkStatus(x.snTot.iMov)),sInfo));
 
 % removes/adds any excess/missing group objects
 if length(hPos) > nRowMxT
@@ -1371,7 +1352,7 @@ elseif length(hPos) < nRowMxT
                 'LineWidth',0.5,'visible','off');
 
         % initialises the plot trace for the 2nd plot lines (if 2D)
-        if has2D               
+        if has2D || hasMT             
             % plots the trace
             plot(hAx,NaN,NaN,'color','r','tag','hPos2','UserData',i,...
                 'LineWidth',0.5,'visible','off');                        
@@ -1453,6 +1434,7 @@ else
     hTabSel = get(hTabGrp,'SelectedTab');
     setObjEnable(handles.menuSaveExpt,nTabT>0);
     setObjEnable(handles.menuSaveMulti,nTabT>0);
+    setObjEnable(handles.menuLoadExtnData,nTabT>0)
     setObjEnable(handles.menuClearData,nTabT>0);
     setObjEnable(handles.menuPlotData,nTabT>0);
 end
@@ -1490,7 +1472,6 @@ else
 end
 
 % re-initialises the plot objects
-resetPlotObjects(handles)
 tabSelected(hTabSel,[],handles);
 
 % makes the gui visible again
@@ -1566,6 +1547,7 @@ autoResizeTableColumns(handles.tableAppInfo);
 
 % disables the save/clear data manu items
 setObjEnable(handles.menuSaveExpt,'off')
+setObjEnable(handles.menuLoadExtnData,'off')
 setObjEnable(handles.menuClearData,'off')
 
 % --- initialises the experimental start object properties --- %
@@ -1728,17 +1710,27 @@ sInfo = getCurrentExptInfo(hFig);
 % other initialisations
 snTot = sInfo.snTot;
 iMov = snTot.iMov;
-iApp = get(handles.popupAppPlot,'value');
+nFly = getMaxPlotObjCount(iMov);
+isMltTrk = detMltTrkStatus(iMov);
 
 % updates the region popup indices
-if isempty(Px{iApp}) && (nargin == 2)
-    iApp = find(~cellfun(@isempty,Px),1,'first');
-    set(handles.popupAppPlot,'Value',iApp)    
-end
+if isMltTrk
+    % retrieves the currently selected region
+    [iApp,iBlk] = hGUIInfo.getMultiTrackSelection(iMov);
 
-% retrieves the ok flags
-ok = hGUIInfo.ok;
-nFly = getMaxPlotObjCount(iMov);
+    % sets the visibility flags    
+    ok = hGUIInfo.ok{iApp};
+else
+    % retrieves the currently selected region
+    iApp = get(handles.popupAppPlot,'value');
+    if isempty(Px{iApp}) && (nargin == 2)
+        iApp = find(~cellfun(@isempty,Px),1,'first');
+        set(handles.popupAppPlot,'Value',iApp)    
+    end
+    
+    % sets the visibility flags
+    ok = hGUIInfo.ok;
+end
 
 % other initialisations/parameters
 avgPlot = false;
@@ -1755,26 +1747,26 @@ hMenu = findobj(handles.menuPlotData,'checked','on');
 switch get(hMenu,'tag')
     case ('menuViewXData') 
         % case is the x-locations only
-        [xPlt,yPlt] = deal(setupPlotValues(sInfo,Px,'X',iApp),[]);
+        [xPlt,yPlt] = deal(setupPlotValues(hFig,sInfo,Px,'X',iApp),[]);
         
     case ('menuViewYData') 
         % case is the y-locations only
-        [xPlt,yPlt] = deal([],setupPlotValues(sInfo,Py,'Y',iApp));
+        [xPlt,yPlt] = deal([],setupPlotValues(hFig,sInfo,Py,'Y',iApp));
         
     case ('menuViewXYData') 
         % case is both the x/y-locations 
-        xPlt = setupPlotValues(sInfo,Px,'X',iApp);
-        yPlt = setupPlotValues(sInfo,Py,'Y',iApp);
+        xPlt = setupPlotValues(hFig,sInfo,Px,'X',iApp);
+        yPlt = setupPlotValues(hFig,sInfo,Py,'Y',iApp);
         
     case ('menuOrientAngle') 
         % case is the orientation angles
         Phi = getappdata(hFig,'Phi');
-        [xPlt,yPlt] = deal(setupPlotValues(sInfo,Phi,'Phi',iApp),[]);
+        [xPlt,yPlt] = deal(setupPlotValues(hFig,sInfo,Phi,'Phi',iApp),[]);
         
     case ('menuAvgSpeedIndiv') 
         % case is the avg. speed (individual fly)
         V = getappdata(hFig,'V');
-        [xPlt,yPlt] = deal(setupPlotValues(sInfo,V,'V',iApp),[]);
+        [xPlt,yPlt] = deal(setupPlotValues(hFig,sInfo,V,'V',iApp),[]);
         
     case ('menuAvgSpeedGroup') 
         % case is the avg. speed (group average) 
@@ -1782,7 +1774,7 @@ switch get(hMenu,'tag')
         V = getappdata(hFig,'V');
         
         nFly = length(unique(sInfo.gName));        
-        [xPlt,yPlt] = deal(setupPlotValues(sInfo,V,'Vavg',iApp),[]);
+        [xPlt,yPlt] = deal(setupPlotValues(hFig,sInfo,V,'Vavg',iApp),[]);
         ok = any(~isnan(xPlt),1);
         
 end
@@ -1825,15 +1817,27 @@ if ~isempty(hGrpF)
         [iGrp,isVis] = deal((1:nFly)',num2cell(iMov.ok));
         hGrpF = arrayfun(@(x)(findall(hGrpF,'UserData',x)),iGrp,'un',0);
     else
-        iGrp = getRegionGroupIndices(iMov,sInfo.gName,iApp);   
-        isVis = num2cell(hGUIInfo.ok(:,iApp));
+        iGrp = getRegionGroupIndices(iMov,sInfo.gName,iApp); 
+        if isMltTrk
+            iPlt = hGUIInfo.getMultiTrackPlotIndices(iMov);
+            isVis = num2cell(ok(iPlt));
+        else
+            isVis = num2cell(ok(:,iApp));
+        end
+            
         hGrpF = num2cell(hGrpF);
     end
     
-    % sorts the fields in descending order
-    iiG = (1:length(iGrp))';
+    if isMltTrk && ~avgPlot
+        iiG = (1:length(iPlt))';
+        iGrp = iGrp*ones(size(iiG));
+    else
+        iiG = (1:length(iGrp))';
+    end
+    
+    % sorts the fields in descending order    
     [~,iS] = sort(cellfun(@(x)(get(x,'UserData')),hGrpF));
-    hGrpF = hGrpF(iS);    
+    hGrpF = hGrpF(iS);        
     
     % updates the face colours of the fill objects
     tCol = getAllGroupColours(length(unique(sInfo.gName)));
@@ -1861,11 +1865,13 @@ end
 
 
 % retrieves the handles from the image panel
-hObjImg = findall(handles.axesImg);
-   
+hObjImg = findall(handles.axesImg);   
+
 % determines 
 if avgPlot
     canPlot = true;
+elseif isMltTrk
+    canPlot = any(hGUIInfo.ok{iApp});
 elseif iMov.is2D
     canPlot = any(hGUIInfo.ok(:,iApp));
 else
@@ -1887,6 +1893,8 @@ if canPlot
             % updates the fill object visibility field
             hGrpF = findall(hAx,'UserData',i,'tag','hGrpFill');
             setObjVisibility(hGrpF,okNw);  
+        elseif isMltTrk
+            okNw = ok(iPlt(i));
         else
             okNw = ok(i,iApp);
         end
@@ -1915,10 +1923,19 @@ if canPlot
             setObjVisibility(hPos2Nw,'off');                    
         end                
     end          
-
+    
+    % sets the y-tick label indices
+    if isMltTrk && ~avgPlot
+        iFlyF = hGUIInfo.setupMultiTrackIndices(iMov);
+        yTickInd = iFlyF{iApp}{iBlk};
+    else
+        yTickInd = 1:nFlyF;
+    end
+    
     % updates the axis limits
     yLim = [1 nFlyF]+0.5*[-1.002 1];
-    set(hAx,'yLim',yLim);
+    yTickLbl = arrayfun(@num2str,yTickInd(:),'un',0);
+    set(hAx,'yLim',yLim,'yTickLabel',yTickLbl);
 
     % updates the line height
     x = findall(handles.axesImg,'tag','top line');
@@ -1938,6 +1955,91 @@ end
 % ------------------------------------- %
 % --- OTHER OBJECT UPDATE FUNCTIONS --- %
 % ------------------------------------- %
+
+% --- resets the combine GUI objects
+function resetCombineGUI(handles)
+
+% global variables
+global isUpdating
+
+% field retrieval
+hFig = handles.figFlyCombine;
+hTabGrp = getappdata(hFig,'hTabGrp');
+
+% other parameters
+nRow = 4;
+nExp = length(get(hTabGrp,'Children'));
+
+% ------------------------------- %
+% --- FIELD RE-INITIALISATION --- %
+% ------------------------------- %
+
+% if the information GUI is open, then close it
+hGUIInfo = getappdata(hFig,'hGUIInfo');
+if ~isempty(hGUIInfo)
+    hGUIInfo.closeFigure();
+    setappdata(hFig,'hGUIInfo',[]);
+end
+
+% resets the other fields
+setappdata(hFig,'sInfo',[]);
+setappdata(hFig,'iTab',1);
+
+% --------------------------------- %
+% --- OBJECT RE-INITIALISATIONS --- %
+% --------------------------------- %
+
+% object handles
+hPanelO = handles.panelOuter;
+hTable = handles.tableAppInfo;
+hAx = {handles.axesImg,handles.axesStim};
+hPanelP = findall(hPanelO,'type','uipanel');
+
+% ensures the first experiment tab is selected
+if get(get(hTabGrp,'SelectedTab'),'UserData') > 1
+    isUpdating = true;
+    hTab = findall(hTabGrp,'type','uitab','UserData',1);
+    set(hTabGrp,'SelectedTab',hTab);
+    set(hPanelO,'Parent',hTab);
+    pause(0.05)
+    isUpdating = false;
+end
+
+% removes any subsequent tabs from the tab group
+for i = 2:nExp
+    % deletes the tab    
+    hTabR = findall(hTabGrp,'type','uitab','UserData',i);
+    delete(hTabR)
+end
+
+% resets the group name table
+colHdr = {'Sub-Region Group Name','Include?'};
+rowHdr = arrayfun(@(x)(sprintf('Group #%i',x)),(1:nRow)','un',0);
+set(hTable,'Data',cell(nRow,2),'RowName',rowHdr,'ColumnName',colHdr,...
+           'BackgroundColor',ones(nRow,3))
+autoResizeTableColumns(hTable)
+
+% retrieves the valid popup menu, label and editbox object handles
+hObjL = [findall(hPanelO,'style','text');...
+        findall(hPanelO,'style','edit')];
+hObjL = hObjL(arrayfun(@(x)(get(x,'UserData')),hObjL) > 0);
+hObjP = findall(hPanelO,'style','popupmenu');
+
+% resets the 
+arrayfun(@(x)(set(x,'String','')),hObjL)
+arrayfun(@(x)(set(x,'String',' ','Value',1)),hObjP)
+arrayfun(@(x)(setPanelProps(x,'off')),hPanelP)
+
+% clears the axes
+cellfun(@(x)(cla(x)),hAx);
+cellfun(@(x)(axis(x,'off')),hAx);
+cellfun(@(x)(delete(findall(x,'tag','hYLbl'))),hAx);
+
+% disables the save/clear data menu items
+setObjEnable(handles.menuSaveExpt,'off');
+setObjEnable(handles.menuLoadExtnData,'off')
+setObjEnable(handles.menuClearData,'off');
+setObjEnable(handles.menuPlotData,'off');
 
 % --- resizes the combining GUI objects
 function resetFigSize(h,fPos)
@@ -2067,7 +2169,7 @@ dT = cellfun(@(x)(diff(T([(x-tBin) (x+tBin)]))),num2cell(iVel));
 
 % calculates the inter-frame displacement
 a = zeros(1,size(Px,2));
-if (isempty(Py))
+if isempty(Py)
     % if only 1D, then calculate the inter-frame displacement from x-values
     D = [a;abs(diff(Px,[],1))];
 else    
@@ -2077,24 +2179,34 @@ end
 
 % calculates the distance travelled and the time steps
 for i = 1:size(Vplt,2)
-    if (fok(i))
+    if fok(i)
         dD = cellfun(@(x)(sum(D((x-tBin):(x+tBin),i))),num2cell(iVel));
         Vplt(iVel,i) = dD./dT;
     end
 end
 
 % --- calculates the x/y location data for the plots
-function Z = setupPlotValues(sInfo,Pz,type,iApp)
+function Z = setupPlotValues(hFig,sInfo,Pz,type,iApp)
 
 % parameters
 pW = 1.05;
 snTot = sInfo.snTot;
 iMov = snTot.iMov;
+isMltTrk = detMltTrkStatus(iMov);
 
 % if the region is rejected, then exit with a NaN value
 if isempty(Pz{iApp})
     Z = [];
     return
+end
+
+% sets the plot indices
+if isMltTrk
+    % retrieves the current region selection information
+    hGUIInfo = getappdata(hFig,'hGUIInfo');
+    iPlt = hGUIInfo.getMultiTrackPlotIndices(iMov);        
+else
+    iPlt = 1:size(Pz{iApp},2);
 end
 
 % sets the extremum values (used for normalising the signals
@@ -2119,14 +2231,16 @@ switch type
                 Z(:,ii) = (Pz{iApp}(:,ii)-zMin(i))/(zMax(i)-zMin(i));
             end
         else
-            if iMov.is2D
+            if iMov.is2D || isMltTrk
                 % case is 2D analysis
                 [zMin,zMax] = deal(iMov.iC{iApp}(1)-1,iMov.iC{iApp}(end)-1);                      
             else
                 % case is 1D analysis (old files are missing scale factor)
                 [zMin,zMax] = deal(min(Pz{iApp}(:)),max(Pz{iApp}(:)));
-            end        
-            Z = (Pz{iApp} - zMin)/(zMax - zMin);        
+            end    
+            
+            % calculates the normalised location
+            Z = (Pz{iApp}(:,iPlt) - zMin)/(zMax - zMin);            
         end
         
     case ('Y') 
@@ -2152,16 +2266,19 @@ switch type
             yOfs = iMov.iR{iApp}(1)-1;
             zMin = repmat(iMov.yTube{iApp}(:,1)',size(Pz{iApp},1),1);
             zMax = repmat(iMov.yTube{iApp}(:,2)',size(Pz{iApp},1),1);        
-            Z = (Pz{iApp} - (zMin+yOfs))./(zMax - zMin);
+            
+            % calculates the normalised location
+            Z = (Pz{iApp}(:,iPlt) - (zMin+yOfs))./(zMax - zMin);            
         end
         
     case ('V') 
         % case is average speed
-        Z = Pz{iApp}/(pW*nanmax(Pz{iApp}(:))); 
-        
+        pV = 1/(pW*max(Pz{iApp}(:),[],'omitnan'));
+        Z = pV*Pz{iApp}(:,iPlt); 
+            
     case ('Phi') 
         % case is orientation angle
-        Z = (Pz{iApp} + 180)/360;            
+        Z = (Pz{iApp}(:,iPlt) + 180)/360;            
         
     case ('Vavg')
         % case is the grouped average speed
@@ -2169,10 +2286,14 @@ switch type
         hGUIInfo = getappdata(hFig,'hGUIInfo');
         
         % retrieves the region acceptance flag and grouping indices 
-        flyok = hGUIInfo.ok;
-        iGrp = getRegionGroupIndices(iMov,sInfo.gName);
-        
+        if isa(hGUIInfo,'MultiFlyCheckTrack')
+            flyok = combineNumericCells(hGUIInfo.ok);
+        else
+            flyok = hGUIInfo.ok;
+        end
+       
         % determnes the unique groupings comprising the expt
+        iGrp = getRegionGroupIndices(iMov,sInfo.gName);
         iGrpU = unique(iGrp(iGrp>0),'stable');        
         
         % calculates the avg. velocity based on the grouping type  
@@ -2184,13 +2305,13 @@ switch type
             if isempty(Zgrp{i})
                 Zgrp{i} = NaN(size(Pz{1},1),1);
             else
-                Zgrp{i} = nanmean(Zgrp{i},2);
+                Zgrp{i} = mean(Zgrp{i},2,'omitnan');
             end
         end                        
 
         % normalises the signals to the maximum
         Z = cell2mat(Zgrp);            
-        Z = Z/(pW*nanmax(Z(:)));            
+        Z = Z/(pW*max(Z(:),[],'omitnan'));
 end
 
 % ------------------------------------------- %
@@ -2405,7 +2526,15 @@ end
 % --- calculates the maximum plot object count (for a given expt)
 function nRowMx = getMaxPlotObjCount(iMov)
 
-if iMov.is2D
+if detMltTrkStatus(iMov)
+    % case is the multi-tracking
+    hFig = findall(0,'tag','figFlyCombine');
+    hGUIInfo = getappdata(hFig,'hGUIInfo');          
+    
+    iFlyF = hGUIInfo.setupMultiTrackIndices(iMov);
+    nRowMx = max(cellfun(@(x)(max(cellfun(@length,x))),iFlyF));
+    
+elseif iMov.is2D
     % case is a 2D experiment
     szGrp = size(iMov.pInfo.iGrp);
     nRowMx = max(max(szGrp),max(iMov.pInfo.iGrp(:)));

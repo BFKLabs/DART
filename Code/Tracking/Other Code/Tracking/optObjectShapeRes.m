@@ -16,7 +16,7 @@ while 1
     Isub0 = getAllSubImages(iMov,Img,fPos,sFlag,imgSz);
     
     % optimises the 2D gaussian image from the mean image
-    pLim = cellfun(@(I)(nanmin(I(:))),Isub0);
+    pLim = cellfun(@(I)(min(I(:),[],'omitnan')),Isub0);
     [Iopt0,pOptNw] = opt2DGaussian(Isub0,pLim,pOpt0);
     IoptNw = (1-normImg(Iopt0)).*(Iopt0<0);
 

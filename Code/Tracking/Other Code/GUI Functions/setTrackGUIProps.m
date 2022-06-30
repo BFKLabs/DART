@@ -24,7 +24,6 @@ pData = get(hFig,'pData');
 cType = get(hFig,'cType');
 mkObj = get(hFig,'mkObj');
 rgObj = get(hFig,'rgObj');
-isTest = get(hFig,'isTest');
 
 % retrieves the gui functions
 dispImage = get(hFig,'dispImage');
@@ -214,7 +213,7 @@ switch (typeStr)
         setDetectEnable(handles,'off')
         setTrackGUIProps(handles,'UpdateFrameSelection')
         setMenuEnable(handles,'on',8)
-        setMenuEnable(handles,'off',[2,7])     
+        setMenuEnable(handles,'off',[2,7])
                 
         % resets the status flag 
         iData.Status = 0;        
@@ -557,7 +556,14 @@ switch (typeStr)
             else
                 % otherwise, determine if there is a valid fly locations 
                 % for the current frame
-                [i0,j0] = find(iMov.flyok,1,'first');
+                if iscell(iMov.flyok)
+                    i0 = find(iMov.ok,1,'first');
+                    j0 = find(iMov.flyok{i0},1,'first');
+                else
+                    [i0,j0] = find(iMov.flyok,1,'first');
+                end
+                
+                %
                 hasPos = ~isnan(pData.fPos{j0}{i0}(iData.cFrm,1));                
                 setObjEnable(handles.checkShowMark,hasPos)                                                                 
                 
@@ -968,7 +974,8 @@ function setMenuEnable(handles,state,ind)
 % sets the object tag strings
 objStr = {'menuSaveMovie','menuSaveSoln','menuViewProgress',...
           'menuWinsplit','menuVideoFeed','menuBatchProcess',...
-          'menuManualReseg','menuSplitVideo','menuCorrectTrans'};
+          'menuManualReseg','menuSplitVideo','menuCorrectTrans',...
+          'menuUseGray'};
 
 % sets all the indices (if none are provided)
 if (nargin == 2)

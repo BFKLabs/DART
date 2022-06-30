@@ -44,7 +44,7 @@ iData = get(hGUI.output,'iData');
 addObjProps(hObject,'hGUI',hGUI,'iMov',iMov,'iData',iData,'T',[],...
                     'sFac',iData.exP.sFac,'vType',[],'nNaN',[],...
                     'Dfrm',[],'tTick0',[],'tTickLbl0',[],'phObj',[],...
-                    'iPara',initParaStruct,'dyLim',0.025);
+                    'iPara',initParaStruct,'dyLim',0.025,'isMltTrk',[]);
                                 
 % sets the functions that are to be used outside the GUI
 addObjProps(hObject,'updateFunc',@updatePlotObjects,...
@@ -52,9 +52,12 @@ addObjProps(hObject,'updateFunc',@updatePlotObjects,...
 
 % sets the number of frame read per image stack
 nFrmRS = getFrameStackSize();
-if ~isfield(hObject.iMov,'is2D')
-    hObject.iMov.is2D = is2DCheck(hObject.iMov) || ...
-                        detMltTrkStatus(hObject.iMov);
+hObject.isMltTrk = detMltTrkStatus(hObject.iMov);
+
+if hObject.isMltTrk
+    hObject.iMov.is2D = true;
+elseif ~isfield(hObject.iMov,'is2D')
+    hObject.iMov.is2D = is2DCheck(hObject.iMov);
 end
 
 % if detecting, then don't allow the data tool
@@ -472,8 +475,11 @@ function initMenuObjects(handles)
 
 % retrieves the fly positional data struct
 hGUI = get(handles.output,'hGUI');
+iMov = hGUI.output.iMov;
 pData = hGUI.output.pData;
-hMenu = handles.menuPlotMetrics;
+hMenuP = handles.menuFlyPos;
+isMltTrk = detMltTrkStatus(iMov);
+bFunc = {@menuSelectUpdate,handles};
 
 % sets the menu enable string
 if isempty(pData)
@@ -482,18 +488,44 @@ else
     mStr = 'on'; 
 end
 
+% sets the fly indices for each region (multi-tracking only)
+if isMltTrk
+    % initialisations
+    nFlyMx = 20;
+    nFly = iMov.pInfo.nFly;
+    pInd = cell(length(iMov.iR),1);
+    
+    % sets the fly indices for each 
+    for i = 1:length(pInd)
+        % calculates the number of new menus and the fly count
+        nMenu = ceil(nFly(i)/nFlyMx);
+        nFlyP = ceil(nFly(i)/nMenu);
+        
+        % sets the indices of the fly count for each region
+        pInd{i} = arrayfun(@(x)(...
+                ((x-1)*nFlyP+1):min(nFly(i),(x*nFlyP))),1:nMenu,'un',0)';
+    end
+end
+
 % sets the diagnostic check menu item
 setObjEnable(handles.menuDiagCheck,mStr)
 
 % creates the new apparatus markers
-hMenuP = handles.menuFlyPos;
 for i = find(hGUI.output.iMov.ok(:)')
     % creates the new menu item
-    hMenuNw = uimenu(hMenuP,'Label',sprintf('Region %i',i)); 
-    
-    % sets the menu item callback function
-    bFunc = {@menuSelectUpdate,handles};
-    set(setObjEnable(hMenuNw,mStr),'Callback',bFunc,'UserData',i)    
+    if isMltTrk
+        % creates the menus for each sub-grouping
+        for j = 1:length(pInd{i})
+            uData = [i,pInd{i}{j}([1,end])];
+            lStr = sprintf('Region %i (Fly %i-%i)',i,uData(2),uData(3));
+            hMenuNw = uimenu(hMenuP,'Label',lStr);                 
+            set(hMenuNw,'Callback',bFunc,'UserData',uData,'Enable',mStr)
+        end
+    else
+        % sets the menu item callback function
+        hMenuNw = uimenu(hMenuP,'Label',sprintf('Region %i',i));     
+        set(hMenuNw,'Callback',bFunc,'UserData',i,'Enable',mStr)
+    end
 end
 
 % creates the new menu item
@@ -526,7 +558,7 @@ pInfo = iMov.phInfo;
 % sets the fly count (based on tracking type)
 isMTrk = detMltTrkStatus(iMov);
 if isMTrk
-    nFly = max(iMov.nFlyR(:));
+    nFly = max(iMov.pInfo.nFly);
 else
     nFly = getSRCountMax(iMov);
 end
@@ -632,7 +664,7 @@ end
 for i = 1:NN
     % creates the x-position marker
     plot(hAxI,NaN,NaN,'b','tag','hLineInd','UserData',i,'Linewidth',1);
-    if iMov.is2D 
+    if hFig.iMov.is2D 
         % creates the y-position marker (2D only)
         plot(hAxI,NaN,NaN,'r','tag','hLineInd2',...
                               'UserData',i,'Linewidth',1,'hittest','off');
@@ -753,7 +785,7 @@ end
 % ------------------------------ %
 
 % ensures the average speed menu item is selected
-toggleLineMarker(iMov,hAxI,1)
+toggleLineMarker(hFig.iMov,hAxI,1)
 
 % removes hold from the axis
 hold(hAxI,'off')
@@ -806,7 +838,7 @@ iPara = get(handles.output,'iPara');
 
 % if there is no data, then exit the function
 hMenu = findobj(handles.menuPlotMetrics,'type','uimenu');
-ii = cellfun(@(x)(~isempty(x) && (x > 0)),get(hMenu,'UserData'));
+ii = cellfun(@(x)(~isempty(x) && (x(1) > 0)),get(hMenu,'UserData'));
 hMenu = hMenu(ii);
 
 % determines if the update is possible
@@ -827,16 +859,17 @@ hMenuMet = [get(handles.menuFlyPos,'children');handles.menuAvgSpeed;...
 hMenu = findobj(hMenuMet,'type','uimenu','checked','on');
 
 % retrieves the menu 
-[hAx,iApp] = deal(handles.axesImg,get(hMenu,'UserData'));
+hAx = handles.axesImg;
 hTitle = get(hAx,'Title');
-setObjEnable(handles.menuYData,iApp>0)
+uData = get(hMenu,'UserData');
+setObjEnable(handles.menuYData,uData(1)>0)
 
 % retrieves the fly positonal data struct
 [T,Tmlt] = deal(get(handles.output,'T'),1/60);
 [pDel,nApp] = deal(diff(get(hAx,'xlim'))*0.001,pData.nApp);
 
 % retrieves the menu item handles
-switch iApp
+switch uData(1)
     case 0         
         % case is the average velocity
         
@@ -861,7 +894,7 @@ switch iApp
         if isfield(iMov,'pInfo')
             % case is the new format solution file
             nApp = iMov.pInfo.nGrp;
-            fPos = groupPosValues(iMov,pData.fPos);
+            fPos = groupPosValues(hFig.iMov,pData.fPos);
         else
             % case is the old format solution file
             fPos = pData.fPos;
@@ -939,29 +972,32 @@ switch iApp
         % case is the fly position plot
         
         % makes all the population plot lines invisible and the individual
-        % plot line visible        
-        isMTrk = detMltTrkStatus(iMov);   
-        if isMTrk
-            nFly = getRegionFlyCount(iMov,iApp); 
-            yLblStr = 'Fly Index';
-        else
+        % plot line visible    
+        iApp = uData(1);  
+        tStr = sprintf('Region %i Location',iApp);
+        
+        if length(uData) == 1
             nFly = pData.nTube(iApp);
-            yLblStr = 'Sub-Region Index';
+            [yLblStr,iFly] = deal('Sub-Region Index',1:nFly);
+        else
+            iFly = uData(2):uData(3); 
+            [yLblStr,nFly] = deal('Fly Index',length(iFly));
+            tStr = sprintf('%s (Fly %i-%i)',tStr,uData(2),uData(3));
         end
         
         % toggles the line markers
-        toggleLineMarker(iMov,hAx,4)        
-        set(hTitle,'string',sprintf('Region %i Location',iApp))
+        toggleLineMarker(iMov,hAx,4)               
+        set(hTitle,'string',tStr)
                 
         % sets the visibility of the 2nd line (if 2D or multi-tracking)
-        if iMov.is2D
+        if hFig.iMov.is2D
             setObjVisibility(findobj(hAx,'tag','hLineInd2'),vType(2)); 
         end                
         
         % sets the y-axis limits and strings
         yTick = 1:nFly;
+        fPosNw = pData.fPos{iApp}(iFly);        
         yStr = cellfun(@(x)(sprintf('%i',x)),num2cell(yTick)','un',0);                      
-        fPosNw = pData.fPos{iApp};
         
         % sets/updates the y-axis label
         hYLbl = findall(hAx,'tag','hYLbl');
@@ -981,7 +1017,7 @@ switch iApp
                 xMax = iMov.iC{iApp}(end) - 1; 
             end
             
-            if isMTrk
+            if length(uData) > 1
                 % determines the min/max position values over all flies
                 % within the current region
                 xPosL = cell2mat(cellfun(@(x)...
@@ -990,13 +1026,20 @@ switch iApp
                 xMax = max(xMax,max(xPosL(:,2)));
             end
             
-            XpltN = cellfun(@(x)((x(:,1)-xMin)./(xMax-xMin)),...
-                                        fPosNw,'un',0);
+            % normalises the x-location traces
+            XpltN = cellfun(@(x)...
+                            ((x(:,1)-xMin)./(xMax-xMin)),fPosNw,'un',0);
         end
         
         % calculates the y-coordinates
-        if iMov.is2D && vType(2)
-            if isMTrk
+        if hFig.iMov.is2D && vType(2)
+            if length(uData) == 1
+                yMin = num2cell(iMov.yTube{iApp}(:,1))';
+                yMax = num2cell(iMov.yTube{iApp}(:,2))';
+                
+                YpltN = cellfun(@(x,y,z)((x(:,2)-y)./(z-y)),...
+                                        fPosNw,yMin,yMax,'un',0);                 
+            else
                 % determines the min/max position values over all flies
                 % within the current region
                 yPosL = cell2mat(cellfun(@(x)...
@@ -1005,13 +1048,7 @@ switch iApp
                 yMax = max(iMov.iR{iApp}(end)-1,max(yPosL(:,2)));                
                 
                 YpltN = cellfun(@(x,y,z)((x(:,2)-yMin)./(yMax-yMin)),...
-                                        fPosNw,'un',0); 
-            else
-                yMin = num2cell(iMov.yTube{iApp}(:,1))';
-                yMax = num2cell(iMov.yTube{iApp}(:,2))';
-                
-                YpltN = cellfun(@(x,y,z)((x(:,2)-y)./(z-y)),...
-                                        fPosNw,yMin,yMax,'un',0);                 
+                                        fPosNw,'un',0);                 
             end                           
         end
         
@@ -1025,7 +1062,7 @@ switch iApp
                                 yDel+(1-2*yDel)*(1-XpltN{i}(ii))+(i-0.5))
             end
                             
-            if iMov.is2D && vType(2)
+            if hFig.iMov.is2D && vType(2)
                 ii = 1:min(length(T),length(YpltN{i})); 
                 hLineY = findobj(hAx,'tag','hLineInd2','UserData',i);
                 set(hLineY,'xdata',T(ii)*Tmlt,'yData',...
@@ -1047,7 +1084,7 @@ xLim = [-pDel max(get(hAx,'xlim'))];
 set(hAx,'yticklabel',yStr,'ytick',yTick,'xlim',xLim);
 
 % updates the axis orientation
-if any(iApp == [-1,-2])
+if any(uData(1) == [-1,-2])
     axis(hAx,'xy')
 else
     axis(hAx,'ij') 
@@ -1175,7 +1212,7 @@ Vplt = NaN(nFrm,1);
 
 % calculates the time point displacements between time points
 D = cellfun(@(x)([0;sqrt(sum(diff(x,[],1).^2,2))]),fPos,'un',0);
-Dmean = nanmean(cell2mat(D),2);
+Dmean = mean(cell2mat(D),2,'omitnan');
 
 % determines the valid time frames. if there are none then exit
 ii = ~isnan(Dmean);
@@ -1259,7 +1296,7 @@ if ~exist('yLimT','var'); yLimT = get(hAxI,'yLim'); end
 % other initialisations
 Tmlt = 1/60;
 fAlpha = 0.1;
-dT = nanmedian(diff(T));
+dT = median(diff(T),'omitnan');
 phCol = distinguishable_colors(nPhase);
 [ix,iy] = deal([1,1,2,2,1],[1,2,2,1,1]);
 
@@ -1287,7 +1324,8 @@ if isempty(hMenu)
     
 else
     % retrieves the sub-region indices
-    iApp = get(hMenu,'UserData'); 
+    uData = get(hMenu,'UserData'); 
+    iApp = uData(1);
 end
 
 % --- toggles the line marker visibility properties

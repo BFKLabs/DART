@@ -177,10 +177,10 @@ classdef SingleTrack < Track
                 % histogram matching to the reference image
                 h = phInfo.hmFilt{iApp};
                 Imet = cellfun(@(x)(obj.applyHMFilter(x,h)),IL(:),'un',0); 
-                IL = cellfun(@(x)(x-nanmedian(x(:))),Imet,'un',0); 
+                IL = cellfun(@(x)(x-median(x(:),'omitnan')),Imet,'un',0); 
                 
                 if ~phInfo.hasT(iApp) && (nargout == 2)
-                    BL = cellfun(@(x)(x<nanmean(x(:))),IL,'un',0);
+                    BL = cellfun(@(x)(x<mean(x(:),'omitnan')),IL,'un',0);
                 end
                 
             elseif (nargout == 2)
@@ -199,7 +199,7 @@ classdef SingleTrack < Track
                 IL = cellfun(@(x,p)(obj.applyImgTrans(x,p)),...
                                     IL,num2cell(pOfsT,2),'un',0);                                
                 if phInfo.hasF && (nargout == 2)
-                    BL = cellfun(@(x)(x<nanmean(x(:))),IL,'un',0);
+                    BL = cellfun(@(x)(x<mean(x(:),'omitnan')),IL,'un',0);
                 end                                
             end
             
@@ -384,7 +384,7 @@ end
 %         % if there are any feasible         
 %         if (any(ii))
 %             % calculates the mean pixel tolerance            
-%             pTol = nanmean(field2cell(p{iApp,iPhase}(ii),'pMu',1));
+%             pTol = mean(field2cell(p{iApp,iPhase}(ii),'pMu',1),'omitnan');
 %             
 %             % determines if the max residual is greater than this
 %             % tolerance. if so, then use the residual to calculate the

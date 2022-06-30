@@ -526,10 +526,10 @@ switch (sInfo)
         for i = 1:nGrp
             if (iscell(Data))                
                 isNorm(i) = AnDartest(Data{i}(:),pTol);    
-                vData(i) = nanvar(Data{i}(:));
+                vData(i) = var(Data{i}(:),'omitnan');
             else
                 isNorm(i) = AnDartest(Data(:,i),pTol);    
-                vData(i) = nanvar(Data(:,i));
+                vData(i) = var(Data(:,i),'omitnan');
             end
         end
 

@@ -1,11 +1,11 @@
 % --- adds in the errorbars to the data on the axis, hAx --- %
-function hErr = addBarError(hAx,xi,Y,Ysem,col,lWid)
+function hErr = addBarError(hAx,xi,Y,Ysem,col,lWid,pW)
 
 % sets the default parameters (if not provided)
-if nargin < 6; lWid = 2.5; end
+if ~exist('lWid','var'); lWid = 2.5; end
+if ~exist('pW','var'); pW = 0.75; end
 
 % initialisations and parameters
-pW = 0.75;
 if isempty(xi); xi = 1:length(Y); end
     
 % sets the upper/lower SEM limits

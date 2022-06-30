@@ -642,7 +642,7 @@ if (isExit)
                 % calculates the circumferential angle difference over all
                 % of the frames within the post-edge sequence
                 Qd = sign(PhiC{i}(ii)).*(abs(PhiC{i}(ii))>dPhiTol).*D(jj);
-                eStats(i,1) = 3 + (sign(nanmean(Qd(abs(Qd)>0))) > 0);                 
+                eStats(i,1) = 3 + (sign(mean(Qd(abs(Qd)>0),'omitnan'))>0);
             end
         end
     end

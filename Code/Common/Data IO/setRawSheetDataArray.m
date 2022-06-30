@@ -78,7 +78,7 @@ for i = 1:nApp
             % it into a single array    
             Ynw(cellfun(@isempty,Ynw)) = {NaN(N,1)};
             Y = num2cell(combineNumericCells(cellfun(@(x)(...
-                                nanmean(x,2)),Ynw,'un',0)'));
+                                mean(x,2,'omitnan')),Ynw,'un',0)'));
         end
                             
         % sets the header string

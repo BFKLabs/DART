@@ -140,7 +140,8 @@ classdef OrientationCalc < handle
             % determines if there are a feasible number of points
             if length(iGrp{1}) > 1
                 % rescales the image
-                [ILmn,ILmx] = deal(nanmin(IL(iGrp{1})),nanmax(IL(iGrp{1})));
+                ILmn = min(IL(iGrp{1}),[],'omitnan');
+                ILmx = max(IL(iGrp{1}),[],'omitnan');
                 ILZ = obj.pZ*((IL - ILmn)/(ILmx - ILmn)).^obj.hZ;                
 
                 % sets up and calculate the PCA 

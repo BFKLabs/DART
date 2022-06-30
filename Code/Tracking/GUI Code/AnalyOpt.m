@@ -608,11 +608,12 @@ end
 function popupAlgoType_Callback(hObject, eventdata, handles)
 
 % retrieves the segmentation parameters
+hFig = handles.output;
 uList = get(hObject,'UserData');
 algoType = uList{get(hObject,'Value')};
 
 % sets the algorithm type popup list index
-handles.output.iMov.bgP.algoType = algoType;
+hFig.iMov.bgP.algoType = algoType;
 
 % sets the enabled properties of the separation checkbox (only valid if the
 % user is using multi-tracking)
@@ -620,6 +621,14 @@ setObjEnable(handles.checkSepColours,strContains(algoType,'multi'))
 
 % enables the update button
 setObjEnable(handles.buttonUpdate,'on')
+
+% creates the tracking marker class object
+hAx = findall(hFig,'tag','imgAxes');
+if detMltTrkStatus(hFig.iMov)
+    hFig.mkObj = TrackMarkerClass(hFig,hAx);
+else
+    hFig.mkObj = MultiTrackMarkerClass(hFig,hAx);
+end    
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%    TABLE PARAMETERS    %%%%

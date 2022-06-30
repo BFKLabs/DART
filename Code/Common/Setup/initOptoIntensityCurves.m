@@ -38,7 +38,7 @@ Iy = (I(:,:,1) > pHi) & (I(:,:,2) > pHi) & (I(:,:,3) < pLo);
 % determines the mean y-values of the signals
 A = NaN(sz(1:2));
 A(Ir) = yR;
-YR = nanmean(A,1);
+YR = mean(A,1,'omitnan');
 
 % determines the x/y coordinates of the signal and scales them
 ix = find(~isnan(YR));

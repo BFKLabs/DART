@@ -233,8 +233,8 @@ classdef SingleTrackInitAuto < SingleTrackInit
                 obj.ImaxR{iApp} = ImaxR0 - imopen(ImaxR0,obj.seOpen);
                 
                 % sets up the signal values
-                Imx = nanmax(obj.ImaxR{iApp});
-                Imn = nanmin(obj.ImaxR{iApp});
+                Imx = max(obj.ImaxR{iApp},[],'omitnan');
+                Imn = min(obj.ImaxR{iApp},[],'omitnan');
                 obj.pTolR(iApp) = obj.pW*(Imx+Imn);
                                 
                 % thresholds the signal for the signficant peaks                 
@@ -398,8 +398,8 @@ classdef SingleTrackInitAuto < SingleTrackInit
             end
             
             % calculates the spacing difference between sub-regions
-            Dtot = cell2mat(Dt(:)); 
-            N = hist(Dtot,1:max(Dtot)); 
+            Dtot = cell2mat(Dt(~cellfun(@isempty,Dt))); 
+            N = histcounts(Dtot,1:max(Dtot)); 
             Ns = [0;smooth(N(2:end))];
             
             % calculates the histogram cross-correlation, and from this
@@ -538,8 +538,8 @@ classdef SingleTrackInitAuto < SingleTrackInit
             
             % determines 
             xiPF = xiP(isFeas);
-            tPkTF = tPkTF(~isnan(tPkTF));
-            nTot = arrayfun(@(x)(sum(histc(tPkTF,x+yL([1,end])))),xiPF); 
+            tPkTF = arr2vec(tPkTF(~isnan(tPkTF)));
+            nTot = arrayfun(@(x)(sum(histcounts(tPkTF,x+yL([1,end])))),xiPF); 
             
             % calculates the object functions values for each offset value
             Z = arrayfun(@(x)(min(arr2vec(pdist2(tPkTF,x+yL(:))))),xiPF);            

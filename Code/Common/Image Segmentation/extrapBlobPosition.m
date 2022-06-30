@@ -26,7 +26,7 @@ switch nP
             if any(isnan(a))
                 % case is the filter is invalid, so take the mean of the
                 % coordinates
-                Yex(j) = nanmean(Y(isOK,j));
+                Yex(j) = mean(Y(isOK,j),'omitnan');
             else
                 % otherwise, calculate the extrapolated value
                 [~, zf] = filter(-[0 a(2:end)], 1, Y(isOK,j));  

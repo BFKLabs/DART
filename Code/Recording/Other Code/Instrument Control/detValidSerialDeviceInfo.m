@@ -2,15 +2,14 @@
 function [pStr,iPathID] = detValidSerialDeviceInfo(comAvail,sStr)
 
 % determines the attached usb devices
-utDir = getProgFileName('Code','Common','Utilities','Serial Builds');
-ufFile = fullfile(utDir,'devcon.exe');
+ufFile = which('devcon.exe');
 [~,a] = system(sprintf('"%s" find "%s"',ufFile,'USB*'));
 
 % determines the match between the serial device name strings and the COM
 % port name strings
 b = splitStringRegExp(a,'\n');
-c = cellfun(@(x)(strContains(x,sStr)),b);    
-    
+c = cellfun(@(x)(strContains(x,sStr)),b);     
+
 %
 ind = NaN(length(comAvail),1);
 for i = 1:length(ind)

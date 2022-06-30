@@ -10,25 +10,25 @@ Ic = cell2mat(reshape(I(isOK),[1,1,sum(isOK(:))]));
 % runs the function based on the type
 switch fType
     case 'mean'
-        Ifcn = nanmean(Ic,3);
+        Ifcn = mean(Ic,3,'omitnan');
         
     case 'median'
-        Ifcn = nanmedian(Ic,3);
+        Ifcn = median(Ic,3,'omitnan');
         
     case 'max'
-        Ifcn = nanmax(Ic,[],3);
+        Ifcn = max(Ic,[],3,'omitnan');
         
     case 'min'
-        Ifcn = nanmin(Ic,[],3);
+        Ifcn = min(Ic,[],3,'omitnan');
         
     case 'ptile'
         Ifcn = prctile(Ic,varargin{1},3);
         
     case 'var'
-        Ifcn = nanvar(Ic,[],3);   
+        Ifcn = var(Ic,[],3,'omitnan');   
         
     case 'sum'
-        Ifcn = nansum(Ic,3);      
+        Ifcn = sum(Ic,3,'omitnan');
         
     case 'weighted-sum'
         pW = num2cell(varargin{1}); 

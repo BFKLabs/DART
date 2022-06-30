@@ -280,7 +280,8 @@ classdef FlyInfoGUI < handle
             resetObjPos(obj.hPanel,'width',2*obj.dX,1)
             resetObjPos(obj.hPanel,'height',2*obj.dX,1)
             resetObjPos(obj.hFig,'width',2*obj.dX,1)
-            resetObjPos(obj.hFig,'height',2*obj.dX,1)            
+            resetObjPos(obj.hFig,'height',2*obj.dX,1)  
+            
         end
         
         % --- creates the check table 

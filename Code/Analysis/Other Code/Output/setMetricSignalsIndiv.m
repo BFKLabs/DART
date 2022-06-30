@@ -50,7 +50,7 @@ if ~isempty(iiT)
     % determines if the time vector is greater than a single day
     if (nDayMx > 1)
         % if so, then set the converted daily time vector        
-        dT = roundP(nanmedian(diff(TT{1}{1})));
+        dT = roundP(median(diff(TT{1}{1}),'omitnan'));
         Tnw = ((dT/2):dT:(convertTime(1,'day','sec')-dT/2))';        
         xiD = num2cell(1:nDayMx);
         

@@ -115,7 +115,8 @@ classdef FuncFilterTree < matlab.mixin.SetGet
             durStr = {'Short','Long'};
             iMov = cellfun(@(x)(x.iMov),obj.snTot,'un',0);
             stimP = cellfun(@(x)(x.stimP),obj.snTot,'un',0);
-
+            isMT = cellfun(@(x)(detMltTrkStatus(x)),iMov);
+            
             % calculates the experiment duration in terms of hours
             Ts = cellfun(@(x)(x.T{1}(1)),obj.snTot);
             Tf = cellfun(@(x)(x.T{end}(length(x.T{end}))),obj.snTot);
@@ -143,8 +144,12 @@ classdef FuncFilterTree < matlab.mixin.SetGet
                     obj.fcnInfo{iExp,3} = strjoin(stimStr,'/');
                 end
 
-                % special type string (FINISH ME!)
-                obj.fcnInfo{iExp,4} = 'None';    
+                % special type string 
+                if isMT(iExp)
+                    obj.fcnInfo{iExp,4} = 'MT';
+                else
+                    obj.fcnInfo{iExp,4} = 'None';
+                end
             end          
             
         end

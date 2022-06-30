@@ -5,12 +5,12 @@ function hLgOut = createLegendObj(hPlot,Legend,varargin)
 oStr = {'vertical','horizontal'};
 
 % converts a handle vector to a handle cell array
-if (~iscell(hPlot))
+if ~iscell(hPlot)
     hPlot = num2cell(hPlot);
 end
 
 %
-if (isfield(Legend,'lgHorz'))
+if isfield(Legend,'lgHorz')
     lgHorz = Legend.lgHorz;
     Legend = rmfield(Legend,'lgHorz');
 else

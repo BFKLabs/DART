@@ -5,10 +5,14 @@ function [D1,D2] = getRegionDataStructs(iMov,appPara)
 [D1,D2] = deal([]);
 isNewFormat = isfield(iMov,'pInfo');
 
-if isfield(iMov,'is2D')
-    is2D = iMov.is2D;
+if detMltTrkStatus(iMov)
+    is2D = true;
 else
-    is2D = is2DCheck(iMov);
+    if isfield(iMov,'is2D')
+        is2D = iMov.is2D;
+    else
+        is2D = is2DCheck(iMov);
+    end
 end
     
 % determines if the variable sub-region count has been set

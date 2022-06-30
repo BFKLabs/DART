@@ -304,7 +304,7 @@ else
 end
     
 % sets the steady-state and maximum value
-Yinf = nanmean(Y(floor(length(Y)/2):end));
+Yinf = mean(Y(floor(length(Y)/2):end),'omitnan');
 
 % signal is negative, so set the lower limit to zero
 [Yamp,YampL,YampU] = deal(Ymax,0,10*Ymax);

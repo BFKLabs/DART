@@ -7,14 +7,27 @@ xiC = num2cell(1:length(ii))';
 pInfo = snTot.iMov.pInfo;
 
 % sets up the total configuration index array
-if snTot.iMov.is2D
+if detMltTrkStatus(snTot.iMov)
+    % case is multi-tracking
+
+    % memory allocation
+    gName = repmat({'* REJECTED *'},pInfo.nGrp,1); 
+    cIDT0 = cellfun(@(x)(unique(x(:,1))),cID0(ii),'un',0);
+    cIDT = cell2mat(cellfun(@(x,id)([id(:),...
+                    x*ones(length(id),1)]),xiC(ii),cIDT0,'un',0));
+    
+elseif snTot.iMov.is2D
+    % case is 2D tracking
+    
     % memory allocation
     gName = repmat({'* REJECTED *'},pInfo.nGrp,1);
 
     % sets the original/final group index array
     cIDT = cell2mat(cellfun(@(x,id)([id(:,3),...
-                x*ones(size(id,1),1)]),xiC(ii),cID0(ii),'un',0));        
+                x*ones(size(id,1),1)]),xiC(ii),cID0(ii),'un',0));
 else
+    % case is 1D tracking
+    
     % memory allocation
     gName = repmat({'* REJECTED *'},pInfo.nRow*pInfo.nCol,1);
 

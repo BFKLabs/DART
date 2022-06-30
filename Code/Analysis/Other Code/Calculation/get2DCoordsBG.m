@@ -37,6 +37,7 @@ function [dPx,dPy,Rad] = get2DCoordsBGNew(snTot,iApp)
 
 % memory allocation
 nApp = max(1,length(snTot.Px));
+isMT = detMltTrkStatus(snTot.iMov);
 [dPx,dPy,Rad] = deal(cell(nApp,1));
 
 % retrieves the x/y coordinates and other important quantities
@@ -46,19 +47,29 @@ else
     [Px,Py,iApp] = deal(snTot.Px,snTot.Py,1);
 end
 
+% reduces down the acceptance flag array
+if isMT
+    
+end
+
 % reduces down the x/y-coordinates
 i0 = find(~cellfun(@isempty,Px),1,'first');
 [szG,nFrm] = deal(size(X0),size(Px{i0},1)); 
 
 % calculates the relative x/y-coordinates
-for i = iApp(:)'
-    % retrieves the indices of the grid locations
-    indG = sub2ind(szG,cID{i}(fok{i},1),cID{i}(fok{i},2));
-    
-    % calculates the x/y coordinates (wrt the circle centres)
-    dPx{i} = Px{i}(:,fok{i})/sFac - repmat(arr2vec(X0(indG))',nFrm,1);
-    dPy{i} = Py{i}(:,fok{i})/sFac - repmat(arr2vec(Y0(indG))',nFrm,1);
-    
+for i = iApp(:)'    
+    if isMT
+        % 
+        [dPx{i},dPy{i}] = deal(Px{i}/sFac-X0(i),Py{i}/sFac - Y0(i));
+    else
+        % retrieves the indices of the grid locations
+        indG = sub2ind(szG,cID{i}(fok{i},1),cID{i}(fok{i},2));
+
+        % calculates the x/y coordinates (wrt the circle centres)
+        dPx{i} = Px{i}(:,fok{i})/sFac - repmat(arr2vec(X0(indG))',nFrm,1);
+        dPy{i} = Py{i}(:,fok{i})/sFac - repmat(arr2vec(Y0(indG))',nFrm,1);
+    end
+        
     % sets the radii values for each sub-region in the group
     if length(iMov.autoP.R) == 1
         % case is there is a constant radii value
@@ -122,8 +133,8 @@ PyNw = cellfun(@(x,y)(x(:,y)/sFac),Py,fok,'un',0);
 nFrm = size(PxNw{1},1);
 [xMean,yMean] = deal(cell(1,nApp));
 for i = 1:length(PxNw)
-    xMean{i} = num2cell(nanmean(PxNw{i},1)');
-    yMean{i} = num2cell(nanmean(PyNw{i},1)');
+    xMean{i} = num2cell(mean(PxNw{i},1,'omitnan')');
+    yMean{i} = num2cell(mean(PyNw{i},1,'omitnan')');
 end
 
 % sets the locations of the ends of the regions

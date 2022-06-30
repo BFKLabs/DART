@@ -28,6 +28,7 @@ classdef TrackFull < Track
         
         % boolean/flag fields
         nI = 0;
+        dFrmMax = 10;
         hasProg = false;
         isMultiBatch = false;
         solnChk = false;
@@ -118,8 +119,8 @@ classdef TrackFull < Track
                 
                 % resets the progress struct
                 switch obj.iMov.vPhase(j)
-                    case {1,2}
-                        % case is a low/high-variance phase
+                    case (1)
+                        % case is a low-variance phase
                         
                         % resets the progress data struct
                         obj.resetProgressStruct(j);  
@@ -127,11 +128,23 @@ classdef TrackFull < Track
                         % segments the current phase
                         obj.segVideoPhase(j);
                         
+                    case (2)
+                        % case is a high-variance phase
+                        
+                        % only analyse if the phase is large
+                        if diff(obj.iMov.iPhase(j,:)) > obj.dFrmMax
+                            % resets the progress data struct
+                            obj.resetProgressStruct(j);  
+                        
+                            % segments the current phase
+                            obj.segVideoPhase(j);
+                        end                     
+                        
                     otherwise
                         % case is an untrackable phase
                         obj.pData.isSeg(j) = true;
                         
-                end
+                end                
                       
                 % post-phase segmentation operations
                 if ~obj.calcOK
@@ -171,22 +184,25 @@ classdef TrackFull < Track
                 % sets the progress bar level offset
                 wOfsNw = bOfs + 2;
             end
+
+            % determines the last phase that has been segmented            
+            isSeg = false(size(obj.fObj));
+            okPh = ~cellfun(@isempty,obj.fObj);            
+            isSeg(okPh) = cellfun(@(x)(~isempty(x.fPos)),obj.fObj(okPh));            
+            iPhPr = find(isSeg(1:(iPhase-1)),1,'last');
             
             % retrieves the positional data from the previous phase
-            if iPhase == 1
-                % first phase, so no previous positional data
-                fPosPr = [];
-                
-            elseif obj.iMov.vPhase(iPhase-1) == 3
-                % if previous phase is hi-variance, then no positional data
+            if isempty(iPhPr) || (obj.iMov.vPhase(iPhPr) > 1)
+                % first phase or previous phase is not low-variance, so
+                % don't use previous positional data
                 fPosPr = [];
                 
             else
                 % otherwise, retrieve the data from the tracking object
-                if obj.iMov.vPhase(iPhase-1) == 4
+                if isempty(iPhPr)
                     fPosPr = [];
                 else
-                    fPosPr = obj.fObj{iPhase-1}.fPos;
+                    fPosPr = obj.fObj{iPhPr}.fPos;
                 end
             end
             
@@ -198,20 +214,25 @@ classdef TrackFull < Track
             elseif ~isempty(fPosPr)
                 % otherwise, if data from the previous phase object is
                 % available then use these values
-                iPhPr = iPhase-1;
-                iFrmF = obj.iMov.iPhase(iPhPr,2);
-                prDataPh = obj.sObj.getPrevPhaseData(obj.fObj{iPhPr},iFrmF);
+                iFrmL = obj.iMov.iPhase(iPhPr,2);
+                prDataPh = obj.getPrevPhaseData(obj.fObj{iPhPr},iFrmL);
                 
             else
                 % otherwise, determine the last tracked from the current 
                 % phase. use this to determine the previous data
                 iApp0 = find(obj.iMov.ok,1,'first');
-                iTube0 = find(obj.iMov.flyok(:,iApp0),1,'first');
                 iFrmP = obj.iMov.iPhase(iPhase,1):obj.iMov.iPhase(iPhase,2);
-                isTrk = ~isnan(obj.pData.fPos{iApp0}{iTube0}(iFrmP,1));
+                
+                % determines the first valid tube index
+                if iscell(obj.iMov.flyok)
+                    iTube0 = find(obj.iMov.flyok{iApp0},1,'first');
+                else
+                    iTube0 = find(obj.iMov.flyok(:,iApp0),1,'first');  
+                end
                 
                 % determines the last valid frame in the phase that was
                 % analysed
+                isTrk = ~isnan(obj.pData.fPos{iApp0}{iTube0}(iFrmP,1));                
                 if ~any(isTrk)
                     % if there is none, then determine the last existing
                     % frame that has tracking data
@@ -235,8 +256,16 @@ classdef TrackFull < Track
                     % case is the there are no viable frames
                     prDataPh = obj.prData;                      
                 else
-                    % otherwise, set up the previous phases data struct                    
-                    prDataPh = obj.sObj.setupPrevPhaseData(iFrmLast,iPhase);
+                    % determines if the gap between the current phase and
+                    % the last tracked frame is too large
+                    dFrm = obj.iMov.iPhase(iPhase,1) - iFrmLast;
+                    if dFrm > obj.dFrmMax
+                        % if so, then don't use the previous location data
+                        prDataPh = [];
+                    else                                        
+                        % otherwise, set up the previous phases data struct
+                        prDataPh = obj.sObj.setupPrevPhaseData(iFrmLast);
+                    end
                 end
                 
             end
@@ -250,7 +279,7 @@ classdef TrackFull < Track
             % ------------------------------ %            
             
             % loops through each image stacks segmenting fly locations
-            for i = max(1,obj.pData.nCount(iPhase)):nStack
+            for i = max(1,obj.pData.nCount(iPhase)):nStack                                
                 % updates the progressbar (if one is available)
                 if ~isempty(obj.hProg)
                     wStrNw = sprintf('%s (Stack %i of %i)',...
@@ -267,16 +296,10 @@ classdef TrackFull < Track
                 
                 % retrieves & sets the new image stack 
                 iFrmR = obj.sProg.iFrmR{i};
-                Img = obj.getImageStack(iFrmR);
-                
-                % scales the image stack (if required)
-                if isfield(obj.iMov,'pImg')
-                    pI = obj.iMov.pImg(iPhase,:);
-                    Img = cellfun(@(x)(pI(2)*(x-pI(1))),Img,'un',0);
-                end
+                Img = obj.getImageStack(iFrmR);                
                 
                 % applies the image filter (if required)
-                if ~isempty(obj.hS)
+                if ~isempty(obj.hS) && ~obj.isMulti
                     Img = cellfun(@(x)(imfiltersym(x,obj.hS)),Img,'un',0);
                 end                
                 
@@ -325,7 +348,8 @@ classdef TrackFull < Track
             for iApp = find(obj.iMov.ok(:)')
                 % calculates the offset
                 dX = obj.iMov.iC{iApp}(1) - 1;
-                pOfs = repmat([dX,0],nFrm,1);                                
+                dY = obj.isMulti*(obj.iMov.iR{iApp}(1) - 1);                
+                pOfs = repmat([dX,dY],nFrm,1);                                
                 for iFly = 1:obj.sObj.getSubRegionCount(iApp)
                     % sets the local/global position values
                     obj.pData.fPos{iApp}{iFly}(iFrmR,:) = pOfs + ...
@@ -333,13 +357,16 @@ classdef TrackFull < Track
                     if isprop(fObjP,'fPosL')
                         if ~isempty(fObjP.fPosL)
                             obj.pData.fPosL{iApp}{iFly}(iFrmR,:) = ...
-                            obj.getTrackFieldValues(fObjP.fPosL,iApp,iFly);
+                                        obj.getTrackFieldValues...
+                                        (fObjP.fPosL,iApp,iFly);
                         end
                     end
                     
                     % sets the position metric values
-                    obj.pData.IPos{iApp}{iFly}(iFrmR) = ...
+                    if isprop(fObjP,'IPos')
+                        obj.pData.IPos{iApp}{iFly}(iFrmR) = ...
                              obj.getTrackFieldValues(fObjP.IPos,iApp,iFly);   
+                    end
                                         
                     % sets the orientation angle (if required)
                     if obj.iMov.calcPhi
@@ -374,7 +401,7 @@ classdef TrackFull < Track
                 try
                     % attempts to updates the solution view GUI
                     hSolnT.updateFunc(guidata(hSolnT));
-                catch ME
+                catch
                     % if there was an error, then reset the GUI handle
                     set(obj.hFig,'hSolnT',[])   
                 end
@@ -442,18 +469,18 @@ classdef TrackFull < Track
             % resets the segmentation flags/arrays 
             jPhase = obj.iPhaseS(indS(1));
             xiS = obj.iPhaseS((indS(1)+1):end);
-            obj.iPhase0 = indS(1);
-            obj.iStack0 = max(1,indS(2)-1);                        
+            obj.iPhase0 = indS(1);                                    
             obj.pData.isSeg(xiS) = false;
             obj.pData.nCount(xiS) = 0;
             obj.pData.nCount(jPhase) = max(0,indS(2));
-
+            [obj.iStack0,obj.nCountS] = deal(max(1,indS(2)));
+            
             % loads the progress data file            
             pFile = fullfile(obj.tDir,'Progress.mat');
             A = load(pFile); obj.sProg = A.sProg;
             
             % sets the frames that are to be removed
-            Brmv = false(length(obj.pData.IPos{1}{1}),1);
+            Brmv = false(size(obj.pData.fPos{1}{1},1),1);
             Brmv(cell2mat(obj.iFrmG(xiS)')) = true;
             Brmv(obj.iFrmG{jPhase}(((indS(2)-1)*obj.nFrmS+1):end)) = true;
             
@@ -694,14 +721,19 @@ classdef TrackFull < Track
             else
                 % determines the first feasible region/sub-region
                 iApp0 = find(obj.iMov.ok,1,'first');
-                iTube0 = find(obj.iMov.flyok(:,iApp0),1,'first');
+                if iscell(obj.iMov.flyok)
+                    iTube0 = find(obj.iMov.flyok{iApp0},1,'first');
+                else
+                    iTube0 = find(obj.iMov.flyok(:,iApp0),1,'first');
+                end
                 fPosT = obj.pData.fPos{iApp0}{iTube0};                
 
                 % retrieves the index of the last segmented frame
+                indT = cell2mat(obj.iFrmG(obj.iPhaseS)');
                 isTrk = ~isnan(fPosT(:,1));                
                 
                 % determines the phase to be segmented
-                if ~isTrk(1)
+                if ~isTrk(indT(1))
                     % no frames have been segmented, so start at 1st phase
                     obj.iPhase0 = 1;
                     
@@ -724,11 +756,12 @@ classdef TrackFull < Track
                 % determines the number of tracked frames in the phase. 
                 % from this, determine the number of analysed phase stacks       
                 iFrmS = obj.iMov.iPhase(obj.iPhaseS(obj.iPhase0),:);
-                nFrmTrkPh = sum(isTrk(iFrmS(1):iFrmS(2)));
-                obj.nCountS = ceil(nFrmTrkPh/obj.nFrmS);
+                nFrmTrkMax = ceil((diff(iFrmS)+1)/obj.nFrmS);                
+                nFrmTrkPh = sum(isTrk(iFrmS(1):iFrmS(2)));                
+                obj.nCountS = min(nFrmTrkMax,ceil(nFrmTrkPh/obj.nFrmS)+1);
                 
                 % determines/sets the tracking restart point
-                if (obj.nCountS == 0) && (obj.iPhase0 == 1)
+                if (obj.nCountS == 1) && (obj.iPhase0 == 1)
                     % if so, then no need to reset data
                     resetData = false;
                     
@@ -780,6 +813,8 @@ classdef TrackFull < Track
                             
                             % flag that data reset is not required
                             resetData = false;
+                            iPhT = obj.iPhaseS(obj.iPhase0);
+                            obj.pData.nCount(iPhT) = obj.nCountS;
                             
                         otherwise % user clicked cancel
                             
@@ -823,10 +858,17 @@ classdef TrackFull < Track
                 
                 % sets the video time vector
                 if exist(sumFile,'file')
-                    % retrieves the video file index
-                    [~,fName,~] = fileparts(obj.iData.fData.name);
-                    A = regexp(fName,'\D','split');
-                    iVid = str2double(A{end});
+                    % loads the summary file data
+                    vidSum = load(sumFile);                    
+                    if vidSum.iExpt.Video.nCount == 1
+                        % if only one video, then set the index to 1
+                        iVid = 1;
+                    else                    
+                        % retrieves the video file index
+                        [~,fName,~] = fileparts(obj.iData.fData.name);
+                        A = regexp(fName,'\D','split');
+                        iVid = str2double(A{end});
+                    end
 
                     % if the summary file exists, set the frame time-stamps
                     vidSum = load(sumFile);
@@ -861,9 +903,11 @@ classdef TrackFull < Track
             
             % determine the overall min/max coordinates for all sub-regions
             pMin = cellfun(@(y)(cell2mat(cellfun(@(x)...
-                   (nanmin(x,[],1)),y(:),'un',0))),obj.pData.fPosL,'un',0);
+                   (min(x,[],1,'omitnan')),y(:),'un',0))),...
+                   obj.pData.fPosL,'un',0);
             pMax = cellfun(@(y)(cell2mat(cellfun(@(x)...
-                   (nanmax(x,[],1)),y(:),'un',0))),obj.pData.fPosL,'un',0);
+                   (max(x,[],1,'omitnan')),y(:),'un',0))),...
+                   obj.pData.fPosL,'un',0);
                
             % set the overall x/y-coordinate limits for each sub-region
             isOK = ~cellfun(@isempty,pMin);

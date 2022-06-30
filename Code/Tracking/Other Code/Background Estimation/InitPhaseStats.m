@@ -147,7 +147,7 @@ classdef InitPhaseStats < handle
                     [srD,mType] = deal(obj.bgObj.iMov.srData,3);
                     obj.Imu{2} = cell(1,nApp);                    
                     for i = 1:nApp
-                        iCol = srD.indG(:,1) == i;
+                        iCol = srD.indG{i}(:,1) == i;
                         obj.Imu{2}{i} = mean(pInfo.DimgF(:,iCol),2);
                     end
 
@@ -217,7 +217,7 @@ classdef InitPhaseStats < handle
                         rStr = sprintf('Region #%i',i);
                         hMenuR = uimenu(obj.hMenuP,'Label',rStr);
                       
-                        nSR = sum(srD.indG(:,1) == i);
+                        nSR = sum(srD.indG{i}(:,1) == i);
                         for j = 1:nSR
                             cbFcn = {@obj.menuTrace,[i,j]};
                             srStr = sprintf('Sub-Region #%i',j);
@@ -516,7 +516,7 @@ classdef InitPhaseStats < handle
                 if uD(2) == 0
                     ImuT = obj.Imu{2}{uD(1)};
                 else
-                    indG = obj.bgObj.iMov.srData.indG;
+                    indG = obj.bgObj.iMov.srData.indG{uD(1)}(:,[1,end]);
                     ImuT = obj.Imu{3}{sum(abs(indG - uD),2) == 0};
                 end
                 

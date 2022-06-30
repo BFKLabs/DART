@@ -485,7 +485,7 @@ classdef GridDetect < matlab.mixin.SetGet
             % sets the incoming fields
             obj.isSet = true;
             [obj.trkObj,obj.iMov] = deal(trkObjNw,iMovNw);
-            tPer = roundP(nanmedian(trkObjNw.tPerS));
+            tPer = roundP(median(trkObjNw.tPerS,'omitnan'));
             
             % enables the detection parameter panel and continue button
             setPanelProps(obj.hPanelD,'on');

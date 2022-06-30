@@ -79,7 +79,7 @@ for i = 1:length(dTypeB)
             end
             
             % if there is only one unique channel, then reset the name
-            if length(chName{j}) == 1
+            if length(chName{j}) == 1 && strcmp(dTypeD{j},'Motor')
                 [chName{j},isChange] = deal({'Ch'},true);
             end
         end

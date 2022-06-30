@@ -121,7 +121,7 @@ classdef AvgVidIntensity < handle
                 ImgNw = double(obj.readFrame(i));
                 if ~isempty(ImgNw)
                     % if valid, then calculate the image mean
-                    obj.Iavg{iFile}(i) = nanmean(ImgNw(:));
+                    obj.Iavg{iFile}(i) = mean(ImgNw(:),'omitnan');
                 end
             end
             

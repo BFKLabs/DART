@@ -2,7 +2,7 @@
 function resetLegendAxisPos(hAxB,hLg,dim,dW,wLg)
 
 % ensures the axis handles are stored in a cell array
-if (~iscell(hAxB)); hAxB = {hAxB}; end
+if ~iscell(hAxB); hAxB = {hAxB}; end
 if (nargin < 3); dim = [1 1]; end
 if (nargin < 4); dW = 0; end
 

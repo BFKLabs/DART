@@ -11,7 +11,7 @@ pkTol = 0.10;
 Tp = calcSignalPeriodicity(Z,Tmn);
 
 % removes any non-prominent peaks and calculates the distance btwn them
-[~,tPk,~,P] = findpeaks(Z/nanmax(abs(Z)),'MinPeakHeight',pkTol);
+[~,tPk,~,P] = findpeaks(Z/max(abs(Z),[],'omitnan'),'MinPeakHeight',pkTol);
 tPk = tPk(P/max(P) > pTol);
 if length(tPk) <= 2
     zCOV = NaN;

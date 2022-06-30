@@ -1,6 +1,8 @@
 classdef OpenSolnMultiTab < dynamicprops & handle
+
     % class properties
     properties
+        
         % object handles
         hList
         hTabGrpL
@@ -27,7 +29,9 @@ classdef OpenSolnMultiTab < dynamicprops & handle
     
     % private class properties    
     properties (Access = private)
+        
     	baseObj
+        
     end        
     
     % class methods
@@ -115,7 +119,7 @@ classdef OpenSolnMultiTab < dynamicprops & handle
         end
         
         % --- initialises the tab panel object properties
-        function initObjProps(obj)            
+        function initObjProps(obj)
             
             % object retrieval
             handles = obj.hGUI;            

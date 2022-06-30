@@ -1,21 +1,21 @@
-% --- determines the 
+% --- determines the blob groups within B that overlap that within Bx
 function [kGrp,Bnw] = detGroupOverlap(B,Bx)
 
-%
-if isequal(size(B),size(Bx))
-    iGrp = find(Bx);
-else
-    iGrp = sub2ind(size(B),Bx(:,2),Bx(:,1));
+% initialisations
+[kGrp,Bnw] = deal([],false(size(B)));
+if size(B) ~= size(Bx)
+    Bx = setGroup(Bx,size(B));
 end
 
-%
-[B,jGrp] = deal(double(B>0),getGroupIndex(B>0));
-B(iGrp) = B(iGrp) + 1;
+% determines the blob linear indices and from this determines which blobs
+% overlap with the original
+iGrp = getGroupIndex(B);
+ii = cellfun(@(x)(any(Bx(x))),iGrp);
 
-%
-ii = cellfun(@(x)(mean(B(x))>1),jGrp);
-if (any(ii))
-    [kGrp,Bnw] = deal(jGrp(ii),setGroup(jGrp(ii),size(B)));
-else
-    [kGrp,Bnw] = deal([],false(size(B)));
+% returns the linear indices/binary of the overlapping blobs
+if any(ii)
+    kGrp = iGrp(ii);
+    if nargout > 1
+        Bnw = setGroup(kGrp,size(B));
+    end
 end

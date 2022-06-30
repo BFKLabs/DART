@@ -146,14 +146,13 @@ function initObjProps(handles)
 
 % retrieves the serial device strings from the parameter file
 A = load(getParaFileName('ProgPara.mat'));
-sStr = A.sDev;
 
 % initialisations
 [Y0,X0,diskStr] = deal(10,10,[]);
 
 % determines the serial port and connected device information
 [comA,comD] = getSerialPortInfo();
-pStr = findSerialPort(sStr,1);
+pStr = findSerialPort(A.sDev,1);
 nDev = size(pStr,1);
 
 % sets the detected/available strings
@@ -197,7 +196,7 @@ setappdata(handles.figSerialConfig,'diskStr',diskStr);
 function fStr = setFullString(sStr,Type)
 
 % determines if the the input string is empty
-if (isempty(sStr))
+if isempty(sStr)
     % if so, then output a generic string
     fStr = sprintf('No COM Ports %s',Type);
 else

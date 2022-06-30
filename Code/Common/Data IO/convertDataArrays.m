@@ -6,6 +6,7 @@ function snTot = convertDataArrays(snTot)
 cID = snTot.cID;
 iMov = snTot.iMov;
 pInfo = iMov.pInfo;
+isMT = detMltTrkStatus(iMov);
 
 % determines the number of frames
 i0 = find(~cellfun(@isempty,snTot.Px),1,'first');
@@ -13,7 +14,7 @@ nFrm = size(snTot.Px{i0},1);
 
 % sets the data array fields to 
 pFld = {'Px'};
-if iMov.is2D
+if iMov.is2D || isMT
     pFld = [pFld,{'Py'}]; 
     if iMov.calcPhi
         pFld = [pFld,{'Phi','AxR'}]; 
@@ -27,7 +28,17 @@ for i = 1:length(pFld)
         Z0 = getStructField(snTot,pFld{i});
 
         % converts the data arrays based on the type
-        if iMov.is2D
+        if isMT
+            % case is a multi-tracking experiment setup
+            Zf = arrayfun(@(x)(NaN(nFrm,x)),pInfo.nFly,'un',0);
+            for j = 1:length(cID)
+                for k = 1:size(cID{j},1)
+                    [iApp,iFly] = deal(cID{j}(k,1),cID{j}(k,2));
+                    Zf{iApp}(:,iFly) = Z0{j}(:,k);
+                end
+            end
+        
+        elseif iMov.is2D
             % case is the 2D experimental setup        
             Zf = repmat({NaN(nFrm,pInfo.nRow)},1,pInfo.nCol);        
             for j = 1:length(cID)            

@@ -692,7 +692,7 @@ if iCol == 3
                 
         % if this the test is included, then update the order list
         iPara = iData.tData.iPara{iData.cTab}{1};
-        if (Data{jRow,2})
+        if Data{jRow,2}
             % resets the sheet update flag            
             updateSheet = true;
             if (~any(iPara{1} == jRow))
@@ -724,7 +724,7 @@ if iCol == 3
     
     % removes the selection from the table and updates the current sheet tab
     jTable.changeSelection(-1,-1,false,false);  
-    if (updateSheet); updateSheetData(handles,true); end    
+    if updateSheet; updateSheetData(handles,true); end    
 else
     % removes the selection from the table
     jTable.changeSelection(-1,-1,false,false);

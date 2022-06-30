@@ -1,6 +1,7 @@
 classdef ExptCompObj < handle
     % class properties
     properties
+        
         % data fields
         iSel
         crData
@@ -10,20 +11,23 @@ classdef ExptCompObj < handle
         % parameters
         pDur = 50;
         nExp
+        
     end
     
     % class methods
     methods 
         % --- class contructor methods
-        function obj = ExptCompObj(sInfo)            
+        function obj = ExptCompObj(sInfo)
             
             % sets the derived value fields
             obj.nExp = length(sInfo);           
             
             % sets up the experiment criteria and compatibility flags
-            obj.setupExptCriteriaData(sInfo);
+            obj.setupExptCriteriaData(sInfo);            
             obj.calcCompatibilityFlags();
-            obj.setupExptInfo(sInfo);
+            obj.setupExptInfo(sInfo);            
+            
+%             setupExptCriteriaData
             
         end
         
@@ -35,8 +39,35 @@ classdef ExptCompObj < handle
             
             % updates the experiment criteria and compatibility flags
             obj.setupExptCriteriaData(sInfoNw);
+            obj.getInitCritCheck();
             obj.calcCompatibilityFlags();
             obj.setupExptInfo(sInfoNw)
+            
+        end
+        
+        % --- determines the initial criteria check
+        function getInitCritCheck(obj)
+            
+            % fills in any empty field in the array
+            crDT0 = obj.crData;
+            if isempty(crDT0)
+                return
+            else
+                crDT0(cellfun(@isempty,crDT0)) = {''};
+            end
+            
+            % determines 
+            [crDT,obj.iSel(:)] = deal(num2cell(crDT0,1),true);
+            for i = 1:length(crDT)
+                if i == length(crDT)
+                    % case is a duration field
+                    tDur = cell2mat(crDT{i});
+                    obj.iSel(i) = 100*min(tDur)/max(tDur) > obj.pDur;
+                elseif i > 1
+                    % case is a non-duration field
+                    obj.iSel(i) = length(unique(crDT{i})) == 1;                    
+                end
+            end
             
         end
         
@@ -45,11 +76,12 @@ classdef ExptCompObj < handle
 
             % memory allocation            
             crData0 = cell(obj.nExp,5);
-            setupStr = {'1D','2D'};
+            setupStr = {'1D','2D','MT'};            
 
             % loops through all experiments 
             for i = 1:obj.nExp    
                 % sets the region string (based on type/detection method)
+                isMT = detMltTrkStatus(sInfo{i}.snTot.iMov);
                 regStr = getDetectionType(sInfo{i}.snTot.iMov);
 
                 % determine if stimuli was delivered for the experiment
@@ -63,7 +95,7 @@ classdef ExptCompObj < handle
                 end
 
                 % sets the experiment criteria data for the current expt                
-                crData0{i,1} = setupStr{1+sInfo{i}.is2D};    
+                crData0{i,1} = setupStr{1+sInfo{i}.is2D+isMT};    
                 crData0{i,2} = regStr;    
                 crData0{i,3} = stimStr; 
                 crData0{i,4} = sInfo{i}.snTot.sTrainEx;
@@ -73,6 +105,15 @@ classdef ExptCompObj < handle
             % stores the criteria data into the class object
             obj.crData = crData0;
             obj.iSel = true(size(obj.crData,2),1);
+            
+            % determines if all the 
+            if ~isempty(sInfo)
+                fName = cellfun(@(x)(getFileName(x.sFile)),sInfo,'un',0);
+                fExtn = cellfun(@(x)(getFileExtn(x.sFile)),sInfo,'un',0);
+                if all(strcmp(fExtn,'.msol')) && (length(unique(fName)) == 1)
+                    obj.getInitCritCheck();
+                end
+            end
             
         end
         

@@ -45,6 +45,13 @@ switch (pType)
         I = p{1};
         if ~iscell(I); I = {I}; end
         
+        %
+        if size(I{1},3) == 3
+            I = cellfun(@(x)(uint8(x)),I,'un',0);
+        else
+            I = cellfun(@(x)(double(x)),I,'un',0);
+        end
+        
         %   
         showImage(I{1})
         setappdata(h,'I',I);      
@@ -229,6 +236,8 @@ end
 %
 hImage = findobj(hObject,'Type','Image');
 set(hImage,'cData',I{cFrm});
+
+
 if (~isempty(I{cFrm}))
     axis([1 size(I{cFrm},2) 1 size(I{cFrm},1)])
 else

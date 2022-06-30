@@ -2,11 +2,29 @@ function snTot = splitAcceptanceFlags(snTot)
 
 % initialisations
 cID = snTot.cID;
+isMT = detMltTrkStatus(snTot.iMov);
 [fok0,pInfo] = deal(snTot.iMov.flyok,snTot.iMov.pInfo);
 gName0 = pInfo.gName;
 
 % resets the acceptance flags 
-if snTot.iMov.is2D
+if isMT
+    % case is multi-tracking experiment
+
+    % memory allocation
+    fok = arrayfun(@(x)(false(x,1)),pInfo.nFly,'un',0);    
+    
+    % sets the acceptance flags for each group 
+    for i = 1:length(cID)
+        if ~isempty(cID{i})
+            [iA,~,iC] = unique(cID{i}(:,1));
+            for j = 1:length(iA)
+                [isM,k] = deal(iC==j,iA(j));
+                fok{k}(cID{i}(isM,2)) = true;
+            end
+        end
+    end
+
+elseif snTot.iMov.is2D
     % case is a 2D expt setup
     
     % memory allocation

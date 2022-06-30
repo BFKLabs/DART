@@ -159,7 +159,13 @@ classdef OpenSolnTab < handle
             pause(0.05);
                                                                 
             % updates the experiment comparison class object
-            obj.cObj.updateExptCompData(obj.sInfo);
+            obj.cObj.updateExptCompData(obj.sInfo);  
+            
+            % resets the checkbox values
+            hPanelGrpC = obj.hGUI.panelGroupingCrit;
+            hCheck = findall(hPanelGrpC,'style','checkbox');
+            uD = arrayfun(@(x)(get(x,'UserData')),hCheck);
+            arrayfun(@(h,i)(set(h,'Value',obj.cObj.iSel(i))),hCheck,uD)
             
             % updates the function compatibility tab
             if ~isempty(obj.fcnObj)
@@ -259,7 +265,7 @@ classdef OpenSolnTab < handle
         end
         
         % --- tab selection callback function
-        function tabSelectedFull(obj, hObject, eventdata)
+        function tabSelectedFull(obj, hObject, ~)
             
             % determines the index of the tab that is selected
             iTab = get(hObject,'UserData');

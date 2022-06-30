@@ -484,7 +484,8 @@ X = cell2mat(cellfun(@(x)(x(ii,1)),P','un',0));
 Y = cell2mat(cellfun(@(x)(x(ii,2)),P','un',0));
 
 % calculates the mean speed of the sequence for each fly
-V = nanmean(sqrt(diff(X,[],1).^2 + diff(Y,[],1).^2)./repmat(dT,1,size(X,2)),1);
+V0 = sqrt(diff(X,[],1).^2 + diff(Y,[],1).^2)./repmat(dT,1,size(X,2));
+V = mean(V0,1,'omitnan');
 
 % --- updates the stimuli data fields in the tracking GUI
 function updateTrackingStimFields(hTrack,rtD,iCh)

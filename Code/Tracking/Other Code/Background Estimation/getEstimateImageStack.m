@@ -10,6 +10,11 @@ nStep = 2 + outImgStack;
 
 % initialisations
 delProg = false;
+if isfield(iMov,'useGray')
+    useGray0 = iMov.useGray;
+else
+    useGray0 = true;
+end
 
 % creates a waitbar figure (if one is not created)
 if ~exist('h','var')
@@ -18,10 +23,14 @@ if ~exist('h','var')
     h = ProgBar(wStr,'Image Estimation Stack');
 end
 
+% only grayscale is necessary for phase detection
+iMov.useGray = true;
+
 % creates the video phase class object
 if detMltTrkStatus(iMov)
     % case is multi-tracking
     phObj = VideoPhaseMulti(iData,iMov,h,1+iOfs);
+    phObj.nPhMax = 100;
     phObj.runPhaseDetect();
 else
     % case is single-tracking
@@ -43,6 +52,16 @@ end
 
 % updates the sub-image data struct with the phase information
 iMov = phObj.iMov;
+iMov.useGray = useGray0;
+
+% if using colour images, then determine the best channel indices for each
+% of the phases
+if ~iMov.useGray
+    %    
+    phObj.iMov = iMov;
+    ImgF = phObj.readPhaseImgStack(iMov.iPhase(:,1));
+    iMov.iColPh = detPhaseChannelIndices(iMov,ImgF);
+end
 
 % reads the frames from the images
 if outImgStack

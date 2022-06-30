@@ -18,3 +18,6 @@ else
     % otherwise, determine the size of the image
     frmSz = size(get(hImg,'CData'));
 end
+
+% ignores the 3rd image dimension
+frmSz = frmSz(1:2);

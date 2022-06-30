@@ -215,9 +215,7 @@ sgP = struct('sRate',[],'fRate',[],'sFac',[]);
 snTot = orderfields(struct('T',[],'Px',[],'Py',[],'Phi',[],'AxR',[],...
                            'stimP',stimP,'sTrainEx',sTrainEx,...
                            'isDay',[],'sgP',sgP,'iExpt',iExpt,...
-                           'pMapPx',[],'pMapPy',[],...
-                           'pMapPhi',[],'pMapAxR',[],...
-                           'iMov',[],'Type',1));           
+                           'exD',[],'iMov',[],'Type',1));           
            
 % sub-struct memory allocation    
 initData = true;
@@ -353,7 +351,7 @@ for i = 1:nFile
             % sets the x/y locations of the flies
             dyOfs = a.iMov.iR{j}(i)-1;
             Px{i}{j} = cell2mat(cellfun(@(x)(x(:,1)*sgP.sFac),...
-                            fPos{j},'un',0));
+                                fPos{j},'un',0));
             Py{i}{j} = cell2mat(cellfun(@(x)((x(:,2)+dyOfs)*sgP.sFac),...
                                 fPos{j},'un',0));                             
                             
@@ -453,6 +451,11 @@ end
 
 % back-formats the region data struct
 iMov = backFormatRegionDataStruct(iMov);
+
+% resets the multi-tracking status to 2D
+if detMltTrkStatus(iMov)
+    iMov.is2D = true;
+end
 
 % sets the apparatus/individual fly boolean flags
 snTot.sName = sFile;

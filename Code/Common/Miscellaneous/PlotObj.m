@@ -29,8 +29,6 @@ classdef PlotObj < handle
            
             % ensures the image is stored properly
             if ~iscell(Img)
-                Img = {{Img}}; 
-            elseif ~iscell(Img)
                 Img = {Img};
             end         
             
@@ -56,8 +54,8 @@ classdef PlotObj < handle
             
             % sets the other fields
             obj.nPh = length(obj.Img);
-            obj.nFrm = max(1,cellfun(@length,obj.Img));
-            obj.iFrm = ones(obj.nPh,1);            
+            obj.nFrm = max(1,length(obj.Img));
+            obj.iFrm = 1;            
 
             % updates the image
             obj.updateImage();
@@ -79,7 +77,7 @@ classdef PlotObj < handle
             if isempty(obj.Img{obj.iPh})
                 ImgNw = NaN;
             else
-                ImgNw = obj.Img{obj.iPh}{obj.iFrm(obj.iPh)};
+                ImgNw = obj.Img{obj.iFrm(obj.iPh)};
             end
             
             % updates the image figure
@@ -133,9 +131,9 @@ classdef PlotObj < handle
             % plots the markers for all regions
             for iApp = 1:obj.nApp
                 % sets the x/y pixel offset
-                fP = obj.fPos{iApp,obj.iPh}{obj.iFrm(obj.iPh)};
-                xPlt = fP(:,1) + obj.pOfs(iApp,1);
-                yPlt = fP(:,2) + obj.pOfs(iApp,2);
+                fP = obj.fPos{obj.iFrm};
+                xPlt = fP(:,1) + obj.pOfs(1);
+                yPlt = fP(:,2) + obj.pOfs(2);
                 
                 % updates/creates the plot markers
                 if isempty(obj.hMark{iApp})
