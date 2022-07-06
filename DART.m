@@ -369,20 +369,10 @@ if outDir ~= 0
 end
 
 % -------------------------------------------------------------------------
-function menuSetupProg_Callback(~, ~, ~)
+function menuRunInstaller_Callback(~, ~, handles)
 
-% prompts the user if they really want to update the program
-qStr = 'Are you sure you want to setup a new version of DART?';
-uChoice = questdlg(qStr,'Setup New DART Version','Yes','No','Yes');
-if ~strcmp(uChoice,'Yes')
-    % if not, then exit the function
-    return
-else
-    if ~setupDARTProgram()
-        eStr = 'New DART setup was unsuccessful';
-        waitfor(errordlg(eStr,'Unsuccessful DART Setup','modal'));
-    end
-end
+% runs the dart installer wizard
+DARTInstallerL(handles.figDART);
 
 % -------------------------------------------------------------------------
 function menuAddPackage_Callback(~, ~, ~)
@@ -1089,7 +1079,7 @@ if isdeployed
     setObjEnable(handles.menuUpdateProg,'off')
     setObjEnable(handles.menuOutputProg,'off')
     setObjEnable(handles.menuDeployExe,'off')
-    setObjEnable(handles.menuSetupProg,'off')
+    setObjEnable(handles.menuRunInstaller,'off')
     setObjEnable(handles.menuConfigSerial,'on')
     
 else
@@ -1113,9 +1103,9 @@ end
 setObjVisibility(handles.menuUpdateProg,hasSep)
 setObjVisibility(handles.menuOutputProg,hasSep)
 setObjVisibility(handles.menuDeployExe,hasSep)
-setObjVisibility(handles.menuSetupProg,~isdeployed)
+setObjVisibility(handles.menuRunInstaller,~isdeployed)
 set(handles.menuExeUpdate,'Separator',sepStr{1+hasSep})
-set(handles.menuSetupProg,'Separator',sepStr{1+(uType>0)})
+set(handles.menuRunInstaller,'Separator',sepStr{1+(uType>0)})
 
 % -------------------------------- %
 % --- PARAMETER FILE DETECTION --- %

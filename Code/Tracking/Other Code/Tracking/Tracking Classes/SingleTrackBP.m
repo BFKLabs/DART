@@ -250,7 +250,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             % previous/current videos 
             xiS = iFile+[-1;0];
             dpImgS = diff(obj.bData(iDir).dpImg(xiS,:),[],1);
-            if any(dpImgS ~= 0)
+            if any(dpImgS ~= 0) && ~any(isnan(dpImgS))
                 % update if there is a shift in position
                 obj.iMov = resetRegionPos(obj.iMov,szFrm,dpImgS);
             end

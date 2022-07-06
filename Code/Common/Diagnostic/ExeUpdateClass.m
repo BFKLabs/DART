@@ -239,7 +239,7 @@ classdef ExeUpdateClass < handle
                     waitfor(msgbox(mStr,'No Update Required','modal'))        
                 else
                     % otherwise, set the file size information
-                    obj.fSzT = obj.byte2mbyte(sInfo.size);       
+                    obj.fSzT = obj.byte2mbyte(sInfo.size);
                 end    
             else
                 % otherwise, output an error to screen

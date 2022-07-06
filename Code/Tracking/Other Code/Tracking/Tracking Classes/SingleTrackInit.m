@@ -634,7 +634,7 @@ classdef SingleTrackInit < SingleTrack
             
             % calculates the hm filtered image stack
             Ihm = cellfun(@(x)(applyHMFilter(x)),obj.Img{iPh},'un',0);              
-            for i = 1:obj.nApp
+            for i = find(obj.iMov.ok)
                 % sets up the cross-correlation images
                 IL = cellfun(@(y)(y(iR{i},iC{i})),Ihm,'un',0);
 
@@ -1423,7 +1423,7 @@ classdef SingleTrackInit < SingleTrack
             % parameters and initialisations            
             iRTF = unique(cell2mat(iRT(:)'));     
             nRT = cellfun(@length,iRT);
-            mFlag = zeros(size(iRT));     
+            mFlag = zeros(size(obj.iMov.flyok,1),1); 
             
             % ensures the images are stored in a cell array
             if ~iscell(Isub); Isub = {Isub}; end

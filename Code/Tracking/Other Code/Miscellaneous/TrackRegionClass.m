@@ -543,11 +543,13 @@ classdef TrackRegionClass < handle
 
                         otherwise
                             % force the imrect object to be fixed
-                            setResizable(hROIF,false);                
-                            fcn = makeConstrainToRectFcn('imrect',...
+                            if exist('hROIF','var')
+                                setResizable(hROIF,false);                
+                                fcn = makeConstrainToRectFcn('imrect',...
                                   rPos(1)+[0,rPos(3)],rPos(2)+[0,rPos(4)]);
-                            api.setPositionConstraintFcn(fcn); 
-                            set(findobj(hROIF),'hittest','off')
+                                api.setPositionConstraintFcn(fcn); 
+                                set(findobj(hROIF),'hittest','off')
+                            end
                     end
                 end            
             end
