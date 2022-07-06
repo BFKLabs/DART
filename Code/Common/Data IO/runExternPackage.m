@@ -64,14 +64,28 @@ if isOK
 
         case 'RTTrack'
             % case is real-time tracking object
-            try
-                % creates the class object and updates within the GUI
-                handles = varargin{1};
-                pkgObj = feval('RTTrackObj');                
-                setappdata(handles.figFlyRecord,'rtObj',pkgObj)
+            switch class(varargin{1})
+                case 'struct'
+                    % sets the handle field
+                    handles = varargin{1};            
+                    switch varargin{2}
+                        case 'Init'
+                            % case is initialising the class object
 
-                % runs the recording GUI opening function
-                pkgObj.recordGUIOpen();
+                            % creates the class object and updates the GUI
+                            pkgObj = feval('RTTrackObj');                
+                            setappdata(handles.figFlyRecord,'rtObj',pkgObj)
+
+                            % runs the recording GUI opening function
+                            pkgObj.recordGUIOpen();
+                            
+                        case 'InitAnalysis'
+                            % case is initialising the analysis
+                            pkgObj = getProgFileName('Code',...
+                                        'External Apps','RTTrack',...
+                                        'Analysis Functions');
+                            
+                    end
             end
             
         case 'VideoCalib'
@@ -88,7 +102,7 @@ if isOK
         case 'MultiTrack'
             % case is initialising the multi-tracking object
             switch class(varargin{1})
-                case 'struct'         
+                case 'struct'
                     % case is initialising the tracking objects
                     switch varargin{2}
                         case 'Full'
@@ -98,6 +112,12 @@ if isOK
                         case 'Init'
                             % case is initialising the multi-tracking
                             pkgObj = MultiTrackInit(varargin{1});
+                            
+                        case 'InitAnalysis'
+                            % case is initialising the analysis
+                            pkgObj = getProgFileName('Code',...
+                                        'External Apps','MultiTrack',...
+                                        'Analysis Functions');
                     end
             end 
     end

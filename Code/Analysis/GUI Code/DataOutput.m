@@ -660,7 +660,7 @@ end
 function tableStatTest_CellSelectionCallback(hObject, eventdata, handles)
 
 % if the indices are empty, then exit
-if (isempty(eventdata.Indices)); return; end
+if isempty(eventdata.Indices); return; end
 
 % retrieves the row/column indices
 hasTest = getappdata(handles.figDataOutput,'hasTest');
@@ -917,7 +917,7 @@ function metTableCellSelect(hObject, eventdata)
 global canEditCell
 
 % if the indices are empty, then exit
-if ((isempty(eventdata.Indices)) || (~canEditCell))
+if isempty(eventdata.Indices) || ~canEditCell
     return; 
 end
 
@@ -934,25 +934,25 @@ metType = getappdata(handles.figDataOutput,'metType');
 pInd = iData.tData.iSel(iData.cTab);
 
 % sets the table java object (if not set)
-if (isempty(getappdata(hObject,'jTable')))
+if isempty(getappdata(hObject,'jTable'))
     setappdata(hObject,'jTable',getJavaTable(hObject))
 end
 
 % only open set up the statistic test type if the correct column is
 % selected
-if ((iCol == 3) && (pInd == 2))
+if (iCol == 3) && (pInd == 2)
     % retrieves the data struct
     Data = get(hObject,'Data');                     
 
     % determined if a valid test type was selected
     [metInd,isChange] = MetricStats(iData,iRow,pInd);      
-    if (isChange)
+    if isChange
         % retrieves the order and metric index arrays        
         [iOrder,mIndF] = deal(iData.tData.iPara{iData.cTab}{pInd}{1},find(metInd)');        
                 
         % determines which of the indices (which were previously set) have
         % been included in the new selection. remove those that are missing
-        if (Data{iRow,2})
+        if Data{iRow,2}
             [ok1,ok2] = deal(iOrder(:,1) ~= iRow,find(iOrder(:,1) == iRow));                
             ok1(ok2) = cellfun(@(x)(any(x==mIndF)),num2cell(iOrder(ok2,2)));
 
@@ -2342,7 +2342,7 @@ Data = expandWorksheetTable(Data);
 
 % sets the table java object (if not set)    
 hTab = getSheetTableHandle(handles);
-if (isempty(jTab))        
+if isempty(jTab)
     setappdata(hTab,'jTable',getJavaTable(hTab))
 end    
 

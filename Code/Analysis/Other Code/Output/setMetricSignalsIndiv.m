@@ -40,15 +40,15 @@ if ~isempty(iiT)
     
     % retrieves the time vector array (ensures is cell arrays)
     TT = field2cell(plotD,xVar(iiT).Var);
-    if (~iscell(TT{1})); TT = cellfun(@(x)({x}),TT,'un',0); end   
+    if ~iscell(TT{1}); TT = cellfun(@(x)({x}),TT,'un',0); end   
     
     %
-    if (length(TT{1}) < nExp)
+    if length(TT{1}) < nExp
         TT = cellfun(@(x)(repmat(x,1,nExp)),TT,'un',0);
     end
     
     % determines if the time vector is greater than a single day
-    if (nDayMx > 1)
+    if nDayMx > 1
         % if so, then set the converted daily time vector        
         dT = roundP(median(diff(TT{1}{1}),'omitnan'));
         Tnw = ((dT/2):dT:(convertTime(1,'day','sec')-dT/2))';        
@@ -81,7 +81,7 @@ else
     % otherwise, set the index based on the dependency
     hasTime = false;
     T0 = eval(sprintf('plotD.%s',xDepT{1}));
-    if (isnumeric(T0)); T0 = num2cell(T0); end
+    if isnumeric(T0); T0 = num2cell(T0); end
     
     nDayMx = max(nDay);
     [T(:,1),T(:,2)] = deal({repmat(T0,nDayMx,1)},{T0});
@@ -143,22 +143,22 @@ for j = 1:nLvl
     Ytmp = cell(1,nApp);
     if (j == 1)
         Ynw = Ytmp; 
-        [j0,j1] = deal(NaN(nApp,1));
+%         [j0,j1] = deal(NaN(nApp,1));
     end
     
     %
-    for k = 1:nApp           
-        if (j == 1)
+    for k = 1:nApp
+        if j == 1
             % memory allocation
             for i = 1:nExp; Y{k}(:,~fok{i}{k},i) = {[]}; end
             
             %
             isE = cellfun(@isempty,Y{k});
             for i = 1:size(isE,3)
-                if (any(arr2vec(isE(:,:,i))))
+                if any(arr2vec(isE(:,:,i)))
                     % determines which is the first non-empty cell
                     k0 = find(~isE(:,:,i),1,'first');
-                    if (isempty(k0))
+                    if isempty(k0)
                         % if there are none, then base on the time vector
                         Yemp = NaN(size(T{i,2}));                        
                     else
@@ -177,8 +177,8 @@ for j = 1:nLvl
             Ytmp = cellfun(@(x)(cell2mat(x)),num2cell(Y{k},1),'un',0);     
             
             % combines the data with the time vectors
-            if (noID)
-                if (hasTime)
+            if noID
+                if hasTime
                     Ynw{k} = cellfun(@(t,x)([t,combineNumericCells(x(:)')]),...
                         T(:,1),reshape(num2cell(Ytmp,2),size(T(:,1))),'un',0);
                     YnwI = cellfun(@(x)(x(:,2:end)),Ynw{k},'un',0);                    
@@ -188,7 +188,7 @@ for j = 1:nLvl
                     YnwI = cellfun(@(x)(cell2mat(x(:,2:end))),Ynw{k},'un',0);
                 end                                                                     
             else
-                if (hasTime)
+                if hasTime
                     Ynw{k} = cellfun(@(id,t,x)([id,t,combineNumericCells(x(:)')]),...
                         iD,T(:,1),reshape(num2cell(Ytmp,2),size(T(:,1))),'un',0);
                     YnwI = cellfun(@(x)(x(:,3:end)),Ynw{k},'un',0);                    
@@ -205,8 +205,8 @@ for j = 1:nLvl
             
             %
             for i = 1:length(j0)
-                if (isempty(j0{i})); j0{i} = 1; end
-                if (isempty(j1{i})); j1{i} = size(YnwI{i},1); end
+                if isempty(j0{i}); j0{i} = 1; end
+                if isempty(j1{i}); j1{i} = size(YnwI{i},1); end
             end
             
             [i0,i1] = deal(min(cell2mat(j0)),max(cell2mat(j1)));
@@ -225,9 +225,9 @@ for j = 1:nLvl
                 Ygrp{j,k} = cellfun(@(x)(x(i0:i1,:)),Ynw{k},'un',0);
                 
             case (2) % case is signals are separated over all days                
-                if (iData.sepDay)                
+                if iData.sepDay
                     % resets the final combined output array
-                    if (hasTime)
+                    if hasTime
                         Ygrp{j,k} = cellfun(@(t,x)([t,cell2mat(x(:)')]),T(:,2),...
                                 reshape(num2cell(Ytmp{k},2),size(T(:,2))),'un',0);
                     else

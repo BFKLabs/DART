@@ -2561,7 +2561,7 @@ function scanPlotFuncDir(handles)
 % scans the plotting function directory for any functions
 iProg = getappdata(handles.figFlyAnalysis,'iProg');
 dDir = iProg.DirFunc;
-
+        
 % initialises the struct for the plotting function data types
 a = struct('fcn',[],'Name',[],'fType',[],'fDesc',[],'rI',[]);
 pDataT = struct('Indiv',[],'Pop',[],'Multi',[]);
@@ -2582,7 +2582,7 @@ if isdeployed
     else
         % otherwise, set the file names relative to the analysis file
         % directory on the new computer
-        fFile = cellfun(@(x)(fullfile(dDir,x)),fName,'un',0);
+        fFile = cellfun(@(x)(fullfile(dDir{1},x)),fName,'un',0);
     end
 
     % determines if any of the files are missing from where they should be
@@ -2614,9 +2614,22 @@ if isdeployed
         end  
     end
 else
+    % retrieves all potential analysis function directories
+    mtDir = feval('runExternPackage','MultiTrack',handles,'InitAnalysis');
+    rtDir = feval('runExternPackage','RTTrack',handles,'InitAnalysis');        
+    dDir = {dDir;mtDir;rtDir};
+    
     % sets the partial/full file names
-    fName = field2cell(dir(fullfile(dDir,'*.m')),'name');
-    fFile = cellfun(@(x)(fullfile(dDir,x)),fName,'un',0);
+    [fName,fFile] = deal(cell(length(dDir),1));
+    for i = 1:length(fName)        
+        fName{i} = field2cell(dir(fullfile(dDir{i},'*.m')),'name');
+        if ~isempty(fName{i})
+            fFile{i} = cellfun(@(x)(fullfile(dDir{i},x)),fName{i},'un',0);
+        end
+    end
+    
+    % converts the cell of cell arrays to a single cell array
+    [fName,fFile] = deal(cell2cell(fName),cell2cell(fFile));
 end
 
 % determines all the valid m-files in the plotting function directory 

@@ -114,7 +114,7 @@ setappdata(hObject,'infoObj',infoObj)
 setappdata(hObject,'iStim',infoObj.iStim);
 
 % runs the external packages
-feval('runExternPackage','RTTrack',handles);
+feval('runExternPackage','RTTrack',handles,'Init');
 feval('runExternPackage','VideoCalib',handles);
 
 % ------------------------------------------ %

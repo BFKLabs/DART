@@ -11,27 +11,27 @@ end
 [lStr,iSel] = deal(get(hPopup,'string'),get(hPopup,'value'));
 
 % sets the values based on the dependent variable type and selection
-switch (get(hPopup,'userdata'))
-    case ('Time') % case is the independent variable is time
-        switch (lStr{iSel})
-            case ('Seconds') % case is time is in seconds
+switch get(hPopup,'userdata')
+    case 'Time' % case is the independent variable is time
+        switch lStr{iSel}
+            case 'Seconds' % case is time is in seconds
                 [timeStr,tMlt] = deal('(secs)',1);
-                tRnd = 1/(1 + 9*(length(lStr) < 4));
-            case ('Minutes') % case is time is in minutes
+                tRnd = 1/(1 + 999*(length(lStr) < 4));
+            case 'Minutes' % case is time is in minutes
                 [timeStr,tMlt] = deal('(mins)',1/60);
                 tRnd = 0.1/(1 + 9*(length(lStr) < 4));
-            case ('Hours') % case is time is in hours   
+            case 'Hours' % case is time is in hours   
                 [timeStr,tMlt,tRnd] = deal('(hrs)',1/(60*60),0.001);
-            case ('Days') % case is time is in days
+            case 'Days' % case is time is in days
                 [timeStr,tMlt,tRnd] = deal('(days)',1/(24*60*60),0.0001);
         end
-    case ('Dist') % case is the independent variable is distance
-        switch (lStr{iSel})
-            case ('Millimetres') % case is distance is in millimetres
+    case 'Dist' % case is the independent variable is distance
+        switch lStr{iSel}
+            case 'Millimetres' % case is distance is in millimetres
                 [timeStr,tMlt,tRnd] = deal('(mm)',1,1);
-            case ('Centimetres') % case is distance is in centimetres
+            case 'Centimetres' % case is distance is in centimetres
                 [timeStr,tMlt,tRnd] = deal('(cm)',1/10,0.1);
-            case ('Metres') % case is distance is in metres
+            case 'Metres' % case is distance is in metres
                 [timeStr,tMlt,tRnd] = deal('(m)',1/1000,0.001);
         end    
 end
