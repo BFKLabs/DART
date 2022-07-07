@@ -1025,6 +1025,7 @@ setObjVisibility(handles.menuAddPackage,hasPackageFile);
 % creates the Git menu items
 if exist('GitFunc','file') && ~isdeployed
     feval('setupGitMenus',handles.figDART)
+    checkGitFuncVersion();
 end
 
 % loads the button image data file
