@@ -96,9 +96,13 @@ classdef ResetVideoPara < handle
                 obj.Ibg{i} = NaN(diff(yL)+1,diff(xL)+1);
                 Ibg0 = iMov{i}.Ibg{argMin(iMov{i}.vPhase)};                
                 for j = 1:length(Ibg0)
-                    iRL = iR{j} - (yL(1)-1);
-                    iCL = iC{j} - (xL(1)-1);
-                    obj.Ibg{i}(iRL,iCL) = Ibg0{j};
+                    if detMltTrkStatus(iMov{i})
+                        obj.Ibg{i} = Ibg0;
+                    else
+                        iRL = iR{j} - (yL(1)-1);
+                        iCL = iC{j} - (xL(1)-1);
+                        obj.Ibg{i}(iRL,iCL) = Ibg0{j};
+                    end
                 end
                 
                 % fills in any gaps

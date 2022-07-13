@@ -1,8 +1,12 @@
 % --- creates the split region index map mask
-function iMov = createRegionIndexMap(iMov)
+function iMov = createRegionIndexMap(iMov,frmSz0)
+
+% sets the default input arguments
+if ~exist('frmSz0','var')
+    frmSz0 = getCurrentImageDim();
+end
 
 % memory allocation
-frmSz0 = getCurrentImageDim();
 [aP,sD] = deal(iMov.autoP,iMov.srData);
 [nFly,nApp] = size(aP.X0);
 [Imap,iGrp] = deal(zeros(frmSz0),cell(nFly,nApp));

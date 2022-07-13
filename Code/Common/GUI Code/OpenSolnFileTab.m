@@ -14,9 +14,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
         jTabGrp  
         
         % explorer tree objects
-        jMov
-        jRoot 
-        jTree
+        ftObj
         
         % experiment info table objects
         tabCR1
@@ -141,10 +139,10 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % creates a tab panel group
             obj.nExp = length(obj.sInfo);
             obj.hTabGrp = createTabPanelGroup(hPanelT,1);
-            set(obj.hTabGrp,'position',tabPos,'tag','hTabGrp')
-
+            set(obj.hTabGrp,'position',tabPos,'tag','hTabGrp')            
+            
             % creates the tabs for each code difference type
-            [obj.hTab,obj.hPanel] = deal(cell(obj.nTab,1));
+            [obj.hTab,obj.hPanel,obj.ftObj] = deal(cell(obj.nTab,1));
             for i = 1:obj.nTab
                 % creates the new tab panel
                 obj.hTab{i} = createNewTabPanel(...
@@ -156,7 +154,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                                         'Pixel','Position',pPos);
                 set(obj.hPanel{i},'Parent',obj.hTab{i});
                 resetObjPos(obj.hPanel{i},'Bottom',5)          
-            end
+            end                        
 
             % pause to allow figure update
             obj.resetStorageArrays(1)
@@ -187,11 +185,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 obj.createFileExplorerTree()
 
                 % determines if a tree was created
-                hasTree(i) = ~isempty(obj.jRoot{i});
-                if ~hasTree(i)
-                    % if not, then disable the tab
-                    obj.jTabGrp.setEnabledAt(i-1,false)
-                end
+                hasTree(i) = obj.ftObj{i}.ok;
+                obj.jTabGrp.setEnabledAt(i-1,hasTree(i))
             end
 
             % sets the first valid tab
@@ -299,25 +294,18 @@ classdef OpenSolnFileTab < dynamicprops & handle
         function tableUpdateSel(obj, ~, ~)
 
             % text object handles strings
-            handles = obj.hGUI;
-            hButtonAdd = handles.buttonAddSoln;
-            txtTag = {'textFileCount','textSelectedCount','textRootDir'};
-            bgCol = {0.94*ones(1,3),[1,0,0]};
+            nSel = 0;
+            handles = obj.hGUI;            
+            txtTag = {'textFileCount','textSelectedCount','textRootDir'};            
             
-            % if there is no information then exit
-            if isempty(obj.jMov{obj.iTab})
-                nSel = 0;
-            else
-                % sets the new selected movie count
-                isSel = cellfun(@(x)(strcmp(get(x,...
-                        'SelectionState'),'selected')),obj.jMov{obj.iTab});    
-                nSel = sum(isSel);            
+            % sets the new selected movie count
+            if obj.ftObj{obj.iTab}.ok
+                iSel = obj.ftObj{obj.iTab}.getCurrentSelectedNodes();
+                nSel = length(iSel);            
             end
 
-            % updates the batch process running menu item
-            canAdd = nSel > 0;
-            setObjEnable(hButtonAdd,canAdd)
-            set(hButtonAdd,'BackGroundColor',bgCol{1+canAdd});
+            % updates the add button properties
+            obj.updateAddButtonProps(nSel>0);            
             
             if obj.pathUpdate
                 % sets the new text label strings
@@ -342,6 +330,19 @@ classdef OpenSolnFileTab < dynamicprops & handle
             end
                 
         end         
+        
+        % --- updates the add solution file button properties
+        function updateAddButtonProps(obj,canAdd)
+            
+            % initialisations
+            bgCol = {0.94*ones(1,3),[1,0,0]};
+            hButtonAdd = obj.hGUI.buttonAddSoln;
+            
+            % add file button properties            
+            setObjEnable(hButtonAdd,canAdd)
+            set(hButtonAdd,'BackGroundColor',bgCol{1+canAdd});
+            
+        end        
         
         % --- creates the experiment information table
         function createExptInfoTable(obj)
@@ -692,10 +693,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
         % ------------------------------------ %
         
         % --- creates the file explorer tree
-        function createFileExplorerTree(obj,sDirNw)
-           
-            % imports the checkbox tree
-            import com.mathworks.mwswing.checkboxtree.*
+        function createFileExplorerTree(obj,sDirNw)           
 
             % sets the default input arguments
             if ~exist('sDirNw','var')
@@ -716,157 +714,26 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 end
             end
 
-            % deletes any existing tree objects
-            hPanelS = obj.hPanel{obj.iTab};
-            jTreeOld = findall(hPanelS,'type','hgjavacomponent');
-            if ~isempty(jTreeOld); delete(jTreeOld); end
-
-            % creates the file tree structure in the panel
-            [jRootNw,sFileNw,jMovNw] = obj.setFileDirTree(sDirNw);             
-            if isempty(jRootNw)
-                % if there was an error, then exit
-                return   
-            end
-
-            % updates the object fields with the new objects/values
-            obj.sDir{obj.iTab} = sDirNw;
-            obj.sFile{obj.iTab} = sFileNw;
-            obj.jMov{obj.iTab} = jMovNw;
-            obj.jRoot{obj.iTab} = jRootNw;
+            % creates the file tree explorer for the file type
+            [fExtnNw,hP] = deal(obj.fExtn{obj.iTab},obj.hPanel{obj.iTab});
+            obj.ftObj{obj.iTab} = FileTreeExplorer(hP,sDirNw,fExtnNw);
             
-            % updates the file selection information
-            obj.tableUpdateSel([],[])            
+            % if there were matches, then update the information fields
+            if obj.ftObj{obj.iTab}.ok
+                % updates the table information
+                obj.sDir{obj.iTab} = sDirNw;
+                obj.sFile{obj.iTab} = obj.ftObj{obj.iTab}.sFileT;
+                
+                % updates the table information
+                mTreeNw = obj.ftObj{obj.iTab}.mTree;
+                set(mTreeNw,'MouseClickedCallback',{@obj.tableUpdateSel});
+            end
+            
+            % disables the add button
+            obj.updateAddButtonProps(0);
             
         end        
-        
-        % --- sets up the file directory tree structure
-        function [jRoot,mFile,hM] = setFileDirTree(obj,sDir)
-
-            % imports the checkbox tree
-            import com.mathworks.mwswing.checkboxtree.*
-
-            % other initialisations
-            dX = 10;
-            fType = obj.fExtn{obj.iTab};
-            hObj = obj.hPanel{obj.iTab};            
-
-            % searches the batch processing movie directory for movies
-            obj.sFileT = obj.findFileAll(sDir,fType);
-            if isempty(obj.sFileT)
-                % closes the loadbar and sets empty variables for outputs
-                [jRoot,mFile,hM] = deal([]);                    
-                return
                 
-            else
-                sInfoT = obj.sInfo;
-                if ~isempty(sInfoT)        
-                    % if there is stored info, then reduce down the 
-                    % information to the fields corresponding to the 
-                    % selected file type tab
-                    sInfoT = sInfoT(...
-                                cellfun(@(x)(x.iTab==obj.iTab),sInfoT));
-                end
-
-                if ~isempty(sInfoT)
-                    % removes the search files that are already loaded
-                    switch obj.iTab
-                        case 1                
-                            % video solution files
-                            sFileL = cell2cell(cellfun(@(x)...
-                                (x.snTot.sName),sInfoT,'un',0));  
-                            isKeep = ~any(cell2mat(cellfun(@(x)...
-                                (strcmp(obj.sFileT,x)),sFileL,'un',0)'),2);                                                                
-
-                        otherwise
-                            % experiment solution files
-                            exFile = cellfun(@(x)...
-                                    (x.sFile),sInfoT,'un',0);
-                            isKeep = ~any(cell2mat(cellfun(@(x)(strcmp...
-                                    (obj.sFileT,x)),exFile(:)','un',0)),2);
-                    end
-
-                    % removes any of the files that are loaded
-                    obj.sFileT = obj.sFileT(isKeep);
-                end
-
-                % removes any infeasible solution file directories 
-                % (soln file only)
-                if obj.iTab == 1    
-                    obj.sFileT = obj.removeInfeasSolnDir(obj.sFileT);
-                end
-
-                % otherwise, determine the directory struct from the movies
-                dirStr = obj.detDirStructure(sDir,obj.sFileT);
-                obj.hMovT = cell(length(obj.sFileT),1);
-            end    
-
-            % creates the root checkbox node
-            sDirT = getFinalDirString(sDir);
-
-            % sets up the root node based on whether there are valid files
-            if isempty(obj.sFileT)
-                % case is there are no valid files
-                jRoot = DefaultCheckBoxNode('No Valid Files Detected!');
-            else
-                % sets up the directory trees structure
-                jRoot = DefaultCheckBoxNode(sDirT);
-                jRoot = obj.setSubDirTree(jRoot,dirStr,sDirT);    
-            end
-
-            % retrieves the object position
-            objP = get(hObj,'position');
-
-            % creates the final tree explorer object
-            obj.jTree = com.mathworks.mwswing.MJTree(jRoot);
-            jTreeCB = handle(CheckBoxTree...
-                            (obj.jTree.getModel),'CallbackProperties');
-            jScrollPane = com.mathworks.mwswing.MJScrollPane(jTreeCB);
-
-            % creates the scrollpane object
-            tPos = [dX*[1 1],objP(3:4)-2*dX];
-            [~,~] = createJavaComponent(jScrollPane,tPos,hObj);
-
-            % sets the callback function for the mouse clicking of 
-            % the tree structure
-            set(jTreeCB,'MouseClickedCallback',{@obj.tableUpdateSel})
-
-            % sets the output variables
-            if nargout > 1
-                [mFile,hM] = deal(obj.sFileT,obj.hMovT);
-            end
-
-        end
-        
-        % --- sub-directory tree setup for the directories in dirStr --- %
-        function jTree = setSubDirTree(obj,jTree,dirStr,dirC)
-
-            % imports the checkbox tree
-            import com.mathworks.mwswing.checkboxtree.*
-
-            % adds all the nodes for each of the sub-directories
-            for i = 1:length(dirStr.Names)    
-                jTreeNw = DefaultCheckBoxNode(dirStr.Names{i});
-                nodeStr = fullfile(dirC,dirStr.Names{i});
-                jTreeNw = obj.setSubDirTree(jTreeNw,dirStr.Dir(i),nodeStr);
-                jTree.add(jTreeNw);                
-            end
-
-            % if there are any files detected, then add them to the list
-            if ~isempty(dirStr.Files)
-                for i = 1:length(dirStr.Files)
-                    % determines the matching movie file name
-                    fStr = fullfile(dirC,dirStr.Files{i});
-                    ii = cellfun(@(x)(strContains(x,fStr)),obj.sFileT);      
-
-                    % creates the new node
-                    [jTreeNw,obj.hMovT{ii}] = ...
-                                deal(DefaultCheckBoxNode(dirStr.Files{i}));
-                    jTree.add(jTreeNw)                    
-                end        
-            end
-
-        end
-        
         % --------------------------------- %
         % --- OBJECT CALLBACK FUNCTIONS --- %
         % --------------------------------- %        
@@ -875,7 +742,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
         function buttonSetDirCB(obj, ~, ~)
 
             % determines if the explorer tree exists for the current tab
-            if ~isempty(obj.jRoot{obj.iTab})
+            if obj.ftObj{obj.iTab}.ok
                 % if the tree explorer exists for this tab, then prompt the 
                 % user ifthey actually want to overwrite the locations
                 tStr = 'Reset Search Root?';
@@ -919,9 +786,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
             tDir = obj.iProg.TempFile;
 
             % sets the full names of the selected files
-            isSel = cellfun(@(x)(strcmp(get...
-                    (x,'SelectionState'),'selected')),obj.jMov{obj.iTab});
-            sFileS = obj.sFile{obj.iTab}(isSel);
+            iSel = obj.ftObj{obj.iTab}.getCurrentSelectedNodes();
+            sFileS = obj.sFile{obj.iTab}(iSel);
 
             % allocates memory for the 
             switch obj.iTab
@@ -1094,43 +960,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             setObjEnable(obj.baseObj.hGUI.buttonClearExpt,0);
             obj.updateSolnFileGUI(~isempty(mName));
            
-        end
-        
-        % --- updates the solution file GUI
-        function updateSolnFileGUI(obj,hasFile)
-            
-            % sets the default input argument
-            if ~exist('hasFile','var'); hasFile = true; end
-            
-            % creates a loadbar
-            hLoad = ProgressLoadbar('Updating Loaded Data Information...');
-            
-            % sets the full tab group enabled properties (if it exists)
-            obj.nExp = length(obj.sInfo);
-            obj.resetFullTabProps();            
-
-            % recreates the explorer tree
-            obj.createFileExplorerTree()
-            if ~hasFile; return; end
-
-            % if loading files through the analysis gui, then update the
-            % experiment information for the other tabs
-            obj.baseObj.updateFullGUIExpt();
-                                  
-            % updates the solution file/added experiments array
-            obj.updateExptInfoTable(hLoad)               
-
-            % updates the added experiment objects
-            handles = obj.hGUI;
-            setPanelProps(handles.panelExptInfo,'on');
-            setObjEnable(handles.buttonClearAll,'on');
-            set(handles.textExptCount,'string',num2str(obj.nExp),...
-                                      'enable','on')                       
-            
-            % updates the change flag
-            obj.isChange = true;          
-            
-        end        
+        end                
         
         % --- callback function for clicking buttonClearExpt
         function buttonClearExptCB(obj, hObject, ~)
@@ -1278,7 +1108,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
             setObjEnable(handles.buttonShowProtocol,0)
             setObjVisibility(handles.tableGroupNames,0)
             setObjEnable(handles.menuScaleFactor,0);
-            setObjEnable(handles.menuCombExpt,0);            
+            setObjEnable(handles.menuCombExpt,0);
+            setObjEnable(handles.menuLoadExtnData,0);
             set(handles.textExptCount,'string',0)
 
             % disables the added experiment information fields
@@ -1461,6 +1292,42 @@ classdef OpenSolnFileTab < dynamicprops & handle
         % --- MISCELLANEOUS FUNCTIONS --- %
         % ------------------------------- %           
         
+        % --- updates the solution file GUI
+        function updateSolnFileGUI(obj,hasFile)
+            
+            % sets the default input argument
+            if ~exist('hasFile','var'); hasFile = true; end
+            
+            % creates a loadbar
+            hLoad = ProgressLoadbar('Updating Loaded Data Information...');
+            
+            % sets the full tab group enabled properties (if it exists)
+            obj.nExp = length(obj.sInfo);
+            obj.resetFullTabProps();            
+
+            % recreates the explorer tree
+            obj.createFileExplorerTree()
+            if ~hasFile; return; end
+
+            % if loading files through the analysis gui, then update the
+            % experiment information for the other tabs
+            obj.baseObj.updateFullGUIExpt();
+                                  
+            % updates the solution file/added experiments array
+            obj.updateExptInfoTable(hLoad)               
+
+            % updates the added experiment objects
+            handles = obj.hGUI;
+            setPanelProps(handles.panelExptInfo,'on');
+            setObjEnable(handles.buttonClearAll,'on');
+            set(handles.textExptCount,'string',num2str(obj.nExp),...
+                                      'enable','on')                       
+            
+            % updates the change flag
+            obj.isChange = true;          
+            
+        end        
+        
         % --- appends the new solution information 
         function appendSolnInfo(obj,snTot,sFile,expFile)
 
@@ -1544,8 +1411,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             end            
 
             % initialises the other array objects 
-            [obj.jMov,obj.jRoot,obj.jTree,obj.sFile] = ...
-                                                deal(cell(obj.nTab,1));
+            [obj.ftObj,obj.sFile] = deal(cell(obj.nTab,1));
         
         end        
         

@@ -1,18 +1,11 @@
 % --- updates the object, hObj, with the font data struct, Font --- %
 function updateFontProps(hObj,Font,ind,Type)
 
-% global variables
-global regSz newSz
-
 % ensures the objects are stored in a cell array
 if ~iscell(hObj); hObj = num2cell(hObj); end
 
-% determines the font ratio
-if isempty(newSz) || isempty(regSz)
-    fR = 1;
-else
-    fR = min(newSz(3:4)./regSz(3:4))*get(0,'ScreenPixelsPerInch')/72;
-end
+% determines the fontsize ratio
+fR = getFontSizeRatio();
 
 % sets the subplot index to one (if not provided)
 if nargin < 3

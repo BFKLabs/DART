@@ -29,12 +29,13 @@ global isAllMet updateFlag figPos0
 
 % sets the input arguments
 hGUI = varargin{1};
-figPos0 = get(hGUI.figUndockPlot,'position');
 
-% retrieves the 
-iProg = getappdata(hGUI.figUndockPlot,'iProg');
-hPara = getappdata(hGUI.figUndockPlot,'hPara');
-hGUIM = getappdata(hGUI.figUndockPlot,'hGUI');
+% retrieves the undocked 
+hFigU = hGUI.figUndockPlot;
+figPos0 = get(hFigU,'position');
+iProg = getappdata(hFigU,'iProg');
+hPara = getappdata(hFigU,'hPara');
+hGUIM = getappdata(hFigU,'hGUI');
 
 % determines the number of apparatus  
 hFigM = hGUIM.figFlyAnalysis;
@@ -57,7 +58,8 @@ setappdata(hGUIM.figFlyAnalysis,'pData',pData);
 
 % if so, then prompt the user if they want to output all the figures
 if (sum(isCalc) > 1) && (nReg == 1)
-    qStr = 'Multiple calculations exist. Do you wish to output current or all figures?';
+    qStr = ['Multiple calculations exist. Do you wish to output ',...
+            'current or all figures?'];
     uChoice = questdlg(qStr,'Figure Output Type','Current Figure',...
                             'All Figures','Cancel','Output Current');
     switch (uChoice)
@@ -114,6 +116,7 @@ setappdata(hObject,'iPara',initParaStruct(handles,hGUI))
 setappdata(hObject,'hPara',hPara)
 setappdata(hObject,'pData',pDataNw)
 setappdata(hObject,'fInd0',fInd)
+setappdata(hObject,'sPara',sPara)
 
 % Choose default command line output for SaveFigure
 handles.output = hObject;
@@ -457,9 +460,19 @@ else
 end
 
 % initialisations
+sPara = getappdata(handles.figSaveFig,'sPara');
 [isNewFig,ii] = deal(false,strfind(imgName,'.'));
 lStr = 'Outputing Figures To File';
 imgName0 = imgName(1:(ii(end)-1));
+
+% if using subplots, then remove the sub-panel highlight colour
+useSub = size(sPara.pos,1) > 1;
+if useSub
+    hPS = findall(fig,'tag','subPanel','HighlightColor',[1,0,0]);
+    if ~isempty(hPS)
+        set(hPS,'HighlightColor',[1,1,1])
+    end
+end
 
 % determines if all the figures are to be output
 try
@@ -534,7 +547,7 @@ for i = 1:N
     
     % outputs the figure based on the file extension        
     if ~isempty(findobj(figNw,'type','axes'))
-        switch (fExtn)
+        switch fExtn
             case ('eps') % case is an .eps image file
                 if isPainters
                     set(figNw,'Renderer','painters','RendererMode','manual');
@@ -579,6 +592,11 @@ for i = 1:N
     if isNewFig
         close(figNw);
     end
+end
+
+% resets the sub-panel highlight (if one exists)
+if useSub && ~isempty(hPS)
+    set(hPS,'HighlightColor',[1,0,0])
 end
 
 % --- Executes on button press in buttonClose.

@@ -18,7 +18,7 @@ switch length(hFigL)
         pOverlap = sum(pFig(:,3:4),1)./scrSz(3:4);        
         
         % determines which alignment is optimal
-        if ~exist('iDim','var')c
+        if ~exist('iDim','var')
             iDim = argMin(pOverlap);
         end
         

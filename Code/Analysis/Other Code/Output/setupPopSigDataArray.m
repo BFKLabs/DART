@@ -51,7 +51,7 @@ for j = 1:length(iOrder)
     end
 
     % retrieves the time unit string/multiplier
-    if (~isnan(tMlt))
+    if ~isnan(tMlt)
         tStr{j} = sprintf('Time %s',timeStr); 
     else        
         xDepS = cellfun(@(x)(x{1}),field2cell(pData.oP.yVar(mIndG),'xDep'),'un',0);
@@ -128,7 +128,7 @@ end
 clear DataF; pause(0.05);
 
 % converts the time signals to strings
-if (~isnan(tRnd))
+if ~isnan(tRnd)
     iiT = logical(cell2cell(iiT,0));
     switch (tRnd)
         case (1)

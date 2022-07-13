@@ -57,10 +57,11 @@ i0 = find(~cellfun(@isempty,Px),1,'first');
 [szG,nFrm] = deal(size(X0),size(Px{i0},1)); 
 
 % calculates the relative x/y-coordinates
-for i = iApp(:)'    
+for j = 1:length(iApp)  
+    i = iApp(j);
     if isMT
-        % 
-        [dPx{i},dPy{i}] = deal(Px{i}/sFac-X0(i),Py{i}/sFac - Y0(i));
+        [xOfs,yOfs] = deal(X0(j),Y0(j)-iMov.iR{j}(1)+1);
+        [dPx{i},dPy{i}] = deal(Px{i}/sFac-xOfs,Py{i}/sFac-yOfs);
     else
         % retrieves the indices of the grid locations
         indG = sub2ind(szG,cID{i}(fok{i},1),cID{i}(fok{i},2));

@@ -10,6 +10,7 @@ classdef ExptCompObj < handle
         
         % parameters
         pDur = 50;
+        isSaving
         nExp
         
     end
@@ -17,10 +18,11 @@ classdef ExptCompObj < handle
     % class methods
     methods 
         % --- class contructor methods
-        function obj = ExptCompObj(sInfo)
+        function obj = ExptCompObj(sInfo,isSaving)
             
             % sets the derived value fields
-            obj.nExp = length(sInfo);           
+            obj.nExp = length(sInfo);   
+            obj.isSaving = isSaving;
             
             % sets up the experiment criteria and compatibility flags
             obj.setupExptCriteriaData(sInfo);            
@@ -39,7 +41,7 @@ classdef ExptCompObj < handle
             
             % updates the experiment criteria and compatibility flags
             obj.setupExptCriteriaData(sInfoNw);
-            obj.getInitCritCheck();
+%             obj.getInitCritCheck();
             obj.calcCompatibilityFlags();
             obj.setupExptInfo(sInfoNw)
             
@@ -65,7 +67,23 @@ classdef ExptCompObj < handle
                     obj.iSel(i) = 100*min(tDur)/max(tDur) > obj.pDur;
                 elseif i > 1
                     % case is a non-duration field
-                    obj.iSel(i) = length(unique(crDT{i})) == 1;                    
+                    if isstruct(crDT{i}{1})
+                        % case is a struct field
+                        if isfield(crDT{i}{1},'sTrain')
+                            % case is the stimuli train fields
+                            sT = cell(size(crDT{i}));
+                            ii = ~cellfun(@isempty,sT);                            
+                            
+                            if (length(sT) > 1) && all(ii)
+                                sT = cellfun(@(x)(x.sTrain),crDT{i},'un',0);
+                                obj.iSel(i) = all(cellfun(@(x)...
+                                        (isequal(x,sT{1})),sT(2:end)));
+                            end
+                        end                        
+                    else
+                        % case is a string field
+                        obj.iSel(i) = length(unique(crDT{i})) == 1;
+                    end
                 end
             end
             
@@ -110,7 +128,8 @@ classdef ExptCompObj < handle
             if ~isempty(sInfo)
                 fName = cellfun(@(x)(getFileName(x.sFile)),sInfo,'un',0);
                 fExtn = cellfun(@(x)(getFileExtn(x.sFile)),sInfo,'un',0);
-                if all(strcmp(fExtn,'.msol')) && (length(unique(fName)) == 1)
+                if obj.isSaving || (all(strcmp(fExtn,'.msol')) && ...
+                                   (length(unique(fName)) == 1))
                     obj.getInitCritCheck();
                 end
             end

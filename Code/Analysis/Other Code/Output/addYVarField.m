@@ -23,12 +23,12 @@ yVarNw = struct('Name',Name,'Var',Var,'Stats',[],'Type',[],...
                 'xDep',[],'isRaw',false);
 
 % sets the sub-fields
-if (exist('Stats','var')); yVarNw.Stats = Stats; end
-if (exist('xDep','var')); yVarNw.xDep = xDep; end
-if (exist('isRaw','var')); yVarNw.isRaw = isRaw; end
+if exist('Stats','var'); yVarNw.Stats = Stats; end
+if exist('xDep','var'); yVarNw.xDep = xDep; end
+if exist('isRaw','var'); yVarNw.isRaw = isRaw; end
 
 % sets the output type boolean vector
-if (exist('Type','var'))
+if exist('Type','var')
     yVarNw.Type = setGroup(Type(:),[1 nOut]);     
 else
     yVarNw.Type = setGroup([],[1 nOut]); 

@@ -1,5 +1,5 @@
 function varargout = FlyAnalysis(varargin)
-% Last Modified by GUIDE v2.5 29-Jan-2022 11:06:45
+% Last Modified by GUIDE v2.5 12-Jul-2022 05:15:21
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -81,6 +81,7 @@ setappdata(hObject,'hDART',hDART)
 setappdata(hObject,'iData',iData)
 setappdata(hObject,'gPara',gPara)
 setappdata(hObject,'iProg',iData.ProgDef)
+setappdata(hObject,'objDim0',getInitObjDim(hObject))
 
 % sets the default input opening files
 sDir = {iData.ProgDef.DirSoln;iData.ProgDef.DirComb;iData.ProgDef.DirComb};
@@ -411,7 +412,8 @@ if fIndex == 0
     return
 else
     % clears the fields
-    [sPara.pData(:),sPara.plotD(:),sPara.ind(:)] = deal({[]},{[]},NaN);
+    sPara.calcReqd(:) = false;
+    [sPara.pData(:),sPara.plotD(:),sPara.ind(:)] = deal({[]},{[]},NaN);    
     
     % outputs the subplot data struct to file
     save(fullfile(fDir,fName),'sPara');
@@ -650,8 +652,8 @@ end
 % determines if there are any subplots set
 if size(sPara.pos,1) > 1
     % if so, then clear all the indices and other data arrays
-    sPara.ind(:) = NaN;
     [sPara.plotD{:},sPara.pData{:}] = deal([]);            
+    [sPara.ind(:),sPara.calcReqd(:)] = deal(NaN,true);
     setappdata(hFig,'sPara',sPara);
     
     % updates the subplot index popup menu
@@ -686,8 +688,7 @@ if ~isempty(hPara)
     % updates the parameter GUI data struct
     [eInd,fInd,pInd] = getSelectedIndices(handles);
     if fInd > 0        
-        resetRecalcObjProps(handles,'Yes')
-        
+        resetRecalcObjProps(handles,'Yes')        
         pObj = getappdata(hPara,'pObj');
         pObj.updatePlotData(pData{pInd}{fInd,eInd});
     else
@@ -758,7 +759,7 @@ end
 % ------------------------------ %
 
 % --------------------------------------------------------------------
-function menuSubPlot(hObject, eventdata)
+function menuSubPlot(hObject, eventdata, sInd0)
 
 % initialisations
 handles = guidata(hObject);
@@ -768,8 +769,10 @@ hMenuSP = handles.menuSubPlot;
 hPara = getappdata(hFig,'hPara');
 sPara = getappdata(hFig,'sPara');
 pData = getappdata(hFig,'pData');
-sInd0 = getappdata(hFig,'sInd');
 fObj = getappdata(hFig,'fObj');
+
+% sets the default input arguments
+if ~exist('sInd0','var'); sInd0 = getappdata(hFig,'sInd'); end
 
 % retrieves the new subplot index
 switch class(hObject)
@@ -829,6 +832,12 @@ if ~isempty(sPara.pData{sInd}) && ~any(isnan(sPara.ind(sInd,:)))
         pObj = getappdata(hPara,'pObj');
         pObj.initAnalysisGUI()
     end
+    
+    % updates the recalculation button properties if calc required
+    if sPara.calcReqd(sInd)
+        resetRecalcObjProps(handles,'Yes')
+    end
+    
 else
     % otherwise, remove the plot list
     setSelectedNode(handles)    
@@ -846,6 +855,77 @@ else
     [gCol,hButton] = deal((240/255)*[1 1 1],handles.buttonUpdateFigure);
     set(setObjEnable(hButton,'off'),'BackgroundColor',gCol)
 end
+
+% --------------------------- %
+% --- VIEW ITEM FUNCTIONS --- %
+% --------------------------- %
+
+% -------------------------------------------------------------------------
+function menuOptSize_Callback(~, ~, handles)
+
+% global variables
+global updateFlag
+
+% initialisations
+dXY = 10;
+hFig = handles.figFlyAnalysis;
+hPanelFL = handles.panelFuncList;
+objDim0 = getappdata(hFig,'objDim0');
+
+% resets the object dimensions
+updateFlag = 2;
+cellfun(@(x,y)(set(x,'Position',y)),objDim0{1},objDim0{2});
+updateFlag = 0;
+
+% resets the function list object (if it exists)
+hSP = findall(hPanelFL,'Type','hgjavacomponent');
+if ~isempty(hSP)
+    pPosFL = get(hPanelFL,'Position');
+    resetObjPos(hSP,'Width',pPosFL(3)-dXY);
+    resetObjPos(hSP,'Height',pPosFL(4)-dXY);
+end
+
+% resizes the figure
+figFlyAnalysis_ResizeFcn(hFig, [], handles)
+    
+% -------------------------------------------------------------------------
+function menuMaxSize_Callback(~, ~, handles)
+
+% global variables
+global updateFlag
+
+% sets the update flag to active
+updateFlag = 2;
+pause(0.01);
+
+% initialisations
+dXY = 10;
+hFig = handles.output;
+hPanelFL = handles.panelFuncList;
+
+% retrieves the java-frame object
+wState = warning('off','all');
+jFrame = get(handle(hFig),'JavaFrame');
+jFrame.setMaximized(true);
+
+% % update the figure position
+% fPos = get(hFig,'Position');
+% resetFigSize(handles,fPos)
+
+% resets the function list object (if it exists)
+hSP = findall(hPanelFL,'Type','hgjavacomponent');
+if ~isempty(hSP)
+    pPosFL = get(hPanelFL,'Position');
+    resetObjPos(hSP,'Width',pPosFL(3)-dXY);
+    resetObjPos(hSP,'Height',pPosFL(4)-dXY);
+end
+
+% resizes the figure
+figFlyAnalysis_ResizeFcn(hFig, [], handles)
+
+% resets the warnings
+warning(wState);
+updateFlag = 0;
 
 % ------------------------------ %
 % --- TOOLBAR ITEM FUNCTIONS --- %
@@ -1043,8 +1123,9 @@ if isOverAxes(mPos)
     hHover = findAxesHoverObjects(hFig,{'tag','subPanel'},hP);
     if ~isempty(hHover)
         % updates the popup sub index 
+        sInd0 = getappdata(hFig,'sInd');
         setappdata(hFig,'sInd',get(hHover(1),'UserData'))
-        menuSubPlot(hFig,[])
+        menuSubPlot(hFig,[],sInd0)
     end
 end
 
@@ -1196,7 +1277,7 @@ function buttonUpdateFigure_Callback(~, ~, handles)
 global canSelect
 
 % retrieves the experiment/function plot index
-[isAdd,canSelect] = deal(false);
+canSelect = false;
 pause(0.05)
 
 % disables the listboxes
@@ -1348,6 +1429,7 @@ if nReg > 1
     sPara.ind(sInd,:) = [eInd,fInd,pInd];
     sPara.plotD{sInd} = {plotDCalc};
     sPara.pData{sInd} = pDataNw;
+    sPara.calcReqd(sInd) = false;
     
     % updates the sub-plot data struct
     setappdata(hFig,'sPara',sPara);    
@@ -1579,8 +1661,6 @@ function resetFigSize(h,fPos)
 % sets the overall width/height of the figure
 [W0,H0,dY,dX,yOfs] = deal(fPos(3),fPos(4),10,10,30);
 [HLF,YLF] = deal(H0-475,105);
-
-pPosF = get(h.panelFuncFilter,'Position');
 [pPosO,HPF] = deal(get(h.panelOuter,'position'),HLF+220);
 
 % resets the plot panel dimensions
@@ -2057,7 +2137,8 @@ if nReg > 1
     sPara.ind(sInd,:) = NaN;
     sPara.plotD{sInd} = [];
     sPara.pData{sInd} = [];
-
+    sPara.calcReqd(sInd) = true;
+    
     % updates the sub-plot data struct
     setObjEnable(handles.menuUndock,any(~isnan(sPara.ind(:))))
     setappdata(hFig,'sPara',sPara);            
@@ -2232,7 +2313,8 @@ if exist('iFcn','var')
     iFcnN = cellfun(@(x)(x.getUserObject),hNodeL);
     hTreeF.setSelectedNode(hNodeL{iFcn==iFcnN});
 else
-    hTreeF.setSelectedNode(hNodeL{1});
+    hTreeF.setSelectedNode([]);
+%     hTreeF.setSelectedNode(hNodeL{1});
 end   
 
 % resets the update flag
@@ -2621,7 +2703,7 @@ else
     
     % sets the partial/full file names
     [fName,fFile] = deal(cell(length(dDir),1));
-    for i = 1:length(fName)        
+    for i = find(~cellfun(@isempty,dDir(:)'))
         fName{i} = field2cell(dir(fullfile(dDir{i},'*.m')),'name');
         if ~isempty(fName{i})
             fFile{i} = cellfun(@(x)(fullfile(dDir{i},x)),fName{i},'un',0);
@@ -2934,13 +3016,13 @@ function sPara = initSubRegionStruct()
 
 % intialises the sub-region data-struct
 sPara = struct('pos',[0 0 1 1],'nRow',1,'nCol',1,...
-               'pData',[],'plotD',[],'ind',[]);
+               'pData',[],'plotD',[],'ind',[],'calcReqd',[]);
 
 % memory allocation
-sPara.ind = NaN(1,3);
 [sPara.pData,sPara.plotD] = deal(cell(1));
+[sPara.ind,sPara.calcReqd] = deal(NaN(1,3),true);
 
-% --- initialises the graph format struct ------------------------------- %
+% --- initialises the graph format struct 
 function fmtStr = initFormatStruct(iData,tStr,xStr,yStr,x,y,fID)
 
 % default font sizes
@@ -3069,3 +3151,18 @@ global axPosX axPosY
 % calculates the global coordinates
 pPos = getObjGlobalCoord(handles.panelPlot);
 [axPosX,axPosY] = deal(pPos(1)+[0,pPos(3)],pPos(2)+[0,pPos(4)]);
+
+% --- retrieves the original object dimensions
+function objDim0 = getInitObjDim(hFig)
+
+% retrieves the handles of objects within the figure
+hObj = findall(hFig);
+
+% removes the menu/toolbar items from the list
+hObjM = findall(hObj,'Type','uimenu');
+hObjT = findall(hObj,'Type','uitoolbar');
+hObjTT = findall(hObj,'Type','uitoggletool');
+hObj = setdiff(hObj,[hObjM;hObjT;hObjTT]);
+
+% returns the object handles and position vectors
+objDim0 = {num2cell(hObj),get(hObj,'Position')};

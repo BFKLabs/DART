@@ -2,6 +2,7 @@ classdef SplitAxisClass < handle
     
     % class properties
     properties
+        
         % main object fields
         hFigM
         hGUI
@@ -71,6 +72,7 @@ classdef SplitAxisClass < handle
     
     % class methods
     methods
+        
         % --- class constructor
         function obj = SplitAxisClass(hFigM)
         
@@ -1394,6 +1396,7 @@ classdef SplitAxisClass < handle
 
             % memory allocation
             obj.sPara.ind = NaN(nReg,3);
+            obj.sPara.calcReqd = true(nReg,1);
             [obj.sPara.pData,obj.sPara.plotD] = deal(cell(nReg,1));
 
             % for each row/column initialise the subplot structs

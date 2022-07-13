@@ -5,9 +5,6 @@ function checkGitFuncVersion()
 % sets up the GitFunc class object
 GF0 = GitFunc();
 
-% REMOVE ME LATER
-GF0.uType = 1;
-
 % if a developer, then exit the function
 if GF0.uType == 0
     return
@@ -33,7 +30,7 @@ cIDH = GF.gitCmd('branch-head-commits','master');
 if ~startsWith(cID0,cIDH)
     % if they don't match, then reset the repository so that it matches the
     % remote repository
-    a = 1;
+    GF.matchRemoteBranch('master');
 end
 
 % removes the git directory environment variables

@@ -197,7 +197,10 @@ classdef AnalysisParaClass < handle
             try
                 obj.setupGUIObjects(isInit);
                 obj.updateMainPara();
-                                   
+                
+                % centres the gui to the middle of the string
+                optFigPosition([obj.hFigM,obj.hFig])
+                
             catch ME
                 % re-centres the figure
                 centreFigPosition(obj.hFig,2);
@@ -1369,10 +1372,15 @@ classdef AnalysisParaClass < handle
                 % and runs the parameter enabled check
                 iSelP0 = cellfun(@(x)(x{1}),Enable(indE),'un',0);
                 isC = cellfun(@iscell,iSelP0);
-                iSelP0(isC) = cellfun(@(x)(cell2mat(x)),iSelP0(isC),'un',0);
-                
+                iSelP0(isC) = cellfun(@(x)(cell2cell(x)),iSelP0(isC),'un',0);
+                                
                 % resets the enabled properties for the associated objects
-                iSelP = unique(cell2mat(iSelP0'));
+                iSelP = cell2cell(iSelP0);
+                if iscell(iSelP)
+                    iSelP = cell2mat(iSelP(cellfun(@isnumeric,iSelP)));
+                end
+                
+                iSelP = unique(iSelP);
                 for i = iSelP(iSelP>0)'                    
                     p = obj.resetParaEnable(p,i);               
                 end

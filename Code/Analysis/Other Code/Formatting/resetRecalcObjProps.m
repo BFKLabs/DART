@@ -1,11 +1,23 @@
 % --- resets the recalculation object properties --- %
 function resetRecalcObjProps(handles,state,hParaH)
 
+% initialisations
+hFig = handles.figFlyAnalysis;
+sPara = getappdata(hFig,'sPara');
+
 % retrieves the analysis GUI handles
 if (nargin == 2)
-    hPara = getappdata(handles.figFlyAnalysis,'hPara');
+    hPara = getappdata(hFig,'hPara');
     if isempty(hPara); return; end
     hParaH = guidata(hPara);
+end
+
+% if there is more than one sub-plot, then update the required check flag
+% for the current sub-plot
+if size(sPara.pos,1) > 1
+    sInd = getappdata(hFig,'sInd');
+    sPara.calcReqd(sInd) = true;
+    setappdata(hFig,'sPara',sPara);
 end
 
 % updates the object properties based on the update type

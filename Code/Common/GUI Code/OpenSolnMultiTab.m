@@ -71,7 +71,7 @@ classdef OpenSolnMultiTab < dynamicprops & handle
             
             % field initialisations
             obj.nExp = length(obj.sInfo);
-            obj.cObj = ExptCompObj(obj.sInfo);
+            obj.cObj = ExptCompObj(obj.sInfo,obj.isSaving);
             obj.exptCol = 1;           
             
             % reshapes the solution file information
@@ -209,9 +209,11 @@ classdef OpenSolnMultiTab < dynamicprops & handle
             end
 
             % sets the criteria checkbox callback functions
+            isS = obj.cObj.iSel;
             hChkL = findall(hPanelGrpC,'style','checkbox');
-            arrayfun(@(x)(set(hChkL,'Callback',{@obj.checkUpdate})),hChkL)
-
+            arrayfun(@(x)(set(x,'Callback',{@obj.checkUpdate})),hChkL)
+            arrayfun(@(x)(set(x,'Value',isS(get(x,'UserData')))),hChkL)
+            
             % sets the other parameters
             durStr = num2str(obj.cObj.getParaValue('pDur'));
             set(handles.editMaxDiff,'string',durStr);  

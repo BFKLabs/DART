@@ -11,14 +11,14 @@ for i = 1:sum(pType)
     % sets the independent variable vector
 %     X = eval(sprintf('plotD(1).%s',yVar(i).xDep{1}));
     X = arrayfun(@(x)(getStructField(x,yVar(i).xDep{1})),plotD,'un',0); 
-    for j = 1:length(X)
-        if isnumeric(X{j})    
-            X{j} = roundP(X{j});
-        end
-    end
+%     for j = 1:length(X)
+%         if isnumeric(X{j})    
+%             X{j} = roundP(X{j});
+%         end
+%     end
     
     % initialisations
-    YY = dataGroupSplit(X,field2cell(plotD,pStr{i}));               
+    YY = dataGroupSplit(X,field2cell(plotD,pStr{i}));
     
     % sets the signals for each of the 
     Y{i} = cell(nApp,1);
@@ -42,7 +42,7 @@ Ygrp = cell(1,nApp);
 
 % loops through each apparatus, level and bin group
 for k = 1:nApp
-    if (iscell(Y{k}))
+    if iscell(Y{k})
         Ytmp = cell2cell(cellfun(@(x)(num2cell(x,1)),Y{k},'un',0));        
         Ygrp{k} = [X{k},cell2cell(cellfun(@(x)...
                     (cell2mat(x(:)')),num2cell(Ytmp,1),'un',0),0)];

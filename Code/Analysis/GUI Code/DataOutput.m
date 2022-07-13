@@ -31,9 +31,10 @@ import javax.swing.*
 
 % global variables
 global Tmlt T0 TStr updateFlag nMet canEditCell nSheetMax tCount
-global rngRow rngCol iRowD iColD
+global rngRow rngCol iRowD iColD isUpdating vPpr
 [Tmlt,TStr,updateFlag,canEditCell,nMet] = deal(1,' (sec)',2,true,11);
 [nSheetMax,tCount,rngRow,rngCol,iRowD,iColD] = deal(20,0,40,15,[],[]);
+[isUpdating,vPpr] = deal(false,[]);
 
 % creates the load bar
 set(0,'CurrentFigure',hObject);
@@ -65,7 +66,7 @@ T0 = snTot(1).iExpt.Timing.T0;
 
 % sets the plot parameter/data structs
 plotD = plotD{pInd}{fInd,eInd};
-if (pInd ~= 3)
+if pInd ~= 3
     [sName,snTot] = deal(sName(eInd),snTot(eInd));
 end
 
@@ -772,13 +773,13 @@ else
     
     % sets the table inclusion flags
     isInc = false(size(Data,1),1);    
-    if (~isempty(iPara{1}))
+    if ~isempty(iPara{1})
         isInc(iPara{1}(:,1)) = true;                 
     end
     Data(:,2) = num2cell(isInc);        
     
     % sets the secondary column strings
-    if (mSel == 1)
+    if mSel == 1
         for i = reshape(find(isInc),1,sum(isInc))
             metInd = iData.tData.iPara{iData.cTab}{2}{2}(i,:);
             Data{i,3} = setMetricStatString(metInd);
@@ -788,7 +789,9 @@ else
     % updates the table values
     for i = 1:size(Data,1)
         for j = 2:(2+any(mSel == 1))
-            jTab.setValueAt(Data{i,j},i-1,j-1);                                    
+            if ~isempty(Data{i,j})
+                jTab.setValueAt(Data{i,j},i-1,j-1);
+            end
         end
     end
 end
@@ -1605,58 +1608,105 @@ while (1)
 end
 
 % --- 
-function viewAdjuctFunc(hObject,eventdata,Data,jView,jTM,rSz,cTab,Type)
+function viewAdjuctFunc(~,~,Data,jView,jTM,rSz,cTab,Type)
 
 % global variables
-global iRowD iColD
+global iRowD iColD isUpdating vPpr
+
+% checks the update flag (exit if updating, continue otherwise)
+if isUpdating; return; end
+
+% retrieves the current position of the scrollbar
+[vP,vSz] = deal(jView.getViewPosition,jView.getSize);
+if ~isempty(vPpr) && isequal([vP.x,vP.y],[vPpr.x,vPpr.y])
+    return 
+else
+    [isUpdating,vP0] = deal(true,vP);
+    java.lang.Thread.sleep(10);    
+end
+
+% keep looping until there is no change in location
+while true
+    % determines if there is a change in the row/column indices
+    vP = jView.getViewPosition;
+    if isequal([vP.x,vP.y],[vP0.x,vP0.y])
+        % if not, then exit
+        break
+    else
+        % otherwise, update the indices
+        vP0 = vP;
+        java.lang.Thread.sleep(100);
+    end    
+end
+
+% sets the rows/columns of the table that are currently visible
+vPpr = vP;
+iCol = setDataTableIndices(vP.x,rSz.width,vSz.width,size(Data,2),5);
+iRow = setDataTableIndices(vP.y,rSz.height,vSz.height,size(Data,1),50);
+    
+% compares the previous row/column indices to the new ones
+if isequal(iRowD{cTab},iRow) && isequal(iColD{cTab},iCol)
+    % if there is no change in the row/column indices, then exit
+    isUpdating = false;
+    return
+end
 
 % retrieves the table handle. if not available exit the function
 try
     jTab = jView.getComponent(0); 
 catch
+    isUpdating = false;
     return
 end
 
-% retrieves the current position of the 
-[vP,vSz] = deal(jView.getViewPosition,jView.getSize);
+% otherwise, determine the row/column indices that need to
+% be added/removed
+[iCellC,iCellR] = deal(jTab.getSelectedColumn,jTab.getSelectedRow);
+if Type == 1
+    [iColA,iColR] = deal(iCol);
+    iRowA = setdiff(iRow,iRowD{cTab});
+    iRowR = setdiff(iRowD{cTab},iRow);
 
-% sets the rows/columns of the table that are currently visible
-iCol = setDataTableIndices(vP.x,rSz.width,vSz.width,size(Data,2),5);
-iRow = setDataTableIndices(vP.y,rSz.height,vSz.height,size(Data,1),50);
-
-% compares the previous row/column indices to the new ones
-if isequal(iRowD{cTab},iRow) && isequal(iColD{cTab},iCol)
-    % if there is no change in the row/column indices, then exit
-    return
-else
-    % otherwise, determine the row/column indices that need to
-    % be added/removed
-    [iCellC,iCellR] = deal(jTab.getSelectedColumn,jTab.getSelectedRow);
-    if Type == 1
-        [iColA,iColR] = deal(iCol);
-        iRowA = setdiff(iRow,iRowD{cTab});
-        iRowR = setdiff(iRowD{cTab},iRow);
-        
-        [rowLo,rowHi] = calcIndLim(vP.y,rSz.height,vSz.height);
-        if iCellR <= rowLo
+    [rowLo,rowHi] = calcIndLim(vP.y,rSz.height,vSz.height);
+    if iCellR <= rowLo
+        if iCellC < 0
+            resetSelectedCell(jTab, rowLo, 0);
+        else
             resetSelectedCell(jTab, rowLo, iCellC);
-        elseif iCellR >= (rowHi-1)
-            resetSelectedCell(jTab, rowHi-2, iCellC);
-        end        
-    else
-        [iRowA,iRowR] = deal(iRow);
-        iColA = setdiff(iCol,iColD{cTab});
-        iColR = setdiff(iColD{cTab},iCol);
-        
-        [colLo,colHi] = calcIndLim(vP.x,rSz.width,vSz.width);
-        if iCellC <= colLo
+        end
+    elseif iCellR >= (rowHi-1)
+        rOfs = 1 + (iCellR < size(Data,1));        
+        if iCellC < 0
+            resetSelectedCell(jTab, rowHi-rOfs, 0);
+        else
+            resetSelectedCell(jTab, rowHi-rOfs, iCellC);
+        end
+    end        
+else
+    [iRowA,iRowR] = deal(iRow);
+    iColA = setdiff(iCol,iColD{cTab});
+    iColR = setdiff(iColD{cTab},iCol);
+
+    [colLo,colHi] = calcIndLim(vP.x,rSz.width,vSz.width);
+    if iCellC <= colLo
+        if iCellR < 0
+            resetSelectedCell(jTab, 0, colLo);
+        else
             resetSelectedCell(jTab, iCellR, colLo);
-        elseif iCellC >= (colHi-1)
-            resetSelectedCell(jTab, iCellR, colHi-2);
+        end
+    elseif iCellC >= (colHi-1)
+        cOfs = 1 + (iCellC < size(Data,2));
+        if iCellR < 0
+            resetSelectedCell(jTab, 0, colHi-cOfs);
+        else        
+            resetSelectedCell(jTab, iCellR, colHi-cOfs);
         end
     end
 end
     
+% updates the current row/column indices
+[iRowD{cTab},iColD{cTab}] = deal(iRow,iCol);
+
 % removes the table update callback function
 addJavaObjCallback(jTM,'TableChangedCallback',[])
 
@@ -1674,17 +1724,17 @@ for i = 1:length(iRowR)
     end
 end
 
-% updates the current row/column indices
-[iRowD{cTab},iColD{cTab}] = deal(iRow,iCol);
-
 % resets the table update callback function
 addJavaObjCallback(jTM,'TableChangedCallback',@dataSheetEdit)
+
+% resets the updating flag
+isUpdating = false;
 
 % --- 
 function resetSelectedCell(jTab,iRow,iCol)
 
 % if editting, then stop editting
-if (jTab.isEditing()) 
+if jTab.isEditing() 
     jTab.getCellEditor().stopCellEditing();
 end
 
@@ -2230,7 +2280,9 @@ elseif ~isempty(iPara{1})
     DataN = [];
     try
         switch iSel
-            case (1) % case is the statistical test
+            case (1) 
+                % case is the statistical test
+                
                 % determines the output variables indices 
                 [stInd,A] = deal(iData.tData.stInd{iData.cTab},iPara{1});
                 isHorz = get(handles.radioAlignHorz,'value');
@@ -2255,22 +2307,38 @@ elseif ~isempty(iPara{1})
                         DataT{i,3} = setStatTestString(iData,iData.pStats{i},i);
                         set(handles.tableStatTest,'Data',DataT)
                     end
-                end                                    
-            case (2) % case is the population metric output                                  
-                Data = setupPopMetDataArray(handles,iData,plotD,Y,A);                
-            case (3) % case is the population metric (fixed) output                                  
+                end
+                
+            case (2)
+                % case is the population metric output
+                Data = setupPopMetDataArray(handles,iData,plotD,Y,A);
+            
+            case (3) 
+                % case is the population metric (fixed) output                                  
                 Data = setupFixedMetDataArray(handles,iData,pData,plotD,Y,A);                
-            case (4) % case is the individual metric output
+            
+            case (4)
+                % case is the individual metric output
                 Data = setupIndivMetDataArray(handles,iData,pData,plotD,Y,A);
-            case (5) % case is the population signal output 
+            
+            case (5) 
+                % case is the population signal output 
                 [Data,DataN] = setupPopSigDataArray(handles,pData,iData,Y,A);
-            case (6) % case is the individual signal output 
+
+            case (6) 
+                % case is the individual signal output 
                 [Data,DataN] = setupIndivSigDataArray(handles,pData,iData,Y,A);
-            case (7) % case is the general population data array
+
+            case (7) 
+                % case is the general population data array
                 Data = setupPopGenDataArray(iData,Y,A);
-            case (8) % case is the general individual data array
+
+            case (8) 
+                % case is the general individual data array
                 Data = setupIndivGenDataArray(iData,Y,A);
-            otherwise % case is the parameters
+
+            otherwise
+                % case is the parameters
                 Data = setupParaDataArray(handles,iData);
         end                          
 
@@ -2282,20 +2350,20 @@ elseif ~isempty(iPara{1})
         
         %
         mInd = iData.tData.mInd{iData.cTab}{iSel};
-        if (~isempty(mInd))
+        if ~isempty(mInd)
             % removes any manual indices not within the sheet frame
             [m,n] = size(Data);
             mInd = mInd((mInd(:,1) < m) & (mInd(:,2) < n),:);
 
             % if any indices remain, remove any of the manual indices for the
             % cells which are not empty
-            if (~isempty(mInd))
+            if ~isempty(mInd)
                 ii = cellfun(@(x)(isempty(Data{x(1),x(2)})),num2cell(mInd+1,2));
                 mInd = mInd(ii,:);
 
                 % if there are still manual indices, then set the cell entries
                 % from the previous data array into the new one
-                if (~isempty(mInd))
+                if ~isempty(mInd)
                     jj = sub2ind(size(Data),mInd(:,1)+1,mInd(:,2)+1);
                     Data(jj) = Data0(jj);
                 end
@@ -2306,6 +2374,7 @@ elseif ~isempty(iPara{1})
         iData.tData.mInd{iData.cTab}{iSel} = mInd;
         iData.tData.Data{iData.cTab}{iSel} = Data;    
         iData.tData.DataN{iData.cTab}{iSel} = DataN;
+        
     catch ME
 %         enableDisableFig(handles.figDataOutput,'on');
         rethrow(ME)
@@ -2391,7 +2460,7 @@ if ~isempty(hSP0); delete(hSP0); end
 % Draw table in scroll pane
 jSP = javaObjectEDT('javax.swing.JScrollPane', jTab);
 [jSP, hC] = createJavaComponent(jSP, [], handles.panelDataOuter);
-set(hC,'Position',tPos,'tag','hSP','UserData',cTab)
+set(hC,'Position',tPos,'tag','hSP','UserData',cTab,'Interruptible','off')
 jSP.setViewportView(jTab);
 
 % updates the table data
@@ -2436,7 +2505,7 @@ jTab.setBorder(jTabLB)
 jTab.revalidate;
 
 % determines if the header renderer has been set
-if (~isempty(Data))
+if ~isempty(Data)
     % updates the default renderer
     jTabHR = jTabH.getColumnModel.getColumn(0).getHeaderRenderer;
     jTab.getTableHeader.setDefaultRenderer(jTabHR)
@@ -2572,7 +2641,7 @@ nStrS = length(sDN);
 
 % initialises the table data cell arrays
 for i = 1:length(dD)
-    if (i == length(dD))
+    if i == length(dD)
         ind = 1:(1+(~isempty(pData.cP)));
         dDN = {'Global Parameters';'Calculation Parameters'};
         [nStrD,dDN] = deal(length(ind),dDN(ind));
@@ -2582,13 +2651,13 @@ for i = 1:length(dD)
     end
     
     % sets the data strings  
-    if (i < length(dD))
+    if i < length(dD)
         isMP = mInd(i) == 1;
     else
         isMP = false;
     end
     
-    if (isMP)
+    if isMP
         dD{i} = [dDN,num2cell(false(nStrD,1)),repmat({''},nStrD,1)];    
     else
         dD{i} = [dDN,num2cell(false(nStrD,1))];    
@@ -2599,7 +2668,7 @@ end
 [eFcn,sFcn] = deal({@tableCellEdit},{@metTableCellSelect});
                 
 % if not any statistical tests, then disable the radio button               
-if (any(hasTest))
+if any(hasTest)
     % sets the stats sheet data
     sD = [sDN,num2cell(false(nStrS,1)),repmat({''},nStrS,1)];
     set(handles.tableStatTest,'Data',sD,'ColumnFormat',...
@@ -2681,7 +2750,7 @@ for i = 1:length(mInd)
     % creates the table object
     cEdit = [false,true];
     [cName,cForm] = deal({'Metric','Include'},{'char','logical'});    
-    if ((mInd(i) == 1) && (iData.metStats))
+    if (mInd(i) == 1)% && iData.metStats
         [cName{3},cEdit(3)] = deal('Metric Stats',false);
         dD{i}(:,3) = {'Mean'};            
     end    
@@ -3274,7 +3343,7 @@ iData.tData.altChk = {repmat({false(1,nChk)},1,nMetG)};
 [iData.expOut,iData.xVar,iData.yVar] = deal(true(nExp,1),oP.xVar,oP.yVar);
 
 % sets the statistical test cell array (if any are to be output)
-if (any(hasTest) && iData.metStats)
+if any(hasTest) && iData.metStats
     nTest = num2cell(cellfun(@(x)(getStatCount(x{1})),Stats(hasTest)));
     iData.Y{1} = cellfun(@(x)(cell(1,x+1)),nTest,'un',0);
 else
@@ -3282,45 +3351,45 @@ else
 end
 
 % calculates the individual metrics (if any are to be output)
-if (any(Type(:,1)))          
+if any(Type(:,1))
     % calculates all of the population metrics
     iData.Y{2} = cell(sum(Type(:,1)),nMet,4);
     iData = calcStatMetricsPop(snTot,iData,plotD,Type(:,1)); 
 end
 
 % set the signal traces (if any are to be output)
-if (any(Type(:,2)))
+if any(Type(:,2))
     iData.Y{3} = cell(sum(Type(:,2)),1);
     iData = setFixedMetricsPop(iData,plotD,Type(:,2));
 end
     
 % calculates the individual metrics (if any are to be output)
-if (any(Type(:,3)))          
+if any(Type(:,3))          
     % calculates all of the grouped individual metrics
     iData.Y{4} = cell(sum(Type(:,3)),2);
     iData = calcStatMetricsIndiv(snTot,iData,plotD,Type(:,3));    
 end
     
 % set the signal traces (if any are to be output)
-if (any(Type(:,4)))
+if any(Type(:,4))
     iData.Y{5} = cell(sum(Type(:,4)),1);
     iData = setMetricSignalsPop(iData,plotD,Type(:,4));
 end
 
 % set the signal traces (if any are to be output)
-if (any(Type(:,5)))
+if any(Type(:,5))
     iData.Y{6} = cell(sum(Type(:,5)),2);
     iData = setMetricSignalsIndiv(snTot,iData,plotD,Type(:,5));
 end
 
 % set the signal traces (if any are to be output)
-if (any(Type(:,6)))
+if any(Type(:,6))
     iData.Y{7} = cell(sum(Type(:,6)),1);
     iData = set2DArrayDataPop(iData,plotD,Type(:,6));
 end
 
 % set the signal traces (if any are to be output)
-if (any(Type(:,7)))
+if any(Type(:,7))
     iData.Y{8} = cell(sum(Type(:,7)),1);
     iData = set2DArrayDataIndiv(iData,plotD,Type(:,7));
 end
@@ -3402,7 +3471,6 @@ else
     iSelT = mSel + 1;
 end
 
-
 % --- function that updates the tab selection
 function updateTabSelection(hTabG,iNw,iPr)
 
@@ -3412,7 +3480,7 @@ if nargin == 2
     hTabG.SelectedTab = hTabG.Children(iNw);
 else
     % new index is based on the user data flag
-    hTabG.SelectedTab = findall(hTabG,'UserData',iNw,'Parent',hTabG);
+    hTabG.SelectedTab = findall(hTabG,'UserData',iNw);
 end
 
 % --- gets the tab table position vector

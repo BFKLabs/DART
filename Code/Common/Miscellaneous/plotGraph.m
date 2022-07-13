@@ -260,7 +260,7 @@ else
 end
 
 % plots the image
-hAx = getCurrentAxesProp;
+hAx = gca;
 hImage = findobj(hAx,'type','image');
 if (isempty(hImage))
     if (size(img,3) == 1)

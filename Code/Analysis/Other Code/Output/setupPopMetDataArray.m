@@ -32,7 +32,7 @@ isVert = ~iData.metStats;
 YR = reduceDataArray(Y(:,:,outType),appOut,iOrderF,isVert);
 
 % if separating by experiment, reduce the data output by the selection
-if (sepExp)
+if sepExp
     for i = 1:numel(YR)
         for j = 1:numel(YR{i})
             YR{i}{j} = YR{i}{j}(:,expOut);
@@ -69,7 +69,7 @@ szY = cellfun(@(x)([size(x,1),size(x,2),size(x,3)]),YR{1},'un',0);
 nGrp = size(YR{1}{1},1);
 
 % array indexing and other initialisations
-if (iData.metStats) 
+if iData.metStats
 %     if (strcmp(ind2varStat(A(2),1),'Conf. Interval'))
 %         isOKF = cellfun(@(x)(cellfun(@(xx)(~isempty(xx)),x)),...
 %                                     YR,'un',0);        
@@ -91,20 +91,21 @@ indGrpT = logical([~sepApp,(nGrp>1),sepExp,sepDay]);
 % --------------------------------- %
 
 % sets the base variable names
-mStrB = iData.fName(mIndG(A(:,1))); mStrB{1} = '';
+mStrB = iData.fName(mIndG(A(:,1))); 
+% mStrB{1} = '';
 xDep = cell2cell(field2cell(iData.yVar(mIndG(A(:,1))),'xDep'));
 
-% sets the header string array
-if (iData.metStats)
+% % sets the header string array
+% if iData.metStats
     % sets the metric header strings    
     mStrT = cellfun(@(x)(ind2varStat(x,1)),num2cell(A(:,2)),'un',0);
         
     % sets the final header string array         
     mStrH = [mStrB,mStrT]';
-else
-    % case is no metrics are being calculated
-    mStrH = [repmat({''},1,length(mStrB));mStrB(:)'];
-end
+% else
+%     % case is no metrics are being calculated
+%     mStrH = [repmat({''},1,length(mStrB));mStrB(:)'];
+% end
 
 % sets the main grouping titles
 mStrT = {'Group Name','Bin Group','Experiment','Day'};
@@ -115,7 +116,7 @@ mStrT = mStrT(indGrpT);
 % ------------------------------ %
 
 % sets the grouping indices (if not separating by genotype group
-if ((~sepApp) && (nApp > 1))
+if ~sepApp && (nApp > 1)
     xi0 = num2cell(1:nApp)';
     A0 = cellfun(@(x,y)(y*ones(size(x))),YR{1},xi0,'un',0);
     indG{1} = cellfun(@(x,y)(appName(x(y))),A0,isOKF,'un',0);        
@@ -123,7 +124,7 @@ if ((~sepApp) && (nApp > 1))
 end
 
 % sets the binned group indices (if more than one group)
-if (nGrp > 1)
+if nGrp > 1
     % sets the group indices
     A3 = cellfun(@(x)(repmat(repmat((1:x(1))',1,x(2)),[1 1 x(3)])),szY,'un',0);
 %     A3 = repmat({repmat(repmat((1:nGrp)',1,nD1),[1 1 nD2])},[nApp,1]);               
@@ -131,26 +132,26 @@ if (nGrp > 1)
     % combines the grouped indices
     indG{2} = cellfun(@(x,y)(x(y)),A3,isOKF,'un',0);                        
     indG{2} = cellfun(@(x)(x(:)),indG{2},'un',0);     
-    if (~sepApp); indG{2} = cell2mat(indG{2}); end
+    if ~sepApp; indG{2} = cell2mat(indG{2}); end
         
     % sets the bin group strings
-    if (~numGrp)
+    if ~numGrp
         % bin group strings the original
         xType = field2cell(iData.xVar,'Var');
         mStrT{1+~sepApp} = iData.xVar(strcmp(xType,xDep{1})).Name;
         Xgrp = eval(sprintf('plotD.%s',xDep{1}));
         
         % ensures the independent variables are in a cell array
-        if (isnumeric(Xgrp)); Xgrp = num2cell(Xgrp); end
+        if isnumeric(Xgrp); Xgrp = num2cell(Xgrp); end
 
         % sets the x-variable values for each genotype group
-        if (sepApp)
+        if sepApp
             indG{2} = cellfun(@(x)(Xgrp(x)),indG{2},'un',0);
         else
             indG{2} = Xgrp(indG{2});
         end
     else
-        if (sepApp)
+        if sepApp
             indG{2} = cellfun(@(x)(num2strC(x,'%i')),indG{2},'un',0);
         else        
             indG{2} = num2strC(indG{2},'%i');
@@ -159,7 +160,7 @@ if (nGrp > 1)
 end
 
 % sets the 2nd-order dimension indices (if greater than one)
-if (sepExp && sepDay)
+if sepExp && sepDay
     % sets the second order indices
     A2 = cellfun(@(x)(cell2mat(reshape(cellfun(@(y)(y*ones(x(1),x(2))),...
                 num2cell(1:x(3))','un',0),[1 1 x(3)]))),szY,'un',0);   
@@ -169,7 +170,7 @@ if (sepExp && sepDay)
     indG{3} = cellfun(@(x)(x(:)),indG{3},'un',0);                   
            
     %    
-    if (sepApp)
+    if sepApp
         indG{3} = cellfun(@(x)(num2strC(x,'%i')),indG{3},'un',0);
     else
         indG{3} = cell2mat(indG{3});
@@ -178,7 +179,7 @@ if (sepExp && sepDay)
 end
 
 % sets the 1st-order dimension indices (if greater than one)
-if (sepExp || sepDay)
+if sepExp || sepDay
     % sets the first order indices
     A1 = cellfun(@(x)(repmat(repmat((1:x(2)),x(1),1),[1 1 x(3)])),szY,'un',0);
     
@@ -186,7 +187,7 @@ if (sepExp || sepDay)
     indG{4} = cellfun(@(x)(x(:)),indG{4},'un',0);
     
     % combines the grouped indices
-    if (sepApp)
+    if sepApp
         indG{4} = cellfun(@(x)(num2strC(x,'%i')),indG{4},'un',0);    
     else
         indG{4} = cell2mat(cellfun(@(x)(x(:)),indG{4},'un',0));
@@ -196,10 +197,10 @@ end
 
 % combines the headers into a single array
 indG = indG(~cellfun(@isempty,indG));
-if (isempty(indG))
+if isempty(indG)
     YT = [];
 else
-    if (sepApp) 
+    if sepApp
         YT = cellfun(@(x)([mStrT;cell2cell(x(:),0)]),num2cell(...
                         cell2cell(indG,0),2),'un',0);
     else
@@ -232,19 +233,20 @@ end
 % ------------------------- %
 
 % combines the header and metric data arrays into the final array
-if (sepApp)      
+if sepApp    
     % memory allocation
     DataF = [];    
     
     % sets the final data for each apparatus
     for i = 1:nApp
         % sets the title and combines it with the new metric data
-        if (~isempty(YT))
+        if ~isempty(YT)
             DataNw = combineCellArrays({NaN},YT{i},0);                
         else
             DataNw = [];
         end
             
+        mStrH = combineCellArrays({NaN},mStrH,0);
         DataNw = combineCellArrays(DataNw,[mStrH;YM{i}],1);   
         DataNw(1) = appName(i);
         
@@ -260,7 +262,7 @@ if (sepApp)
     end
 else
     % combines all the cells into a single array
-    if (strcmp(mStrH{2},'N-Value')); mStrH{1} = []; end
+    if strcmp(mStrH{2},'N-Value'); mStrH{1} = []; end
     DataF = [combineCellArrays({NaN},YT,0),[mStrH;cell2cell(YM)]];    
 end
 
@@ -291,7 +293,7 @@ YR = cell(1,size(iOrderF,1));
 % resets the arrays
 for i = 1:size(iOrderF,1)       
     YR{i} = Y{iOrderF(i,1),iOrderF(i,2)}(indOut);
-    if (isVert)
+    if isVert
         for j = 1:length(YR{i})
             YR{i}{j} = YR{i}{j}(:);
         end
@@ -307,7 +309,7 @@ nGrp = size(YR0{1}{1},2);
 Type = (2*(nDay>1) + (nExp>1)) + 1;
 
 % memory allocation
-if (Type == 4)
+if Type == 4
     YR = repmat({cell(nGrp,nDay,nExp)},size(YR0));
 else
     YR = cell(size(YR0));
@@ -315,7 +317,7 @@ end
 
 %
 for i = 1:length(YR)
-    switch (Type)
+    switch Type
         case (1)
             YR{i} = YR0{i}{1}';
         case (2)
