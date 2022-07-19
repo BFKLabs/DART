@@ -73,7 +73,7 @@ if isOK
                             % case is initialising the class object
 
                             % creates the class object and updates the GUI
-                            pkgObj = feval('RTTrackObj');                
+                            pkgObj = feval('RTTrackObj',handles);                
                             setappdata(handles.figFlyRecord,'rtObj',pkgObj)
 
                             % runs the recording GUI opening function

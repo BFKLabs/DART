@@ -25,7 +25,7 @@ GF.gitCmd('rmv-origin')
 GF.gitCmd('set-origin')
 
 % determines the current/head commit ID
-cID0 = GF.gitCmd('commit-id');
+cID0 = GF.gitCmd('commit-id','origin/master');
 cIDH = GF.gitCmd('branch-head-commits','master');
 if ~startsWith(cID0,cIDH)
     % if they don't match, then reset the repository so that it matches the

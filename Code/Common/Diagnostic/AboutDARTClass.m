@@ -58,6 +58,7 @@ classdef AboutDARTClass < handle
             
             % makes the main GUI visible
             setObjVisibility(obj.hFig,1);
+            set(obj.hFig,'WindowStyle','modal')
             
         end
         
