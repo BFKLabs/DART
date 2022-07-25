@@ -461,8 +461,12 @@ switch fExtn
         iStim = fData.iStim;
         [sTrainS,dType,nCh] = convertStimData(fData);            
         [iExpt,sTrainEx] = ...
-                    convertExptDataLocal(handles,sTrainS,fData.iExpt); 
+                        convertExptDataLocal(handles,sTrainS,fData.iExpt); 
 
+        % sets up the train data struct
+        sTrain = struct('S',[],'L',[],'Ex',[]);
+        [sTrain.S,sTrain.Ex] = deal(sTrainS,sTrainEx);
+                    
     case '.expp'
         %
         resetStimTrain = false;   

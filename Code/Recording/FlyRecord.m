@@ -115,7 +115,7 @@ setappdata(hObject,'iStim',infoObj.iStim);
 
 % runs the external packages
 feval('runExternPackage','RTTrack',handles,'Init');
-feval('runExternPackage','VideoCalib',handles);
+feval('runExternPackage','VideoCalibObj',handles);
 
 % ------------------------------------------ %
 % --- GUI OBJECT PROPERTY INITIALISATION --- %

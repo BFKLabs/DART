@@ -9,7 +9,7 @@ if useSolnForm
     % determines if this is a record-only experiment
     if ~isfield(fData.iExpt,'Stim') || isempty(fData.iExpt.Stim)
         % if so, then return an empty array 
-        [sTrainS,devType,nCh] = deal({[]},{'RecordOnly'},0);
+        [sTrainS,devType,nCh] = deal([],{'RecordOnly'},0);
         return
     end    
     
@@ -26,7 +26,7 @@ else
     % determines if this is a record-only experiment
     if isempty(fData.iExpt.Stim)
         % if so, then return an empty array 
-        [sTrainS,devType,nCh] = deal({[]},{'RecordOnly'},0);
+        [sTrainS,devType,nCh] = deal([],{'RecordOnly'},0);
         return
     end    
     

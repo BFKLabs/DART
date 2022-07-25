@@ -22,13 +22,16 @@ for i = 1:length(pType)
         % are any signal objects generated with custom signals
         for j = 1:length(sTrainP)
             % retrieves the stimuli train parameters/types
-            [tStrNw,sP] = field2cell(...
-                sTrainP{j}.blkInfo,{'sType','sPara'});
+            if iscell(sTrainP)
+                blkInfo = sTrainP{j}.blkInfo;
+            else
+                blkInfo = sTrainP(j).blkInfo;
+            end            
             
             % determines if there are any missing signal types
+            [tStrNw,sP] = field2cell(blkInfo,{'sType','sPara'});            
             isNw = find(cellfun(@(x)(~(any(strcmp(tStrS,x)) || ....
-                any(strcmp(tStrC,x)))),...
-                tStrNw(:)));
+                                    any(strcmp(tStrC,x)))),tStrNw(:)));
             if any(isNw)
                 % retrieves the signal objects
                 sObjNw = cellfun(@(x)(x.sObj),sP(isNw),'un',0);

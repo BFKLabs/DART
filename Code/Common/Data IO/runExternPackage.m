@@ -88,16 +88,13 @@ if isOK
                     end
             end
             
-        case 'VideoCalib'
-            % case is real-time tracking object
-            try
-                % creates the class object and updates within the GUI
-                handles = varargin{1};
-                pkgObj = feval('VideoCalibObj',handles.figFlyRecord);                
-                setappdata(handles.figFlyRecord,'vcObj',pkgObj)
-            catch ME
-                a = 1;
-            end            
+        case 'VideoCalibObj'
+            % case is video calibration
+            
+            % creates the class object and updates within the GUI
+            handles = varargin{1};
+            pkgObj = feval('VideoCalibObj',handles.figFlyRecord);                
+            setappdata(handles.figFlyRecord,'vcObj',pkgObj)
 
         case 'MultiTrack'
             % case is initialising the multi-tracking object
@@ -112,13 +109,18 @@ if isOK
                         case 'Init'
                             % case is initialising the multi-tracking
                             pkgObj = MultiTrackInit(varargin{1});
-                            
+                        
                         case 'InitAnalysis'
                             % case is initialising the analysis
                             pkgObj = getProgFileName('Code',...
                                         'External Apps','MultiTrack',...
                                         'Analysis Functions');
                     end
+                    
+                case 'AnalysisOpt'
+                    % case is initialising multi-tracking options
+                    pkgObj = InitMultiTrackOptions(varargin{1});                    
+                    
             end 
     end
 end

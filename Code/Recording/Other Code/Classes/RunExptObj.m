@@ -189,7 +189,7 @@ classdef RunExptObj < handle
             end              
 
             % sets up the experimental stimulus signals
-            if ~isempty(obj.sTrain)
+            if ~isempty(obj.sTrain) && ~isempty(obj.objDAQ)
                 % sets the DAC device flags
                 obj.hasDAC = any(strcmp(obj.objDAQ.dType{1},'DAC'));
                 

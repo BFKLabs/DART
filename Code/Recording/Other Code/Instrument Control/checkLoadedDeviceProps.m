@@ -52,9 +52,14 @@ objDAQ = getappdata(hFigUpdate,'objDAQ');
 objDAQ0 = getappdata(hFigUpdate,'objDAQ0'); 
 
 % determines the device names/channel counts from the currently loaded
-devType = objDAQ0.sType;
-nCh = objDAQ0.nChannel(1:length(devType));
-nDev = cellfun(@(x)(sum(strContains(devType,x))),devStr);
+if isempty(objDAQ0)
+    devType = [];
+    [nCh,nDev] = deal(NaN,0);
+else
+    devType = objDAQ0.sType;
+    nCh = objDAQ0.nChannel(1:length(devType));
+    nDev = cellfun(@(x)(sum(strContains(devType,x))),devStr);
+end
                     
 % determines the device names/channel counts from the loaded file      
 chInfo = [sTrain.Ex.sTrain(1).devType,sTrain.Ex.sTrain(1).chName];
@@ -120,8 +125,12 @@ qStr = sprintf(['The current device configuration does not meet the ',...
                 'required configuration:\n\n CURRENT CONFIGURATION\n']);
 
 % appends the current figuration results to the string
-for i = 1:length(devType)    
-    qStr = sprintf('%s%s',qStr,getNewConfigString(devType{i},nCh(i)));
+if isempty(devType)
+    qStr = sprintf('%s  - Recording Only',qStr);
+else
+    for i = 1:length(devType)    
+        qStr = sprintf('%s%s',qStr,getNewConfigString(devType{i},nCh(i)));
+    end
 end
 
 % sets the required configuration heading

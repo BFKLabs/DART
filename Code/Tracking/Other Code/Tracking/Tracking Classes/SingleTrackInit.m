@@ -44,6 +44,7 @@ classdef SingleTrackInit < SingleTrack
         Imu
         iniP
         pTolF
+        okFrm
         prData0 = [];   
         
         % other parameters and scalar fields
@@ -54,7 +55,7 @@ classdef SingleTrackInit < SingleTrack
         pSigMin = 0.5;
         nOpenRng = 15;
         nFrmMin = 10;
-        dyRngMin = 17.5;
+        dyRngMin = 10;
         mdDim = 30*[1,1];         
         hSR = fspecial('disk',2);           
         

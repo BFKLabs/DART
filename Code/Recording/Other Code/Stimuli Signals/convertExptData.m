@@ -33,6 +33,12 @@ if datenum(iExpt.Timing.T0) < now
     iExpt.Timing.T0(3) = iExpt.Timing.T0(3) + 1;
 end
 
+% if there is no stimuli info then exit
+if isempty(sTrainS)
+    sTrainEx = [];
+    return
+end
+
 for i = 1:nTrain
     % sets the stimuli type
     sType = split(sTrainS.sName);
