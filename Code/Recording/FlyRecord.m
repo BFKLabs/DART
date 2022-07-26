@@ -438,7 +438,9 @@ end
 function menuVidROI_Callback(hObject, eventdata, handles)
 
 % runs the video ROI setting GUI
+wState = warning('off','all');
 VideoROI(handles.figFlyRecord)
+warning(wState);
 
 % ----------------------------- %
 % --- EXPERIMENT MENU ITEMS --- %

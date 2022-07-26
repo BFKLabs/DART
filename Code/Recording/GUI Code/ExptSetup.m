@@ -7820,7 +7820,7 @@ setappdata(hFig,'pType','Experiment Stimuli Protocol')
 
 % retrieves the stimuli train parameter struct
 sTrain = getappdata(hFig,'sTrain');
-if isempty(sTrain)
+if isempty(sTrain) || isempty(sTrain.Ex)
     % if recording only, then exit the function
     return 
 end

@@ -1,4 +1,5 @@
 classdef VideoROIClass < handle
+    
     % class properties
     properties
         % main class objects
@@ -16,7 +17,6 @@ classdef VideoROIClass < handle
         resetFcn
         
         % large video points
-        apiLV
         hPointLV
         isLV = false;
         
@@ -36,6 +36,7 @@ classdef VideoROIClass < handle
     
     % class methods
     methods
+        
         % --- class constructor
         function obj = VideoROIClass(hFig)
         
@@ -143,11 +144,11 @@ classdef VideoROIClass < handle
             obj.getInitSnapshot();
 
             % if there is no image object, then create a new one
-            image(uint8(obj.Img0),'parent',obj.hAx);    
+            imagesc(obj.Img0,'parent',obj.hAx);    
             set(obj.hAx,'xtick',[],'ytick',[],'xticklabel',[],...
                         'yticklabel',[],'ycolor','w','xcolor','w',...
-                        'box','off')   
-            colormap(obj.hAx,gray)            
+                        'box','off','clim',[0,255])   
+            colormap(obj.hAx,gray)   
             
             % creates the image markers
             for i = 1:2
@@ -195,18 +196,14 @@ classdef VideoROIClass < handle
                 
                 % creates the patch object
                 iiG = [(1:length(yLVG)),1];
+                cbFcn = @(p)(obj.moveLargeVidMarker(p));
                 patch(obj.hAxLV,xLVG(iiG),yLVG(iiG),'g','facealpha',0.2);  
                 
                 % creates the marker point
-                obj.hPointLV = impoint(obj.hAxLV,obj.rPos(3),obj.rPos(4));
-                                
-                % sets the constraint/position callback functions
-                cbFcn = @(p)(obj.moveLargeVidMarker(p));
-                obj.hPointLV.addNewPositionCallback(cbFcn); 
-                setObjVisibility(findall(obj.hPointLV,'tag','plus'),0)
+                obj.hPointLV = InteractObj('point',obj.hAxLV,obj.rPos(3:4));
+                obj.hPointLV.setObjMoveCallback(cbFcn);
                 
                 % sets the object position constraint function
-                obj.apiLV = iptgetapi(obj.hPointLV);
                 obj.resetLargeVidAxisLimits();                   
                 
                 % updates the video status label
@@ -317,11 +314,11 @@ classdef VideoROIClass < handle
 
             % creates a patch object object
             pROI = [xROI(1),yROI(1),diff(xROI),diff(yROI)];
-            hRectS = imrect(obj.hAx,pROI);
-            set(hRectS,'UserData',uData,'tag','hROILim')
+            hRectS = InteractObj('rect',obj.hAx,pROI);
+            hRectS.setFields('UserData',uData,'tag','hROILim')
 
             % creates the rectangular ROI object
-            hRectL = findall(hRectS,'type','Line');
+            hRectL = findall(hRectS.hObj,'type','Line');
             set(hRectL,'Visible','off','HitTest','off');
 
             hRectLV = findall(hRectL,'tag',lStr);
@@ -330,19 +327,15 @@ classdef VideoROIClass < handle
             uistack(hRectLV,'top');
 
             % case is the ROI patch object
-            hRectP = findall(hRectS,'type','Patch');
+            hRectP = findall(hRectS.hObj,'type','Patch');
             set(hRectP,'FaceColor',0.75*[1,1,1],'FaceAlpha',0.25,...
                        'HitTest','off');
 
             % sets the constraint/position callback functions
             cbFcn = @(p)(obj.moveROIMarker(p,uData));
-            hRectS.addNewPositionCallback(cbFcn);
-
-            % sets the object position constraint function
-            api = iptgetapi(hRectS);
-            fcn = makeConstrainToRectFcn('imrect',xLim,yLim);
-            api.setPositionConstraintFcn(fcn);              
-
+            hRectS.setObjMoveCallback(cbFcn);
+            hRectS.setConstraintRegion(xLim,yLim);
+            
         end
         
         % --- callback function for moving the ROI marker object
@@ -357,10 +350,8 @@ classdef VideoROIClass < handle
             % retrieves the location of the opposite marker object
             uDataF = [uData(1),1+(uData(2)==1)];
             hPatchF = findall(obj.hAx,'tag','hROILim','UserData',uDataF);
-            hAPI = iptgetapi(hPatchF); 
-            pF = hAPI.getPosition();
-
-            % 
+            pF = getIntObjPos(hPatchF);
+            
             if uData(1)       
                 % sets the length dimension parameter object  
                 if uData(2) == 1
@@ -403,7 +394,7 @@ classdef VideoROIClass < handle
             obj.manualUpdate = true;
 
             % updates the position of the marker
-            obj.apiLV.setPosition(rPos);    
+            obj.hPointLV.setPosition(rPos);    
             obj.updateVideoStatus(rPos);
             
             % global variables
@@ -524,10 +515,9 @@ classdef VideoROIClass < handle
             end
 
             % retrieves the position of the marker objects
-            hAPI = cellfun(@(x)(iptgetapi(x)),hRect,'un',0);
-            fPos = cell2mat(cellfun(@(x)(x.getPosition()),hAPI,'un',0));
+            fPos = cellfun(@(x)(getIntObjPos(x)),hRect,'un',0);
 
-            % returns the 
+            % sets up the position vector
             [W,H] = deal(fPos(4,1)-fPos(3,3),fPos(2,2)-fPos(1,4));
             rPos = [fPos(3,3),fPos(2,4),W,H];            
             
@@ -586,12 +576,9 @@ classdef VideoROIClass < handle
             xLimLV = [0,obj.vRes(1)-obj.rPos(1)];
             yLimLV = [0,obj.vRes(2)-obj.rPos(2)];
             
-            % resets the axis limits
+            % resets the axis limits and constraint region
             set(obj.hAxLV,'xlim',xLimLV,'yLim',yLimLV)                      
-            
-            % resets the 
-            fcn = makeConstrainToRectFcn('impoint',xLimLV,yLimLV);
-            obj.apiLV.setPositionConstraintFcn(fcn);              
+            obj.hPointLV.setConstraintRegion(xLimLV,yLimLV);
             
         end
         
@@ -604,15 +591,14 @@ classdef VideoROIClass < handle
         function updateROIMarker(hRect,dimStr,nwVal)
 
             % retrieves the current marker position
-            hAPI = iptgetapi(hRect);
-            rPos = hAPI.getPosition();
+            rPos = getIntObjPos(hRect);
 
             % updates the dimension corresponding to the dimension type
             iDim = strcmp({'Left','Bottom','Width','Height'},dimStr);
             rPos(iDim) = nwVal;
 
             % updates the position of the marker
-            hAPI.setPosition(rPos);
+            setIntObjPos(hRect,rPos);
 
         end        
         
