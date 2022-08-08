@@ -375,14 +375,14 @@ classdef AdaptorInfoClass < handle
             end                    
             
             % removes the infeasible devices and reduces
-            obj.objIMAQDev = cell2cell(obj.objIMAQDev(isOK));
+            obj.objIMAQDev = obj.objIMAQDev(isOK);
             obj.sFormat = cell2cell(obj.sFormat(isOK));
             obj.sInd = ones(length(obj.sFormat),1);
             obj.vIndIMAQ = cell2mat(arrayfun(@(i,n)([i*ones(n,1),...
                             (1:n)']),(1:sum(isOK))',nInfo(isOK),'un',0));
             
             % sets the name strings within the list box
-            vStrIMAQ0 = vStrIMAQ0(isOK);
+            vStrIMAQ0 = cell2cell(vStrIMAQ0(isOK));
             obj.vStrIMAQ = cellfun(@(x,y)(sprintf('%i - %s',x,y)),...
                     num2cell(1:length(vStrIMAQ0))',vStrIMAQ0(:),'un',0);            
             set(handles.listIMAQObj,'String',obj.vStrIMAQ,'value',[])
