@@ -355,7 +355,8 @@ classdef AdaptorInfoClass < handle
                         obj.objIMAQDev{i} = devInfo.DeviceInfo;
                         isOK(i) = true;
                         nInfo(i) = length(obj.objIMAQDev{i});
-                        vStrIMAQ0{i} = obj.objIMAQDev{i}.DeviceName;
+                        vStrIMAQ0{i} = field2cell...
+                                    (obj.objIMAQDev{i}(:),'DeviceName');
                         obj.sFormat{i} = obj.detFeasCamFormat(i);
                     end
                 catch
@@ -374,7 +375,7 @@ classdef AdaptorInfoClass < handle
             end                    
             
             % removes the infeasible devices and reduces
-            obj.objIMAQDev = obj.objIMAQDev(isOK);
+            obj.objIMAQDev = cell2cell(obj.objIMAQDev(isOK));
             obj.sFormat = cell2cell(obj.sFormat(isOK));
             obj.sInd = ones(length(obj.sFormat),1);
             obj.vIndIMAQ = cell2mat(arrayfun(@(i,n)([i*ones(n,1),...
