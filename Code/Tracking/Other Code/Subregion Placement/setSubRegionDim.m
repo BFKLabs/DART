@@ -43,9 +43,8 @@ if is2DSetup || detMltTrkStatus(iMov)
     [iSubW,iS] = sortrows(iSubW);
     hSubW = hSubW(iS);
     
-    %
-    hAPI = arrayfun(@(x)(iptgetapi(x)),hSubW,'un',0);
-    pPos0 = cellfun(@(x)(x.getPosition()),hAPI,'un',0);
+    % resets the position array
+    pPos0 = arrayfun(@(x)(getIntObjPos(x)),hSubW,'un',0);
     pPos = cell(1,length(iMov.iC));
     
     % sets the parameters for each of the sub-regions
@@ -110,8 +109,7 @@ else
             nTube = getSRCount(iMov,j);
 
             % sets the location of the 
-            hAPI = iptgetapi(hSubW(i)); 
-            iMov.pos{j} = hAPI.getPosition();
+            iMov.pos{j} = getIntObjPos(hSubW(i));
 
             % sets the positional vector    
             Yr = iMov.pos{j}(2)+[0 iMov.pos{j}(4)];

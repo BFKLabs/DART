@@ -83,6 +83,7 @@ classdef CalcBG < handle
     
     % class methods
     methods
+        
         % --- object constructor
         function obj = CalcBG(hGUI)
             
@@ -742,7 +743,7 @@ classdef CalcBG < handle
 
             % loops through all the sub-regions creating markers 
             hold on
-            for i = 1:length(imov.iR)
+            for i = find(imov.ok(:)')
                 % memory allocation
                 tStr = sprintf('hFlyTmp%i',i);
                 obj.hMark{i} = cell(obj.nTube(i),1);
@@ -1131,7 +1132,7 @@ classdef CalcBG < handle
             isHiV = obj.iMov.vPhase(obj.iPara.cPhase) == 2;
                         
             % calculates the x-correlation images for each region
-            for i = 1:obj.nApp
+            for i = find(obj.iMov.ok(:)')
                 % retrieves the image stack
                 IL = getRegionImgStack(obj.iMov,I,iFrm0,i,isHiV);
                 Bw = getExclusionBin(obj.iMov,size(IL{1}),i);                
@@ -1446,7 +1447,7 @@ classdef CalcBG < handle
             switch get(hMenu,'Checked')
                 case 'on'
                     % case is closing an open statistics GUI
-                    obj.phaseObj.closeGUI([],obj.phaseObj);
+                    obj.phaseObj.closeGUI(obj.phaseObj,[]);
                     set(hMenu,'Checked','off');
                     
                     % clears the statistics object
@@ -2001,7 +2002,7 @@ classdef CalcBG < handle
             obj.setManualDetectEnable()
             
             % sets the marker visibility for all apparatus
-            for i = 1:length(obj.hMark)
+            for i = find(obj.iMov.ok(:)')
                 indFly = 1:getSRCount(obj.iMov,i);
                 
                 if iscell(fok)

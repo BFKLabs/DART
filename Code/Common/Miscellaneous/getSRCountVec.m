@@ -9,3 +9,5 @@ else
     nSubV = arr2vec(nSub');    
 end
 
+% removes any NaN counts
+nSubV(isnan(nSubV)) = 0;

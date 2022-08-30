@@ -120,7 +120,10 @@ classdef SingleTrackInit < SingleTrack
             fPmn = cellfun(@(x)(calcImageStackFcn(x,'min')),fPT,'un',0);
             fPmx = cellfun(@(x)(calcImageStackFcn(x,'max')),fPT,'un',0);
             DfPC = cellfun(@(x,y)(sum((y-x).^2,2).^0.5),fPmn,fPmx,'un',0);
-            DfP = combineNumericCells(DfPC(:)');
+            
+            % sets up the distance array
+            DfP = NaN(max(cellfun(@length,DfPC)),length(obj.iMov.ok));
+            DfP(:,obj.iMov.ok) = combineNumericCells(DfPC(:)');
             
             % determines which regions are potentially empty 
             ii = ~cellfun(@isempty,obj.iMov.StatusF);
@@ -1613,8 +1616,10 @@ classdef SingleTrackInit < SingleTrack
             pSig = combineNumericCells(cellfun(@(x,y)(mean(x>y,2)),...
                                 pPR,num2cell(obj.pTolF(:,iPh)),'un',0)');
             pvSig = combineNumericCells(cellfun(@(x,y)(mean(x>pS*y,2)),...
-                                pPR,num2cell(obj.pTolF(:,iPh)),'un',0)');                                                    
-            isSig = (pSig >= obj.pSigMin) | (pvSig > 0);
+                                pPR,num2cell(obj.pTolF(:,iPh)),'un',0)');
+                            
+            isSig = zeros(size(pvSig,1),length(obj.iMov.ok));
+            isSig(:,obj.iMov.ok) = (pSig >= obj.pSigMin) | (pvSig > 0);
             
             % calculates the distance range (fills in any missing phases
             % with NaN values)

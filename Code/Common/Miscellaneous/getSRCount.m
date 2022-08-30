@@ -35,6 +35,7 @@ if isfield(iMov,'pInfo')
             
         otherwise
             % otherwise, exit the function
+            nFly(isnan(nFly)) = 0; 
             return
     end
     
@@ -91,3 +92,6 @@ else
     % old program version, so use fixed fly count
     nFly = iMov.nTube;
 end
+
+% removes any NaN counts
+nFly(isnan(nFly)) = 0;

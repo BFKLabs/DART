@@ -382,8 +382,7 @@ classdef GridDetect < matlab.mixin.SetGet
                 if updateOuter
                     uD = [iRow+(yDir==1),iCol];
                     hHorz = findall(obj.hAx,'tag','hHorz','UserData',uD);
-                    apiH = iptgetapi(hHorz);
-                    lPos = apiH.getPosition();
+                    lPos = getIntObjPos(hHorz);
                     
                     % recalculates
                     iAppC = iApp + yDir*nCol;
@@ -421,8 +420,7 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % updates the region grid position vector
             hInner = findall(obj.hAx,'tag','hInner','UserData',iApp);
-            hAPI = iptgetapi(hInner);
-            hAPI.setPosition(obj.iMov.pos{iApp});
+            setIntObjPos(hInner,obj.iMov.pos{iApp});
             
             % updates the ROI coordinates
             obj.hFigM.rgObj.roiCallback(obj.iMov.pos{iApp},iApp);
@@ -484,6 +482,8 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % sets the incoming fields
             obj.isSet = true;
+            iApp = obj.getRegionIndex();
+            axCbFcn = @obj.trackAxesClick;
             [obj.trkObj,obj.iMov] = deal(trkObjNw,iMovNw);
             tPer = roundP(median(trkObjNw.tPerS,'omitnan'));
             
@@ -498,17 +498,21 @@ classdef GridDetect < matlab.mixin.SetGet
             % removes the hit-test of the inner regions            
             hInner = findall(obj.hAx,'tag','hInner');
             if ~isempty(hInner)
-                arrayfun(@(x)(set(findall(x),'HitTest','off')),hInner)
+                if isOldIntObjVer()
+                    arrayfun(@(x)(set(findall(x),'HitTest','off')),hInner)
+                else
+                    arrayfun(@(x)(set...
+                                (x,'InteractionsAllowed','none')),hInner)
+                end
             end
             
             % finds the new inner region object and turns on the highlight
-            iApp = obj.getRegionIndex();
             obj.hSelS = findobj(obj.hAx,'tag','hInner','UserData',iApp);
-            obj.setRegionHighlight('on');  
+            obj.setRegionHighlight('on');              
             
             % updates the move button enabled properties
             obj.updateMoveEnableProps();
-            set(obj.hFigTrk,'WindowButtonDownFcn',@obj.trackAxesClick)
+            set(obj.hFigTrk,'WindowButtonDownFcn',axCbFcn)
             
             % deletes the loadbar
             delete(h);
@@ -582,8 +586,12 @@ classdef GridDetect < matlab.mixin.SetGet
             end
             
             % updates the linewidth
-            hLine = findall(obj.hSelS,'tag','wing line');
-            set(hLine,'LineWidth',lSize)
+            if isOldIntObjVer()
+                hLine = findall(obj.hSelS,'tag','wing line');
+                set(hLine,'LineWidth',lSize)
+            else
+                set(obj.hSelS,'LineWidth',lSize)
+            end
             
         end
         

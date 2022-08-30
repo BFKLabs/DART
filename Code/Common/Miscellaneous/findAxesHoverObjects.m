@@ -56,6 +56,17 @@ for i = 1:length(isHover)
             
             isHover(i) = (prod(sign(xD-mPos(1,1))) == -1) && ...
                          (prod(sign(yD-mPos(1,2))) == -1);
+                     
+        case 'images.roi.rectangle'
+            rPos = get(axObj(i),'Position');
+            [xD,yD] = deal(rPos(1)+[0,rPos(3)],rPos(2)+[0,rPos(4)]);
+            isHover(i) = (prod(sign(xD-mPos(1,1))) == -1) && ...
+                         (prod(sign(yD-mPos(1,2))) == -1);      
+                     
+        case 'images.roi.ellipse'           
+            sAx = get(axObj(i),'SemiAxes');
+            rPos = get(axObj(i),'Position');
+            isHover(i) = sqrt(sum((mPos(1,1:2) - rPos).^2))/sAx(1) < 1;
             
         case {'uipanel','uicontrol'}
             pPos = getObjGlobalCoord(axObj(i));

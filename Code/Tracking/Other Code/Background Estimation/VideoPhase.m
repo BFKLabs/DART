@@ -55,7 +55,7 @@ classdef VideoPhase < handle
         Dtol
         nPhaseMx = 100;        
         nPhMax = 5;
-        nFrm0 = 10;
+        nFrm0 = 15;
         szDS = 800;
         szBig = 1400; 
         dnFrmMin = 25; 

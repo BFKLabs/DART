@@ -152,9 +152,7 @@ if isSet
     % sets the other object properties
     useSR = false;
     is2D = hObject.iData.is2D;
-    setMenuCheck(handles.menuShowInner,~is2D);
     setMenuCheck(handles.menuShowRegion,is2D);
-    setObjEnable(handles.menuView,hObject.iMov.isSet)   
     
     % sets check mark for the split region use flag
     if isfield(iMov,'srData') && ~isempty(iMov.srData)
@@ -522,31 +520,6 @@ delete(hFig)
 % ----------------------- %
 
 % -------------------------------------------------------------------------
-function menuShowInner_Callback(hObject, eventdata, handles)
-
-% initialisations
-hFig = handles.output;
-hGUI = get(hFig,'hGUI');
-
-% toggles the menu item
-toggleMenuCheck(hObject)
-isShow = strcmp(get(hObject,'checked'),'on');
-
-% sets the object properties
-setObjEnable(handles.buttonUpdate,isShow);
-setObjVisibility(findobj(hGUI.imgAxes,'tag','hNum'),isShow);
-setObjVisibility(findobj(hGUI.imgAxes,'UserData','hTube'),isShow);
-
-% sets the visibility of the inner regions
-hInner = findobj(hGUI.imgAxes,'tag','hInner');
-setObjVisibility(hInner,isShow);
-
-% ensures the region bottom line objects are made invisible
-if isShow
-    setObjVisibility(findall(hInner,'tag','bottom line'),'off');
-end
-
-% -------------------------------------------------------------------------
 function menuShowRegion_Callback(hObject, ~, handles)
 
 % toggles the menu item
@@ -595,8 +568,9 @@ end
 cont = gridObj.iFlag == 1;
 while cont
     % runs the 1D auto-detection algorithm
-    [iMovNw,trkObj] = detGridRegions(hFig);
-    if isempty(iMovNw)
+%     [iMovNw,trkObj] = detGridRegions(hFig);
+    dObj = DetGridRegions(hFig);    
+    if ~dObj.calcOK
         % if user cancelled then exit the loop after closing para gui  
         set(hFig,'iMov',iMov0)
         hFig.rgObj.setupRegionConfig(iMov0,true);
@@ -606,7 +580,7 @@ while cont
 
     % allow user to reset location of regions (either up or down) or 
     % redo the region calculations
-    gridObj.checkDetectedSoln(iMovNw,trkObj);
+    gridObj.checkDetectedSoln(dObj.iMov,dObj.trkObj);
     switch gridObj.iFlag
         case 2
             % case is the user continued
@@ -791,13 +765,11 @@ iMov = get(hFig,'iMov');
 iData = get(hFig,'iData');
 
 % retrieves the boolean flags
-showInner = ~iData.is2D;
 isMltTrk = detMltTrkStatus(iMov);
 hasSR = isfield(iMov,'srData') && ~isempty(iMov.srData);
 
 % sets the menu item enabled properties
 setObjEnable(handles.menuReset,iMov.isSet);
-setObjEnable(handles.menuView,iMov.isSet);
 setObjEnable(handles.menuAutoPlace,iMov.isSet && ~isMltTrk);
 
 % updates the split region menu item enabled properties
@@ -810,13 +782,7 @@ setObjEnable(handles.menuUseSplit,iMov.isSet && hasSR && isFeas );
 if ~iMov.isSet; return; end
 
 % updates the enabled properties of the view items
-setObjEnable(handles.menuShowInner,showInner);
 setObjEnable(handles.menuShowRegion,isFeas);
-
-% turns off the show inner check mark (if not showing inned regions)
-if ~showInner
-    setMenuCheck(handles.menuShowInner,'off')
-end
 
 % updates the enabled properties of the detection menu items
 setObjEnable(handles.menuDetectSetup1D,~isFeas);
@@ -1272,7 +1238,6 @@ iMov = hFig.rgObj.setupRegionConfig(iMov);
 
 % enable the update button, but disable the use automatic region and show
 % region menu items
-setMenuCheck(setObjEnable(handles.menuShowInner,'on'),'on');
 setObjEnable(handles.buttonUpdate,'on');
 
 % sets the sub-GUI as the top window
@@ -2227,6 +2192,7 @@ end
 
 % sets the region acceptance flags
 iMov.ok = any(iMov.flyok,1);
+iMov.pInfo.pPos = iMov.autoP.pPos;
 
 % --- updates the group arrays
 function [pInfo,isDiff] = updateGroupArrays(handles)

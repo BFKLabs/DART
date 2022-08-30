@@ -81,7 +81,7 @@ classdef InitPhaseStats < handle
             
             % centres the figure
             setObjVisibility(obj.hFig,1)
-            centreFigPosition(obj.hFig,2)
+            centreFigPosition(obj.hFig,3)
             obj.isResizing = false;
             
         end
@@ -177,19 +177,18 @@ classdef InitPhaseStats < handle
             fPos = [100,100,obj.widFig,obj.hghtFig];            
             
             % creates the figure object
-            cbFcn = @obj.closeGUI;
             obj.hFig = figure('Position',fPos,'tag','figInitTrackStats',...
-                              'MenuBar','None','Toolbar','None',...
+                              'MenuBar','None','Resize','on',...
                               'Name','Initial Tracking Statistics',...
                               'NumberTitle','off','Visible','off',...
-                              'Resize','on','CloseRequestFcn',cbFcn,...
+                              'SizeChangedFcn',@obj.resizeGUI,...
                               'WindowButtonMotionFcn',obj.wmFunc,...
-                              'SizeChangedFcn',@obj.resizeGUI);
+                              'CloseRequestFcn',@obj.closeGUI);
                           
             % creates the toolbar objects
             obj.hTool = uitoolbar(obj.hFig);
             obj.hToolB = uitoolfactory(obj.hTool,'Exploration.ZoomIn');
-            set(obj.hToolB,'ClickedCallback',{@obj.zoomToggle})
+            set(obj.hToolB,'ClickedCallback',@obj.zoomToggle)
             
             % creates the table panel
             pPosO = [obj.dX*[1,1],obj.widPanelO,obj.hghtPanelO];
@@ -481,11 +480,18 @@ classdef InitPhaseStats < handle
             
         end
         
-        % --- deletes the GUI
-        function closeGUI(obj, ~, ~)
+        % --- gui close callback function
+        function closeGUI(obj, ~, evnt)
                        
-            % deletes the GUI
-            delete(obj.hFig);
+            % determines if calling the function directly
+            if ~isempty(evnt)
+                % if so, run the phases stats menu item
+                hMenu = obj.bgObj.hGUI.menuPhaseStats;
+                obj.bgObj.menuPhaseStats(hMenu,[]);
+            else
+                % otherwise, delete the figure object
+                delete(obj.hFig);                
+            end               
             
         end      
 
@@ -709,6 +715,7 @@ classdef InitPhaseStats < handle
         
     end
     
+    % static class methods
     methods (Static)
         
         % --- retrieves the patch colour

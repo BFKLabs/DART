@@ -61,6 +61,9 @@ scrSz = getPanelPosPix(0,'Pixels','ScreenSize');
 A = load(getParaFileName('ProgPara.mat'));
 [tDay,hDay] = deal(A.gPara.Tgrp0,A.gPara.TdayC);
 
+% uses software opengl format
+opengl('save','software')
+
 % Update handles structure
 try
     guidata(hObject, handles);

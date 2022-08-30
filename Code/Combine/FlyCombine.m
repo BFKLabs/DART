@@ -24,9 +24,8 @@ end
 function FlyCombine_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % global variables
-global isDocked initDock scrSz updateFlag regSz isAnalysis
-isAnalysis = false;
-[isDocked,initDock] = deal(true);
+global isAnalysis initDock scrSz updateFlag regSz 
+[isAnalysis,initDock] = deal(false,true);
 updateFlag = 2; pause(0.1); 
 
 % retrieves the regular size of the GUI
@@ -43,29 +42,16 @@ set(hObject,'position',[10 (scrSz(4)-pos(4)) pos(3) pos(4)]);
 % --- FIELD INITIALISATIONS & DIRECTORY STRUCTURE SETTING --- %
 % ----------------------------------------------------------- %
 
-% sets the DART object handles (if provided) and the program directory
-switch length(varargin) 
-    case (1) % case is running the program from DART main
-        % sets the input argument and the open GUI (makes invisible)
-        hDART = varargin{1};
-        set(hObject,'name','DART Fly Experiment Data Output Program')
-                               
-        % retrieves the program default struct
-        ProgDefNew = getappdata(hDART.figDART,'ProgDefNew');
-        setObjVisibility(hDART.figDART,'off')                      
-        
-    otherwise % case is any other number of input arguments
-        % displays an error message
-        tStr = 'Data Combining GUI Initialisation Error';
-        eStr = ['Error! Incorrect number of input arguments. ',...
-                'Exiting Data Combining GUI...'];
-        waitfor(errordlg(eStr,tStr,'modal'))
-        
-        % deletes the GUI and exits the function
-        delete(hObject)
-        return
-end
+% sets the input arguments
+hDART = varargin{1};
 
+% sets the input argument and the open GUI (makes invisible)
+set(hObject,'name','DART Fly Experiment Data Output Program')
+
+% retrieves the program default struct
+ProgDefNew = getappdata(hDART.figDART,'ProgDefNew');
+setObjVisibility(hDART.figDART,'off')                      
+        
 % sets the input arguments
 setappdata(hObject,'iTab',1);
 setappdata(hObject,'sInfo',[]);
@@ -122,7 +108,7 @@ setappdata(hObject,'hProp0',getHandleSnapshot(hObject))
 % Update handles structure
 guidata(hObject, handles);
 
-% UIWAIT makes FlyCombine wait for user response (see UIRESUME)
+% % UIWAIT makes FlyCombine wait for user response (see UIRESUME)
 % uiwait(handles.figFlyCombine);
 
 % --- Outputs from this function are returned to the command line.
@@ -208,18 +194,18 @@ hFig = handles.figFlyCombine;
 qStr = 'Are you sure you want to close the Data Combining GUI?';
 uChoice = questdlg(qStr,'Close GUI?','Yes','No','Yes');
 if strcmp(uChoice,'Yes')
-    % sets the Fly Track GUI to be invisible
-    hDART = findall(0,'tag','figDART','type','figure');
-    
-    % deletes the figure and removes all added paths
+    % deletes the information sub-gui (if it exists)
     hGUIInfo = getappdata(hFig,'hGUIInfo');
     if ~isempty(hGUIInfo)
         hGUIInfo.closeFigure();
-    end
-        
-    % sets the Fly Track GUI to be invisible
-    delete(hFig)
-    setObjVisibility(hDART,'on');    
+    end        
+    
+    % returns to the base GUI
+    hDART = getappdata(hFig,'hDART');    
+    
+    % deletes the data combining GUI
+    delete(hFig)    
+    setObjVisibility(hDART.figDART,'on');    
 end
 
 % -------------------------------- %
@@ -337,26 +323,26 @@ if isUpdating; return; end
 % object retrieval
 hFig = handles.figFlyCombine;
 sInfo0 = getappdata(hFig,'sInfo');
-hGUIInfo0 = getappdata(hFig,'hGUIInfo');
+hGUIInfo = getappdata(hFig,'hGUIInfo');
 
 % deletes any previous information GUIs
 if isempty(sInfo0)
     % no data is loaded, so exit function
     return
     
-elseif ~isempty(hGUIInfo0)
+elseif ~isempty(hGUIInfo)
     if ~isempty(eventdata)
         % if the tab has not changed, then exit the function
-        if hGUIInfo0.iTab == get(hObj,'UserData')
+        if hGUIInfo.iTab == get(hObj,'UserData')
             return
         end
 
         % update the solution flags and closes the gui 
-        hGUIInfo0.updateSolutionFlags();
+        hGUIInfo.updateSolutionFlags();
     end
     
     % closes the figure
-    hGUIInfo0.closeFigure(); 
+    hGUIInfo.closeFigure(); 
 end
 
 % makes the GUI visible
@@ -1052,6 +1038,7 @@ else
         
         % resets the limit markers
         resetLimitMarker(handles.axesImg,dTS0*[1 1]*Tmlt,'Finish')
+        resetExptDurFields(handles.panelExptDur,sInfo);
     end
 end
 
@@ -1068,7 +1055,7 @@ iPara = sInfo.iPara;
 
 % sets the parameter limits
 switch iType
-    case {1,2}
+    case {3,4}
         % case is the minutes/seconds
         nwLim = [0,60];
    
@@ -1123,7 +1110,7 @@ tExpt0 = getCurrentExptDur(sInfo.iPara);
 set(hObject,'string',num2str(tExpt0(iType)));
 
 % --- start/finish limit marker callback function --- %
-function moveLimitMarker(pNew,handles,Type,varargin)
+function moveLimitMarker(varargin)
 
 % global variables
 global xLimTot isUpdating
@@ -1133,9 +1120,25 @@ if isUpdating
     return
 end
 
+% retrieves the object handle and the index of the line
+switch length(varargin)
+    case 1
+        % case is the older version interactive objects
+        pNew = varargin{1};
+        Type = get(get(gco,'parent'),'UserData');        
+
+    case 2
+        % case is the newer version interactive objects
+        pNew = varargin{2}.CurrentPosition;
+        Type = varargin{1}.UserData;
+end
+
+% retrieves the figure handle
+hFig = findall(0,'tag','figFlyCombine');
+handles = guidata(hFig);
+
 % initialisations
 pDel = 1e-4;
-hFig = handles.figFlyCombine;
 sInfo = getCurrentExptInfo(hFig);
 T0 = sInfo.snTot.iExpt(1).Timing.T0;
 [hAx,xNew] = deal(handles.axesImg,pNew(1,1));
@@ -1148,8 +1151,9 @@ Tv0 = cellfun(@(x)(x(1)),sInfo.snTot.T)*Tmlt;
 switch Type
     case ('Start')
         % retrieves the finish marker x-location
-        hFinish = findobj(hAx,'tag','Finish');        
-        pF = get(findobj(hFinish,'tag','top line'),'xData');
+        hFinish = findobj(hAx,'UserData','Finish');
+        pF0 = getIntObjPos(hFinish);
+        pF = pF0(:,1);
         
         % if the start marker exceeds the finish, then reset
         if xNew >= (pF(1) - pDel)
@@ -1196,8 +1200,9 @@ switch Type
         
     case ('Finish')
         % retrieves the start marker x-location
-        hStart = findobj(hAx,'tag','Start');
-        pS = get(findobj(hStart,'tag','top line'),'xData');
+        hStart = findobj(hAx,'UserData','Start');
+        pS0 = getIntObjPos(hStart);
+        pS = pS0(:,1);        
                
         % if the start marker exceeds the finish, then reset
         if xNew <= (pS(1) + pDel)
@@ -1267,9 +1272,8 @@ global yLimTot isUpdating
 % updates the update flag
 isUpdating = true;
 pause(0.01)
-
-api = iptgetapi(findobj(hAx,'tag',Type));
-api.setPosition([xNew',yLimTot']);
+hObj = findobj(hAx,'UserData',Type);
+setIntObjPos(hObj,[xNew(:),yLimTot(:)]);
 
 % resets the update flag
 isUpdating = false;
@@ -1281,9 +1285,9 @@ function resetLimitMarkerRegion(hAx,xLimNew,Type)
 global yLimTot
 
 % sets the constraint/position callback functions
-fcn = makeConstrainToRectFcn('imline',xLimNew,yLimTot);
-api = iptgetapi(findobj(hAx,'tag',Type));
-api.setPositionConstraintFcn(fcn);
+isOld = isOldIntObjVer();
+hObj = findobj(hAx,'UserData',Type);
+setConstraintRegion(hObj,xLimNew,yLimTot,isOld,'line');
 
 % --- re-initialises the plot objects
 function resetPlotObjects(handles)
@@ -1677,23 +1681,16 @@ function createNewMarker(hAx,xPos,yPos,Type)
 
 % global variables
 global xLimTot yLimTot
-[lWidM,mSizeM,lWidL] = deal(4,5,2);
+[mSizeM,lWidL] = deal(5,2);
 
 % creates a new line object
-hLineS = imline(hAx,xPos,yPos);
-setColor(hLineS,'r');
-set(hLineS,'tag',Type)
-set(findobj(hLineS,'tag','top line'),'linewidth',lWidL)
-set(findobj(hLineS,'tag','end point 1'),'hittest','off',...
-                   'linewidth',lWidM,'Markersize',mSizeM)
-set(findobj(hLineS,'tag','end point 2'),'hittest','off',...
-                   'linewidth',lWidM,'Markersize',mSizeM)
-setObjVisibility(findobj(hLineS,'tag','bottom line'),'off')
+hLineS = InteractObj('line',hAx,{xPos,yPos});
+hLineS.setFields('Userdata',Type,'Tag','hMark')
+hLineS.setColour('r')
 
-% sets the constraint/position callback functions
-fcn = makeConstrainToRectFcn('imline',xLimTot,yLimTot);
-setPositionConstraintFcn(hLineS,fcn);
-hLineS.addNewPositionCallback(@(p)moveLimitMarker(p,guidata(hAx),Type));
+hLineS.setLineProps('LineWidth',lWidL,'MarkerSize',mSizeM);
+hLineS.setConstraintRegion(xLimTot,yLimTot);
+hLineS.setObjMoveCallback(@moveLimitMarker);
 
 % --- updates the position plot --- %
 function updatePosPlot(handles,varargin)
@@ -1865,7 +1862,8 @@ end
 
 
 % retrieves the handles from the image panel
-hObjImg = findall(handles.axesImg);   
+hAx = handles.axesImg;
+hObjImg = findall(hAx);   
 
 % determines 
 if avgPlot
@@ -1938,13 +1936,7 @@ if canPlot
     set(hAx,'yLim',yLim,'yTickLabel',yTickLbl);
 
     % updates the line height
-    x = findall(handles.axesImg,'tag','top line');
-    set(x,'ydata',yLim);
-
-    % updates the end marker y-location
-    y = findall(handles.axesImg,'tag','end point 2');
-    set(y,'ydata',yLim(2));
-
+    resetMarkerHeight(hAx,yLim);    
 else
     % if apparatus is rejected, turn off the image axis
     setAxisObjVisibility(hObjImg,'off')
@@ -2547,3 +2539,26 @@ end
 function tExpt = getCurrentExptDur(iPara)
 
 tExpt = sec2vec(etime(iPara.Tf,iPara.Ts));
+
+% --- resets the marker heights
+function resetMarkerHeight(hAx,yLim)
+
+% retrieves the marker line objects
+hMark = findall(hAx,'tag','hMark');    
+
+if isOldIntObjVer()
+    % updates the marker line y-location
+    x = findall(hMark,'tag','top line');        
+    set(x,'ydata',yLim);        
+
+    % updates the end marker y-location
+    y = findall(hMark,'tag','end point 2');
+    set(y,'ydata',yLim(2));            
+else
+    % updates the end marker y-location
+    for i = 1:length(hMark)
+        fPos = getIntObjPos(hMark(i),false);
+        fPos(:,2) = yLim;
+        setIntObjPos(hMark(i),fPos,false);
+    end
+end

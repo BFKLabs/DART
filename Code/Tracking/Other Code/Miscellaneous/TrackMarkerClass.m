@@ -95,6 +95,9 @@ classdef TrackMarkerClass < handle
             set(obj.hFig,'CurrentAxes',obj.hAx)            
             obj.deleteTrackMarkers();       
             
+            % if the sub-region data struct isn't set then exit
+            if ~obj.iMov.isSet; return; end
+            
             % -------------------------------- %
             % --- OBJECT MEMORY ALLOCATION --- %
             % -------------------------------- %            
@@ -674,7 +677,7 @@ classdef TrackMarkerClass < handle
                             if isLV
                                 % case is for local view
                                 xOfs0 = (iMov.iC{i}(1)-1) - obj.szDel;
-                                yOfs0 = (iMov.iR{i}(1)-1) - obj.szDel;            
+                                yOfs0 = (iMov.iR{i}(1)-1) - obj.szDel;
                             else
                                 % case is for global view
                                 [xOfs0,yOfs0] = deal(0);    
@@ -894,9 +897,14 @@ classdef TrackMarkerClass < handle
                 % image translation has been correct for
                 dpOfs = zeros(nFly,2);
             else
-                % image translation has not been correct for
+                % image translation has not been correct for                
                 dpOfs = repmat(getFrameOffset(obj.iMov,cFrm,iApp),nFly,1);
             end                
+                        
+            if get(obj.hChkLV,'value')
+                dpOfsL = [obj.iMov.iC{iApp}(1),obj.iMov.iR{iApp}(1)] - 1;
+                dpOfs = dpOfs - repmat(dpOfsL,size(dpOfs,1),1);
+            end
             
         end        
         

@@ -5,6 +5,8 @@ function iChoice = promptExptBlockRegion(hFig,tLimF,iCh)
 global yGap
 
 % initialisations
+lWid = 2;
+fCol = 0.95*[1,1,1];
 hAx = get(hFig,'CurrentAxes');
 % cbFcn = {@getUserClick,hFig};
 
@@ -12,44 +14,46 @@ hAx = get(hFig,'CurrentAxes');
 hBlkPrompt0 = findall(hAx,'tag','hBlkPrompt');
 if ~isempty(hBlkPrompt0); delete(hBlkPrompt0); end
 
-%
+% prompts the user to select the block to add to
 mStr = 'Select the region where you would like to add the experiment block';
 waitfor(msgbox(mStr,'Select Region','modal'))
 
 % turns the axis hold on
 hold(hAx,'on')
 
-%
+% creates prompt blocks for each section limit
 for i = 1:size(tLimF,1)
     % sets the location of the new rectangle object
     rPos = [tLimF(i,1),(iCh(1)-1)+yGap,diff(tLimF(i,:)),range(iCh)+1-yGap];
     
-    % creates the imrect object
+    % creates the rectangle object
     hAx = get(hFig,'CurrentAxes');
-    hRect = imrect(hAx,rPos);
+    hRect = InteractObj('rect',hAx,rPos);
+    hRect.setFields('tag','hBlkPrompt','UserData',i);
 
-    % updates the time offset box
-    set(hRect,'tag','hBlkPrompt','UserData',i);
-
-    % resets the object properties of the imrect object
-    set(findobj(hRect),'uicontextmenu',[])
-    setObjVisibility(findobj(hRect,'type','Line'),'off')
-    set(findobj(hRect,'type','Patch'),'EdgeColor','g',...
-                      'FaceColor',0.95*[1,1,1],'LineWidth',2)
-                  
     % creates the constraint function
     yL = [((iCh(1)-1)+yGap),iCh(end)];
-    fcnC = makeConstrainToRectFcn('imrect',tLimF(i,:),yL);
-
-    % sets up the api object
-    hSig = iptgetapi(hRect);
-    hSig.setPositionConstraintFcn(fcnC)                  
+    hRect.setConstraintRegion(tLimF(i,:),yL);    
+    
+    % resets the object properties of the rectangle object
+    if hRect.isOld
+        % case is an older interactive object format
+        hObjR = hRect.hObj;
+        set(findobj(hObjR),'uicontextmenu',[])
+        setObjVisibility(findobj(hObjR,'type','Line'),'off')
+        set(findobj(hObjR,'type','Patch'),'EdgeColor','g',...
+                          'FaceColor',fCol,'LineWidth',lWid)
+    else
+        % case is a newer interactive object format
+        hRect.setFields('EdgeColor','g','FaceColor',fCol,...
+                        'LineWidth',lWid,'uicontextmenu',[]);
+    end
 end
 
 % turns the axis hold off
 hold(hAx,'off')
 
-%
+% wait for the next user key press
 while 1
     w = waitforbuttonpress;
     if w == 0
@@ -62,28 +66,30 @@ while 1
     end
 end
 
-%
+% deletes any prompt block objects
 delete(findall(hAx,'tag','hBlkPrompt'))
 
-% --- 
+% --- determines the users selection
 function iChoice = getUserClick(hFig)
 
-%
-hAx = get(hFig,'CurrentAxes');
+% field retrieval
 mPos = get(hFig,'CurrentPoint');
 clickType = get(hFig,'SelectionType');
 
-%
+% determines if the user is currently holding the alt-key
 if strcmp(clickType,'alt')
+    % if holding the alt key, then return an empty choice (clears choice)
     iChoice = [];
-elseif isOverAxes(mPos)
-    hHover = findAxesHoverObjects(hFig);
-    hBlkP = findobj(hHover,'tag','hBlkPrompt');
     
+elseif isOverAxes(mPos)
+    % determines if the user is hovering over a block prompt object
+    hHover = findAxesHoverObjects(hFig);
+    hBlkP = findobj(hHover,'tag','hBlkPrompt');    
     if isempty(hBlkP)
+        % if not, then return an error index flag
         iChoice = -1;
     else
-        
+        % otherwise, return the index of the selected block
         iChoice = get(hBlkP,'UserData');
     end
 else

@@ -53,6 +53,12 @@ classdef SplitAxisClass < handle
         lWid = 3;
         xyDel = 1.5;
         
+        % parameters
+        tol = 0.001;
+        tol2 = 0.01;
+        del = 0.05;
+        tStr = {'V','H'};        
+        
         % variable object dimensions
         y0Txt
         hghtFig
@@ -62,11 +68,13 @@ classdef SplitAxisClass < handle
         hghtTable        
         
         % other class fields
+        isOld        
         dAtol = 1e-6;
         hasCtrl = false;
         isChange = false;
         isInit = false;      
         isUpdating = false;
+        tlStr = 'top line';
         
     end
     
@@ -104,6 +112,7 @@ classdef SplitAxisClass < handle
             
             % memory allocation
             obj.hMove = cell(1,3);
+            obj.isOld = isOldIntObjVer();
             
             % retrieves the sub-plot parameter structs
             [obj.sPara,obj.sPara0] = deal(getappdata(obj.hFigM,'sPara'));
@@ -155,7 +164,7 @@ classdef SplitAxisClass < handle
             
             % field strings
             pStr = {'nRow','nCol'};
-            tStr = {'Row Count: ','Column Count: '};
+            tStrP = {'Row Count: ','Column Count: '};
             bStr = {'Reset Regions','Combine Regions'};
             cNames = {'Region','Left','Bottom','Width','Height'};            
             [obj.hBut,obj.hEdit] = deal(cell(length(bStr),1));
@@ -166,9 +175,7 @@ classdef SplitAxisClass < handle
             
             % creates the experiment combining data panel
             yPos0 = 2*obj.dX + obj.hghtPanelC;
-            pPos = [obj.dX,yPos0,obj.widPanel,obj.hghtPanel];
-            hPanel = uipanel(obj.hFig,'Title','','Units',...
-                                      'Pixels','Position',pPos);
+            pPos = [obj.dX,yPos0,obj.widPanel,obj.hghtPanel];/
              
             % creates the table object
             tPos = [obj.dX,obj.hghtPanelC,obj.widTable,obj.hghtTable];
@@ -180,7 +187,7 @@ classdef SplitAxisClass < handle
             for i = 1:length(pStr)
                 % creates the text labels
                 tPos = [obj.xTxt(i),obj.y0Txt-3,obj.widTxt(i),obj.hghtEdit];
-                uicontrol(hPanel,'Style','Text','String',tStr{i},...
+                uicontrol(hPanel,'Style','Text','String',tStrP{i},...
                         'Units','Pixels','Position',tPos,...
                         'FontWeight','Bold','FontUnits','Pixels',...
                         'HorizontalAlignment','right',...
@@ -192,14 +199,14 @@ classdef SplitAxisClass < handle
                 ePos = [xPos0,obj.y0Txt,obj.widEdit,obj.hghtEdit];
                 obj.hEdit{i} = uicontrol(hPanel,'Style','Edit',...
                         'String',num2str(pVal),'Units','Pixels',...
-                        'Position',ePos,'UserData',pStr{i},'Callback',eFcn);                          
+                        'Position',ePos,'UserData',pStr{i},'Callback',eFcn);
                 
                 % creates the button objects
                 bPos = [obj.xBut(i),obj.dX-2,obj.widBut,obj.hghtBut];
                 obj.hBut{i} = uicontrol(hPanel,'Style','PushButton',...
                         'String',bStr{i},'Callback',bFcn{i},'FontWeight',...
                         'Bold','FontUnits','Pixels','FontSize',obj.tSz,...
-                        'Units','Pixels','Position',bPos,'Enable','off');                
+                        'Units','Pixels','Position',bPos,'Enable','off');
             end
                      
             % sets the other object properties
@@ -375,11 +382,11 @@ classdef SplitAxisClass < handle
             end            
             
             % plots the surrounding regions
-            tStr = 'hEdge';
-            plot(obj.hAx,[0 1],[0 0],'k','linewidth',obj.lWid,'tag',tStr);
-            plot(obj.hAx,[0 1],[1 1],'k','linewidth',obj.lWid,'tag',tStr);
-            plot(obj.hAx,[0 0],[0 1],'k','linewidth',obj.lWid,'tag',tStr);
-            plot(obj.hAx,[1 1],[0 1],'k','linewidth',obj.lWid,'tag',tStr);
+            tStrS = 'hEdge';
+            plot(obj.hAx,[0 1],[0 0],'k','linewidth',obj.lWid,'tag',tStrS);
+            plot(obj.hAx,[0 1],[1 1],'k','linewidth',obj.lWid,'tag',tStrS);
+            plot(obj.hAx,[0 0],[0 1],'k','linewidth',obj.lWid,'tag',tStrS);
+            plot(obj.hAx,[1 1],[0 1],'k','linewidth',obj.lWid,'tag',tStrS);
 
             % sets the context-menu for the axis
             hold(obj.hAx,'on'); 
@@ -660,105 +667,97 @@ classdef SplitAxisClass < handle
         % --- create the line objects
         function hLine = createLineObj(obj,xL,yL,ind,type,hNum)
 
-            % initialisations            
-            vStr = {'V','H'};
-            uData = [ind,type];
+            % initialisations
+            uData0 = [ind,type];
             
-            % creates the line object
-            hLine = imline(obj.hAx,xL,yL);
-            hLT = findobj(hLine,'tag','top line');
-            hLB = findobj(hLine,'tag','bottom line');
-            hEnd1 = findobj(hLine,'tag','end point 1');
-            hEnd2 = findobj(hLine,'tag','end point 2');
-
             % sets the limits based on the line type
             Lim = {xL,yL}; 
             Lim{type} = [0 1];
-
-            % sets the line object properties
-            set(hLine,'tag',sprintf('hSub%s',vStr{type}),'UserData',uData)
-            set(hLT,'UserData',hNum,'Color','k','LineWidth',obj.lWid)
-            set(hLB,'UserData',[xL',yL'],'Color','k','LineWidth',obj.lWid)
-
-            % if moveable, then set the position callback function
-            api = iptgetapi(hLine);
-            api.addNewPositionCallback(@obj.lineCallback);
-
-            % sets the constraint region for the
-            fcn = makeConstrainToRectFcn('imline',Lim{1},Lim{2});
-            api.setPositionConstraintFcn(fcn);            
+            tagStr = sprintf('hSub%s',obj.tStr{type});
+            uData = {uData0,hNum,[xL(:),yL(:)],Lim};
             
-            % makes the end-points invisible
-            set(hEnd1,'visible','off','UserData',Lim)
-            setObjVisibility(hEnd2,'off')            
+            % creates the line object
+            hLine = InteractObj('line',obj.hAx,{xL,yL});
+            hLine.setObjMoveCallback(@obj.lineCallback);
+            hLine.setConstraintRegion(Lim{1},Lim{2});
+            hLine.setFields('tag',tagStr,'UserData',uData)
+
+            % case is an old interactive object type
+            hLine.setLineProps('Color','k','Linewidth',obj.lWid,...
+                       'InteractionsAllowed','translate',...
+                       'RemoveEnds','Yes');
+            
             
         end
             
         % --- sets the line position callback
-        function lineCallback(obj,lPos,varargin)
+        function lineCallback(obj,varargin)
 
             % if updating or initialising then exit
             if obj.isUpdating || obj.isInit; return; end            
             
             % resets the clock timer
+            isCont = true;
             obj.hTic = tic();
-            obj.isChange = true;
-            
-            % parameters
-            tol = 0.001;
-            tol2 = 0.01;
-            del = 0.05;
-            tStr = {'V','H'};
+            obj.isChange = true;            
 
             % retrieves the line object handle
-            if nargin == 2
-                hh = gco; 
-            else
-                hh = varargin{1}; 
+            switch length(varargin)
+                case 1
+                    [hLine,lPos] = deal(get(gco,'Parent'),varargin{1}); 
+                case 2
+                    if isa(varargin{1},'double')
+                        [isCont,lPos] = deal(false,varargin{1});
+                        if obj.isOld
+                            hLine = get(varargin{2},'Parent');
+                        else
+                            hLine = varargin{2};
+                        end
+                    else
+                        hLine = varargin{1};
+                        lPos = varargin{2}.CurrentPosition();
+                    end
             end
 
-            % retrieves the line object tag and the userdata
-            [hNum,hLine] = deal(get(hh,'UserData'),get(hh,'parent'));
+            % retrieves the userdata array
             uData = get(hLine,'UserData');
-
-            % resets the location of the numbers
-            if ~isempty(hNum)
-                % retrieves the locations of the numbers and
-                % resets their locations depending on the type
-                for i = 1:length(hNum)
-                    numPos = get(hNum{i},'Position');        
-                    if uData(2) == 1
-                        % line is vertical
-                        numPos(1) = (lPos(1,1)+obj.dXR);
-                    else
-                        % line is horizontal
-                        numPos(2) = (lPos(1,2)+obj.dYR);
-                    end
-
-                    % updates the positions
-                    set(hNum{i},'position',numPos);
+            [iType,hNum] = deal(uData{1},uData{2});
+            
+            % retrieves the locations of the numbers and
+            % resets their locations depending on the type
+            for i = 1:length(hNum)
+                numPos = get(hNum{i},'Position');        
+                if iType(2) == 1
+                    % line is vertical
+                    numPos(1) = (lPos(1,1)+obj.dXR);
+                else
+                    % line is horizontal
+                    numPos(2) = (lPos(1,2)+obj.dYR);
                 end
+
+                % updates the positions
+                set(hNum{i},'position',numPos);
             end
 
             % exits the function
-            if (nargin == 3); return; end
+            if ~isCont; return; end
 
             % determines if the line has moved recently
             if ~obj.isMove
                 % if not, then determine if the line is free to move
 
                 % initialisations and memory allocation
-                [obj.hMove,obj.isInit] = deal(cell(1,3),true);
-                [iP,iC] = deal(3-uData(2),uData(2));    
+                [iP,iC] = deal(3-iType(2),iType(2));
+                [obj.hMove,obj.isInit] = deal(cell(1,3),true);                    
                 [A,p,jj] = deal(NaN(2),[4*obj.dXR,2*obj.dYR],cell(1,2));    
 
-                % retrieves the stationary line coordinates
-                lPos0 = get(findobj(hLine,'tag','bottom line'),'UserData');
+                % retrieves the stationary line ooordinates
                 setappdata(obj.hAx,'hLine',hLine)
 
                 % calculates the position offset for the line
+                lPos0 = uData{3};
                 [pSub{1},pSub{2}] = obj.getAllLinePos(1);
-                dP = lPos0(1,iC) + del*[-1 1];
+                dP = lPos0(1,iC) + obj.del*[-1 1];
 
                 % determines if there are any matching perpendicular 
                 % lines to the currently moving line
@@ -772,7 +771,7 @@ classdef SplitAxisClass < handle
                             % determines if the x/y locations of any of 
                             % the other lines match the moving line
                             ii = cellfun(@(x)(abs(x(i,iP)-lPos0(i,iP)) ...
-                                <= tol) && ((dP(j) >= x(1,iC)) && ...
+                                <= obj.tol) && ((dP(j) >= x(1,iC)) && ...
                                 (dP(j) <= x(2,iC))),pSub{iP});
                             if any(ii)
                                 % if so, then set the index of the 
@@ -784,7 +783,7 @@ classdef SplitAxisClass < handle
                 end                    
 
                 % determines if all the perpendicular lines matched
-                hSubP = findall(obj.hAx,'tag',['hSub',tStr{iP}]);  
+                hSubP = findall(obj.hAx,'tag',['hSub',obj.tStr{iP}]);  
                 if any(isnan(A(:)))
                     % if there are missing matches, then the line may have 
                     % to move with other co-linear lines. search for these 
@@ -794,7 +793,7 @@ classdef SplitAxisClass < handle
                     % adjacent to the search line            
 
                     % retrieves the handles of the lines    
-                    hSubC = findall(obj.hAx,'tag',['hSub',tStr{iC}]);            
+                    hSubC = findall(obj.hAx,'tag',['hSub',obj.tStr{iC}]);            
                     for i = 1:2
                         for j = 1:2                
                             % only search lines that are missing
@@ -820,9 +819,9 @@ classdef SplitAxisClass < handle
 
                                         % determines if the x/y locations of any of the
                                         % perperndicular lines match the current line                                        
-                                        k1 = cellfun(@(x)(abs(x(i,iP)-lPosC(i,iP)) <= tol) && ...
+                                        k1 = cellfun(@(x)(abs(x(i,iP)-lPosC(i,iP)) <= obj.tol) && ...
                                                 ((dP(1) >= x(1,iC)) && (dP(1) <= x(2,iC))),pSub{iP});    
-                                        k2 = cellfun(@(x)(abs(x(i,iP)-lPosC(i,iP)) <= tol) && ...
+                                        k2 = cellfun(@(x)(abs(x(i,iP)-lPosC(i,iP)) <= obj.tol) && ...
                                                 ((dP(2) >= x(1,iC)) && (dP(2) <= x(2,iC))),pSub{iP});                                                                                                    
                                         if any(k1) && any(k2)
                                             % if there is a match, then set 
@@ -840,8 +839,7 @@ classdef SplitAxisClass < handle
                     end
 
                     % combines the lines into a single array
-                    szH = [length(obj.hMove{1}),1];
-                    hC = num2cell([hLine;reshape(obj.hMove{1},szH)]);               
+                    hC = num2cell([hLine;obj.hMove{1}(:)]);               
                 else
                     % otherwise, set the colinear line to be the moved line
                     hC = num2cell(hLine);
@@ -859,7 +857,7 @@ classdef SplitAxisClass < handle
                                       (x(1,iP) <= pLimC(2))),pSub{iP});
                     if any(ii)
                         %
-                        dP = mean(lPosT(1,iC)) + del*[-1 1];
+                        dP = mean(lPosT(1,iC)) + obj.del*[-1 1];
                         
                         for i = 1:2
                             kk = cellfun(@(x)((x(i,iC) >= dP(1)) && ...
@@ -870,15 +868,17 @@ classdef SplitAxisClass < handle
                 end
 
                 % gets the userdata for the co-linear lines
-                uD = cell2mat(cellfun(@(x)(get(x,'UserData')),hC,'un',0));                            
+                uDF = cell2cell(...
+                        cellfun(@(x)(get(x,'UserData')),hC(:),'un',0));
+                uD = cell2mat(uDF(:,1));
 
                 % determines the parallel lines are in-line with the 
                 % currently moving line (removes the current line from 
                 % the index array). from this, determine which lines lie 
                 % left/right (horizontally) or below/above
                 % (vertically) wrt to the current moved line
-                ii = cellfun(@(x)((x(2,iP)>=(pLimC(1)+tol2)) && ...
-                                  (x(1,iP)<(pLimC(2)-tol2))),pSub{iC});
+                ii = cellfun(@(x)((x(2,iP)>=(pLimC(1)+obj.tol2)) && ...
+                                  (x(1,iP)<(pLimC(2)-obj.tol2))),pSub{iC});
 
                 ii((length(ii)+1)-uD(:,1)) = false;    
                 jj{1} = ii & cellfun(@(x)(x(1,iC)<lPos0(1,iC)),pSub{iC});
@@ -905,16 +905,16 @@ classdef SplitAxisClass < handle
 
                 % sets the offsets to the rectangle limits
                 Lim{iC} = Lim{iC} + reshape(p(iC)*[1 -1],size(Lim{iC}));
-
-                % updates the line constraining function
+                
+                % updates the line constraining function               
                 obj.updateLineConstrainFcn(hLine,Lim)        
                 [obj.isInit,obj.isMove] = deal(false,true);
             end
 
             % updates the positions of the colinear/perpendicular lines
-            obj.updateLinePos(obj.hMove{1},lPos,uData(2),1:2)
-            obj.updateLinePos(obj.hMove{2},lPos,uData(2),2)
-            obj.updateLinePos(obj.hMove{3},lPos,uData(2),1)
+            obj.updateLinePos(obj.hMove{1},lPos,iType(2),1:2)
+            obj.updateLinePos(obj.hMove{2},lPos,iType(2),2)
+            obj.updateLinePos(obj.hMove{3},lPos,iType(2),1)
 
         end
 
@@ -924,20 +924,26 @@ classdef SplitAxisClass < handle
             % retrieves the line api handle and set the new position
             for i = 1:length(hLine)
                 if nargin == 5
-                    [lPosNw,api] = obj.getLinePos(hLine(i));
+                    lPosNw = obj.getLinePos(hLine(i));
                     lPosNw(ind,type) = lPos(ind,type);
                 else
-                    [api,lPosNw] = deal(iptgetapi(hLine(i)),lPos);
+                    lPosNw = lPos;
                 end
 
                 % resets the line position
                 obj.isUpdating = true;
-                api.setPosition(lPosNw);        
+                setIntObjPos(hLine,lPosNw,obj.isOld,false);
                 obj.isUpdating = false;
 
                 if length(ind) == 2
-                    hLineTop = findall(hLine(i),'tag','top line');
-                    obj.lineCallback(lPosNw,hLineTop);
+                    if obj.isOld
+                        hLineT = findall(hLine(i),'tag',obj.tlStr);
+                    else
+                        hLineT = hLine(i);
+                    end
+                    
+                    % runs the line callback function
+                    obj.lineCallback(lPosNw,hLineT);
                 end
             end
 
@@ -973,35 +979,57 @@ classdef SplitAxisClass < handle
             if isempty(hLine); return; end
 
             % sets the line movement limits (if not provided)
-            if nargin == 2    
-                uData = get(hLine,'UserData');
+            uData = get(hLine,'UserData');
+            if nargin == 2                    
                 lPos = obj.getLinePos(hLine);
                 Lim = cellfun(@(x)(x'),num2cell(lPos,1),'un',0);
-                Lim{uData(2)} = [0 1];
+                Lim{uData{1}(2)} = [0 1];
             end
 
-            % updates the constraining region for the line
-            api = iptgetapi(hLine);
-            fcn = makeConstrainToRectFcn('imline',Lim{1},Lim{2});
-            set(findall(hLine,'tag','end point 1'),'UserData',Lim)
-            api.setPositionConstraintFcn(fcn);            
+            % updates the line limits userdata field
+            uData{4} = Lim;
+            set(hLine,'UserData',uData);            
+            
+            % updates the constraining region for the line   
+            setConstraintRegion(hLine,Lim{1},Lim{2},obj.isOld,'line');            
 
         end
 
         % --- updates the line hit-test state
         function setLineHTState(obj,state)
 
-            % retrieves the children objects of all the vertical lines
-            hSubVC = get(findall(obj.hAx,'tag','hSubV'),'Children');
-            if ~iscell(hSubVC); hSubVC = {hSubVC}; end
+            % retrieves the horizontal/vertical line object handles
+            hSubH = findall(obj.hAx,'tag','hSubH');
+            hSubV = findall(obj.hAx,'tag','hSubV');
+            
+            if obj.isOld
+                % retrieves the children objects of all the vertical lines
+                if ~isempty(hSubV)
+                    hSubVC = get(hSubV,'Children');
+                    if ~iscell(hSubVC); hSubVC = {hSubVC}; end
+                    cellfun(@(x)(set(x,'hittest',state)),hSubVC)
+                end
+                    
+                % retrieves the children objects of all the vertical lines
+                if ~isempty(hSubH)                
+                    hSubHC = get(hSubH,'Children');
+                    if ~iscell(hSubHC); hSubHC = {hSubHC}; end
+                    cellfun(@(x)(set(x,'hittest',state)),hSubHC)
+                end
 
-            % retrieves the children objects of all the vertical lines
-            hSubHC = get(findall(obj.hAx,'tag','hSubH'),'Children');
-            if ~iscell(hSubHC); hSubHC = {hSubHC}; end
-
-            % sets the hit-test state for all vertical/horizontal lines
-            cellfun(@(x)(set(x,'hittest',state)),hSubVC)
-            cellfun(@(x)(set(x,'hittest',state)),hSubHC)
+            else
+%                 % case is a new style interactive object
+%                 intStr = 'InteractionsAllowed';
+%                 if strcmp(state,'on')
+%                     % case is enabling the hit-test flag
+%                     arrayfun(@(x)(set(x,intStr,'translate')),hSubV)
+%                     arrayfun(@(x)(set(x,intStr,'translate')),hSubH)                    
+%                 else
+%                     %
+%                     arrayfun(@(x)(set(x,intStr,'none')),hSubV)
+%                     arrayfun(@(x)(set(x,intStr,'none')),hSubH)
+%                 end
+            end
 
         end
         
@@ -1042,8 +1070,13 @@ classdef SplitAxisClass < handle
                     
                     % retrieves the line indices
                     hh = cell2cell(obj.hMove);
-                    iL0 = arrayfun(@(x)(get(x,'UserData')),hh,'un',0);
-                    iL = cell2mat(iL0);
+                    if isempty(hh)
+                        iL = [];
+                    else
+                        iL0 = arrayfun(@(x)(get(x,'UserData')),hh,'un',0);
+                        iL1 = cell2cell(iL0);
+                        iL = cell2mat(iL1(:,1));
+                    end
                     
                     % retrieves the index data of the lines
                     hSub = {findall(obj.hAx,'tag','hSubV'),...
@@ -1055,18 +1088,22 @@ classdef SplitAxisClass < handle
                     % resets the line locations    
                     for i = 1:length(hh)
                         k = hSub{iL(i,2)} == hh(i);
-                        obj.updateLinePos(hh(i),pL{iL(i,2)}{k},[],[],1);            
-                        set(findobj(hh(i),'tag','bottom line'),...
-                                          'UserData',pL{iL(i,2)}{k})
+                        obj.updateLinePos(hh(i),pL{iL(i,2)}{k},[],[],1); 
+                        
+                        % updates the line object properties
+                        uData = get(hh(i),'UserData');
+                        uData{3} = pL{iL(i,2)}{k};
+                        set(hh(i),'UserData',uData);
                     end
 
                     % resets the stationary location of the moved line
                     hLine = getappdata(obj.hAx,'hLine');
-                    set(findobj(hLine,'tag','bottom line'),'UserData',...
-                                obj.getLinePos(hLine))
-
+                    uData = get(hLine,'UserData');
+                    uData{3} = obj.getLinePos(hLine);
+                    set(hLine,'UserData',uData);
+                    
                     % updates the line contrain functions
-                    for i = 1:length(obj.hMove)
+                    for i = find(~cellfun(@isempty,obj.hMove(:)'))
                         arrayfun(@(x)...
                              (obj.updateLineConstrainFcn(x)),obj.hMove{i});
                     end      
@@ -1427,22 +1464,18 @@ classdef SplitAxisClass < handle
             [vX,vY] = deal(min(max(0,vX),1),min(max(0,vY),1));
 
             % outputs in one array (if only one output variable)
-            if (nargout == 1); vX = [{vX},{vY}]; end
+            if (nargout == 1); vX = {vX,vY}; end
 
         end
         
         % --- retrieves the line position for the line object, hLine
-        function [lPos,api] = getLinePos(hLine,ind)
+        function lPos = getLinePos(hLine,ind)
 
             % retrieves the line's position
-            api = iptgetapi(hLine);
-            pos = api.getPosition();
-
-            % sets the position of the line (depending on orientation)
-            if nargin == 2
-                lPos = pos(1,ind);
-            else
-                lPos = pos;
+            lPos = getIntObjPos(hLine);
+            if exist('ind','var')
+                % sets the position of the line (depending on orientation)
+                lPos = lPos(1,ind);
             end
 
         end        

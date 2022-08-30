@@ -3,11 +3,16 @@
 %     depending on the version of Matlab being used
 function hasPat = strContains(str,pat)
 
-if isempty(pat)
+if iscell(pat)
+    hasPat = cellfun(@(x)(strContains(str,x)),pat);
+    return
+elseif isempty(pat)
     hasPat = false;
     return
 elseif iscell(str)
-    hasPat = cellfun(@(x)(strContains(x,pat)),str);
+    hasPat = false(size(str));
+    isOK = ~cellfun(@isempty,str);
+    hasPat(isOK) = cellfun(@(x)(strContains(x,pat)),str(isOK));
     return
 end
 

@@ -35,12 +35,14 @@ classdef SplitSubRegion < handle
         hMarkR
         
         % scalar fields
+        mSz0
         iAppS = 1;
         iFlyS = 1;
         isOpen = true;
         isInit = true;
         isUpdating = false;
         isFixed
+        isOld
         
         % object properties dimensions     
         dX = 10;
@@ -67,6 +69,9 @@ classdef SplitSubRegion < handle
         pPhiF        
         pPhi        
         
+        % other static class fields
+        tStr = {'end point 1','top line','bottom line'};
+        
     end
     
     % class methods
@@ -82,7 +87,8 @@ classdef SplitSubRegion < handle
             % sets the input arguments
             obj.hFigM = hFigM;            
             obj.iMov = get(hFigM,'iMov');
-            obj.mShape = obj.iMov.mShape;           
+            obj.mShape = obj.iMov.mShape;   
+            obj.isOld = isOldIntObjVer;
             
             % sets the axes handles
             obj.hFigT = findall(0,'tag','figFlyTrack');
@@ -119,7 +125,7 @@ classdef SplitSubRegion < handle
                         end
                 end
                 
-                %
+                % sets up the parameter struct (if not initialising)
                 if ~obj.isInit
                     pFld = fieldnames(p0);
                     obj.iParaR = repmat(p0,size(pVal{1}));
@@ -162,14 +168,14 @@ classdef SplitSubRegion < handle
                     % case is a rectangular region type
                     pVal = [2,2];
                     pStrP = {'nCol','nRow'};
-                    tStr = {'Rectangular Grid Column Count: ';...
+                    tStrL = {'Rectangular Grid Column Count: ';...
                             'Rectangular Grid Row Count: '};
                     
                 case 'Circ'
                     % case is a circle region type
                     pVal = 4;
                     pStrP = {'nSeg'};
-                    tStr = {'Circular Region Segment Count: '};
+                    tStrL = {'Circular Region Segment Count: '};
                
             end     
             
@@ -209,7 +215,10 @@ classdef SplitSubRegion < handle
             end       
             
             % fixed boolean flag array
-            obj.isFixed = false(nFly,nApp);
+            obj.isFixed = false(nFly,nApp);            
+            
+            % hide the region configuration GUI
+            setObjVisibility(obj.hFigM,0);
             
             % -------------------- %
             % --- FIGURE SETUP --- %
@@ -217,13 +226,17 @@ classdef SplitSubRegion < handle
             
             % sets the figure height
             nRowMx = 4;
-            nPara = length(tStr);            
+            nPara = length(tStrL);            
             pOfs = ((2.5+nPara)*obj.dX+obj.dpOfs);
             obj.hghtPanelP = obj.hghtBut*(nPara+2) + ...
                              pOfs + nPara*(nRowMx*HWT + H0T) + ...
                              ((nFly*nApp)>1)*(obj.hghtBut+obj.dX/2);
             hghtFig = obj.hghtPanelP + 3*obj.dX + obj.hghtPanelC;
             fPos = [obj.dX*[1,1],obj.wPanel+2*obj.dX,hghtFig];
+            
+            % deletes any previous figures
+            hFigPr = findall(0,'tag','figSplitSubRegion');
+            if ~isempty(hFigPr); delete(hFigPr); end
             
             % creates the objects
             obj.hFig = figure('Position',fPos,'tag','figSplitSubRegion',...
@@ -285,12 +298,12 @@ classdef SplitSubRegion < handle
             
             % parameter text/editboxs
             y0 = obj.dX/2+obj.hghtBut;
-            [obj.hTxtT,obj.hEdit] = deal(cell(length(tStr),1));
-            [obj.hTableP,obj.jTableP] = deal(cell(length(tStr),1));
-            for i = 1:length(tStr)
+            [obj.hTxtT,obj.hEdit] = deal(cell(length(tStrL),1));
+            [obj.hTableP,obj.jTableP] = deal(cell(length(tStrL),1));
+            for i = 1:length(tStrL)
                 % creates the text objects                
                 tPosT = [obj.dX/2,y0+2,obj.wTxtT,obj.hghtTxt];
-                obj.hTxtT{i} = uicontrol(obj.hPanelT,'String',tStr{i},...
+                obj.hTxtT{i} = uicontrol(obj.hPanelT,'String',tStrL{i},...
                                         'Position',tPosT,'FontWeight',...
                                         'Bold','FontUnits','Pixels',...
                                         'FontSize',12,'Style','text',...
@@ -389,6 +402,7 @@ classdef SplitSubRegion < handle
             % turns the ROI highlight
             obj.setROIHighlight('on',1,1);
             obj.setROIResizeProps(false);
+            obj.setROIProps(false);
             
             % sets the button down function
             obj.wFcn0 = get(obj.hFigT,'WindowButtonDownFcn');
@@ -397,6 +411,24 @@ classdef SplitSubRegion < handle
             % creates the region markers
             obj.hMarkR = cell(size(obj.iParaR));
             obj.updateRegionMarkers();
+            
+        end
+        
+        % --- sets the region ROI properties
+        function setROIProps(obj,isOn)
+            
+            if ~obj.isOld
+                hROI = findall(obj.hAx,'tag','hInner');
+                if isOn
+                    mSzNw = obj.mSz0;
+                else                    
+                    obj.mSz0 = get(hROI(1),'MarkerSize');
+                    mSzNw = 1;
+                end
+                
+                % sets the new marker size
+                arrayfun(@(x)(set(x,'MarkerSize',mSzNw)),hROI)
+            end
             
         end
         
@@ -443,9 +475,10 @@ classdef SplitSubRegion < handle
             % enables the split region use menu item
             hGUI = guidata(obj.hFigM);
             set(hGUI.menuUseSplit,'Checked','On','Enable','On');
+            setObjEnable(hGUI.buttonUpdate,1);
             
             % disables the update button
-            setObjEnable(obj.hBut{1},0);
+            setObjEnable(obj.hBut{1},0);            
             
         end
         
@@ -473,16 +506,18 @@ classdef SplitSubRegion < handle
             obj.isOpen = false;
             obj.setROIHighlight('off')
             obj.setROIResizeProps(true)
+            obj.setROIProps(true);
             
             % sets the button down function  
             set(obj.hFigT,'WindowButtonDownFcn',obj.wFcn0);
             
-            % deletes any region markers
+            % deletes any region markers            
             hMark = findall(obj.hAx,'tag','hMarkR');
             if ~isempty(hMark); delete(hMark); end
             
             % deletes the figure
             delete(obj.hFig)
+            setObjVisibility(obj.hFigM,1);
             
         end        
         
@@ -622,7 +657,7 @@ classdef SplitSubRegion < handle
         function fixRegionCheck(obj,hObj,~)
             
             % updates the field value
-            htStr = 'on';
+            htStr = 'on';            
             [iP,jP] = deal(obj.iFlyS,obj.iAppS);
             obj.isFixed(iP,jP) = get(hObj,'Value');            
             
@@ -634,7 +669,6 @@ classdef SplitSubRegion < handle
                         % case is rectangular regions
                         
                         % sets the proportional width values 
-                        tagStr = 'end point 2';
                         nCol = obj.iParaR(iP,jP).nCol;
                         obj.pWidF{iP,jP} = diff(linspace(0,1,nCol+1)');    
                         
@@ -667,20 +701,39 @@ classdef SplitSubRegion < handle
             end             
             
             % sets the other object properties
-            setObjEnable(obj.hBut{1},1);
+            setObjEnable(obj.hBut{1},1);            
             if ~isempty(obj.hMarkR{iP,jP})
-                %
-                switch obj.mShape
-                    case 'Rect'
-                        tagStr = 'top line';
-                    case 'Circ'
-                        tagStr = 'end point 2';
+                % removes the marker hit-test
+                if obj.isOld
+                    % case is the old format interactive objects
+                    
+                    % sets the object tag
+                    switch obj.mShape
+                        case 'Rect'
+                            tagStr = 'top line';
+                        case 'Circ'
+                            tagStr = 'end point 2';
+                    end
+
+                    % sets the marker line hit-test
+                    ii = ~cellfun(@isempty,obj.hMarkR{iP,jP});
+                    hEnd1 = cellfun(@(x)(findall(x,'tag',tagStr)),...
+                                         obj.hMarkR{iP,jP}(ii),'un',0);
+                    cellfun(@(x)(set(x,'HitTest',htStr)),hEnd1)
+                else
+                    % case is the new format interactive objects
+                    
+                    % sets the interaction allowed string
+                    if strcmp(htStr,'on')
+                        iaStr = 'all';
+                    else
+                        iaStr = 'none';
+                    end
+                    
+                    % sets the interaction flag
+                    cellfun(@(x)(set(x.hObj,...
+                           'InteractionsAllowed',iaStr)),obj.hMarkR{iP,jP})
                 end
-                
-                ii = ~cellfun(@isempty,obj.hMarkR{iP,jP});
-                hEnd1 = cellfun(@(x)(findall(x,'tag',tagStr)),...
-                                     obj.hMarkR{iP,jP}(ii),'un',0);
-                cellfun(@(x)(set(x,'HitTest',htStr)),hEnd1)
             end
                 
         end
@@ -869,15 +922,27 @@ classdef SplitSubRegion < handle
         end
         
         % --- circle marker movement callback function
-        function circMarkerMove(obj,mPos)
+        function circMarkerMove(obj,varargin)
             
             % if updating, then exit the function
             if obj.isUpdating
                 return
             end
+            
+            % retrieves the input arguments
+            switch length(varargin)
+                case 1
+                    % case is the old format interactive object
+                    mPos = varargin{1};
+                    hMarkS = get(gco,'Parent');
+                    
+                case 2
+                    % case is the new format interactive object
+                    mPos = varargin{2}.CurrentPosition;
+                    hMarkS = varargin{1};                    
+            end
            
             % retrieves the selected line marker object handle
-            hMarkS = get(gco,'Parent');
             uDataS = get(hMarkS,'UserData');
             obj.isUpdating = true;
             
@@ -886,10 +951,7 @@ classdef SplitSubRegion < handle
             uDataR = get(hROI,'UserData');
             
             % retrieves the current parent ROI position
-            hAPI = iptgetapi(hROI); 
-            rPos = hAPI.getPosition();
-            
-            % resets the marker location            
+            rPos = getIntObjPos(hROI);
             [mP,phiP] = obj.calcNewMarkerCoords(rPos,mPos);
             obj.updateCircMarkerLine(hMarkS,mP)            
             
@@ -908,22 +970,32 @@ classdef SplitSubRegion < handle
         end       
             
         % --- rectangular marker movement callback function
-        function rectMarkerMove(obj,mPos)
+        function rectMarkerMove(obj,varargin)
             
             % if updating, then exit the function
             if obj.isUpdating
                 return
             end
             
+            % retrieves the object handle and the index of the line
+            switch length(varargin)
+                case 1
+                    % case is the older version interactive objects
+                    mPos = varargin{1};
+                    uDataS = get(get(gco,'Parent'),'UserData');
+                    
+                case 2
+                    % case is the newer version interactive objects
+                    mPos = varargin{2}.CurrentPosition;
+                    uDataS = varargin{1}.UserData;
+            end
+            
             % retrieves the selected line marker object handle
-            hMarkS = get(gco,'Parent');
-            uDataS = get(hMarkS,'UserData');
             obj.isUpdating = true;    
             
             % retrieves the ROI marker handle and position
-            [hROI,iType,iSeg] = deal(uDataS{1},uDataS{2},uDataS{3});            
-            hAPI = iptgetapi(hROI);
-            rPos = hAPI.getPosition();            
+            [hROI,iType,iSeg] = deal(uDataS{1},uDataS{2},uDataS{3});
+            rPos = getIntObjPos(hROI);            
             
             % calculates the 
             pStr = {'pWid','pHght'};
@@ -983,7 +1055,11 @@ classdef SplitSubRegion < handle
                 if ~isempty(obj.hMarkR{j})
                     try
                         ii = ~cellfun(@isempty,obj.hMarkR{j});
-                        cellfun(@delete,obj.hMarkR{j}(ii)); 
+                        if obj.isOld
+                            cellfun(@delete,obj.hMarkR{j}(ii)); 
+                        else
+                            cellfun(@(x)(delete(x.hObj)),obj.hMarkR{j}(ii))
+                        end
                     end
                 end                
                 
@@ -1005,10 +1081,14 @@ classdef SplitSubRegion < handle
             hROI = obj.getROIObject(iApp,iFly);    
             pCol = obj.getROIColour(hROI);            
             
-            % retrieves the current ROI patch coordinates
-            hPatch = findall(hROI,'tag','patch');
-            [xP,yP] = deal(get(hPatch,'xData'),get(hPatch,'yData'));
-            pPos = [min(xP),min(yP),range(xP),range(yP)];
+            % retrieves the ROI coordinates
+            if obj.isOld
+                hPatch = findall(hROI,'tag','patch');
+                [xP,yP] = deal(get(hPatch,'xData'),get(hPatch,'yData'));
+                pPos = [min(xP),min(yP),range(xP),range(yP)];
+            else
+                pPos = getIntObjPos(hROI,false);
+            end                        
             
             % turns on the axes hold                    
             hold(obj.hAx,'on');            
@@ -1028,12 +1108,10 @@ classdef SplitSubRegion < handle
                     
                     % rectangle parameters
                     [p0,W,H] = deal(pPos(1:2),pPos(3),pPos(4));
-                    [xV,yH] = deal(cumsum(pW)*W,cumsum(pH)*H);
-                    tStr = {'end point 1','end point 2','bottom line'};                     
+                    [xV,yH] = deal(cumsum(pW)*W,cumsum(pH)*H);                    
                     
                     % sets up the constraint function
                     [xLim,yLim] = deal(p0(1)+[0,W],p0(2)+[0,H]);
-                    fcn = makeConstrainToRectFcn('imline',xLim,yLim);                    
                     
                     % memory allocation
                     nR = max(1,max(iPara.nRow,iPara.nCol)-1);
@@ -1044,19 +1122,13 @@ classdef SplitSubRegion < handle
                         % creates the line marker
                         uData = {hROI,2,i};
                         [xL,yL] = deal(p0(1)+[0,W],(p0(2)+yH(i))*[1,1]);
-                        hMark{i,2} = imline(obj.hAx,xL,yL);
-                        set(hMark{i,2},'tag','hMarkR','UserData',uData);                        
+                        hMark{i,2} = InteractObj('line',obj.hAx,{xL,yL});
+                        hMark{i,2}.setFields('tag','hMarkR','UserData',uData);   
                         
-                        % adds the position callback function
-                        api = iptgetapi(hMark{i,2});
-                        cbFcn = @obj.rectMarkerMove;
-                        api.addNewPositionCallback(cbFcn);  
-                        api.setColor(pCol);
-                        api.setPositionConstraintFcn(fcn); 
-                        
-                        % removes the marker hit-tests
-                        cellfun(@(x)(set(findall...
-                               (hMark{i,2},'tag',x),'hittest','off')),tStr)                        
+                        % updates the marker properties/callback function
+                        hMark{i,2}.setColour(pCol);
+                        hMark{i,2}.setObjMoveCallback(@obj.rectMarkerMove); 
+                        hMark{i,2}.setConstraintRegion(xLim,yLim);                        
                     end  
                     
                     % creates the vertical markers
@@ -1064,19 +1136,13 @@ classdef SplitSubRegion < handle
                         % creates the line marker
                         uData = {hROI,1,i};
                         [xL,yL] = deal((p0(1)+xV(i))*[1,1],p0(2)+[0,H]);
-                        hMark{i,1} = imline(obj.hAx,xL,yL);
-                        set(hMark{i,1},'tag','hMarkR','UserData',uData);                        
-                        
-                        % adds the position callback function
-                        api = iptgetapi(hMark{i,1});
-                        cbFcn = @obj.rectMarkerMove;
-                        api.addNewPositionCallback(cbFcn);  
-                        api.setColor(pCol);
-                        api.setPositionConstraintFcn(fcn);
-                        
-                        % removes the marker hit-tests
-                        cellfun(@(x)(set(findall...
-                               (hMark{i,1},'tag',x),'hittest','off')),tStr)                          
+                        hMark{i,1} = InteractObj('line',obj.hAx,{xL,yL});                        
+                        hMark{i,1}.setFields('tag','hMarkR','UserData',uData);
+                                                
+                        % updates the marker properties/callback function
+                        hMark{i,1}.setColour(pCol);
+                        hMark{i,1}.setObjMoveCallback(@obj.rectMarkerMove); 
+                        hMark{i,1}.setConstraintRegion(xLim,yLim);                         
                     end                    
                     
                 case 'Circ'
@@ -1090,28 +1156,30 @@ classdef SplitSubRegion < handle
                     end                    
                     
                     % circle parameters
+                    lWid = 2;
                     R = pPos(3)/2;
-                    p0 = pPos(1:2)+R;                    
-                    tStr = {'end point 1','top line','bottom line'};
+                    p0 = pPos(1:2)+R;                                        
                     
                     % creates the line markers         
                     hMark = cell(iPara.nSeg,1);
                     for i = 1:iPara.nSeg
-                        % creates the line marker
+                        % sets the interactive object properties
+                        uD = {hROI,i};
                         xL = p0(1)+[0,R*cos(phi(i))];
                         yL = p0(2)+[0,R*sin(phi(i))];
-                        hMark{i} = imline(obj.hAx,xL,yL);
-                        set(hMark{i},'tag','hMarkR','UserData',{hROI,i});
                         
-                        % removes the marker hit-tests
-                        cellfun(@(x)(set(findall...
-                                (hMark{i},'tag',x),'hittest','off')),tStr)
+                        % creates the interactive object
+                        hMark{i} = InteractObj('line',obj.hAx,{xL,yL});
+                        hMark{i}.setFields('Tag','hMarkR','UserData',uD);
+                        hMark{i}.setLineProps('Linewidth',lWid);
+                        hMark{i}.setObjMoveCallback(@obj.circMarkerMove)                        
+                        hMark{i}.setColour(pCol);                        
                         
-                        % adds the position callback function
-                        api = iptgetapi(hMark{i});
-                        cbFcn = @obj.circMarkerMove;
-                        api.addNewPositionCallback(cbFcn);  
-                        api.setColor(pCol);
+                        % removes the marker hit-tests (old format only)
+                        if hMark{i}.isOld
+                            cellfun(@(x)(set(findall(hMark{i}.hObj,...
+                                    'tag',x),'hittest','off')),obj.tStr)
+                        end                        
                     end                                     
                     
             end
@@ -1132,16 +1200,26 @@ classdef SplitSubRegion < handle
             hROI = obj.getROIObject(jP,iP);
             uData = {hROI,iSeg};
             hMark = findall(obj.hAx,'tag','hMarkR','UserData',uData);
-            hObj = findall(hMark,'type','Line');
             
-            % calculates the circle centre            
-            hC = findall(hObj,'tag','end point 1');
-            p0 = [get(hC,'xData'),get(hC,'yData')];
-            
-            % calculates the circle radius
-            hTL = findall(hObj,'tag','top line');
-            R = sqrt(diff(get(hTL,'xData')).^2 + ...
-                     diff(get(hTL,'yData')).^2);
+            % calculates the circle centre
+            if obj.isOld
+                % case is the old interactive object format
+
+                % determines the circle centre
+                hObj = findall(hMark,'type','Line');            
+                hC = findall(hObj,'tag','end point 1');
+                p0 = [get(hC,'xData'),get(hC,'yData')];
+                
+                % calculates the circle radius
+                hTL = findall(hObj,'tag','top line');
+                R = sqrt(diff(get(hTL,'xData')).^2 + ...
+                         diff(get(hTL,'yData')).^2);                
+            else
+                % case is the new interactive object format
+                
+                % sets the circle centre/radius
+                [p0,R] = deal(hROI.Center,hROI.SemiAxes(1));
+            end            
             
             % updates the marker line coordinates
             pNw = p0 + R*[cos(pPhiNw),sin(pPhiNw)];
@@ -1158,12 +1236,10 @@ classdef SplitSubRegion < handle
             hMark = obj.hMarkR{iP,jP}{iSeg,iType};
             
             % retrieves the ROI location
-            hAPIR = iptgetapi(hROI);
-            rPos = hAPIR.getPosition();
+            rPos = getIntObjPos(hROI);
+            mPos = hMark.getPosition();
             
-            % returns the
-            hAPI = iptgetapi(hMark);
-            mPos = hAPI.getPosition();
+            % returns the            
             if iType == 1
                 pNw = obj.pWid{iP,jP};                
             else
@@ -1173,7 +1249,7 @@ classdef SplitSubRegion < handle
             % updates the line locations
             obj.isUpdating = true;
             mPos(:,iType) = sum(pNw(1:iSeg))*rPos(iType+2)+rPos(iType);
-            hAPI.setPosition(mPos);
+            hMark.setPosition(mPos);
             obj.isUpdating = false;
             
         end        
@@ -1198,8 +1274,8 @@ classdef SplitSubRegion < handle
             end
             
             % retrieves the ROI object handle
-            hROI = obj.getROIObject(iApp,iFly);
-            hPatch = findall(hROI,'type','Patch');            
+            hROI = obj.getROIObject(iApp,iFly);                        
+            cCol = obj.getROIColour(hROI);
             
             % updates the patch object properties
             switch State
@@ -1212,9 +1288,15 @@ classdef SplitSubRegion < handle
                     fAlpha = 0;
             end            
             
-            % updates the patch properties   
-            cCol = obj.getROIColour(hROI);
-            set(hPatch,'FaceColor',cCol,'FaceAlpha',fAlpha)
+            % updates the face patch properties        
+            if obj.isOld
+                % case is the older format interactive object
+                hPatch = findall(hROI,'type','Patch');
+                set(hPatch,'FaceColor',cCol,'FaceAlpha',fAlpha)
+            else
+                % case is the newer format interactive object
+                set(hROI,'Color',cCol,'FaceAlpha',fAlpha);
+            end
             
         end        
         
@@ -1230,8 +1312,7 @@ classdef SplitSubRegion < handle
             
             % sets the resizeable flags
             for i = 1:length(hROI)
-                hAPI = iptgetapi(hROI(i));
-                hAPI.setResizable(State);
+                setIntObjResizeState(hROI(i),State,obj.isOld);                
             end
             
         end
@@ -1288,25 +1369,30 @@ classdef SplitSubRegion < handle
         % --- updates the marker line coordinates
         function updateCircMarkerLine(obj,hMarkS,mP)
             
-            % retrieves the child object handles
-            hChild = hMarkS.Children;            
-            
-            % updates the line object locations
-            for i = 1:length(hChild)
-                switch get(hChild(i),'Tag')
-                    case 'end point 1'
-                        set(hChild(i),'xData',mP(1,1),'yData',mP(1,2));                    
-                    case 'end point 2'
-                        set(hChild(i),'xData',mP(2,1),'yData',mP(2,2));
-                    otherwise
-                        set(hChild(i),'xData',mP(:,1),'yData',mP(:,2));
+            if obj.isOld
+                % case is the old format interactive object
+                
+                % updates the line object locations
+                hChild = hMarkS.Children;
+                for i = 1:length(hChild)
+                    switch get(hChild(i),'Tag')
+                        case 'end point 1'
+                            set(hChild(i),'xData',mP(1,1),'yData',mP(1,2));                    
+                        case 'end point 2'
+                            set(hChild(i),'xData',mP(2,1),'yData',mP(2,2));
+                        otherwise
+                            set(hChild(i),'xData',mP(:,1),'yData',mP(:,2));
+                    end
                 end
+                
+            else
+                % case is the new format interactive object
+                % ...?
             end
             
             % updates the object position
             obj.isUpdating = true;
-            hAPI = iptgetapi(hMarkS);
-            hAPI.setPosition(mP);
+            setIntObjPos(hMarkS,mP);
             obj.isUpdating = false;            
             
         end      
@@ -1340,115 +1426,34 @@ classdef SplitSubRegion < handle
                 cEdit(2) = length(pX) > 1;
             end
             
-        end
-        
-        % --- creates the sub-region split group mask array
-        function Imap = createIndexMap(obj)
-            
-            % global variables
-            global frmSz0
-            
-            % memory allocation
-            Imap = zeros(frmSz0);
-            hInner = findall(obj.hAx,'tag','hInner');
-            
-            % sets the maps up based on type
-            for i = 1:length(hInner)
-                % retrieves the current object properties
-                hAPI = iptgetapi(hInner(i));
-                pPos0 = hAPI.getPosition();
-                uD = get(hInner(i),'UserData');
-                
-                % 
-                switch obj.mShape
-                    case 'Rect'
-                        % case is the rectangular regions
-                        
-                        % sets the rectangle parameters
-                        [p0,W,H] = deal(pPos0(1:2),pPos0(3),pPos0(4));
-                        pW = obj.pWid{uD(2),uD(1)};
-                        pH = obj.pHght{uD(2),uD(1)};
-                        
-                        % calculates the proportional location
-                        [X,Y] = meshgrid(1:frmSz0(2),1:frmSz0(1));
-                        [pX,pY] = deal((X-p0(1))/W,(Y-p0(2))/H);
-                        
-                        %
-                        y0 = 0;
-                        for j = 1:length(pH)
-                            % sets the column limits
-                            [yL,x0] = deal([y0,sum(pH(1:j))],0);                            
-                            for k = 1:length(pW)
-                                % sets the row limits
-                                xL = [x0,sum(pW(1:k))];
-                                
-                                % sets the 
-                                Bnw = (pX >= xL(1)) & (pX <= xL(2)) & ...
-                                      (pY >= yL(1)) & (pY <= yL(2));  
-                                Imap(Bnw) = (j-1)*length(pH) + k;
-                                  
-                                % increments the width offset
-                                x0 = x0 + pW(k);
-                            end
-                            
-                            % increments the height offset
-                            y0 = y0 + pH(j);
-                        end
-
-                    case 'Circ'
-                        % case is the circular regions
-                        
-                        % calculates the circle properties
-                        R = pPos0(3)/2;
-                        p0 = pPos0(1:2) + R;
-                        phiP = obj.pPhi{uD(2),uD(1)};
-                        
-                        % determines the points within the circle
-                        D = bwdist(setGroup(roundP(p0),frmSz0));
-                        Bnw = D <= R;
-                        
-                        %
-                        [X,Y] = meshgrid(1:frmSz0(2),1:frmSz0(1));
-                        phiC = atan2(Y-p0(2),X-p0(1));
-                        
-                        % sets up the mapping index array
-                        phiPL = phiP([1:end,1]);
-                        for j = 1:length(phiP)
-                            %    
-                            if phiPL(j+1) < phiPL(j)
-                                Bseg = (phiC >= phiPL(j)) | ...
-                                       (phiC < phiPL(j+1));                                
-                            else
-                                % case is the other segments
-                                Bseg = (phiC >= phiPL(j)) & ...
-                                       (phiC <= phiPL(j+1));                                
-                            end
-                            
-                            % sets the group mapping index mask
-                            Imap(Bnw & Bseg) = j;                                
-                        end
-
-                end
-            end
-            
-        end
+        end       
         
         % --- retrieves the colour of the current ROI objec
         function pCol = getROIColour(obj,hROI)
            
-            % sets the candidate object tag string
-            switch obj.mShape
-                case 'Rect'
-                    % case is rectangular regions
-                    tagStr = 'maxx top line';
-                    
-                case 'Circ'
-                    % case is circular regions
-                    tagStr = 'top line';
+            if obj.isOld
+                % case is the older version interactive object
+                
+                % sets the candidate object tag string
+                switch obj.mShape
+                    case 'Rect'
+                        % case is rectangular regions
+                        tagStr = 'maxx top line';
+
+                    case 'Circ'
+                        % case is circular regions
+                        tagStr = 'top line';
+                end
+
+                % retrieves the object colour
+                pCol = get(findall(hROI,'tag',tagStr),'Color');
+                
+            else
+                % case is the newer version interactive object
+                
+                % retrieves the object colour
+                pCol = get(hROI,'Color');
             end
-            
-            % retrieves the object colour
-            pCol = get(findall(hROI,'tag',tagStr),'Color');
             
         end        
         

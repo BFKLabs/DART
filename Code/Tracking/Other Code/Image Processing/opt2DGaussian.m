@@ -19,11 +19,11 @@ else
     I = I0.*Bw;
 end
 
-% estimates the median/amplitude
+% sets up the initial parameter vector (if not provided)
 if isempty(pOpt0)
     I(isnan(I)) = median(I(:),'omitnan');
     Ymd = median(I(:),'omitnan');
-    Yamp = max(I(:),'omitnan') - min(I(:),'omitnan');
+    Yamp = max(I(:),[],'omitnan') - min(I(:),[],'omitnan');
     pOpt0 =  [   Ymd,  Yamp,  1, 1];
 end
 

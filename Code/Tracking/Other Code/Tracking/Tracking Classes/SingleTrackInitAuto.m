@@ -6,6 +6,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
         % auto-detection fields
         iCG
         iRG
+        fOK
         Iopt
         pTolR
         ImaxR
@@ -344,7 +345,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
             nTube = obj.nTube;
             [nImg,nApp] = size(I);
             IRL = cell(nApp,1);
-            fOK = find(obj.iMov.ok(:)');
+            obj.fOK = find(obj.iMov.ok(:)');
 
             % memory allocation
             C = NaN(nApp,nImg);
@@ -353,8 +354,8 @@ classdef SingleTrackInitAuto < SingleTrackInit
             [tPk,yPk] = deal(cell(nApp,nImg));   
             
             % calculates the 
-            dTMaxR = cellfun(@(x,y)(ceil(dtOfs+length(x)/...
-                    getSRCount(obj.iMov,y))),obj.iMov.iR,num2cell(1:nApp));
+            dTMaxR = cellfun(@(x,y)(ceil(dtOfs+length(x)/getSRCount(...
+                    obj.iMov,y))),obj.iMov.iR(obj.fOK),num2cell(obj.fOK));
             dtMax = min(dTMaxR);
             
             % --------------------------------------- %
@@ -370,7 +371,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
             obj.hProg.Update(3+obj.wOfsL,'Signal Peak Detection',0.25); 
                             
             % calculates the signal 
-            for i = fOK    
+            for i = obj.fOK    
                 % calculates the normalised maxima
                 Ymx0 = cellfun(@(x)(max(x,[],2)),IR(:,i),'un',0);
                 Ymx0 = cellfun(@(x)(obj.rmvBaseline(x)),Ymx0,'un',0);
@@ -419,7 +420,10 @@ classdef SingleTrackInitAuto < SingleTrackInit
 
             % ----------------------------------------- %
             % --- INITIAL GRID PARAMETER ESTIMATION --- %
-            % ----------------------------------------- %                 
+            % ----------------------------------------- %  
+            
+            % memory allocation
+            [obj.xTube,obj.yTube] = deal(cell(length(obj.iMov.ok),1));
                  
             % determines which regions have a low overall residual value 
             % (these will be excluded here but analysed later)
@@ -543,7 +547,17 @@ classdef SingleTrackInitAuto < SingleTrackInit
             
             % calculates the object functions values for each offset value
             Z = arrayfun(@(x)(min(arr2vec(pdist2(tPkTF,x+yL(:))))),xiPF);            
-            QZ = Z.*(nTot>(max(nTot)-Nt/2));            
+
+            % sets up the final objective function array
+            nTotMin = max(nTot) - Nt/2;            
+            while 1
+                QZ = Z.*(nTot>nTotMin);            
+                if all(QZ == 0)
+                    nTotMin = nTotMin - Nt/2;
+                else
+                    break
+                end
+            end
             
             % returns the optimal grid offset
             if length(QZ) >= 3

@@ -3,7 +3,7 @@
 function [timeVec,timeStr] = calcTimeString(T0,Tofs)
 
 % sets the new time vector and string
-timeVec = datevec(addtodate(datenum(T0),Tofs,'second'));
+timeVec = datevec(addtodate(datenum(T0),floor(Tofs),'second'));
 timeStr = datestr(timeVec);
 
 % sets the new time vector and string

@@ -357,7 +357,7 @@ indB = cellfun(@(x)(((x-1)*10+1):(x*10+1)),num2cell(1:(nFrm-1)),'un',0);
 % determines the initial event band lower/upper indices
 for i = 1:nMet
     % sums the interpolation difference between time points
-    dZS{i} = smoothts(cellfun(@(x)(sum(dZ{i}(x))),indB));
+    dZS{i} = smoothdata(cellfun(@(x)(sum(dZ{i}(x))),indB));
     dZS{i} = dZS{i}.*QQ(1:end-1);
    
     % determines the peaks from the power signal 

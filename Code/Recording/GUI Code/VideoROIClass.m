@@ -280,7 +280,9 @@ classdef VideoROIClass < handle
         % --- creates the ROI marker object
         function createROIMarker(obj,pL,ind,isVert)
             
-            % initialisations          
+            % initialisations
+            fAlpha = 0.25;
+            fCol = 0.75*[1,1,1];            
             xLim = get(obj.hAx,'xlim');
             yLim = get(obj.hAx,'ylim');
             [uData,lWidL] = deal([isVert,ind],4);
@@ -318,34 +320,53 @@ classdef VideoROIClass < handle
             hRectS.setFields('UserData',uData,'tag','hROILim')
 
             % creates the rectangular ROI object
-            hRectL = findall(hRectS.hObj,'type','Line');
-            set(hRectL,'Visible','off','HitTest','off');
+            if hRectS.isOld
+                % removes the line object hit-test flags
+                hRectL = findall(hRectS.hObj,'type','Line');
+                set(hRectL,'Visible','off','HitTest','off');
 
-            hRectLV = findall(hRectL,'tag',lStr);
-            set(hRectLV,'Visible','on','LineWidth',lWidL,'HitTest','on',...
-                        'Color','r','LineStyle',':')
-            uistack(hRectLV,'top');
+                % places the important vertex on the top
+                hRectLV = findall(hRectL,'tag',lStr);
+                set(hRectLV,'Visible','on','Color','r','HitTest','on',...
+                            'LineWidth',lWidL,'LineStyle',':')
+                uistack(hRectLV,'top');
 
-            % case is the ROI patch object
-            hRectP = findall(hRectS.hObj,'type','Patch');
-            set(hRectP,'FaceColor',0.75*[1,1,1],'FaceAlpha',0.25,...
-                       'HitTest','off');
+                % updates the patch objects
+                hRectP = findall(hRectS.hObj,'type','Patch');
+                set(hRectP,'FaceColor',fCol,'FaceAlpha',fAlpha,...
+                           'HitTest','off');
+            else
+                % case is the newer version interactive objects
+                set(hRectS.hObj,'Color',fCol,'FaceAlpha',fAlpha,...
+                                'StripeColor','r');                
+            end
 
             % sets the constraint/position callback functions
-            cbFcn = @(p)(obj.moveROIMarker(p,uData));
-            hRectS.setObjMoveCallback(cbFcn);
+            hRectS.setObjMoveCallback(@obj.moveROIMarker);
             hRectS.setConstraintRegion(xLim,yLim);
             
         end
         
         % --- callback function for moving the ROI marker object
-        function moveROIMarker(obj,p,uData)
+%         function moveROIMarker(obj,p,uData)
+        function moveROIMarker(obj,varargin)
 
             % global variables
             if obj.manualUpdate; return; end
 
             % retrieves the ROI positional coordinates
-            handles = obj.hGUI;          
+            handles = obj.hGUI;            
+            switch length(varargin)
+                case 1
+                    % case is old version roi callback
+                    p = varargin{1};
+                    uData = get(get(gco,'Parent'),'UserData');
+                    
+                case 2
+                    % case is double input 
+                    p = get(varargin{1},'Position');
+                    uData = varargin{2}.Source.UserData;
+            end            
 
             % retrieves the location of the opposite marker object
             uDataF = [uData(1),1+(uData(2)==1)];
@@ -515,7 +536,7 @@ classdef VideoROIClass < handle
             end
 
             % retrieves the position of the marker objects
-            fPos = cellfun(@(x)(getIntObjPos(x)),hRect,'un',0);
+            fPos = cell2mat(cellfun(@(x)(getIntObjPos(x)),hRect,'un',0));
 
             % sets up the position vector
             [W,H] = deal(fPos(4,1)-fPos(3,3),fPos(2,2)-fPos(1,4));

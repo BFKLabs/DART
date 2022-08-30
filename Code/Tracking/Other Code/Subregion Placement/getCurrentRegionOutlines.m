@@ -2,17 +2,25 @@ function posO = getCurrentRegionOutlines(iMov)
 
 % memory allocation
 pG = iMov.posG;
+isOld = isOldIntObjVer();
 [nRow,nCol] = deal(iMov.pInfo.nRow,iMov.pInfo.nCol);
 H = zeros(nRow,nCol);
 
 % retrieves the axes object handle
 hFig = findall(0,'tag','figFlyTrack');
 hAx = findall(hFig,'type','Axes');
+hVL = findall(hAx,'tag','hVert');
+hHL = findall(hAx,'tag','hHorz');
 
 % retrieves the position arrays for the vertical lines
-hVL = findall(hAx,'tag','hVert');
-vPos = arrayfun(@(x)(getLinePos(x)),hVL,'un',0);
-iVL = arrayfun(@(x)(get(findobj(x,'tag','bottom line'),'UserData')),hVL);
+vPos = arrayfun(@(x)(getIntObjPos(x,isOld)),hVL,'un',0);
+
+% retrieves the line indices
+if isOld
+    iVL = arrayfun(@(x)(get(findobj(x,'tag','bottom line'),'UserData')),hVL);
+else
+    iVL = arrayfun(@(x)(get(x,'UserData')),hVL);
+end
 
 % sorts the line/position arrays in order
 [~,iSV] = sort(iVL);
@@ -21,8 +29,7 @@ xL0 = [pG(1),cellfun(@(x)(x(1)),vPos(:))',sum(pG([1,3]))];
 W = repmat(diff(xL0),nRow,1);
 
 % retrieves the position arrays for the horizontal lines
-hHL = findall(hAx,'tag','hHorz');
-hPos = arrayfun(@(x)(getLinePos(x)),hHL,'un',0);
+hPos = arrayfun(@(x)(getIntObjPos(x,isOld)),hHL,'un',0);
 iHL = cell2mat(arrayfun(@(x)(get(x,'UserData')),hHL,'un',0));
 
 % sorts the horizontal lines by column then row
@@ -57,9 +64,3 @@ end
 
 % sets the final outline positional vector array
 posO = arr2vec(posO')';
-
-% --- retrieves the line positions
-function lPos = getLinePos(hLine)
-
-hAPI = iptgetapi(hLine);
-lPos = hAPI.getPosition();

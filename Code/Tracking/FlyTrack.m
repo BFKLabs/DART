@@ -120,23 +120,13 @@ switch length(varargin)
                 ProgDefNew = [];
             end
         end
-        
-    otherwise % case is any other number of input arguments
-        % displays an error message
-        eStr = ['Error! Incorrect number of input arguments. ',...
-                'Exiting Tracking GUI...'];
-        waitfor(errordlg(eStr,'Tracking GUI Initialisation Error','modal'))
-        
-        % deletes the GUI and exits the function
-        delete(hObject)
-        return
 end
 
 % updates the calibration type
 set(hObject,'cType',cType)        
     
 % creates the load bar
-if nargin < 2
+if length(varargin) < 2
     h = ProgressLoadbar('Initialising Tracking GUI...');
 end
 
@@ -200,12 +190,7 @@ switch length(varargin)
         hObject.iMov = initMovStruct(hObject.iData);
         
         % initialises the GUI properties
-        handles = setTrackGUIProps(handles,'InitGUI'); pause(0.01);
-        
-%         % sets up the git menus
-%         if exist('GitFunc','file')
-%             setupGitMenus(hObject)
-%         end
+        handles = setTrackGUIProps(handles,'InitGUI'); pause(0.01);        
         
     case {2,3}
         % case is the full calibration (thru Fly Record)
@@ -1206,13 +1191,7 @@ end
 function menuSplitVideo_Callback(~, ~, handles)
 
 % runs the video splitting GUI
-hFig = handles.output;
-[vGrp,isChange] = VideoSplit(hFig);
-
-% if there was a change, then update the program data struct
-if isChange
-    hFig.iMov.vGrp = vGrp;
-end
+VideoSplitObj(handles.output);
 
 % -------------------------------------------------------------------------
 function menuAnalyOpt_Callback(~, ~, handles)
@@ -1231,7 +1210,8 @@ function menuAnalyOpt_Callback(~, ~, handles)
 % end
 
 % runs the tracking analysis options
-AnalyOpt(handles.output)
+% AnalyOptOld(handles.output)
+AnalysisOpt(handles.output);
 
 % -------------------------------------------------------------------------
 function menuTrackOpt_Callback(~, ~, handles)
@@ -1310,6 +1290,7 @@ calcAxesGlobalCoords(handles)
 updateFlag = 2;
 set(hFig,'Position',fPos)
 resetFigPosition(hFig)
+resetFigSize(handles,fPos)
 updateFlag = 0;
 
 % -------------------------------------------------------------------------
@@ -1518,7 +1499,7 @@ TrackingPara(handles.output)
 % ----------------------------- %
 
 % --- Executes when figFlyTrack is resized.
-function figFlyTrack_ResizeFcn(hObject, ~, handles)
+function figFlyTrack_ResizeFcn(hObject, evnt, handles)
 
 % global variables
 global updateFlag
@@ -1639,15 +1620,14 @@ if get(hObject,'value')
     % if any sub-regions are showing, then remove them
     setTrackGUIProps(handles,'RemoveSubDivision')   
     setTrackGUIProps(handles,'EnableAppSelect')    
-
-    % updates the tube region (if required)
-    if updateTube
-        checkShowTube_Callback(handles.checkShowTube, 1, handles)
-    end        
     
     % case is update is from the main GUI
     CountEditCallback(handles.movCountEdit, [], handles)     
     
+%     % updates the tube region (if required)
+%     if updateTube
+%         checkShowTube_Callback(handles.checkShowTube, 1, handles)
+%     end    
 else
     % case is the global view is being shown, so enable objects
     setTrackGUIProps(handles,'EnableSubMovieObjects')    
@@ -2067,15 +2047,15 @@ if isCalib
 end
 
 % runs the scale factor sub-GUI
-ScaleFactor(hFig,'FlyTrack')
+ScaleFactor(hFig,'FlyTrack');
 
-% restarts the video timer (if calibrating and video feed on)
-if isCalib     
-    setObjEnable(handles.menuRTTrack,hFig.iMov.isSet)
-    if strcmp(get(handles.menuVideoFeed,'checked'),'on')   
-        start(hFig.vidTimer)
-    end
-end   
+% % restarts the video timer (if calibrating and video feed on)
+% if isCalib     
+%     setObjEnable(handles.menuRTTrack,hFig.iMov.isSet)
+%     if strcmp(get(handles.menuVideoFeed,'checked'),'on')   
+%         start(hFig.vidTimer)
+%     end
+% end   
 
 % ------------------------------------------ %
 % --- MARKER OBJECT VISIBILITY FUNCTIONS --- %
@@ -2792,33 +2772,6 @@ end
 
 % creates the experiment parameter struct
 iData.exP = setExpPara(handles);
-
-% --- initialises the sub-movie data struct
-function iMov = initMovStruct(iData)
-
-% determines if the tracking parameters have been set
-A = load(getParaFileName('ProgPara.mat'));
-if ~isfield(A,'trkP')
-    % track parameters have not been set, so initialise
-    trkP = initTrackPara();
-else
-    % track parameters have been set
-    trkP = A.trkP;
-end
-
-% Sub-Movie Data Struct
-iMov = struct('pos',[1 1 1 1],'posG',[],'Ibg',[],'ddD',[],...
-              'nRow',[],'nCol',[],'nPath',trkP.nPath,'hasRGB',false,...
-              'useRGB',false,'nTube',[],'nTubeR',[],'nFly',[],'nFlyR',[],...
-              'iR',[],'iC',[],'iRT',[],'iCT',[],'xTube',[],'yTube',[],...
-              'sgP',[],'Status',[],'tempName',[],'autoP',[],'bgP',[],...
-              'isSet',false,'ok',true,'tempSet',false,'isOpt',false,...
-              'useRot',false,'rotPhi',90,'calcPhi',false,'sepCol',false,...
-              'vGrp',[],'sRate',5,'nDS',1,'mShape','Circ','phInfo',[]);
-
-% sets the parameter sub-struct fields
-iMov.bgP = DetectPara.initDetectParaStruct('All');        
-iMov.sgP = iData.sgP;
 
 % --- sets the experimental parameters struct/field values --- %
 function exP = setExpPara(handles,exP)

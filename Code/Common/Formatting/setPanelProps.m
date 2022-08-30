@@ -8,7 +8,7 @@ if islogical(eType) || isnumeric(eType)
 end
 
 % retrieves the panel children objects
-[updatePanel,nonHandle] = deal(true,{-1});
+[updatePanel,nonHandle] = deal(false,{-1});
 [tCol,dCol] = deal(0.71*[1 1 1],0.941*[1 1 1]);
 hChild = get(hPanel,'Children');
 hList = findobj(hChild,'style','listbox');
@@ -17,12 +17,12 @@ hText = findobj(hChild,'style','text');
 % sets the other fields
 if nargin > 2 
     % determines if the input is a handle
-    if ishandle(varargin{1})
-        % if so, these are the handles to ignore
-        nonHandle = num2cell(varargin{1});
-    else
-        % otherwise, flag that the panel is not to be updated
+    if isnumeric(varargin{1})
+        % if so, flag that the panel is not to be updated
         updatePanel = false;
+    elseif ishandle(varargin{1})
+        % otherwise, these are the handles to ignore
+        nonHandle = num2cell(varargin{1});        
     end
 else
     updatePanel = ~strcmp(get(hPanel,'type'),'uitab');

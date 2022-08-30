@@ -698,7 +698,7 @@ end
 
 % deletes the loadbar
 delete(h);
-
+    
 % -------------------------------------------------------------------------
 function menuUndock_Callback(~, ~, handles)
 
@@ -710,6 +710,7 @@ function menuSplitPlot_Callback(~, ~, handles)
 
 % runs the axis splitting GUI
 SplitAxisClass(handles.figFlyAnalysis);
+% SplitAxisClassOld(handles.figFlyAnalysis);
 
 % ----------------------------------- %
 % --- GLOBAL PARAMETERS MENU ITEM --- %

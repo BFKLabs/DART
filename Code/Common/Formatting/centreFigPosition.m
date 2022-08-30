@@ -2,7 +2,7 @@
 function centreFigPosition(hFig,varargin)
 
 % resets the GUI name to include the program directory
-[showFig,updateTitle] = deal(true);
+[showFig,updateTitle,rmvCloseReq] = deal(true);
 
 %
 if nargin == 2
@@ -11,6 +11,8 @@ if nargin == 2
             showFig = false;
         case 2
             updateTitle = false;
+        case 3
+            [rmvCloseReq,updateTitle] = deal(false);
     end
 end
  
@@ -44,8 +46,8 @@ if ~isequal(p0,hPos(1:2))
 end
 
 % removes the close request function (if currently set)
-if ~isempty(get(hFig,'CloseRequestFcn'))
-    set(hFig,'CloseRequestFcn',[]);
+if rmvCloseReq && ~isempty(get(hFig,'CloseRequestFcn'))
+    set(hFig,'CloseRequestFcn',[]);    
 end
 
 % shows the final figure

@@ -37,7 +37,7 @@ classdef SingleTrack < Track
             switch sType
                 case 'Manual'
                     % case is manual correction
-                    sInd = 3;
+                    sInd = 4;
                     [obj.isBGCalc,obj.isManual] = deal(false,true);
                     
                 case 'InitEstimate'
@@ -98,13 +98,17 @@ classdef SingleTrack < Track
                         obj.fObj{i} = PhaseTrack(obj.iMov,obj.hProg,isHV);
                         obj.fObj{i}.nI = floor(max(getCurrentImageDim())/800);                        
                                                 
+
                     case 3
+                        % case is an untrackable phase
+                        obj.fObj{i} = [];                        
+                    
+                    case 4
                         % case is manual correction updates
                         obj.fObj{i} = ManualDetect(obj.iMov,obj.hProg);
                         
                     otherwise
-                        % FINISH ME!
-                        waitfor(msgbox('Finish Me!'))
+
                 end
             end
             

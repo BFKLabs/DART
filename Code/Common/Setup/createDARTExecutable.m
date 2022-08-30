@@ -105,8 +105,13 @@ set(hLoad.Control,'CloseRequestFcn',[]);
 
 srcStr = sprintf('-d ''%s''',exeDir);
 igDir = {'.','..','External Apps','Git'};
-toolStr = ['-N -p daq -p imaq -p images -p signal -p ',...
-           'instrument -p optim -p stats -p curvefit -p shared'];
+geniSupport = ['C:\ProgramData\MATLAB\SupportPackages\R2021a\',...
+               'toolbox\imaq\supportpackages\gentl'];
+
+toolStr = sprintf(...
+           ['-N -p daq -p imaq -p images -p signal -p instrument ',...
+           '-p optim -p stats -p curvefit -p shared -p wavelet ',...
+           '-a ''%s'''],geniSupport);
 warnStr = '-w disable:all_warnings';  
        
 % determines files the directories that need to be added
@@ -127,12 +132,10 @@ javaFiles = {which('ColoredFieldCellRenderer.zip')};
 % % retrieves the names of all the folders within the Code directory
 % codeDir = cell2cell(codeDir);
 
-% % removes all git and external app folders from the executable
+% removes all git and external app folders from the executable
 % isOK = ~(strContains(codeDir,'\Git') | ...
 %          strContains(codeDir,'\External Apps'));
-
-% % removes the non-valid directories
-% codeDir = [cell2cell(codeDir)];
+% isOK = ~strContains(codeDir,'\External Apps');     
 
 % sets up the main file, analysis function directory and other important
 % file directories add string

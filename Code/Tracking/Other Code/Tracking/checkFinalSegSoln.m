@@ -154,7 +154,7 @@ end
 if any(ii == 1)
     % determines the groupings of NaN values, and the
     % lengths of these groups
-    if (all(ii == 1))
+    if all(ii == 1)
         % all positions are NaNs, so reject frame
         iMov.Status{iApp}(iTube) = 3;
     else        
@@ -492,8 +492,9 @@ while cont
         if (iFrm == 1) || any(isnan([X(iFrm-1),Y(iFrm-1)]))
             DW = bwdist(setGroup(roundP(fPosMn),size(IBG)));
         else
-            fXY = roundP([X(iFrm-1),Y(iFrm-1)]);
-            DW = bwdist(setGroup(fXY,size(IBG))); 
+            szBG = size(IBG);
+            fXY = min(max(1,roundP([X(iFrm-1),Y(iFrm-1)])),flip(szBG));
+            DW = bwdist(setGroup(fXY,szBG));
         end
         
         % calculates the distance weighted local image

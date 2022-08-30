@@ -12,6 +12,7 @@ elseif isa(vObj,'DummyVideo')
     
 else
     % video object is the image acquisition object
-    rPos = get(vObj,'ROIPosition');
-    vRes = rPos(3:4);
+%     rPos = get(vObj,'ROIPosition');
+%     vRes = rPos(3:4);
+    vRes = get(vObj,'VideoResolution');
 end
