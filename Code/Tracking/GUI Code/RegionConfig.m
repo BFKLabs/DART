@@ -568,8 +568,7 @@ end
 cont = gridObj.iFlag == 1;
 while cont
     % runs the 1D auto-detection algorithm
-%     [iMovNw,trkObj] = detGridRegions(hFig);
-    dObj = DetGridRegions(hFig);    
+    dObj = DetGridRegion(hFig);    
     if ~dObj.calcOK
         % if user cancelled then exit the loop after closing para gui  
         set(hFig,'iMov',iMov0)

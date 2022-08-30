@@ -2112,6 +2112,7 @@ classdef CalcBG < handle
                 obj.Ibg = cell(length(imov.vPhase),1);
                 obj.iMov.hFilt = obj.trkObj.hFilt;     
                 obj.vPhase0 = obj.iMov.vPhase;
+                obj.indFrm = obj.trkObj.indFrm;
                 
                 % updates the sub-region data struct in the main gui
                 set(obj.hGUI.figFlyTrack,'iMov',imov)

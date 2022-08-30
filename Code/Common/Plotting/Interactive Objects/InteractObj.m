@@ -49,9 +49,6 @@ classdef InteractObj < handle
         % --- initialises the class fields
         function initClassObj(obj)
             
-            % sets the hold flag to on
-            hold(obj.hAx,'on')
-            
             if obj.isOld
                 % case is the old syntax version 
                 
@@ -186,9 +183,6 @@ classdef InteractObj < handle
                 % resets the base object properties
                 set(obj.hObj,'Linewidth',1);
             end
-
-            % sets the hold flag to off again
-            hold(obj.hAx,'off')
             
         end      
         

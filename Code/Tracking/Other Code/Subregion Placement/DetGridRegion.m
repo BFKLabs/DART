@@ -1,4 +1,4 @@
-classdef DetGridRegions < handle
+classdef DetGridRegion < handle
 
     % class properties
     properties
@@ -24,7 +24,7 @@ classdef DetGridRegions < handle
     % class methods
     methods
         % class constructor
-        function obj = DetGridRegions(hFig)
+        function obj = DetGridRegion(hFig)
            
             % sets the input arguments
             obj.hFig = hFig;

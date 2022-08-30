@@ -369,14 +369,18 @@ classdef PhaseTrack < matlab.mixin.SetGet
     
                         % determines where the estimated location is in
                         % relation to the region limits
-                        if obj.iMov.is2D
-                            pdTolMax = 4.5;
-                        else
-                            if obj.withinEdge(indR,fPrNw(end,:))
-                                pdTolMax = 2;
+                        if useDistCheck(obj.iMov.bgP)
+                            if obj.iMov.is2D
+                                pdTolMax = 4.5;
                             else
-                                pdTolMax = 3;
+                                if obj.withinEdge(indR,fPrNw(end,:))
+                                    pdTolMax = 2;
+                                else
+                                    pdTolMax = 3;
+                                end
                             end
+                        else
+                            pdTolMax = 1e10;
                         end
                     end
                         
@@ -423,18 +427,23 @@ classdef PhaseTrack < matlab.mixin.SetGet
                                 
                                 % determines where the estimated location 
                                 % is in relation to the region limits
-                                if obj.iMov.is2D
-                                    % case is 2D setups
-                                    dTolMax = 1;
-                                else
-                                    % case is 1D setups
-                                    if obj.withinEdge(indR,fPest)
-                                        % case is within edge
-                                        dTolMax = 0.5;
+                                if useDistCheck(obj.iMov.bgP)
+                                    if obj.iMov.is2D
+                                        % case is 2D setups
+                                        dTolMax = 1;
                                     else
-                                        % case is not near the edge
-                                        dTolMax = 2;
+                                        % case is 1D setups
+                                        if obj.withinEdge(indR,fPest)
+                                            % case is within edge
+                                            dTolMax = 0.5;
+                                        else
+                                            % case is not near the edge
+                                            dTolMax = 2;
+                                        end
                                     end
+                                else
+                                    % case is not performing a dist check
+                                    dTolMax = 1e10;
                                 end
                             end                                                       
                             

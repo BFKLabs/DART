@@ -54,7 +54,7 @@ classdef VideoPhase < handle
         % other fixed parameters
         Dtol
         nPhaseMx = 100;        
-        nPhMax = 5;
+        nPhMax = 7;
         nFrm0 = 15;
         szDS = 800;
         szBig = 1400; 
@@ -346,7 +346,7 @@ classdef VideoPhase < handle
 
             % determines if there are a large number of phases 
             % (unstable image fluctuation)
-            obj.hasF = size(iFrmG0,1) >= obj.nPhMax;  
+            obj.hasF = size(iFrmG0,1) > obj.nPhMax;  
             if obj.hasF
                 % if so, then set up the hm filter images
                 obj.hmFilt = arrayfun(@(x)...
