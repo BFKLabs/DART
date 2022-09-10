@@ -130,7 +130,7 @@ classdef InitPhaseStats < handle
                 iFrm = pInfo.iFrm0;
                 obj.Imu{1} = NaN(size(iFrm));                
                 
-            elseif hasF
+            elseif pInfo.sFlag == -2
                 % case is the video has high fluctuation
                 [iFrm,obj.Imu{1}] = deal(pInfo.iFrm0,pInfo.Dimg0);
 

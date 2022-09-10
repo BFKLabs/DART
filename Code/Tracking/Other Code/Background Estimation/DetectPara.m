@@ -123,8 +123,8 @@ classdef DetectPara
 
                 case 'pPhase' 
                     % case is the phase detection parameters
-                    bgP = struct('nImgR',10,'Dtol',2,...
-                                 'pTolLo',35,'pTolHi',230);
+                    bgP = struct('nImgR',10,'Dtol',2,'pTolLo',35,...
+                                 'pTolHi',230,'nPhMax',7);
 
                 case 'pInit' 
                     % case is initial detection parameters
@@ -132,7 +132,8 @@ classdef DetectPara
 
                 case 'pTrack' 
                     % case is full tracking parameters
-                    bgP = struct('rPmxTol',0.8,'pTolPh',5,'pWQ',1);
+                    bgP = struct('rPmxTol',0.8,'pTolPh',5,'pWQ',1,...
+                                 'distChk',true);
                     
                 case 'pSingle' 
                     % case is full tracking parameters

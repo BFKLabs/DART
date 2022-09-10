@@ -412,8 +412,10 @@ classdef GridDetect < matlab.mixin.SetGet
                     
                     % resets the horizontal marker location
                     lPos(:,2) = yH;
+                    hHorz = findall(obj.hAx,'tag','hHorz','UserData',uD);
+                    
                     obj.hFigM.rgObj.isUpdating = true;
-                    apiH.setPosition(lPos); pause(0.05);
+                    setIntObjPos(hHorz,lPos); pause(0.05);
                     obj.hFigM.rgObj.isUpdating = false;
                 end
             end            

@@ -732,7 +732,7 @@ classdef TrackMarkerClass < handle
                     end        
 
                     for j = iFlyR(:)'
-                        % retrieves the marker properties            
+                        % retrieves the marker properties 
                         [pCol,fAlpha,eCol] = obj.getMarkerProps(iMov,i,j);              
 
                         % sets the tube region patch based on the detection type 

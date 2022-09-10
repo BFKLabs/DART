@@ -27,6 +27,9 @@ switch fType
     case 'var'
         Ifcn = var(Ic,[],3,'omitnan');   
         
+    case 'std'
+        Ifcn = std(Ic,[],3,'omitnan');          
+        
     case 'sum'
         Ifcn = sum(Ic,3,'omitnan');
         
@@ -37,8 +40,14 @@ switch fType
         
     case 'range'
         Ifcn = range(Ic,3);
+
+    case 'any'
+        Ifcn = any(Ic,3);        
         
     case 'isnan'
         Ifcn = any(isnan(Ic),3);
+        
+    case 'prod'
+        Ifcn = prod(Ic,3,'omitnan');
         
 end

@@ -53,8 +53,9 @@ classdef VideoPhase < handle
         
         % other fixed parameters
         Dtol
-        nPhaseMx = 100;        
-        nPhMax = 7;
+        nPhMax
+        sFlag = 0;
+        nPhaseMx = 50;                
         nFrm0 = 15;
         szDS = 800;
         szBig = 1400; 
@@ -111,8 +112,16 @@ classdef VideoPhase < handle
             end
             
             % other class fields            
+            obj.sFlag = 0;
             [obj.rOpt,obj.rMet] = imregconfig('monomodal');  
             obj.rOpt.MaximumIterations = 250;
+
+            % sets the maximum phase count
+            if ~isfield(obj.iMov.bgP.pPhase,'nPhMax')
+                obj.nPhMax = roundP((2/3)*obj.iMov.bgP.pPhase.nImgR);
+            else
+                obj.nPhMax = obj.iMov.bgP.pPhase.nPhMax;
+            end
             
             % sets the variable fields
             obj.sz0 = getCurrentImageDim;
@@ -349,6 +358,7 @@ classdef VideoPhase < handle
             obj.hasF = size(iFrmG0,1) > obj.nPhMax;  
             if obj.hasF
                 % if so, then set up the hm filter images
+                obj.sFlag = -2;
                 obj.hmFilt = arrayfun(@(x)...
                             (obj.setupHMFilterW(x)),1:obj.nApp,'un',0)';
             end
@@ -783,7 +793,7 @@ classdef VideoPhase < handle
             if nGrpF > obj.nPhaseMx
                 % if there are a large number of phases, then flag the 
                 % video as having high pixel fluctuation
-                obj.hasF = true;                
+                [obj.hasF,obj.sFlag] = deal(true,-1);
                 [iPhaseF,vPhaseF] = deal([1,obj.iFrm0(end)],1); 
 
                 % sets up the hm filter masks
@@ -913,7 +923,7 @@ classdef VideoPhase < handle
             % if there are a large number of phases, then flag the video as
             % having high pixel fluctuation
             if length(vPhaseF) > obj.nPhaseMx
-                obj.hasF = true;                
+                [obj.hasF,obj.sFlag] = deal(true,-1);                
                 [iPhaseF,vPhaseF] = deal([1,obj.iFrm0(end)],1); 
                 
                 % sets up the hm filter masks

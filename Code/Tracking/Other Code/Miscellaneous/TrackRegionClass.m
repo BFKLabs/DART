@@ -1484,7 +1484,7 @@ classdef TrackRegionClass < handle
                             obj.manReset = false;                            
                             
                             % sets the constraints for the inner regions
-                            setLineConstraintRegion...
+                            setConstraintRegion...
                                     (hInner,xLim,yLim,obj.isOld,'rect');                            
                         end
                     end

@@ -800,13 +800,11 @@ classdef CalcBG < handle
                     if ~isfield(obj.trkObj,'IbgT0') || ...
                         isempty(obj.trkObj.IbgT0)
                         popStrNw = {'Background';...
-                                    'Residual (Raw)';...
                                     'Residual (Filtered)';...
                                     'Cross-Correlation'};
                     else
                         popStrNw = {'Background (Raw)';...
                                     'Background (Filled)';...
-                                    'Residual (Raw)';...
                                     'Residual (Filled)';...
                                     'Cross-Correlation'};
                     end
@@ -992,7 +990,6 @@ classdef CalcBG < handle
                     end   
                     
                 case {'Residual',...
-                      'Residual (Raw)',...
                       'Residual (Filled)',...
                       'Residual (Filtered)'}
                     % case is the raw residual image
@@ -1016,9 +1013,12 @@ classdef CalcBG < handle
                     % case is the low-variance phase
                     cMapType = 'jet';                    
                     isHV = obj.iMov.vPhase(iPhase) == 2;
-                    ILs = arrayfun(@(x)(getRegionImgStack...
-                          (obj.iMov,Img0,iFrmS,x,isHV)),1:obj.nApp,'un',0);
-                    ILs = cellfun(@(x)(x{1}),ILs,'un',0);
+                    
+                    %
+                    ILs = cell(1,obj.nApp);
+                    ILs(iok) = arrayfun(@(x)(getRegionImgStack...
+                          (obj.iMov,Img0,iFrmS,x,isHV)),find(iok),'un',0);
+                    ILs(iok) = cellfun(@(x)(x{1}),ILs(iok),'un',0);
                       
                     % sets the background image based on the detection type
                     if strcmp(getDetectionType(imov),'GeneralR')
@@ -1035,17 +1035,9 @@ classdef CalcBG < handle
                     else                        
                         % retrieves the background image type
                         if obj.isMTrk
-                            if isRaw
-                                IbgI = imov.IbgR(:,iPhase);
-                            else
-                                IbgI = imov.Ibg(:,iPhase);
-                            end
+                            IbgI = imov.Ibg(:,iPhase);
                         else
-                            if isRaw
-                                IbgI = obj.trkObj.Ibg0{iPhase};
-                            else
-                                IbgI = imov.Ibg{iPhase};
-                            end       
+                            IbgI = imov.Ibg{iPhase};
                         end
                         
                         % reshapes the local image array
@@ -1167,9 +1159,9 @@ classdef CalcBG < handle
                 [pMark,obj.mSz] = deal('.',12);
             else
                 if ispc
-                    [pMark,obj.mSz] = deal('o',10);
+                    [pMark,obj.mSz,mlWid] = deal('o',10,2);
                 else                
-                    [pMark,obj.mSz] = deal('*',8);
+                    [pMark,obj.mSz,mlWid] = deal('*',8,2);
                 end
             end
             
@@ -1224,7 +1216,8 @@ classdef CalcBG < handle
                         % updates the other properties                        
                         if obj.iMov.flyok(iT,iApp)
                             set(obj.hMark{iApp}{iT},'marker',pMark,...
-                                        'color',pCol,'markersize',obj.mSz);                                
+                                        'color',pCol,'markersize',obj.mSz,...
+                                        'linewidth',mlWid);                                
                         end
                     end
                 end

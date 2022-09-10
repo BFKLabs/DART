@@ -131,7 +131,7 @@ classdef PlotObj < handle
             % plots the markers for all regions
             for iApp = 1:obj.nApp
                 % sets the x/y pixel offset
-                fP = obj.fPos{obj.iFrm};
+                fP = obj.fPos{iApp,obj.iFrm};
                 xPlt = fP(:,1) + obj.pOfs(1);
                 yPlt = fP(:,2) + obj.pOfs(2);
                 

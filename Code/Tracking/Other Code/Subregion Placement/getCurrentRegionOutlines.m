@@ -14,13 +14,7 @@ hHL = findall(hAx,'tag','hHorz');
 
 % retrieves the position arrays for the vertical lines
 vPos = arrayfun(@(x)(getIntObjPos(x,isOld)),hVL,'un',0);
-
-% retrieves the line indices
-if isOld
-    iVL = arrayfun(@(x)(get(findobj(x,'tag','bottom line'),'UserData')),hVL);
-else
-    iVL = arrayfun(@(x)(get(x,'UserData')),hVL);
-end
+iVL = arrayfun(@(x)(get(x,'UserData')),hVL);
 
 % sorts the line/position arrays in order
 [~,iSV] = sort(iVL);

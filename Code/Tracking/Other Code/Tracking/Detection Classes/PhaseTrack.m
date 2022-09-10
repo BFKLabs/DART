@@ -369,7 +369,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
     
                         % determines where the estimated location is in
                         % relation to the region limits
-                        if useDistCheck(obj.iMov.bgP)
+                        if useDistCheck(obj.iMov)
                             if obj.iMov.is2D
                                 pdTolMax = 4.5;
                             else
@@ -427,7 +427,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                                 
                                 % determines where the estimated location 
                                 % is in relation to the region limits
-                                if useDistCheck(obj.iMov.bgP)
+                                if useDistCheck(obj.iMov)
                                     if obj.iMov.is2D
                                         % case is 2D setups
                                         dTolMax = 1;

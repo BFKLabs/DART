@@ -25,12 +25,14 @@ classdef DetectParaDialog < handle
         tStr
         pStr
         ttStr
+        tType
         nTab
         nParaMx
         
         % object dimensions
         dX = 10;
         dXH = 5;    
+        fSz = 12;
         widFig
         widPanel
         widTxt
@@ -40,7 +42,7 @@ classdef DetectParaDialog < handle
         hghtPanelP
         hghtPanelC = 40;
         hghtTxt = 16;
-        hghtEdit = 21;
+        hghtEdit = 22;
         hghtBut = 25;        
         
         % other scalar fields                
@@ -86,10 +88,10 @@ classdef DetectParaDialog < handle
             
             % retrieves the tab parameter fields
             A = cell(obj.nTab,1);
-            [obj.pType,obj.tStr,obj.pStr,obj.ttStr] = deal(A);
+            [obj.pType,obj.tStr,obj.pStr,obj.ttStr,obj.tType] = deal(A);
             for i = 1:obj.nTab
-                [obj.pType{i},obj.tStr{i},obj.pStr{i},...
-                        obj.ttStr{i}] = obj.getTabParaFields(obj.tStrP{i});
+                [obj.pType{i},obj.tStr{i},obj.pStr{i},obj.ttStr{i},...
+                        obj.tType{i}] = obj.getTabParaFields(obj.tStrP{i});
             end
             
             % sets the maximum parameter count
@@ -147,6 +149,7 @@ classdef DetectParaDialog < handle
             
             % calculates the other other object dimensions
             eFcn = @obj.editPara;
+            cFcn = @obj.checkPara;
             tabPos = getTabPosVector(obj.hPanelP,[5,5,-10,-5]);            
                                        
             % creates a tab panel group            
@@ -154,7 +157,7 @@ classdef DetectParaDialog < handle
             set(obj.hTabGrp,'position',tabPos,'tag','hTabGrp')  
             
             % sets up the tab objects (over all stimuli objects) 
-            [obj.hTab,obj.hEditP] = deal(cell(obj.nTab,1));
+            obj.hTab = deal(cell(obj.nTab,1));
             for i = 1:obj.nTab
                 % sets up the tabs within the tab group
                 obj.hTab{i} = createNewTab(obj.hTabGrp,...
@@ -162,30 +165,48 @@ classdef DetectParaDialog < handle
                 pause(0.1)    
                 
                 % creates the parameter fields (for the current tab)
-                obj.hEditP{i} = cell(length(obj.tStr{i}),1);
                 for j = 1:length(obj.tStr{i})
                     % calculates the vertical offset
                     y0 = obj.dXH + (obj.nParaMx - j)*obj.hghtBut;
-                    uD = {obj.pType{i},obj.pStr{i}{j}};
+                    uD = {obj.pType{i},obj.pStr{i}{j}};                                            
                     
-                    % creates the text object
-                    tStrNw = sprintf('%s :',obj.tStr{i}{j});
-                    tPos = [obj.dXH,y0+2,obj.widTxt,obj.hghtTxt];
-                    uicontrol(obj.hTab{i},'Style','text','Position',tPos,...
-                            'FontUnits','Pixels','FontSize',12,...
-                            'FontWeight','bold','String',tStrNw,...
-                            'HorizontalAlignment','right',...
-                            'ToolTipString',obj.ttStr{i}{j});
-
-                    % creates the edit boxes
-                    xEdit0 = sum(tPos([1,3])) + obj.dXH;
-                    ePos = [xEdit0,y0,obj.widEdit,obj.hghtEdit];
+                    % retrieves the parameter value
                     pVal = getTrackingPara...
-                            (obj.bgP,obj.pType{i},obj.pStr{i}{j});
-                    obj.hEditP{i}{j} = uicontrol(obj.hTab{i},'Style',...
-                            'edit','Position',ePos,'Callback',eFcn,...
-                            'UserData',uD,'String',num2str(pVal),...
-                            'ToolTipString',obj.ttStr{i}{j});                                        
+                                    (obj.bgP,obj.pType{i},obj.pStr{i}{j});                     
+                    
+                    switch obj.tType{i}{j}
+                        case 'e'
+                            % creates the text label object
+                            tStrNw = sprintf('%s :',obj.tStr{i}{j});
+                            tPos = [obj.dXH,y0+2,obj.widTxt,obj.hghtTxt];
+                            uicontrol(obj.hTab{i},'Style','text',...
+                                'Position',tPos,'FontUnits','Pixels',...
+                                'FontSize',obj.fSz,'FontWeight','bold',...
+                                'String',tStrNw,'HorizontalAlignment',...
+                                'right','ToolTipString',obj.ttStr{i}{j});
+
+                            % creates the edit boxes
+                            xEdit0 = sum(tPos([1,3])) + obj.dXH;
+                            ePos = [xEdit0,y0,obj.widEdit,obj.hghtEdit];                           
+                            
+                            % case is the editbox parameter
+                            uicontrol(obj.hTab{i},'Style',...
+                                'edit','Position',ePos,'Callback',eFcn,...
+                                'UserData',uD,'String',num2str(pVal),...
+                                'ToolTipString',obj.ttStr{i}{j});
+                            
+                        case 'c'
+                            % case is the checkbox parameter
+                            tStrNw = obj.tStr{i}{j};
+                            widChk = obj.widEdit+obj.widTxt;
+                            cPos = [2*obj.dX,y0,widChk,obj.hghtEdit];
+                            uicontrol(obj.hTab{i},'Style','checkbox',...
+                                'Position',cPos,'Callback',cFcn,...
+                                'UserData',uD,'Value',pVal,...
+                                'ToolTipString',obj.ttStr{i}{j},...
+                                'String',tStrNw,'FontUnits','Pixels',...
+                                'FontWeight','Bold','FontSize',obj.fSz);
+                    end
                 end
             end
                              
@@ -239,6 +260,22 @@ classdef DetectParaDialog < handle
                 % otherwise, revert back to the previous valid value                
                 set(hObject,'string',num2str(getStructField(pS,pStrP)));
             end
+            
+        end
+        
+        % --- callback function for update the editbox parameter
+        function checkPara(obj,hObject,~)
+            
+            % initialisations
+            uD = get(hObject,'UserData');
+            nwVal = get(hObject,'Value');
+            [pTypeP,pStrP] = deal(uD{1},uD{2});            
+            
+            % if the value is valid, then update the parameter field
+            obj.bgP = setTrackingPara(obj.bgP,pTypeP,pStrP,nwVal);  
+            
+            % enables the update/reset buttons
+            cellfun(@(x)(setObjEnable(x,1)),obj.hButC(1:2))            
             
         end
         
@@ -365,6 +402,10 @@ classdef DetectParaDialog < handle
                     % Upper Avg. Pixel Intensity Limit
                     [isInt,nwLim] = deal(true,[200,255]);
                     
+                case 'nPhMax'
+                    % Upper Avg. Pixel Intensity Limit
+                    [isInt,nwLim] = deal(true,[3,inf]);                    
+                    
                 % ------------------------------------ %
                 % --- INITIAL DETECTION PARAMETERS --- %
                 % ------------------------------------ %
@@ -402,7 +443,7 @@ classdef DetectParaDialog < handle
         end
         
         % --- retrieves the tab parameter fields
-        function [pType,tStr,pStr,ttStr] = getTabParaFields(tStr)
+        function [pType,tStr,pStr,ttStr,tType] = getTabParaFields(tStr)
             
             % initialisations
             a = char(8594);
@@ -413,16 +454,23 @@ classdef DetectParaDialog < handle
                     pType = 'pPhase';
                     tStr = {'Initial Phase Detection Frame Count',...
                             'Lower Avg. Pixel Intensity Limit',...
-                            'Upper Avg. Pixel Intensity Limit'};
-                    pStr = {'nImgR','pTolLo','pTolHi'};
+                            'Upper Avg. Pixel Intensity Limit',...
+                            'Maximum Initial Video Phase Count'};
+                    pStr = {'nImgR','pTolLo','pTolHi','nPhMax'};
                     ttStr = {
                          ['The initial number of frames used to ',...
                           'estimate the video phases.'],...
                          ['Images with Avg. Pixel intensities ',...
                           'below this value are considered too dark.'],...
                          ['Images with Avg. Pixel intensities ',...
-                          'above this value are considered too bright.']
+                          'above this value are considered too bright.'],...
+                         ['Maximum initial phase count. Videos with ',...
+                          'phase counts above this value are ',...
+                          'considered unstable.']                          
                     };
+
+                    % sets the object type flags                
+                    tType = {'e','e','e','e'};
                     
                 case 'Initial Detection'
                     % case is the phase detection parameters
@@ -445,14 +493,18 @@ classdef DetectParaDialog < handle
                         'background image estimate calculation is ',...
                         'skipped for this phase.'],a)
                     };
+                
+                    % sets the object type flags                
+                    tType = {'e','e','e'};
                     
                 case 'Full Tracking'
                     % case is the phase detection parameters
                     pType = 'pTrack';
                     tStr = {'Max. Residual Prominent Peak Ratio',...
                             'Max Reference Image Pixel Intensity Offset',...
-                            'Residual Image Weighting Threshold'};
-                    pStr = {'rPmxTol','pTolPh','pWQ'};     
+                            'Residual Image Weighting Threshold',...
+                            'Perform Inter-Frame Distance Check'};
+                    pStr = {'rPmxTol','pTolPh','pWQ','distChk'};     
                     ttStr = {
                         sprintf(['the maximum ratio between the 1st ',...
                         'and 2nd ranked residual local maxima.\n %s ',...
@@ -466,8 +518,14 @@ classdef DetectParaDialog < handle
                         'thresholding values.\n %s values approaching ',...
                         '1 will treat image pixels equally.\n %s',...
                         'lower parameter values will favour darker ',...
-                        'image regions.'],a,a)                        
+                        'image regions.'],a,a),...   
+                        sprintf(['the inter-frame distance check ',...
+                        'flag.\n %s set this checkbox to true to check',...
+                        'the inter-frame distance is not too large'],a);                        
                     }; 
+                
+                    % sets the object type flags
+                    tType = {'e','e','e','c'};
                     
             end
             
