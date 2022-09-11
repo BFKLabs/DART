@@ -1141,8 +1141,10 @@ if ~isCalib
 end 
 
 % runs the split window sub-GUI
+wState = warning('off','all');
 RegionConfig(handles,hProp0);
-    
+warning(wState);
+
 % -------------------------------------------------------------------------
 function menuManualReseg_Callback(~, ~, handles)
 

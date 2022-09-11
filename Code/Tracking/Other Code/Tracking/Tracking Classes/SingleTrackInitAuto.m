@@ -226,9 +226,13 @@ classdef SingleTrackInitAuto < SingleTrackInit
                     return
                 end                
                 
-                % calculates the normalised row residual signal. from this,
-                % determine the number of signficant peaks from the signal
+                % removes the edge region of the image
                 IRmax = calcImageStackFcn(IR(:,iApp),'max');
+                Bedge = bwmorph(bwmorph(true(size(IRmax)),'remove'),'dilate');
+                IRmax(Bedge) = 0;
+                
+                % calculates the normalised row residual signal. from this,
+                % determine the number of signficant peaks from the signal                
                 ImaxR0 = max(IRmax,[],2);
                 ImaxR0(isnan(ImaxR0)) = 0;
                 obj.ImaxR{iApp} = ImaxR0 - imopen(ImaxR0,obj.seOpen);
@@ -268,47 +272,36 @@ classdef SingleTrackInitAuto < SingleTrackInit
             
             % initialisations
             dN = 15; 
-            iMax = 10;
-            szObjPr = NaN(1,2);
+            mStr = 'omitnan';
+            
+            % memory allocation
+            sD = NaN(1,2);            
             nApp = size(obj.fPos0{1},1);            
             [Isub,obj.useP,obj.ImaxS] = deal(cell(nApp,1));            
+
+            % retrieves the sub-images around each significant point
+            for i = 1:nApp
+                % retrieves the point sub-image stack
+                Isub{i} = cell2cell(cellfun(@(x,y)(cellfun(@(z)...
+                        (obj.getPointSubImage(x,z,dN)),num2cell(y,2),...
+                        'un',0)),I(:,i)',obj.fPos0{1}(i,:),'un',0),0);
+
+                % removes any low-residual images
+                obj.useP{i} = obj.pStats.IR{i} > obj.pTolR(i);
+                Isub{i}(~obj.useP{i}) = {[]};
+            end            
+
+            % calculates the template image from the estimated image
+            IsubT = cell2cell(Isub);
+            IsubN = cellfun(@(x)(max(0,median(x(:))-x)),...
+                                IsubT(~cellfun(@isempty,IsubT)),'un',0);
+            Itemp = calcImageStackFcn(IsubN,'mean');
             
-            % keep looping until a stable solution is found
-            while 1
-                % retrieves the sub-images around each significant point
-                for i = 1:nApp
-                    % retrieves the point sub-image stack
-                    Isub{i} = cell2cell(cellfun(@(x,y)(cellfun(@(z)...
-                            (obj.getPointSubImage(x,z,dN)),num2cell(y,2),...
-                            'un',0)),I(:,i)',obj.fPos0{1}(i,:),'un',0),0);
-
-                    % removes any low-residual images
-                    obj.useP{i} = obj.pStats.IR{i} > obj.pTolR(i);
-                    Isub{i}(~obj.useP{i}) = {[]};
-                end            
-
-                % calculates the template image from the estimated image
-                Itemp = calcImageStackFcn(cell2cell(Isub),'mean');          
-                szObjNw = obj.calcObjShape(Itemp); 
-                
-                % determines if the new value has changed
-                if any(cellfun(@(x)(isequal(x,szObjNw)),num2cell(szObjPr,2)))
-                    % if not, then exit the loop                    
-                    break
-                    
-                else
-                    % otherwise, update the fields
-                    dN = ceil(max(szObjNw));
-                    szObjPr = [szObjPr;szObjNw];                    
-                    
-                    % increments the counter
-                    i = i + 1;
-                    if i > iMax
-                        % exit if the count is too high
-                        break
-                    end
-                end
-            end
+            % calculates the shape gaussian std. dev
+            for i = 1:2
+                Imx = max(Itemp,[],i,mStr);
+                sD(i) = obj.optGaussSignal(Imx);
+            end                       
             
             % sets the object template field
             obj.hProg.Update(3+obj.wOfsL,'Blob Template Calculation',0.5); 
@@ -316,7 +309,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
             obj.tPara{1} = struct('Itemp',Itemp,'GxT',GxT,'GyT',GyT);              
             
             % sets the class object fields
-            obj.iMov.szObj = szObjNw;
+            obj.iMov.szObj = roundP(2*sD*sqrt(log(1/obj.pTolSz)));
             
             % updates the progresbar
             obj.hProg.Update(3+obj.wOfsL,'Template Calculation Complete',1);
@@ -336,10 +329,10 @@ classdef SingleTrackInitAuto < SingleTrackInit
             obj.hProg.Update(3+obj.wOfsL,'Sub-Image Stack Setup',0);             
             
             % parameters  
-            pW = 0.75;
+            pWT = 0.75;
             dtOfs = 2;              
             dPMin = min(obj.iMov.szObj)/2;
-            dtMin = max(ceil(pW*obj.iMov.szObj));              
+            dtMin = max(ceil(pWT*obj.iMov.szObj));              
             
             % initialisations and memory allocation            
             nTube = obj.nTube;
@@ -369,11 +362,16 @@ classdef SingleTrackInitAuto < SingleTrackInit
             
             % updates the progessbar
             obj.hProg.Update(3+obj.wOfsL,'Signal Peak Detection',0.25); 
+            
+            %
+            nD = ceil(dPMin/2);
+            szL = cellfun(@(x)(size(x)),IR(1,:),'un',0);            
                             
             % calculates the signal 
-            for i = obj.fOK    
+            for i = obj.fOK
                 % calculates the normalised maxima
-                Ymx0 = cellfun(@(x)(max(x,[],2)),IR(:,i),'un',0);
+                BE = ~bwmorph(bwmorph(true(szL{i}),'remove'),'dilate',nD);                
+                Ymx0 = cellfun(@(x)(max(BE.*x,[],2)),IR(:,i),'un',0);
                 Ymx0 = cellfun(@(x)(obj.rmvBaseline(x)),Ymx0,'un',0);
                 Ymx{i} = cellfun(@(x)(normImg(x)),Ymx0,'un',0);     
 
@@ -640,10 +638,14 @@ classdef SingleTrackInitAuto < SingleTrackInit
             obj.Iopt = opt2DGaussian({I},[],[]);
             
             % determines the shape properties from the fitted shape
-            Bopt0 = obj.Iopt/max(obj.Iopt(:));
-            Bopt = bwmorph(Bopt0 > obj.pTolShape,'majority');
-            [~,objBB] = getGroupIndex(Bopt,'BoundingBox');            
-            szObj = objBB([3,4]);
+            if isempty(obj.Iopt)
+                szObj = NaN(1,2);
+            else
+                Bopt0 = obj.Iopt/max(obj.Iopt(:));
+                Bopt = bwmorph(Bopt0 > obj.pTolShape,'majority');
+                [~,objBB] = getGroupIndex(Bopt,'BoundingBox');            
+                szObj = objBB([3,4]);
+            end
             
         end           
         

@@ -329,6 +329,8 @@ classdef FilterResObj < handle
             ZMxTol = 6;
             ZMxTolM = 8;
             njMxMax = 10;
+            IMxDTol = 3;
+            pUniqMin = 2/3;
             
             % initialisations
             isJitter = false;
@@ -336,12 +338,13 @@ classdef FilterResObj < handle
             
             % calculates the number of significant residual peaks have been
             % determined for each sub-image
-            jMx = cellfun(@(x)(obj.getSigPeaks(x,Bexc,1)),dIRL,'un',0);            
+            jMx = cellfun(@(x)(obj.getSigPeaks(x,Bexc,1)),dIRL,'un',0);  
+            IMxD = cellfun(@(x,y)(obj.calcZScore(x,y)),IRL,jMx,'un',0);
             
             %
             njMx = cellfun(@length,jMx);
             isU = njMx == 1;
-            if all(isU)
+            if all(isU) && all(cell2mat(IMxD) > IMxDTol)
                 % if each frame is unambiguous, then flag the object has
                 % moved over the video phase (and exits the function)
                 fPMx = cellfun(@(x,y)(obj.calcCoords(x,y)),IRL,jMx,'un',0);
@@ -386,29 +389,37 @@ classdef FilterResObj < handle
                 return
             end
             
-            % determine if there are any static peak groupings
+            % determine if there are any static groupings amoungst the
+            % residual images
             indDG = obj.findStaticPeakGroups(dfPMx);
             if ~isempty(indDG)
                 % if so, determine their peak values are significant. 
                 % if so, then the static point is probably jittering
                 ZMxG = cellfun(@(z)(min(cellfun...
                             (@(x,y)(x(y)),ZMx,num2cell(z)))),indDG);
+                IMxDG = cellfun(@(z)(min(cellfun...
+                            (@(x,y)(x(y)),IMxD,num2cell(z)))),indDG);
                 if length(ZMxG) > 1
                     iZMx = argMax(ZMxG);
-                    [ZMxG,indDG] = deal(ZMxG(iZMx),indDG(iZMx));
+                    [ZMxG,IMxDG,indDG] = ...
+                                deal(ZMxG(iZMx),IMxDG(iZMx),indDG(iZMx));
                 end
 
                 % determines if the z-scores meet jitter tolerance
-                isJitter = all(ZMxG > ZMxTol);
+                isJitter = all(ZMxG > ZMxTol) && all(IMxDG > IMxDTol);
             end
                 
-            if (mean(isU) >= 0.5) && ~isJitter
-                %
+            if (mean(isU) >= pUniqMin) && ~isJitter
+                % if so, retrieve the the peak IRL/dIRL values (at the
+                % unique peaks)
                 iZMx = cellfun(@(x)(argMax(x)),ZMx,'un',0);
                 ZMxT = cellfun(@(x,y)(x(y)),ZMx,iZMx);
+                ImxDMd = cell2mat(IMxD(isU));
                 
-                %
-                if all(ZMxT > ZMxTolM)
+                % if the peak values are significant for both mask types,
+                % then the blob is probably moving
+                if (all(ZMxT > ZMxTolM) && all(ImxDMd > IMxDTol)) || ...
+                   ((median(ZMxT) > 2*ZMxTolM) && (mean(ImxDMd) > 2*IMxDTol))
                     % if there are no maxima then 
                     pMx = cellfun(@(x,y)(x(y,:)),dfPMx,iZMx,'un',0);
                     [sFlagT,uData] = deal(1,pMx);
@@ -430,12 +441,15 @@ classdef FilterResObj < handle
                     % for ambiguous frames, use the highest value point
                     jMx(~isU) = cellfun(@(x,y)(x(argMax(y(x)))),...
                                             jMx(~isU),dIRL(~isU),'un',0);
-
+                    zIRL = cellfun(@(x,y)(obj.calcZScore(x,y)),IRL,jMx);
+                                        
                     % calculates and returns the final values
-                    fPMx = cellfun(@(x,y)...
+                    if all(zIRL > IMxDTol)
+                        fPMx = cellfun(@(x,y)...
                                 (obj.calcCoords(x,y)),IRL,jMx,'un',0);
-                    [sFlagT,uData] = deal(1,fPMx); 
-                    return
+                        [sFlagT,uData] = deal(1,fPMx); 
+                        return                      
+                    end
                 end
             end
             
@@ -519,11 +533,18 @@ classdef FilterResObj < handle
                         % peaks, then the blob is probably moving
                         jMx(~isU) = cellfun(@(x,y)(x(argMax(y(x)))),...
                                     jMx(~isU),dIRL(~isU),'un',0);
+                        zIRL = cellfun(@(x,y)(obj.calcZScore(x,y)),IRL,jMx);
                     
                         % calculates and returns the final values
-                        fPMx = cellfun(@(x,y)...
+                        if all(zIRL > IMxDTol)
+                            fPMx = cellfun(@(x,y)...
                                     (obj.calcCoords(x,y)),IRL,jMx,'un',0);
-                        [sFlagT,uData] = deal(2,fPMx); 
+                            [sFlagT,uData] = deal(2,fPMx); 
+                        else
+                            % otherwise flag the point is ambiguous (needs 
+                            % x-correlation transform to determine further)                        
+                            [sFlagT,uData] = deal(4,{fPS,iPS});                            
+                        end
                     else
                         % otherwise flag the point is ambiguous (needs the
                         % x-correlation transform to determine further)                        
@@ -657,11 +678,7 @@ classdef FilterResObj < handle
             
             % ------------------------------------- %
             % --- STATIONARY/MOVING POINT SPLIT --- %
-            % ------------------------------------- %                        
-
-            if iT == 7
-                a = 1;
-            end            
+            % ------------------------------------- %                                 
             
             %
             indGT = cell2mat(indG(:)')';
@@ -947,7 +964,8 @@ classdef FilterResObj < handle
         function varargout = findStaticPeakGroups(obj,fP,varargin)
             
             % parameters            
-            pRRTol = 1.75;
+            pRRTol = 2;
+            pBPRRTol = 0.8;
             
             %
             switch length(varargin)
@@ -976,23 +994,40 @@ classdef FilterResObj < handle
                     % case is a distance/pixel value check
                     pRR = combineNumericCells(cellfun(@(x,y)...
                             (calcRectifiedRatio(IRL{1}(iMx{1}(i)),...
-                            x(y))),IRL,iMx,'un',0));
+                            x(y))),IRL,iMx,'un',0));                    
+                    
+                    %
                     Qm = DP./max(1,pRR);
-                    Bm = (DP < obj.dTol) & (pRR < pRRTol);  
+                    [BDR,BPRR] = deal(DP < obj.dTol,pRR < pRRTol);  
+                    
                 elseif exist('RMx','var')
                     % case is 
                     pRR = combineNumericCells(cellfun(@(x)...
                             (calcRectifiedRatio(RMx{1}(i),x)),RMx,'un',0));
 
                     Qm = DP./max(1,pRR);
-                    Bm = (DP < obj.pWS*obj.dTol) & (pRR < pRRTol);                      
+                    [BDR,BPRR] = deal(DP < obj.pWS*obj.dTol,pRR < pRRTol);                    
                 else
                     % case is a distance only check
-                    [Bm,Qm] = deal(DP < obj.pWS*obj.dTol,DP);
+                    Qm = DP;
+                    [BDR,BPRR] = deal(DP < obj.pWS*obj.dTol,true(size(Qm)));
                 end
                         
                 % determines points that meet the distance/RR tolerances
-                hasS(i) = all(any(Bm,1));                    
+                Bm = BDR & BPRR;
+                if all(any(BDR,1))
+                    iRR = any(Bm,1);
+                    pRR = mean(iRR);                    
+                    hasS(i) = pRR >= pBPRRTol;  
+                    
+                    % resets any missing points
+                    if pRR < 1
+                        hasS(i) = (pRR > 0.5) && (sum(~iRR) == 1);
+                        Bm(:,~iRR) = BDR(:,~iRR);
+                    else
+                        hasS(i) = true;
+                    end
+                end
                 
                 % continue the search only if there are points (which meet
                 % the tolerances) are present on all frames
