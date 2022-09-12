@@ -348,8 +348,8 @@ for i = 1:nFile
                 end
             end
             
-            % sets the x/y locations of the flies
-            dyOfs = a.iMov.iR{j}(i)-1;
+            % sets the x/y locations of the flies         
+            dyOfs = iMov.is2D*(a.iMov.iR{j}(i)-1);            
             Px{i}{j} = cell2mat(cellfun(@(x)(x(:,1)*sgP.sFac),...
                                 fPos{j},'un',0));
             Py{i}{j} = cell2mat(cellfun(@(x)((x(:,2)-dyOfs)*sgP.sFac),...

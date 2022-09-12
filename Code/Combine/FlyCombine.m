@@ -1273,6 +1273,13 @@ global yLimTot isUpdating
 isUpdating = true;
 pause(0.01)
 hObj = findobj(hAx,'UserData',Type);
+
+% REMOVE ME?
+if length(hObj) > 1
+    delete(hObj(2:end))
+    hObj = hObj(1);
+end
+
 setIntObjPos(hObj,[xNew(:),yLimTot(:)]);
 
 % resets the update flag
@@ -2228,7 +2235,7 @@ switch type
                 [zMin,zMax] = deal(iMov.iC{iApp}(1)-1,iMov.iC{iApp}(end)-1);                      
             else
                 % case is 1D analysis (old files are missing scale factor)
-                [zMin,zMax] = deal(min(Pz{iApp}(:)),max(Pz{iApp}(:)));
+                [zMin,zMax] = deal(iMov.iC{iApp}(1)-1,iMov.iC{iApp}(end)-1);  
             end    
             
             % calculates the normalised location

@@ -693,7 +693,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
         % ------------------------------------ %
         
         % --- creates the file explorer tree
-        function createFileExplorerTree(obj,sDirNw)           
+        function createFileExplorerTree(obj,sDirNw)
 
             % sets the default input arguments
             if ~exist('sDirNw','var')
@@ -864,11 +864,11 @@ classdef OpenSolnFileTab < dynamicprops & handle
                             snTotNw.iMov = reduceRegionInfo(iMov);
                             snTotNw.cID = setupFlyLocID(snTotNw.iMov);
 
-                            % removes any y-axis data (1D analysis only)
-                            if ~(snTotNw.iMov.is2D || ...
-                                             detMltTrkStatus(snTotNw.iMov))
-                                snTotNw.Py = [];
-                            end                               
+%                             % removes any y-axis data (1D analysis only)
+%                             if ~(snTotNw.iMov.is2D || ...
+%                                              detMltTrkStatus(snTotNw.iMov))
+%                                 snTotNw.Py = [];
+%                             end                               
                             
                             % reduces the region information             
                             obj.appendSolnInfo(snTotNw,fDirS{i});                

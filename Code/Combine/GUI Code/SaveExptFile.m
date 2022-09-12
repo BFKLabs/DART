@@ -735,6 +735,7 @@ for i = 1:nExp
     
     % sets the full output file/directory name
     fNameFull = fullfile(fDir{i},fName{i});
+    setappdata(hFig,'iParaOut',sInfo{i}.iPara);
     
     % outputs the solution file (based on the users selection)    
     switch fExtn{i}
@@ -903,15 +904,16 @@ pause(0.05);
 function outputASCIIFile(handles,snTot,oPara,isCSV,hProg)
 
 % retrieves the apparatus data and solution file struct
-iPara = getappdata(handles.figExptSave,'iPara');
+iPara = getappdata(handles.figExptSave,'iParaOut');
 nApp = sum(snTot.iMov.ok);
 
 % sets the output file name/directory
 fDir = getappdata(handles.figExptSave,'fDir');
 fName = getappdata(handles.figExptSave,'fName');
+setappdata(handles.figExptSave,'snTotOut',snTot)
 
 % sets the waitbar strings
-hProg.wStr(2:end) = {'Setting Positional Data',...
+hProg.wStr = {'Setting Positional Data',...
                      'Outputting Data To File',...
                      'Current File Progress'};
                  
@@ -947,26 +949,26 @@ else
             % opens a new data file
             DataNw = [Hstr{i};num2cell([T{j} Pos{i}{j}])];
             if isCSV
-                fNameEnd = sprintf('%s (%s).csv',fName,fNameSuf{i}{j});
+                fNameEnd = sprintf('%s (%s).csv',fName{j},fNameSuf{i}{j});
             else
-                fNameEnd = sprintf('%s (%s).txt',fName,fNameSuf{i}{j});
+                fNameEnd = sprintf('%s (%s).txt',fName{j},fNameSuf{i}{j});
             end
             
             % opens the file
-            fNameNw = fullfile(fDir,fNameEnd);
+            fNameNw = fullfile(fDir{j},fNameEnd);
             fid = fopen(fNameNw,'w');
             
             % updates the waitbar figure
             [nRow,nCol] = size(DataNw);
-            wStrNw = sprintf('%s (Row 0 of %i)',hProg.wStr{4},nRow);
-            hProg.Update(4,wStrNw,0);
+            wStrNw = sprintf('%s (Row 0 of %i)',hProg.wStr{3},nRow);
+            hProg.Update(3,wStrNw,0);
             
             % writes to the new data file
             for iRow = 1:nRow
                 % updates the waitbar figure
                 if mod(iRow,min(500,nRow)) == 0
-                    if hProg.Update(4,sprintf('%s (Row %i of %i)',...
-                                    hProg.wStr{4},iRow,nRow),iRow/nRow)
+                    if hProg.Update(3,sprintf('%s (Row %i of %i)',...
+                                    hProg.wStr{3},iRow,nRow),iRow/nRow)
                         % if the user cancelled, then exit the function
                         try; fclose(fid); end
                         return
@@ -1015,8 +1017,8 @@ else
             
             % updates the waitbar figure and closes the file
             wStrNw = sprintf('%s (Row %i of %i)',...
-                            hProg.wStr{4},size(DataNw,1),size(DataNw,1));
-            hProg.Update(4,wStrNw,1);
+                            hProg.wStr{3},size(DataNw,1),size(DataNw,1));
+            hProg.Update(3,wStrNw,1);
             fclose(fid);
         end
     end
@@ -1058,8 +1060,8 @@ end
 function [T,Pos,fNameSuf,Hstr,ok] = setupPosData(handles,fType,oPara,h)
 
 % retrieves the apparatus data and solution file struct
-snTot = getappdata(handles.figExptSave,'snTot');
-iPara = getappdata(handles.figExptSave,'iPara');
+snTot = getappdata(handles.figExptSave,'snTotOut');
+iPara = getappdata(handles.figExptSave,'iParaOut');
 
 % determines the split time/if splitting flag
 isSplit = get(handles.checkSolnTime,'value');

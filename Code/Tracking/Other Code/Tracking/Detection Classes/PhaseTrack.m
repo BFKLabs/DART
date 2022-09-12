@@ -420,25 +420,38 @@ classdef PhaseTrack < matlab.mixin.SetGet
                                 % to determine the location of the blob
                                 fPest0 = extrapBlobPosition(fPrNw);
                                 fPest = max(1,min(fPest0,flip(szL)));
+                                DPr = max(sqrt(sum(diff(fPrNw,[],1).^2,2)));
 
                                 % sets up the distance estimate mask
                                 if any(obj.cFlag == [0,1])
+                                    % sets the distance tolerance
+                                    dTolMax = obj.getPDTol(indR,fPest,2);
+                                    if DPr/obj.dTol > dTolMax
+                                        % if there is a large jump in
+                                        % the previous position data, then
+                                        % use the last known point
+                                        fPest = fPrNw(end,:);
+                                    end
+                                    
                                     % calculates the estimate/candidate
                                     % points (scale to dTol)                                    
                                     Best = setGroup(roundP(fPest),szL);
                                     Dest = bwdist(Best);
-                                    DpC = Dest(ipC)/obj.dTol;
-                                
-                                    % sets the distance tolerance
-                                    dTolMax = obj.getPDTol(indR,fPest,2);
+                                    DpC = Dest(ipC)/obj.dTol;                                
                                 else
+                                    % sets the distance tolerance                                    
+                                    dTolMax = obj.getPDTol(indR,fPest,2,1);                                     
+                                    if DPr/obj.dTol > dTolMax
+                                        % if there is a large jump in
+                                        % the previous position data, then
+                                        % use the last known point                                        
+                                        fPest = fPrNw(end,:);
+                                    end                                    
+                                    
                                     % calculates the estimate/candidate
                                     % points (scale to dTol)
                                     D = obj.calcUniDirDist(pC(:,1),fPest(1));
-                                    DpC = D/obj.dTol;
-                                    
-                                    % sets the distance tolerance                                    
-                                    dTolMax = obj.getPDTol(indR,fPest,2,1);                                     
+                                    DpC = D/obj.dTol;                                                                        
                                 end
                             end                                                       
                             
