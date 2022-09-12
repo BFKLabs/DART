@@ -27,7 +27,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
     end
     
     % class methods
-    methods        
+    methods
         % class constructor
         function obj = SingleTrackInitAuto(iData)
             
@@ -391,7 +391,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
                 for j = 1:nImg
                     for k = (j+1):nImg
                         Dnw = pdist2(tPk{i,j},tPk{i,k}); 
-                        Dt{k,j,i} = Dnw(~isnan(Dnw)); 
+                        Dt{k,j,i} = arr2vec(Dnw(~isnan(Dnw))); 
                     end
                 end
             end

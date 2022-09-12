@@ -99,11 +99,11 @@ classdef SingleTrack < Track
                         obj.fObj{i}.nI = floor(max(getCurrentImageDim())/800);                        
                                                 
 
-                    case 3
+                    case {3,4}
                         % case is an untrackable phase
                         obj.fObj{i} = [];                        
                     
-                    case 4
+                    case 5
                         % case is manual correction updates
                         obj.fObj{i} = ManualDetect(obj.iMov,obj.hProg);
                         

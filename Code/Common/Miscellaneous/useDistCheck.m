@@ -2,7 +2,7 @@
 function useChk = useDistCheck(iMov)
 
 % default argument value
-useChk0 = true;
+useChk0 = 1;
 
 if ~isfield(iMov,'bgP')
     % background detection parameters are not present
@@ -12,5 +12,9 @@ elseif ~isfield(iMov.bgP.pTrack,'distChk')
     useChk = useChk0;
 else
     % otherwise, return the field value
-    useChk = iMov.bgP.pTrack.distChk;    
+    useChk = double(iMov.bgP.pTrack.distChk);
+    if is2DCheck(iMov)
+        % distance check is not uni-directional for 2D
+        useChk = min(1,useChk);    
+    end
 end

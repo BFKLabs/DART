@@ -329,7 +329,7 @@ classdef FilterResObj < handle
             ZMxTol = 6;
             ZMxTolM = 8;
             njMxMax = 10;
-            IMxDTol = 3;
+            IMxDTol = 3.5;
             pUniqMin = 2/3;
             
             % initialisations
@@ -344,12 +344,15 @@ classdef FilterResObj < handle
             %
             njMx = cellfun(@length,jMx);
             isU = njMx == 1;
-            if all(isU) && all(cell2mat(IMxD) > IMxDTol)
+            if all(isU)
                 % if each frame is unambiguous, then flag the object has
                 % moved over the video phase (and exits the function)
-                fPMx = cellfun(@(x,y)(obj.calcCoords(x,y)),IRL,jMx,'un',0);
-                [sFlagT,uData] = deal(1,fPMx);
-                return
+                if all(cell2mat(IMxD) > IMxDTol)
+                    fPMx = cellfun(@(x,y)...
+                                    (obj.calcCoords(x,y)),IRL,jMx,'un',0);
+                    [sFlagT,uData] = deal(1,fPMx);
+                    return
+                end                
                             
             elseif all(isU(njMx>0)) && all(njMx(~isU) == 0)  
                 % case where all 
@@ -963,8 +966,9 @@ classdef FilterResObj < handle
         % --- determines the static object grouping properties (if any)
         function varargout = findStaticPeakGroups(obj,fP,varargin)
             
-            % parameters            
-            pRRTol = 2;
+            % parameters
+            pWM = 2;
+            pRRTol = 2;            
             pBPRRTol = 0.8;
             
             %
@@ -998,7 +1002,7 @@ classdef FilterResObj < handle
                     
                     %
                     Qm = DP./max(1,pRR);
-                    [BDR,BPRR] = deal(DP < obj.dTol,pRR < pRRTol);  
+                    [BDR,BPRR] = deal(DP < pWM*obj.dTol,pRR < pRRTol);  
                     
                 elseif exist('RMx','var')
                     % case is 

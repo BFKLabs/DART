@@ -50,6 +50,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
         dTol
         isHV
         nPr = 5;  
+        cFlag
         
     end
     
@@ -68,6 +69,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             obj.nApp = length(obj.iMov.iR);
             obj.nTube = getSRCountVec(obj.iMov);
             obj.is2D = obj.iMov.is2D;
+            obj.cFlag = useDistCheck(obj.iMov);
             
             % sets the tube-region offsets
             obj.y0 = cell(obj.nApp,1);
@@ -364,23 +366,21 @@ classdef PhaseTrack < matlab.mixin.SetGet
                         % no previous data, so accept unconditionally
                         [pdPrNw,pdTolMax] = deal(0,1);
                     else
-                        % otherwise, calculate the inter-frame distance
-                        pdPrNw = pdist2([xP,yP],fPrNw(end,:))/obj.dTol;
-    
-                        % determines where the estimated location is in
-                        % relation to the region limits
-                        if useDistCheck(obj.iMov)
-                            if obj.iMov.is2D
-                                pdTolMax = 4.5;
-                            else
-                                if obj.withinEdge(indR,fPrNw(end,:))
-                                    pdTolMax = 2;
-                                else
-                                    pdTolMax = 3;
-                                end
-                            end
+                        %
+                        fPrE = fPrNw(end,:);
+                        if any(obj.cFlag == [0,1])
+                            % case is no distance check
+
+                            % calculates the inter-frame distance
+                            pdPrNw = pdist2([xP,yP],fPrE)/obj.dTol;
+                            pdTolMax = obj.getPDTol(indR,fPrE,1);                                  
+                                
                         else
-                            pdTolMax = 1e10;
+                            % case is a uni-directional side distance check
+                            % (ignores distances of for a given side)
+                            D = obj.calcUniDirDist(xP,fPrE(1));
+                            pdPrNw = D/obj.dTol;
+                            pdTolMax = obj.getPDTol(indR,fPrE,1,1); 
                         end
                     end
                         
@@ -416,34 +416,29 @@ classdef PhaseTrack < matlab.mixin.SetGet
                                 dTolMax = 1e10;
                                 DpC = ones(size(ipC));
                             else
-                                % if there is no 
+                                % if there is previous data, then use this
+                                % to determine the location of the blob
                                 fPest0 = extrapBlobPosition(fPrNw);
                                 fPest = max(1,min(fPest0,flip(szL)));
 
                                 % sets up the distance estimate mask
-                                Best = setGroup(roundP(fPest),szL);
-                                Dest = bwdist(Best);
-                                DpC = Dest(ipC)/obj.dTol;                                                             
+                                if any(obj.cFlag == [0,1])
+                                    % calculates the estimate/candidate
+                                    % points (scale to dTol)                                    
+                                    Best = setGroup(roundP(fPest),szL);
+                                    Dest = bwdist(Best);
+                                    DpC = Dest(ipC)/obj.dTol;
                                 
-                                % determines where the estimated location 
-                                % is in relation to the region limits
-                                if useDistCheck(obj.iMov)
-                                    if obj.iMov.is2D
-                                        % case is 2D setups
-                                        dTolMax = 1;
-                                    else
-                                        % case is 1D setups
-                                        if obj.withinEdge(indR,fPest)
-                                            % case is within edge
-                                            dTolMax = 0.5;
-                                        else
-                                            % case is not near the edge
-                                            dTolMax = 2;
-                                        end
-                                    end
+                                    % sets the distance tolerance
+                                    dTolMax = obj.getPDTol(indR,fPest,2);
                                 else
-                                    % case is not performing a dist check
-                                    dTolMax = 1e10;
+                                    % calculates the estimate/candidate
+                                    % points (scale to dTol)
+                                    D = obj.calcUniDirDist(pC(:,1),fPest(1));
+                                    DpC = D/obj.dTol;
+                                    
+                                    % sets the distance tolerance                                    
+                                    dTolMax = obj.getPDTol(indR,fPest,2,1);                                     
                                 end
                             end                                                       
                             
@@ -562,6 +557,75 @@ classdef PhaseTrack < matlab.mixin.SetGet
             obj.xLim{indR(1)}(indR(2),:) = xL;
             obj.yLim{indR(1)}(indR(2),:) = yL;
             
+        end        
+        
+        % --- calculates the unidirectional distance
+        function D = calcUniDirDist(obj,xNw,xPr)
+            
+            if obj.cFlag == 2
+                % case is searching only the left direction
+                D = max(0,xPr-xNw);
+            else
+                % case is searching only the right direction
+                D = max(0,xNw-xPr);
+            end
+            
+        end       
+
+        % --- retrieves the proportional distance limit check value
+        function pdTol = getPDTol(obj,indR,fPr,Type,cFlag0)
+            
+            % initialisations
+            pdTol = 1e10;
+
+            % sets the input arguments
+            if ~exist('cFlag0','var'); cFlag0 = obj.cFlag; end
+
+            % sets the tolerance flag
+            switch Type
+                case 1
+                    % case is unique peak tolerance
+                    
+                    % sets the tolerance based on flag type
+                    if cFlag0 > 0
+                        % case is a bi-directional check
+                        if obj.iMov.is2D
+                            % case is a 2D setup
+                            pdTol = 4.5;
+                        else
+                            % case is a 1D setup
+                            if obj.withinEdge(indR,fPr)
+                                % point is close to the edge
+                                pdTol = 2;
+                            else
+                                % point is not at the region edge
+                                pdTol = 3;
+                            end
+                        end
+                    end
+
+                case 2
+                    
+                    % determines where the estimated location 
+                    % is in relation to the region limits
+                    if cFlag0 > 0
+                        if obj.iMov.is2D
+                            % case is 2D setups
+                            pdTol = 1;
+                        else
+                            % case is 1D setups
+                            if obj.withinEdge(indR,fPr)
+                                % case is within edge
+                                pdTol = 0.5;
+                            else
+                                % case is not near the edge
+                                pdTol = 2;
+                            end
+                        end
+                    end                    
+                    
+            end
+                    
         end        
         
         % --- calculates the refined coordinates from original scale image

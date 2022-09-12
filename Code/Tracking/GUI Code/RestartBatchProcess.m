@@ -117,7 +117,7 @@ iExptAll.fName = [iExptAll.fName;fName(iAdd)];
 setappdata(handles.figMultiBatch,'iExptAll',iExptAll);
 
 % resets the GUI object properties (if initialising)
-if (nAdd == length(iExptAll.bpData))
+if nAdd == length(iExptAll.bpData)
     resetSolnProps(handles,iExptAll)    
 else
     % updates the information fields
@@ -259,10 +259,8 @@ set(handles.textSolnDir,'string',fullfile('..',B2,bpNw.SolnDirName),...
                 'tooltipstring',fullfile(bpNw.SolnDir,bpNw.SolnDirName))
 
 % updates the other fields
-pComp = roundP(100*sum(isSegNw)/length(bpNw.mName),1);
 set(handles.textVideoCount,'string',length(bpNw.mName))
 set(handles.textSolnCount,'string',sum(isSegNw))
-set(handles.textPercentComp,'string',sprintf('%i%s',pComp,char(37)))
 
 % updates the progress axes
 updateProgressAxes(handles,iSel)
@@ -311,12 +309,8 @@ if showStats
 
         % calculates the proportion of the video that is segmented
         if isfield(A,'pData')
-            % determines the last frame that was segmented
-            iFrm = find(~isnan(A.pData.fPos{i0}{j0}(:,1)),1,'last');
-            if isempty(iFrm); iFrm = 0; end
-            
             % calculates the proportion of frames that have been segmented
-            prFrm = iFrm/size(A.pData.fPos{i0}{j0},1);
+            prFrm = mean(~isnan(A.pData.fPos{i0}{j0}(:,1)));
             if prFrm == 1
                 % if the video is fully segmented then reset the values for
                 % the next video (only if current file is not last file)
@@ -330,6 +324,10 @@ if showStats
         end            
     end
 
+    % sets the percentage complete string
+    pComp = roundP(100*prFrm);
+    set(handles.textPercentComp,'string',sprintf('%i%s',pComp,char(37)))    
+    
     % --------------------------------- %
     % --- BATCH PROCESSING PROGRESS --- %
     % --------------------------------- %
@@ -392,6 +390,17 @@ if showStats
     set(hAxS,'xlim',xL,'ylim',yL,'FontWeight','bold','FontSize',9);
     grid(hAxS,'on')
 
+else
+    % sets the percentage complete string
+    if isempty(iSel)
+        prStr = 'N/A';
+    else
+        isSegNw = iExptAdd.isSeg{iSel};    
+        pComp = roundP(100*sum(isSegNw)/length(bpNw.mName),1);
+        prStr = sprintf('%i%s',pComp,char(37));
+    end
+        
+    set(handles.textPercentComp,'string',prStr)    
 end
 
 % updates the panel enabled properties

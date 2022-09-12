@@ -47,7 +47,7 @@ for i = 1:nFile
         solnFile = dir(fullfile(bpDir{i},'*.soln'));
         
         % checks to see if the directory is still feasible
-        if (isempty(solnFile))
+        if isempty(solnFile)
             % if there are no solution file present, then flag that the
             % directory is not feasible for batch processing
             isOK(i) = false;
@@ -65,37 +65,39 @@ for i = 1:nFile
                 % solution file has not been segmented
                 sNameNw = fullfile(bpDir{i},solnFile(j).name);
                 B = load(sNameNw,'-mat','pData');                
-                if (isempty(B.pData))
-                    if (j ~= 1)
+                if isempty(B.pData)
+                    if j ~= 1
                         delete(sNameNw);
                     end
                 else
-                    if (iscell(B.pData.frmOK))
-                        if (B.pData.nCount(end) == length(B.pData.frmOK{end}))
-                            isSeg{i}(j) = true;
-                        end
-                    else
-                        if (B.pData.nCount == length(B.pData.frmOK))
-                            isSeg{i}(j) = true;
-                        end                       
-                    end
+                    isSeg{i}(j) = all(B.pData.isSeg);
+                    
+%                     % retrieves the stack count for each phase
+%                     if iscell(B.pData.frmOK)
+%                         nStackT = sum(cellfun(@length,B.pData.frmOK));
+%                     else
+%                         nStackT = length(B.pData.frmOK);
+%                     end
+                    
+                    % determines if the counts match
+%                     isSeg{i}(j) = (sum(B.pData.nCount) + 1) >= nStackT;
                 end
             end
             
             % if all of the solution files have been segmented, then flag
             % that the solution directory does not need resegmenting
-            if ((all(isSeg{i})) && ((~redoAll) || (length(isSeg{i}) > 1)))
+            if all(isSeg{i}) && (~redoAll || (length(isSeg{i}) > 1))
                 isOK(i) = false;
-            elseif (~exist(A.bData.sName,'file'))
+            elseif ~exist(A.bData.sName,'file')
                 % determines if the summary file need to be updated
                 sStrM = fullfile(A.bData.MovDir,'Summary.mat');
-                if (exist(sStrM,'file'))
+                if exist(sStrM,'file')
                     % if the file exists, then set the summary file as that
                     A.bData.sName = sStrM;
                 else
                     % sets the solution file directory summary file
                     sStrS = fullfile(bpDir{i},'Summary.mat');
-                    if (exist(sStrS,'file'))
+                    if exist(sStrS,'file')
                         % if the solution file directory summary file
                         % exists, then reset that as the summary file
                         A.bData.sName = sStrS;
@@ -108,16 +110,17 @@ for i = 1:nFile
         end
         
         % set the batch processing data for the file (if ok)
-        if (isOK(i))
+        if isOK(i)
             % sets the batch processing fields
             bpData{i} = A.bData;
             bpData{i}.SolnDirName = getFinalDirString(bpDir{i});
             [bpData{i}.SolnDir,~,~] = fileparts(bpDir{i});                
-            bpData{i}.mName = cellfun(@(x)(fullfile(A.bData.MovDir,x)),field2cell(movFile,'name'),'un',0);         
+            bpData{i}.mName = cellfun(@(x)(fullfile...
+                    (A.bData.MovDir,x)),field2cell(movFile,'name'),'un',0);         
             bpData{i}.sName = fullfile(bpData{i}.MovDir,'Summary.mat');
             
             % ensures the video status flag array has been set
-            if (~isfield(bpData{i},'movOK'))
+            if ~isfield(bpData{i},'movOK')
                 bpData{i}.movOK = ones(length(bpData{i}.sName),1);
             end
         end        
@@ -125,7 +128,7 @@ for i = 1:nFile
 end
 
 % resets the batch processing cell array
-if (~any(isOK))
+if ~any(isOK)
     % no valid batch processing so exit the function with empty arrays
     [bpData,isSeg] = deal([]);
     h.closeProgBar();
@@ -137,7 +140,7 @@ end
 
 % determines if all of the fields have been set
 nF = cellfun(@(x)(length(fieldnames(x))),bpData);
-if (range(nF) > 0)
+if range(nF) > 0
     % determines the field that contains all of the fields and retrieves
     % the names of these fields
     imx = find(nF == max(nF),1,'first');
@@ -145,7 +148,7 @@ if (range(nF) > 0)
     
     % determines if the 
     for i = 1:length(nF)
-        if (nF(i) ~= max(nF))
+        if nF(i) ~= max(nF)
             % adds in the missing fields and reorders them
             if ~isfield(bpData{i},'sfData')
                 bpData{i}.sfData = struct('isOut',0,'Type','Append','tBin',60);

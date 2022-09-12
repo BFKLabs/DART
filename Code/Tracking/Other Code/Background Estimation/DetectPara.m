@@ -133,7 +133,7 @@ classdef DetectPara
                 case 'pTrack' 
                     % case is full tracking parameters
                     bgP = struct('rPmxTol',0.8,'pTolPh',5,'pWQ',1,...
-                                 'distChk',true);
+                                 'distChk',1);
                     
                 case 'pSingle' 
                     % case is full tracking parameters

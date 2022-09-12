@@ -165,7 +165,7 @@ if any(ii == 1)
                 
         % otherwise, determine the index groups where there are NaN values
         % and interpolate the points
-        iGrp = getGroupIndex(ii == 1);
+        iGrp = getGroupIndex(ii ~= 0);
         for i = 1:length(iGrp)                                           
             % sets the new positions based on the missing location
             if (iGrp{i}(1) == 1)

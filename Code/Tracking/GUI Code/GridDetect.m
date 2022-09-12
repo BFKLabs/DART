@@ -347,7 +347,7 @@ classdef GridDetect < matlab.mixin.SetGet
         end
         
         % --- region move up/down button callback function
-        function moveButton(obj,hObj,~)            
+        function moveButton(obj,hObj,~)
             
             % initialisations
             iApp = obj.getRegionIndex();     

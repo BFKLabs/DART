@@ -87,8 +87,7 @@ classdef TrackFull < Track
             
             % determines the phase order (low-variance phases to be
             % segmented first)
-            validPh = obj.iMov.vPhase < 4;
-            [~,obj.iPhaseS] = sort(obj.iMov.vPhase);            
+            validPh = obj.iMov.vPhase < 4;                        
             
             % ensures the progressbar is visible
             obj.hProg.setVisibility('on');
@@ -105,8 +104,8 @@ classdef TrackFull < Track
                     
                 elseif ~isempty(obj.hProg)
                     % updates the progressbar phase field
-                    wStrNw = sprintf('%s (Phase %i of %i)',...
-                                        obj.wStr{obj.wOfs1},i,obj.nPhase);
+                    wStrNw = sprintf('%s #%i (Phase %i of %i)',...
+                                    obj.wStr{obj.wOfs1},j,i,obj.nPhase);
                     if obj.hProg.Update(obj.wOfs1,wStrNw,i/obj.nPhase)
                         % if the user quit, then exit the function
                         obj.calcOK = false; 
@@ -138,6 +137,9 @@ classdef TrackFull < Track
                         
                             % segments the current phase
                             obj.segVideoPhase(j);
+                        else
+                            % case is phase is too short to analyse
+                            obj.pData.isSeg(j) = true;
                         end                     
                         
                     otherwise
@@ -625,7 +627,7 @@ classdef TrackFull < Track
             % creates the progress bar (if not already set)
             if isempty(obj.hProg) || ~obj.hasProg
                 % sets the progressbar strings
-                obj.wStr = {'Video Tracking Progress',...
+                obj.wStr = {'Tracking Video Phase',...
                             'Current Video Progress',...
                             'Sub-Image Stack Reading'};
 
@@ -701,10 +703,12 @@ classdef TrackFull < Track
             
             % initialisations
             updateFrame = false;
+            dStr = {'ascend','descend'};
             
             % sets the phase frame index groups
             xiPh = num2cell(obj.iMov.iPhase,2);
-            [~,obj.iPhaseS] = sort(obj.iMov.vPhase);
+            nFrmG = diff(obj.iMov.iPhase,[],2);
+            [~,obj.iPhaseS] = sortrows([obj.iMov.vPhase,nFrmG],[1,2],dStr);
             obj.iFrmG = cellfun(@(x)(x(1):x(2)),xiPh,'un',0);            
             
             % determines if the positional data struct exists

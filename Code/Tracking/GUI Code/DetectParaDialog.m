@@ -36,6 +36,8 @@ classdef DetectParaDialog < handle
         widFig
         widPanel
         widTxt
+        widTxtP
+        widPopup = 140;        
         widBut = 105;
         widEdit = 60;
         hghtFig 
@@ -101,6 +103,7 @@ classdef DetectParaDialog < handle
             obj.hghtPanelP = obj.hghtBut*obj.nParaMx + 50;
             obj.widPanel = 2*(obj.dX+obj.dXH) + 3*obj.widBut;
             obj.widTxt = obj.widPanel - (3*obj.dX + obj.widEdit);
+            obj.widTxtP = obj.widPanel - (3*obj.dX + obj.widPopup);
             
             % calculates the figure 
             obj.widFig = obj.widPanel + 2*obj.dX;
@@ -149,7 +152,7 @@ classdef DetectParaDialog < handle
             
             % calculates the other other object dimensions
             eFcn = @obj.editPara;
-            cFcn = @obj.checkPara;
+            pFcn = @obj.popupPara;
             tabPos = getTabPosVector(obj.hPanelP,[5,5,-10,-5]);            
                                        
             % creates a tab panel group            
@@ -195,16 +198,26 @@ classdef DetectParaDialog < handle
                                 'UserData',uD,'String',num2str(pVal),...
                                 'ToolTipString',obj.ttStr{i}{j});
                             
-                        case 'c'
-                            % case is the checkbox parameter
+                        case 'p'
+                            % case is the popupmenu parameter
                             tStrNw = obj.tStr{i}{j};
-                            widChk = obj.widEdit+obj.widTxt;
-                            cPos = [2*obj.dX,y0,widChk,obj.hghtEdit];
-                            uicontrol(obj.hTab{i},'Style','checkbox',...
-                                'Position',cPos,'Callback',cFcn,...
-                                'UserData',uD,'Value',pVal,...
+                            
+                            % creates the text label
+                            tPos = [obj.dX,y0+2,obj.widTxtP,obj.hghtTxt];
+                            uicontrol(obj.hTab{i},'Style','Text',...
+                                'Position',tPos,'FontUnits','Pixels',...
+                                'FontSize',obj.fSz,'FontWeight','bold',...
+                                'String',tStrNw{1},'HorizontalAlignment',...
+                                'right','ToolTipString',obj.ttStr{i}{j});                            
+                            
+                            % creates the popup menut
+                            lPosPP = sum(tPos([1,3])) + obj.dX/2;
+                            ppPos = [lPosPP,y0,obj.widPopup,obj.hghtEdit];
+                            uicontrol(obj.hTab{i},'Style','popupmenu',...
+                                'Position',ppPos,'Callback',pFcn,...
+                                'UserData',uD,'Value',double(pVal)+1,...
                                 'ToolTipString',obj.ttStr{i}{j},...
-                                'String',tStrNw,'FontUnits','Pixels',...
+                                'String',tStrNw{2},'FontUnits','Pixels',...
                                 'FontWeight','Bold','FontSize',obj.fSz);
                     end
                 end
@@ -264,7 +277,7 @@ classdef DetectParaDialog < handle
         end
         
         % --- callback function for update the editbox parameter
-        function checkPara(obj,hObject,~)
+        function popupPara(obj,hObject,~)
             
             % initialisations
             uD = get(hObject,'UserData');
@@ -272,7 +285,7 @@ classdef DetectParaDialog < handle
             [pTypeP,pStrP] = deal(uD{1},uD{2});            
             
             % if the value is valid, then update the parameter field
-            obj.bgP = setTrackingPara(obj.bgP,pTypeP,pStrP,nwVal);  
+            obj.bgP = setTrackingPara(obj.bgP,pTypeP,pStrP,nwVal-1);  
             
             % enables the update/reset buttons
             cellfun(@(x)(setObjEnable(x,1)),obj.hButC(1:2))            
@@ -500,10 +513,12 @@ classdef DetectParaDialog < handle
                 case 'Full Tracking'
                     % case is the phase detection parameters
                     pType = 'pTrack';
+                    ppStr = {{'Inter-Frame Distance Check :'},...
+                             {'No Distance Check';'Full Distance Check';...
+                              'Left-Side Only';'Right-Side Only'}};                        
                     tStr = {'Max. Residual Prominent Peak Ratio',...
                             'Max Reference Image Pixel Intensity Offset',...
-                            'Residual Image Weighting Threshold',...
-                            'Perform Inter-Frame Distance Check'};
+                            'Residual Image Weighting Threshold',ppStr};
                     pStr = {'rPmxTol','pTolPh','pWQ','distChk'};     
                     ttStr = {
                         sprintf(['the maximum ratio between the 1st ',...
@@ -520,12 +535,12 @@ classdef DetectParaDialog < handle
                         'lower parameter values will favour darker ',...
                         'image regions.'],a,a),...   
                         sprintf(['the inter-frame distance check ',...
-                        'flag.\n %s set this checkbox to true to check',...
-                        'the inter-frame distance is not too large'],a);                        
+                        'type.\n %s this check ensures the inter-frame ',...
+                        'distance is not too large.'],a);                        
                     }; 
                 
                     % sets the object type flags
-                    tType = {'e','e','e','c'};
+                    tType = {'e','e','e','p'};
                     
             end
             
