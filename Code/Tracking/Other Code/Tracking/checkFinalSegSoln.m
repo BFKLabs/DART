@@ -151,10 +151,10 @@ for i = find(iMov.vPhase >= 3)'
 end
 
 % determines all the NaN position values
-if any(ii == 1)
+if any(ii ~= 0)
     % determines the groupings of NaN values, and the
     % lengths of these groups
-    if all(ii == 1)
+    if all(ii ~= 0)
         % all positions are NaNs, so reject frame
         iMov.Status{iApp}(iTube) = 3;
     else        

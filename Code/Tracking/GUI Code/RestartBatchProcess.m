@@ -325,7 +325,7 @@ if showStats
     end
 
     % sets the percentage complete string
-    pComp = roundP(100*prFrm);
+    pComp = roundP(100*(sum(isSegS)+prFrm)/nFile);
     set(handles.textPercentComp,'string',sprintf('%i%s',pComp,char(37)))    
     
     % --------------------------------- %

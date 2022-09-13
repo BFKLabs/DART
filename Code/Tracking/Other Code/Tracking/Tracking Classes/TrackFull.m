@@ -137,15 +137,7 @@ classdef TrackFull < Track
                         
                             % segments the current phase
                             obj.segVideoPhase(j);
-                        else
-                            % case is phase is too short to analyse
-                            obj.pData.isSeg(j) = true;
-                        end                     
-                        
-                    otherwise
-                        % case is an untrackable phase
-                        obj.pData.isSeg(j) = true;
-                        
+                        end                        
                 end                
                       
                 % post-phase segmentation operations

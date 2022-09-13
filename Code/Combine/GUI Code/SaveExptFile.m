@@ -873,6 +873,9 @@ end
 snTot = updateRegionInfo(snTot);
 snTot = reshapeExptSolnFile(snTot);
 
+% removes the y-position data (if not required);
+if ~oPara.outY; snTot.Py = []; end
+
 % outputs the solution file
 fFileFull = [fNameFull,'.ssol'];
 saveExptSolnFile(tmpDir,fFileFull,snTot,hProg,1);

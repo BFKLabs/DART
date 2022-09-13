@@ -109,8 +109,10 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 
                 % if the user cancelled, then reset the object properties
                 resetHandleSnapshot(obj.hProp0,obj.hFig); 
-                obj.checkShowTube(obj.hGUI.checkShowTube,1,obj.hGUI)
-                obj.checkShowMark(obj.hGUI.checkShowMark,1,obj.hGUI) 
+                try
+                    obj.checkShowTube(obj.hGUI.checkShowTube,1,obj.hGUI)
+                    obj.checkShowMark(obj.hGUI.checkShowMark,1,obj.hGUI)
+                end
             else
                 % otherwise, check the record status of the video
                 obj.checkVideoStatus();
@@ -1232,25 +1234,13 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                         [obj.iMov,obj.iMov0] = deal(B.iMov);                                        
                                         
                         if ~isempty(B.pData)
-                            % determines
-                            i0 = find(obj.iMov.ok,1,'first');
-                            j0 = find(obj.iMov.flyok(:,i0),1,'first');
-                            
-                            % determines the non-NaN frames (removes any
-                            % high-variance/infeasible phases)
-                            iPh = obj.iMov.iPhase;
-                            isSegT = ~isnan(B.pData.fPos{i0}{j0}(:,1));
-                            for i = find(obj.iMov.vPhase(:) == 3)
-                                isSegT(iPh(i,1):iPh(i,2)) = true;
-                            end
-                            
-                            if all(isSegT)
+                            if all(B.pData.isSeg)
                                 % if all phases are segmented, then use the
                                 % next video for analysis
                                 cont = false;
                                 nFileNw = nFileNw + 1;   
                                 
-                            elseif any(isSegT)
+                            elseif any(B.pData.isSeg)
                                 % exit if all have been segmented correctly
                                 cont = false;
                             end

@@ -55,8 +55,12 @@ for i = 1:nApp
             Px{i} = [Px{i},getDataValues(isMT,snTot.Px,indD)];
         
             % sets the fly y-locations (if they exist)
+            try
             if ~isempty(snTot.Py)
                 Py{i} = [Py{i},getDataValues(isMT,snTot.Py,indD)];
+            end
+            catch
+                a = 1;
             end
         
             % sets the orientation angles/aspect ratios (if they exist)

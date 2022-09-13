@@ -42,7 +42,7 @@ classdef FilterResObj < handle
         % parameters
         pW0 = 0.1;
         pW1 = 0.4;   
-        pWS = 1.5;
+        pWS = 2.5;
         pTolBB = 0.1;        
         
         % other class fields
@@ -216,6 +216,10 @@ classdef FilterResObj < handle
                     [sFlagT,uData] = obj.detSubRegionStatus(IRL,dIRL,BexcT);
                 end                
                 
+                if (sFlagT == 4) && (length(obj.iMov.vPhase) == 1)
+                    sFlagT = 0;
+                end
+                
                 switch sFlagT
                     case {1,2}
                         % case is 
@@ -325,12 +329,13 @@ classdef FilterResObj < handle
         function [sFlagT,uData] = detSubRegionStatus(obj,IRL,dIRL,Bexc)
             
             % parameters
-            pW = 2;
-            ZMxTol = 6;
+            pW = 2;            
             ZMxTolM = 8;
+            ZMxTol = 5.5;
             njMxMax = 10;
-            IMxDTol = 3.5;
+            IMxDTol = 3.25;
             pUniqMin = 2/3;
+            pzTol = 0.8;
             
             % initialisations
             isJitter = false;
@@ -447,7 +452,7 @@ classdef FilterResObj < handle
                     zIRL = cellfun(@(x,y)(obj.calcZScore(x,y)),IRL,jMx);
                                         
                     % calculates and returns the final values
-                    if all(zIRL > IMxDTol)
+                    if mean(zIRL > IMxDTol) >= pzTol
                         fPMx = cellfun(@(x,y)...
                                 (obj.calcCoords(x,y)),IRL,jMx,'un',0);
                         [sFlagT,uData] = deal(1,fPMx); 
@@ -968,7 +973,7 @@ classdef FilterResObj < handle
             
             % parameters
             pWM = 2;
-            pRRTol = 2;            
+            pRRTol = 2.25;            
             pBPRRTol = 0.8;
             
             %
@@ -1153,49 +1158,69 @@ classdef FilterResObj < handle
             
             % parameters
             pTol = 1/3;
-            
-            % parameters
-            prTol = 4/3;
-            
+            ndTol = 5;
+                        
             % initialisations
             szL = size(IRL);
             iMx = find(imregionalmax(IRL) & BexcT);
-            [yMx,xMx] = ind2sub(szL,iMx);
+            pTolMx = pTol*max(IRL(iMx));
             
-            % sorts the maxima in descending order
-            [IMx,iS] = sort(IRL(iMx),'descend');
+%             % sorts the maxima in descending order
+%             [IMx,iS] = sort(IRL(iMx),'descend');            
+%             [BMx,ii] = deal(IRL >= pTolMx,IMx >= pTol*IMx(1));
             
-            % keeps the maxima values above threshold
-            ii = IMx >= pTol*IMx(1);
-            [pR,pMax] = deal(IMx(ii),[xMx(iS(ii)),yMx(iS(ii))]);
-            iMax = iMx(iS(ii));    
+            % determines the significant blobs. if any of the blobs are too
+            % big, then remove them from the analysis
+            [iGrp,pBB] = getGroupIndex(IRL>=pTolMx,'BoundingBox');
+            jj = all(pBB(:,3:4) <= ndTol*obj.dTol,2);
+            iGrp = iGrp(jj);
             
-            % 
-            DP = pdist2(pMax,pMax); 
-            DP(logical(eye(size(DP)))) = NaN;
-            isC = DP < obj.dTol;
-            
-            % keep looping until all close points have been checked
-            isOK = true(size(DP,1),1);
-            while any(isC(:))
-                % determines which the closest of the remaining points
-                [iy,ix] = find(DP == min(DP(:)),1,'first');
-                
-                %
-                pRR = calcRectifiedRatio(IRL(iMax(ix)),IRL(iMax(iy)));                
-                if pRR < prTol
-                    ixy = [ix,iy];
-                    iMx = IRL(iMax(ixy));                    
-                    isOK(ixy(argMin(iMx))) = false;
-                end
-                
-                % removes the values from the search
-                [isC(iy,ix),isC(ix,iy)] = deal(false);
-                [DP(iy,ix),DP(ix,iy)] = deal(NaN);
+            % determines the peak value within each blob
+            jGrp = cellfun(@(x)(intersect(iMx,x)),iGrp,'un',0);
+            for i = find(cellfun(@length,jGrp(:)') > 1)
+                jGrp{i} = jGrp{i}(argMax(IRL(jGrp{i})));
             end
             
-            % removes the infeasible points
-            [pR,pMax,iMax] = deal(pR(isOK),pMax(isOK,:),iMax(isOK));
+            % sets the output values
+            iMax = cell2mat(jGrp);
+            [pR,pMax] = deal(IRL(iMax),obj.calcCoords(IRL,iMax));
+            
+%             IMx = cellfun(@(x)(IRL(x)),jGrp);
+%             
+%             % keeps the maxima values above threshold
+%             if any(jj)
+%                 
+%             else                
+%                 [pR,pMax] = deal(IMx(ii),[xMx(iS(ii)),yMx(iS(ii))]);
+%                 iMax = iMx(iS(ii));    
+%             end
+%             
+%             % 
+%             DP = pdist2(pMax,pMax); 
+%             DP(logical(eye(size(DP)))) = NaN;
+%             isC = DP < obj.dTol;
+%             
+%             % keep looping until all close points have been checked
+%             isOK = true(size(DP,1),1);
+%             while any(isC(:))
+%                 % determines which the closest of the remaining points
+%                 [iy,ix] = find(DP == min(DP(:)),1,'first');
+%                 
+%                 %
+%                 pRR = calcRectifiedRatio(IRL(iMax(ix)),IRL(iMax(iy)));                
+%                 if pRR < prTol
+%                     ixy = [ix,iy];
+%                     iMx = IRL(iMax(ixy));                    
+%                     isOK(ixy(argMin(iMx))) = false;
+%                 end
+%                 
+%                 % removes the values from the search
+%                 [isC(iy,ix),isC(ix,iy)] = deal(false);
+%                 [DP(iy,ix),DP(ix,iy)] = deal(NaN);
+%             end
+%             
+%             % removes the infeasible points
+%             [pR,pMax,iMax] = deal(pR(isOK),pMax(isOK,:),iMax(isOK));
             
         end        
         
@@ -1258,7 +1283,7 @@ classdef FilterResObj < handle
         function fP = calcCoords(I,ind)
             
             [yP,xP] = ind2sub(size(I),ind);
-            fP = [xP,yP];
+            fP = [xP(:),yP(:)];
             
         end
         

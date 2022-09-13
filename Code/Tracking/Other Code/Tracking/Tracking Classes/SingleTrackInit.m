@@ -560,8 +560,8 @@ classdef SingleTrackInit < SingleTrack
                     return
                 end          
                 
-                if isequal([iPh,i],[1,1])
-                    iT = [1,7];
+                if isequal([iPh,i],[1,2])
+                    iT = 1;
                 end
                 
                 % retrieves and processes the image stack

@@ -61,7 +61,10 @@ for i = 1:nGrp
         iReg = (iRow-1)*snTot.iMov.pInfo.nCol + iCol;
         
         % retrieves the positional values 
-        Px{i} = getGroupValues1D(Px0,iReg,iFly); 
+        Px{i} = getGroupValues1D(Px0,iReg,iFly);
+        if ~isempty(Py0)
+            Py{i} = getGroupValues1D(Py0,iReg,iFly);            
+        end
     end
 end
 
