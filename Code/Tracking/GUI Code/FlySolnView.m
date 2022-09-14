@@ -1017,14 +1017,14 @@ switch uData(1)
                 xMax = iMov.iC{iApp}(end) - 1; 
             end
             
-            if length(uData) > 1
-                % determines the min/max position values over all flies
-                % within the current region
-                xPosL = cell2mat(cellfun(@(x)...
-                        ([min(x(:,1)),max(x(:,1))]),fPosNw(:),'un',0)); 
-                xMin = min(xMin,min(xPosL(:,1)));
-                xMax = max(xMax,max(xPosL(:,2)));
-            end
+%             if length(uData) > 1
+%                 % determines the min/max position values over all flies
+%                 % within the current region
+%                 xPosL = cell2mat(cellfun(@(x)...
+%                         ([min(x(:,1)),max(x(:,1))]),fPosNw(:),'un',0)); 
+%                 xMin = min(xMin,min(xPosL(:,1)));
+%                 xMax = max(xMax,max(xPosL(:,2)));
+%             end
             
             % normalises the x-location traces
             XpltN = cellfun(@(x)...

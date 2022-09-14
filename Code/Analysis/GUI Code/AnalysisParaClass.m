@@ -2121,7 +2121,7 @@ classdef AnalysisParaClass < handle
                 if ~isempty(p(i).Enable)                       
                     % sets the parameter indices and enabled strings
                     [pInd,onInd] = deal(p(i).Enable{1},p(i).Enable{2});     
-                    if length(p(i).Enable) == 2
+                    if size(p(i).Enable,2) == 2
                         enInd = true(size(pInd));
                     else
                         enInd = p(i).Enable{3};
@@ -2175,7 +2175,7 @@ classdef AnalysisParaClass < handle
                                 onIndNw = onInd{k};
                             else
                                 % index array is a numerical array
-                                onIndNw = onInd(k);
+                                onIndNw = onInd;
                             end
 
                             % sets the new enabled flag

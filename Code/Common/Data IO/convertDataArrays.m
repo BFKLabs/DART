@@ -14,7 +14,7 @@ nFrm = size(snTot.Px{i0},1);
 
 % sets the data array fields to 
 pFld = {'Px'};
-if iMov.is2D || isMT
+if iMov.is2D || isMT || ~isempty(snTot.Py)
     pFld = [pFld,{'Py'}]; 
     if iMov.calcPhi
         pFld = [pFld,{'Phi','AxR'}]; 

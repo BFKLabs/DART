@@ -1528,9 +1528,16 @@ global isDocked newSz
 % retrieves the sub-plot parameter struct
 cbFcn = [];
 uStr = 'pixels';
+hZoom = handles.menuZoom;
 hFig0 = handles.figFlyAnalysis;
 sInd = getappdata(hFig0,'sInd');
-sPara = getappdata(hFig0,'sPara');    
+sPara = getappdata(hFig0,'sPara'); 
+
+% removes the zoom selection (if on)
+if strcmp(get(hZoom,'State'),'on')
+    set(hZoom,'State','off');
+    menuZoom_ClickedCallback(hZoom, [], []);    
+end
 
 % sets the units string/axis handles for setting up the figure   
 if isDocked

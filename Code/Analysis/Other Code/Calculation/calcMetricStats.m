@@ -32,24 +32,34 @@ else
     
     % resets the data arrays for the final calculations
     switch (cType)
-        case (1) % case is taking metrics over all days (separate expts)
+        case (1) 
+            % case is taking metrics over all days (separate expts)
             Y = cell(size(Y0,3),1);
             for i = length(Y)
                 Y{i} = reshape(Y0(:,:,i),[1 1 size(Y0,1)*size(Y0,2)]);
             end
-        case (2) % case is taking metrics over all expts (separate days)
+            
+        case (2)
+            % case is taking metrics over all expts (separate days)
             Y = cell(size(Y0,1),1);
             for i = 1:length(Y)
                 Y{i} = reshape(Y0(i,:,:),[1 1 size(Y0,2)*size(Y0,3)]);
             end
-        case (3) % case is take metrics over all day & expts (multi-dimensional)
+            
+        case (3)
+            % case is take metrics over all day & expts (multi-dimensional)
             Y0 = cell2cell(cellfun(@(x)(num2cell(x,2)),Y0,'un',0)); 
             Y = {reshape(Y0,[1 1 numel(Y0)])};
-        case (4) % case is take metrics over all day & expts (single dimensional)
+            
+        case (4) 
+            % case is take metrics over all day & expts (single dimensional)        
             Y = {reshape(Y0,[1 1 numel(Y0)])};    
-        case (5) % case is metrics overall days & expts (single value/group)
+        
+        case (5) 
+            % case is metrics overall days & expts (single value/group)
             Y0 = num2cell(cell2mat(Y0(:)),2);
             Y = {reshape(Y0,[1 1 numel(Y0)])};    
+
         case (6) %
             Y = cellfun(@(x)(reshape(x,[1 1 length(x)])),Y0,'un',0);
     end

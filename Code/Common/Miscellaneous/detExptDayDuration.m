@@ -11,10 +11,10 @@ gP = getappdata(hGUI,'gPara');
 
 % retrieves the experiment timing data struct
 T = field2cell(snTot,'T');
-Timing = cell2mat(cellfun(@(x)(x.iExpt.Timing),num2cell(snTot),'un',0));
+TT0 = arrayfun(@(x)(x.iExpt.Timing.T0),snTot,'un',0);
 
 % converts the time vectors
-T0 = cellfun(@(x)([0,x(4:6)]),field2cell(Timing,'T0'),'un',0);
+T0 = cellfun(@(x)([0,x(4:6)]),TT0,'un',0);
 for i = 1:length(T0)    
     T0{i}(2) = mod(T0{i}(2)-gP.Tgrp0,24); 
     if (((T0{i}(2) == 23) && (T0{i}(3) > (60-prMinTol))) && (nargin == 2))
