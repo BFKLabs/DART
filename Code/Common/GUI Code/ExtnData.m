@@ -17,9 +17,11 @@ classdef ExtnData < handle
         hTabGrpP
         hTabGrpEx
         hMenuS
-        hMenuC
+        hMenuCE
+        hMenuCA
         hMenuH
         hMenuR
+        hMenuC
         hMenuX
         
         % array class fields
@@ -188,10 +190,7 @@ classdef ExtnData < handle
                                 'Callback',cFcnBC{i},'FontWeight','Bold',...
                                 'FontUnits','Pixels','FontSize',obj.tSz,...
                                 'String',bStrBC{i});                
-            end
-            
-            % set the update button enabled properties
-            obj.updateButtonProps()
+            end            
             
             % ----------------------------------- %
             % --- PARAMETER TAB GROUP OBJECTS --- %
@@ -262,15 +261,26 @@ classdef ExtnData < handle
             obj.hMenuS = uimenu(hMenuSP,'Label','Data Field Template',...
                                         'Callback',@obj.saveDataTemplate);
                       
+            % creates the clear data menus
+            hMenuCP = uimenu(hMenuP,'Label','Clear Data...',...
+                                    'Separator','on');
+            obj.hMenuCE = uimenu(hMenuCP,'Label','Current Experiment',...
+                                        'Callback',@obj.clearExptData);
+            obj.hMenuCA = uimenu(hMenuCP,'Label','All Experiments',...
+                                        'Callback',@obj.clearAllExptData);                                    
+                                    
             % creates the other menu items
-            obj.hMenuC = uimenu(hMenuP,'Label','Clear Experiment Data',...
-                        'Callback',@obj.clearExptData,'Separator','on');
             obj.hMenuR = uimenu(hMenuP,'Label','Restore Original Data',...
                         'Callback',@obj.restoreOrigData,'Enable','off');
+            obj.hMenuC = uimenu(hMenuP,'Label','Synchronise External Data',...
+                        'Callback',@obj.syncExtnData,'Enable','off');                    
             obj.hMenuH = uimenu(hMenuP,'Label','Set Header String',...
-                        'Callback',@obj.alterColHeader);
+                        'Callback',@obj.alterColHeader,'Separator','on');
             obj.hMenuX = uimenu(hMenuP,'Label','Close Window','Callback',...
                         @obj.closeFigure,'Separator','on');
+                    
+            % set the update button enabled properties
+            obj.updateButtonProps()                    
         end        
             
         % --- creates the new parameter tab
@@ -535,7 +545,7 @@ classdef ExtnData < handle
             obj.exD{obj.iExp}{iP}.Data{iR,iC} = evnt.NewData;
             
             % enables the update buttons
-            cellfun(@(x)(setObjEnable(x,1)),obj.hButC(1:2))
+            obj.updateButtonProps();
             
         end
 
@@ -547,13 +557,10 @@ classdef ExtnData < handle
         function updateCurrent(obj,~,~)
            
             if obj.checkExptDataFields()
-                % resets the external data struct for the experiment
-                if isequal(obj.exDR{obj.iExp},obj.exD{obj.iExp})
-                    % if the data structs are equal for all data fields
-                    % within the expt, then update
-                    obj.updateSolnFile(obj.iExp);
-                end
-                
+                % if the data structs are equal for all data fields
+                % within the expt, then update
+                obj.updateSolnFile(obj.iExp);
+
                 % updates the button properties
                 obj.updateButtonProps();
             end
@@ -569,11 +576,9 @@ classdef ExtnData < handle
                 for j = 1:length(obj.exD{i})
                     % determines if the data field is filled out correctly
                     if obj.checkExptDataFields(i,j)                        
-                        if isequal(obj.exDR{i},obj.exD{i})
-                            % updates the solution file (if all data fields
-                            % match within the experiment)
-                            obj.updateSolnFile(i);
-                        end
+                        % updates the solution file
+                        obj.updateSolnFile(i);
+
                     else
                         % otherwise, exit the function
                         return
@@ -672,7 +677,7 @@ classdef ExtnData < handle
                 % loads the data file
                 fFile = fullfile(fDir,fName);
                 obj.exD{obj.iExp} = importdata(fFile,'-mat');
-                obj.exDR{obj.iExp} = obj.exD{obj.iExp};
+%                 obj.exDR{obj.iExp} = obj.exD{obj.iExp};
             end
             
             % retrieves the new/original data field counts
@@ -701,11 +706,8 @@ classdef ExtnData < handle
                 obj.resetTabPanelPara(iP);
             end            
             
-            % resets the parameter index
-            obj.resetParaIndex();           
-            
-            % updates the required flags
-            obj.updateSolnFile(obj.iExp);
+            % resets the parameter index and button properties
+            obj.resetParaIndex();                       
             if ~isempty(evnt)
                 obj.updateButtonProps();
             end
@@ -778,28 +780,49 @@ classdef ExtnData < handle
         function clearExptData(obj,~,~)
         
             % prompts the user if they wish to clear the data
+            tStr = 'Clear Experiment Data?';
             qStr = 'Do you wish to clear the experiment''s external data?';
+            uChoice = questdlg(qStr,tStr,'Yes','No','Yes');
+            if ~strcmp(uChoice,'Yes')
+                % if the user cancelled, then exit
+                return
+            end
+            
+            % resets the parameter index
+            obj.iPara = NaN;            
+            
+            % clears the experiment data fields
+            obj.clearExptDataField(obj.iExp);            
+            
+            % makes the tab group invisible
+            obj.resetParaIndex(); 
+            obj.updateButtonProps();            
+            
+        end        
+        
+        % --- clear all data callback function
+        function clearAllExptData(obj,~,~)
+        
+            % prompts the user if they wish to clear the data
+            qStr = 'Do you wish to clear all external data?';
             uChoice = questdlg(qStr,'Clear All Data?','Yes','No','Yes');
             if ~strcmp(uChoice,'Yes')
                 % if the user cancelled, then exit
                 return
             end
             
-            % deletes the tab panels
-            cellfun(@delete,obj.hTabP{obj.iExp})
+            % resets the parameter index
+            obj.iPara = NaN;            
             
-            % clears the other fields
-            obj.iPara = NaN;
-            obj.exD{obj.iExp} = [];
-            obj.exDR{obj.iExp} = [];
-            obj.hTabP{obj.iExp} = [];
-            obj.updateSolnFile(obj.iExp);
+            % clears the experiment data fields
+            for i = 1:obj.nExp
+                obj.clearExptDataField(i);
+            end
             
             % makes the tab group invisible
-            setObjVisibility(obj.hTabGrpP{obj.iExp},0);
-            obj.updateButtonProps();            
+            obj.updateButtonProps();           
             
-        end        
+        end                        
         
         % --- clear all data callback function
         function restoreOrigData(obj,~,~)
@@ -827,6 +850,38 @@ classdef ExtnData < handle
             
             % resets the original experiment index
             obj.iExp = iExp0;            
+            
+            % updates the button properties
+            obj.resetParaIndex();
+            obj.updateButtonProps();            
+            
+        end
+        
+        % --- synchronises the external data
+        function syncExtnData(obj,~,~)
+            
+            % prompts the user if they wish to clear the data
+            tStr = 'Synchronise External Data?';
+            qStr = ['Do you wish to synchronise the ',...
+                    'external data over all experiments?'];
+            uChoice = questdlg(qStr,tStr,'Yes','No','Yes');
+            if ~strcmp(uChoice,'Yes')
+                % if the user cancelled, then exit
+                return
+            end
+            
+            % stores a copy of the original experiment index
+            iExp0 = obj.iExp;
+            
+            % updates the parameter for all experiments
+            for i = find((1:obj.nExp) ~= iExp0)
+                obj.iExp = i;
+                obj.exD{i} = obj.exD{iExp0};
+                obj.loadDataTemplate([],[])
+            end            
+            
+            % resets the experiment index
+            obj.iExp = iExp0;
             
             % updates the button properties
             obj.resetParaIndex();
@@ -919,27 +974,35 @@ classdef ExtnData < handle
                 % case is there are no parameters
                 cellfun(@(x)(setObjEnable(x,0)),obj.hButC(1:2))
                 setObjEnable(obj.hMenuS,0);               
-                setObjEnable(obj.hMenuC,0);
+                setObjEnable(obj.hMenuCE,0);
+                setObjEnable(obj.hMenuCA,0);
                 setObjEnable(obj.hMenuH,0);
+                setObjEnable(obj.hMenuC,0);
                 setObjEnable(obj.hBut{1},0);
                 
             else
-                % determines which 
+                % determines if the stored/current parameters are equal
                 isEq = cellfun(@(x,y)(isequal(x,y)),obj.exDR,obj.exD);
                 
                 % sets the update current data field button enabled props
                 if isEq(obj.iExp)
+                    % if the current expt is equal, then disable the
+                    % update current button
                     setObjEnable(obj.hButC{1},false)
                 else
+                    % otherwise, determine if the current parameter is
+                    % equal between current/stored values
                     exDT = obj.exD{obj.iExp};
-                    exDRT = obj.exDR{obj.iExp};
-                    
+                    exDRT = obj.exDR{obj.iExp};                    
                     if isempty(exDT) || isempty(exDRT)
+                        % if either is empty, then flag as unequal
                         isEqP = false;
                     else
+                        % otherwise, compare the parameter fields
                         isEqP = isequal(exDT{obj.iPara},exDRT{obj.iPara});
                     end
                         
+                    % sets the update current button
                     setObjEnable(obj.hButC{1},~isEqP)                    
                 end
 
@@ -953,8 +1016,10 @@ classdef ExtnData < handle
                 
                 % updates the remove parameter button enabled props
                 hasD = ~isempty(obj.exD{obj.iExp});                
-                setObjEnable(obj.hMenuC,hasD);
+                setObjEnable(obj.hMenuCE,hasD);
+                setObjEnable(obj.hMenuCA,hasD);
                 setObjEnable(obj.hMenuH,hasD);
+                setObjEnable(obj.hMenuC,hasD && (obj.nExp>1));
                 setObjEnable(obj.hBut{1},hasD);                
             end
             
@@ -1021,7 +1086,7 @@ classdef ExtnData < handle
                 
             % updates the external data field
             sInfo{iExp}.snTot.exD = obj.exD{iExp};
-
+            obj.exDR{iExp} = obj.exD{iExp};
             
             % retrieves the solution data fields
             if obj.isCombine
@@ -1030,38 +1095,39 @@ classdef ExtnData < handle
             else
                 % case is operating from the solution 
                 obj.hObjM.sInfo = sInfo;
+                obj.hObjM.isChange = true;
             end
             
         end        
         
         % --- determines if the data fields for the experiment has 
         %     been set correctly
-        function ok = checkExptDataFields(obj,iExp,iPara)
+        function ok = checkExptDataFields(obj,iExpC,iParaC)
             
             % sets the experiment/parameter index if not provided
-            if ~exist('iExp','var')
-                [iExp,iPara] = deal(obj.iExp,obj.iPara);
+            if ~exist('iExpC','var')
+                [iExpC,iParaC] = deal(obj.iExp,obj.iPara);
             end
             
             % initialisations
             ok = false;
-            exDT = obj.exD{iExp}{iPara};
+            exDT = obj.exD{iExpC}{iParaC};
             
             % determines if the experiment fields have been filled
             if isempty(exDT.pStr)
                 % case is the data field name is empty
-                obj.showFieldNameError(iExp,iPara);
+                obj.showFieldNameError(iExpC,iParaC);
             else
                 % otherwise, determine any data row/column is empty
                 isE = cellfun(@isempty,exDT.Data);
                 [isER,isEC] = deal(all(isE,2),all(isE,1));                
                 if any(isER) || any(isEC)
                     % case is at least one row/column is empty
-                    obj.showDataTableError(iExp,iPara,isER,isEC);
+                    obj.showDataTableError(iExpC,iParaC,isER,isEC);
                 else
                     % otherwise, flag everything is correct
                     ok = true;
-                    obj.exDR{iExp}{iPara} = exDT;
+%                     obj.exDR{iExpC}{iParaC} = exDT;
                 end
             end            
             
@@ -1080,6 +1146,21 @@ classdef ExtnData < handle
             hTabPS = get(obj.hTabGrpP{obj.iExp},'SelectedTab');
             obj.iPara = get(hTabPS,'UserData');            
         
+        end        
+        
+        % --- clears the experiment data field
+        function clearExptDataField(obj,iExpC)
+            
+            % deletes the tab panels
+            cellfun(@delete,obj.hTabP{iExpC})
+            
+            % clears the other fields
+            obj.exD{iExpC} = [];
+            obj.hTabP{iExpC} = [];
+            
+            % sets the tab group visbility flag
+            setObjVisibility(obj.hTabGrpP{iExpC},0);                        
+            
         end        
         
     end

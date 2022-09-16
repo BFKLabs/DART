@@ -710,7 +710,6 @@ function menuSplitPlot_Callback(~, ~, handles)
 
 % runs the axis splitting GUI
 SplitAxisClass(handles.figFlyAnalysis);
-% SplitAxisClassOld(handles.figFlyAnalysis);
 
 % ----------------------------------- %
 % --- GLOBAL PARAMETERS MENU ITEM --- %
@@ -945,12 +944,27 @@ end
 % --------------------------------------------------------------------
 function menuDataCursor_ClickedCallback(hObject, ~, ~)
 
+% initialisations
+[hFig,cbFcn] = deal(gcf,[]);
+
 % toggles the data cursor based on the button state
 if strcmp(get(hObject,'state'),'on')
-    set(setObjEnable(datacursormode(gcf),'on'),'DisplayStyle','window')    
+    % updates the 
+    [eInd,fInd,pInd] = getSelectedIndices(guidata(hFig));
+    pData0 = getappdata(hFig,'pData');
+    cbFcn = pData0{pInd}{fInd,eInd}.dcFunc;    
+
+    % if there is no callback function, then turn on the data cursor mode
+    if isempty(cbFcn)
+        set(setObjEnable(datacursormode(hFig),'on'),'DisplayStyle','window')
+    end
 else
-    setObjEnable(datacursormode(gcf),'off')    
+    % otherwise, turn off the data cursor mode
+    setObjEnable(datacursormode(hFig),'off')    
 end
+
+% updates the window motion callback function
+set(hFig,'WindowButtonMotionFcn',cbFcn);
 
 %-------------------------------------------------------------------------%
 %                        FIGURE CALLBACK FUNCTIONS                        %
@@ -1529,6 +1543,7 @@ global isDocked newSz
 cbFcn = [];
 uStr = 'pixels';
 hZoom = handles.menuZoom;
+hDC = handles.menuDataCursor;
 hFig0 = handles.figFlyAnalysis;
 sInd = getappdata(hFig0,'sInd');
 sPara = getappdata(hFig0,'sPara'); 
@@ -1537,6 +1552,12 @@ sPara = getappdata(hFig0,'sPara');
 if strcmp(get(hZoom,'State'),'on')
     set(hZoom,'State','off');
     menuZoom_ClickedCallback(hZoom, [], []);    
+end
+
+% removes the zoom selection (if on)
+if strcmp(get(hDC,'State'),'on')
+    set(hDC,'State','off');
+    menuDataCursor_ClickedCallback(hDC, [], []);    
 end
 
 % sets the units string/axis handles for setting up the figure   

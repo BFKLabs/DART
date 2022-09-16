@@ -8,15 +8,19 @@ fok = snTot.iMov.flyok{iApp};
 
 % sets up the raw data array
 switch Type
-    case (1) % case is pre-day separated data
+    case (1) 
+        % case is pre-day separated data
         Yr = setupRawDataArray(Y,indD);
-    case (2) % case is post-day separated data
+    
+    case (2) 
+        % case is post-day separated data
         Yr = cell2cell(cellfun(@(x)(num2cell(...
                             cell2mat(x(:)),1)),num2cell(Y,2),'un',0));
         if (size(Yr{1},2) == 1)
             Yr = cellfun(@(x)(x'),Yr,'un',0);
         end
-    case (3) % 
+        
+    case (3) %
         xi = num2cell(1:length(fok));
         A = cellfun(@(x)(Y(x,:)),indD,'un',0);
         isE = cellfun(@isempty,A);

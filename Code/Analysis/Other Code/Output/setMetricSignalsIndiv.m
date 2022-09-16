@@ -20,16 +20,16 @@ xDepT = cellfun(@(x)(x{1}),xDep,'un',0);
 
 % determines the number of days each experiment runs for
 Y0 = field2cell(plotD,pStr{1});
-nDay = zeros(nApp,nExp);
+nDay0 = zeros(nApp,nExp);
 for i = 1:length(Y0)
     for j = 1:nExp
-        nDay(i,j) = max(cellfun(@(x)(sum(~cellfun(...
+        nDay0(i,j) = max(cellfun(@(x)(sum(~cellfun(...
                                 @isempty,x))),num2cell(Y0{i}(:,:,j),1)));
     end
 end
 
 % determines if any of the variables have a time dependency
-nDay = max(nDay,[],2);
+nDay = max(nDay0,[],1);
 ii = find(cellfun(@(x)(any(strcmp(xDepT,x))),field2cell(iData.xVar,'Var')));
 iiT = ii(strcmp(field2cell(iData.xVar(ii),'Type'),'Time'));
 
@@ -84,7 +84,11 @@ else
     if isnumeric(T0); T0 = num2cell(T0); end
     
     nDayMx = max(nDay);
-    [T(:,1),T(:,2)] = deal({repmat(T0,nDayMx,1)},{T0});
+    if length(T0) == nExp
+        [T(:,1),T(:,2)] = deal(T0,{T0});
+    else
+        [T(:,1),T(:,2)] = deal({repmat(T0,nDayMx,1)},{T0});
+    end
     
     if (nDayMx > 1)
         iD(:) = {cell2cell(cellfun(@(x)(num2cell(...
@@ -222,7 +226,8 @@ for j = 1:nLvl
             case (1) % case is signals are combined over all days                                                                                                                
                 
                 % resets the final combined output array
-                Ygrp{j,k} = cellfun(@(x)(x(i0:i1,:)),Ynw{k},'un',0);
+                ind = cellfun(@(x,y)(x:y),j0,j1,'un',0);
+                Ygrp{j,k} = cellfun(@(x,y)(x(y,:)),Ynw{k},ind,'un',0);
                 
             case (2) % case is signals are separated over all days                
                 if iData.sepDay
