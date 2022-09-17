@@ -141,12 +141,8 @@ if ~isempty(hPara)
     setObjVisibility(hPara,0);
 end
 
-% closes the function filter (if open)
-hToggle = handles.toggleFuncFilter;
-if get(hToggle,'Value')
-    set(hToggle,'Value',false)
-    toggleFuncFilter_Callback(hToggle, [], handles)
-end
+% resets the toolbar objects
+resetToolbarObj(handles)
 
 % if there is currently loaded data, then combine the sInfo and snTot data
 % structs for the 
@@ -480,6 +476,9 @@ if ~isempty(eventdata)
     end
 end
 
+% resets the toolbar objects
+resetToolbarObj(handles)
+
 % disables 
 hPanel = findall(hFig,'type','uipanel');
 for i = 1:length(hPanel)
@@ -596,6 +595,7 @@ setObjEnable(hObject,'off')
 % updates the listbox/popup menu colour strings
 resetExptListStrings(handles)
 updateListColourStrings(handles,'func')
+resetToolbarObj(handles)
 
 % resets the plot type
 popupPlotType_Callback(handles.popupPlotType, '1', handles)
@@ -632,6 +632,9 @@ h = ProgressLoadbar('Resetting Loaded Experimental Data...');
 hFig = handles.figFlyAnalysis;
 snTot = getappdata(hFig,'snTot');
 sPara = getappdata(hFig,'sPara');
+
+% resets the toolbar objects
+resetToolbarObj(handles)
 
 % ensures the plot/experiment type are set to proper values
 [eInd,~,pInd] = getSelectedIndices(handles);
@@ -1181,7 +1184,8 @@ if (eIndex ~= get(hObject,'value')) || isa(eventdata,'char')
     
     % updates the experiment index and experiment information
     setappdata(hFig,'eIndex',get(hObject,'value'));
-    setExptInfo(handles,snTot);         
+    setExptInfo(handles,snTot); 
+    resetToolbarObj(handles);
     
     % resets the plotting function listbox
     popupPlotType_Callback(handles.popupPlotType, '1', handles)
@@ -1264,6 +1268,7 @@ end
 % resets the experiment list strings
 resetExptListStrings(handles,snTot)       
 setObjEnable(handles.popupExptIndex,eStr)
+resetToolbarObj(handles)
 
 if ~isa(eventdata,'char')
     treeSelectChng([], '1', handles)
@@ -1542,23 +1547,12 @@ global isDocked newSz
 % retrieves the sub-plot parameter struct
 cbFcn = [];
 uStr = 'pixels';
-hZoom = handles.menuZoom;
-hDC = handles.menuDataCursor;
 hFig0 = handles.figFlyAnalysis;
 sInd = getappdata(hFig0,'sInd');
 sPara = getappdata(hFig0,'sPara'); 
 
-% removes the zoom selection (if on)
-if strcmp(get(hZoom,'State'),'on')
-    set(hZoom,'State','off');
-    menuZoom_ClickedCallback(hZoom, [], []);    
-end
-
-% removes the zoom selection (if on)
-if strcmp(get(hDC,'State'),'on')
-    set(hDC,'State','off');
-    menuDataCursor_ClickedCallback(hDC, [], []);    
-end
+% resets the toolbar objects
+resetToolbarObj(handles)
 
 % sets the units string/axis handles for setting up the figure   
 if isDocked
@@ -1991,6 +1985,7 @@ hTree = findall(handles.panelFuncList,'type','hgjavacomponent');
 
 % disables the tree object
 setObjEnable(hTree,'off');
+resetToolbarObj(handles);
 
 % sets the function description
 if all([pInd,fIndNw,eInd] > 0)
@@ -3195,3 +3190,27 @@ hObj = setdiff(hObj,[hObjM;hObjT;hObjTT]);
 
 % returns the object handles and position vectors
 objDim0 = {num2cell(hObj),get(hObj,'Position')};
+
+% --- resets the toolbar objects
+function resetToolbarObj(handles)
+
+% removes the zoom selection (if on)
+hZoom = handles.menuZoom;
+if strcmp(get(hZoom,'State'),'on')
+    set(hZoom,'State','off');
+    menuZoom_ClickedCallback(hZoom, [], []);    
+end
+
+% removes the zoom selection (if on)
+hDC = handles.menuDataCursor;
+if strcmp(get(hDC,'State'),'on')
+    set(hDC,'State','off');
+    menuDataCursor_ClickedCallback(hDC, [], []);    
+end
+
+% closes the function filter (if open)
+hToggle = handles.toggleFuncFilter;
+if get(hToggle,'Value')
+    set(hToggle,'Value',false)
+    toggleFuncFilter_Callback(hToggle, [], handles)
+end

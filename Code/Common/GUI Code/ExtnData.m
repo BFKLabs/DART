@@ -67,13 +67,25 @@ classdef ExtnData < handle
             obj.hObjM = hObjM;
             obj.isCombine = isa(hObjM,'matlab.ui.Figure');
             
+            % creates a loadbar
+            h = ProgressLoadbar('Setting Up External Data GUI...');
+            
             % initialises the class fields
             obj.initClassFields();
             obj.initClassObjects();
             
+            % deletes the loadbar
+            delete(h);
+            
             % centres the figurea and makes it visible
+            if obj.isCombine
+                optFigPosition([hObjM,obj.hFig])
+            else                
+                optFigPosition([hObjM.hFig,obj.hFig])
+            end
+                
 %             centreFigPosition(obj.hFig);
-            setObjVisibility(obj.hFig,1);
+            setObjVisibility(obj.hFig,1);            
             
         end
         
@@ -201,7 +213,7 @@ classdef ExtnData < handle
             pPos = [lPos,yPos,obj.widPanel,obj.hghtPanelP];
             obj.hPanel = uipanel(obj.hFig,'Title','','Units',...
                                           'Pixel','Position',pPos);
-            expFile = cellfun(@(x)(x.expFile),obj.hObjM.sInfo,'un',0);
+            expFile = cellfun(@(x)(x.expFile),obj.getSolnDataStruct,'un',0);
             
             % creates a tab panel group            
             tabPos = getTabPosVector(obj.hPanel,[5,5,-10,-5]);
@@ -253,8 +265,8 @@ classdef ExtnData < handle
             hMenuL = uimenu(hMenuP,'Label','Load...');            
             uimenu(hMenuL,'Label','Data Field Template',...
                           'Callback',@obj.loadDataTemplate);
-            uimenu(hMenuL,'Label','External Data File',...
-                          'Callback',@obj.loadDataFile);                      
+%             uimenu(hMenuL,'Label','External Data File',...
+%                           'Callback',@obj.loadDataFile);                      
             
             % creates the file save menu items
             hMenuSP = uimenu(hMenuP,'Label','Save...');
@@ -262,8 +274,7 @@ classdef ExtnData < handle
                                         'Callback',@obj.saveDataTemplate);
                       
             % creates the clear data menus
-            hMenuCP = uimenu(hMenuP,'Label','Clear Data...',...
-                                    'Separator','on');
+            hMenuCP = uimenu(hMenuP,'Label','Clear...');
             obj.hMenuCE = uimenu(hMenuCP,'Label','Current Experiment',...
                                         'Callback',@obj.clearExptData);
             obj.hMenuCA = uimenu(hMenuCP,'Label','All Experiments',...
@@ -271,7 +282,8 @@ classdef ExtnData < handle
                                     
             % creates the other menu items
             obj.hMenuR = uimenu(hMenuP,'Label','Restore Original Data',...
-                        'Callback',@obj.restoreOrigData,'Enable','off');
+                        'Callback',@obj.restoreOrigData,'Enable','off',...
+                        'Separator','on');
             obj.hMenuC = uimenu(hMenuP,'Label','Synchronise External Data',...
                         'Callback',@obj.syncExtnData,'Enable','off');                    
             obj.hMenuH = uimenu(hMenuP,'Label','Set Header String',...
@@ -924,7 +936,11 @@ classdef ExtnData < handle
             end
             
             % returns the solution struct for the experiment, iExp
-            sInfo = sInfo0{iExp};
+            if exist('iExp','var')
+                sInfo = sInfo0{iExp};
+            else
+                sInfo = sInfo0;
+            end
             
         end
         

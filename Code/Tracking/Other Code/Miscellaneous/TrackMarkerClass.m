@@ -406,7 +406,8 @@ classdef TrackMarkerClass < handle
 
                 else           
                     % case is for tracking
-                    fPosL = obj.getFrameFlyPos(pData,dpOfs,cFrm,ind);                    
+                    dpOfsT = dpOfs*obj.iMov.is2D;
+                    fPosL = obj.getFrameFlyPos(pData,dpOfsT,cFrm,ind);                    
                 end
                 
             else
@@ -434,15 +435,14 @@ classdef TrackMarkerClass < handle
             % --- MARKER OBJECT LOCATION UPDATE --- %
             % ------------------------------------- %            
             
-%             % retrieves the acceptance flag
-%             if obj.isMltTrk
-%                 fok = true;
-%             else
-%                 fok = obj.hFig.iMov.flyok(1:nFly,ind);
-%             end            
+            % retrieves the acceptance flag
+            showMark = obj.pltLocT;
+            if pltLV
+                showMark = showMark && (ind == cMov);
+            end            
             
             % updates the mark visibility
-            obj.updateMarkerVisibility({hMarkS},obj.pltLocT)            
+            obj.updateMarkerVisibility({hMarkS},showMark)            
             if hasPhi
                 obj.updateMarkerVisibility({hDirS},obj.pltAngT)  
             end
