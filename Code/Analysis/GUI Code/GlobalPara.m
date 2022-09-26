@@ -43,7 +43,7 @@ if ~isempty(hPara); setObjVisibility(hPara,'off'); end
 % determines if there are any y-values in the solution data. if there is,
 % then disable the movement type (absolute location only)
 snTot = getappdata(hGUI.figFlyAnalysis,'snTot');
-if ~isempty(snTot(1).pMapPy)
+if ~isempty(snTot(1).Py)
     setObjEnable(handles.popupMovType,'off')
 end
 

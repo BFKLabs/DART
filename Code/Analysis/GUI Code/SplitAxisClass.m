@@ -175,7 +175,9 @@ classdef SplitAxisClass < handle
             
             % creates the experiment combining data panel
             yPos0 = 2*obj.dX + obj.hghtPanelC;
-            pPos = [obj.dX,yPos0,obj.widPanel,obj.hghtPanel];/
+            pPos = [obj.dX,yPos0,obj.widPanel,obj.hghtPanel];
+            hPanel = uipanel(obj.hFig,'Title','','Units',...
+                                      'Pixels','Position',pPos);            
              
             % creates the table object
             tPos = [obj.dX,obj.hghtPanelC,obj.widTable,obj.hghtTable];

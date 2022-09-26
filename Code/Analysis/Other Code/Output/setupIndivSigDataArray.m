@@ -416,12 +416,13 @@ for i = 1:size(iOrder,1)
             YnwT = Ynw{iApp}{iExp}(:,((2+hasTSP):end));
             if (i == 1); kk{iApp} = 1:size(YnwT,2); end                     
             
-            if (iscell(YnwT))
-                isOK = ~all(cellfun(@isnan,YnwT(:)));
-            else
-                isOK = ~all(isnan(YnwT(:)));
-            end
+%             if (iscell(YnwT))
+%                 isOK = ~all(cellfun(@isnan,YnwT(:)));
+%             else
+%                 isOK = ~all(isnan(YnwT(:)));
+%             end
             
+            isOK = true;
             if ((i == 1) && (isOK))
                 iFly{iApp,iExp} = kk{iApp}(1:length(kk{iApp})/nDay(iExp));
             end
