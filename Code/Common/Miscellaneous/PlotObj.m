@@ -1,4 +1,5 @@
-classdef PlotObj < handle   
+classdef PlotObj < handle 
+    
     % class properties
     properties        
         % main object fields
@@ -54,8 +55,8 @@ classdef PlotObj < handle
             
             % sets the other fields
             obj.nPh = length(obj.Img);
-            obj.nFrm = max(1,length(obj.Img));
-            obj.iFrm = 1;            
+            obj.nFrm = max(1,cellfun(@length,obj.Img));
+            obj.iFrm = ones(obj.nPh,1);            
 
             % updates the image
             obj.updateImage();
@@ -77,7 +78,8 @@ classdef PlotObj < handle
             if isempty(obj.Img{obj.iPh})
                 ImgNw = NaN;
             else
-                ImgNw = obj.Img{obj.iFrm(obj.iPh)};
+                iFrmNw = obj.iFrm(obj.iPh);
+                ImgNw = obj.Img{obj.iPh}{iFrmNw};
             end
             
             % updates the image figure

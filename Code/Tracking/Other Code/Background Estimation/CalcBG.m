@@ -16,7 +16,7 @@ classdef CalcBG < handle
         
         % initial main gui properties
         iMov0
-        hProp0
+        hProp0        
         ImgFrm0
         ImgC
         ok0
@@ -49,12 +49,14 @@ classdef CalcBG < handle
         hManual
         hManualB
         hManualH
+        hMenuBG
         jTable
         Imap
         pMn
         mInfo
         ImgM
         hProg
+        hPropT
         
         % manual tracking fields
         pCol0
@@ -82,7 +84,7 @@ classdef CalcBG < handle
     end
     
     % class methods
-    methods
+    methods                
         
         % --- object constructor
         function obj = CalcBG(hGUI)
@@ -399,12 +401,7 @@ classdef CalcBG < handle
                         
                         % turns off the highlight marker
                         set(obj.hManualH,'UserData',[]);
-                        setObjVisibility(obj.hManualH,'off')                        
-                        
-                        % enables the manual correction control buttons
-                        setObjEnable(obj.hGUI.buttonAddManual,1)
-                        setObjEnable(obj.hGUI.buttonRemoveManual,0)
-                        setObjEnable(obj.hGUI.buttonUpdateManual,1)
+                        setObjVisibility(obj.hManualH,'off')                                              
                         
                         % disables everything else
                         obj.manualButtonClick(hObject, 'alt') 
@@ -426,6 +423,9 @@ classdef CalcBG < handle
                     % if there is a marker-highlighted, then remove it
                     obj.updateTubeHighlight([]); 
                     obj.deleteManualMarkers()
+                    
+                    % updates the other properties
+                    obj.setGUIObjProps('on');                      
                     
             end
             
@@ -492,9 +492,6 @@ classdef CalcBG < handle
         % --- initialises the class fields when starting bg detection mode
         function initClassFields(obj)
             
-            % initialisations
-            hgui = obj.hGUI;
-            
             % retrieves the sub-region/program data structs
             [obj.iMov,obj.iMov0] = deal(get(obj.hFig,'iMov'));
             obj.iData = get(obj.hFig,'iData');   
@@ -536,10 +533,10 @@ classdef CalcBG < handle
             
             % initial main gui properties
             obj.ok0 = obj.iMov.flyok;
-            obj.hProp0 = getHandleSnapshot(hgui);
+            obj.hProp0 = getHandleSnapshot(obj.hGUI);
             if ~obj.isCalib
                 % retrieves the image data from the current axis
-                hImage = findobj(hgui.imgAxes,'type','image');
+                hImage = findobj(obj.hGUI.imgAxes,'type','image');
                 obj.ImgFrm0 = get(hImage,'cdata');                 
             end            
             
@@ -556,53 +553,54 @@ classdef CalcBG < handle
                 BgrpT0{i} = bwmorph(bwmorph(Btmp,'dilate'),'remove');
             end            
             
+            % sets the bg menu item handle array
+            obj.hMenuBG = [obj.hGUI.menuFileBG,...
+                           obj.hGUI.menuEstBG,...
+                           obj.hGUI.menuView];
+            
             % initialises the other class fields 
             obj.hManual = [];
             [obj.iSel,obj.BgrpT] = deal([1,1],BgrpT0);
             [obj.isChange,obj.frameSet] = deal(false);
             [obj.hasUpdated,obj.isBGCalc] = deal(false);
             [obj.uList,obj.fUpdate] = deal([]);
-            [obj.isAllUpdate,obj.nManualMx] = deal(true,10);             
+            [obj.isAllUpdate,obj.nManualMx] = deal(true,10);
             
         end        
         
         % --- initialises the bg estimation object properties
         function initObjProps(obj)
 
-            % retrieves the parameter data struct
-            hgui = obj.hGUI;
-            imov = obj.iMov;
-            
             % other initialisations
             isFeas = false;
             eStr = {'off','on'};            
             cHdr = {'Phase','Frame','Region','Sub-Region'};
 
             % sets the pre-background detection properties
-            setTrackGUIProps(hgui,'PreTubeDetect');
+            setTrackGUIProps(obj.hGUI,'PreTubeDetect');
 
             % toggles the normal/background estimate panel visiblities
-            setObjVisibility(hgui.panelOuter,'off')
-            setObjVisibility(hgui.panelBGDetect,'on')            
+            setObjVisibility(obj.hGUI.panelOuter,'off')
+            setObjVisibility(obj.hGUI.panelBGDetect,'on')            
             obj.setMenuVisibility(true);
             
             % updates the frame/edit count count
-            setPanelProps(hgui.panelPhaseSelect,'off')
-            setPanelProps(hgui.panelFrameSelect,'off')
-            setPanelProps(hgui.panelManualSelect,'off')
-            set(hgui.menuCorrectTrans,'Checked','off')
+            setPanelProps(obj.hGUI.panelPhaseSelect,'off')
+            setPanelProps(obj.hGUI.panelFrameSelect,'off')
+            setPanelProps(obj.hGUI.panelManualSelect,'off')
+            set(obj.hGUI.menuCorrectTrans,'Checked','off')
 
             % updates the table position
-            tPos = get(hgui.tableFlyUpdate,'position');
+            tPos = get(obj.hGUI.tableFlyUpdate,'position');
             tPos(4) = calcTableHeight(obj.nManualMx);
-            set(setObjEnable(hgui.tableFlyUpdate,'off'),...
+            set(setObjEnable(obj.hGUI.tableFlyUpdate,'off'),...
                        'Data',[],'Position',tPos,'ColumnName',cHdr)
-            autoResizeTableColumns(hgui.tableFlyUpdate);
+            autoResizeTableColumns(obj.hGUI.tableFlyUpdate);
 
             % sets the image parameter object fields
             bgP = obj.getTrackingPara();            
-            set(hgui.checkFilterImg,'Value',bgP.useFilt)
-            set(hgui.editFilterSize,'String',num2str(bgP.hSz),...
+            set(obj.hGUI.checkFilterImg,'Value',bgP.useFilt)
+            set(obj.hGUI.editFilterSize,'String',num2str(bgP.hSz),...
                                     'Enable',eStr{1+bgP.useFilt})
             obj.updateImgTypePopup(true);         
             
@@ -624,10 +622,10 @@ classdef CalcBG < handle
             canUpdate = (phaseDetected && isFeas) || obj.isCalib;
             
             % sets the phase stats menu item (if info is available)
-            setObjEnable(hgui.menuPhaseStats,phaseDetected)
-            setObjEnable(hgui.buttonUpdateStack,~obj.isCalib)
-            setObjEnable(hgui.buttonUpdateEst,canUpdate)
-            setPanelProps(hgui.panelImageType,phaseDetected)
+            setObjEnable(obj.hGUI.menuPhaseStats,phaseDetected)
+            setObjEnable(obj.hGUI.buttonUpdateStack,~obj.isCalib)
+            setObjEnable(obj.hGUI.buttonUpdateEst,canUpdate)
+            setPanelProps(obj.hGUI.panelImageType,phaseDetected)
             
             % sets the phase detection related object properties
             if phaseDetected
@@ -652,8 +650,8 @@ classdef CalcBG < handle
                 
             else
                 % clears the frame count string
-                set(hgui.editFrameCount,'string','')               
-                set(hgui.editPhaseCount,'string','')     
+                set(obj.hGUI.editFrameCount,'string','')               
+                set(obj.hGUI.editPhaseCount,'string','')     
                 
                 % sets the quality/translation strings
                 if obj.isCalib
@@ -663,25 +661,25 @@ classdef CalcBG < handle
                 end
                 
                 % sets the phase count and variance type
-                set(hgui.textImagQual,'string',lblStr,...
+                set(obj.hGUI.textImagQual,'string',lblStr,...
                                       'ForegroundColor','k');
-                set(hgui.textTransStatus,'string',lblStr,...
+                set(obj.hGUI.textTransStatus,'string',lblStr,...
                                          'ForegroundColor','k');
-                set(hgui.textPhaseCount,'string','N/A');
-                set(hgui.textPhaseFrames,'string','N/A');    
-                set(hgui.textPhaseStatus,'string','N/A'); 
+                set(obj.hGUI.textPhaseCount,'string','N/A');
+                set(obj.hGUI.textPhaseFrames,'string','N/A');    
+                set(obj.hGUI.textPhaseStatus,'string','N/A'); 
                 
                 % updates the text fields
-                set(hgui.textStartFrame,'string','N/A')
-                set(hgui.textEndFrame,'string','N/A')                
-                set(hgui.textCurrentFrame,'string','N/A')    
+                set(obj.hGUI.textStartFrame,'string','N/A')
+                set(obj.hGUI.textEndFrame,'string','N/A')                
+                set(obj.hGUI.textCurrentFrame,'string','N/A')    
             end
             
             % determines if the background has been calculated
             if initDetected
                 % sets the frame count stringx1                     
-                setObjEnable(hgui.menuShowStats,'on');
-                set(setObjEnable(hgui.checkFlyMarkers,'on'),'value',1)                      
+                setObjEnable(obj.hGUI.menuShowStats,'on');
+                set(setObjEnable(obj.hGUI.checkFlyMarkers,'on'),'value',1)                      
                 
                 % determines if the class object has location values
                 if ~isempty(obj.fPos)                    
@@ -694,7 +692,7 @@ classdef CalcBG < handle
                         
                         % calculates the region vertical offsets
                         yOfs = cellfun(@(ir,n)(repmat(...
-                                [0,ir(1)]-1,n,1)),imov.iR,...
+                                [0,ir(1)]-1,n,1)),obj.iMov.iR,...
                                 num2cell(obj.nTube)','un',0)';
                         
                         % memory allocation                        
@@ -717,13 +715,13 @@ classdef CalcBG < handle
 
                     % updates the 
                     obj.updateObjMarkers()
-                    obj.checkFlyMarkers(hgui.checkFlyMarkers, [])
+                    obj.checkFlyMarkers(obj.hGUI.checkFlyMarkers, [])
                     obj.updateMainImage()      
                 end
             else
                 % if not, disable the frame selection panels                
-                set(setObjEnable(hgui.checkFlyMarkers,0),'Value',0)
-                set(setObjEnable(hgui.menuShowStats,0),'Checked','off')                                 
+                set(setObjEnable(obj.hGUI.checkFlyMarkers,0),'Value',0)
+                set(setObjEnable(obj.hGUI.menuShowStats,0),'Checked','off')                                 
             end            
             
         end
@@ -731,19 +729,15 @@ classdef CalcBG < handle
         % --- initialises the likely object markers
         function initLikelyPlotMarkers(obj)
             
-            % retrieves the sub-movie data struct
-            hgui = obj.hGUI;
-            imov = obj.iMov;
-            
             % memory allocation
             obj.hMark = cell(1,obj.nApp);
 
             % sets focus to the main GUI axes
-            set(hgui.figFlyTrack,'CurrentAxes',hgui.imgAxes)
+            set(obj.hGUI.figFlyTrack,'CurrentAxes',obj.hGUI.imgAxes)
 
             % loops through all the sub-regions creating markers 
             hold on
-            for i = find(imov.ok(:)')
+            for i = find(obj.iMov.ok(:)')
                 % memory allocation
                 tStr = sprintf('hFlyTmp%i',i);
                 obj.hMark{i} = cell(obj.nTube(i),1);
@@ -850,7 +844,8 @@ classdef CalcBG < handle
 
             % clears the class fields
             [obj.iMov,obj.iMov0,obj.iData,obj.iPara] = deal([]);
-            [obj.trkObj,obj.hProp0,obj.ImgFrm0,obj.BgrpT] = deal([]);
+            [obj.trkObj,obj.ImgFrm0,obj.BgrpT] = deal([]);
+            [obj.hProp0,obj.hPropT] = deal([]);
 
         end        
         
@@ -865,12 +860,11 @@ classdef CalcBG < handle
             hgui = obj.hGUI;
             ipara = obj.iPara;
             idata = obj.iData;
-            imov = obj.iMov;            
 
             % initialisations
             cMapType = 'gray';
             frmSz = getCurrentImageDim(hgui);
-            [h,iPhase,cLim,iok] = deal([],ipara.cPhase,[],imov.ok);
+            [h,iPhase,cLim,iok] = deal([],ipara.cPhase,[],obj.iMov.ok);
             
             % retrieves the tracking parameter struct
             bgP = obj.getTrackingPara();
@@ -922,7 +916,7 @@ classdef CalcBG < handle
                 Img0 = obj.ImgC{1}{ipara.cFrm};
             else
                 iFrmS = obj.indFrm{iPhase}(ipara.cFrm);
-                Img0 = double(getDispImage(idata,imov,iFrmS,false,[],1));                                
+                Img0 = double(getDispImage(idata,obj.iMov,iFrmS,false,[],1));                                
             end
             
             % sets the image            
@@ -945,7 +939,7 @@ classdef CalcBG < handle
                     end
                     
                     % sets the background image based on the detection type
-                    if strcmp(getDetectionType(imov),'GeneralR')
+                    if strcmp(getDetectionType(obj.iMov),'GeneralR')
                         % retrieves the background image array      
                         if isempty(obj.Ibg{iPhase})                                            
                             % creates the background image (if not present)
@@ -959,15 +953,15 @@ classdef CalcBG < handle
                         % retrieves the background image type
                         if obj.isMTrk
                             if strContains(imgType,'Raw')
-                                IbgI = imov.IbgR(:,iPhase);
+                                IbgI = obj.iMov.IbgR(:,iPhase);
                             else
-                                IbgI = imov.Ibg(:,iPhase);
+                                IbgI = obj.iMov.Ibg(:,iPhase);
                             end
                         else
                             if strContains(imgType,'Raw')
                                 IbgI = obj.trkObj.Ibg0{iPhase};
                             else
-                                IbgI = imov.Ibg{iPhase};
+                                IbgI = obj.iMov.Ibg{iPhase};
                             end
                         end
                         
@@ -985,7 +979,7 @@ classdef CalcBG < handle
                         end
                         
                         % creates composite image from the phase bg images                       
-                        Inw = createCompositeImage(ImgC0,imov,IbgI); 
+                        Inw = createCompositeImage(ImgC0,obj.iMov,IbgI); 
                         if Iofs; Inw = Inw - min(Inw(:),[],'omitnan'); end
                     end   
                     
@@ -1021,33 +1015,34 @@ classdef CalcBG < handle
                     ILs(iok) = cellfun(@(x)(x{1}),ILs(iok),'un',0);
                       
                     % sets the background image based on the detection type
-                    if strcmp(getDetectionType(imov),'GeneralR')
+                    if strcmp(getDetectionType(obj.iMov),'GeneralR')
                         % retrieves the background image array
                         if isempty(obj.Ibg{iPhase})                                         
                             % creates the background image if it does not exist
                             obj.createGenBGImage(iPhase);
                         end
 
-                        % sets the final viewing image            
-                        Itot = createCompositeImage(zeros(frmSz),imov,ILs);
+                        % sets the final viewing image
+                        I0 = zeros(frmSz);
+                        Itot = createCompositeImage(I0,obj.iMov,ILs);
                         Inw = (obj.Ibg{iPhase} - Itot).*(Itot > 0); 
                         
                     else                        
                         % retrieves the background image type
                         if obj.isMTrk
-                            IbgI = imov.Ibg(:,iPhase);
+                            IbgI = obj.iMov.Ibg(:,iPhase);
                         else
-                            IbgI = imov.Ibg{iPhase};
+                            IbgI = obj.iMov.Ibg{iPhase};
                         end
                         
                         % reshapes the local image array
                         ILs = reshape(ILs,size(IbgI));                        
                         
                         % creates the composite from the phase bg image
-                        IRL = cell(size(ILs));
+                        [I0,IRL] = deal(zeros(frmSz),cell(size(ILs)));
                         IRL(iok) = cellfun(@(x,y)...
                                         (x-y),IbgI(iok),ILs(iok),'un',0);
-                        Inw = createCompositeImage(zeros(frmSz),imov,IRL);
+                        Inw = createCompositeImage(I0,obj.iMov,IRL);
                         
                     end
                     
@@ -1076,7 +1071,7 @@ classdef CalcBG < handle
                     InwL = obj.setupXCorrImage(Img0);                     
                     
                     % case is the low-variance phase
-                    Inw = createCompositeImage(zeros(frmSz),imov,InwL);
+                    Inw = createCompositeImage(zeros(frmSz),obj.iMov,InwL);
                     
                     % closes the progressbar
                     delete(hLoad)
@@ -2196,7 +2191,7 @@ classdef CalcBG < handle
         end
         
         % --- Executes on button press in buttonAddManual.
-        function buttonAddManual(obj, hObject, ~)
+        function buttonAddManual(obj, ~, ~)
             
             % if the tubes are on, then remove them
             if get(obj.hGUI.checkTubeRegions,'value')
@@ -2211,21 +2206,22 @@ classdef CalcBG < handle
             end               
             
             % sets the mouse motion callback function            
-            setObjEnable(hObject,'off')
-            setObjEnable(obj.hGUI.buttonUpdateManual,'off')
             [obj.iCloseR,obj.iCloseSR,obj.iCloseF] = deal(-1);
             
             % sets up the manual marker map
             [obj.Imap,obj.pMn] = setupManualMarkMap(obj);   
             
-            % creates the manual markers for each sub-region
-            obj.createManualMarkers();
+            % updates the manual update props and disables the GUI objects
+            obj.setGUIObjProps('off');            
             
-            % sets the button down/motion callback functions
+            % creates the manual markers for each sub-region
+            obj.createManualMarkers();            
+            
+            % sets the button down/motion callback functions            
             set(obj.hFig,'WindowButtonDownFcn',@obj.manualButtonClick)
             set(obj.hFig,'WindowButtonMotionFcn',@obj.manualTrackMotion)
 
-        end
+        end        
         
         % --- Executes on button press in buttonRemoveManual.
         function buttonRemoveManual(obj, hObject, ~)
@@ -2349,12 +2345,17 @@ classdef CalcBG < handle
             % initialisations
             uListG = obj.uList(iRowM,:);
             [iPh,iApp,iTube] = deal(uListG(1,1),uListG(1,3),uListG(1,4));            
-            Ibg0 = obj.iMov.Ibg{iPh}{iApp};
-            
-            % retrieves the region row/column indices
             [iR,iC] = deal(obj.iMov.iR{iApp},obj.iMov.iC{iApp});
             iRT = obj.iMov.iRT{iApp}{iTube}; 
-            IbgL = Ibg0(iRT,:); 
+            
+            % sets up the raw image stack
+            I0 = obj.trkObj.getImageStack(obj.indFrm{iPh}(uListG(:,2)));
+            if obj.trkObj.useFilt
+                I0 = cellfun(@(x)(imfiltersym(x,obj.trkObj.hS)),I0,'un',0);                
+            end                        
+            
+            % retrieves the sub-region image stack (over all phase frames)
+            IL0 = cellfun(@(x)(x(iR(iRT),iC)),I0,'un',0);
             
             % sets the marker x/y coordinates            
             hM = obj.hManual(iRowM);
@@ -2377,14 +2378,14 @@ classdef CalcBG < handle
                 iiR = (iRB > 0) & (iRB <= szL(1));
                 iiC = (iCB > 0) & (iCB <= szL(2));
                 
-                % removes the region containing the fly location      
-                IbgL(iRB(iiR),iCB(iiC)) = ...
-                            ~Brmv(iiR,iiC).*IbgL(iRB(iiR),iCB(iiC));  
-                IbgL(IbgL==0) = NaN;  
-                
-                % interpolates the image gaps
-                IbgL = interpImageGaps(IbgL);
+                % removes the region containing the fly location     
+                IL0{i}(iRB(iiR),iCB(iiC)) = ...
+                            ~Brmv(iiR,iiC).*IL0{i}(iRB(iiR),iCB(iiC));
+                IL0{i}(IL0{i}==0) = NaN;                  
             end      
+            
+            % interpolates the image gaps
+            IbgL = interpImageGaps(calcImageStackFcn(IL0,'max'));            
 
             % resets the sub-region background estimate
             obj.iMov.Ibg{iPh}{iApp}(iRT,:) = IbgL;  
@@ -2905,6 +2906,28 @@ classdef CalcBG < handle
             
             % makes the figure visible again
             setObjVisibility(obj.hFig,1);
+            
+        end        
+        
+        % --- sets the object properties based on the state, eState
+        function setGUIObjProps(obj,eState)
+            
+            % updates the gui object properties
+            if strcmp(eState,'off')
+                % takes a snapshot of the gui properties
+                hPanelBG = obj.hGUI.panelBGDetect;
+                obj.hPropT = getHandleSnapshot(hPanelBG,1);
+                
+                % disables all the objects from the bg estimate panel
+                arrayfun(@(x)(setObjEnable(x.hObj,0)),obj.hPropT)
+                
+            else
+                % resets the object properties
+                resetHandleSnapshot(obj.hPropT)
+            end
+            
+            % sets the menu item
+            setObjEnable(obj.hMenuBG,eState)
             
         end        
         

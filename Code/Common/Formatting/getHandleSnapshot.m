@@ -1,5 +1,5 @@
 % --- retrieves a snapshot of the object handles properties --- %  
-function hProp = getHandleSnapshot(handles)
+function hProp = getHandleSnapshot(handles,varargin)
 
 % retrieves the object handles
 if isstruct(handles)
@@ -10,8 +10,13 @@ if isstruct(handles)
     hObj = cell2cell(strFld,0)';
     isH = logical(cell2cell(cellfun(@(x)(ishandle(x)),strFld,'un',0),0)');    
     hObj = hObj(isH);           
+    
+elseif nargin == 2
+    % case is the objects of the panel need to be found
+    hObj = findall(handles);
+    
 else
-    % case is the object handles have already been provided
+    % case is the object handles have already been provided    
     hObj = handles;
 end
 
@@ -33,25 +38,32 @@ for i = 1:nObj
     switch (get(hProp(i).hObj,'Type'))                
         case ('uicontrol') % case is a control ite
             switch (get(hProp(i).hObj,'Style'))
-                case ('checkbox') % object is a checkbox
+                case ('checkbox') 
+                    % object is a checkbox
                     data = cell(2,2);
                     data{1,1} = 'Value';
                     data{2,1} = 'Enable';                                          
                     data{3,1} = 'Visible';
                     data{4,1} = 'Position';                                        
-                case ('edit') % object is an editbox
+                
+                case {'edit','popupmenu'} 
+                    % object is an editbox
                     data = cell(2,2);       
                     data{1,1} = 'String';                       
                     data{2,1} = 'Enable';  
                     data{3,1} = 'Visible';
                     data{4,1} = 'Position';                    
-                case {'pushbutton','togglebutton'} % object is a button
+                
+                case {'pushbutton','togglebutton'} 
+                    % object is a button
                     data = cell(3,2);   
                     data{1,1} = 'String';                       
                     data{2,1} = 'Enable';    
                     data{3,1} = 'Visible'; 
                     data{4,1} = 'Position';                    
-                case ('radiobutton') % object is a radiobutton
+                
+                case ('radiobutton') 
+                    % object is a radiobutton
                     data = cell(2,2);  
                     data{1,1} = 'Value';                       
                     data{2,1} = 'Enable';                       

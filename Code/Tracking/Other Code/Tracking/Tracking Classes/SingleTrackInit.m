@@ -558,10 +558,6 @@ classdef SingleTrackInit < SingleTrack
                     % if the user cancelled, then exit
                     obj.calcOK = false;
                     return
-                end          
-                
-                if isequal([iPh,i],[1,2])
-                    iT = 1;
                 end
                 
                 % retrieves and processes the image stack

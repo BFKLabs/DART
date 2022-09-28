@@ -158,9 +158,9 @@ classdef FilterResObj < handle
             
             % calculates the residual image stacks
             obj.IR = cellfun(@(y)(cellfun(@(h)(...
-                    (imfiltersym(y,h)-y)),obj.hS,'un',0)),obj.IL,'un',0);                                    
+                    (imfiltersym(y,h)-y)),obj.hS,'un',0)),obj.IL,'un',0);
             obj.IRs = cellfun(@(x)(...
-                    calcImageStackFcn(x,'mean')),obj.IR,'un',0);                
+                    calcImageStackFcn(x,'mean')),obj.IR,'un',0);
                 
             % sets up the exclusion binary mask
             obj.setupExcBinaryMask();                            
@@ -194,16 +194,35 @@ classdef FilterResObj < handle
                 % exit if the user cancelled
                 obj.calcOK = false;
                 return
-            end            
+            end        
             
+            % sets up the sub-region image stacks
+            IRL = cellfun(@(y)(cellfun(@(x)(imfiltersym...
+                    (x(y,:),obj.hG)),obj.IRs,'un',0)),iRT,'un',0);
+            
+            % sets up the exclusion binary masks    
+            szL = cellfun(@(x)(size(x{1})),IRL,'un',0);
+            BexcT = cellfun(@(x)(~bwmorph(true(x),'remove')),szL,'un',0);            
+
+            % determines the 
+            if ~isShortPhase
+                % sets up the sub-region residual difference image stacks
+                % and calculates the maxima for each sub-image
+                dIRL = cellfun(@(y)(cellfun(@(x)(imfiltersym(x...
+                            (y,:),obj.hG)),obj.dIRs,'un',0)),iRT,'un',0);
+                dIRLmx = cell2mat(cellfun(@(x)(cellfun...
+                            (@(y)(max(y(:))),x)),dIRL,'un',0)');
+                        
+                % calculates the z-scores of the sub-image maxima
+                ZIRL = zeros(obj.nFrm,obj.nT);
+                for i = 1:obj.nFrm
+                    ZIRL(i,:) = obj.calcZScore(obj.dIRs{i},dIRLmx(i,:),1);
+                end
+            end
+                
             % processes each sub-region within the current region
             for iT = 1:obj.nT
-                % retrieves the sub-image stack                
-                IRL = cellfun(@(x)(imfiltersym...
-                            (x(iRT{iT},:),obj.hG)),obj.IRs,'un',0);
-                BexcT = ~bwmorph(true(size(IRL{1})),'remove');                        
-                        
-                % 
+                % determines the sub-region flag
                 if isShortPhase
                     % phase is very short in duration so check directly
                     [obj.mFlag(iT),sFlagT] = deal(2,0);
@@ -211,18 +230,19 @@ classdef FilterResObj < handle
                 else
                     % otherwise, use the residual based methods to
                     % determine the blob's locations
-                    dIRL = cellfun(@(x)(imfiltersym...
-                            (x(iRT{iT},:),obj.hG)),obj.dIRs,'un',0);                
-                    [sFlagT,uData] = obj.detSubRegionStatus(IRL,dIRL,BexcT);
-                end                
-                
-                if (sFlagT == 4) && (length(obj.iMov.vPhase) == 1)
-                    sFlagT = 0;
-                end
+                    [sFlagT,uData] = obj.detSubRegionStatus...
+                                (IRL{iT},dIRL{iT},ZIRL(:,iT),BexcT{iT});
+                    
+                    % if there are multiple potential candidates, and there
+                    % is only one phase, then use stationary tracking
+                    if (sFlagT == 4) && (length(obj.iMov.vPhase) == 1)
+                        sFlagT = 0;
+                    end                                    
+                end                                
                 
                 switch sFlagT
                     case {1,2}
-                        % case is 
+                        % case object location is fairly certain
                         
                         % sets the status/ambiguity flags
                         obj.okS(iT) = true;
@@ -233,7 +253,8 @@ classdef FilterResObj < handle
                         obj.setPositionValues(uData,iT);                        
                         
                     case 3
-                        % case is 
+                        % case is the object is stationary, but there is
+                        % some uncertainty in the location
                         
                         % sets the status/ambiguity flags
                         obj.okS(iT) = true;
@@ -241,25 +262,25 @@ classdef FilterResObj < handle
                         
                         % updates the positional values
                         obj.setPositionValues(uData{1},iT);
-                        obj.setStatPosData(IRL,uData{2},uData{3},iT);
+                        obj.setStatPosData(IRL{iT},uData{2},uData{3},iT);
                         
                     case 4
-                        % case is there are multiple candidates for 
-                        % stationary blobs
+                        % case is object is stationary but there are 
+                        % multiple potential candidates
                         
                         % sets the status/ambiguity flags
                         obj.okS(iT) = false;
                         [obj.sFlag(iT),obj.mFlag(iT)] = deal(2,1);
                         
                         % sets the positional data values
-                        obj.setStatPosData(IRL,uData{1},uData{2},iT);
+                        obj.setStatPosData(IRL{iT},uData{1},uData{2},iT);
                             
                     otherwise
                         % case is either 1 frame or ambiguous                                                                       
 
                         % segments the static locations
                         [obj.sFlag(iT),obj.mFlag(iT)] = deal(2,1);
-                        obj.segStatFlyLocations(IRL,BexcT,iT);                                                
+                        obj.segStatFlyLocations(IRL{iT},BexcT{iT},iT);
                         
                 end                      
                    
@@ -326,270 +347,249 @@ classdef FilterResObj < handle
         end        
         
         % --- determine sub-region status flags/positional data
-        function [sFlagT,uData] = detSubRegionStatus(obj,IRL,dIRL,Bexc)
+        function [sFlagT,uData] = detSubRegionStatus(obj,IRL,dIRL,ZIRL,Bexc)
             
             % parameters
-            pW = 2;            
-            ZMxTolM = 8;
-            ZMxTol = 5.5;
-            njMxMax = 10;
-            IMxDTol = 3.25;
             pUniqMin = 2/3;
-            pzTol = 0.8;
+            
+            % parameters
+            ZLo = 3.5;
+            ZMid = 5.0;
+            ZHi = 8.0;
             
             % initialisations
-            isJitter = false;
             [sFlagT,uData] = deal(0,[]);
+
+            % ---------------------------------- %
+            % --- INITIAL MOVEMENT DETECTION --- %
+            % ---------------------------------- %
+            
+            % if all maxima z-scores are very low, then object is probably
+            % stationary (analyse use the stationary blob tracking method)
+            if all(ZIRL < ZMid)
+                return
+            end
             
             % calculates the number of significant residual peaks have been
             % determined for each sub-image
             jMx = cellfun(@(x)(obj.getSigPeaks(x,Bexc,1)),dIRL,'un',0);  
-            IMxD = cellfun(@(x,y)(obj.calcZScore(x,y)),IRL,jMx,'un',0);
-            
-            %
             njMx = cellfun(@length,jMx);
+            
+            % determines frames where there is a unique significant peak
             isU = njMx == 1;
             if all(isU)
                 % if each frame is unambiguous, then flag the object has
                 % moved over the video phase (and exits the function)
-                if all(cell2mat(IMxD) > IMxDTol)
+%                 if all(ZIRL > ZMid)
                     fPMx = cellfun(@(x,y)...
-                                    (obj.calcCoords(x,y)),IRL,jMx,'un',0);
+                                (obj.calcCoords(x,y)),dIRL,jMx,'un',0);
                     [sFlagT,uData] = deal(1,fPMx);
                     return
-                end                
-                            
-            elseif all(isU(njMx>0)) && all(njMx(~isU) == 0)  
-                % case where all 
+%                 end                
+                          
+            elseif (mean(isU) >= pUniqMin) && (mean(ZIRL(isU)) > ZMid)
+                % if there are signifiant number of unique frames, and the
+                % mean of the unique frames is high, then probably moving
                 
-                % calculates the z-scores for the peaks (on frames where
-                % there is a unique peak)
-                ZMxU = cellfun(@(x,y)...
-                        (obj.calcZScore(x,y)),dIRL(isU),jMx(isU));
-                if all(ZMxU > ZMxTolM)                
-                    % fills in the missing frames with the peak values
-                    jj = njMx == 0;
-                    jMx(jj) = cellfun(@(x)(argMax(x(:))),IRL(jj),'un',0);
+                % calculates the combine residual images
+                Q = cellfun(@(x,y)...
+                        (max(0,x).*max(0,y)),dIRL(~isU),IRL(~isU),'un',0);
+                jMx(~isU) = cellfun(@(x)...
+                        (obj.detAmbigFlyPos(x,Bexc)),Q,'un',0);
 
-                    % calculates the peak coordintes and returns a moving flag
-                    fPMx = cellfun(@(x,y)(obj.calcCoords(x,y)),IRL,jMx,'un',0);
-                    [sFlagT,uData] = deal(1,fPMx);
-                    return
-                else
-                    % if there are no maxima then 
-                    [sFlagT,uData] = deal(0,[]);
-                    return                     
-                end
+                % calculates the peak coordintes and returns a moving flag
+                fPMx = cellfun(@(x,y)(obj.calcCoords(x,y)),IRL,jMx,'un',0);
+                [sFlagT,uData] = deal(1,fPMx);
+                return                            
                 
             elseif any(njMx == 0)
-                % if there are no maxima then 
-                [sFlagT,uData] = deal(0,[]);
-                return                
-            end
-                                
-            % calculates the coordinates of the residual peaks
-            dfPMx = cellfun(@(x,y)(obj.calcCoords(x,y)),dIRL,jMx,'un',0);                            
-            ZMx = cellfun(@(x,y)(obj.calcZScore(x,y)),dIRL,jMx,'un',0);
-            if all(cellfun(@(x)(max(x(:))),ZMx) < ZMxTol)
-                % if the maxima are all below tolerance, then the 
-                % blob is probably stationary 
-                [sFlagT,uData] = deal(0,[]); 
+                % if there are any frames with no peaks, then exit
                 return
             end
+                          
+            % --------------------------------- %
+            % --- STATIONARY BLOB DETECTION --- %
+            % --------------------------------- %              
+            
+            % calculates the peaks that are closest to the residual
+            % difference maxima (from the residual image)
+            kMx = cellfun(@(x,y)...
+                        (obj.calcClosestMax(x,Bexc,y)),IRL,jMx,'un',0);
+            dfPMx = cellfun(@(x,y)(obj.calcCoords(x,y)),IRL,kMx,'un',0);                        
             
             % determine if there are any static groupings amoungst the
             % residual images
-            indDG = obj.findStaticPeakGroups(dfPMx);
+            indDG = obj.findStaticPeakGroups(dfPMx,IRL,kMx);
             if ~isempty(indDG)
-                % if so, determine their peak values are significant. 
-                % if so, then the static point is probably jittering
-                ZMxG = cellfun(@(z)(min(cellfun...
-                            (@(x,y)(x(y)),ZMx,num2cell(z)))),indDG);
-                IMxDG = cellfun(@(z)(min(cellfun...
-                            (@(x,y)(x(y)),IMxD,num2cell(z)))),indDG);
-                if length(ZMxG) > 1
-                    iZMx = argMax(ZMxG);
-                    [ZMxG,IMxDG,indDG] = ...
-                                deal(ZMxG(iZMx),IMxDG(iZMx),indDG(iZMx));
-                end
-
-                % determines if the z-scores meet jitter tolerance
-                isJitter = all(ZMxG > ZMxTol) && all(IMxDG > IMxDTol);
-            end
-                
-            if (mean(isU) >= pUniqMin) && ~isJitter
-                % if so, retrieve the the peak IRL/dIRL values (at the
-                % unique peaks)
-                iZMx = cellfun(@(x)(argMax(x)),ZMx,'un',0);
-                ZMxT = cellfun(@(x,y)(x(y)),ZMx,iZMx);
-                ImxDMd = cell2mat(IMxD(isU));
-                
-                % if the peak values are significant for both mask types,
-                % then the blob is probably moving
-                if (all(ZMxT > ZMxTolM) && all(ImxDMd > IMxDTol)) || ...
-                   ((median(ZMxT) > 2*ZMxTolM) && (mean(ImxDMd) > 2*IMxDTol))
-                    % if there are no maxima then 
-                    pMx = cellfun(@(x,y)(x(y,:)),dfPMx,iZMx,'un',0);
-                    [sFlagT,uData] = deal(1,pMx);
-                    return                                    
+                % if there is more than one static grouping, then use the
+                % group with the higher residual
+                if length(indDG) > 1
+                    QG = cellfun(@(x)(mean(cellfun(@(y,z,i)...
+                                (y(z(i))),IRL,kMx,num2cell(x)))),indDG);
+                    indDG = indDG(argMax(QG));
                 end                
-            end
+                
+                % sets the final output data values
+                idfPMx = num2cell(indDG{1});
+                pMx = cellfun(@(x,y)(x(y,:)),dfPMx,idfPMx,'un',0);
+                [sFlagT,uData] = deal(2,pMx);
+            end                
 
-            % if not jittering, and there are unique points, then determine
-            % if there is significant movement for these unique points
-            if ~isJitter && (sum(isU) > 1)
-                % calculates the range of 
-                pRng = calcImageStackFcn(dfPMx(isU),'range');
-                DRng = sqrt(sum(pRng.^2));
-
-                % if the range of movement of the pixels is significant
-                % and the z-scores are high, then the blob has moved
-                ZMxU = cell2mat(ZMx(isU));
-                if (DRng > pW*obj.dTol) && (median(ZMxU) > ZMxTol)
-                    % for ambiguous frames, use the highest value point
-                    jMx(~isU) = cellfun(@(x,y)(x(argMax(y(x)))),...
-                                            jMx(~isU),dIRL(~isU),'un',0);
-                    zIRL = cellfun(@(x,y)(obj.calcZScore(x,y)),IRL,jMx);
-                                        
-                    % calculates and returns the final values
-                    if mean(zIRL > IMxDTol) >= pzTol
-                        fPMx = cellfun(@(x,y)...
-                                (obj.calcCoords(x,y)),IRL,jMx,'un',0);
-                        [sFlagT,uData] = deal(1,fPMx); 
-                        return                      
-                    end
-                end
-            end
+%             % if not jittering, and there are unique points, then determine
+%             % if there is significant movement for these unique points
+%             if ~isJitter && (sum(isU) > 1)
+%                 % calculates the range of 
+%                 pRng = calcImageStackFcn(dfPMx(isU),'range');
+%                 DRng = sqrt(sum(pRng.^2));
+% 
+%                 % if the range of movement of the pixels is significant
+%                 % and the z-scores are high, then the blob has moved
+%                 ZMxU = cell2mat(ZMx(isU));
+%                 if (DRng > pW*obj.dTol) && (median(ZMxU) > ZMxTol)
+%                     % for ambiguous frames, use the highest value point
+%                     jMx(~isU) = cellfun(@(x,y)(x(argMax(y(x)))),...
+%                                             jMx(~isU),dIRL(~isU),'un',0);
+%                     zIRL = cellfun(@(x,y)(obj.calcZScore(x,y)),IRL,jMx);
+%                                         
+%                     % calculates and returns the final values
+%                     if mean(zIRL > dIMxDTol) >= pzTol
+%                         fPMx = cellfun(@(x,y)...
+%                                 (obj.calcCoords(x,y)),IRL,jMx,'un',0);
+%                         [sFlagT,uData] = deal(1,fPMx); 
+%                         return                      
+%                     end
+%                 end
+%             end
+%             
+%             % calculates significant residual image peaks
+%             iMx = cellfun(@(x)(obj.getSigPeaks(x,Bexc,0)),IRL,'un',0);
+%             niMx = cellfun(@length,iMx);
+%             if all(niMx == 1)
+%                 % if each frame is unambiguous, then flag the object has
+%                 % moved over the video phase (and exits the function)
+%                 fPMx = cellfun(@(x,y)(obj.calcCoords(x,y)),IRL,iMx,'un',0);
+%                 [sFlagT,uData] = deal(2,fPMx);
+%                 return
+%             end            
+%             
+%             % calculates the peak coordinates
+%             fPMx = cellfun(@(x,y)(obj.calcCoords(x,y)),IRL,iMx,'un',0);              
+%             [fPS,iPS] = obj.findStaticPeakGroups(fPMx,IRL,iMx);
+%             
+%             % case is there are no stationary blob groupings
+%             if isempty(fPS)
+%                 % FINISH ME!?
+%                 a = 1;
+%                 return
+%                 
+%             elseif isJitter
+%                 % calculates the mean distance between the stationary and
+%                 % residual peaks
+%                 fPosR = cellfun(@(x,y)...
+%                         (x(y,:)),dfPMx,num2cell(indDG{1}),'un',0);
+%                 DPR = cellfun(@(y)...
+%                         (mean(cellfun(@(x,y)(pdist2(x,y)),fPosR,y))),fPS);
+%                 
+%                 % if the mean distance is within tolerance, then the static
+%                 % object is probably associated with the jittering
+%                 [Dmn,iDmn] = min(DPR);
+%                 if Dmn < obj.pWS*obj.dTol
+%                     [sFlagT,uData] = deal(2,fPS{iDmn});
+%                     return
+%                 end
+%                     
+%             elseif (mean(njMx) > njMxMax) && (sum(isU) <= 1)
+%                 % if there are too many residual peaks, then flag that the
+%                 % groupings need to be further analysed
+%                 [sFlagT,uData] = deal(4,{fPS,iPS});
+%                 return
+%                 
+%             end
+%             
+%             % checks each of the static groups to determine if there
+%             % are any candidates that are in close proximity to
+%             % significant residual peaks (indicates jittering movement)                
+%             
+%             % memory allocation
+%             nS = length(fPS);
+%             iDT = cell(nS,1);
+%             isPr = false(nS,1);
+%             DR = NaN(obj.nFrm,nS);            
+%             
+%             % calculates the residual peak coordinates
+%             if ~exist('dfPMx','var')
+%                 dfPMx = cellfun(@(x,y)(obj.calcCoords(x,y)),dIRL,jMx,'un',0);
+%             end
+%             
+%             % determines if any of the stationary points are in close
+%             % proximity to residual peaks (on each frame)
+%             for i = 1:nS
+%                 DT = cellfun(@(x,y)(pdist2(x,y)),dfPMx,fPS{i},'un',0);
+%                 iDT{i} = cellfun(@(x)(argMin(x)),DT);
+% 
+%                 DR(:,i) = cellfun(@(x,y)(x(y)),DT,num2cell(iDT{i}));
+%                 isPr(i) = all(DR(:,i) < pW*obj.dTol);
+%             end
+%             
+%             % determines if there are any potential jittering candidates 
+%             switch sum(isPr)
+%                 case 0
+%                     % case is there are no potential matches
+%                     
+%                     if (sum(isU) > 1) && (mean(cell2mat(ZMx(isU))) > ZMxTol)                        
+%                         % if there are frame with unambiguous residual 
+%                         % peaks, then the blob is probably moving
+%                         jMx(~isU) = cellfun(@(x,y)(x(argMax(y(x)))),...
+%                                     jMx(~isU),dIRL(~isU),'un',0);
+%                         zIRL = cellfun(@(x,y)(obj.calcZScore(x,y)),IRL,jMx);
+%                     
+%                         % calculates and returns the final values
+%                         if all(zIRL > dIMxDTol)
+%                             fPMx = cellfun(@(x,y)...
+%                                     (obj.calcCoords(x,y)),IRL,jMx,'un',0);
+%                             [sFlagT,uData] = deal(2,fPMx); 
+%                         else
+%                             % otherwise flag the point is ambiguous (needs 
+%                             % x-correlation transform to determine further)                        
+%                             [sFlagT,uData] = deal(4,{fPS,iPS});                            
+%                         end
+%                     else
+%                         % otherwise flag the point is ambiguous (needs the
+%                         % x-correlation transform to determine further)                        
+%                         [sFlagT,uData] = deal(4,{fPS,iPS});
+%                     end
+%                     
+%                 case 1
+%                     % case is there is a unique potential match
+%                     
+%                     % flag that the point is jittering. return also the
+%                     % coordinates of the stationary points
+%                     [sFlagT,uData] = deal(3,{fPS{isPr},fPS,iPS});                    
+%                 
+%                 otherwise
+%                     % case is there are multiple potential matches
+%                                                     
+%                     if sum(isU) > 1
+%                         % if there are multiple frames with unambiguous
+%                         % points, then determine the stationary point that
+%                         % is closest to these unambiguous points
+%                         iPr = find(isPr);
+%                         iMn = argMin(median(DR(isU,isPr),1));
+%                         
+%                         % flag that the point is jittering. return also the
+%                         % coordinates of the stationary points
+%                         [sFlagT,idxF] = deal(3,num2cell(iDT{iPr(iMn)}));
+%                         pMx = cellfun(@(x,y)(x(y,:)),dfPMx,idxF,'un',0);
+%                         uData = {pMx,fPS,iPS};
+%                         
+%                     else
+%                         % otherwise flag the point is ambiguous (needs the
+%                         % x-correlation transform to determine further)                        
+%                         [sFlagT,uData] = deal(4,{fPS,iPS});
+%                     end
+%             end
             
-            % calculates significant residual image peaks
-            iMx = cellfun(@(x)(obj.getSigPeaks(x,Bexc,0)),IRL,'un',0);
-            niMx = cellfun(@length,iMx);
-            if all(niMx == 1)
-                % if each frame is unambiguous, then flag the object has
-                % moved over the video phase (and exits the function)
-                fPMx = cellfun(@(x,y)(obj.calcCoords(x,y)),IRL,iMx,'un',0);
-                [sFlagT,uData] = deal(2,fPMx);
-                return
-            end            
-            
-            % calculates the peak coordinates
-            fPMx = cellfun(@(x,y)(obj.calcCoords(x,y)),IRL,iMx,'un',0);              
-            [fPS,iPS] = obj.findStaticPeakGroups(fPMx,IRL,iMx);
-            
-            % case is there are no stationary blob groupings
-            if isempty(fPS)
-                % FINISH ME!?
-                a = 1;
-                return
-                
-            elseif isJitter
-                % calculates the mean distance between the stationary and
-                % residual peaks
-                fPosR = cellfun(@(x,y)...
-                        (x(y,:)),dfPMx,num2cell(indDG{1}),'un',0);
-                DPR = cellfun(@(y)...
-                        (mean(cellfun(@(x,y)(pdist2(x,y)),fPosR,y))),fPS);
-                
-                % if the mean distance is within tolerance, then the static
-                % object is probably associated with the jittering
-                [Dmn,iDmn] = min(DPR);
-                if Dmn < obj.pWS*obj.dTol
-                    [sFlagT,uData] = deal(2,fPS{iDmn});
-                    return
-                end
-                    
-            elseif (mean(njMx) > njMxMax) && (sum(isU) <= 1)
-                % if there are too many residual peaks, then flag that the
-                % groupings need to be further analysed
-                [sFlagT,uData] = deal(4,{fPS,iPS});
-                return
-                
-            end
-            
-            % checks each of the static groups to determine if there
-            % are any candidates that are in close proximity to
-            % significant residual peaks (indicates jittering movement)                
-            
-            % memory allocation
-            nS = length(fPS);
-            iDT = cell(nS,1);
-            isPr = false(nS,1);
-            DR = NaN(obj.nFrm,nS);            
-            
-            % calculates the residual peak coordinates
-            if ~exist('dfPMx','var')
-                dfPMx = cellfun(@(x,y)(obj.calcCoords(x,y)),dIRL,jMx,'un',0);
-            end
-            
-            % determines if any of the stationary points are in close
-            % proximity to residual peaks (on each frame)
-            for i = 1:nS
-                DT = cellfun(@(x,y)(pdist2(x,y)),dfPMx,fPS{i},'un',0);
-                iDT{i} = cellfun(@(x)(argMin(x)),DT);
-
-                DR(:,i) = cellfun(@(x,y)(x(y)),DT,num2cell(iDT{i}));
-                isPr(i) = all(DR(:,i) < pW*obj.dTol);
-            end
-            
-            % determines if there are any potential jittering candidates 
-            switch sum(isPr)
-                case 0
-                    % case is there are no potential matches
-                    
-                    if (sum(isU) > 1) && (mean(cell2mat(ZMx(isU))) > ZMxTol)                        
-                        % if there are frame with unambiguous residual 
-                        % peaks, then the blob is probably moving
-                        jMx(~isU) = cellfun(@(x,y)(x(argMax(y(x)))),...
-                                    jMx(~isU),dIRL(~isU),'un',0);
-                        zIRL = cellfun(@(x,y)(obj.calcZScore(x,y)),IRL,jMx);
-                    
-                        % calculates and returns the final values
-                        if all(zIRL > IMxDTol)
-                            fPMx = cellfun(@(x,y)...
-                                    (obj.calcCoords(x,y)),IRL,jMx,'un',0);
-                            [sFlagT,uData] = deal(2,fPMx); 
-                        else
-                            % otherwise flag the point is ambiguous (needs 
-                            % x-correlation transform to determine further)                        
-                            [sFlagT,uData] = deal(4,{fPS,iPS});                            
-                        end
-                    else
-                        % otherwise flag the point is ambiguous (needs the
-                        % x-correlation transform to determine further)                        
-                        [sFlagT,uData] = deal(4,{fPS,iPS});
-                    end
-                    
-                case 1
-                    % case is there is a unique potential match
-                    
-                    % flag that the point is jittering. return also the
-                    % coordinates of the stationary points
-                    [sFlagT,uData] = deal(3,{fPS{isPr},fPS,iPS});                    
-                
-                otherwise
-                    % case is there are multiple potential matches
-                                                    
-                    if sum(isU) > 1
-                        % if there are multiple frames with unambiguous
-                        % points, then determine the stationary point that
-                        % is closest to these unambiguous points
-                        iPr = find(isPr);
-                        iMn = argMin(median(DR(isU,isPr),1));
-                        
-                        % flag that the point is jittering. return also the
-                        % coordinates of the stationary points
-                        [sFlagT,idxF] = deal(3,num2cell(iDT{iPr(iMn)}));
-                        pMx = cellfun(@(x,y)(x(y,:)),dfPMx,idxF,'un',0);
-                        uData = {pMx,fPS,iPS};
-                        
-                    else
-                        % otherwise flag the point is ambiguous (needs the
-                        % x-correlation transform to determine further)                        
-                        [sFlagT,uData] = deal(4,{fPS,iPS});
-                    end
-            end
-            
-        end        
+        end                
         
         % --- determines the likely fly positions over all frames for a
         %     stationary fly in sub-region index, iT
@@ -604,7 +604,15 @@ classdef FilterResObj < handle
             
             % determines the number of maxima on each frame
             nP = cellfun(@length,pRT);
-            if all(nP == 1)
+            if any(nP == 0)
+                % case is the sub-region is potentially empty?
+                pMaxT = repmat({NaN(1,2)},obj.nFrm,1);
+                obj.setPositionValues(pMaxT,iT);
+                
+                % exits the function
+                return
+                
+            elseif all(nP == 1)
                 % if there only unique maxima, then update their locations
                 % with the storage array and exits the function
                 obj.okS(iT) = true;
@@ -1004,22 +1012,20 @@ classdef FilterResObj < handle
                     pRR = combineNumericCells(cellfun(@(x,y)...
                             (calcRectifiedRatio(IRL{1}(iMx{1}(i)),...
                             x(y))),IRL,iMx,'un',0));                    
-                    
-                    %
-                    Qm = DP./max(1,pRR);
+                    Qm = DP.*pRR;
                     [BDR,BPRR] = deal(DP < pWM*obj.dTol,pRR < pRRTol);  
                     
                 elseif exist('RMx','var')
-                    % case is 
+                    % case is the peak values are provided
                     pRR = combineNumericCells(cellfun(@(x)...
                             (calcRectifiedRatio(RMx{1}(i),x)),RMx,'un',0));
-
-                    Qm = DP./max(1,pRR);
-                    [BDR,BPRR] = deal(DP < obj.pWS*obj.dTol,pRR < pRRTol);                    
+                    Qm = DP.*pRR;
+                    [BDR,BPRR] = deal(DP < obj.pWS*obj.dTol,pRR < pRRTol);
+                    
                 else
                     % case is a distance only check
                     Qm = DP;
-                    [BDR,BPRR] = deal(DP < obj.pWS*obj.dTol,true(size(Qm)));
+                    [BDR,BPRR] = deal(DP < obj.pWS*obj.dTol,true(size(Qm)));                    
                 end
                         
                 % determines points that meet the distance/RR tolerances
@@ -1068,11 +1074,65 @@ classdef FilterResObj < handle
                 end
             end
             
+            % reduces down the data arrays to the feasible groups
+            [indG,fPS,iPS] = deal(indG(hasS),fPS(hasS),iPS(hasS));            
+            if length(indG) > 1
+                % sets up the index testing
+                D = cell2mat(cellfun(@(x)(cellfun(@(y)...
+                                (min(abs(x-y))),indG)),indG,'un',0)');
+                D(logical(eye(size(D)))) = NaN;
+                
+                if any(D(:) == 0)
+                    % calculates the mean residual maxima values
+                    if exist('RMx','var')
+                        % case is peak maxima values are provided                           
+                        QG = cellfun(@(x)(mean(cellfun...
+                                (@(y,z)(y(z)),RMx,num2cell(x)))),indG);
+                            
+                    elseif exist('IRL','var')
+                        % case is image/peak location value are provided
+                        QG = cellfun(@(x)(mean(cellfun(@(y,z,i)...
+                                (y(z(i))),IRL,iMx,num2cell(x)))),indG);
+                            
+                    else
+                        % case is only distance values are provided
+                        DR = cellfun(@(x)(prod(range(cell2mat(cellfun...
+                                    (@(y,i)(y(i,:)),fP,num2cell(x),...
+                                    'un',0)),1))),indG);
+                        QG = 1./(1+DR);
+                    end
+    
+                    % sets the initial feasibility flags
+                    isOK = QG(:) > 0;  
+
+                    % keep looping until there is no overlap
+                    while 1
+                        [iy,ix] = find(D == 0,1,'first');
+                        if isempty(iy)
+                            % if there is no overlap, then exit the loop
+                            break
+                        else
+                            % determines which group has the higher score
+                            ixy = [ix,iy];
+                            imn = argMin(QG(ixy));                        
+
+                            % removes the group with the lower score value
+                            isOK(ixy(imn)) = false;
+                            [D(ix,iy),D(iy,ix)] = deal(NaN);
+                            [D(ixy(imn),:),D(:,ixy(imn))] = deal(NaN);
+                        end
+                    end
+
+                    % reduces down the data arrays
+                    [indG,fPS,iPS] = deal(indG(isOK),fPS(isOK),iPS(isOK));                    
+                end                            
+            end
+            
             % returns the final static groupings
             if nargout == 1
-                varargout = {indG(hasS)};            
+                varargout = {indG};            
             else
-                varargout = {fPS(hasS),iPS(hasS)};            
+                varargout = {fPS,iPS};
             end
             
         end
@@ -1151,77 +1211,79 @@ classdef FilterResObj < handle
             szL = size(obj.IRs{1});
             obj.Bexc = getExclusionBin(obj.iMov,szL,obj.iApp);
             
-        end             
+        end      
         
         % --- calculates the maxima properties from the image IRL
         function [pR,pMax,iMax] = calcMaximaProps(obj,IRL,BexcT)
             
             % parameters
-            pTol = 1/3;
             ndTol = 5;
+            pTolR = 0.8;
                         
             % initialisations
-            szL = size(IRL);
-            iMx = find(imregionalmax(IRL) & BexcT);
-            pTolMx = pTol*max(IRL(iMx));
+            BP = IRL > 0;
+            BmxT = false(size(IRL));
             
-%             % sorts the maxima in descending order
-%             [IMx,iS] = sort(IRL(iMx),'descend');            
-%             [BMx,ii] = deal(IRL >= pTolMx,IMx >= pTol*IMx(1));
+            % determines the regional maxima from the sub-image
+            iMx = find(imregionalmax(IRL) & BP & BexcT);
+            if isempty(iMx)
+                % if there are no maxima then exit with empty values
+                [pR,pMax,iMax] = deal([]);
+                return
+            end   
             
-            % determines the significant blobs. if any of the blobs are too
-            % big, then remove them from the analysis
-            [iGrp,pBB] = getGroupIndex(IRL>=pTolMx,'BoundingBox');
-            jj = all(pBB(:,3:4) <= ndTol*obj.dTol,2);
-            iGrp = iGrp(jj);
+            % sorts the 
+            [IRLmx,iS] = sort(IRL(iMx),'descend');
+            Bmx = arrayfun(@(x)(IRL > pTolR*x),IRLmx,'un',0);            
             
-            % determines the peak value within each blob
-            jGrp = cellfun(@(x)(intersect(iMx,x)),iGrp,'un',0);
-            for i = find(cellfun(@length,jGrp(:)') > 1)
-                jGrp{i} = jGrp{i}(argMax(IRL(jGrp{i})));
+            %
+            iGrp = cell(length(iS),1);
+            for i = 1:length(iS)
+                % 
+                [~,BmxI] = detGroupOverlap(Bmx{i},BmxT);
+                [Bmx{i}(BmxI),BmxT(BmxI)] = deal(false,true);
+                
+                %
+                if Bmx{i}(iMx(iS(i)))
+                    [~,BmxR] = detGroupOverlap(Bmx{i},iMx(iS(i)));
+                    [iGrp0,pBB] = getGroupIndex(BmxR,'BoundingBox');
+                    
+                    % if the blob isn't too large, then store the 
+                    if all(pBB(:,3:4) <= ndTol*obj.dTol,2)
+                        iGrp(i) = iGrp0;
+                        BmxT(BmxR) = true;
+                    end
+                end
             end
             
-            % sets the output values
-            iMax = cell2mat(jGrp);
-            [pR,pMax] = deal(IRL(iMax),obj.calcCoords(IRL,iMax));
+            % determines the feasible groups
+            hasGrp = ~cellfun(@isempty,iGrp);
+            if ~any(hasGrp); hasGrp(1) = true; end
             
-%             IMx = cellfun(@(x)(IRL(x)),jGrp);
-%             
-%             % keeps the maxima values above threshold
-%             if any(jj)
-%                 
-%             else                
-%                 [pR,pMax] = deal(IMx(ii),[xMx(iS(ii)),yMx(iS(ii))]);
-%                 iMax = iMx(iS(ii));    
-%             end
-%             
-%             % 
-%             DP = pdist2(pMax,pMax); 
-%             DP(logical(eye(size(DP)))) = NaN;
-%             isC = DP < obj.dTol;
-%             
-%             % keep looping until all close points have been checked
-%             isOK = true(size(DP,1),1);
-%             while any(isC(:))
-%                 % determines which the closest of the remaining points
-%                 [iy,ix] = find(DP == min(DP(:)),1,'first');
-%                 
-%                 %
-%                 pRR = calcRectifiedRatio(IRL(iMax(ix)),IRL(iMax(iy)));                
-%                 if pRR < prTol
-%                     ixy = [ix,iy];
-%                     iMx = IRL(iMax(ixy));                    
-%                     isOK(ixy(argMin(iMx))) = false;
-%                 end
-%                 
-%                 % removes the values from the search
-%                 [isC(iy,ix),isC(ix,iy)] = deal(false);
-%                 [DP(iy,ix),DP(ix,iy)] = deal(NaN);
-%             end
-%             
-%             % removes the infeasible points
-%             [pR,pMax,iMax] = deal(pR(isOK),pMax(isOK,:),iMax(isOK));
+            % sets the final values
+            iMax = iMx(iS(hasGrp));
+            [pR,pMax] = deal(IRL(iMax),obj.calcCoords(IRL,iMax));            
             
+        end      
+        
+        % --- calculates
+        function kMx = calcClosestMax(obj,I,B,jMx0)
+
+            % initialisations
+            sz = size(I);
+            kMx = NaN(length(jMx0),1);
+            [yP0,xP0] = ind2sub(sz,jMx0);
+            
+            % determines the regional maxima from the image
+            kMx0 = find(imregionalmax(I) & B);
+            [yPF,xPF] = ind2sub(sz,kMx0);
+            
+            %
+            for i = 1:length(jMx0)
+                D = max(1,pdist2([xPF,yPF],[xP0(i),yP0(i)])/obj.dTol);
+                kMx(i) = kMx0(argMax(I(kMx0)./D));
+            end
+
         end        
         
     end
@@ -1273,9 +1335,13 @@ classdef FilterResObj < handle
         end
         
         % --- calculates the z-score for the point, iMx
-        function Z = calcZScore(I,iMx)
+        function Z = calcZScore(I,iMx,varargin)
             
-            Z = (I(iMx) - mean(I(:)))/std(I(:));
+            if nargin == 2
+                Z = (I(iMx) - mean(I(:)))/std(I(:));
+            else
+                Z = (iMx - mean(I(:)))/std(I(:));                
+            end
             
         end
         
@@ -1306,12 +1372,6 @@ classdef FilterResObj < handle
             % if the residual difference calculations, then remove all
             % peaks that are part of the same thresholded blob
             if isDR
-%                 % calculates the z-scores
-%                 ZMx = obj.calcZScore(I,iMx);                
-%                 if max(ZMx) > ZMxTol
-%                     iMx = iMx(ZMx >= ZMxTol);
-%                 end
-                
                 % calculates the thresholded blob properties
                 iGrpN = getGroupIndex(BN);
                 [nMx,nGrpN] = deal(length(iMx),length(iGrpN));
@@ -1332,7 +1392,36 @@ classdef FilterResObj < handle
                 end
             end
             
-        end                        
+        end        
+        
+        % --- determines the location of an ambiguous moving fly 
+        function iMx = detAmbigFlyPos(I,B)
+            
+            % parameters
+            pTolR = 0.75;
+            pTolMx = 0.75;            
+            
+            % determines the regional maxima
+            iMx0 = find(imregionalmax(I) & B);
+            [IMx,iS] = sort(I(iMx0),'descend');            
+            iMx = iMx0(iS(IMx/IMx(1) > pTolMx));
+            
+            % if there is more than one maxima, then use size/pixel
+            % intensity values to determine the most likely location
+            if length(iMx) > 1
+                % calculates the size of the blobs (when thresholded as a
+                % proportion of their maxima value)
+                A = zeros(length(iMx),1);                
+                for i = 1:length(iMx)
+                    [~,B] = detGroupOverlap(I>pTolR*IMx(i),iMx(i));
+                    A(i) = sum(B(:));
+                end
+                
+                % returns the largest/brightest blob 
+                iMx = iMx(argMax(IMx(1:length(A)).*A));
+            end
+            
+        end        
         
     end    
     
