@@ -604,15 +604,15 @@ classdef PhaseTrack < matlab.mixin.SetGet
                         % case is a bi-directional check
                         if obj.iMov.is2D
                             % case is a 2D setup
-                            pdTol = 4.5;
+                            pdTol = 6;
                         else
                             % case is a 1D setup
                             if obj.withinEdge(indR,fPr)
                                 % point is close to the edge
-                                pdTol = 2;
+                                pdTol = 3;
                             else
                                 % point is not at the region edge
-                                pdTol = 3;
+                                pdTol = 5;
                             end
                         end
                     end

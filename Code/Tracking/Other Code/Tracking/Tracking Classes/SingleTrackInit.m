@@ -322,7 +322,7 @@ classdef SingleTrackInit < SingleTrack
                 
                 % memory allocation
                 wStr0 = 'Initial Frame Stack Read';
-                [obj.Img,obj.iOK] = deal(cell(nPh,1));
+                obj.Img = cell(nPh,1);
                 obj.hProg.Update(1+obj.wOfsL,wStr0,1/(3+nPh));
 
                 % reads the initial images                            
@@ -337,8 +337,9 @@ classdef SingleTrackInit < SingleTrack
                     end
 
                     % reads the image stack for phase frame indices
-                    [obj.Img{i},obj.iOK{i}] = ...
+                    [obj.Img{i},obj.indFrm{i}] = ...
                                     obj.getImageStack(obj.indFrm{i});
+                    obj.iMov.iPhase(i,:) = obj.indFrm{i}([1,end]);
 
                     % applies the smooth filter (if specified)
                     if obj.useFilt
@@ -694,7 +695,7 @@ classdef SingleTrackInit < SingleTrack
             if ~obj.calcOK; return; end
             
             % initialisations
-            pW = 1/3;
+            pW = 1/2;
             N = ceil(1.5*obj.bSzT);
             hG = fspecial('disk',2);        
             wStr0 = 'Recalculating Coordinates';

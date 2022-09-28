@@ -61,7 +61,7 @@ classdef Track < matlab.mixin.SetGet
         end           
         
         % --- reads the images for the frame indices given in iFrm
-        function [Img,isOK] = getImageStack(obj,iFrm,varargin)
+        function [Img,iFrm] = getImageStack(obj,iFrm,varargin)
             
             % retrieves the image stack
             nFrm = length(iFrm);            
@@ -71,6 +71,22 @@ classdef Track < matlab.mixin.SetGet
             % determines which frames are feasible (only if required)
             if nargout == 2
                 isOK = ~cellfun(@(x)(all(isnan(x(:)))),Img);
+                for i = find(~isOK(:)')
+                    % calculates the frame increment
+                    diFrm = 1 - 2*(i>1);
+                    
+                    % keep looping until the new frame is feasible
+                    while 1
+                        % retrieves the new image
+                        iFrm(i) = iFrm(i) + diFrm;
+                        Img{i} = obj.getNewImage(i,iFrm(i),nFrm);
+                        
+                        % if the image is feasible, then exit the loop
+                        if ~all(isnan(Img{i}(:)))
+                            break
+                        end
+                    end
+                end
             end
                               
             % if requested, return the first cell array element

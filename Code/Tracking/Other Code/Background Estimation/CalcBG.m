@@ -84,7 +84,7 @@ classdef CalcBG < handle
     end
     
     % class methods
-    methods                
+    methods
         
         % --- object constructor
         function obj = CalcBG(hGUI)
@@ -1005,46 +1005,10 @@ classdef CalcBG < handle
                     end
 
                     % case is the low-variance phase
-                    cMapType = 'jet';                    
-                    isHV = obj.iMov.vPhase(iPhase) == 2;
+                    cMapType = 'jet';             
                     
-                    %
-                    ILs = cell(1,obj.nApp);
-                    ILs(iok) = arrayfun(@(x)(getRegionImgStack...
-                          (obj.iMov,Img0,iFrmS,x,isHV)),find(iok),'un',0);
-                    ILs(iok) = cellfun(@(x)(x{1}),ILs(iok),'un',0);
-                      
-                    % sets the background image based on the detection type
-                    if strcmp(getDetectionType(obj.iMov),'GeneralR')
-                        % retrieves the background image array
-                        if isempty(obj.Ibg{iPhase})                                         
-                            % creates the background image if it does not exist
-                            obj.createGenBGImage(iPhase);
-                        end
-
-                        % sets the final viewing image
-                        I0 = zeros(frmSz);
-                        Itot = createCompositeImage(I0,obj.iMov,ILs);
-                        Inw = (obj.Ibg{iPhase} - Itot).*(Itot > 0); 
-                        
-                    else                        
-                        % retrieves the background image type
-                        if obj.isMTrk
-                            IbgI = obj.iMov.Ibg(:,iPhase);
-                        else
-                            IbgI = obj.iMov.Ibg{iPhase};
-                        end
-                        
-                        % reshapes the local image array
-                        ILs = reshape(ILs,size(IbgI));                        
-                        
-                        % creates the composite from the phase bg image
-                        [I0,IRL] = deal(zeros(frmSz),cell(size(ILs)));
-                        IRL(iok) = cellfun(@(x,y)...
-                                        (x-y),IbgI(iok),ILs(iok),'un',0);
-                        Inw = createCompositeImage(I0,obj.iMov,IRL);
-                        
-                    end
+                    % sets up the residual image
+                    Inw = obj.setupResidualImage(Img0,iPhase,iFrmS,iok);
                     
                 case {'Cross-Correlation'}
                   
@@ -1071,7 +1035,9 @@ classdef CalcBG < handle
                     InwL = obj.setupXCorrImage(Img0);                     
                     
                     % case is the low-variance phase
-                    Inw = createCompositeImage(zeros(frmSz),obj.iMov,InwL);
+                    InwR = obj.setupResidualImage(Img0,iPhase,iFrmS,iok);
+                    InwX = createCompositeImage(zeros(frmSz),obj.iMov,InwL);
+                    Inw = normImg(InwR).*InwX;
                     
                     % closes the progressbar
                     delete(hLoad)
@@ -1137,6 +1103,54 @@ classdef CalcBG < handle
             end
             
         end
+        
+        % --- sets up the region residual image stack
+        function Inw = setupResidualImage(obj,Img0,iPhase,iFrmS,iok)
+
+            % initialisations
+            frmSz = getCurrentImageDim(obj.hGUI);
+            isHV = obj.iMov.vPhase(iPhase) == 2;
+
+            % sets up the image stack
+            ILs = cell(1,obj.nApp);
+            ILs(iok) = arrayfun(@(x)(getRegionImgStack...
+                  (obj.iMov,Img0,iFrmS,x,isHV)),find(iok),'un',0);
+            ILs(iok) = cellfun(@(x)(x{1}),ILs(iok),'un',0);
+
+            % sets the background image based on the detection type
+            if strcmp(getDetectionType(obj.iMov),'GeneralR')
+                % retrieves the background image array
+                if isempty(obj.Ibg{iPhase})                                         
+                    % creates the background image if it does 
+                    % not exist
+                    obj.createGenBGImage(iPhase);
+                end
+
+                % sets the final viewing image
+                I0 = zeros(frmSz);
+                Itot = createCompositeImage(I0,obj.iMov,ILs);
+                Inw = (obj.Ibg{iPhase} - Itot).*(Itot > 0); 
+
+            else                        
+                % retrieves the background image type
+                if obj.isMTrk
+                    IbgI = obj.iMov.Ibg(:,iPhase);
+                else
+                    IbgI = obj.iMov.Ibg{iPhase};
+                end
+
+                % reshapes the local image array
+                ILs = reshape(ILs,size(IbgI));                        
+
+                % creates the composite from the phase bg image
+                [I0,IRL] = deal(zeros(frmSz),cell(size(ILs)));
+                IRL(iok) = cellfun(@(x,y)...
+                                (x-y),IbgI(iok),ILs(iok),'un',0);
+                Inw = createCompositeImage(I0,obj.iMov,IRL);
+
+            end
+
+        end        
         
         % --- initialises the temporary fly markers
         function updateObjMarkers(obj)
@@ -2098,7 +2112,7 @@ classdef CalcBG < handle
                 obj.iMov = imov;
                 obj.ok0 = imov.flyok;                              
                 obj.Ibg = cell(length(imov.vPhase),1);
-                obj.iMov.hFilt = obj.trkObj.hFilt;     
+                obj.iMov.hFilt = calcImageStackFcn(obj.trkObj.frObj.hC);     
                 obj.vPhase0 = obj.iMov.vPhase;
                 obj.indFrm = obj.trkObj.indFrm;
                 
