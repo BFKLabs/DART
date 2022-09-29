@@ -9,14 +9,14 @@ if ~iscell(I0); I0 = {I0}; end
 
 % retrieves the new image frame
 IL = cell(size(I0));           
-phInfo = iMov.phInfo;
+[hasF,hasT] = deal(false);
 [iR,iC] = deal(iMov.iR{iApp},iMov.iC{iApp});
 
 % sets the image fluctuation flag
-if isfield(phInfo,'hasF')
-    [hasF,hasT] = deal(phInfo.hasF,phInfo.hasT(iApp));
-else
-    [hasF,hasT] = deal(false);
+if isfield(iMov,'phInfo')
+    if isfield(iMov.phInfo,'hasF')
+        [hasF,hasT] = deal(iMov.phInfo.hasF,iMov.phInfo.hasT(iApp));
+    end
 end
 
 % sets the sub-image stacks
@@ -32,7 +32,7 @@ end
 if hasF || isHiV
     % if there is fluctuation, then apply the hm filter and the
     % histogram matching to the reference image
-    h = phInfo.hmFilt{iApp};
+    h = iMov.phInfo.hmFilt{iApp};
     Imet = cellfun(@(x)(applyHMFilterWrapper(x,h)),IL(:),'un',0); 
     IL = cellfun(@(x)(x - median(x(:),'omitnan')),Imet,'un',0);
     if ~hasT && (nargout == 2)
@@ -46,12 +46,12 @@ end
 
 % corrects image fluctuation
 if hasT
-    p = phInfo.pOfs{iApp};
-    pOfsT = interp1(phInfo.iFrm0,p,iFrm,'linear','extrap');
+    p = iMov.phInfo.pOfs{iApp};
+    pOfsT = interp1(iMov.phInfo.iFrm0,p,iFrm,'linear','extrap');
     IL = cellfun(@(x,p)(applyImgTransWrapper(x,p)),...
                         IL(:),num2cell(pOfsT,2),'un',0);
 
-    if phInfo.hasF && (nargout == 2)
+    if iMov.phInfo.hasF && (nargout == 2)
         BL = cellfun(@(x)(x < mean(x(:),'omitnan')),IL,'un',0);
     end                                
 end

@@ -134,6 +134,21 @@ if ~isfield(iMov,'vGrp')
     iMov.vGrp = [];
 end
 
+% sets the 2D check field
+if ~isfield(iMov,'is2D')
+    iMov.is2D = is2DCheck(iMov);
+end
+
+% sets the 2D check field
+if ~isfield(iMov,'szObj')
+    iMov.szObj = 5*[1,1];
+end
+
+% sets the sub-region information struct
+if ~isfield(iMov,'pInfo')
+    iMov.pInfo = getRegionDataStructs(iMov);
+end
+    
 % -------------------------------------- %
 % --- POSITIONAL DATA STRUCT UPDATES --- %
 % -------------------------------------- %

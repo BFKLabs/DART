@@ -849,6 +849,7 @@ classdef TrackMarkerClass < handle
 
                 try
                     % attempts to update the marker visibility
+                    if isOn; obj.updateTrackMarkers(1); end
                     obj.updateMarkerVisibility(hMarkOn,isOn);
                     
                 catch

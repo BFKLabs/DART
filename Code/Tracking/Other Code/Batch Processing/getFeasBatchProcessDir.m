@@ -71,16 +71,6 @@ for i = 1:nFile
                     end
                 else
                     isSeg{i}(j) = all(B.pData.isSeg);
-                    
-%                     % retrieves the stack count for each phase
-%                     if iscell(B.pData.frmOK)
-%                         nStackT = sum(cellfun(@length,B.pData.frmOK));
-%                     else
-%                         nStackT = length(B.pData.frmOK);
-%                     end
-                    
-                    % determines if the counts match
-%                     isSeg{i}(j) = (sum(B.pData.nCount) + 1) >= nStackT;
                 end
             end
             

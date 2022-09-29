@@ -357,15 +357,15 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                     % otherwise, reset to the original GUI properties
                     resetHandleSnapshot(obj.hProp0,obj.hFig); 
                 end        
-            end            
-            
-            % resets the plot markers back to their current status
-            obj.hFig.mkObj.initTrackMarkers(1)
+            end                        
 
             % updates the GUI properties
             setTrackGUIProps(obj.hGUI,'PostSolnLoadBP')
             setTrackGUIProps(obj.hGUI,'PostBatchProcess')
             setTrackGUIProps(obj.hGUI,'UpdateFrameSelection') 
+            
+            % resets the plot markers back to their current status
+            obj.hFig.mkObj.initTrackMarkers(1)            
             
             % if there was an error, then output it to the command window
             if ~isempty(obj.wErr)
@@ -720,12 +720,14 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                     obj.hProg.collapseProgBar(1); 
                 end
                 
-            elseif any(obj.pData.nCount > 0) && isempty(obj.wErr)
-                % prompt user if they wish to save current progress
-                uChoice = questdlg(['Do you wish to save the current ',...
-                           'tracking progress to to file?'],...
-                           'Save Current Progress','Yes','No','Yes');    
-                obj.isOutput = strcmp(uChoice,'Yes');                 
+            elseif ~isempty(obj.pData) 
+                if any(obj.pData.nCount > 0) && isempty(obj.wErr)
+                    % prompt user if they wish to save current progress
+                    uChoice = questdlg(['Do you wish to save the ',...
+                               'current tracking progress to to file?'],...
+                               'Save Current Progress','Yes','No','Yes');    
+                    obj.isOutput = strcmp(uChoice,'Yes');                 
+                end
             end
             
         end
@@ -937,12 +939,15 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                                 all(isnan(BT.pData.fPos{iApp}{iFly}(:,1)));
                     end
                 end
-            end                        
-            
+            end                                    
+  
             % opens the solution file
             e = struct('fName',[fNameBase,'.soln'],'fDir',obj.outDir);
             obj.menuOpenSoln(obj.hGUI.menuOpenSoln,e,obj.hGUI)    
             obj.dispImage(obj.hGUI)                    
+  
+            % resets the plot markers back to their current status
+            obj.hFig.mkObj.initTrackMarkers(1)            
             
             % retrieves the important data struct from the tracking GUI
             obj.pData0 = get(obj.hFig,'pData');
@@ -984,6 +989,28 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             % makes the waitbar figure visible again
             obj.hProg.setVisibility('on')              
             
+        end
+
+        % --- disabls checkbox marker objects
+        function disableMarkerCheck(obj)
+            
+            % intialisations
+            hChk = [obj.hGUI.checkShowTube,...
+                    obj.hGUI.checkShowMark,...
+                    obj.hGUI.checkShowAngle];
+            
+            % removes any marker checkboxes (if set)
+            for i = 1:length(hChk)
+                if get(hChk(i),'Value')
+                    % sets the check marker to false
+                    set(hChk(i),'Value',false)
+                    
+                    % runs the checkbox callback function
+                    cbFcn = get(hChk(i),'Callback');
+                    feval(cbFcn,hChk(i),[]);
+                end
+            end
+                
         end
         
         % --- calculates the video offset between the current/first file
@@ -1232,20 +1259,20 @@ classdef SingleTrackBP < matlab.mixin.SetGet
 
                         % resets the sub-region struct to the loaded files
                         [obj.iMov,obj.iMov0] = deal(B.iMov);                                        
-                                        
                         if ~isempty(B.pData)
-                            if all(B.pData.isSeg)
+                            nOK = cellfun(@length,B.pData.frmOK);                                                        
+                            if isequal(B.pData.nCount,nOK)
                                 % if all phases are segmented, then use the
                                 % next video for analysis
                                 cont = false;
                                 nFileNw = nFileNw + 1;   
                                 
-                            elseif any(B.pData.isSeg)
+                            elseif any(B.pData.nCount > 0)
                                 % exit if all have been segmented correctly
                                 cont = false;
                             end
                             
-                            % 
+                            % resets the video segmentation flags
                             if ~cont
                                 obj.isSeg(1:(nFileNw-1)) = true;
                                 obj.isSeg(nFileNw) = all(cellfun(@(x)...
@@ -1500,6 +1527,9 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 % case is the movie file name has been given
                 mFileNw = varargin{1};
             end
+        
+            % disable checkbox marker objects
+            obj.disableMarkerCheck();            
             
             % loads the current movie parameters into the data struct
             [fDir,fName,fExtn] = fileparts(mFileNw);

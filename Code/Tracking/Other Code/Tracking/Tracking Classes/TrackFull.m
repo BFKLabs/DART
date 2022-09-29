@@ -248,7 +248,13 @@ classdef TrackFull < Track
                 % sets the previous data struct if the last frame is valid
                 if isempty(iFrmLast)
                     % case is the there are no viable frames
-                    prDataPh = obj.prData;                      
+                    if iPhase == 1
+                        % if the first phase, then use previous phase data
+                        prDataPh = obj.prData;
+                    else
+                        % if not, then don't use previous location data
+                        prDataPh = [];
+                    end
                 else
                     % determines if the gap between the current phase and
                     % the last tracked frame is too large
@@ -421,11 +427,10 @@ classdef TrackFull < Track
                 set(obj.hGUI.frmCountEdit,'string',nwFrm)
                 obj.dispImage(obj.hGUI)
                 pause(0.05);
-                
-            else
-                % updates the frame selection properties
-                setTrackGUIProps(obj.hGUI,'UpdateFrameSelection')
-            end  
+            end
+            
+            % updates the frame selection properties
+            setTrackGUIProps(obj.hGUI,'UpdateFrameSelection')            
             
         end
         

@@ -1112,10 +1112,10 @@ else
     
     % if detecting, then remove the show marker
     if isDetecting || isBatch
-        % updates the GUI object properties
-        set(setObjEnable(handles.checkShowMark,'off'),'value',0)
-        set(setObjEnable(handles.checkShowTube,'off'),'value',0)
-        set(setObjEnable(handles.checkShowAngle,'off'),'value',0)        
+%         % updates the GUI object properties
+%         set(setObjEnable(handles.checkShowMark,'off'),'value',0)
+%         set(setObjEnable(handles.checkShowTube,'off'),'value',0)
+%         set(setObjEnable(handles.checkShowAngle,'off'),'value',0)        
         
         % updates the axes image
         dispImage(handles)        
@@ -2094,7 +2094,6 @@ hFig.mkObj.checkShowTube(iMov,showUpdate,eventdata);
 % --- Executes on button press in checkShowMark.
 function checkShowMark_Callback(~, ~, handles)
 
-% REMOVE ME LATER
 handles.output.mkObj.checkShowMark();
     
 % --- Executes on button press in checkShowAngle.

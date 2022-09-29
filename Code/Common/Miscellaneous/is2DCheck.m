@@ -8,6 +8,9 @@ if ~iMov.isSet
 elseif detMltTrkStatus(iMov)
     is2D = true;
     return
+elseif isfield(iMov,'is2D')
+    is2D = iMov.is2D;
+    return    
 end
 
 % aspect ratio tolerance

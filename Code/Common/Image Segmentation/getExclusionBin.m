@@ -2,7 +2,7 @@
 function Bw = getExclusionBin(iMov,sz,iApp,iFly,varargin)
 
 % case is a 1D region
-if ~(iMov.is2D || detMltTrkStatus(iMov))
+if ~(is2DCheck(iMov) || detMltTrkStatus(iMov))
     Bw = bwmorph(true(sz),'erode');
     return
 end

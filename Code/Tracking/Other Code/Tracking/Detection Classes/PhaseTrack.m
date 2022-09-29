@@ -68,8 +68,8 @@ classdef PhaseTrack < matlab.mixin.SetGet
             % array dimensioning
             obj.nApp = length(obj.iMov.iR);
             obj.nTube = getSRCountVec(obj.iMov);
-            obj.is2D = obj.iMov.is2D;
-            obj.cFlag = useDistCheck(obj.iMov);
+            obj.cFlag = useDistCheck(obj.iMov);            
+            obj.is2D = is2DCheck(obj.iMov);  
             
             % sets the tube-region offsets
             obj.y0 = cell(obj.nApp,1);
@@ -159,6 +159,11 @@ classdef PhaseTrack < matlab.mixin.SetGet
                     obj.hS = fspecial('disk',bgP.hSz);
                 end
             end
+        
+            % ensures the 2D flag is set
+            if ~isfield(obj.iMov,'is2D')
+                obj.iMov.is2D = is2DCheck(obj.iMov);
+            end
             
             % retrieves the tracking parameters
             obj.trkP = getTrackingPara(obj.iMov.bgP,'pTrack');
@@ -183,7 +188,13 @@ classdef PhaseTrack < matlab.mixin.SetGet
             % retrieves the global row/column indices
             nTubeR = getSRCount(obj.iMov,iApp);
             fok = obj.iMov.flyok(1:nTubeR,iApp);
-            obj.dTol = max(obj.iMov.szObj);
+            
+            % sets the distance tolerance
+            if isfield(obj.iMov,'szObj')
+                obj.dTol = max(obj.iMov.szObj);
+            else
+                obj.dTol = 10;
+            end
             
             % memory allocation
             fP0 = repmat({NaN(nTubeR,2)},1,obj.nImg);
@@ -221,7 +232,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 
                 % sets up the residual image stack                        
                 ImgBGL = ImgBG(iRT{iTube},iCT);
-                ImgSeg = obj.setupResidualStack(ImgSR,ImgBGL); 
+                ImgSeg = obj.setupResidualStack(ImgSR,ImgBGL);                 
                 
                 % segments the image stack
                 [fP0nw,IP0nw] = obj.segmentSubRegion...
@@ -709,7 +720,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             isOK = ~cellfun(@(x)(all(isnan(x(:)))),IR);
             
             % removes any NaN values from the image
-            if ~isempty(obj.iMov.phInfo)
+            if isfield(obj.iMov,'phInfo') && ~isempty(obj.iMov.phInfo)
                 % removes any NaN pixels or pixels at the frame edge          
                 for i = find(isOK(:)')
                     B = bwmorph(isnan(IR{i}),'dilate',1+obj.nI);
