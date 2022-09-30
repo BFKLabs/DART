@@ -25,7 +25,7 @@ for iFile = 1:nFile
     else
         % if the video conversion failed, then exit the loop
         break
-    end    
+    end
 end
 
 % closes the progressbar
@@ -39,7 +39,7 @@ ok = true;
 nFrmW = 10;
 wStr0 = 'Converting Current Video';
 
-% determines fi the video file exists
+% determines if the video file exists
 if ~exist(vFile,'file')
     % case is the file does not exist
     eStr = sprintf('The file "%s" does not exist!',vName);
@@ -145,7 +145,6 @@ if ~isempty(Img)
     end
 end
     
-
 % --- retrieves the video file extension based on the compression, vComp
 function fExtn = getVideoExtn(vComp)
 

@@ -17,18 +17,18 @@ switch vComp
         
     case 'Archival'
         % case is archival compression
-        fSizeTot = (1/3)*fSize0;        
+        fSizeTot = (1/4)*fSize0;        
         
     case 'Motion JPEG 2000'
         % case is mj2 compressions
-        fSizeTot = (7/20)*fSize0;
+        fSizeTot = (4/20)*fSize0;
         
     case 'Motion JPEG AVI'
         % case is motion jpeg compression
-        fSizeTot = (1/35)*fSize0;
+        fSizeTot = (1/55)*fSize0;
         
     case 'MPEG-4'
         % case is mpeg-4 compression
-        fSizeTot = (1/45)*fSize0;
+        fSizeTot = (1/90)*fSize0;
 end
 

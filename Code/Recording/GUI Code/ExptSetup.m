@@ -4837,8 +4837,19 @@ if infoObj.hasIMAQ
         setObjVisibility(hPopup,'off')
     else
         % case is a fixed frame rate camera
-        iSel = find(strcmp(fRate,num2str(iExpt.Video.FPS)));  
-        set(hPopup,'string',fRate,'value',iSel)
+        iSel = find(strcmp(fRate,num2str(iExpt.Video.FPS)));
+        if isempty(iSel)
+            % if there are no matches, use the first value instead
+            set(hPopup,'string',fRate,'value',1)
+            
+            % resets the field within the experimental data struct
+            iExpt.Video.FPS = str2double(fRate{1});
+            setappdata(hFig,'iExpt',iExpt)
+        else
+            set(hPopup,'string',fRate,'value',iSel)
+        end
+        
+        % runs the frame rate popup callback function
         popupFrmRate_Callback(hPopup, [], handles)
     end
 

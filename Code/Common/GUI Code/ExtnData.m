@@ -180,17 +180,17 @@ classdef ExtnData < handle
             % --- OTHER CONTROL BUTTON OBJECTS --- %
             % ------------------------------------ %                            
                           
+            % initialisations
+            nStrBC = 3;
+            bStrBC = {'Update Current','Update All','Close Window'};
+            cFcnBC = {@obj.updateCurrent,@obj.updateAll,@obj.closeFigure};                               
+            widButC = (obj.widPanel - (nStrBC+1)*obj.dX)/nStrBC;            
+            
             % creates the control button panel
             lPos = 2*obj.dX + obj.widBut;
             pPosC = [lPos,obj.dX,obj.widPanel,obj.hghtPanelC];
             hPanelC = uipanel(obj.hFig,'Title','','Units',...
-                                       'Pixel','Position',pPosC);
-            
-            % creates
-            nStrBC = 3;
-            bStrBC = {'Update Current','Update All','Close Window'};
-            cFcnBC = {@obj.updateCurrent,@obj.updateAll,@obj.closeFigure};                               
-            widButC = (obj.widPanel - (nStrBC+1)*obj.dX)/nStrBC;
+                                       'Pixel','Position',pPosC);            
             
             % creates the control button objects
             obj.hButC = cell(length(bStrBC),1);
