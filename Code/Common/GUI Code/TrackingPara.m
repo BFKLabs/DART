@@ -866,41 +866,53 @@ set(handles.popupLocRef,'String',pStrR,'value',find(strcmp(pStrR,pRef)))
 function nwLim = setParaLimits(paraStr,pInd)
 
 % sets the parameter limits
-switch (paraStr)
+switch paraStr
     % ----------------------------------- %
     % --- GENERAL TRACKING PARAMETERS --- %
     % ----------------------------------- %
     
-    case ('Vmove') % case is threshold inactivity speed
+    case ('Vmove') 
+        % case is threshold inactivity speed
         nwLim = [0.5,inf];
-    case ('nSpan') % case is the speed smooth range
+    
+    case ('nSpan') 
+        % case is the speed smooth range
         nwLim = [1,60];     
         
     % ----------------------------------------------- %
     % --- GENERAL STIMULATION CRITERIA PARAMETERS --- %
     % ----------------------------------------------- %
         
-    case ('Twarm') % case is the initial warm-up phase
+    case ('Twarm') 
+        % case is the initial warm-up phase
         nwLim = [0,300];          
         
     % -------------------------------------------------- %
     % --- POPULATION STIMULATION CRITERIA PARAMETERS --- %
     % -------------------------------------------------- %        
         
-    case ('Ptol') % case is proportion inactivity threshold
+    case ('Ptol') 
+        % case is proportion inactivity threshold
         nwLim = [0.01,0.99];
-    case ('Vtol') % case is mean velocity threshold
+    
+    case ('Vtol') 
+        % case is mean velocity threshold
         nwLim = [0,inf];
-    case ('Mtol') % case is mean population inactivity time
+    
+    case ('Mtol') 
+        % case is mean population inactivity time
         nwLim = [1,inf];
         
     % -------------------------------------------------- %
     % --- INDIVIDUAL STIMULATION CRITERIA PARAMETERS --- %
     % -------------------------------------------------- %        
         
-    case ('Tmove') % case is movement threshold time        
-        nwLim = [0,inf];    
-    case ('pX') % case is the position value
+    case ('Tmove') 
+        % case is movement threshold time        
+        nwLim = [0,inf];  
+        
+    case ('pX') 
+        % case is the position value
         if (pInd == 1)
             % case is distance in mm
             nwLim = [0,inf];         
@@ -913,9 +925,12 @@ switch (paraStr)
     % --- STIMULI CHANNEL CROSS-CONNECTION PARAMETERS --- %
     % --------------------------------------------------- %            
 
-    case ('Tdur') % fixed stimuli duration
+    case ('Tdur') 
+        % fixed stimuli duration
         nwLim = [1,inf];                                  
-    case ('Tcd') % case is cooldown period
+    
+    case ('Tcd') 
+        % case is cooldown period
         nwLim = [0,inf];             
 end
 

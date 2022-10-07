@@ -30,13 +30,17 @@ classdef SingleTrackInit < SingleTrack
         sFlagT
         sFlagMax        
         
+        % quality metric fields
+        pStats
+        pStatsF
+        Is
+        
         % other important fields
         nI
         i0
         pQ0
         iOK
         tPara
-        pStats
         pData       
         useP
         isStat
@@ -71,6 +75,8 @@ classdef SingleTrackInit < SingleTrack
         % other parameters and scalar fields
         isHiV
         usePTol 
+        pWofs = 4;
+        nMet = 3;
         pTolQ = 5;
         pTolMin = 5;
         pSigMin = 0.5;
@@ -78,7 +84,8 @@ classdef SingleTrackInit < SingleTrack
         nFrmMin = 10;
         dyRngMin = 10;
         pTolSz = 0.05;
-        mdDim = 30*[1,1];         
+        mdDim = 30*[1,1];
+        pLim = [5,3,0.85];
         hSR = fspecial('disk',2);           
         
     end
@@ -129,7 +136,7 @@ classdef SingleTrackInit < SingleTrack
             
 %             % calculates the overall quality of the flies (prompting the
 %             % user to exclude any empty/anomalous regions)
-%             if ~obj.isBatch && any(okPh)
+%             if ~obj.isBatch && any(obj.iMov.vPhase < 3)
 %                 obj.calcOverallQuality()
 %             end
             
@@ -185,8 +192,9 @@ classdef SingleTrackInit < SingleTrack
             
             % sets the input variables
             obj.isCalib = isCalib;
-            obj.nI = floor(max(getCurrentImageDim())/800);
+            obj.nI = getImageInterpRate();
             obj.frObj = FilterResObj(obj.iMov,obj.hProg,obj.wOfsL);
+            obj.frObj.isBatch = obj.isBatch;
             
             % retrieves the device information struct (if calibrating)
             if obj.isCalib
@@ -242,7 +250,8 @@ classdef SingleTrackInit < SingleTrack
             [obj.errStr,obj.errMsg] = deal([]);            
             
             % region dependent object memory allocation
-            [obj.fPosP,obj.mFlag,obj.sFlagT] = deal(cell(nPh,nApp));
+            B = cell(nPh,nApp);
+            [obj.fPosP,obj.mFlag,obj.sFlagT,obj.pStatsF,obj.Is] = deal(B);
             [obj.Iss,obj.dIss] = deal(cell(length(nT),nPh));
             [obj.Imu,obj.Isd,obj.pTolF] = deal(NaN(nApp,nPh));            
             
@@ -271,10 +280,12 @@ classdef SingleTrackInit < SingleTrack
             end                               
                               
             % calculates the point statistics data struct
-            obj.pStats = struct('IR',[],'IRmd',[]);            
-            B = cell2cell(cellfun(@(x)(arrayfun(@(n)...
-                    (NaN(n,length(x))),nT(:),'un',0)),obj.Img,'un',0),0);
-            [obj.pStats.IR,obj.pStats.IRmd] = deal(B);
+            obj.pStats = cell(obj.nApp,obj.nPhase,obj.nMet);
+%             
+%             obj.pStats = struct('dIR',[],'IR',[],'IXCR',[]);            
+%             B = cell2cell(cellfun(@(x)(arrayfun(@(n)...
+%                     (NaN(n,length(x))),nT(:),'un',0)),obj.Img,'un',0),0);
+%             [obj.pStats.dIR,obj.pStats.IR,obj.pStats.IXCR] = deal(B);
             
             % retrieves the initial detection parameters
             obj.iniP = getTrackingPara(obj.iMov.bgP,'pInit');
@@ -395,7 +406,7 @@ classdef SingleTrackInit < SingleTrack
                 wStrNw = sprintf('Moving Object Detection (Phase #%i)',i);                
                 
                 % updates the progress bar
-                pW0 = (j+1)/(3+obj.nPhase);
+                pW0 = (j+1)/(obj.pWofs+obj.nPhase);
                 if obj.hProg.Update(1+obj.wOfsL,wStrNw,pW0)
                     obj.calcOK = false;
                     return
@@ -432,15 +443,22 @@ classdef SingleTrackInit < SingleTrack
             end  
             
             % matches up the blob locations between phases
-            obj.interPhasePosMatch();
+            obj.interPhasePosMatch();  
+            obj.frObj.hC = obj.expandImageArray(obj.frObj.hC);
 
+            % calculates the overall quality of the flies (prompting the
+            % user to exclude any empty/anomalous regions)
+            if ~obj.isBatch && any(obj.iMov.vPhase < 3)
+                obj.calcOverallQuality()
+            end                                 
+            
             % ----------------------------------- %
             % --- BACKGROUND IMAGE ESTIMATION --- %
             % ----------------------------------- %
 
             % updates the progressbar
             wStrNw = 'Background Image Estimation';
-            obj.hProg.Update(1+obj.wOfsL,wStrNw,(2+nPh)/(3+nPh));            
+            obj.hProg.Update(1+obj.wOfsL,wStrNw,(3+nPh)/(obj.pWofs+nPh));
 
             % memory allocation
             szL = cellfun(@size,IL{1}(1,:),'un',0);
@@ -476,40 +494,11 @@ classdef SingleTrackInit < SingleTrack
                 
                 % calculates the global coordinates
                 obj.calcGlobalCoords(iPh);                
-            end
+            end               
             
             % determines the overall minimum sub-region flags
             obj.setupOverallStatusFlags();            
             
-            % ----------------------------------- %
-            % --- STATIONARY OBJECT DETECTION --- %
-            % ----------------------------------- %
-
-%             % updates the progressbar
-%             wStrNw = 'Static Object Detection';
-%             obj.hProg.Update(1+obj.wOfsL,wStrNw,(2+nPh)/(3+nPh));                
-% 
-%             % segments the low/high variance phases
-%             for i = find(okPh(:)')
-%                 % updates the progressbar
-%                 wStrNw = sprintf('Analysing Phase (%i of %i)',i,nPh);
-%                 if obj.hProg.Update(2+obj.wOfsL,wStrNw,i/(1+nPh))
-%                     obj.calcOK = false;
-%                     return                    
-%                 end
-%
-%                 % determines if any sub-regions within this phase that 
-%                 % are stationary, but are moving over the whole video
-%                 obj.analyseStationaryBlobs(IL{i},i);
-%
-%                 % performs the phase house-keeping exercises
-%                 obj.phaseHouseKeeping(i);                
-%
-%                 % calculates the global coordinates
-%                 obj.calcGlobalCoords(i);           
-% 
-%             end                
-
             % ----------------------------------- %
             % --- UNTRACKABLE PHASE DETECTION --- %
             % ----------------------------------- %
@@ -521,21 +510,16 @@ classdef SingleTrackInit < SingleTrack
 
                 % calculates the global coordinates
                 obj.calcGlobalCoords(i);                      
-            end                  
-
+            end
+            
+            % performs the final region check (non-batch processing only)
+            if obj.calcOK && ~obj.isBatch
+                obj.performFinalDiagnosticCheck();
+            end
+            
             % updates the progressbar
             wStrF = 'Initial Detection Complete!';
-            obj.hProg.Update(1+obj.wOfsL,wStrF,1);            
-            
-            % ---------------------------------------- %
-            % --- STATIONARY BLOB DIAGNOSTIC CHECK --- %
-            % ---------------------------------------- %
-            
-%             % if there is more than one phase, then determine if the 
-%             % stationary blob locations are consistent over all phases
-%             if obj.nPhase > 1
-%                 obj.checkStationaryBlobs();
-%             end                         
+            obj.hProg.Update(1+obj.wOfsL,wStrF,1);                                           
             
         end        
         
@@ -561,6 +545,10 @@ classdef SingleTrackInit < SingleTrack
                     return
                 end
                 
+                if isHiV
+                    a = 1;
+                end
+                
                 % retrieves and processes the image stack
                 IL(:,i) = obj.getRegionImageStack(Img,iFrm,i,isHiV);                
                 obj.frObj.processImgStack(IL(:,i),iPh,i);
@@ -584,11 +572,68 @@ classdef SingleTrackInit < SingleTrack
             obj.fPosL{iPh}(iApp,:) = obj.frObj.fPos;           
                         
             % stores the values into the arrays
-            obj.fPosP{iPh,iApp} = obj.frObj.pMaxS;
+            obj.fPosP{iPh,iApp} = cellfun(@(x)...
+                        (obj.upsampleCoords(x)),obj.frObj.pMaxS,'un',0);
             obj.yPosP{iPh,iApp} = obj.frObj.RMaxS;
+        
+            % sets the stat/sub-image stacks
+            if ~obj.isBatch                
+                % sets the stats fields
+                obj.Is{iPh,iApp} = {obj.frObj.IRs,obj.frObj.dIRs};
+                obj.pStatsF{iPh,iApp} = obj.frObj.pStats;                
+                [obj.frObj.dIRs,obj.frObj.IXCs] = deal([]);
+            end
             
         end        
 
+        % --- calculates the final diagnostic check
+        function performFinalDiagnosticCheck(obj)
+            
+            % calculates the max metric values (grouped by region/metric)
+            QMet0 = cell(obj.nApp,obj.nMet);
+            for i = 1:obj.nMet
+                QMet0(:,i) = cellfun(@(x)(max(cell2mat(x),[],2)),...
+                                num2cell(obj.pStats(:,:,i),2),'un',0);
+            end
+            
+            % reshapes the metric arrays (grouped by region)
+            QMetF = cellfun(@(x)(cell2mat(x)),num2cell(QMet0,2),'un',0);
+            
+            % determines which regions are potentially empty
+            isE = obj.iMov.flyok & (combineNumericCells(cellfun...
+                        (@(x)(sum(x>obj.pLim,2)),QMetF','un',0)) == 0);
+            if ~any(isE(:)); return; end
+                        
+            % closes the progressbar
+            obj.hProg.setVisibility('off');
+
+            % outputs a message string to the user
+            eStr = sprintf(['One or more anomalous or empty regions ',...
+                            'have been detected.\nYou will need to ',...
+                            'manually accept/reject these regions.']);
+            waitfor(msgbox(eStr,'Anomalous Regions Detected','modal'))
+            
+            % if so, prompt the user if they should exclude those
+            % regions from the analysis
+            eObj = EmptyCheck(obj.fPosG,isE);
+
+            % resets the status flags for all flagged sub-regions
+            for i = find(eObj.isEmpty(:)')
+                % sets the region/sub-region indices
+                [iApp,iTube] = deal(eObj.iApp(i),eObj.iTube(i));
+
+                % updates the status flags
+                obj.iMov.flyok(iTube,iApp) = false;
+
+                % if all sub-regions are rejected, then reject the
+                % whole region 
+                if ~any(obj.iMov.flyok(:,iApp))
+                    obj.iMov.ok(iApp) = false;
+                end                    
+            end            
+            
+        end
+        
         % -------------------------------- %
         % --- STATUS FLAG CALCULATIONS --- %
         % -------------------------------- %         
@@ -612,7 +657,7 @@ classdef SingleTrackInit < SingleTrack
             % ----------------------------------- %            
 
             % retrieves the residual scores
-            pPR = obj.pStats.IR(:,iPh);            
+            pPR = obj.pStats(:,iPh,1);            
             
             % determines if a majority of the residual pixel intensities
             % meets the tolerance (for each sub-region) across all frames
@@ -729,7 +774,6 @@ classdef SingleTrackInit < SingleTrack
                     % determines the threshold levels
                     IMaxS = cellfun(@(x)(max(x(:))),IsubS);
                     pTolT(j) = median(IMaxS*pW,'omitnan');
-                    obj.pStats.IR{i,iPh}(j,:) = IMaxS;
                     
                     % offsets and updates the position array
                     fP0 = cellfun(@(x,y)(obj.recalcBlobPos...
@@ -741,44 +785,7 @@ classdef SingleTrackInit < SingleTrack
                 obj.pTolF(i,iPh) = median(pTolT,'omitnan');
             end
             
-        end
-        
-        % --- recalculates the blob positional coordinates
-        function fP = recalcBlobPos(obj,I,fP,pTolT)
-            
-            %
-            szL = size(I);
-            N = (szL(1)-1)/2;
-            
-            %
-            B0 = setGroup((N+1)*[1,1],szL);
-            [~,B] = detGroupOverlap(I > pTolT,B0);
-            
-            % calculates the blob centroids
-            [iGrp,pC] = getGroupIndex(B,'Centroid');            
-            switch length(iGrp)
-                case 0
-                    % case is no blobs
-                    iMx = argMax(I(:));
-                    [yMx,xMx] = ind2sub(szL,iMx);
-                    pC = [xMx,yMx];
-                    
-                case 1
-                    % case is a single blob
-                    pC = roundP(pC);
-                    
-                otherwise
-                    % case is multiple blobs
-                    iMx = argMax(cellfun(@(x)(max(I(x))),iGrp));
-                    pC = roundP(pC(iMx,:));
-                    
-                    
-            end
-            
-            % offsets the position marker
-            fP = fP + (pC - (N+1));
-            
-        end
+        end        
         
         % --- retrieves the sub-region positions (over all frames)
         function fPSR = getSRPos(obj,iPh,iApp,iT)
@@ -808,7 +815,7 @@ classdef SingleTrackInit < SingleTrack
             sD = NaN(obj.nApp,2);
             [ff,II] = deal(cell(obj.nApp,2));            
             
-            %
+            % calculates the gaussian signal parameters for each region
             for i = find(obj.iMov.ok(:)')
                 for j = 1:2
                     II{i,j} = max(obj.frObj.hC{i},[],j,mStr);
@@ -826,7 +833,8 @@ classdef SingleTrackInit < SingleTrack
                         
             % initialisations
             ZTol = 2.5;
-            wStr0 = 'Background Estimate';
+            wStr0 = 'Background Estimate';            
+            N = obj.bSzT;
             
             % calculates the 
             for i = find(obj.iMov.ok(:)')
@@ -838,8 +846,9 @@ classdef SingleTrackInit < SingleTrack
                     return                    
                 end 
                 
-                %
-                Imn = cellfun(@(x)(nanmean(x(:))),I(:,i));
+                % calculates the feasible frames (the frames that are not
+                % too far away from the image stack mean)
+                Imn = cellfun(@(x)(mean(x(:),'omitnan')),I(:,i));
                 Z = (Imn - mean(Imn))/std(Imn);
                 okF = abs(Z) < ZTol;
                 
@@ -852,21 +861,13 @@ classdef SingleTrackInit < SingleTrack
                         % retrieves the blob coordinates
                         fP = cellfun(@(x)...
                                 (x(iT,:)),obj.fPosL{iPh}(i,okF),'un',0)';
-
+                            
                         % sets up the background image estimate
-                        IbgE = obj.setupBGEstStack(IL,fP);
+                        IbgE = obj.setupBGEstStack(IL,fP,N);
                         Imx0 = calcImageStackFcn(IbgE,'max');
-
-                        % calculates background image estimate (dim based)
-                        if obj.iMov.is2D
-                            % case is 2D open field expt
-                            IbgLmn = (interpImageGaps(Imx0,1) + ...
-                                      interpImageGaps(Imx0,2))/2;
-                        else
-                            % case is 1D grid based expt
-                            IbgLmn = interpImageGaps(Imx0);
-                        end  
                         
+                        % interpolates any gaps within the background image
+                        IbgLmn = obj.interpBGImageGaps(Imx0,IL);
                         IbgLmn = max(IbgLmn,Imx0);
                     else
                         % case is the sub-region is rejected
@@ -880,23 +881,66 @@ classdef SingleTrackInit < SingleTrack
                                 
         end
         
+        % --- interpolates any gaps within the background image
+        function I = interpBGImageGaps(obj,I,I0)
+                                    
+            % determines the gaps within the image
+            [iGrp,BB] = getGroupIndex(isnan(I),'BoundingBox');
+            if isempty(iGrp); return; end
+            
+            % initialisations
+            dN = 5;
+            sz = size(I);
+            
+            % determines the reduced blob regions for each gap
+            for i = 1:length(iGrp)
+                % sets the row/column indices
+                ind0 = floor(BB(i,1:2));
+                iR = max(1,ind0(2)-dN):min(sz(1),ind0(2)+BB(i,4)+dN);
+                iC = max(1,ind0(1)-dN):min(sz(2),ind0(1)+BB(i,3)+dN);
+
+                % sets the local image stack
+                IGrp = cellfun(@(x)(x(iR,iC)),I0,'un',0);
+                IGrpMx = calcImageStackFcn(IGrp,'max');
+
+                % determines the reduced binary blob 
+                szL = size(IGrp{1});
+                iGrpL = glob2loc(iGrp{i},[iC(1),iR(1)],sz,szL);
+                ILim = prctile(IGrpMx(iGrpL),[0,100]);
+                BGrp = detLargestBinary(IGrpMx,ILim);    
+
+                % sets the reduced binary gap
+                IGrpMx(BGrp) = NaN;
+                I(iR,iC) = IGrpMx;
+            end
+
+            % interpolates the gaps within the image
+            if obj.iMov.is2D
+                % case is a 2D setup
+                I = (interpImageGaps(I,1) + interpImageGaps(I,2))/2;    
+            else
+                % case is a 1D setup
+                I = interpImageGaps(I);
+            end            
+            
+        end
+        
         % --- sets up the background image stack
-        function I = setupBGEstStack(obj,I,fP)
+        function I = setupBGEstStack(obj,I,fP,N)
             
             % memory allocation
-            pW = 1.5;
             sz = size(I{1});
-            N = ceil(pW*obj.bSzT);
+            NN = N + 1 + obj.nI;
 
-            %
-            [X,Y] = meshgrid(-N:N); 
+            % sets up distance binary mask
+            [X,Y] = meshgrid(-NN:NN); 
             D = sqrt(X.^2 + Y.^2); 
-            Bfilt = D <= N;
+            Bfilt = D <= NN;
             
-            %
+            % sets up the removal binary mask
             szF = size(Bfilt);             
             xiN = (1:szF) - floor((szF(1)-1)/2+1);  
-            Brmv = bwmorph(Bfilt > 0,'dilate',1+obj.nI);
+            Brmv = Bfilt > 0;
 
             % fill in the regions surrounding the points
             for i = 1:length(I)
@@ -1537,7 +1581,6 @@ classdef SingleTrackInit < SingleTrack
             
             % initialisations
             nFrm = length(Ztot);
-            dTol = obj.iMov.szObj(1)/2;
             Bedge = bwmorph(true(size(Ztot{1})),'remove');            
             
             % ------------------------------------ %
@@ -2564,10 +2607,15 @@ classdef SingleTrackInit < SingleTrack
             if ~obj.showAm; return; end
             
             % plots the final position markers
-            fPosPT0 = obj.fPosP{obj.iPhP,obj.iAppP}(obj.iFrmP,:)';                        
-            yOfs = cellfun(@(x)(x(1)),obj.iMov.iRT{obj.iAppP})-1;
-            fPosPT = cell2mat(cellfun(@(x,y)(obj.frObj.offsetYCoords...
-                            (x,y)),fPosPT0,num2cell(yOfs),'un',0));
+            fPosPT0 = obj.fPosP{obj.iPhP,obj.iAppP};
+            if isempty(fPosPT0)
+                fPosPT = [];
+            else
+                yOfs = cellfun(@(x)(x(1)),obj.iMov.iRT{obj.iAppP})-1;
+                fPosPT = cell2mat(cellfun(@(x,y)(obj.frObj.offsetYCoords...
+                            (x,y)),fPosPT0(obj.iFrmP,:)',...
+                            num2cell(yOfs),'un',0));
+            end
             
             if ~isempty(fPosPT)   
                 if isempty(obj.hMarkAm)
@@ -2643,202 +2691,316 @@ classdef SingleTrackInit < SingleTrack
             end
             
         end        
-        
-        % --- calculates the overall quality values
+
+        % --- calculates the overall quality metrics
         function calcOverallQuality(obj)
             
-            % memory allocation
-            nApp = length(obj.iMov.iR);
-            nMet = length(fieldnames(obj.pStats));
-            nTube = num2cell(arr2vec(getSRCount(obj.iMov)'))';
-            [tData,obj.pData] = deal(cell(nMet,1));
-            bgP = getTrackingPara(obj.iMov.bgP,'pSingle');
-            wStr0 = {'Tracking Quality Calculations','Analysing Frame'};
+            % exit if the user cancelled
+            if ~obj.calcOK; return; end
             
-            % resets the progressbar level count
-            obj.hProg.setLevelCount(2);            
+            % initialisations            
+            nPh = obj.nPhase;
+            okPh = obj.iMov.vPhase < 3;
             
-            % resets the waitbar figure
-            for i = 1:length(wStr0)
-                obj.hProg.Update(1,wStr0{i},0);
-            end            
+            % updates the progressbar
+            wStrNw = 'Calculating Quality Metrics...';
+            obj.hProg.Update(1+obj.wOfsL,wStrNw,(2+nPh)/(obj.pWofs+nPh));            
             
-            % sets up the image filter object
-            if bgP.useFilt
-                obj.hS = fspecial('disk',bgP.hSz); 
-            else
-                obj.hS = [];
-            end
+            % sets up the reference image
+            Iref0 = calcImageStackFcn(obj.frObj.hC,'mean');
+            Iref = obj.frObj.downsampleImage(Iref0);
+            N = (size(Iref,1) - 1)/2;
             
-            % sets the residual/intensity values
-            tData{1} = obj.pStats.IR;
-            tData{2} = obj.pStats.IRmd;             
-            
-            % sets the data values for each of the phases
-            for iPh = 1:obj.nPhase
+            % loops through each of the phases/regions calculating the
+            % z-scores for the positions of all frames/sub-regions
+            for j = find(obj.iMov.ok(:)')
                 % updates the progressbar
-                wStr = sprintf('%s (%i of %i)',wStr0{1},iPh,obj.nPhase);
-                if obj.hProg.Update(1,wStr,iPh/obj.nPhase)
+                wStr = sprintf('Analysing Region (%i of %i)',j,obj.nApp);
+                if obj.hProg.Update(2,wStr,j/obj.nApp)
                     % if the user cancelled, then exit
                     obj.calcOK = false;
                     return
-                else
-                    wStr2 = sprintf('%s (Initialising...)',wStr0{2});
-                    obj.hProg.Update(2,wStr2,0);
                 end
                 
-                % determines if there are any missing data values                                        
-                iFrm = obj.indFrm{iPh};
-                isHV = obj.iMov.vPhase(iPh) > 1;
-                nPhase = length(obj.iMov.vPhase);
-                fok = repmat(cellfun(@(x,n)(x(1:n)),num2cell...
-                            (obj.iMov.flyok,1),nTube,'un',0),nPhase,1)';
-                                
-                % determines if there are any missing residual image stacks
-                % for any region (in the current phase)
-                rReqd = ~cellfun(@isempty,obj.Iss(:,iPh)) & obj.iMov.ok(:);
-                if any(rReqd)
-                    % retrieves the image stack
-                    if obj.isCalib
-                        I = obj.Img0{1};
-                    else
-                        I = arrayfun(@(x)(double(getDispImage...
-                                (obj.iData,obj.iMov,x,0))),iFrm,'un',0); 
-                    end     
-                            
-                    if ~isempty(obj.hS)
-                        % applies the smoothing filter (if required)
-                        I = cellfun(@(x)(imfiltersym(x,obj.hS)),I,'un',0); 
-                    end
-                    
-                    % sets up the residual estimate image stacks
-                    for iApp = find(rReqd(:)')
-                        % retrieves the region image stack
-                        IL = obj.getRegionImageStack(I,iFrm,iApp,isHV);
-                        [obj.Iss{iApp,iPh},obj.dIss{iApp,iPh}] = ...
-                                        obj.setupStatObjStack(IL,iPh,iApp);
-                    end
-                end
-                                
-                % determines the frames that need recalculation                
-                if obj.iMov.vPhase(iPh) < 3
-                    for j = find(obj.iMov.ok(:)')
-                        % updates the progressbar
-                        wStr = sprintf('%s (%i of %i)',wStr0{2},j,nApp);
-                        if obj.hProg.Update(2,wStr,j/nApp)
-                            % if the user cancelled, then exit
-                            obj.calcOK = false;
-                            return
-                        end             
-
-                        % calculates the cross-correlation images (for all
-                        % frames for the current region)
-                        IxcL = obj.dIss{j,iPh};
-                           
-                        % sets the point cross-correlation values at each 
-                        % of the calculated coordinates
-                        for i = 1:length(IxcL)                    
-                            % sets the coordinate of the blobs
-                            fPL = roundP(obj.fPos{iPh}{j,i});
-                            if obj.nI > 0
-                                % downscales the coordinates (if required)
-                                fPL = obj.downsampleImageCoords(fPL,obj.nI);
-                            end
-                            
-                            % retrieves the pixel values
-                            tData{2}{j,iPh}(:,i) = ...
-                                        obj.getPixelValue(IxcL{i},fPL);
-                        end
-                    end
-                end
+                % calculates the region vertical offset
+                fok = obj.iMov.flyok(1:obj.nTube(j),j);
+                yOfs = obj.calcVertOffset(obj.iMov.iRT{j});
+                pOfs = [zeros(length(yOfs),1),yOfs];
                 
-                % calculates the metric z-score probabilities
-                for i = 1:nMet
-                    % calculates the phase metrics mean/std values
-                    Ytot = cell2mat(cellfun(@(x,i)(x(i,:)),...
-                                            tData{i},fok,'un',0));
-                    Ymn = mean(Ytot(:),'omitnan');
-                    Ysd = std(Ytot(:),[],'omitnan');
-                    
-                    % sets the probability values
-                    for j = 1:size(tData{i},1)
-                        pDataNw = normcdf(tData{i}{j,iPh},Ymn,Ysd);
-                        if i == 3
-                            obj.pData{i}{j,iPh} = 100*(1-pDataNw);
-                        else
-                            obj.pData{i}{j,iPh} = 100*pDataNw;
-                        end
-                    end
-                end
-            end
-            
-            % updates the values within the base object
-            obj.pStats.IRmd = tData{2};             
-            
-            % pixel tolerances            
-            isAnom = false(size(obj.iMov.flyok)); 
-            Qval = zeros(size(obj.iMov.flyok)); 
-            
-            % determines which sub-region appear to be empty
-            for i = 1:size(obj.pData{1},1)
-                % groups the metrics and calculates the max/median
-                A = cellfun(@(y)(cell2mat(y(i,:))),obj.pData,'un',0)';
-                Amd = cell2mat(cellfun(@(x)...
-                                    (median(x,2,'omitnan')),A,'un',0));
-                
-                % determines which objects have low overall scores
-                nT = size(Amd,1);
-                [xiT,isOK] = deal(1:nT,~isnan(Amd(:,1)));
-                isAnom(xiT(isOK),i) = all(Amd(isOK,:) < obj.pTolQ,2);
-                isAnom(xiT(~isOK),i) = (Amd(~isOK,2) < obj.pTolQ);
-
-                % calculates the average quality value
-                Qval(xiT,i) = mean([Amd(:,1),Amd(:,2)],2,'omitnan');
-            end
-            
-            % determines if there are any NaN quality values
-            isNQ = isnan(Qval);
-            if any(isNQ(:))
-                % if so, then flag these sub-regions as being anomalous
-                % while resetting the quality value
-                isAnom(isNQ & obj.iMov.flyok) = true;
-                Qval(isNQ) = 0;
-            end
-                
-            % if there are potentially empty regions (and not batch
-            % processing) then show the EmptyRegion gui
-            if any(isAnom(:)) && ~obj.isBatch
-                % closes the progressbar
-                obj.hProg.setVisibility('off');
-                
-                % outputs a message string to the user
-                eStr = sprintf(['One or more anomalous or empty regions ',...
-                                'have been detected.\nYou will need to ',...
-                                'manually accept/reject these regions.']);
-                waitfor(msgbox(eStr,'Anomalous Regions Detected','modal'))
-                
-                % if so, prompt the user if they should exclude those
-                % regions from the analysis
-                eObj = EmptyCheck(obj.fPosG,roundP(Qval,0.1),isAnom);                
-                
-                % resets the status flags for all flagged sub-regions
-                for i = find(eObj.isEmpty(:)')
-                    % sets the region/sub-region indices
-                    [iApp,iTube] = deal(eObj.iApp(i),eObj.iTube(i));
-                    
-                    % updates the status flags
-                    obj.iMov.flyok(iTube,iApp) = false;
-                    
-                    % if all sub-regions are rejected, then reject the
-                    % whole region 
-                    if ~any(obj.iMov.flyok(:,iApp))
-                        obj.iMov.ok(iApp) = false;
+                % calculates the 
+                for i = find(okPh(:)')
+                    % updates the progressbar
+                    wStr = sprintf('Analysing Phase (%i of %i)',...
+                                    i,obj.nPhase);
+                    if obj.hProg.Update(3,wStr,i/obj.nPhase)
+                        % if the user cancelled, then exit
+                        obj.calcOK = false;
+                        return
                     end                    
-                end                
-                
+                    
+                    % retrieves the positional data
+                    IsS = obj.Is{i,j};
+                    fP = cellfun(@(x)(obj.downsampleCoords(x)+...
+                                    pOfs),obj.fPosL{i}(j,:),'un',0);
+
+                    A = cellfun(@(x)(x.*max...
+                                (0,calcXCorr(Iref,x))),IsS{1},'un',0);
+                    P = obj.frObj.calcImageStackStats(A);
+                            
+                    Isub = cell2cell(cellfun(@(y,z)(cellfun(@(x)...
+                            (obj.getPointSubImage(z,x,N)),num2cell...
+                            (y,2),'un',0)),fP,A(:)','un',0),0);
+                    
+                    % calculates the SSIM values for each frame
+                    pSSIM = NaN(size(fP{1},1),length(fP));
+                    for k = 1:length(fP)
+                        pSSIM(fok,k) = cellfun(@(x)...
+                                (obj.calcSSIM(x,Iref,N/2)),Isub(fok,k));
+                    end
+                    
+                    % calculates the z-scores for each frame
+                    pS = obj.pStatsF{i,j};  
+                    [ZIR,ZXC] = deal(NaN(obj.nTube(j),length(IsS{2})));
+                    for iImg = 1:length(IsS{2})
+                        ZIR(fok,iImg) = obj.calcZScores(IsS{2},pS,fP,iImg);
+                        ZXC(fok,iImg) = obj.calcZScores(A,P,fP,iImg);
+                    end
+
+                    % case is the residual difference images
+                    obj.pStats{j,i,1} = ZIR;
+                    obj.pStats{j,i,2} = ZXC;
+                    obj.pStats{j,i,3} = pSSIM;                    
+                end
             end
             
-        end      
+            % determines if there are any infeasible phases
+            if any(~okPh)
+                % if so, then add in the missing data values
+                nSR = getSRCount(obj.iMov,1:obj.nApp);
+                A = arrayfun(@(n)(NaN(n,1)),nSR,'un',0);
+                
+                % fills in the missing phase data (for each metric)
+                for i = 1:obj.nMet
+                    for j = find(~okPh(:)')
+                        obj.pStats(:,j,i) = A;
+                    end
+                end
+            end                        
+            
+            % removes the statistics data fields
+            [obj.Is,obj.pStatsF] = deal([]);
+            
+        end     
+        
+        % --- calculates the sub-region vertical offset
+        function yOfs = calcVertOffset(obj,iRT)
+            
+            % sets the row/column indices
+            if obj.nI > 0
+                % interpolates the images (if large)
+                iRT = cellfun(@(x)(x((obj.nI+1):2*obj.nI:end)),iRT,'un',0);
+            end              
+            
+            % calculates the vertical offset
+            yOfs = [0;cumsum(cellfun(@length,iRT(1:end-1)))];            
+            
+        end
+            
+%         % --- calculates the overall quality values
+%         function calcOverallQuality(obj)
+%             
+%             % memory allocation
+%             nApp = length(obj.iMov.iR);
+%             nMet = length(fieldnames(obj.pStats));
+%             nTube = num2cell(arr2vec(getSRCount(obj.iMov)'))';
+%             [tData,obj.pData] = deal(cell(nMet,1));
+%             bgP = getTrackingPara(obj.iMov.bgP,'pSingle');
+%             wStr0 = {'Tracking Quality Calculations','Analysing Frame'};
+%             
+%             % resets the progressbar level count
+%             obj.hProg.setLevelCount(2);            
+%             
+%             % resets the waitbar figure
+%             for i = 1:length(wStr0)
+%                 obj.hProg.Update(1,wStr0{i},0);
+%             end            
+%             
+%             % sets up the image filter object
+%             if bgP.useFilt
+%                 obj.hS = fspecial('disk',bgP.hSz); 
+%             else
+%                 obj.hS = [];
+%             end
+%             
+%             % sets the residual/intensity values
+%             tData{1} = obj.pStats.IR;
+%             tData{2} = obj.pStats.IRmd;             
+%             
+%             % sets the data values for each of the phases
+%             for iPh = 1:obj.nPhase
+%                 % updates the progressbar
+%                 wStr = sprintf('%s (%i of %i)',wStr0{1},iPh,obj.nPhase);
+%                 if obj.hProg.Update(1,wStr,iPh/obj.nPhase)
+%                     % if the user cancelled, then exit
+%                     obj.calcOK = false;
+%                     return
+%                 else
+%                     wStr2 = sprintf('%s (Initialising...)',wStr0{2});
+%                     obj.hProg.Update(2,wStr2,0);
+%                 end
+%                 
+%                 % determines if there are any missing data values                                        
+%                 iFrm = obj.indFrm{iPh};
+%                 isHV = obj.iMov.vPhase(iPh) > 1;
+%                 nPhase = length(obj.iMov.vPhase);
+%                 fok = repmat(cellfun(@(x,n)(x(1:n)),num2cell...
+%                             (obj.iMov.flyok,1),nTube,'un',0),nPhase,1)';
+%                                 
+%                 % determines if there are any missing residual image stacks
+%                 % for any region (in the current phase)
+%                 rReqd = ~cellfun(@isempty,obj.Iss(:,iPh)) & obj.iMov.ok(:);
+%                 if any(rReqd)
+%                     % retrieves the image stack
+%                     if obj.isCalib
+%                         I = obj.Img0{1};
+%                     else
+%                         I = arrayfun(@(x)(double(getDispImage...
+%                                 (obj.iData,obj.iMov,x,0))),iFrm,'un',0); 
+%                     end     
+%                             
+%                     if ~isempty(obj.hS)
+%                         % applies the smoothing filter (if required)
+%                         I = cellfun(@(x)(imfiltersym(x,obj.hS)),I,'un',0); 
+%                     end
+%                     
+%                     % sets up the residual estimate image stacks
+%                     for iApp = find(rReqd(:)')
+%                         % retrieves the region image stack
+%                         IL = obj.getRegionImageStack(I,iFrm,iApp,isHV);
+%                         [obj.Iss{iApp,iPh},obj.dIss{iApp,iPh}] = ...
+%                                         obj.setupStatObjStack(IL,iPh,iApp);
+%                     end
+%                 end
+%                                 
+%                 % determines the frames that need recalculation                
+%                 if obj.iMov.vPhase(iPh) < 3
+%                     for j = find(obj.iMov.ok(:)')
+%                         % updates the progressbar
+%                         wStr = sprintf('%s (%i of %i)',wStr0{2},j,nApp);
+%                         if obj.hProg.Update(2,wStr,j/nApp)
+%                             % if the user cancelled, then exit
+%                             obj.calcOK = false;
+%                             return
+%                         end             
+% 
+%                         % calculates the cross-correlation images (for all
+%                         % frames for the current region)
+%                         IxcL = obj.dIss{j,iPh};
+%                            
+%                         % sets the point cross-correlation values at each 
+%                         % of the calculated coordinates
+%                         for i = 1:length(IxcL)                    
+%                             % sets the coordinate of the blobs
+%                             fPL = roundP(obj.fPos{iPh}{j,i});
+%                             if obj.nI > 0
+%                                 % downscales the coordinates (if required)
+%                                 fPL = obj.downsampleImageCoords(fPL,obj.nI);
+%                             end
+%                             
+%                             % retrieves the pixel values
+%                             tData{2}{j,iPh}(:,i) = ...
+%                                         obj.getPixelValue(IxcL{i},fPL);
+%                         end
+%                     end
+%                 end
+%                 
+%                 % calculates the metric z-score probabilities
+%                 for i = 1:nMet
+%                     % calculates the phase metrics mean/std values
+%                     Ytot = cell2mat(cellfun(@(x,i)(x(i,:)),...
+%                                             tData{i},fok,'un',0));
+%                     Ymn = mean(Ytot(:),'omitnan');
+%                     Ysd = std(Ytot(:),[],'omitnan');
+%                     
+%                     % sets the probability values
+%                     for j = 1:size(tData{i},1)
+%                         pDataNw = normcdf(tData{i}{j,iPh},Ymn,Ysd);
+%                         if i == 3
+%                             obj.pData{i}{j,iPh} = 100*(1-pDataNw);
+%                         else
+%                             obj.pData{i}{j,iPh} = 100*pDataNw;
+%                         end
+%                     end
+%                 end
+%             end
+%             
+%             % updates the values within the base object
+%             obj.pStats.IRmd = tData{2};             
+%             
+%             % pixel tolerances            
+%             isAnom = false(size(obj.iMov.flyok)); 
+%             Qval = zeros(size(obj.iMov.flyok)); 
+%             
+%             % determines which sub-region appear to be empty
+%             for i = 1:size(obj.pData{1},1)
+%                 % groups the metrics and calculates the max/median
+%                 A = cellfun(@(y)(cell2mat(y(i,:))),obj.pData,'un',0)';
+%                 Amd = cell2mat(cellfun(@(x)...
+%                                     (median(x,2,'omitnan')),A,'un',0));
+%                 
+%                 % determines which objects have low overall scores
+%                 nT = size(Amd,1);
+%                 [xiT,isOK] = deal(1:nT,~isnan(Amd(:,1)));
+%                 isAnom(xiT(isOK),i) = all(Amd(isOK,:) < obj.pTolQ,2);
+%                 isAnom(xiT(~isOK),i) = (Amd(~isOK,2) < obj.pTolQ);
+% 
+%                 % calculates the average quality value
+%                 Qval(xiT,i) = mean([Amd(:,1),Amd(:,2)],2,'omitnan');
+%             end
+%             
+%             % determines if there are any NaN quality values
+%             isNQ = isnan(Qval);
+%             if any(isNQ(:))
+%                 % if so, then flag these sub-regions as being anomalous
+%                 % while resetting the quality value
+%                 isAnom(isNQ & obj.iMov.flyok) = true;
+%                 Qval(isNQ) = 0;
+%             end
+%                 
+%             % if there are potentially empty regions (and not batch
+%             % processing) then show the EmptyRegion gui
+%             if any(isAnom(:)) && ~obj.isBatch
+%                 % closes the progressbar
+%                 obj.hProg.setVisibility('off');
+%                 
+%                 % outputs a message string to the user
+%                 eStr = sprintf(['One or more anomalous or empty regions ',...
+%                                 'have been detected.\nYou will need to ',...
+%                                 'manually accept/reject these regions.']);
+%                 waitfor(msgbox(eStr,'Anomalous Regions Detected','modal'))
+%                 
+%                 % if so, prompt the user if they should exclude those
+%                 % regions from the analysis
+%                 eObj = EmptyCheck(obj.fPosG,roundP(Qval,0.1),isAnom);
+%                 
+%                 % resets the status flags for all flagged sub-regions
+%                 for i = find(eObj.isEmpty(:)')
+%                     % sets the region/sub-region indices
+%                     [iApp,iTube] = deal(eObj.iApp(i),eObj.iTube(i));
+%                     
+%                     % updates the status flags
+%                     obj.iMov.flyok(iTube,iApp) = false;
+%                     
+%                     % if all sub-regions are rejected, then reject the
+%                     % whole region 
+%                     if ~any(obj.iMov.flyok(:,iApp))
+%                         obj.iMov.ok(iApp) = false;
+%                     end                    
+%                 end                
+%                 
+%             end
+%             
+%         end      
         
         % --- sets up the weighted template image
         function Itemp = setupWeightedTemplateImage(obj)
@@ -2878,7 +3040,25 @@ classdef SingleTrackInit < SingleTrack
             else
                 IP(isOK) = cellfun(@(x)(min(x(:),[],'omitnan')),IsubS);
             end
-        end                  
+        end
+        
+        % --- downsamples the image coordinates
+        function fP = upsampleCoords(obj,fP)
+            
+            if obj.nI > 0
+                fP = 1 + obj.nI*(1 + 2*(fP-1));
+            end
+                
+        end            
+        
+        % --- downsamples the image coordinates
+        function fP = downsampleCoords(obj,fP)
+            
+            if obj.nI > 0
+                fP = roundP(((fP-1)/obj.nI - 1)/2 + 1);
+            end
+                
+        end           
         
     end    
     
@@ -2911,16 +3091,31 @@ classdef SingleTrackInit < SingleTrack
         end            
         
         % --- calculates the optimal gaussian para for the signal, II
-        function [sD,ff] = optGaussSignal(II)
+        function [sD,ff] = optGaussSignal(II0)
             
             % initialisations
+            II = normImg(II0);
             N = (length(II)-1)/2;
             gaussEqn = 'A*exp(-(x/sd)^2)';            
             xi = -N:N;
             
-            % fits the gaussian equation and returns the std-dev
-            ff = fit(xi(:),II(:),gaussEqn,'Start',[max(II(:)),1]);
-            sD = ff.sd;
+            % sets the fitting weights
+            W0 = exp(-(xi/N).^2);
+            W = W0/sum(W0);
+            
+            try
+                % fits the gaussian equation and returns the std-dev
+                p0 = [max(II(:)),1];
+                ff = fit(xi(:),II(:),gaussEqn,'Start',p0,...
+                                              'Weights',W);                                          
+                sD = ff.sd;
+            catch
+                % if curve-fitting toolbox is unusable, then use the
+                % optimisation toolbox functions
+                opt = optimset('display','none');
+                pp = lsqnonlin(@optGauss,p0,[0,0],[],opt,xi,II);
+                [ff,sD] = deal([],pp(2));
+            end
             
         end        
         
@@ -3038,7 +3233,102 @@ classdef SingleTrackInit < SingleTrack
             N = 10;
             okFrm = ~cellfun(@(x)(all(isnan(arr2vec(x(1:N,1:N))))),IL);
             
+        end
+        
+        % --- calculates the z-scores from the points
+        function Z = calcZScores(IsS,pS,fP,iImg)
+        
+            % calculates the linear indices for the coordinates
+            ok = ~isnan(fP{iImg}(:,1));
+            iP = sub2ind(size(IsS{1}),fP{iImg}(ok,2),fP{iImg}(ok,1));
+            
+            % calculates the z-scores
+            Z = (IsS{iImg}(iP) - pS.Imu(iImg))/pS.Isd(iImg);
+            
         end        
         
+        % --- calculats the SSIM score
+        function pSSIM = calcSSIM(I,Iref,R,isNorm)
+            
+            %
+            if ~exist('isNorm','var'); isNorm = false; end            
+            
+            %
+            [i1,j1] = deal(~all(isnan(I),2),~all(isnan(I),1));
+            [i2,j2] = deal(~all(isnan(Iref),2),~all(isnan(Iref),1));
+            [ii,jj] = deal(i1 & i2, j1 & j2);
+            
+            %
+            if ~any(ii) || ~any(jj)
+                pSSIM = 0;
+            else
+                % normalises the sub-image
+                if isNorm; I = normImg(I); end
+                pSSIM = ssim(I(ii,jj),Iref(ii,jj),'Radius',R);
+            end
+            
+        end        
+        
+        % --- recalculates the blob positional coordinates
+        function fP = recalcBlobPos(I,fP,pTolT)
+            
+            % initialisations
+            szL = size(I);
+            N = (szL(1)-1)/2;
+            
+            % determines the thresholded blob
+            B0 = setGroup((N+1)*[1,1],szL);
+            [~,B] = detGroupOverlap(I > pTolT,B0);
+            
+            % calculates the blob centroids
+            [iGrp,pC] = getGroupIndex(B,'Centroid');            
+            switch length(iGrp)
+                case 0
+                    % case is no blobs
+                    iMx = argMax(I(:));
+                    [yMx,xMx] = ind2sub(szL,iMx);
+                    pC = [xMx,yMx];
+                    
+                case 1
+                    % case is a single blob
+                    pC = roundP(pC);
+                    
+                otherwise
+                    % case is multiple blobs
+                    iMx = argMax(cellfun(@(x)(max(I(x))),iGrp));
+                    pC = roundP(pC(iMx,:));
+                    
+                    
+            end
+            
+            % offsets the position marker
+            fP = fP + (pC - (N+1));
+            
+        end        
+        
+        % --- expands the image stack, hC, so they are all the same size
+        function hCT = expandImageArray(hC)
+        
+            % determines the sizes of the images in the stack
+            sz = cell2mat(cellfun(@size,hC,'un',0));
+            szMx = max(sz,[],1);
+            
+            %
+            hCT = cell(length(hC),1);
+            for i = 1:length(hC)
+                % sets the image copy
+                if isequal(sz(i,:),szMx)
+                    hCT{i} = hC{i};
+                else
+                    dsz = (szMx(1) - sz(i,1))/2;
+                    xi = dsz + (1:sz(i,1));
+                    
+                    hCT{i} = zeros(szMx);
+                    hCT{i}(xi,xi) = hC{i};
+                end
+            end
+            
+        end
+            
     end
 end

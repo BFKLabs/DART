@@ -40,7 +40,7 @@ classdef CalcBG < handle
         fUpdate
         isAllUpdate
         nManualMx   
-        iSel        
+        iSel                
         
         % temporary markers/objects
         hInfo
@@ -80,6 +80,7 @@ classdef CalcBG < handle
         phaseObj
         dpOfs       
         cMapJet
+        isUpdating
         
     end
     
@@ -102,6 +103,7 @@ classdef CalcBG < handle
             
             % initialises the other fields
             obj.isVisible = false;
+            obj.isUpdating = false;
             
             % initialises the GUI objects
             obj.initObjectCallbacks()  
@@ -1470,7 +1472,7 @@ classdef CalcBG < handle
             switch get(hMenu,'Checked')
                 case 'on'
                     % case is closing an open statistics GUI
-                    obj.statsObj.closeGUI([],[],obj.statsObj);
+                    obj.statsObj.closeGUI([],[]);
                     set(hMenu,'Checked','off');
                     
                     % clears the statistics object
@@ -1674,7 +1676,11 @@ classdef CalcBG < handle
         function frmPrevPhase(obj, ~, ~)
 
             % retrieves the parameter and sub-image data structs
-            if obj.iPara.cPhase == 1; return; end
+            if (obj.iPara.cPhase == 1) || obj.isUpdating
+                return
+            else
+                obj.isUpdating = true;
+            end
 
             % updates the parameter struct
             obj.iPara.cPhase = obj.iPara.cPhase - 1;
@@ -1684,14 +1690,19 @@ classdef CalcBG < handle
             % updates the button properties and the main image
             obj.setButtonProps('Phase')
             obj.updateMainImage()
-        
+            obj.isUpdating = false;
+            
         end
 
         % --- Executes on button press in frmNextPhase.
         function frmNextPhase(obj, ~, ~)
 
             % retrieves the parameter and sub-image data structs
-            if (obj.iPara.cPhase == length(obj.indFrm)); return; end
+            if (obj.iPara.cPhase == length(obj.indFrm)) || obj.isUpdating
+                return
+            else
+                obj.isUpdating = true;
+            end
 
             % updates the parameter struct
             obj.iPara.cPhase = obj.iPara.cPhase + 1;
@@ -1701,6 +1712,7 @@ classdef CalcBG < handle
             % updates the button properties and the main image
             obj.setButtonProps('Phase')
             obj.updateMainImage()
+            obj.isUpdating = false;
         
         end
 
@@ -1793,14 +1805,21 @@ classdef CalcBG < handle
         function frmPrevFrame(obj, ~, ~)
 
             % retrieves the parameter and sub-image data structs
-            if obj.iPara.cFrm == 1; return; end
+            if (obj.isUpdating) || (obj.iPara.cFrm == 1)
+                return
+            else
+                obj.isUpdating = true;
+            end
 
             % updates the parameter struct
             obj.iPara.cFrm = obj.iPara.cFrm - 1;
 
-            % updates the button properties and the main image
+            % updates the button properties
             obj.setButtonProps('Frame')
+            
+            % updates the button properties and the main image
             obj.updateMainImage()
+            obj.isUpdating = false;
         
         end
 
@@ -1810,14 +1829,21 @@ classdef CalcBG < handle
             % retrieves the parameter and sub-image data structs
             if obj.iPara.cFrm == length(obj.indFrm{obj.iPara.cPhase})
                 return
+            elseif obj.isUpdating
+                return
+            else
+                obj.isUpdating = true;                
             end
 
             % updates the parameter struct
             obj.iPara.cFrm = obj.iPara.cFrm + 1;
-
-            % updates the button properties and the main image
+            
+            % updates the button properties
             obj.setButtonProps('Frame')
+            
+            % updates the button properties and the main image
             obj.updateMainImage()
+            obj.isUpdating = false;
         
         end
 

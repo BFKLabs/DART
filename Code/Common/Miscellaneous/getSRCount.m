@@ -25,7 +25,7 @@ if isfield(iMov,'pInfo')
     switch nargin
         case 2
             % only the apparatus index was provided
-            iApp = varargin{1};
+            iApp = varargin{1}(:);
             iRow = floor((iApp-1)/iMov.nCol) + 1;
             iCol = mod((iApp-1),iMov.nCol) + 1; 
             
@@ -40,7 +40,7 @@ if isfield(iMov,'pInfo')
     end
     
     % returns the value at the specified row/column index
-    nFly = nFly(iRow,iCol);
+    nFly = nFly(sub2ind(size(nFly),iRow,iCol));
 
 elseif isfield(iMov,'dTube')
     % if the fixed fly count flag has been set, determine if there is 

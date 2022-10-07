@@ -31,7 +31,7 @@ classdef InitTrackStats < handle
         % fixed object dimensions        
         dY = 5;        
         dX = 10;  
-        nMet = 2;
+        nMet = 3;
         txtSz = 12;
         widFig = 570;        
         hghtPanelI = 40;        
@@ -45,7 +45,7 @@ classdef InitTrackStats < handle
         pMax = 25;
         tPos
         
-        % other misscellaneous fields
+        % other miscellaneous fields
         hS
         aTF
         fRC
@@ -57,6 +57,10 @@ classdef InitTrackStats < handle
         iMax
         isOK = true;
         isUpdating = false;
+        
+        % sets the colour limits
+        pL
+        kL
         
         % variable object dimensions
         cWid0
@@ -90,7 +94,7 @@ classdef InitTrackStats < handle
             
             % centres the figure
             setObjVisibility(obj.hFig,1)
-            centreFigPosition(obj.hFig,2)
+            centreFigPosition(obj.hFig,3)
             
         end
         
@@ -113,9 +117,14 @@ classdef InitTrackStats < handle
             obj.hAx = obj.bgObj.hGUI.imgAxes;
             obj.nPhase = length(obj.bgObj.iMov.vPhase); 
             [obj.iMin,obj.iMax] = deal(cell(obj.nMet,1));
-            obj.pData = obj.bgObj.pData;            
             
-        end        
+            % sets the colour limits and shape factors
+            obj.pL = {[2.00,5.00,8.00];...
+                      [1.00,3.00,6.00];...
+                      [0.10,0.85,0.90]};
+            obj.kL = cellfun(@(x)(obj.calcShapeFactor(x)),obj.pL,'un',0);            
+            
+        end                
         
         % --- initialises the object properties
         function initObjProps(obj)
@@ -134,12 +143,17 @@ classdef InitTrackStats < handle
             fPos = [100,100,obj.widFig,obj.hghtFig];
             obj.widPanelP = obj.widFig - 3*obj.dX;
             
+            % deletes any previous tracking statistics guis
+            hFigPr = findall(0,'tag','figInitTrackStats');
+            if ~isempty(hFigPr); delete(hFigPr); end
+            
             % creates the figure object
+            cbFcn = @obj.closeGUI;
             obj.hFig = figure('Position',fPos,'tag','figInitTrackStats',...
                               'MenuBar','None','Toolbar','None',...
                               'Name','Initial Tracking Statistics',...
                               'NumberTitle','off','Visible','off',...
-                              'Resize','off','CloseRequestFcn',[]); 
+                              'Resize','off','CloseRequestFcn',cbFcn); 
                                           
             % creates the outer panel object
             pPos = [obj.dX*[1,1],fPos(3:4)-2*obj.dX];            
@@ -171,7 +185,8 @@ classdef InitTrackStats < handle
             % creates the popupmenu object
             cbFcn = @obj.popupChangeMetric;
             ppPos = [sum(txtPos([1,3])),y0,obj.widPopup,obj.hghtPopup];
-            lStr = {'Residual (Raw)','Residual (Median-Adjusted)'}';
+            lStr = {'Z-Score (Residual)','Z-Score (X-Corr)',...
+                    'Template SSIM'}';
             obj.hPopupM = uicontrol(obj.hPanelT,'Units','Pixels',...
                                    'Style','PopupMenu','Value',1,...
                                    'Position',ppPos,'String',lStr,...
@@ -281,7 +296,7 @@ classdef InitTrackStats < handle
                 
                 % removes 
                 set(obj.hCheckH,'Value',0)
-                obj.checkShowHighlight(obj.hCheckH, [], obj)
+                obj.checkShowHighlight(obj.hCheckH, [])
             else
                 % sets the normal table data
                 obj.setupTableData();
@@ -300,8 +315,19 @@ classdef InitTrackStats < handle
             
         end
         
+        % --- table edit starting 
+        function tableEditStart(obj, jTable, evnt)
+            
+            if get(evnt,'ClickCount') == 1
+                obj.tableCellSelect([],[]);
+            else
+                obj.jTable.getCellEditor.stopCellEditing();               
+            end
+            
+        end
+        
         % --- table cell selection callback function
-        function tableCellSelect(obj, jTable, ~)
+        function tableCellSelect(obj, ~, ~)
             
             % if the summary data is showing, then exit
             if get(obj.hCheckM,'Value'); return; end
@@ -310,8 +336,8 @@ classdef InitTrackStats < handle
             iColGap = 4;
             
             % retrieves the selected row/column indices
-            iRow = jTable.getSelectedRow + 1;
-            iCol = jTable.getSelectedColumn + 1;
+            iRow = obj.jTable.getSelectedRow + 1;
+            iCol = obj.jTable.getSelectedColumn + 1;
                         
             % if the row/column indices is invalid, or a gap, then exit            
             if isempty(iRow) || isempty(iCol) || (iCol == iColGap)
@@ -322,11 +348,19 @@ classdef InitTrackStats < handle
             switch iCol
                 case 1
                     % case is the overall maximum
-                    iFrmG = obj.iMin(iRow);
+                    if iRow > length(obj.iMin)
+                        return
+                    else
+                        iFrmG = obj.iMin(iRow);
+                    end
                     
                 case 2
                     % case is the overall minimum
-                    iFrmG = obj.iMax(iRow);
+                    if iRow > length(obj.iMax)
+                        return
+                    else
+                        iFrmG = obj.iMax(iRow);
+                    end
                     
                 case 3
                     % case is the average 
@@ -357,7 +391,7 @@ classdef InitTrackStats < handle
             obj.updateHighlightMarker(iPhase,iFrm,iRow);
             
         end
-        
+                
         % --- resets the table data values
         function tableCellChange(obj, ~, evnt)
             
@@ -377,14 +411,21 @@ classdef InitTrackStats < handle
         end
         
         % --- deletes the GUI
-        function closeGUI(obj, ~, ~)
+        function closeGUI(obj, ~, evnt)
             
             % deletes the marker 
             hMarkH = findall(obj.hAx,'tag','hMarkH');
             if ~isempty(hMarkH); delete(hMarkH); end
-           
-            % deletes the GUI
-            delete(obj.hFig);
+          
+            % determines if calling the function directly
+            if ~isempty(evnt)
+                % if so, run the phases stats menu item
+                hMenu = obj.bgObj.hGUI.menuShowStats;
+                obj.bgObj.menuShowStats(hMenu,[]);                
+            else
+                % otherwise, delete the figure object
+                delete(obj.hFig);
+            end
             
         end        
         
@@ -406,7 +447,7 @@ classdef InitTrackStats < handle
             
             % initialises the other gui objects
             obj.initFuncDepTable();
-            obj.initFuncCellComp();            
+            obj.initFuncCellComp();                           
             
         end
         
@@ -433,12 +474,9 @@ classdef InitTrackStats < handle
             obj.jTable.setModel(jTableMod);
             
             % sets the table callback function
+            cbFcnE = @obj.tableEditStart;            
             jTM = handle(obj.jTable,'callbackproperties');            
-            cbFcnC = @obj.tableCellSelect;
-            addJavaObjCallback(jTM,'MouseClickedCallback',cbFcnC);  
-
-%             cbFcnT = @obj.tableCellChange;            
-%             addJavaObjCallback(jTableMod,'TableChangedCallback',cbFcnT)
+            addJavaObjCallback(jTM,'MousePressedCallback',cbFcnE);
             
             % creates the table cell renderer
             obj.tabCR = ColoredFieldCellRenderer(obj.white);
@@ -448,8 +486,8 @@ classdef InitTrackStats < handle
                 for j = 1:size(obj.Data,2)
                     obj.tabCR.setCellFgColor(i-1,j-1,obj.black);
                 end
-            end
-
+            end          
+            
             % disables the smart alignment
             obj.tabCR.setSmartAlign(false);
 
@@ -475,7 +513,7 @@ classdef InitTrackStats < handle
 
             % repaints the table
             obj.jTable.repaint()
-            obj.jTable.setAutoResizeMode(obj.jTable.AUTO_RESIZE_OFF)            
+            obj.jTable.setAutoResizeMode(obj.jTable.AUTO_RESIZE_OFF)                        
             
         end              
         
@@ -506,6 +544,10 @@ classdef InitTrackStats < handle
             % flag that the table is updating
             obj.isUpdating = true;
             pause(0.05);
+            
+            % sets the column editable flags
+            isEdit = false(1,size(obj.Data,2));
+            set(obj.hTable,'ColumnEditable',isEdit)
             
             % sets the background colours based on the column indices
             for i = 1:size(obj.Data,1)
@@ -572,7 +614,7 @@ classdef InitTrackStats < handle
             nMaxSR = max(obj.bgObj.nTube);
             
             % sets the base column header
-            mStr = {'Residual (R)','Residual (M)'};
+            mStr = {'Z-Score (R)','Z-Score (XC)','SSIM'};
             sStr = {'Min','Max','Avg'};
             
             % sets the column header strings
@@ -591,15 +633,15 @@ classdef InitTrackStats < handle
             end                      
             
             % retrieves the metric values
-            nCol = (length(sStr)+1)*obj.nMet - 1;
-            obj.Data = cell(nMaxSR,nCol);
-            [obj.iMin,obj.iMax] = deal(NaN(nMaxSR,3));
             indOK = obj.getValidFrames();
+            nCol = (length(sStr)+1)*obj.nMet - 1;            
+            [obj.iMin,obj.iMax] = deal(NaN(nMaxSR,3));
+            [obj.Data,obj.bgCol] = deal(cell(nMaxSR,nCol));            
             
             % sets the table data values
             for iMet = 1:obj.nMet
                 % retrieves the metric values            
-                yMet = cell2mat(obj.pData{iMet}(iApp,:));
+                yMet = cell2mat(obj.pStats(iApp,:,iMet));
                 yMet(isnan(yMet)) = 0;
                 yMet(:,~indOK) = NaN;                
                 
@@ -609,17 +651,20 @@ classdef InitTrackStats < handle
                 yMean = mean(yMet,2,'omitnan');
             
                 % sets the final table data
+                isZ = iMet < obj.nMet;
                 iCol = (iMet-1)*(length(sStr)+1);
-                obj.Data(iSR,iCol+1) = obj.setValueStr(yMin);
-                obj.Data(iSR,iCol+2) = obj.setValueStr(yMax);
-                obj.Data(iSR,iCol+3) = obj.setValueStr(yMean);
+                obj.Data(iSR,iCol+1) = obj.setValueStr(yMin,isZ);
+                obj.Data(iSR,iCol+2) = obj.setValueStr(yMax,isZ);
+                obj.Data(iSR,iCol+3) = obj.setValueStr(yMean,isZ);
                 
                 % removes any rejected regions
                 obj.Data(~obj.bgObj.iMov.flyok(:,iApp),:) = {'---'};
+                
+                % sets up the background colours
+                iC = max(1,iCol):(iCol+3);
+                obj.bgCol(:,iC) = cellfun(@(x)...
+                        (obj.getCellColour(x,iMet)),obj.Data(:,iC),'un',0);                            
             end
-            
-            % retrieves the background colours
-            obj.bgCol = cellfun(@(x)(obj.getCellColour(x)),obj.Data,'un',0);            
             
         end
         
@@ -632,6 +677,7 @@ classdef InitTrackStats < handle
             iMet = get(obj.hPopupM,'Value');
             
             % sets the row count/indices
+            isZ = iMet < obj.nMet;
             iSR = 1:obj.bgObj.nTube(iApp);
             xiSR = 1:max(obj.bgObj.nTube);
             
@@ -657,7 +703,7 @@ classdef InitTrackStats < handle
                      
             % retrieves the metric values
             indOK = obj.getValidFrames();
-            yMet = cell2mat(obj.pData{iMet}(iApp,:));
+            yMet = cell2mat(obj.pStats(iApp,:,iMet));
             yMet(isnan(yMet)) = 0;
             yMet(:,~indOK) = NaN;
             
@@ -668,16 +714,17 @@ classdef InitTrackStats < handle
             
             % sets the final table data
             obj.Data = cell(xiSR(end),size(yMet,2)+4);
-            obj.Data(iSR,1) = obj.setValueStr(yMin);
-            obj.Data(iSR,2) = obj.setValueStr(yMax);
-            obj.Data(iSR,3) = obj.setValueStr(yMean);
-            obj.Data(iSR,5:end) = obj.setValueStr(yMet);
+            obj.Data(iSR,1) = obj.setValueStr(yMin,isZ);
+            obj.Data(iSR,2) = obj.setValueStr(yMax,isZ);
+            obj.Data(iSR,3) = obj.setValueStr(yMean,isZ);
+            obj.Data(iSR,5:end) = obj.setValueStr(yMet,isZ);
             
             % removes any rejected regions
             obj.Data(~obj.bgObj.iMov.flyok(:,iApp),:) = {'---'};            
             
             % retrieves the background colours
-            obj.bgCol = cellfun(@(x)(obj.getCellColour(x)),obj.Data,'un',0);
+            obj.bgCol = cellfun(@(x)...
+                        (obj.getCellColour(x,iMet)),obj.Data,'un',0);
             
         end        
         
@@ -700,7 +747,7 @@ classdef InitTrackStats < handle
         end        
         
         % --- retrieves the cell colour (based on the value, pVal)
-        function pCol = getCellColour(obj,pStr)
+        function pCol = getCellColour(obj,pStr,iMet)
             
             % sets the RGB colour array based on the value, pVal
             pVal = str2double(pStr);
@@ -713,9 +760,11 @@ classdef InitTrackStats < handle
             else
                 % case is a valid numeric value
                 cMap = colormap('hsv');
-                nRow = ceil(size(cMap,1)/3);
+                nCol = ceil(size(cMap,1)/3);
                 
-                pMap = (min(obj.pMax,pVal)/obj.pMax)*(nRow-1) + 1;
+
+                pMap = 1 + (nCol-1)*obj.calcBoltzValue...
+                                (obj.pL{iMet},obj.kL{iMet},pVal);
                 pRGB = interp1(1:size(cMap,1),cMap,pMap,'linear');
             end
             
@@ -748,8 +797,14 @@ classdef InitTrackStats < handle
         
             % initialisations
             iApp = get(obj.hPopupR,'Value');
-            fPos = obj.bgObj.fPos{iPhase}{iApp,iFrm}(iTube,:);
-            set(obj.hCheckH,'Value',1,'Enable','on');
+            
+            if iTube > getSRCount(obj.bgObj.iMov,iApp)
+                fPos = NaN(1,2);
+                set(obj.hCheckH,'Value',0,'Enable','on');                
+            else
+                fPos = obj.bgObj.fPos{iPhase}{iApp,iFrm}(iTube,:);
+                set(obj.hCheckH,'Value',1,'Enable','on');
+            end
             
             % retrieves the highlight marker handle
             hMarkH = findall(obj.hAx,'tag','hMarkH');
@@ -772,11 +827,42 @@ classdef InitTrackStats < handle
     methods (Static)
         
         % --- converts the numeric values to strings
-        function yStr = setValueStr(yVal)
+        function yStr = setValueStr(yVal,isZ)
             
-            yStr = arrayfun(@(x)(sprintf('%.1f',x)),yVal,'un',0);
+            if isZ
+                yStr = arrayfun(@(x)(sprintf('%.1f',x)),yVal,'un',0);
+            else
+                yStr = arrayfun(@(x)(sprintf('%.3f',x)),yVal,'un',0);                
+            end
             
         end
+        
+        % --- calculate the shape factors
+        function kL = calcShapeFactor(pL)
+            
+            % initialisations
+            pTol = 0.05;            
+            [xH,x0] = deal(pL(2),pL([1,3]));
+            
+            % calculates the shape factors
+            kL = -(1./(x0-xH)).*log((1./[pTol,(1-pTol)])-1);
+            
+        end
+        
+        % --- calculates the boltzmann function values
+        function Y = calcBoltzValue(pL,kL,x)
+            
+            % initialisations
+            xH = pL(2);
+            
+            % calculates the boltzmann function value
+            if x <= xH
+                Y = 1./(1 + exp(-kL(1)*(x-xH)));
+            else
+                Y = 1./(1 + exp(-kL(2)*(x-xH)));
+            end
+            
+        end        
         
     end
     

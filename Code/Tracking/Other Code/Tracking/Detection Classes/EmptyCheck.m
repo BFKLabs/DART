@@ -5,8 +5,7 @@ classdef EmptyCheck < handle
         % important fields
         fP
         iApp
-        iTube
-        Qval
+        iTube        
         hFigM
         isAnom
         isEmpty
@@ -31,11 +30,11 @@ classdef EmptyCheck < handle
     methods
         
         % class contructor
-        function obj = EmptyCheck(fPos,Qval,isAnom)
+        function obj = EmptyCheck(fPos,isAnom)
             
             % main field set
             obj.fP = fPos;
-            [obj.Qval,obj.isAnom] = deal(Qval,isAnom);            
+            obj.isAnom = isAnom;
             obj.hFigM = findall(0,'tag','figFlyTrack');
             
             % sets the table fields            
@@ -66,11 +65,10 @@ classdef EmptyCheck < handle
             
             % sets up the table data fields
             cEdit = [false(1,3),true(1,2)];
-            cHdr = {'Region','Sub-Region','Quality','Marker','Empty?'};
-            Qscore = obj.Qval(obj.isAnom);
-            tData0 = num2cell([obj.iApp(:),obj.iTube(:),Qscore(:)]);
+            cHdr = {'Region','Sub-Region','Marker','Empty?'};
+            tData0 = num2cell([obj.iApp(:),obj.iTube(:)]);
             tData = [tData0,num2cell([obj.showMark,obj.isEmpty])];
-            cForm = {'numeric','numeric','numeric','logical','logical'};
+            cForm = {'numeric','numeric','logical','logical'};
             
             % retrieves the tube object handles
             hTube0 = obj.hFigM.mkObj.hTube;
