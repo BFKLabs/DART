@@ -1054,13 +1054,18 @@ classdef SingleTrackInit < SingleTrack
                 
                 % determines the static group indices
                 okPh = obj.iMov.vPhase < 3;
-                fPosPT = cellfun(@(x)(x{1,iT}),obj.fPosP(okPh,iApp),'un',0);
-                indG = obj.frObj.findStaticPeakGroups(fPosPT);
+                fPosPT = cellfun(@(x)(x{1,iT}),obj.fPosP(okPh,iApp),'un',0);    
+                
+                if any(cellfun(@isempty,fPosPT))
+                    indG = [];
+                else
+                    indG = obj.frObj.findStaticPeakGroups(fPosPT);
+                end
                 
                 % determines which groups are present over all phases
                 if isempty(indG)
                     % FINISH ME?
-                    a = 1;                    
+                    return                    
                     
                 else                    
                     % if such groupings exist, then determine which
@@ -2708,8 +2713,8 @@ classdef SingleTrackInit < SingleTrack
             
             % sets up the reference image
             Iref0 = calcImageStackFcn(obj.frObj.hC,'mean');
-            Iref = obj.frObj.downsampleImage(Iref0);
-            N = (size(Iref,1) - 1)/2;
+            Iref = normImg(obj.frObj.downsampleImage(Iref0));
+            N = ceil((size(Iref,1) - 1)/2);
             
             % loops through each of the phases/regions calculating the
             % z-scores for the positions of all frames/sub-regions
@@ -2754,16 +2759,17 @@ classdef SingleTrackInit < SingleTrack
                     % calculates the SSIM values for each frame
                     pSSIM = NaN(size(fP{1},1),length(fP));
                     for k = 1:length(fP)
-                        pSSIM(fok,k) = cellfun(@(x)...
-                                (obj.calcSSIM(x,Iref,N/2)),Isub(fok,k));
+                        pSSIM(fok,k) = cellfun(@(x)(obj.calcSSIM...
+                                    (normImg(x),Iref,N/2)),Isub(fok,k));
                     end
                     
                     % calculates the z-scores for each frame
                     pS = obj.pStatsF{i,j};  
                     [ZIR,ZXC] = deal(NaN(obj.nTube(j),length(IsS{2})));
-                    for iImg = 1:length(IsS{2})
-                        ZIR(fok,iImg) = obj.calcZScores(IsS{2},pS,fP,iImg);
-                        ZXC(fok,iImg) = obj.calcZScores(A,P,fP,iImg);
+                    for k = 1:length(IsS{2})
+                        fok = ~isnan(fP{k}(:,1));
+                        ZIR(fok,k) = obj.calcZScores(IsS{2},pS,fP,k,fok);
+                        ZXC(fok,k) = obj.calcZScores(A,P,fP,k,fok);
                     end
 
                     % case is the residual difference images
@@ -3236,10 +3242,9 @@ classdef SingleTrackInit < SingleTrack
         end
         
         % --- calculates the z-scores from the points
-        function Z = calcZScores(IsS,pS,fP,iImg)
+        function Z = calcZScores(IsS,pS,fP,iImg,ok)
         
             % calculates the linear indices for the coordinates
-            ok = ~isnan(fP{iImg}(:,1));
             iP = sub2ind(size(IsS{1}),fP{iImg}(ok,2),fP{iImg}(ok,1));
             
             % calculates the z-scores

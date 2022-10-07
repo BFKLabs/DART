@@ -189,7 +189,7 @@ classdef FilterResObj < handle
             
             % calculates the image stack statistics
             obj.calcImageStackStats(obj.dIRs);
-            [obj.pStats.Imu,obj.pStats.Isd]
+%             [obj.pStats.Imu,obj.pStats.Isd]
             
         end                        
         
@@ -242,9 +242,9 @@ classdef FilterResObj < handle
                     [obj.mFlag(iT),sFlagT] = deal(2,0);
                     
                 else
-                    if iT == 12
-                        a = 1;
-                    end
+%                     if iT == 12
+%                         a = 1;
+%                     end
                     
                     % otherwise, use the residual based methods to
                     % determine the blob's locations
@@ -619,7 +619,13 @@ classdef FilterResObj < handle
         
         % --- calculates the fly template image (for the current region) 
         function setupFlyTemplate(obj)
-                        
+
+            % sets the sub-region size
+            N = ceil(obj.dTol);
+            if obj.nI > 0
+                N = (1+obj.nI)*N + 1;         
+            end
+                
             % sets the known fly location coordinates/linear indices
             yOfsT = cell2mat(obj.yOfs(obj.okS));
             pOfsT = [zeros(sum(obj.okS),1),yOfsT(:)];            
@@ -633,16 +639,13 @@ classdef FilterResObj < handle
             % keep looping until the filtered binary mask no-longer touches
             % the edge of the sub-region frame
             while 1
-                % sets the sub-region size
-                N = ceil(obj.dTol*(1+obj.nI));
-
                 % retrieves the fly sub-image stack (for all known points)
                 Isub = cell(obj.nFrm,sum(obj.okS));
                 for i = 1:obj.nFrm
                     Isub(i,:) = cellfun(@(x)(obj.getPointSubImage...
                            (IR0s{i},x,N)),num2cell(fPosT{i},2),'un',0)';
 %                     Isub(i,:) = cellfun(@(x)(obj.getPointSubImage...
-%                            (obj.IL0{i},x,N)),num2cell(fPosT{i},2),'un',0)';
+%                            (obj.IRs{i},x,N)),num2cell(fPosT{i},2),'un',0)';
                 end
                 
                 % calculates the 
@@ -664,7 +667,8 @@ classdef FilterResObj < handle
                 % thresholds the filtered sub-image
                 Brmv = B & (normImg(obj.hC{obj.iApp}) > obj.pTolBB);   
                 if all(Brmv(bwmorph(true(size(Brmv)),'remove')))
-                    obj.dTol = obj.dTol + 1;
+                    N = N + (1+obj.nI);
+                    obj.dTol = obj.dTol + 1;                    
                 else
                     break
                 end
@@ -1289,7 +1293,7 @@ classdef FilterResObj < handle
         function iMx = getSigPeaks(I,Bexc,isDR)
             
             % parameters
-            pTolN = 0.5 + 0.1*isDR; 
+            pTolN = 0.5; 
 
             % determines the peaks from the normalised image
             IN = normImg(I);            
