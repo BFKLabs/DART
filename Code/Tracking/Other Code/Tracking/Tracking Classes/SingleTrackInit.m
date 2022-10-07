@@ -448,7 +448,7 @@ classdef SingleTrackInit < SingleTrack
 
             % calculates the overall quality of the flies (prompting the
             % user to exclude any empty/anomalous regions)
-            if ~obj.isBatch && any(obj.iMov.vPhase < 3)
+            if any(obj.iMov.vPhase < 3)
                 obj.calcOverallQuality()
             end                                 
             
@@ -574,15 +574,12 @@ classdef SingleTrackInit < SingleTrack
             % stores the values into the arrays
             obj.fPosP{iPh,iApp} = cellfun(@(x)...
                         (obj.upsampleCoords(x)),obj.frObj.pMaxS,'un',0);
-            obj.yPosP{iPh,iApp} = obj.frObj.RMaxS;
-        
-            % sets the stat/sub-image stacks
-            if ~obj.isBatch                
-                % sets the stats fields
-                obj.Is{iPh,iApp} = {obj.frObj.IRs,obj.frObj.dIRs};
-                obj.pStatsF{iPh,iApp} = obj.frObj.pStats;                
-                [obj.frObj.dIRs,obj.frObj.IXCs] = deal([]);
-            end
+            obj.yPosP{iPh,iApp} = obj.frObj.RMaxS;            
+            
+            % sets the stats fields
+            obj.pStatsF{iPh,iApp} = obj.frObj.pStats;
+            obj.Is{iPh,iApp} = {obj.frObj.IRs,obj.frObj.dIRs};
+            [obj.frObj.dIRs,obj.frObj.IXCs] = deal([]);
             
         end        
 
@@ -867,7 +864,7 @@ classdef SingleTrackInit < SingleTrack
                         Imx0 = calcImageStackFcn(IbgE,'max');
                         
                         % interpolates any gaps within the background image
-                        IbgLmn = obj.interpBGImageGaps(Imx0,IL);
+                        IbgLmn = obj.interpBGImageGaps(Imx0,IL,fP);
                         IbgLmn = max(IbgLmn,Imx0);
                     else
                         % case is the sub-region is rejected
@@ -882,15 +879,17 @@ classdef SingleTrackInit < SingleTrack
         end
         
         % --- interpolates any gaps within the background image
-        function I = interpBGImageGaps(obj,I,I0)
+        function I = interpBGImageGaps(obj,I,I0,fP)
                                     
             % determines the gaps within the image
-            [iGrp,BB] = getGroupIndex(isnan(I),'BoundingBox');
+            B0 = isnan(I);
+            [iGrp,BB] = getGroupIndex(B0,'BoundingBox');
             if isempty(iGrp); return; end
             
             % initialisations
             dN = 5;
             sz = size(I);
+            iP = unique(cellfun(@(x)(sub2ind(sz,x(:,2),x(:,1))),fP));
             
             % determines the reduced blob regions for each gap
             for i = 1:length(iGrp)
@@ -898,16 +897,26 @@ classdef SingleTrackInit < SingleTrack
                 ind0 = floor(BB(i,1:2));
                 iR = max(1,ind0(2)-dN):min(sz(1),ind0(2)+BB(i,4)+dN);
                 iC = max(1,ind0(1)-dN):min(sz(2),ind0(1)+BB(i,3)+dN);
+                pOfs = [iC(1),iR(1)];
 
                 % sets the local image stack
                 IGrp = cellfun(@(x)(x(iR,iC)),I0,'un',0);
                 IGrpMx = calcImageStackFcn(IGrp,'max');
-
-                % determines the reduced binary blob 
                 szL = size(IGrp{1});
-                iGrpL = glob2loc(iGrp{i},[iC(1),iR(1)],sz,szL);
-                ILim = prctile(IGrpMx(iGrpL),[0,100]);
-                BGrp = detLargestBinary(IGrpMx,ILim);    
+                
+                %
+                iPG = glob2loc(intersect(iP,iGrp{i}),pOfs,sz,szL);
+                if isempty(iPG)
+                    % determines the reduced binary blob
+                    BGrp = detLargestBinary(IGrpMx);                    
+                else
+                    iPG = iPG(argMin(IGrpMx(iPG)));
+                    [yPG,xPG] = ind2sub(szL,iPG);
+                    ILim = [IGrpMx(iPG(1)),max(IGrpMx(:))];
+
+                    % determines the reduced binary blob
+                    BGrp = detLargestBinary(IGrpMx,[xPG,yPG],ILim);
+                end
 
                 % sets the reduced binary gap
                 IGrpMx(BGrp) = NaN;
@@ -2745,37 +2754,49 @@ classdef SingleTrackInit < SingleTrack
                     
                     % retrieves the positional data
                     IsS = obj.Is{i,j};
+                    pS = obj.pStatsF{i,j};                    
                     fP = cellfun(@(x)(obj.downsampleCoords(x)+...
                                     pOfs),obj.fPosL{i}(j,:),'un',0);
 
-                    A = cellfun(@(x)(x.*max...
-                                (0,calcXCorr(Iref,x))),IsS{1},'un',0);
-                    P = obj.frObj.calcImageStackStats(A);
-                            
-                    Isub = cell2cell(cellfun(@(y,z)(cellfun(@(x)...
-                            (obj.getPointSubImage(z,x,N)),num2cell...
-                            (y,2),'un',0)),fP,A(:)','un',0),0);
-                    
-                    % calculates the SSIM values for each frame
-                    pSSIM = NaN(size(fP{1},1),length(fP));
-                    for k = 1:length(fP)
-                        pSSIM(fok,k) = cellfun(@(x)(obj.calcSSIM...
-                                    (normImg(x),Iref,N/2)),Isub(fok,k));
-                    end
-                    
-                    % calculates the z-scores for each frame
-                    pS = obj.pStatsF{i,j};  
-                    [ZIR,ZXC] = deal(NaN(obj.nTube(j),length(IsS{2})));
+                    %
+                    ZIR = NaN(obj.nTube(j),length(IsS{2}));                               
                     for k = 1:length(IsS{2})
                         fok = ~isnan(fP{k}(:,1));
                         ZIR(fok,k) = obj.calcZScores(IsS{2},pS,fP,k,fok);
-                        ZXC(fok,k) = obj.calcZScores(A,P,fP,k,fok);
-                    end
-
+                    end             
+                    
                     % case is the residual difference images
-                    obj.pStats{j,i,1} = ZIR;
-                    obj.pStats{j,i,2} = ZXC;
-                    obj.pStats{j,i,3} = pSSIM;                    
+                    obj.pStats{j,i,1} = ZIR;                    
+                                
+                    % set the other quality metrics (non-batch only)
+                    if ~obj.isBatch                                
+                        %
+                        A = cellfun(@(x)(x.*max...
+                                    (0,calcXCorr(Iref,x))),IsS{1},'un',0);
+                        P = obj.frObj.calcImageStackStats(A);
+
+                        Isub = cell2cell(cellfun(@(y,z)(cellfun(@(x)...
+                                (obj.getPointSubImage(z,x,N)),num2cell...
+                                (y,2),'un',0)),fP,A(:)','un',0),0);
+
+                        % calculates the SSIM values for each frame
+                        pSSIM = NaN(size(fP{1},1),length(fP));
+                        for k = 1:length(fP)
+                            pSSIM(fok,k) = cellfun(@(x)(obj.calcSSIM...
+                                        (normImg(x),Iref,N/2)),Isub(fok,k));
+                        end       
+                        
+                        % calculates the z-scores for each frame
+                        ZXC = NaN(obj.nTube(j),length(IsS{2}));
+                        for k = 1:length(IsS{2})
+                            fok = ~isnan(fP{k}(:,1));
+                            ZXC(fok,k) = obj.calcZScores(A,P,fP,k,fok);
+                        end
+
+                        % case is the residual difference images
+                        obj.pStats{j,i,2} = ZXC;
+                        obj.pStats{j,i,3} = pSSIM;
+                    end
                 end
             end
             
@@ -3099,11 +3120,17 @@ classdef SingleTrackInit < SingleTrack
         % --- calculates the optimal gaussian para for the signal, II
         function [sD,ff] = optGaussSignal(II0)
             
+            function F = optGauss(p,x)
+                
+                F = p(1)*exp(-(x/p(2)).^2);
+                
+            end
+            
             % initialisations
-            II = normImg(II0);
+            II = normImg(II0(:));
             N = (length(II)-1)/2;
             gaussEqn = 'A*exp(-(x/sd)^2)';            
-            xi = -N:N;
+            xi = (-N:N)';
             
             % sets the fitting weights
             W0 = exp(-(xi/N).^2);
@@ -3119,7 +3146,7 @@ classdef SingleTrackInit < SingleTrack
                 % if curve-fitting toolbox is unusable, then use the
                 % optimisation toolbox functions
                 opt = optimset('display','none');
-                pp = lsqnonlin(@optGauss,p0,[0,0],[],opt,xi,II);
+                pp = lsqcurvefit(@optGauss,p0,xi,II,[0,0],[10,10],opt);
                 [ff,sD] = deal([],pp(2));
             end
             

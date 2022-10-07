@@ -441,14 +441,15 @@ classdef PhaseTrack < matlab.mixin.SetGet
                                         % if there is a large jump in
                                         % the previous position data, then
                                         % use the last known point
-                                        fPest = fPrNw(end,:);
+                                        fPest = min(flip(szL),...
+                                                    max(1,fPrNw(end,:)));
                                     end
                                     
                                     % calculates the estimate/candidate
-                                    % points (scale to dTol)                                    
+                                    % points (scale to dTol)                        
                                     Best = setGroup(roundP(fPest),szL);
                                     Dest = bwdist(Best);
-                                    DpC = Dest(ipC)/obj.dTol;                                
+                                    DpC = Dest(ipC)/obj.dTol;   
                                 else
                                     % sets the distance tolerance                                    
                                     dTolMax = obj.getPDTol(indR,fPest,2,1);                                     

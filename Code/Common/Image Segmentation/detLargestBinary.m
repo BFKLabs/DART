@@ -1,6 +1,6 @@
 % --- determines the largest feasible binary mask (i.e., binary
 %     mask which doesn't touch the image edge)
-function BGrp = detLargestBinary(I,ILim,nDil)
+function BGrp = detLargestBinary(I,p0,ILim,nDil)
 
 % parameters
 dILimTol = 1;
@@ -8,11 +8,16 @@ dILimTol = 1;
 % other initialisations
 szL = size(I);
 BE = bwmorph(true(szL),'remove');
-[B0,BBest] = deal(setGroup(floor(szL/2),szL));
 
 % default input arguments
 if ~exist('nDil','var'); nDil = 2; end
-if ~exist('ILim','var'); ILim = [I(B0),max(I(:))]; end
+if ~exist('ILim','var'); ILim = [min(I(:)),max(I(:))]; end
+
+if exist('p0','var')
+    [B0,BBest] = deal(setGroup(roundP(p0),szL));    
+else
+    [B0,BBest] = deal(setGroup(argMin(I(:)),szL));
+end
 
 % keep looping until limit difference is less than tolerance
 while diff(ILim) > dILimTol
