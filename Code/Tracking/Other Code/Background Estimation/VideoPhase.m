@@ -297,9 +297,9 @@ classdef VideoPhase < handle
             obj.hasT = false(1,obj.nApp);            
             
             % determines the frames which are feasible
-            ImgMu = max(obj.Imu,[],1)';
-            isOK = (ImgMu > obj.phsP.pTolLo) & (ImgMu < obj.phsP.pTolHi);
-            [i0,i1] = deal(find(isOK,1,'first'),find(isOK,1,'last'));                
+            isOK = any((obj.Imu > obj.phsP.pTolLo) & ...
+                       (obj.Imu < obj.phsP.pTolHi),2);
+            [i0,i1] = deal(find(isOK,1,'first'),find(isOK,1,'last')); 
             
             % updates the progressbar
             obj.updateSubProgField('Determining Video Translation',0.25);            

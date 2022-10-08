@@ -1290,8 +1290,7 @@ classdef SingleTrackInit < SingleTrack
             ImgMd = cellfun(@(x)(median(x(:),'omitnan')),obj.Img{iPh});
             if any(ImgMd <= ILim(1)) || any(ImgMd >= ILim(2))
                 % resets the coordinates for each sub-region to NaNs
-                for i = 1:length(obj.fPos{iPh})
-                    obj.fPos{iPh}{i}(:) = NaN;
+                for i = 1:length(obj.fPosL{iPh})
                     obj.fPosL{iPh}{i}(:) = NaN;
                 end
                 

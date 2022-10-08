@@ -157,7 +157,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                     if ~isempty(Img0)
                         % if a frame has been read, then determine if the
                         % pixel intensity is feasible
-                        Imd = median(Img0(:),'omitnan');
+                        Imd = mean(Img0(:),'omitnan');
                         if prod(sign(pLim-Imd)) == -1                        
                             % if feasible, then exit
                             break
