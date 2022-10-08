@@ -16,7 +16,7 @@ classdef EmptyCheck < handle
         hPanelB
         hPanelT
         hTable
-        hButton
+        hButC
         hTube
         hMark
         
@@ -24,6 +24,7 @@ classdef EmptyCheck < handle
         dY = 10;
         dYB = 8;
         mSz = 10;
+        nBut = 3;
         
     end
     
@@ -78,13 +79,14 @@ classdef EmptyCheck < handle
             arrayfun(@(x)(obj.updateTubeColour(x)),1:length(obj.hTube))
             
             % sets the callback functions
-            cbFcnT = {@EmptyCheck.tableEditCallback,obj};
-            cbFcnB = {@EmptyCheck.buttonCont,obj};
+            cbFcnT = @obj.tableEditCallback;
+            cbFcnB = {@obj.buttonAddAll,...
+                      @obj.buttonRemoveAll,...
+                      @obj.buttonCont};
             
             % sets the table/button panel dimensions
             tPos = [obj.dY*[1,1],tWid,tHght];
-            pPosB = [obj.dY*[1,1],tPos(3)+2*obj.dY,pHght];
-            bPos = [obj.dY,obj.dYB,tPos(3),bHght];
+            pPosB = [obj.dY*[1,1],tPos(3)+2*obj.dY,pHght];            
             
             % sets the dimensions of the table panel
             yPosT = sum(pPosB([2,4]))+obj.dY;
@@ -112,7 +114,7 @@ classdef EmptyCheck < handle
                                   'Units','Pixels',...
                                   'Position',pPosB);
             
-            % creates the table and button
+            % creates the table 
             obj.hTable = uitable(obj.hPanelT,'Units','Pixels',...
                                              'Position',tPos,...
                                              'ColumnName',cHdr,...
@@ -120,15 +122,23 @@ classdef EmptyCheck < handle
                                              'ColumnFormat',cForm,...
                                              'Data',tData,...
                                              'CellEditCallback',cbFcnT);
-            obj.hButton = uicontrol('Parent',obj.hPanelB,...
-                                    'Style','PushButton',...
-                                    'Units','Pixels',...
-                                    'Position',bPos,...
-                                    'String','Finish Initial Tracking',...
-                                    'FontUnits','Pixels',...
-                                    'FontSize',12,...
-                                    'FontWeight','bold',...
-                                    'Callback',cbFcnB);
+                                  
+            % creates the control button objects
+            obj.hButC = cell(obj.nBut,1);
+            bWid = (tPos(3)-(obj.nBut-1)*obj.dY)/obj.nBut;
+            bStr = {'Add All','Remove All','Finalise Tracking'};            
+            for i = 1:obj.nBut
+                lbPos = i*obj.dY + (i-1)*bWid;
+                bPos = [lbPos,obj.dYB,bWid,bHght];
+                obj.hButC{i} = uicontrol('Parent',obj.hPanelB,...
+                        'Style','PushButton','Units','Pixels',...
+                        'Position',bPos,'String',bStr{i},...
+                        'FontUnits','Pixels','FontSize',12,...
+                        'FontWeight','bold','Callback',cbFcnB{i});
+            end
+            
+            % disables the add all button 
+            setObjEnable(obj.hButC{1},0)
                                 
             % retrieves the main axes image handle
             hPanelP = findall(obj.hFigM,'tag','panelImg');
@@ -155,18 +165,111 @@ classdef EmptyCheck < handle
                                 
         end        
         
+        % --------------------------------- %
+        % --- OBJECT CALLBACK FUNCTIONS --- %
+        % --------------------------------- %
+        
+        % --- callback function for editing the table
+        function tableEditCallback(obj,~,evnt)
+            
+            % updates the empty flag
+            [iRow,iCol] = deal(evnt.Indices(1),evnt.Indices(2));
+            
+            switch iCol
+                case 4
+                    obj.showMark(iRow) = evnt.NewData;
+                    obj.updatePlotMarkers()                    
+                case 5
+                    obj.isEmpty(iRow) = evnt.NewData;
+                    obj.updateTubeColour(iRow)
+            end
+            
+        end
+        
         % --- closes the window
         function closeGUI(obj)
             
             delete(obj.hFig)
             
+        end        
+        
+        % -------------------------------- %
+        % --- CONTROL BUTTON FUNCTIONS --- %
+        % -------------------------------- %        
+
+        % --- callback function for clicking the add all button
+        function buttonAddAll(obj,hObj,~)
+            
+            % updates the marker flags
+            [obj.showMark(:),obj.isEmpty(:)] = deal(true);
+            
+            % updates the plot markers and tube colours
+            obj.updatePlotMarkers()
+            obj.updateTubeColour()             
+            
+            % updates the table data
+            Data = get(obj.hTable,'Data');
+            Data(:,3:4) = {true};
+            set(obj.hTable,'Data',Data)
+            
+            % updates the button enabled properties
+            setObjEnable(hObj,0);
+            setObjEnable(obj.hButC{2},1);
+            
         end
+                
+        % --- callback function for clicking the remove all button
+        function buttonRemoveAll(obj,hObj,~)
+            
+            % updates the marker flags            
+            [obj.showMark(:),obj.isEmpty(:)] = deal(false);
+                
+            % updates the table data
+            Data = get(obj.hTable,'Data');
+            Data(:,3:4) = {false};
+            set(obj.hTable,'Data',Data)            
+            
+            % updates the plot markers and tube colours
+            obj.updatePlotMarkers()
+            obj.updateTubeColour()    
+
+            % updates the button enabled properties
+            setObjEnable(hObj,0);
+            setObjEnable(obj.hButC{1},1);            
+            
+        end        
+        
+        % --- callback function for clicking the continue button
+        function buttonCont(obj,~,~)
+            
+            % makes the tube region invisible again
+            cellfun(@(x)(setObjVisibility(x,'off')),obj.hTube)
+            
+            % deletes the plot markers
+            delete(obj.hMark);
+            
+            % closes the object
+            obj.closeGUI();
+            
+        end                        
+
+        % ----------------------- %
+        % --- OTHER FUNCTIONS --- %
+        % ----------------------- %        
         
         % --- updates the tube colours based on the selection
         function updateTubeColour(obj,iTube)
             
+            % initialisations
             col = 'gr';
-            set(obj.hTube{iTube},'facecolor',col(1+obj.isEmpty(iTube)))
+            
+            % updates the tube colours
+            if exist('iTube','var')
+                set(obj.hTube{iTube},'facecolor',col(1+obj.isEmpty(iTube)))
+            else
+                cellfun(@(x,y)(set(x,'facecolor',col(1+y))),...
+                                        obj.hTube,num2cell(obj.isEmpty))
+            end
             
         end
         
@@ -187,41 +290,6 @@ classdef EmptyCheck < handle
             set(obj.hMark,'xdata',fPT(:,1),'ydata',fPT(:,2))     
             
         end
-        
-    end
-    
-    methods(Static)
-
-        % --- callback function for editing the table
-        function tableEditCallback(hObj,evnt,obj)
-            
-            % updates the empty flag
-            [iRow,iCol] = deal(evnt.Indices(1),evnt.Indices(2));
-            
-            switch iCol
-                case 4
-                    obj.showMark(iRow) = evnt.NewData;
-                    obj.updatePlotMarkers()                    
-                case 5
-                    obj.isEmpty(iRow) = evnt.NewData;
-                    obj.updateTubeColour(iRow)
-            end
-            
-        end
-        
-        % --- callback function for clicking the continue button
-        function buttonCont(hObj,evnt,obj)
-            
-            % makes the tube region invisible again
-            cellfun(@(x)(setObjVisibility(x,'off')),obj.hTube)
-            
-            % deletes the plot markers
-            delete(obj.hMark);
-            
-            % closes the object
-            obj.closeGUI();
-            
-        end        
         
     end
 

@@ -2730,7 +2730,7 @@ classdef SingleTrackInit < SingleTrack
             for j = find(obj.iMov.ok(:)')
                 % updates the progressbar
                 wStr = sprintf('Analysing Region (%i of %i)',j,obj.nApp);
-                if obj.hProg.Update(2,wStr,j/obj.nApp)
+                if obj.hProg.Update(2+obj.wOfsL,wStr,j/obj.nApp)
                     % if the user cancelled, then exit
                     obj.calcOK = false;
                     return
@@ -2746,7 +2746,7 @@ classdef SingleTrackInit < SingleTrack
                     % updates the progressbar
                     wStr = sprintf('Analysing Phase (%i of %i)',...
                                     i,obj.nPhase);
-                    if obj.hProg.Update(3,wStr,i/obj.nPhase)
+                    if obj.hProg.Update(3+obj.wOfsL,wStr,i/obj.nPhase)
                         % if the user cancelled, then exit
                         obj.calcOK = false;
                         return

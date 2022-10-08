@@ -145,7 +145,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         function Img0 = getFeasComparisonImage(obj,fStr,iFrm0)
 
             % initialisations
-            pLim = [0,255] + 15*[1,-1];
+            pLim = [0,255] + 10*[1,-1];
             [iImg,nFrmMax] = deal(1,20);            
             if ~exist('iFrm0','var'); iFrm0 = 1; end
 
