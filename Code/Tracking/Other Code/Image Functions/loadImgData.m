@@ -9,6 +9,7 @@ global isBatch bufData frmSz0
 if isempty(isBatch); isBatch = false; end
 
 % object handles
+nFrmMin = 10;
 hFig = handles.output;
 
 % retrieves the program/sub-image stack data struct
@@ -23,76 +24,33 @@ if ~isBatch
 end
 
 % initialisations
-[ok,Frm0,T0] = deal(1,1,0);
-eStr0 = 'Error! Video appears to be corrupted. Suggest deleting file.';
-
-% sets the full movie file name
+[Frm0,T0] = deal(1,0);
 fStr = fullfile(fDir,fName);
 
-% attempts to determine if the movie file is valid
+% sets up the video reader object (if corrupted then exit)
 [~,~,fExtn] = fileparts(fStr);
-if exist(fStr,'file')
-    try
-        % uses the later version of the function 
-        switch fExtn
-            case {'.mj2', '.mov','.mp4'}
-                mObj = VideoReader(fStr);
-            case '.mkv'
-                mObj = ffmsReader();
-                [~,~] = mObj.open(fStr,0);        
-            otherwise
-                mObj = VideoReader(fStr);
-                [V,~] = mmread(fStr,inf,[],false,true,'');
-        end
-        
-    catch
-        % if an error occured, then output an error and exit the function
-        if ~isBatch
-            eStr = eStr0;
-            waitfor(errordlg(eStr,'Corrupted Video File','modal'))
-        end        
-        ok = false; return
-    end
-    
-else
-    try
-        % uses the earlier version of the function 
-        aviinfo(fStr)
-    catch
-        % if an error occured, then output an error and exit the function
-        if ~isBatch
-            eStr = eStr0;
-            waitfor(errordlg(eStr,'Corrupted Video File','modal'))            
-        end        
-        ok = false; return        
-    end
+[mObj,vObj,ok] = setupVideoObject(fStr);
+if ~ok; return; end
+
+% if the video frame count is too low, then exit
+iData.nFrmT = getVideoFrameCount(mObj,vObj,fExtn);
+if iData.nFrmT < nFrmMin
+    ok = false;
+    return
 end
 
 % opens the movie file object
 [wState,isVidObj] = deal(warning('off','all'),true);
 switch fExtn
     case {'.mj2','.mov','.mp4'}
+        % case is an .mj2, .mov or .mp4 files
         hFig.mObj = mObj;
         iData.exP.FPS = mObj.FrameRate;
-        iData.sz = [mObj.Height mObj.Width];   
-        iData.nFrmT = mObj.NumberOfFrames;
-        
-        % determines the final frame count (some frames at the
-        % end of videos sometimes are dodgy...)        
-        while 1            
-            try 
-                % reads a new frame. 
-                I = read(mObj,iData.nFrmT);
-                break
-            catch
-                % if there was an error, reduce the frame count
-                iData.nFrmT = iData.nFrmT - 1;
-            end
-        end
+        iData.sz = [mObj.Height mObj.Width];         
         
     case '.mkv'
+        % case is .mkv files
         hFig.mObj = mObj;        
-        iData.nFrmT = mObj.numberOfFrames;
         
         % reads in a small sub-set of images (to determine size/frame rate)
         [tTmp,nFrmTmp] = deal([],5);
@@ -102,31 +60,19 @@ switch fExtn
         
         % sets the image dimensions/video frame rate
         iData.sz = size(ITmp);
-        iData.exP.FPS = 1000/(mean(diff(tTmp)));                          
-        
-        while 1
-            try 
-                % reads a new frame. 
-                [V,~] = mObj.getFrame(iData.nFrmT - 1);
-                I = V.frames(1).cdata;
-                break
-            catch
-                % if there was an error, reduce the frame count
-                iData.nFrmT = iData.nFrmT - 1;
-            end
-        end        
+        iData.exP.FPS = 1000/(mean(diff(tTmp)));                                  
         
     otherwise        
-        iData.sz = [V.height V.width]; 
-        iData.exP.FPS = V.rate;
-        iData.nFrmT = abs(V.nrFramesTotal);
+        % case is .avi files
+        iData.sz = [vObj.height,vObj.width]; 
+        iData.exP.FPS = vObj.rate;
         isVidObj = false;
         
         % sets the time-span for the frame and reads it from file
         iFrm0 = roundP(iData.nFrmT/2);
         tFrm = iFrm0/iData.exP.FPS + (1/(2*iData.exP.FPS))*[-1 1];
         [VT,~] = mmread(fStr,[],tFrm,false,true,'');
-        I = VT.frames(1).cdata;
+%         I = VT.frames(1).cdata;
         
 end
 warning(wState);

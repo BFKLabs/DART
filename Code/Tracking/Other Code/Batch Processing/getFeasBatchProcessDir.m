@@ -57,22 +57,8 @@ for i = 1:nFile
             % required on that directory
             isOK(i) = false;                        
         else
-            % determines which of the solution files have been segmented
-            isSeg{i} = false(length(movFile),1);                
-            for j = 1:length(solnFile)
-                % loads the solution file and checks that the positional
-                % data has been calculated. if not, then flag that the
-                % solution file has not been segmented
-                sNameNw = fullfile(bpDir{i},solnFile(j).name);
-                B = load(sNameNw,'-mat','pData');                
-                if isempty(B.pData)
-                    if j ~= 1
-                        delete(sNameNw);
-                    end
-                else
-                    isSeg{i}(j) = all(B.pData.isSeg);
-                end
-            end
+            % determines which videos are fully segmented
+            isSeg{i} = detSegmentedVideos(bpDir{i},movFile,solnFile);            
             
             % if all of the solution files have been segmented, then flag
             % that the solution directory does not need resegmenting
@@ -101,17 +87,33 @@ for i = 1:nFile
         
         % set the batch processing data for the file (if ok)
         if isOK(i)
-            % sets the batch processing fields
-            bpData{i} = A.bData;
-            bpData{i}.SolnDirName = getFinalDirString(bpDir{i});
-            [bpData{i}.SolnDir,~,~] = fileparts(bpDir{i});                
-            bpData{i}.mName = cellfun(@(x)(fullfile...
-                    (A.bData.MovDir,x)),field2cell(movFile,'name'),'un',0);         
-            bpData{i}.sName = fullfile(bpData{i}.MovDir,'Summary.mat');
-            
-            % ensures the video status flag array has been set
-            if ~isfield(bpData{i},'movOK')
-                bpData{i}.movOK = ones(length(bpData{i}.sName),1);
+            % checks the final videos (to see if they are actually not 
+            % corrupted or too short)
+            isFeas = detFeasibleVideos(movFile);
+            isSeg{i} = isSeg{i}(isFeas);            
+            if all(isSeg{i})
+                % if the reduced set has all been segmented, then reset the
+                % video flag to false
+                isOK(i) = false;
+            else
+                % otherwise, reduces down the feasible video files
+                movFile = movFile(isFeas);
+                A.bData.mName = A.bData.mName(isFeas);
+                A.bData.movOK = A.bData.movOK(isFeas);
+                A.bData.dpImg = A.bData.dpImg(isFeas);
+
+                % sets the batch processing fields
+                bpData{i} = A.bData;
+                bpData{i}.SolnDirName = getFinalDirString(bpDir{i});
+                [bpData{i}.SolnDir,~,~] = fileparts(bpDir{i});                
+                bpData{i}.mName = cellfun(@(x)(fullfile...
+                    (A.bData.MovDir,x)),field2cell(movFile,'name'),'un',0);
+                bpData{i}.sName = fullfile(bpData{i}.MovDir,'Summary.mat');
+
+                % ensures the video status flag array has been set
+                if ~isfield(bpData{i},'movOK')
+                    bpData{i}.movOK = ones(length(bpData{i}.sName),1);
+                end
             end
         end        
     end
@@ -166,3 +168,59 @@ bpData = cell2mat(bpData);
 
 % closes the waitbar figure
 h.closeProgBar();
+
+% --- determines the feasible videos from the list, movDir
+function isFeas = detFeasibleVideos(movFile)
+
+% memory allocation
+nFrmMin = 10;
+nFile = length(movFile);
+fDir = movFile(1).folder;
+isFeas = true(length(movFile),1);
+
+% determines the feasible video files
+for iFile = nFile:-1:1
+    % determines if the current file is feasible
+    vFile = fullfile(fDir,movFile(iFile).name);
+    [mObj,vObj,isFeas(iFile)] = setupVideoObject(vFile,1);
+    
+    % if feasible, then determine if the video has feasible length
+    if isFeas(iFile)        
+        [~,~,fExtn] = fileparts(vFile);
+        nFrmT = getVideoFrameCount(mObj,vObj,fExtn);
+        isFeas(iFile) = nFrmT > nFrmMin;
+        
+        if isFeas(iFile)
+            break
+        end
+    end
+end
+
+% --- determines which videos have been segmented (for a given directory)
+function isSeg = detSegmentedVideos(bpDir,movFile,solnFile)
+
+% memory allocation
+isSeg = false(length(movFile),1);                
+
+% determines which of the solution files have been segmented
+for j = length(solnFile):-1:1
+    % loads the solution file and checks that the positional
+    % data has been calculated. if not, then flag that the
+    % solution file has not been segmented
+    sNameNw = fullfile(bpDir,solnFile(j).name);
+    B = load(sNameNw,'-mat','pData');                
+    if isempty(B.pData)
+        if j ~= 1
+            delete(sNameNw);
+        end
+    else
+        % determines if the current video has been entirely segmented
+        isSeg(j) = all(B.pData.isSeg);
+        if isSeg(j)
+            % if so, then flag the previous have also been segmented and
+            % exit the function
+            isSeg(1:(j-1)) = true;
+            break
+        end
+    end
+end

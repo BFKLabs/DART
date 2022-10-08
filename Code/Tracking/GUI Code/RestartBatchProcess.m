@@ -99,7 +99,7 @@ else
     % determines the new list strings
     iExptAll = getappdata(handles.figMultiBatch,'iExptAll');
     iAdd = find(cellfun(@(x)(~any(strcmp(iExptAll.fName,x))),nwDir));
-    if (isempty(iAdd))
+    if isempty(iAdd)
         % if there are no unique entries, then exit the function
         return
     else
