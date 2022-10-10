@@ -641,7 +641,10 @@ classdef AnalysisParaClass < handle
             setObjEnable(obj.hGUI.popupExptIndex,'inactive'); 
 
             % updates the figure
+            wState = warning('off','all');
             obj.pData = updatePlotFigure(obj.hFig,pDataNw);
+            warning(wState);
+            
             if ~isempty(obj.pData)
                 if ~isDocked                    
                     % updates the plot data struct

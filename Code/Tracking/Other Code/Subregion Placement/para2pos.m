@@ -20,6 +20,11 @@ switch Para.Type
         % memory allocation
         pPos = cell(size(Para.X0));
         
+        % ensures the radii array is the correct size
+        if numel(Para.R) ~= numel(Para.X0)
+            Para.R = Para.R(1)*ones(size(Para.X0));
+        end        
+        
         % calculates the positional vector for each sub-region
         for i = 1:numel(Para.X0)
             % calculates the limits of the circular region

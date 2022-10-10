@@ -100,7 +100,7 @@ for i = 1:nFile
                 movFile = movFile(isFeas);
                 A.bData.mName = A.bData.mName(isFeas);
                 A.bData.movOK = A.bData.movOK(isFeas);
-                A.bData.dpImg = A.bData.dpImg(isFeas);
+                A.bData.dpImg = A.bData.dpImg(isFeas,:);
 
                 % sets the batch processing fields
                 bpData{i} = A.bData;

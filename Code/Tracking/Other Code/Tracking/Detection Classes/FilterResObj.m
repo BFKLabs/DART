@@ -189,7 +189,6 @@ classdef FilterResObj < handle
             
             % calculates the image stack statistics
             obj.calcImageStackStats(obj.dIRs);
-%             [obj.pStats.Imu,obj.pStats.Isd]
             
         end                        
         
@@ -1112,6 +1111,11 @@ classdef FilterResObj < handle
             
             szL = size(obj.IRs{1});
             obj.Bexc = getExclusionBin(obj.iMov,szL,obj.iApp);
+            
+            if obj.iMov.is2D
+                iRT = cell2mat(obj.iRI(:)');
+                obj.Bexc = obj.Bexc(iRT,obj.iCI);
+            end
             
         end      
         
