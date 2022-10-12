@@ -50,7 +50,7 @@ if is2DSetup || detMltTrkStatus(iMov)
     % sets the parameters for each of the sub-regions
     for j = 1:length(iMov.iC)
         % sets the new index
-        ii = iSubW(:,1) == j;
+        ii = iSubW(:,2) == j;
         nTube = getSRCount(iMov,j);
         pPos{j} = pPos0(ii);
         

@@ -1621,6 +1621,9 @@ classdef TrackRegionClass < handle
                 % sets the lower/upper limits
                 xLim = [max(cellfun(@(x)(sum(x([1,3]))),pPLo)),...
                         min(cellfun(@(x)(x(1)),pPHi))];
+                if sign(diff(xLim)) == -1
+                    xLim = mean(xLim)*[1,1];
+                end
                 
             else
                 % case is a 1D expt setup

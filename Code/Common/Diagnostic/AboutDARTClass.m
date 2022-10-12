@@ -98,14 +98,13 @@ classdef AboutDARTClass < handle
         function initObjProps(obj)
             
             % other initialisations
-            
+            eStr = {'off','on'};            
             
             % ---------------------------- %
             % --- MAIN FIGURE CREATION --- %
             % ---------------------------- %
             
             % creates the figure object
-            eStr = {'off','on'};
             fPos = [100,100,obj.widFig,obj.hghtFig];
             
             % creates the figure object
@@ -325,7 +324,7 @@ classdef AboutDARTClass < handle
             warning(wState);                        
             
             % retrieves the selected node
-            obj.hTreeL.expand(obj.hRootL);            
+            obj.hTreeL.expand(obj.hRootL);
             
         end
         

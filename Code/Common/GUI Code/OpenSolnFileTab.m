@@ -326,7 +326,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                                 (hTxt0,'tag',x),'String',y)),txtTag,txtStr);
                 arrayfun(@(x)(setObjEnable...
                                 (x,~isempty(obj.sDir{obj.iTab}))),hTxt0)
-                set(handles.textRootDir,'tooltipstring',txtStrTT)   
+                set(handles.textRootDir,'tooltipstring',txtStrTT)                   
             end
                 
         end         
@@ -862,13 +862,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                             
                             % sets up the fly location ID array
                             snTotNw.iMov = reduceRegionInfo(iMov);
-                            snTotNw.cID = setupFlyLocID(snTotNw.iMov);
-
-%                             % removes any y-axis data (1D analysis only)
-%                             if ~(snTotNw.iMov.is2D || ...
-%                                              detMltTrkStatus(snTotNw.iMov))
-%                                 snTotNw.Py = [];
-%                             end                               
+                            snTotNw.cID = setupFlyLocID(snTotNw.iMov);                            
                             
                             % reduces the region information             
                             obj.appendSolnInfo(snTotNw,fDirS{i});                
@@ -1419,7 +1413,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
         function dirStr = detDirStructure(obj,sDir,movFile)
 
             % sets the directory name separation string
-            if ispc; sStr = '\'; else sStr = '/'; end
+            if ispc; sStr = '\'; else; sStr = '/'; end
             if ~strcmp(sDir(end),sStr); sDir = [sDir,sStr]; end
 
             % memory allocation

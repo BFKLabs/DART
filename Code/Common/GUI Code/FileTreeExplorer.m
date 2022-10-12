@@ -353,10 +353,15 @@ classdef FileTreeExplorer < handle
             if obj.addTreeBranch(jNodeP,sFileL)
                 % retrieves the current scrollbar value
                 val0 = obj.jSB.getValue();
+                                
+                % retrieves the current viewport position
+                hView = obj.mTree.getParent;
+                p0 = hView.getViewPosition();                
                 
                 % refreshes the tree
                 pause(0.01); 
                 obj.mTree.updateUI    
+                hView.setViewPosition(p0);
                 
                 % resets the scrollbar back to the original value (using
                 % updateUI will cause the scrollbar to be reset to 1)

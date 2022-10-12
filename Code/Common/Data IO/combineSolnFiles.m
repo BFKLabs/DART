@@ -320,6 +320,11 @@ for i = 1:nFile
         % sets the orientation angles (if they were calculated)
         if calcPhi; [Phi,AxR] = deal(a.pData.PhiF,a.pData.axR); end
 
+        % ensures the 2D flag is set
+        if ~isfield(a.iMov,'is2D')
+            a.iMov.is2D = is2DCheck(a.iMov); 
+        end         
+        
         % ---------------------------- %    
         % --- FLY LOCATION SETTING --- %
         % ---------------------------- %    
@@ -349,7 +354,7 @@ for i = 1:nFile
             end
             
             % sets the x/y locations of the flies         
-            dyOfs = iMov.is2D*(a.iMov.iR{j}(i)-1);            
+            dyOfs = a.iMov.is2D*(a.iMov.iR{j}(i)-1);            
             Px{i}{j} = cell2mat(cellfun(@(x)(x(:,1)*sgP.sFac),...
                                 fPos{j},'un',0));
             Py{i}{j} = cell2mat(cellfun(@(x)((x(:,2)-dyOfs)*sgP.sFac),...

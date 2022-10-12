@@ -65,7 +65,7 @@ classdef EmptyCheck < handle
             tHght = nRow*HWT+H0T;
             
             % sets up the table data fields
-            cEdit = [false(1,3),true(1,2)];
+            cEdit = [false(1,2),true(1,2)];
             cHdr = {'Region','Sub-Region','Marker','Empty?'};
             tData0 = num2cell([obj.iApp(:),obj.iTube(:)]);
             tData = [tData0,num2cell([obj.showMark,obj.isEmpty])];
@@ -176,10 +176,10 @@ classdef EmptyCheck < handle
             [iRow,iCol] = deal(evnt.Indices(1),evnt.Indices(2));
             
             switch iCol
-                case 4
+                case 3
                     obj.showMark(iRow) = evnt.NewData;
                     obj.updatePlotMarkers()                    
-                case 5
+                case 4
                     obj.isEmpty(iRow) = evnt.NewData;
                     obj.updateTubeColour(iRow)
             end
