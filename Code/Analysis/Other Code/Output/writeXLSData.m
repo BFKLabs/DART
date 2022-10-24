@@ -1,4 +1,4 @@
-function ok = writeXLSData(fFile,DataNw,sName,isAppend)
+function ok = writeXLSData(fFile,DataNw,sName,isApp)
 
 % initialisations
 ok = true;
@@ -8,11 +8,16 @@ nwFunc = exist('writecell','file');
 if nwFunc
     % case is using the new function format
     wMode = {'overwritesheet','append'};
-    writecell(DataNw,fFile,'Sheet',sName,'WriteMode',wMode{1+isAppend});
+    
+    if iscell(DataNw)
+        writecell(DataNw,fFile,'Sheet',sName,'WriteMode',wMode{1+isApp});
+    else
+        writematrix(DataNw,fFile,'Sheet',sName,'WriteMode',wMode{1+isApp});
+    end
     
 else
     % case is using the old function format
-    if isAppend
+    if isApp
         % case is the other data blocks
         while (1)
             try

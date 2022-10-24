@@ -13,7 +13,7 @@ iOrder = iPara{iData.tData.iSel(iData.cTab)}{1};
 %
 DataT = cell(length(iOrder),1);
 for i = 1:length(iOrder)
-    switch (iOrder(i))
+    switch iOrder(i)
         case (1) % case is the global parameters
             % retrieves the global parameter field names
             gPF = fieldnames(gP);

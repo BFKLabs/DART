@@ -289,14 +289,14 @@ classdef ExptCompObj < handle
         % --- gets the class field value, pStr
         function pVal = getParaValue(obj,pStr)
             
-            pVal = eval(sprintf('obj.%s;',pStr));
+            pVal = getStructField(obj,pStr);
             
         end
         
         % --- sets the class field, pStr, with the value pVal
         function setParaValue(obj,pStr,pVal)
             
-            eval(sprintf('obj.%s = pVal;',pStr));
+            setStructField(obj,pStr,pVal);
             
         end
         
@@ -304,6 +304,12 @@ classdef ExptCompObj < handle
         function setCritCheck(obj,iChk,chkVal)
             
             obj.iSel(iChk) = chkVal;
+            
+            if iChk == length(obj.iSel)
+                hFig = findall(0,'tag','figOpenSoln');
+                hCheck = findall(hFig,'tag','editMaxDiff');
+                setObjEnable(hCheck,chkVal)
+            end
             
         end
         

@@ -140,17 +140,27 @@ end
 % --- retr
 function Ygrp = getDataValues(isMT,Y,cID)
 
+Y0 = cellfun(@(x)(getRegionDataValues(Y,x,isMT)),cID,'un',0);
+Ygrp = cell2mat(Y0(:)');
+
+%
+function Y0 = getRegionDataValues(Y,cID,isMT)
+
 if isMT
-    if size(Y{1},2) == 1
-        Y0 = cellfun(@(x)(Y{x(1)}(x(2))),cID,'un',0);
+    if isempty(Y{cID(1)})
+        Y0 = 0;
+    elseif size(Y{cID(1)},2) == 1
+        Y0 = Y{cID(1)}(cID(2));
     else
-        Y0 = cellfun(@(x)(Y{x(1)}(:,x(2))),cID,'un',0);
+        Y0 = Y{cID(1)}(:,cID(2));
     end
 else
-    Y0 = cellfun(@(x)(Y{x(2)}(:,x(1))),cID,'un',0);
+    if isempty(Y{cID(2)})
+        Y0 = [];
+    else
+        Y0 = Y{cID(2)}(:,cID(1));
+    end
 end
-
-Ygrp = cell2mat(Y0(:)');
 
 %
 function indD = getDataArrayIndices(iMov,cID)

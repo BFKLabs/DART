@@ -3,9 +3,9 @@ classdef FileTreeExplorer < handle
     % class properties
     properties
     
-        % main class fields
-        hP
+        % main class fields        
         sDir
+        hP
         fExtn
         
         % other class fields
@@ -31,16 +31,23 @@ classdef FileTreeExplorer < handle
     methods
         
         % --- class constructor
-        function obj = FileTreeExplorer(hP,sDir,fExtn)
+        function obj = FileTreeExplorer(bObj,sDir)
     
             % sets the input arguments
-            obj.hP = hP;
             obj.sDir = sDir;
-            obj.fExtn = fExtn;
+            obj.hP = bObj.hPanel{bObj.iTab};
+            obj.fExtn = bObj.fExtn{bObj.iTab};            
+            
+            % determines the solution files on the search path
+            obj.sFileT = obj.findFileAll(obj.sDir);
+            if ~isempty(bObj.sInfo)
+                % removes any previously loaded files from the search
+                sFile0 = cellfun(@(x)(x.sFile),bObj.sInfo,'un',0);
+                obj.sFileT = setdiff(obj.sFileT,sFile0);
+            end
             
             % finds all the files within the parent directory with the 
-            % specified file extension
-            obj.sFileT = obj.findFileAll(obj.sDir);            
+            % specified file extension                        
             if isempty(obj.sFileT)
                 % if there are no files found, then exit 
                 obj.ok = false;
@@ -297,7 +304,8 @@ classdef FileTreeExplorer < handle
                 end
                 
                 % appends the selected indices
-                iSel = [iSel(:);cell2mat(iSelNw)];
+                iSelNw = cellfun(@arr2vec,iSelNw(:),'un',0);
+                iSel = [iSel(:);arr2vec(cell2mat(iSelNw))];
             end
             
         end

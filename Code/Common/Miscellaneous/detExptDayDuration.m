@@ -6,7 +6,7 @@ prMinTol = 5;
 prDayTol = convertTime(prMinTol,'m','d');
 
 % retrieves the global paramerter struct
-if (nargin == 1); hGUI = findall(0,'tag','figFlyAnalysis'); end
+if ~exist('hGUI','var'); hGUI = findall(0,'tag','figFlyAnalysis'); end
 gP = getappdata(hGUI,'gPara');
 
 % retrieves the experiment timing data struct

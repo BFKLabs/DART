@@ -5,7 +5,7 @@ function mStr = setupSignalHeaderString(iData,mStrH,mStrN,appName,xGrp)
 nApp = length(appName);
 
 % expands the group names by day/night (if required)
-if (iData.sepGrp)
+if iData.sepGrp
     xGrp = cell2cell(cellfun(@(y)(cellfun(@(x)(sprintf('%s %s',x,y)),...
             xGrp,'UniformOutput',0)),{'(D)';'(N)'},'UniformOutput',0))';    
 end

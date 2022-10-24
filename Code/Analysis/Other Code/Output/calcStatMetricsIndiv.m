@@ -1,5 +1,5 @@
 % --- calculates the statistic metrics for the population data 
-function iData = calcStatMetricsIndiv(snTot,iData,plotD,pType)
+function iData = calcStatMetricsIndiv(iData,plotD,pType,snTot)
 
 % sets the index array for the data output
 pStr = field2cell(iData.yVar(pType),'Var');

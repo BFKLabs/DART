@@ -714,9 +714,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 end
             end
 
-            % creates the file tree explorer for the file type
-            [fExtnNw,hP] = deal(obj.fExtn{obj.iTab},obj.hPanel{obj.iTab});
-            obj.ftObj{obj.iTab} = FileTreeExplorer(hP,sDirNw,fExtnNw);
+            % creates the file tree explorer for the file type            
+            obj.ftObj{obj.iTab} = FileTreeExplorer(obj,sDirNw);
             
             % if there were matches, then update the information fields
             if obj.ftObj{obj.iTab}.ok

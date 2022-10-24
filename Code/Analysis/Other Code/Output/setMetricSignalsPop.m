@@ -8,16 +8,8 @@ nApp = length(iData.appName);
                                  
 % loops through each of the specified indices calculating the metrics
 for i = 1:sum(pType)
-    % sets the independent variable vector
-%     X = eval(sprintf('plotD(1).%s',yVar(i).xDep{1}));
+    % sets the independent/dependent variable arrays
     X = arrayfun(@(x)(getStructField(x,yVar(i).xDep{1})),plotD,'un',0); 
-%     for j = 1:length(X)
-%         if isnumeric(X{j})    
-%             X{j} = roundP(X{j});
-%         end
-%     end
-    
-    % initialisations
     YY = dataGroupSplit(X,field2cell(plotD,pStr{i}));
     
     % sets the signals for each of the 

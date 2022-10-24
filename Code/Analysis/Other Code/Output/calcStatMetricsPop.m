@@ -1,10 +1,10 @@
 % --- calculates the statistic metrics for the population data 
-function iData = calcStatMetricsPop(snTot,iData,plotD,pType,ind)
+function iData = calcStatMetricsPop(iData,plotD,pType,snTot)
 
 % sets the index array for the data output
 yVar = iData.yVar(pType);
 pStr = field2cell(yVar,'Var');
-if (nargin < 5); ind = 1:length(pStr); end
+ind = 1:length(pStr); 
 
 % retrieves the data array
 [Y,nApp] = deal(iData.Y{2},length(iData.appName));
@@ -27,7 +27,7 @@ for j = 1:length(ind)
             % calculates the metrics for each of the 
             Ymet = cell(nApp,1);
             for iApp = 1:nApp
-                if (~isempty(YY{iLvl,iApp}))
+                if ~isempty(YY{iLvl,iApp})
                     Ymet{iApp} = calcMetrics(YY{iLvl,iApp},vName);
                 end
             end
@@ -63,14 +63,18 @@ Ygrp = cell(nLvl,nApp);
 % loops through each apparatus, level and bin group
 for j = 1:nLvl
     for k = 1:nApp
-        switch (j)
-            case (1) % metrics calculated over all days/experiments                
+        switch j
+            case (1) 
+                % metrics calculated over all days/experiments                
                 Ytmp = cellfun(@(x)(cell2mat(cell2cell(x))),...
                             num2cell(num2cell(Y{k},1),3),'un',0);
                 Ygrp{j,k} = {cell2mat(Ytmp(:))};
-            case (2) % metrics calculated over all days only
+            
+            case (2) 
+                % metrics calculated over all days only
+                
                 % only set if multiple days   
-                if (iData.sepExp) 
+                if iData.sepExp
                     Ygrp{j,k} = cell(1,length(snTot));
                     for i = 1:length(snTot)  
                         Ytmp = cellfun(@(x)(cell2mat(x)),...
@@ -78,9 +82,11 @@ for j = 1:nLvl
                         Ygrp{j,k}{i} = cell2mat(Ytmp(:));
                     end
                 end                                        
-            case (3) % metrics calculated over all experiments only
+            case (3) 
+                % metrics calculated over all experiments only
+                
                 % only set if multiple experiments
-                if (iData.sepDay)
+                if iData.sepDay
                     Ygrp{j,k} = cell(size(Y{k},1),1);
                     for i = 1:size(Y{k},1)
                         Ytmp = cellfun(@(x)(cell2mat(x)),num2cell(...
@@ -89,9 +95,11 @@ for j = 1:nLvl
                         Ygrp{j,k}{i} = cell2mat(Ytmp(:));
                     end
                 end
-            case (4) % individual metrics calculated over all days/expts
+            case (4) 
+                % individual metrics calculated over all days/expts
+                
                 % only set if multiple days/experiments
-                if (iData.sepExp) && (iData.sepDay) 
+                if iData.sepExp && iData.sepDay
                     Ygrp{j,k} = cell(size(Y{k},1),length(snTot));
                     for i1 = 1:size(Y{k},1)
                         for i2 = 1:length(snTot)
@@ -140,7 +148,7 @@ Ycomb = NaN(sum(sz(:,1)),max(sz(:,2)));
 
 % sets the data for each day
 for i = 1:length(Y)
-    if (~isempty(Y{i}))
+    if ~isempty(Y{i})
         Ycomb(sum(sz(1:(i-1),1))+(1:sz(i,1)),1:sz(i,2)) = Y{i};
     end
 end

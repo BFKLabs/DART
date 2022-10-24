@@ -120,12 +120,13 @@ end
 sInfo(2) = getappdata(handles.figStatTest,'fxVal');
 
 % determines if the statistical test had been run
-if (isempty(iData.Y{1}{iRow}{cType}))
+Y0 = iData.getData(1,iRow,cType);
+if isempty(Y0)
     % if not, then run the statistical test data array setup
     stData = setupStatsArray(iData,plotD,pType,pStr,sInfo);
 else
     % otherwise, retrieves the previously calculated statistical test data 
-    stData = iData.Y{1}{iRow}{cType};
+    stData = Y0;
 end
 
 % sets the data output format

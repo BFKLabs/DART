@@ -1,10 +1,10 @@
 % --- calculates the statistic metrics for the population data 
-function iData = setFixedMetricsPop(iData,plotD,pType,ind)
+function iData = setFixedMetricsPop(iData,plotD,pType)
 
 % sets the index array for the data output
 yVar = iData.yVar(pType);
 [pStr,Y] = deal(field2cell(yVar,'Var'),iData.Y{3});
-if (nargin < 5); ind = 1:length(pStr); end
+ind = 1:length(pStr); 
 
 % loops through each of the specified indices calculating the metrics
 for j = 1:length(ind)

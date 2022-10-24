@@ -119,13 +119,13 @@ for i = 1:length(YR)
     iiT{i} = logical(cell2cell(iiT{i},0));
 end
 
-% ------------------------- %
-% --- FINAL ARRAY SETUP --- %
-% ------------------------- %
-
 % sets the final data into a single array
 [Data,DataN] = deal(cell2cell(DataF,0));
 clear DataF; pause(0.05);
+
+% ------------------------- %
+% --- FINAL ARRAY SETUP --- %
+% ------------------------- %
 
 % converts the time signals to strings
 if ~isnan(tRnd)

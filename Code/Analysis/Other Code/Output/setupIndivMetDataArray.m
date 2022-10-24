@@ -36,9 +36,7 @@ szY = cellfun(@(x)([size(x,1),size(x,2),size(x,3)]),YR{1},'un',0);
 [nGrp,ii,VarX] = detDataGroupSize(iData,plotD,mIndG(iOrder),1);
 [nGrpG,nExp] = deal(1+sepGrp,size(YR{1}{1},2));
 [nGrpU,iiU] = deal(unique(nGrp,'stable'),unique(ii,'stable'));
-indGrpT = logical([~sepApp,true(1,2),(nExp>1),(any(nGrp>1)),sepGrp]);
 [appName,indG] = deal(iData.appName(appOut),cell(1,6));
-xiU = num2cell(1:length(nGrpU));
 
 % sets the output fly indices/counts
 [isOKF,nOKF] = deal(cell(nApp,length(nGrpU)));
@@ -55,6 +53,7 @@ end
 % --------------------------------- %
 
 % sets the metric header strings
+indGrpT = logical([~sepApp,true(1,2),(nExp>1),(any(nGrp>1)),sepGrp]);
 mStrB = reshape(iData.fName(mIndG(iOrder)),1,length(iOrder));
 
 % sets the main grouping titles
@@ -260,6 +259,7 @@ if (sepApp)
     end
 else
     % case is the table data is grouped together
+    xiU = num2cell(1:length(nGrpU));
     YT = cellfun(@(y)([mStrT;cell2cell(cellfun(@(x)(x{y}),...
                 indG(~cellfun(@isempty,indG)),'un',0),0)]),xiU,'un',0);
 end
@@ -304,7 +304,7 @@ for i = 1:nApp
             % ensures the metric data array aligns with the correct number 
             % of days (for the header string)
             Ygap = num2cell(NaN(1,xiD{end}-size(YM{i}{j},2)));
-            YM{i}{j}= combineCellArrays(YM{i}{j},Ygap);
+            YM{i}{j} = combineCellArrays(YM{i}{j},Ygap);
         end        
     end
 end

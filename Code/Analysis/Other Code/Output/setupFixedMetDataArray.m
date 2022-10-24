@@ -234,7 +234,7 @@ Data(jj) = {''};
 %-------------------------------------------------------------------------%
 
 % --- removes the apparatus groups that are not included
-function YR = reduceDataArray(Y,isVert)
+function YR = reduceDataArray(Y)
 
 % memory allocation
 YR = cell(1,length(Y));

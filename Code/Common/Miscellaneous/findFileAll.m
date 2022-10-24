@@ -1,4 +1,4 @@
-% --- finds all the finds
+% --- finds all files with extension fExtn from the parent directory, snDir
 function fName = findFileAll(snDir,fExtn)
 
 % initialisations
@@ -6,7 +6,7 @@ function fName = findFileAll(snDir,fExtn)
 
 % determines the files that have the extension, fExtn
 fFile = dir(fullfile(snDir,sprintf('%s',fExtn)));
-if (~isempty(fFile))
+if ~isempty(fFile)
     fNameT = field2cell(fFile,'name');
     fName = cellfun(@(x)(fullfile(snDir,x)),fNameT,'un',0);    
 end

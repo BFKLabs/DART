@@ -212,7 +212,7 @@ end
 function chooserPropChange(hObject, eventdata, handles)
 
 % global variables
-global addedDir isUpdating
+global isUpdating
 
 % if updating indirectly, then exit the function
 if isUpdating; return; end
@@ -304,38 +304,29 @@ switch get(eventdata,'PropertyName')
         newValue = removeFileExtn(char(get(eventdata,'NewValue')));
         oldValue = removeFileExtn(char(get(eventdata,'OldValue')));
        
-        if isempty(newValue)
-        	% case is a new directory is being created
-            if ~isempty(oldValue)
-                % appends the added directory to the array
-                addedDir = [addedDir;{char(oldValue)}];
+        if ~isempty(newValue)        	
+            % determines if the new/old values differ
+            if ~strcmp(char(oldValue),char(newValue))
+                % if so, update with the new values
+                iExp = getappdata(hFig,'iExp');
+                fDir = getappdata(hFig,'fDir');
+
+                % updates the new file/directory names     
+                [fDir{iExp},fNameNw,~] = fileparts(char(newValue));
+                setappdata(hFig,'fDir',fDir);
+
+                % updates the explorer tree name and the table
+                resetChooserFile(hFig,iExp,fNameNw)
+                saveFileNameChng([], fNameNw, handles)
+            else
+                % updates the file name string
+                hFn = getFileNameObject(jFileC);  
+                [~,fName,~] = fileparts(char(newValue));
+
+                isUpdating = true;
+                hFn.setText(getFileName(fName));
+                isUpdating = false;
             end
-        else
-%             % case is a file was selected
-%             if ~isempty(oldValue)
-                % determines if the new/old values differ
-                if ~strcmp(char(oldValue),char(newValue))
-                    % if so, update with the new values
-                    iExp = getappdata(hFig,'iExp');
-                    fDir = getappdata(hFig,'fDir');
-                    
-                    % updates the new file/directory names     
-                    [fDir{iExp},fNameNw,~] = fileparts(char(newValue));
-                    setappdata(hFig,'fDir',fDir);
-                    
-                    % updates the explorer tree name and the table
-                    resetChooserFile(hFig,iExp,fNameNw)
-                    saveFileNameChng([], fNameNw, handles)
-                else
-                    % updates the file name string
-                    hFn = getFileNameObject(jFileC);  
-                    [~,fName,~] = fileparts(char(newValue));
-                    
-                    isUpdating = true;
-                    hFn.setText(getFileName(fName));
-                    isUpdating = false;
-                end
-%             end
         end
 end
 
@@ -842,7 +833,7 @@ if getappdata(hFig,'isChange')
 end
 
 % removes the added folders
-removeAddedFolders()
+removeAddedFolders(hFig)
 
 % closes the GUI
 delete(hFig)
@@ -1406,7 +1397,7 @@ if iMov.is2D || isMltTrk
         % index (indG)
         ii = (iGrp0 == i);
         if ~isMltTrk
-            ii = ii && iMov.flyok; 
+            ii = ii & iMov.flyok; 
         end
 
         % updates the group index (if valid)
@@ -1477,6 +1468,7 @@ setappdata(hFig,'fDirFix',iProg.DirComb);
 setappdata(hFig,'fDirRoot',iProg.DirComb);
 setappdata(hFig,'fName',cellfun(@(x)(x.expFile),sInfo,'un',0))
 setappdata(hFig,'gName',cellfun(@(x)(x.gName),sInfo,'un',0))
+setappdata(hFig,'fDir0',findDirAll(iProg.DirComb))
 
 % sets the fixed/custom directories
 set(handles.editFixedDir,'String',iProg.DirComb)
@@ -1597,7 +1589,7 @@ pPos = getObjGlobalCoord(hPanel);
 tPos = [dX*[1,1]+pPos(1:2),pPos(3:4)-1.5*dX];
 
 % remove any added folders
-removeAddedFolders()
+removeAddedFolders(hFig)
 
 % Root node
 hRoot = createUITreeNode(rStr, rStr, [], false);
@@ -1805,9 +1797,6 @@ end
 % --- creates a tree node from the parent node hNodeP
 function hNodeP = addFolderTreeNode(hNodeP,nName,Iicon)
 
-% global variables
-global addedDir
-
 % sets the default input aruments
 if ~exist('Iicon','var'); Iicon = []; end
 
@@ -1846,7 +1835,6 @@ if isAdd && ~isempty(nName)
     if ~exist(fDirNw,'dir')
         % if the directory does not exist, then create it
         mkdir(fDirNw)
-        addedDir = [addedDir;{fDirNw}];
     end
     
     % updates the parent node to the new node
@@ -2042,18 +2030,20 @@ setappdata(hFig,'oPara',oPara)
 set(handles.editSolnTime,'string',num2str(sInfo{iExp}.iPara.dT));
 
 % --- removes all of the added folders
-function removeAddedFolders()
+function removeAddedFolders(hFig)
 
-% global variables
-global addedDir
+% field retrieval
+fDir0 = getappdata(hFig,'fDir0');
+fDirRoot = getappdata(hFig,'fDirRoot');
 
-% if there are no added directories then exit the function
-if isempty(addedDir); return; end
+% determines the directories that have been added
+dfDir = setdiff(findDirAll(fDirRoot),fDir0);
+if isempty(dfDir); return; end
 
 % splits the added directory paths and orders by descending size
-fDirSp = cellfun(@(x)(strsplit(x,filesep)),addedDir,'un',0);
+fDirSp = cellfun(@(x)(strsplit(x,filesep)),dfDir,'un',0);
 [~,iS] = sort(cellfun(@length,fDirSp),'descend');
-dirRemove = addedDir(iS);
+dirRemove = dfDir(iS);
 
 % removes any of the added folders which are empty
 for i = 1:length(dirRemove)
@@ -2063,9 +2053,6 @@ for i = 1:length(dirRemove)
         try; rmdir(dirRemove{i}); end
     end
 end
-
-% global variables
-addedDir = [];
 
 % ------------------------------- %
 % --- MISCELLANEOUS FUNCTIONS --- %

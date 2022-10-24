@@ -1,8 +1,8 @@
 % --- sets the population signal data for the output GUI
-function iData = setMetricSignalsIndiv(snTot,iData,plotD,pType)
+function iData = setMetricSignalsIndiv(iData,plotD,pType,snTot)
 
 % sets the number of experiments
-[hasTime,nExp] = deal(true,iData.sepExp*(length(snTot)-1) + 1);
+nExp = iData.sepExp*(length(snTot)-1) + 1;
 if ~iscell(snTot(1).iMov.flyok)
     fok = arrayfun(@(x)(groupAcceptFlags(x)),snTot,'un',0);
 else
@@ -12,7 +12,6 @@ end
 % initialisations
 [yVar,xVar,Y] = deal(iData.yVar(pType),iData.xVar,iData.Y{6});
 [pStr,nApp] = deal(field2cell(yVar,'Var'),length(iData.appName));
-[T,iD] = deal(cell(nExp,2),cell(nExp,1));
 
 % sets the x-dependency
 xDep = field2cell(yVar,'xDep');
@@ -28,83 +27,91 @@ for i = 1:length(Y0)
     end
 end
 
-% determines if any of the variables have a time dependency
+% aligns the independent variables to the plot values
 nDay = max(nDay0,[],1);
-ii = find(cellfun(@(x)(any(strcmp(xDepT,x))),field2cell(iData.xVar,'Var')));
-iiT = ii(strcmp(field2cell(iData.xVar(ii),'Type'),'Time'));
+[xDepTU,~,indU] = unique(xDepT,'stable');
+ii = cellfun(@(x)(any(strcmp(xDepT,x))),field2cell(xVar,'Var'));
 
-% splits the time-bin indices into separate days
-if ~isempty(iiT)
-    % initialisations
-    [tDay,nDayMx] = deal(convertTime(1,'day','sec'),max(nDay));
-    
-    % retrieves the time vector array (ensures is cell arrays)
-    TT = field2cell(plotD,xVar(iiT).Var);
-    if ~iscell(TT{1}); TT = cellfun(@(x)({x}),TT,'un',0); end   
-    
-    %
-    if length(TT{1}) < nExp
-        TT = cellfun(@(x)(repmat(x,1,nExp)),TT,'un',0);
-    end
-    
-    % determines if the time vector is greater than a single day
-    if nDayMx > 1
-        % if so, then set the converted daily time vector        
-        dT = roundP(median(diff(TT{1}{1}),'omitnan'));
-        Tnw = ((dT/2):dT:(convertTime(1,'day','sec')-dT/2))';        
-        xiD = num2cell(1:nDayMx);
-        
-        % sets the time vectors for each experiment
-        for i = 1:nExp        
-            % sets the             
-            TTot = cellfun(@(x)(Tnw+(x-1)*tDay),xiD,'un',0);
-            iD{i} = cell2mat(cellfun(@(x)(x*ones(length(Tnw),1)),xiD(:),'un',0));
-            
-            %
-            [T{i,1},T{i,2}] = deal(cell2mat(TTot(:)),Tnw);
+% memory allocation
+nDep = length(xDepTU);
+[T,iD,hasTime] = deal(cell(nExp,2,nDep),cell(nExp,nDep),false(nDep,1));
+xVar = field2cell(xVar(ii),'Type');
+
+% sets up the dependent variable arrays
+for i = 1:nDep    
+    % splits the time-bin indices into separate days
+    if strcmp(xVar{i},'Time')
+        % initialisations
+        hasTime(i) = true;
+        [tDay,nDayMx] = deal(convertTime(1,'day','sec'),max(nDay));
+
+        % retrieves the time vector array (ensures is cell arrays)
+        TT = field2cell(plotD,xDepTU{i});
+        if ~iscell(TT{1}); TT = cellfun(@(x)({x}),TT,'un',0); end   
+
+        % ensures the time vector matches the experiment count
+        if length(TT{1}) < nExp
+            TT = cellfun(@(x)(repmat(x,1,nExp)),TT,'un',0);
         end
-    else    
-        % for each experiment, determine if the data is for more than one day.
-        % if so, then expand the time vector for that experiment
-        for i = 1:nExp
-            if (nDay(i) > 1)
-                % expands the time vector to cover the entire experiment
-                Tnw = cellfun(@(x)(TT{1}{i}+(x-1)*tDay),num2cell(1:nDay(i)),'un',0);
-                [T{i,1},T{i,2}] = deal(cell2mat(Tnw(:)),TT{1}{i});
-            else
-                % otherwise, set the time vector for both time vector types
-                [T{i,1},T{i,2}] = deal(TT{1}{i});
+
+        % determines if the time vector is greater than a single day
+        if nDayMx > 1
+            % if so, then set the converted daily time vector        
+            dT = roundP(median(diff(TT{1}{1}),'omitnan'));
+            Tnw = ((dT/2):dT:(convertTime(1,'day','sec')-dT/2))';        
+            xiD = num2cell(1:nDayMx);
+
+            % sets the time vectors for each experiment
+            for j = 1:nExp        
+                % sets the ID/time vectors            
+                TTot = cellfun(@(x)(Tnw+(x-1)*tDay),xiD,'un',0);
+                iD{j,i} = cell2mat(cellfun(@(x)...
+                            (x*ones(length(Tnw),1)),xiD(:),'un',0));
+                [T{j,1,i},T{j,2,i}] = deal(cell2mat(TTot(:)),Tnw);
             end
+        else    
+            % for each experiment, determine if the data is for more than one day.
+            % if so, then expand the time vector for that experiment
+            for j = 1:nExp
+                if (nDay(j) > 1)
+                    % expands the time vector to cover the entire experiment
+                    xiD = 1:nDay(j);
+                    Tnw = arrayfun(@(x)(TT{1}{j}+(x-1)*tDay),xiD,'un',0);
+                    [T{j,1,i},T{j,2,i}] = deal(cell2mat(Tnw(:)),TT{1}{j});
+                else
+                    % otherwise, set the time vector for both time vector types
+                    [T{j,1,i},T{j,2,i}] = deal(TT{1}{j});
+                end
+            end
+        end    
+    else
+        % otherwise, set the index based on the dependency
+        hasTime = false;
+        T0 = eval(sprintf('plotD.%s',xDepTU{i}));
+        if isnumeric(T0); T0 = num2cell(T0); end
+
+        nDayMx = max(nDay);
+        if length(T0) == nExp
+            [T(:,1,i),T(:,2,i)] = deal(T0,{T0});
+        else
+            [T(:,1,i),T(:,2,i)] = deal({repmat(T0,nDayMx,1)},{T0});
         end
-    end    
-else
-    % otherwise, set the index based on the dependency
-    hasTime = false;
-    T0 = eval(sprintf('plotD.%s',xDepT{1}));
-    if isnumeric(T0); T0 = num2cell(T0); end
-    
-    nDayMx = max(nDay);
-    if length(T0) == nExp
-        [T(:,1),T(:,2)] = deal(T0,{T0});
-    else
-        [T(:,1),T(:,2)] = deal({repmat(T0,nDayMx,1)},{T0});
+
+        if nDayMx > 1
+            iD(:,i) = {cell2cell(arrayfun(@(x)(num2cell(...
+                        x*ones(length(T0),1))),(1:nDayMx)','un',0))};
+        else
+            iD(:,i) = {[]};
+        end
     end
-    
-    if (nDayMx > 1)
-        iD(:) = {cell2cell(cellfun(@(x)(num2cell(...
-                    x*ones(length(T0),1))),num2cell(1:nDayMx)','un',0))};
-    else
-        iD = {[]};
-    end
-end
-    
-% replicates the array for each of the metrics
-T = repmat({T},sum(pType),1);
+end   
 
 % loops through each of the specified indices calculating the metrics
 for i = 1:sum(pType)
     % initialisations
-    YY = dataGroupSplit(iData,T{i},iD,field2cell(plotD,pStr{i}),fok,hasTime);
+    j = indU(i);
+    pVal = field2cell(plotD,pStr{i});
+    YY = dataGroupSplit(iData,T(:,:,j),iD(:,j),pVal,fok,hasTime(j));
     
     % sets the metrics for each of the levels
     for iLvl = 1:size(YY,1)       
@@ -113,7 +120,7 @@ for i = 1:sum(pType)
         
         % sets the values into the array
         for iApp = 1:nApp
-            if (~isempty(YY{iLvl,iApp}))
+            if ~isempty(YY{iLvl,iApp})
                 Y{i,iLvl}{iApp} = YY{iLvl,iApp};
             end
         end

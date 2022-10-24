@@ -78,18 +78,18 @@ for i = 1:length(pData.appName)
     pData.appName{i} = pData.appName{i}(regexp(pData.appName{i},'[^{\^}]'));
 end
 
-% initialises the data struct
-[iData,metType,hasTest] = initDataStruct(handles,snTot,pData,plotD);
-
-% sets the data structs into the GUI
+% stores the main data fields into the GUI
 setappdata(hObject,'hGUI',hGUI);
+setappdata(hObject,'snTot',snTot)
 setappdata(hObject,'iProg',iProg)
 setappdata(hObject,'hPara',hPara)
 setappdata(hObject,'pData',pData)  
 setappdata(hObject,'plotD',plotD)  
-setappdata(hObject,'sName',sName)  
+setappdata(hObject,'sName',sName)
+
+% initialises the data struct and other fields
+[iData,metType,hasTest] = initDataStruct(handles);
 setappdata(hObject,'iData',iData)  
-setappdata(hObject,'snTot',snTot)  
 setappdata(hObject,'metType',metType)
 setappdata(hObject,'hasTest',find(hasTest))
 
@@ -114,12 +114,13 @@ initGUIJavaObjects(handles)
    
 % updates the sheet data
 updateSheetData(handles,true,1)
+iData.startTimer();
 
 % closes the loadbar
 try; delete(h); end
 
 % ensures that the appropriate check boxes/buttons have been inactivated
-updateFlag = 0; pause(0.1); 
+updateFlag = 0; pause(0.1);
 
 % Update handles structure and sets the main/parameter GUIs to be invisible
 guidata(hObject, handles);
@@ -240,12 +241,13 @@ for i = 1:iData.nTab
         
         % outputs the data to file
         sName = iData.tData.Name{i};
-        switch (fIndex)
-            case (1) % output file is .xlsx                  
-                % outputs the file
+        switch fIndex
+            case 1 
+                % output file is .xlsx                  
                 writeXLSFile(fFile,DataNw,sName,h)              
-            case (2) % output file is .csv                
-                % outputs the file
+            
+            case 2 
+                % output file is .csv                
                 fName = fullfile(fDir,sprintf('%s (%s).csv',fNameP,sName));
                 writeCSVFile(fName,DataNw,h)
         end
@@ -265,16 +267,20 @@ function menuExit_Callback(hObject, eventdata, handles)
 % prompts the user if they wish to close the tracking gui
 uChoice = questdlg('Are you sure want to close the Data Output GUI?',...
                      'Close Data Output GUI?','Yes','No','Yes');
-if (~strcmp(uChoice,'Yes'))
+if ~strcmp(uChoice,'Yes')
     return
 end
 
 % retrieves the parameter GUI handle
 hGUI = getappdata(handles.figDataOutput,'hGUI');
 hPara = getappdata(handles.figDataOutput,'hPara');
+iData = getappdata(handles.figDataOutput,'iData');
 
 % % resets the solution/plot data structs from the analysis GUI
 % setappdata(hGUI,'snTot',getappdata(handles.figDataOutput,'snTot'))
+
+% deletes the temporary data files
+iData.closeObj();
 
 % deletes the output stats GUI (if open)
 hStats = findall(0,'tag','figStatTest');
@@ -599,11 +605,8 @@ set(h.panelOuter,'position',[0 0 fPos(3:4)])
 % --- Executes when selected object is changed in panelInfoOuter.
 function panelInfoOuter_SelectionChangeFcn(hObject, eventdata, handles)
 
-% global variables
-global nMetG
-
 % creates a loadbar figure
-if (~isa(eventdata,'char'))
+if ~isa(eventdata,'char')
     h = ProgressLoadbar('Updating Data Table...');
 end
 
@@ -614,25 +617,24 @@ iData.tData.iSel(iData.cTab) = iSelT;
 setappdata(handles.figDataOutput,'iData',iData)
 
 % sets the index of the radio button that was 
-eInd = num2cell(zeros(1,3));
-if (iSel == 1)
+eInd = zeros(1,3);
+if iSel == 1
     % case is the statistical tests
-    eInd{1} = 1;
+    eInd(1) = 1;
     
     % updates the data alignment panel properties
     iPara = iData.tData.iPara{iData.cTab}{1};
     setPanelProps(handles.panelDataAlign,length(iPara{1})>1)    
 else
     % case is the data metrics
-    eInd(2:3) = {1};
+    eInd(2:3) = 1;
 end    
 
-% updates the checkbox properties
-updateCheckboxProps(handles,iSelT)
-
 % updates the current sheet tab
-hP = {handles.panelStatTest,handles.panelMetricData,handles.panelMetricInfo};
-try; cellfun(@(x,y)(setPanelProps(x,y)),hP,eInd); end
+hP = [handles.panelStatTest,handles.panelMetricData,handles.panelMetricInfo];
+try; arrayfun(@(x,y)(setPanelProps(x,y)),hP,eInd); end
+
+% updates the other gui properties
 setTimeUnitObjProps(handles,iSelT-1)
 updateOrderList(handles);
 
@@ -646,9 +648,12 @@ if (iSelT > 1)
     updateTableColumnProp(hTab)
 end
 
+% updates the checkbox properties
+updateCheckboxProps(handles,iSelT)
+
 % updates the other formating checkbox values
-updateOtherFormatCheck(handles,iData,1)
-if (~isa(eventdata,'char'))
+% updateOtherFormatCheck(handles,iData,1)
+if ~isa(eventdata,'char')
     updateSheetData(handles,false); 
     try; delete(h); end
 end
@@ -688,7 +693,8 @@ if iCol == 3
     [stData,cType,dForm] = runStatsTest(handles,pType,pStr,jRow);   
     if ~isempty(stData)
         % updates the data struct with the new statistical test info
-        iData.Y{1}{jRow}{cType} = stData;
+        iData.setData(stData,1,jRow,cType);
+%         iData.Y{1}{jRow}{cType} = stData;
         iData.tData.stInd{iData.cTab}(jRow,:) = [cType,dForm];
                 
         % if this the test is included, then update the order list
@@ -696,7 +702,7 @@ if iCol == 3
         if Data{jRow,2}
             % resets the sheet update flag            
             updateSheet = true;
-            if (~any(iPara{1} == jRow))
+            if ~any(iPara{1} == jRow)
                 % if the index is not included within the order array, then
                 % add it to the order array
                 iPara{1} = [iPara{1};jRow];
@@ -801,7 +807,7 @@ hasData = detIfHasData(iData,iSel0) || detIfHasData(iData,iSelNw);
 updateCheckboxProps(handles)
 
 % creates a loadbar figure
-if ((nargin == 2) && (~isa(eventdata,'double')) && (hasData))
+if (nargin == 2) && ~isa(eventdata,'double') && hasData
     h = ProgressLoadbar('Updating Data Table...');
 end
     
@@ -812,12 +818,10 @@ set(handles.radioAlignHorz,'value',~iData.tData.alignV(iData.cTab,mSel+1))
 % updates the table column properties
 updateTableColumnProp(hTab1)
 updateOrderList(handles);
-
-% updates the sheet data
 setTimeUnitObjProps(handles,mSel)
 
 % updates the sheet data (if there is data)
-if ((nargin == 2) && (~isa(eventdata,'double')) && (hasData))
+if (nargin == 2) && ~isa(eventdata,'double') && hasData
     updateSheetData(handles,false); 
     try; close(h); end
 else
@@ -856,14 +860,18 @@ else
     % case is the metric data table
     pInd = 1 + iData.tData.mSel(iData.cTab);
     switch pInd
-        case (2) % case is the population metrics
+        case 2 
+            % case is the population metrics
             mInd = find(iData.tData.iPara{iData.cTab}{pInd}{2}(iRow,:))';
             nwData = [iRow*ones(length(mInd),1),mInd];
-        case (4)
+        
+        case 4
             if (iCol == 2)
                 nwData = iRow;
             end
-        otherwise % case is the other metrics
+            
+        otherwise
+            % case is the other metrics
             nwData = iRow;
     end    
 end 
@@ -908,6 +916,7 @@ end
 % updates the data struct
 iData.tData.iPara{iData.cTab}{pInd} = iPara;
 setappdata(handles.figDataOutput,'iData',iData);
+updateNumGroupCheck(handles);
 
 % updates the current tab
 updateOrderList(handles)
@@ -971,7 +980,7 @@ if (iCol == 3) && (pInd == 2)
         
         % resets the metric indices
         iData.tData.iPara{iData.cTab}{pInd}{2}(iRow,:) = metInd;
-        iData = calcStatMetricsPop(snTot,iData,plotD,metType(:,1),iRow);                       
+        iData.runReshapeFunc(1,iRow);
         setappdata(handles.figDataOutput,'iData',iData);
         
         % updates the table string
@@ -1001,7 +1010,7 @@ function popupUnits_Callback(hObject, eventdata, handles)
 iData = getappdata(handles.figDataOutput,'iData');
 
 % updates the worksheet tab (if there is any data)
-if (detIfHasData(iData))
+if detIfHasData(iData)
     updateSheetData(handles,true)
 end
 
@@ -1013,15 +1022,19 @@ end
 function changeInfoTab(hObject, eventdata)
 
 % retrieves the GUI handles
-[handles,showTable] = deal(guidata(hObject),false(2,1));
+handles = guidata(hObject);
 iData = getappdata(handles.figDataOutput,'iData');
 
 % sets the visibility of the genotype inclusion table
 switch get(eventdata.NewValue,'Title')
-    case ('Genotype Groups') % case is the genotyp groups        
-        [iData.incTab,showTable(1)] = deal(1,true);
-    case ('Experiment Output') % case is the experiment output        
-        [iData.incTab,showTable(2)] = deal(3,true);
+    case 'Genotype Groups' 
+        % case is the genotyp groups        
+        iData.incTab = 1;
+    
+    case 'Experiment Output'
+        % case is the experiment output        
+        iData.incTab = 3;
+    
     otherwise
         iData.incTab = 2;
 end
@@ -1032,17 +1045,13 @@ setappdata(handles.figDataOutput,'iData',iData)
 % --- Executes when entered data in editable cell(s) in tableGroupInc.
 function tableGroupInc_CellEditCallback(hObject, eventdata, handles)
 
-% global variables
-global nMetG
-
 % if the indices are empty, then exit
-if (isempty(eventdata.Indices)); return; end
+if isempty(eventdata.Indices); return; end
 iData = getappdata(handles.figDataOutput,'iData');
 
 % retrieves the row/column indices
 iData.appOut(eventdata.Indices(1),iData.cTab) = eventdata.NewData;
 [Y,xStr] = deal(iData.appOut(:,iData.cTab),'genotype group');
-hChk = handles.checkSepByApp;
 
 % determins if any of the inclusion indices have been set
 if ~any(Y)
@@ -1054,31 +1063,9 @@ if ~any(Y)
     Data = get(hObject,'Data');
     Data{eventdata.Indices(1),2} = true;
     set(hObject,'Data',Data)
-else    
-    % updates the enabled properties of the checkbox
-    [iSel,iSelT] = getSelectedIndexType(handles);
-    uData = isempty(get(hChk,'UserData'));   
-    
-    % resets the checkbox enabled properties
-    isOK = (iSel==2) && all(iSelT ~= [5 6 nMetG]) && uData && (sum(Y) > 1);        
-    setObjEnable(hChk,isOK)        
-    
-    % updates the checkbox flag and array value (if not ok)
-    if ~isOK
-        % removes the check label for the separation                 
-        mSel = iData.tData.mSel(iData.cTab);
-        iData.tData.altChk{iData.cTab}{mSel}(get(hChk,'Max')) = false;
-        set(hChk,'value',0)
-    end
-    
-    % otherwise, update the data struct
-    setappdata(handles.figDataOutput,'iData',iData)     
-    
-    % sets the alignment button enabled properties
-    checkOtherFormat(handles.checkSepByApp,'1')          
-    
-    % updates the sheet data
-    if (detIfHasData(iData)); updateSheetData(handles,true); end
+else
+    % updates the sheet data (if there is data)
+    if detIfHasData(iData); updateSheetData(handles,true); end
 end
 
 % --- Executes when entered data in editable cell(s) in tableExptInc.
@@ -1104,15 +1091,8 @@ if ~any(Y)
     Data{eventdata.Indices(1),2} = true;
     set(hObject,'Data',Data)
 else    
-    % updates the enabled properties of the checkbox
-    uData = isempty(get(hChk,'UserData'));
-
-    % resets the checkbox enabled properties
-    isOK = uData && (sum(iData.expOut(:,iData.cTab)) > 1);
-    setObjEnable(hChk,isOK)        
-    
     % updates the checkbox flag and array value (if not ok)
-    if ~isOK
+    if sum(iData.expOut(:,iData.cTab)) == 0
         % removes the check label for the separation                 
         mSel = iData.tData.mSel(iData.cTab);
         iData.tData.altChk{iData.cTab}{mSel}(get(hChk,'Max')) = false;
@@ -1143,7 +1123,7 @@ iData.tData.alignV(iData.cTab,iData.tData.iSel(iData.cTab)) = alignV;
 setappdata(handles.figDataOutput,'iData',iData)
 
 % updates the worksheet data
-if (detIfHasData(iData)); updateSheetData(handles,true); end
+if detIfHasData(iData); updateSheetData(handles,true); end
 
 % --- Other format checkbox callback function
 function checkOtherFormat(hObject,eventdata)
@@ -1160,21 +1140,20 @@ iData.tData.altChk{iData.cTab}{iSel}(iType) = get(hObject,'value');
 setappdata(handles.figDataOutput,'iData',iData)
 
 % updates the alignment radio buttons
-hR = findall(handles.panelDataAlign,'style','radiobutton');
-switch (get(hObject,'tag'))
-    case ('checkSepByApp')
-        if iSel ~= 1
-            isOK = (get(hObject,'Value')>0) && ...
-                    strcmp(get(hObject,'enable'),'on');    
-            setObjEnable(hR,isOK);
-        end
+% hR = findall(handles.panelDataAlign,'style','radiobutton');
+switch get(hObject,'tag')
+    case 'checkSepByApp'
+        isOK = (get(hObject,'Value')>0) && ...
+                strcmp(get(hObject,'enable'),'on') && ...
+                ~any(iSel == [1,5]);    
+        setPanelProps(handles.panelDataAlign,isOK);
         
-    case ('checkSepByExpt')
+    case 'checkSepByExpt'
         resetExptTabProps(handles,iData,get(hObject,'Value')>0)
 end
 
 % updates the sheet data
-if ((~isa(eventdata,'char')) && (detIfHasData(iData,iSel)))
+if ~isa(eventdata,'char') && detIfHasData(iData,iSel)
     updateSheetData(handles,true)
 end
 
@@ -1284,7 +1263,7 @@ iData = getappdata(handles.figDataOutput,'iData');
 addTab = strcmp(get(eventdata.NewValue,'Title'),'+');
 
 % determines which tab was selected
-if (addTab)
+if addTab
     % selected tab was the addition tab
     addDataTab(handles,hTabGrp)      
 else
@@ -1308,7 +1287,7 @@ else
     
     % stops the cell editor (if editting)
     jTab0 = getappdata(hTab0,'jTable');
-    if (~isempty(jTab0))
+    if ~isempty(jTab0)
         if (jTab0.isEditing)
             jTab0.getCellEditor().stopCellEditing();
             pause(0.05);
@@ -1361,7 +1340,7 @@ iPara = iData.tData.iPara{cTab};
 mInd = [find(any(getappdata(handles.figDataOutput,'metType'),1)),(nMetG-1)];
 
 % updates the statistical test table (if required)
-if (iData.metStats)
+if iData.metStats
     % resets the table data
     Data = get(handles.tableStatTest,'Data');
     [Data(:,2),Data(:,3)] = deal({false},{''});
@@ -1387,8 +1366,8 @@ for i = mInd
     
     % resets the table data entries
     Data(:,2) = {false};    
-    switch (i)
-        case (1)
+    switch i
+        case 1
             % updates the selected metric checkboxes
             if (~isempty(iPara{i+1}{1}))
                 sInd = iPara{i+1}{1}(iPara{i+1}{1}(:,2) < nMet,1);                       
@@ -1398,8 +1377,10 @@ for i = mInd
             % updates the metric strings
             metInd = num2cell(iPara{2}{2},2);
             Data(:,3) = cellfun(@(x)(setMetricStatString(x)),metInd,'un',0);
-        case (4)
+
+        case 4
             Data(iPara{i+1}{1},2) = {true};
+
         otherwise
             Data(iPara{i+1}{1},2) = {true};
     end
@@ -1491,8 +1472,10 @@ jTab = getappdata(hObject,'jTable');
 mType = detKeyModifierType(eventdata.Modifier);
 
 % sets the row/column indices
-switch (eventdata.Key)
-    case {'delete','backspace'} % case is deleting a cell        
+switch eventdata.Key
+    case {'delete','backspace'} 
+        % case is deleting a cell        
+        
         % retrieves the manual alteration index and tab sheet data arrays
         mInd = iData.tData.mInd{iData.cTab}{iSel};          
         ii = true(size(mInd,1),1);
@@ -1514,28 +1497,40 @@ switch (eventdata.Key)
         % updates the tab sheet fields
         iData.tData.mInd{iData.cTab}{iSel} = mInd(ii,:);
         iData.tData.Data{iData.cTab} = Data;
-    case ('uparrow') % case is the up arrow       
+        
+    case 'uparrow' 
+        % case is the up arrow       
+        
         % performs the action based on the modifier
-        switch (mType)                
-            case (12) % case is the control + shift modifier 
+        switch mType                
+            case 12 % case is the control + shift modifier 
                 jTab.setRowSelectionInterval(0, iRow(end));
         end
-    case ('downarrow') % case is the down arrow
+        
+    case 'downarrow' 
+        % case is the down arrow
+        
         % performs the action based on the modifier
-        switch (mType)
-            case (12) % case is the control + shift modifier 
+        switch mType
+            case 12 % case is the control + shift modifier 
                 jTab.setRowSelectionInterval(iRow(1), size(Data,1)-1);
-        end        
-    case ('leftarrow') % case is the left arrow
+        end
+        
+    case 'leftarrow' 
+        % case is the left arrow
+        
         % performs the action based on the modifier
-        switch (mType)
-            case (12) % case is the control + shift modifier 
+        switch mType
+            case 12 % case is the control + shift modifier 
                 jTab.setColumnSelectionInterval(0, iCol(end));
-        end                
-    case ('rightarrow') % case is the right arrow
+        end 
+        
+    case 'rightarrow' 
+        % case is the right arrow
+        
         % performs the action based on the modifier
-        switch (mType)
-            case (12) % case is the control + shift modifier 
+        switch mType
+            case 12 % case is the control + shift modifier 
                 jTab.setColumnSelectionInterval(iCol(1), size(Data,2)-1);
         end        
 end
@@ -1713,7 +1708,11 @@ addJavaObjCallback(jTM,'TableChangedCallback',[])
 % sets the new values into the sheet
 for i = 1:length(iRowA)
     for j = 1:length(iColA)
-        jTab.setValueAt(Data{iRowA(i)+1,iColA(j)+1},iRowA(i),iColA(j)); 
+        try 
+            jTab.setValueAt(Data{iRowA(i)+1,iColA(j)+1},iRowA(i),iColA(j)); 
+        catch
+            jTab.setValueAt([],iRowA(i),iColA(j));             
+        end
     end
 end
 
@@ -1818,8 +1817,9 @@ end
 if (strcmp(stData.Type,'FixedComp'))
     pTol = stData.pTol;
 else
-    switch (stData.Test)
-        case ('K-W') % case is Dunn-Sidak coefficient (for K-W test)
+    switch stData.Test
+        case 'K-W' 
+            % case is Dunn-Sidak coefficient (for K-W test)
             if (iscell(stData.p(aOut,1)))
                 nGrp = sum(cellfun(@(x)(size(x,1)),stData.p(aOut,1)));
             else
@@ -1827,16 +1827,21 @@ else
             end
                 
             pTol = 1 - (power((1-pTolT),1/(nGrp*(nGrp-1)*0.5)));        
-        case {'ANOVA'} % case is ANOVA test significance level
+        
+        case 'ANOVA' 
+            % case is ANOVA test significance level
             pTol = pTolT;
+        
         case {'T-Test','Z-Test'}
             pTol = stData.pTol;
     end
 end
     
 % sets the data based on the test type
-switch (stData.Type)
-    case {'Comp','CompSumm'} % case is a group comparison
+switch stData.Type
+    case {'Comp','CompSumm'} 
+        % case is a group comparison
+        
         % sets the header strings
         hStr = {'Metric Name',mStr;...
                 'P-Significance',getSignificanceString(pTol);...
@@ -1855,7 +1860,9 @@ switch (stData.Type)
             tStr = iData.appName(iData.appOut(:,iData.cTab))';
         end
         
-    case ('CompMulti') % case is a multi-group comparison             
+    case 'CompMulti'
+        % case is a multi-group comparison             
+        
         % sets the header strings
         hStr0 = {'Metric Name',mStr;...
                  'P-Significance',getSignificanceString(pTol);...
@@ -1889,7 +1896,9 @@ switch (stData.Type)
             tStr = eval(sprintf('plotD.%s',iData.pStats{iRow}{2}));
         end
     
-    case {'TTest','ZTest','TTestGroup','ZTestGroup'} % case is a day/night T-/Z-test
+    case {'TTest','ZTest','TTestGroup','ZTestGroup'} 
+        % case is a day/night T-/Z-test
+        
         % sets the header strings
         hStr = {'Metric Name',mStr;...
                 'P-Significance',getSignificanceString(pTol);...
@@ -1922,7 +1931,9 @@ switch (stData.Type)
             end            
         end
 
-    case ('FixedComp') % case is a fixed value comparison  
+    case 'FixedComp'
+        % case is a fixed value comparison  
+        
         % sets the header strings
         [hStr,dForm] = deal([{'Metric Name'},mStr],-dForm);
         hStr = combineCellArrays(hStr,[{'P-Significance'},getSignificanceString(pTol)],0);                        
@@ -1932,7 +1943,9 @@ switch (stData.Type)
         % sets the significance strings
         [pStrS,sStrS] = deal(stData.pStr,sStr(stData.isSig+1));
         
-    case {'Sim','SimDN'} % case is the raw only similarity matrics
+    case {'Sim','SimDN'} 
+        % case is the raw only similarity matrics
+        
         % sets the header strings
         hStr = {'','';'Metric Name',mStr;'Values Type','Raw'};  
         
@@ -1944,7 +1957,9 @@ switch (stData.Type)
         pStrS = cell2cell(pStrS{dForm}(aOut,aOut));
         [pStrS,dForm] = deal(combineCellArrays(pStrS,{NaN}),1);        
         
-    case {'SimNorm','SimNormDN'} % case is the raw/normalized similarity matrics
+    case {'SimNorm','SimNormDN'} 
+        % case is the raw/normalized similarity matrics
+        
         % sets the value type strings
         vtStr = {'Raw','Normalised'};
         
@@ -1960,7 +1975,9 @@ switch (stData.Type)
         pStrS = cell2cell(pStrS{dForm}(aOut,aOut));
         [pStrS,dForm] = deal(combineCellArrays(pStrS,{NaN}),1);
         
-    case ('GOF') % case is the goodness-of-fit metrics
+    case 'GOF'
+        % case is the goodness-of-fit metrics
+        
         % sets the header string
         [hStr,dForm] = deal({'','';'Metric Name',mStr},0);
                 
@@ -1982,7 +1999,7 @@ end
 AT = combineCellArrays(hStr,{NaN},0);    
 
 % if using P-value output, set up the array strings
-if (any(abs(dForm) == [0 1 3]))
+if any(abs(dForm) == [0 1 3])
     if (dForm > 0)
         pStrS(logical(eye(size(pStrS)))) = {'N/A'};
     end
@@ -2012,9 +2029,11 @@ switch (Type)
     case {'Comp','CompSumm'}
         AT = combineCellArrays({NaN},tStr);
         AP = combineCellArrays(tStr',pStr);
+    
     case ('FixedComp')
         AT = combineCellArrays({NaN},tStr);
         AP = combineCellArrays({NaN},pStr);
+    
     case ('CompMulti')
         % allocates memory for the data array
         aOut = find(iData.appOut(:,iData.cTab));
@@ -2124,14 +2143,18 @@ function [stData,cType,dForm] = runStatsTest(handles,pType,pStr,iRow)
 [lStr,fxVal0,tType] = deal([],NaN,1);
 
 % sets the parameters based on the test type
-switch (pType{1})
-    case ('CompSumm')
+switch pType{1}
+    case 'CompSumm'
         lStr = {'One-Sided ANOVA from Summary Statistics'};
-    case {'Comp','CompMulti'} % case is using a comparison test
+    
+    case {'Comp','CompMulti'} 
+        % case is using a comparison test
         lStr = {'Automatic selection based on normality test of data';...
                 'One-Sided ANOVA (Normally Distributed Data)';...
                 'Kruskal-Wallis (Non-Normally Distributed Data)'};                      
-    case ('FixedComp') % case is comparison against a fixed value
+    
+    case 'FixedComp' 
+        % case is comparison against a fixed value
         lStr = {'Automatic selection based on normality test of data';...
                 'One-Sided Student T-Test (Normally Distributed Data)';...
                 'Wilcoxon Signed Rank Test (Non-Normally Distributed Data)'}; 
@@ -2139,15 +2162,20 @@ switch (pType{1})
         pData = getappdata(handles.figDataOutput,'pData');
         cP = retParaStruct(pData.cP);
         fxVal0 = cP.tPer;  
+    
     case {'ZTest','ZTestGroup'}
         lStr = {'One-Sided Proportion Z-Test'};
+    
     case {'TTest','TTestGroup'}
         lStr = {'One-Sided Student T-Test'};        
+    
     case {'Sim','SimDN'} % case is the similarity array
         [lStr,tType] = deal({'Inter-Group Similarity Matrix'},0);
+    
     case {'SimNorm','SimNormDN'} % case is the (normalised) similarity array 
         [lStr,tType] = deal({'Inter-Group Similarity Matrix'},2);
-    case {'GOF'} % case is the goodness-of-fit statistics
+    
+    case 'GOF' % case is the goodness-of-fit statistics
         [lStr,tType] = deal({'Goodness-of-fit Statistics'},0);
 end
 
@@ -2231,8 +2259,8 @@ set(findall(hRadio,'UserData',1+(iData.tData.iSel(cTab)>1)),'Value',1)
 [~,iData.tData.iSel(cTab)] = getSelectedIndexType(handles);
 setappdata(handles.figDataOutput,'iData',iData)
 
-% updates the other formating checkbox values
-updateOtherFormatCheck(handles,iData)
+% % updates the other formating checkbox values
+% updateOtherFormatCheck(handles,iData)
 
 % updates the panel selection
 if (nargin == 1)
@@ -2252,146 +2280,54 @@ allowSelect = true;
 wState = warning('off','all');
 
 % retrieves the data struct
-iData = getappdata(handles.figDataOutput,'iData');
-pData = getappdata(handles.figDataOutput,'pData');
-plotD = getappdata(handles.figDataOutput,'plotD');
-snTot = getappdata(handles.figDataOutput,'snTot');
+hFig = handles.figDataOutput;
+iData = getappdata(hFig,'iData');
 jTab = getappdata(getSheetTableHandle(handles),'jTable');
 
 % other initialisations
 iSel = iData.tData.iSel(iData.cTab);
 iPara = iData.tData.iPara{iData.cTab}{iSel};
-[Y,A,Data,h] = deal(iData.Y{iSel},iPara{1},[],[]);
+[Data,h] = deal([],[]);
 
 % sets the tab worksheet data cell array
 if ~isRecalc
     % if not recalculating, then retrieve the stored values 
     Data = iData.tData.Data{iData.cTab}{iSel};
-elseif ~isempty(iPara{1})
-    % creates the load bar    
-    if nargin == 2
-        h = ProgressLoadbar('Initialising Data Table Array...');
-    end
     
-    % updates the GUI
-    pause(0.05);    
+elseif ~isempty(iPara{1}) 
+    % creates the progress loadbar
+    h = ProgressLoadbar('Reshaping Table Data...');
+    iData.tData.Data{iData.cTab}{iSel} = [];
     
-    % data array needs to be recreated
-    DataN = [];
-    try
-        switch iSel
-            case (1) 
-                % case is the statistical test
-                
-                % determines the output variables indices 
-                [stInd,A] = deal(iData.tData.stInd{iData.cTab},iPara{1});
-                isHorz = get(handles.radioAlignHorz,'value');
-                DataT = get(handles.tableStatTest,'Data');
-
-                % for each of the 
-                for j = 1:length(A)
-                    % retrieves the new statistical output data
-                    i = A(j);
-                    ATnw = setupStatsDataArray(handles,iData,pData,...
-                                      plotD,Y{i}{stInd(i,1)},stInd(i,2),i);    
-
-                    % appends the new data to the table
-                    if (j == 1)
-                        Data = ATnw;
-                    else
-                        Data = combineCellArrays(Data,ATnw,isHorz);
-                    end   
-                    
-                    %
-                    if (isempty(DataT{i,3}))
-                        DataT{i,3} = setStatTestString(iData,iData.pStats{i},i);
-                        set(handles.tableStatTest,'Data',DataT)
-                    end
-                end
-                
-            case (2)
-                % case is the population metric output
-                Data = setupPopMetDataArray(handles,iData,plotD,Y,A);
-            
-            case (3) 
-                % case is the population metric (fixed) output                                  
-                Data = setupFixedMetDataArray(handles,iData,pData,plotD,Y,A);                
-            
-            case (4)
-                % case is the individual metric output
-                Data = setupIndivMetDataArray(handles,iData,pData,plotD,Y,A);
-            
-            case (5) 
-                % case is the population signal output 
-                [Data,DataN] = setupPopSigDataArray(handles,pData,iData,Y,A);
-
-            case (6) 
-                % case is the individual signal output 
-                [Data,DataN] = setupIndivSigDataArray(handles,pData,iData,Y,A);
-
-            case (7) 
-                % case is the general population data array
-                Data = setupPopGenDataArray(iData,Y,A);
-
-            case (8) 
-                % case is the general individual data array
-                Data = setupIndivGenDataArray(iData,Y,A);
-
-            otherwise
-                % case is the parameters
-                Data = setupParaDataArray(handles,iData);
-        end                          
-
-        %
-        if ~any(iSel == [5 6])
-            isN = find(cellfun(@isnumeric,Data));
-            Data(isN(cellfun(@isnan,Data(isN)))) = {''}; 
-        end
-        
-        %
-        mInd = iData.tData.mInd{iData.cTab}{iSel};
-        if ~isempty(mInd)
-            % removes any manual indices not within the sheet frame
-            [m,n] = size(Data);
-            mInd = mInd((mInd(:,1) < m) & (mInd(:,2) < n),:);
-
-            % if any indices remain, remove any of the manual indices for the
-            % cells which are not empty
-            if ~isempty(mInd)
-                ii = cellfun(@(x)(isempty(Data{x(1),x(2)})),num2cell(mInd+1,2));
-                mInd = mInd(ii,:);
-
-                % if there are still manual indices, then set the cell entries
-                % from the previous data array into the new one
-                if ~isempty(mInd)
-                    jj = sub2ind(size(Data),mInd(:,1)+1,mInd(:,2)+1);
-                    Data(jj) = Data0(jj);
-                end
-            end
-        end
-
-        % updates the sheet data array
-        iData.tData.mInd{iData.cTab}{iSel} = mInd;
-        iData.tData.Data{iData.cTab}{iSel} = Data;    
-        iData.tData.DataN{iData.cTab}{iSel} = DataN;
-        
-    catch ME
-%         enableDisableFig(handles.figDataOutput,'on');
-        rethrow(ME)
+    % sets up the signal data array object
+%     tic
+%     profile clear
+%     profile on -timestamp -timer 'performance'
+    sObj = DataOutputSetup(hFig,nargin==2);
+%     assignin('base','p',profile('info'))
+%     pause(0.05);
+%     toc
+    
+    if sObj.ok    
+        % if successful, then updates the sheet data array
+        Data = sObj.Data;        
+        iData.tData.mInd{iData.cTab}{iSel} = sObj.mInd;
+        delete(sObj);
+    else
+        % otherwise, rethrow the error message (use this for debugging...)
+        rethrow(sObj.msgObj)        
     end
 else
     % sets an empty array for the sheet data array
-    iData.tData.mInd{iData.cTab}{iSel} = [];
-    iData.tData.Data{iData.cTab}{iSel} = [];            
-    iData.tData.DataN{iData.cTab}{iSel} = [];     
+    iData.tData.mInd{iData.cTab}{iSel} = [];    
 end    
 
 % updates the data into the overall data array
-setappdata(handles.figDataOutput,'iData',iData)        
+setappdata(hFig,'iData',iData)        
 
 % disables the save menu item
 setObjEnable(handles.menuSave,any(~cellfun(@isempty,iData.tData.Data)))
-enableDisableFig(handles.figDataOutput,'off');
+enableDisableFig(hFig,'off');
 
 % creates the load bar
 if isempty(h) && (nargin == 2) && isRecalc
@@ -2419,11 +2355,15 @@ end
 cEdit = true(1,size(Data,2));
 cForm = repmat({'char'},1,size(Data,2));          
 set(hTab,'ColumnFormat',cForm,'ColumnName',colN,...
-         'ColumnEditable',cEdit,'RowName',rowN);                         
-
+         'ColumnEditable',cEdit,'RowName',rowN);                              
+     
 % sets the table data and adds the table popup menu
 setFinalSheetData(handles,jTab,Data,colN,get(hTab,'UserData'))                        
 addDataTablePopupMenu(jTab,handles)
+
+% updates the data field
+iData.tData.Data{iData.cTab}{iSel} = Data;
+clear Data;
 
 % makes the tab visible again
 if nargin == 2; setObjVisibility(hTab,'on'); end
@@ -2477,13 +2417,13 @@ hSP = handle(jSP,'CallbackProperties');
 cbFcnH = setupAdjustCBFcn(Data,jView,jTM,cellSz,cTab,0);
 cbFcnV = setupAdjustCBFcn(Data,jView,jTM,cellSz,cTab,1);
 
-%
+% sets the callback functions
 addJavaObjCallback(jSBH,'AdjustmentValueChangedCallback',cbFcnH)
 addJavaObjCallback(jSBV,'AdjustmentValueChangedCallback',cbFcnV)
 
 % retrieves the statistical test table java object handle
 jTabH = getappdata(handles.tableGroupInc,'jTable');        
-if (isempty(jTabH)) 
+if isempty(jTabH)
     % sets the table java object (if not set)
     jTabH = getJavaTable(handles.tableGroupInc);
     setappdata(handles.tableGroupInc,'jTable',jTabH)
@@ -2515,7 +2455,7 @@ end
 % clears any potential java errors
 pause(0.5)
 clc
-    
+
 % --- creates the scrollbar adjustment callback function
 function cbFcn = setupAdjustCBFcn(Data,jView,jTM,cellSz,cTab,Type)
 
@@ -2554,28 +2494,35 @@ end
 function stStr = setStatTestString(iData,pType,iRow)
 
 % initisalisations
-switch (pType{1})
-    case {'Sim','SimDN','GOF'} % case is the similarity matrics
+switch pType{1}
+    case {'Sim','SimDN','GOF'} 
+        % case is the similarity matrics
         outStr = [];
-    case {'SimNorm','SimNormDN'} % case is the normalised similarity matrices
+    
+    case {'SimNorm','SimNormDN'} 
+        % case is the normalised similarity matrices
         outStr = {'Raw','Normalised'};
-    otherwise % case is the significance tests
+    
+    otherwise
+        % case is the significance tests
         outStr = {'P-Values','Significance','Both'};
 end
 
 % determines if a valid test type has been set/calculated
 stInd = iData.tData.stInd{iData.cTab}(iRow,:);
-if (isnan(stInd(1)))
+if isnan(stInd(1))
     % if no test is set, then set an empty string
     stStr = '';
 else
     % otherwise, set the test string based on the type
-    stData = iData.Y{1}{iRow}{stInd(1)};
-    if (isempty(outStr))
+%     stData = iData.Y{1}{iRow}{stInd(1)};
+    stData = iData.getData(1,iRow,stInd(1));    
+    if isempty(outStr)
         stStr = stData.Test;
     else
-        if (iscell(stData.Test))
-            stStr = cellfun(@(x)(sprintf('%s (%s)',x,outStr{stInd(2)})),stData.Test,'un',0);
+        if iscell(stData.Test)
+            stStr = cellfun(@(x)(sprintf('%s (%s)',x,...
+                            outStr{stInd(2)})),stData.Test,'un',0);
         else
             stStr = sprintf('%s (%s)',stData.Test,outStr{stInd(2)});
         end
@@ -2698,10 +2645,12 @@ if any(any(metType(:,4:5)))
         % sets the final list string and userdata tag
         [lStr,uData] = deal(lStr(1:(5-find(any(Texp>=1,1),1,'first'))),'Time');
         set(handles.textUnits,'String','Time Vector Units:');
-    elseif any(strcmp(field2cell(iData.xVar,'Type'),'Time'))
+        
+    elseif any(strcmp(field2cell(iData.xVar,'Type'),'Distance'))
         % sets the final list string and userdata tag
         [lStr,uData] = deal({'Millimetres','Centimetres','Metres'},'Dist');    
         set(handles.textUnits,'String','Distance Vector Units:');
+    
     else
         lStr = [];
     end
@@ -2789,10 +2738,10 @@ set(hTabGrpD,'tag','sheetTabGrp','Units','Pixels','position',tabPosD)
         
 % sets up the tab objects (over all stimuli objects)
 iData.tData.hTab = cell(length(tStr),1);
-for i = 1:length(tStr)    
+for i = 1:length(tStr)
     iData.tData.hTab{i} = ...
         createNewTabPanel(hTabGrpD,1,'title',tStr{i},'UserData',i);
-end    
+end
 
 % creates the tab table
 createTabTable(handles.panelDataOuter,1,iData.tData.hTab{1});
@@ -2804,22 +2753,22 @@ setTabGroupCallbackFunc(hTabGrpD,{@changeDataTab});
 set(handles.radioAlignVert,'value',1)
 
 % updates the data struct into the main GUI
-setappdata(handles.figDataOutput,'iData',iData);
+setappdata(hFig,'iData',iData);
 
-% -------------------------------- %
-% --- OTHER GUI INITIALSATIONS --- %
-% -------------------------------- %
+% --------------------------------- %
+% --- OTHER GUI INITIALISATIONS --- %
+% --------------------------------- %
     
 % initialisations
-uD = {1,[]};
 cdFile = 'ButtonCData.mat';
 nDay = detExptDayDuration(snTot,hGUI);
 
 % retrieves the experiment duration 
-mltExp = (length(snTot) > 1) && (iData.sepExp);
-mltDay = (any(nDay > 1)) && (iData.sepDay);
-mltApp = length(iData.appName) > 1;
-mltGrp = any(detDataGroupSize(iData,plotD,[])) > 1;
+eData = struct('mltExp',(length(snTot) > 1) && (iData.sepExp),...
+               'mltDay',(any(nDay > 1)) && iData.sepDay,...
+               'mltApp',length(iData.appName) > 1,...
+               'mltGrp',any(detDataGroupSize(iData,plotD,[]) > 1));
+setappdata(hFig,'eData',eData);
 
 % sets the button c-data values
 if exist(cdFile,'file')
@@ -2837,11 +2786,7 @@ setObjEnable(handles.menuDeleteTab,'off')
 setObjEnable(handles.menuMoveTab,'off')
 
 % sets the enabled properties of the checkboxes
-set(setObjEnable(handles.checkSepByExpt,mltExp),'UserData',uD{1+mltExp})
-set(setObjEnable(handles.checkSepByDay,mltDay),'UserData',uD{1+mltDay})    
-set(setObjEnable(handles.checkSepByApp,mltApp),'UserData',uD{1+mltApp})
-setObjEnable(handles.checkNumGroups,mltGrp)    
-checkOtherFormat(handles.checkSepByApp,'1')
+updateCheckboxProps(handles);
 
 % sets the callback functions for the other formatting checkboxes
 hCheck = findall(handles.panelManualData,'style','checkbox');
@@ -2880,7 +2825,7 @@ end
 % resets the experiment inclusion table (if required)
 if length(hTabU) == 3
     % sets the experiment inclusion data
-    sName = getappdata(handles.figDataOutput,'sName');
+    sName = getappdata(hFig,'sName');
     DataExp = [sName(:),num2cell(iData.expOut)];
 
     % sets the table properties
@@ -2913,8 +2858,11 @@ hTabG = findall(hFig,'type','uitabgroup');
 for i = 1:length(hTabG)
     % retrieves the tabbed pane object from the tab group
     jTabG = getTabGroupJavaObj(hTabG(i));
+    pause(0.01);
     setappdata(hTabG(i),'UserData',jTabG)        
 end
+
+assignin('base','hTabG',hTabG);
 
 % --- updates the metric order selection buttons
 function updateButtonProps(handles)
@@ -2962,7 +2910,7 @@ if (iSel == 2)
         % sets the metric statistical strings for each type
         for i = 1:length(lStr)
             % sets the final list string    
-            if (iData.metStats)
+            if iData.metStats
                 [~,mStr] = ind2varStat(iOrder(i,2));                        
                 fName = iData.fName{mType(iOrder(i,1))};
                 lStr{i} = sprintf('%s (%s)',fName,mStr);
@@ -2972,20 +2920,24 @@ if (iSel == 2)
         end
     end
 else
-    if (~isempty(iOrder))
-        switch (iSel)
-            case (1) % case is the statistical test     
+    if ~isempty(iOrder)
+        switch iSel
+            case 1
+                % case is the statistical test     
                 hasTest = getappdata(handles.figDataOutput,'hasTest');
                 lStr = iData.fName(hasTest(iOrder));
-            case (nMetG)
+            
+            case nMetG
+                % case is the parameters
                 hTabG = findall(0,'tag','metricTabGrp');
                 hTab = findall(hTabG,'UserData',nMetG-1,'Parent',hTabG);
                 hTable = findall(hTab,'type','uitable');
                 
                 Data = get(hTable,'Data');
                 lStr = Data(iOrder);
-            otherwise % case is the other metrics
-                %
+            
+            otherwise
+                % case is the other metrics
                 mType = find(metType(:,iSel-1));
                 lStr = iData.fName(mType(iOrder));
         end
@@ -3020,8 +2972,8 @@ for i = 1:length(hCheck)
     hCheckNw = findall(hCheck,'Max',i);    
     set(hCheckNw,'value',i*iData.tData.altChk{iData.cTab}{iSelT}(i))
     
-    switch (get(hCheckNw,'tag'))
-        case ('checkSepByExpt')
+    switch get(hCheckNw,'tag')
+        case 'checkSepByExpt'
             % sets the check box enabled properties
             isOK = (any(iSelT == 2)) && iData.sepExp;
             enableChk = isOK && (sum(iData.expOut(:,iData.cTab))>1);
@@ -3029,15 +2981,15 @@ for i = 1:length(hCheck)
             
             isChk = iData.tData.altChk{iData.cTab}{iSelT}(2);
             if (nargin < 3)
-                resetExptTabProps(handles,iData,isChk);            
+                resetExptTabProps(handles,iData,isChk);
             end
             
-        case ('checkSepByApp')
+        case 'checkSepByApp'
             isOK = all(iSelT ~= [5:8 nMetG]) && ...
                             (getSelectedIndexType(handles) ==2 );
             setObjEnable(hCheckNw,isOK&&(sum(iData.appOut(:,iData.cTab))>1)) 
             
-        case ('checkNumGroups')
+        case 'checkNumGroups'
             % determines
             switch iSelT
                 case (1) % case is the statistical tests            
@@ -3057,7 +3009,7 @@ for i = 1:length(hCheck)
                 [Var,Type] = field2cell(iData.xVar,{'Var','Type'});
                 xDepY = field2cell(iData.yVar(iiV),'xDep');
                 isE = cellfun(@isempty,xDepY);
-                if (all(isE))
+                if all(isE)
                     % no grouping independent variables
                     hasGrp = false;
                 else
@@ -3115,7 +3067,7 @@ function updateTableColumnProp(hTab)
 
 % retrieves the java table object
 jTab = getappdata(hTab,'jTable');
-if (isempty(jTab))
+if isempty(jTab)
     jTab = getJavaTable(hTab);
     setappdata(hTab,'jTable',jTab)    
 end
@@ -3265,7 +3217,7 @@ end
 
 % copies the data to the clipboard
 waitfor(msgbox(mStr,'Data Copying','modal'))   
-mat2clip(Data)
+mat2clip(cellfun(@char,num2cell(Data),'un',0))
 
 % --- select all menu item
 function menuSelectFcn(hObject, eventData, handles)
@@ -3299,100 +3251,11 @@ AlterData(handles,3)
 % ------------------------------- %
 
 % --- initialises the data struct
-function [iData,Type,hasTest] = initDataStruct(handles,snTot,pData,plotD)
+function [iData,Type,hasTest] = initDataStruct(handles)
 
-% global variables
-global nMet nChk nMetG
-nMetG = 9;
-
-% initialisations
-oP = pData.oP;
-[Stats,pType,Name] = field2cell(oP.yVar,{'Stats','Type','Name','Var'});
-
-% retrieves the parameter types
-[hasTest,Type] = deal(~cellfun(@isempty,Stats),logical(cell2mat(pType)));
-
-% memory allocation
-[nApp,nExp,nPara] = deal(length(pData.appName),length(snTot),sum(hasTest));
-
-% determines number of other formatting checkbox objects
-nChk = length(findall(handles.panelManualData,'style','checkbox'));
-a = cell(1,nMetG);
-
-% initialises the output data struct
-iData = struct('fName',[],'pStr',[],'pType',[],'pStats',[],'xVar',[],'yVar',[],...
-               'appOut',[],'appName',[],'expOut',[],'stData',[],'tData',[],...
-               'nOut',[],'cInd',1,'cTab',1,'nTab',1,'incTab',1,'Data0',[],...
-               'sepDay',oP.sepDay,'sepExp',oP.sepExp,'sepGrp',oP.sepGrp,...
-               'metStats',oP.metStats,'grpComb',oP.grpComb);
-           
-% sets the tab data struct           
-iData.tData = struct('Name',[],'Data',[],'DataN',[],'hTab',[],'iPara',[],...
-                     'mInd',[],'stInd',[],'altChk',[],'alignV',[],...
-                     'iSel',1,'mSel',1);
-[iData.tData.Name,iData.tData.Data,iData.tData.DataN] = deal({'Sheet 1'},{a},{a}); 
-[iData.tData.stInd{1},iData.tData.mInd{1}] = deal(NaN(nPara,2),a);
-iData.tData.iPara{1} = addOrderArray(Type);
-iData.tData.altChk = {repmat({false(1,nChk)},1,nMetG)};
-[iData.tData.alignV,iData.Data0] = deal(true(1,nMetG),cell(1,nMetG-1));
-
-% sets the field names and strings
-[iData.fName,iData.pStats,iData.pType] = deal(Name,Stats(hasTest),pType);
-[iData.appOut,iData.appName] = deal(true(nApp,1),pData.appName);
-[iData.stData,iData.Y] = deal(cell(nPara,1),cell(nMetG,1));
-[iData.expOut,iData.xVar,iData.yVar] = deal(true(nExp,1),oP.xVar,oP.yVar);
-
-% sets the statistical test cell array (if any are to be output)
-if any(hasTest) && iData.metStats
-    nTest = num2cell(cellfun(@(x)(getStatCount(x{1})),Stats(hasTest)));
-    iData.Y{1} = cellfun(@(x)(cell(1,x+1)),nTest,'un',0);
-else
-    iData.metStats = false;
-end
-
-% calculates the individual metrics (if any are to be output)
-if any(Type(:,1))
-    % calculates all of the population metrics
-    iData.Y{2} = cell(sum(Type(:,1)),nMet,4);
-    iData = calcStatMetricsPop(snTot,iData,plotD,Type(:,1)); 
-end
-
-% set the signal traces (if any are to be output)
-if any(Type(:,2))
-    iData.Y{3} = cell(sum(Type(:,2)),1);
-    iData = setFixedMetricsPop(iData,plotD,Type(:,2));
-end
-    
-% calculates the individual metrics (if any are to be output)
-if any(Type(:,3))          
-    % calculates all of the grouped individual metrics
-    iData.Y{4} = cell(sum(Type(:,3)),2);
-    iData = calcStatMetricsIndiv(snTot,iData,plotD,Type(:,3));    
-end
-    
-% set the signal traces (if any are to be output)
-if any(Type(:,4))
-    iData.Y{5} = cell(sum(Type(:,4)),1);
-    iData = setMetricSignalsPop(iData,plotD,Type(:,4));
-end
-
-% set the signal traces (if any are to be output)
-if any(Type(:,5))
-    iData.Y{6} = cell(sum(Type(:,5)),2);
-    iData = setMetricSignalsIndiv(snTot,iData,plotD,Type(:,5));
-end
-
-% set the signal traces (if any are to be output)
-if any(Type(:,6))
-    iData.Y{7} = cell(sum(Type(:,6)),1);
-    iData = set2DArrayDataPop(iData,plotD,Type(:,6));
-end
-
-% set the signal traces (if any are to be output)
-if any(Type(:,7))
-    iData.Y{8} = cell(sum(Type(:,7)),1);
-    iData = set2DArrayDataIndiv(iData,plotD,Type(:,7));
-end
+% reshapes the data into the correct format and retrieves the flags
+iData = DataOutputStorage(handles.figDataOutput);
+[Type,hasTest] = deal(iData.Type,iData.hasTest);
 
 % --- creates a new index order array
 function iPara = addOrderArray(metType)
@@ -3428,11 +3291,13 @@ iPara{2} = {[],a};
 function nTest = getStatCount(sType)
 
 % retrieves the test count based on the test type
-switch (sType)
+switch sType
     case {'Comp','CompMulti','FixedComp'}
         nTest = 2;
+    
     case {'ZTest','ZTestGroup','TTest','TTestGroup','SimNorm','SimNormDN'}
         nTest = 0;
+    
     case {'Sim','SimDN','GOF','CompSumm'}
         nTest = 0;
 end     
@@ -3519,23 +3384,139 @@ function updateCheckboxProps(handles,iSelT)
 % global variables
 global nMetG
 
-% retrieves the group count
-iData = getappdata(handles.figDataOutput,'iData');
-nApp = sum(iData.appOut(:,iData.cTab));
+% sets the default input arguments
+if ~exist('iSelT','var')
+    [~,iSelT] = getSelectedIndexType(handles);
+end
 
-% retrieves the current metric selection
-if (nargin == 1)
+% if the parameter tab is selected then disable all checkboxes and exit
+if iSelT == nMetG
+    hCheck = findall(handles.panelOtherFormats,'Style','Checkbox');
+    arrayfun(@(x)(set(setObjEnable(x,0),'Value',0)),hCheck)
+    return
+end
+
+% retrieves the group count
+hFig = handles.figDataOutput;
+eData = getappdata(hFig,'eData');
+iData = getappdata(hFig,'iData');
+
+% determines the group/experiment counts
+nApp = sum(iData.appOut(:,iData.cTab));
+nExp = sum(iData.expOut(:,iData.cTab));
+
+% retrieves the base experimental data fields
+useDay = eData.mltDay;
+useApp = eData.mltApp & (nApp > 1);
+useExp = eData.mltExp & (nExp > 1);
+
+% metric specific alterations
+switch iSelT
+    case 2 
+        % case is the population metrics
+        useApp = false;
+    
+    case 3 
+        % case is the population metrics
+        [useExp,useDay] = deal(false);        
+        
+    case 4
+        % case is the individual metrics
+        [useApp,useExp] = deal(false);
+        
+        % resets the alignment radio button/panel properties
+        set(handles.radioAlignHorz,'value',1);
+        setPanelProps(handles.panelDataAlign,'off')
+        
+    case 5
+        % case is the population signals
+        [useExp,useDay] = deal(false);
+        
+    case 6
+        % case is the individual signals
+        [useExp,useApp] = deal(false);        
+        
+end        
+
+% sets the checkbox enabled properties
+setCheckProps(handles.checkSepByApp,useApp)
+setCheckProps(handles.checkSepByExpt,useExp)
+setCheckProps(handles.checkSepByDay,useDay)
+updateNumGroupCheck(handles,iSelT)
+
+% updates the experiment info tab (based on the experiment separation flag)
+hTabG = findall(hFig,'tag','userTabGrp');
+jTabG = getappdata(hTabG,'UserData'); 
+if ~isempty(jTabG)
+    nChild = length(get(hTabG,'Children'));
+    if nChild == 3
+        jTabG.setEnabledAt(length(get(hTabG,'Children'))-1,useExp);    
+        iTabSel = get(get(hTabG,'SelectedTab'),'UserData');
+        if (iTabSel == nChild) && ~useExp
+            hTabNw = findall(hTabG,'UserData',1);
+            set(hTabG,'SelectedTab',hTabNw);
+        end
+    end
+end
+
+% --- updates the group number checkbox object
+function updateNumGroupCheck(handles,iSelT)
+
+% global variables
+global nMetG
+
+% sets the default input arguments
+if ~exist('iSelT','var')
     [~,iSelT] = getSelectedIndexType(handles);
 end
 
 % initialisations
-uDataD = isempty(get(handles.checkSepByDay,'UserData'));
-uDataE = isempty(get(handles.checkSepByExpt,'UserData'));
-uDataA = isempty(get(handles.checkSepByApp,'UserData'));
+useNum = false;
+gStr = {'Group','Other'};
 
-% sets the checkbox enabled properties
-[isOKE,isOKD] = deal(iSelT == 2,any(iSelT == [2 4 6]));
-setObjEnable(handles.checkSepByDay,(isOKD && uDataD && iData.sepDay))
-setObjEnable(handles.checkSepByExpt,(isOKE && uDataE && iData.sepExp))
-setObjEnable(handles.checkSepByApp,uDataA && (nApp > 1))
-setObjEnable(handles.checkNumGroups,~any(iSelT == nMetG))
+% field retrieval
+hFig = handles.figDataOutput;
+iData = getappdata(hFig,'iData');
+
+% determines if any of the independent variables are group types
+[Var,Type] = field2cell(iData.xVar,{'Var','Type'}); 
+if ~isempty(intersect(Type,gStr)) && (iSelT ~= nMetG)
+    % if so, then retrieve the metric index type    
+    if iSelT == 1
+        % case is the statistical tests
+        imType = find(iData.hasTest);
+        Data = get(handles.tableStatTest,'Data');
+        indP = imType(cell2mat(Data(:,2)));
+    else
+        % case is the other metric types
+        mType0 = getappdata(hFig,'metType');
+        imType = find(mType0(:,iSelT-1));
+        iParaT = iData.tData.iPara{iData.cTab}{iSelT}{1};
+        
+        if isempty(iParaT)
+            indP = [];
+        else
+            indP = imType(iParaT(:,1));
+        end
+    end
+
+    % retrieves the unique independent variables    
+    xDepY = unique(cell2cell(field2cell(iData.yVar(indP),'xDep'),0));
+
+    % determines the group type for each independent variable
+    if ~isempty(xDepY)
+        xVarY = cell2cell(cellfun(@(x)(Type(strcmp(Var,x))),xDepY,'un',0));
+        useNum = ~isempty(intersect(xVarY,gStr));
+    end
+end
+
+% updates the number group checkbox
+setCheckProps(handles.checkNumGroups,useNum)
+
+% --- updates the checkbox properties
+function setCheckProps(hCheck,isOn)
+
+setObjEnable(hCheck,isOn)
+if ~isOn
+    set(setObjEnable(hCheck,isOn),'Value',false)
+end

@@ -45,7 +45,7 @@ for i = 1:length(hChild)
                         setPanelProps(hTab(j),eType)
                     end
 
-                    if (~isempty(jTab))
+                    if ~isempty(jTab)
                         jTab.setEnabledAt(j-1,strcmp(eType,'on'))        
                     end                         
                 end
