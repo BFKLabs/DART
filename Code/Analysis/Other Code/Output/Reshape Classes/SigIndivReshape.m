@@ -72,21 +72,24 @@ classdef SigIndivReshape < handle
 
             % aligns the independent variables to the plot values
             nDay = max(nDay0,[],1);
+            vX = field2cell(xVar,'Var');
             [xDepTU,~,indU] = unique(xDepT,'stable');
-            ii = cellfun(@(x)(any(strcmp(xDepT,x))),field2cell(xVar,'Var'));
 
             % memory allocation
             nDep = length(xDepTU);
             hasTime = false(nDep,1);            
             [T,iD] = deal(cell(nExp,2,nDep),cell(nExp,nDep));
-            xVar = field2cell(xVar(ii),'Type');
 
             % sets up the dependent variable arrays
             for i = 1:nDep    
                 % splits the time-bin indices into separate days
-                if strcmp(xVar{i},'Time')
+                if ~isempty(xDepTU{i})
+                    xType = xVar(strcmp(vX,xDepTU{i})).Type;
+                    hasTime(i) = strcmp(xType,'Time');
+                end
+
+                if hasTime(i)
                     % initialisations
-                    hasTime(i) = true;
                     nDayMx = max(nDay);                    
                     tDay = convertTime(1,'day','sec');
 
@@ -144,7 +147,6 @@ classdef SigIndivReshape < handle
                     end    
                 else
                     % otherwise, set the index based on the dependency
-                    hasTime = false;
                     T0 = getStructField(obj.plotD,xDepTU{i});
                     if isnumeric(T0); T0 = num2cell(T0); end
 
@@ -222,8 +224,8 @@ classdef SigIndivReshape < handle
                 for k = 1:nApp
                     if j == 1
                         % memory allocation
-                        szMax = max(cell2mat...
-                                    (cellfun(@size,Y{k}(:),'un',0)),[],1);
+                        szY = cell2mat(cellfun(@size,Y{k}(:),'un',0));
+                        szMax = max(szY,[],1);
                         for i = 1:nExp; Y{k}(:,~fok{i}{k},i) = {[]}; end
 
                         % determines all empty cells for the metric

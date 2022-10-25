@@ -6,6 +6,7 @@ classdef GenIndivData < DataOutputArray
         % string/index array fields        
         mIndG
         mStrH
+        mStrB
         appName        
         
         % data array fields

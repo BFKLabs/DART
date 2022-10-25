@@ -130,11 +130,11 @@ classdef DataOutputSetup < handle
                 % retrieves the final data array
                 obj.Data = dataObj.Data;
                 
-                % removes any non-numerical fields
-                if ~any(obj.iSel == [5 6])
-                    isN = find(cellfun(@isnumeric,obj.Data));
-                    obj.Data(isN(cellfun(@isnan,obj.Data(isN)))) = {''}; 
-                end
+%                 % removes any non-numerical fields
+%                 if ~any(obj.iSel == [5 6])
+%                     isN = find(cellfun(@isnumeric,obj.Data));
+%                     obj.Data(isN(cellfun(@isnan,obj.Data(isN)))) = {''}; 
+%                 end
                 
                 % re-adds any manually entered values
                 if ~isempty(obj.mInd)

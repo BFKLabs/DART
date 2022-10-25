@@ -3416,11 +3416,11 @@ switch iSelT
         % case is the population metrics
         useApp = false;
     
-    case 3 
+    case {3,5} 
         % case is the population metrics
         [useExp,useDay] = deal(false);        
         
-    case 4
+    case {4,7}
         % case is the individual metrics
         [useApp,useExp] = deal(false);
         
@@ -3428,15 +3428,11 @@ switch iSelT
         set(handles.radioAlignHorz,'value',1);
         setPanelProps(handles.panelDataAlign,'off')
         
-    case 5
-        % case is the population signals
-        [useExp,useDay] = deal(false);
-        
     case 6
         % case is the individual signals
         [useExp,useApp] = deal(false);        
         
-end        
+end             
 
 % sets the checkbox enabled properties
 setCheckProps(handles.checkSepByApp,useApp)

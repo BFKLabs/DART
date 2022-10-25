@@ -29,6 +29,9 @@ classdef MetricPopData < DataOutputArray
         nDay
         nxDepU
         iGrpT
+
+        % fixed class fields
+        emptyStr = "N/A";
         
     end
     
@@ -97,6 +100,15 @@ classdef MetricPopData < DataOutputArray
             obj.fOK = cell2mat(arrayfun(@(x)...
                         (cellfun(@any,x.iMov.flyok)),snTotE(:)','un',0));            
             
+            % reduces the genotype groups to those that appear in each expt
+            [hasF,iOut] = deal(any(obj.fOK,2),find(obj.appOut));
+            obj.appOut = obj.appOut & setGroup(iOut,size(hasF));
+
+            % reshapes the other data arrays
+            obj.nApp = sum(obj.appOut);
+            obj.appName = obj.iData.appName(obj.appOut);
+            obj.YR = cellfun(@(x)(x(obj.appOut)),obj.YR,'un',0);
+
             % array indexing and other initialisations
             if obj.iData.metStats                
                 % reduces the count array to only include groups which
@@ -188,8 +200,13 @@ classdef MetricPopData < DataOutputArray
                     
             % determines the unique sub-grouping types
             [~,~,iC] = unique(obj.xDep,'stable');
-            iGrpC = arrayfun(@(x)(find(iC==x)),1:max(iC),'un',0);
-            obj.nxDepU = length(iGrpC);            
+            if isempty(iC)
+                obj.mStrT = cell(obj.nApp,1);
+                [obj.nxDepU,iGrpC] = deal(1,{1});
+            else
+                iGrpC = arrayfun(@(x)(find(iC==x)),1:max(iC),'un',0);
+                obj.nxDepU = length(iGrpC);            
+            end
                     
             % sets up column headers for all regions/expts
             obj.mStrT = cell(obj.nApp,obj.nxDepU); 
@@ -199,7 +216,7 @@ classdef MetricPopData < DataOutputArray
                 [mStrB,mStrBH] = obj.setupBaseTableHeader();
                 
                 % sets the table group headers for each type
-                for i = find(any(obj.fOK,2) & obj.appOut)'
+                for i = 1:obj.nApp
                     obj.mStrT{i,k} = ...
                             obj.setGroupTableHeader(mStrB,mStrBH,i);
                 end
@@ -224,6 +241,7 @@ classdef MetricPopData < DataOutputArray
 
                 % combines the temporary data into a single array
                 YM0 = cell2cell(cellfun(@(x)(x(:)),Ytmp,'un',0),0);                
+                if ~isempty(YM0); YM0(strcmp(YM0,'')) = {obj.emptyStr}; end
                 obj.YM{i} = [obj.mStrH;YM0];
             end            
             
@@ -233,11 +251,9 @@ classdef MetricPopData < DataOutputArray
         function setupFinalDataArray(obj)
             
             % initialisations
-            [a,b] = deal({''},'');
-            
-            % reduces down the data to the feasible groups
-            isF = any(obj.fOK,2);            
-            [obj.YM,obj.mStrT] = deal(obj.YM(isF),obj.mStrT(isF));
+            [a,b] = deal({''},'');   
+            isOK = any(obj.fOK(obj.appOut,:),2);
+            [obj.YM,obj.mStrT] = deal(obj.YM(isOK),obj.mStrT(isOK));
             
             % appends the header and metric data
             for i = 1:length(obj.YM)
@@ -366,8 +382,9 @@ classdef MetricPopData < DataOutputArray
             
             if obj.sepExp
                 % case is separating by experiment
+                iOut = find(obj.appOut);
                 iExp0 = find(obj.expOut);
-                iExp = iExp0(obj.fOK(iApp,:));
+                iExp = iExp0(obj.fOK(iOut(iApp),:));
                 if obj.numGrp
                     mStrE = arrayfun(@num2str,iExp,'un',0);                    
                 else
@@ -469,9 +486,7 @@ classdef MetricPopData < DataOutputArray
     
     % static class method
     methods (Static)
-        
-
-        
+                
         % --- retrieves the arrays 3D size
         function szY = getArrayDim(x)
             

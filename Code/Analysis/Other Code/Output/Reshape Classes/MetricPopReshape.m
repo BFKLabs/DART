@@ -59,7 +59,7 @@ classdef MetricPopReshape < handle
             for j = 1:length(obj.ind)
                 % initialisations
                 i = obj.ind(j);
-                Ytmp = field2cell(obj.plotD,pStr{i});
+                Ytmp = field2cell(obj.plotD,pStr{j});
                 YY = obj.dataGroupSplit(iData,Ytmp,obj.snTot);
 
                 % retrieves the calculated values
@@ -74,8 +74,8 @@ classdef MetricPopReshape < handle
                         for iApp = 1:nApp
                             if ~isempty(YY{iLvl,iApp})
                                 Ymet{iApp} = ...
-                                        calcMetrics(YY{iLvl,iApp},vName);
-                            end
+                                    calcMetrics(YY{iLvl,iApp},vName);
+                            end                            
                         end
 
                         % sets the final data array into the overall array
@@ -121,22 +121,24 @@ classdef MetricPopReshape < handle
                             Ygrp{j,k} = {cell2mat(Ytmp(:))};
 
                         case (2) 
-                            % metrics calculated for all days
+                            % metrics calculated for all experiments
 
-                            % only set if multiple days   
+                            % only set if multiple experiments   
                             if iData.sepExp
                                 Ygrp{j,k} = cell(1,nExp);
                                 for i = 1:nExp  
                                     Ytmp = cellfun(@(x)(cell2mat(x)),...
                                         num2cell(Y{k}(:,:,i),1),'un',0);
+                                    Ytmp(cellfun(@isempty,Ytmp)) = {NaN};
+
                                     Ygrp{j,k}{i} = cell2mat(Ytmp(:));
                                 end
                             end
                             
                         case (3) 
-                            % metrics calculated for all experiments 
+                            % metrics calculated for all days 
 
-                            % only set if multiple experiments
+                            % only set if multiple days
                             if iData.sepDay
                                 Ygrp{j,k} = cell(size(Y{k},1),1);
                                 for i = 1:size(Y{k},1)

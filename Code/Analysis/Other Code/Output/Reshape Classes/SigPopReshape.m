@@ -47,9 +47,9 @@ classdef SigPopReshape < handle
             
             % loops through each of the specified indices reshaping metrics
             for i = 1:sum(obj.pType)
-                % sets the independent/dependent variable arrays
+                % combines the metric/independent variables
                 X = arrayfun(@(x)(getStructField...
-                                (x,yVar(i).xDep{1})),obj.plotD,'un',0); 
+                                (x,yVar(i).xDep{1})),obj.plotD,'un',0);                 
                 YY = obj.dataGroupSplit(X,field2cell(obj.plotD,pStr{i}));
 
                 % sets the signals for each of the 

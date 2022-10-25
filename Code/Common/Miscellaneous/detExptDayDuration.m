@@ -3,6 +3,7 @@ function nDay = detExptDayDuration(snTot,hGUI,varargin)
 
 % parameters
 prMinTol = 5;
+nDayMin = 0.5;
 prDayTol = convertTime(prMinTol,'m','d');
 
 % retrieves the global paramerter struct
@@ -28,7 +29,12 @@ end
 
 % calculates the number of days each experiment runs for
 Tf = cellfun(@(x)(x{end}(end)),T,'un',0);
-TexpF = cellfun(@(x,y)(x+sec2vec(y)),T0,Tf,'un',0);
+if all(cellfun(@(x)(convertTime(x,'s','d')),Tf) < nDayMin)
+    nDay = ones(size(Tf));
+    return
+else
+    TexpF = cellfun(@(x,y)(x+sec2vec(y)),T0,Tf,'un',0);
+end
 
 % calculates the final day counts for each experiment
 nDay = cellfun(@(x)(convertTime(vec2sec(x),'s','d')),TexpF);

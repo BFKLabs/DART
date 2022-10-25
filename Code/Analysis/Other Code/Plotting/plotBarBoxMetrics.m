@@ -13,7 +13,7 @@ end
 isBar = strcmp(pP.pType,'Bar Graph');
 
 % creates the graph based on the plot type
-if (isBar)
+if isBar
     % retrieves the mean/SEM values
     Y = field2cell(p,[pStr,'_mn'],1)*sMlt;
     Ysem = field2cell(p,[pStr,'_sem'],1)*sMlt;
@@ -33,22 +33,22 @@ if (isBar)
     set(hAx,'ticklength',[0 0],'box','on') 
 else
     % retrieves all the data values and places into single array
-    if (length(p) == 1)
+    if length(p) == 1
         Yc = eval(sprintf('p.%s',pStr));
-        if (size(Yc,3)*size(Yc,1) > 1)
+        if size(Yc,3)*size(Yc,1) > 1
             Yc = num2cell(cell2mat(Yc(:)),1);
         else
             Yc = Yc';
         end
         
-        if (size(Yc,1) ~= 1)
+        if size(Yc,1) ~= 1
             % determines the empty cells and removes them
             Yc = Yc(~cellfun(@isempty,Yc(:,1)),:);            
-            if (isempty(Yc))
+            if isempty(Yc)
                 Yc = {NaN};
             else
                 sz = cell2mat(cellfun(@size,Yc(:,1),'un',0));                
-                if (range(sz(:,1)) == 0)
+                if range(sz(:,1)) == 0
                     Yc = cellfun(@(x)(cell2mat(x')),num2cell(Yc,1),'un',0);
                 else
                     Yc = cellfun(@(x)(cell2mat(x)),num2cell(Yc,1),'un',0);
@@ -99,9 +99,9 @@ else
 end
 
 % determines the overall y-axis limit
-if (isempty(yL))
-    if (isBar)
-        if (pP.plotErr)
+if isempty(yL)
+    if isBar
+        if pP.plotErr
             yL = [0,detOverallLimit(Y+Ysem)]; 
         else
             yL = [0,detOverallLimit(Y)]; 
@@ -113,7 +113,7 @@ end
 
 % sets the x/y-axis limits
 xLim = xi([1 end]) + 0.5*[-1 1];
-if all(isnan(Y(:))) || all(isnan(yL))
+if all(isnan(Y(:))) || all(isnan(yL)) || (range(yL) == 0)
     set(hAx,'xlim',xLim,'ylim',[0 1],'xtick',xi)            
 else
     if (length(yL) == 1); yL = [0,yL]; end

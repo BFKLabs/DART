@@ -558,11 +558,11 @@ classdef SigIndivData < DataOutputArray
             nFlyT = nFlyT(iA,obj.expOut);                                                            
                         
             % reduces the genotype groups to those that appear in each expt
-            [hasF,iOut] = deal(any(nFlyT>0,2),obj.appOut);
-            appOutF = obj.appOut & setGroup(iOut(hasF),size(obj.appOut));            
+            [hasF,iOut] = deal(any(nFlyT>0,2),find(obj.appOut));
+            appOutF = obj.appOut & setGroup(iOut,size(hasF));            
             obj.appName = obj.iData.appName(iOut);
-            [obj.nApp,nFlyT] = deal(sum(appOutF),nFlyT(hasF,:));            
-            obj.iFly = arrayfun(@(x)(1:x),nFlyT(appOutF,:),'un',0);                        
+            [obj.nApp,nFlyT] = deal(sum(appOutF),nFlyT(iOut,:));            
+            obj.iFly = arrayfun(@(x)(1:x),nFlyT,'un',0);                        
             
             % resets the metrics to the specified genotype groups
             Ynw = obj.Y{obj.iOrder(obj.iMet),obj.outType}(obj.appOut);  
