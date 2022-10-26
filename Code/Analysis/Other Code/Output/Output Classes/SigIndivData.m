@@ -392,7 +392,7 @@ classdef SigIndivData < DataOutputArray
 
                             % rounds the numerical values
                             YRnw(isNum) = cellfun(@(x)...
-                                    (x*obj.pR),YRnw(isNum),'un',0);
+                                    (roundP(x,obj.pR)),YRnw(isNum),'un',0);
 
                             % rounds the values and removes any NaN's
                             mDataNw = string(YRnw);

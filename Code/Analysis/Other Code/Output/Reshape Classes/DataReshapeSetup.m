@@ -106,7 +106,7 @@ classdef DataReshapeSetup < handle
             
             % other memory allocations
             obj.Y = cell(1,nMetG);
-            obj.expOut = true(obj.nExp,1);            
+            obj.expOut = true(obj.nExp,1);
             obj.appOut = true(obj.nApp,1);
             obj.Data0 = cell(1,nMetG-1);
             obj.stData = cell(obj.nPara,1); 

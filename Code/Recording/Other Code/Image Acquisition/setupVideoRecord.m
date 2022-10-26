@@ -151,7 +151,6 @@ try
     end
 catch ME
     % if user stopped the video prematurely, then stop recording
-    assignin('base','ME',ME)
     exObj.userStop = true;
     stop(exObj.objIMAQ);        
 end

@@ -99,11 +99,21 @@ classdef MetricIndivData < DataOutputArray
                 end
             end
             
-            % reduces the genotype groups to those that appear in each expt
-            iOut = find(obj.appOut);
-            hasF = cellfun(@(x)(any(cell2mat(x(1,:))>0)),obj.nFly);
-            appOutF = obj.appOut & setGroup(iOut(hasF),size(obj.appOut));
-            [obj.iFly,obj.nFly] = deal(obj.iFly(hasF,:),obj.nFly(hasF,:));
+            % determines the inclusion flags for each genotype group
+            hGUI = getappdata(obj.hFig,'hGUI');
+            [~,~,pInd] = getSelectedIndices(guidata(hGUI));
+            if pInd == 3                        
+                % reduces the genotype groups to those that appear >= once
+                iOut = find(obj.appOut);
+                hasF = cellfun(@(x)(any(cell2mat(x(1,:))>0)),obj.nFly);
+                appOutF = obj.appOut & setGroup(iOut(hasF),size(hasF));
+                
+                obj.iFly = obj.iFly(hasF,:);
+                obj.nFly = obj.nFly(hasF,:);
+            else
+                % case is single experiment analysis
+                appOutF = obj.appOut;
+            end
             
             % reduces down the output data array            
             obj.reduceDataArray(appOutF);            

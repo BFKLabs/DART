@@ -17,6 +17,7 @@ classdef SigPopData < DataOutputArray
         X
         YR
         iiT
+        fOK
         
         % time related fields
         timeStr
@@ -53,9 +54,23 @@ classdef SigPopData < DataOutputArray
             % sets the global metric indices
             Type = field2cell(obj.iData.yVar,'Type',1); 
             mIndG0 = find(Type(:,4));
-            obj.mIndG = mIndG0(obj.iOrder);
+            obj.mIndG = mIndG0(obj.iOrder);            
             
+            % determines the inclusion flags for each genotype group
+            hGUI = getappdata(obj.hFig,'hGUI');
+            [~,~,pInd] = getSelectedIndices(guidata(hGUI));
+            if pInd == 3
+                % retrieves the acceptance flags for each expt
+                snTotE = obj.snTot(obj.expOut);
+                obj.fOK = cell2mat(arrayfun(@(x)...
+                    (cellfun(@any,x.iMov.flyok)),snTotE(:)','un',0));
+
+                % reduces genotype groups to those that appear >= once
+                obj.appOut = obj.appOut & any(obj.fOK,2);
+            end            
+
             % sets the other important fields
+            obj.nApp = sum(obj.appOut);
             obj.mStrB = obj.iData.fName(obj.mIndG);
             obj.xVar = field2cell(obj.pData.oP.xVar,'Var');
             obj.xDep = field2cell(obj.iData.yVar(obj.mIndG),'xDep');            
@@ -86,7 +101,6 @@ classdef SigPopData < DataOutputArray
             
             % sets up the header/data values for the output array
             obj.setupAllGroupHeaders();
-%             obj.setupMetricData();
             
             % combines the final output data array
             obj.setupFinalDataArray();            
@@ -335,9 +349,9 @@ classdef SigPopData < DataOutputArray
 %             xDepT0 = cellfun(@(x)(x{1}),obj.xDep,'un',0);
             [xDepT,~,iC] = unique(xDepT0,'stable');
             
-            %
+            % determines the independent variable groupings
             nC = length(xDepT);
-            obj.iGrpC = arrayfun(@(x)(find(iC==x)),1:nC,'un',0);
+            obj.iGrpC = arrayfun(@(x)(find(iC==x)),1:nC,'un',0);                      
             
             % reduces down the data to the set groups/metrics
             YT = cellfun(@(x)(x(obj.appOut)),obj.Y(obj.iOrder),'un',0);

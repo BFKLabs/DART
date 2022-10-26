@@ -1,5 +1,5 @@
 function varargout = DataOutput(varargin)
-% Last Modified by GUIDE v2.5 16-Nov-2018 03:04:21
+% Last Modified by GUIDE v2.5 26-Oct-2022 03:51:28
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -93,9 +93,6 @@ setappdata(hObject,'iData',iData)
 setappdata(hObject,'metType',metType)
 setappdata(hObject,'hasTest',find(hasTest))
 
-% % removes the solution/plot data structs from the analysis GUI
-% setappdata(hGUI,'snTot',[])
-
 % sets the function handles into the GUI
 setappdata(hObject,'updateSheetData',@updateSheetData)
 setappdata(hObject,'setFinalSheetData',@setFinalSheetData);
@@ -107,6 +104,7 @@ centreFigPosition(hObject);
 
 % updates the sheet data
 setObjVisibility(hObject,'on')
+uistack(hObject,'bottom');
 pause(0.05); drawnow();
 
 % initialises the GUI java objects
@@ -114,6 +112,7 @@ initGUIJavaObjects(handles)
    
 % updates the sheet data
 updateSheetData(handles,true,1)
+pause(0.05);
 iData.startTimer();
 
 % closes the loadbar
@@ -935,20 +934,15 @@ end
 
 % initialisations
 handles = guidata(hObject);
-jTable = getappdata(hObject,'jTable');  
-iData = getappdata(handles.figDataOutput,'iData');
-snTot = getappdata(handles.figDataOutput,'snTot');
-plotD = getappdata(handles.figDataOutput,'plotD');
-metType = getappdata(handles.figDataOutput,'metType');
+hFig = handles.figDataOutput;
+iData = getappdata(hFig,'iData');
+snTot = getappdata(hFig,'snTot');
+plotD = getappdata(hFig,'plotD');
+metType = getappdata(hFig,'metType');
 
 % retrieves the row/column indices
 [iRow,iCol] = deal(eventdata.Indices(1),eventdata.Indices(2));
 pInd = iData.tData.iSel(iData.cTab);
-
-% sets the table java object (if not set)
-if isempty(getappdata(hObject,'jTable'))
-    setappdata(hObject,'jTable',getJavaTable(hObject))
-end
 
 % only open set up the statistic test type if the correct column is
 % selected
@@ -998,10 +992,7 @@ if (iCol == 3) && (pInd == 2)
     
     % updates the current sheet tab    
     updateSheetData(handles,true);   
-end    
-
-% removes the selection
-jTable.changeSelection(-1,-1,false,false);
+end
 
 % --- Executes on selection change in popupUnits.
 function popupUnits_Callback(hObject, eventdata, handles)
@@ -1033,7 +1024,7 @@ switch get(eventdata.NewValue,'Title')
     
     case 'Experiment Output'
         % case is the experiment output        
-        iData.incTab = 3;
+        iData.incTab = 3;       
     
     otherwise
         iData.incTab = 2;
@@ -1072,8 +1063,9 @@ end
 function tableExptInc_CellEditCallback(hObject, eventdata, handles)
 
 % if the indices are empty, then exit
+hFig = handles.figDataOutput;
 if isempty(eventdata.Indices); return; end
-iData = getappdata(handles.figDataOutput,'iData');
+iData = getappdata(hFig,'iData');
 
 % retrieves the row/column indices
 iData.expOut(eventdata.Indices(1),iData.cTab) = eventdata.NewData;
@@ -1097,14 +1089,36 @@ else
         mSel = iData.tData.mSel(iData.cTab);
         iData.tData.altChk{iData.cTab}{mSel}(get(hChk,'Max')) = false;
         set(hChk,'value',0)
-    end
-            
+    end       
+    
     % otherwise, update the data struct
-    setappdata(handles.figDataOutput,'iData',iData)    
+    setappdata(hFig,'iData',iData)    
+    updateGroupTableBGCol(handles);    
     
     % updates the sheet data
     if detIfHasData(iData); updateSheetData(handles,true); end
 end
+
+% --- update group table background colours
+function updateGroupTableBGCol(handles)
+
+% parameters
+grayCol = 0.81;
+
+% field retrieval
+hFig = handles.figDataOutput;
+iData = getappdata(hFig,'iData');
+snTot = getappdata(hFig,'snTot');
+
+% determines the inclusion flags for each genotype group
+snTotE = snTot(iData.expOut);
+fOK = cell2mat(arrayfun(@(x)(cellfun(@any,x.iMov.flyok)),snTotE(:)','un',0));
+hasX = any(fOK,2);
+
+% updates the table background colour
+bgCol = ones(length(iData.appOut),3);
+bgCol(~hasX,:) = grayCol;
+set(handles.tableGroupInc,'BackgroundColor',bgCol)
 
 % --------------------------------------- %
 % --- OTHER DATA FORMATTING FUNCTIONS --- %
@@ -1369,7 +1383,7 @@ for i = mInd
     switch i
         case 1
             % updates the selected metric checkboxes
-            if (~isempty(iPara{i+1}{1}))
+            if ~isempty(iPara{i+1}{1})
                 sInd = iPara{i+1}{1}(iPara{i+1}{1}(:,2) < nMet,1);                       
                 Data(sInd,2) = {true};            
             end
@@ -2300,14 +2314,7 @@ elseif ~isempty(iPara{1})
     iData.tData.Data{iData.cTab}{iSel} = [];
     
     % sets up the signal data array object
-%     tic
-%     profile clear
-%     profile on -timestamp -timer 'performance'
     sObj = DataOutputSetup(hFig,nargin==2);
-%     assignin('base','p',profile('info'))
-%     pause(0.05);
-%     toc
-    
     if sObj.ok    
         % if successful, then updates the sheet data array
         Data = sObj.Data;        
@@ -2552,11 +2559,37 @@ mInd = find(any(metType,1));
 iData.tData.mSel = mInd(1);
 setappdata(hFig,'iData',iData)          
 
+% -------------------------------------------------- %
+% --- FUNCTION INFORMATION PANEL INITIALISATIONS --- %
+% -------------------------------------------------- %
+
+% retrieves the current experiment/scope indices
+sName0 = getappdata(hGUI,'sName');
+[eInd,~,pInd] = getSelectedIndices(guidata(hGUI));
+tStr = {'Individual Metrics','Single Experiment','Multi-Experiment'};
+
+% sets the experiment name string
+switch pInd
+    case 3
+        % case is multi-experiment analysis
+        sName = 'N/A';
+        
+    otherwise
+        % case is single experiment analysis
+        sName = sName0{eInd};
+end
+
+% updates the function information fields
+set(handles.textFuncName,'string',pData.Name)
+set(handles.textFuncScope,'string',tStr{pInd})
+set(handles.textSolnFile,'string',sName,'tooltipstring',sName)
+
 % --------------------------------------- %
 % --- USER INFO GROUP INITIALISATIONS --- %
 % --------------------------------------- %
 
 % initialisations
+hTableI = handles.tableGroupInc;
 tabPosU = getTabPosVector(handles.panelUserInfo);
 tStr = {'Genotype Groups','Metric Order','Experiment Output'};
 tStr = tStr(1:(end-(length(snTot)==1)));
@@ -2575,8 +2608,7 @@ end
 setTabGroupCallbackFunc(hTabGrpU,{@changeInfoTab});
 
 % sets the table data and resizes
-set(handles.tableGroupInc,'Data',[iData.appName,num2cell(iData.appOut)],...
-                          'RowName',[]);                                          
+set(hTableI,'Data',[iData.appName,num2cell(iData.appOut)],'RowName',[]);                                          
                       
 % ----------------------------------- %
 % --- METRIC TABLE INITIALSATIONS --- %
@@ -2861,8 +2893,6 @@ for i = 1:length(hTabG)
     pause(0.01);
     setappdata(hTabG(i),'UserData',jTabG)        
 end
-
-assignin('base','hTabG',hTabG);
 
 % --- updates the metric order selection buttons
 function updateButtonProps(handles)
@@ -3376,7 +3406,8 @@ function hasData = detIfHasData(iData,iSel)
 if (nargin == 1); iSel = iData.tData.iSel(iData.cTab); end
 
 % determines if the data array is empty (if not, then has data)
-hasData = ~isempty(iData.tData.Data{iData.cTab}{iSel});
+Data0 = string(iData.tData.Data{iData.cTab}{iSel}(:));
+hasData = ~isempty(find(~cellfun(@isempty,Data0),1,'first'));
 
 % --- updates the checkbox properties
 function updateCheckboxProps(handles,iSelT)

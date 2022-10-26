@@ -98,11 +98,15 @@ classdef MetricPopData < DataOutputArray
             % determines the inclusion flags for each genotype group
             snTotE = obj.snTot(obj.expOut);
             obj.fOK = cell2mat(arrayfun(@(x)...
-                        (cellfun(@any,x.iMov.flyok)),snTotE(:)','un',0));            
+                        (cellfun(@any,x.iMov.flyok)),snTotE(:)','un',0));
             
-            % reduces the genotype groups to those that appear in each expt
-            [hasF,iOut] = deal(any(obj.fOK,2),find(obj.appOut));
-            obj.appOut = obj.appOut & setGroup(iOut,size(hasF));
+            % determines the inclusion flags for each genotype group
+            hGUI = getappdata(obj.hFig,'hGUI');
+            [~,~,pInd] = getSelectedIndices(guidata(hGUI));
+            if pInd == 3                             
+                % reduces the genotype groups to those that appear >= once
+                obj.appOut = obj.appOut & any(obj.fOK,2);
+            end
 
             % reshapes the other data arrays
             obj.nApp = sum(obj.appOut);
