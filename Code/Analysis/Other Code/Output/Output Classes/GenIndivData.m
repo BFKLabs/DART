@@ -18,10 +18,10 @@ classdef GenIndivData < DataOutputArray
     methods
         
         % --- class constructor
-        function obj = GenIndivData(hFig) 
+        function obj = GenIndivData(hFig,hProg) 
             
             % creates the super-class object
-            obj@DataOutputArray(hFig);            
+            obj@DataOutputArray(hFig,hProg);            
             
             % sets up the data array
             obj.initClassFields();
@@ -54,10 +54,7 @@ classdef GenIndivData < DataOutputArray
         function setupDataArray(obj)
 
             % sets up the header/data values for the output array
-            obj.setupMetricData();
-            
-            % combines the final output data array
-            obj.setupFinalDataArray();            
+            obj.setupMetricData();                       
             
         end                
         
@@ -89,7 +86,7 @@ classdef GenIndivData < DataOutputArray
             end
             
             % combines the individual arrays into a single array
-            obj.Data = cell2cell(DataT);            
+            obj.combineFinalArray(DataT);
             
         end        
         
@@ -122,6 +119,7 @@ classdef GenIndivData < DataOutputArray
         function DataT = setIndivArrays(mStrH,Y)
 
             % memory allocation
+            [a,b] = deal({''},'');
             DataT = cell(length(Y),1);
 
             % sets the data values for each metric
@@ -130,9 +128,9 @@ classdef GenIndivData < DataOutputArray
                 mStrH{3,2} = sprintf('%i',i);
 
                 % combines the data into 
-                DataT0 = combineCellArrays(mStrH,Y{i},0);
-                DataT0 = combineCellArrays(DataT0,{NaN});
-                DataT{i} = combineCellArrays(DataT0,{NaN},0);    
+                DataT0 = combineCellArrays(mStrH,Y{i},0,b);
+                DataT0 = combineCellArrays(DataT0,a,1,b);
+                DataT{i} = combineCellArrays(DataT0,a,0,b);    
             end
 
             % combines the cell arrays into a single array

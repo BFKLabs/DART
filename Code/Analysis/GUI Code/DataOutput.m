@@ -1,5 +1,5 @@
 function varargout = DataOutput(varargin)
-% Last Modified by GUIDE v2.5 26-Oct-2022 03:51:28
+% Last Modified by GUIDE v2.5 27-Oct-2022 02:24:02
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -51,6 +51,7 @@ hPara = getappdata(hGUI,'hPara');
 plotD = getappdata(hGUI,'plotD');
 snTot = getappdata(hGUI,'snTot');
 sName = getappdata(hGUI,'sName');
+setappdata(hObject,'fPos0',get(hObject,'Position'))
 
 % retrieves the currently stored plot data
 pData = feval(getappdata(hPara,'getPlotData'),hPara);
@@ -109,6 +110,8 @@ pause(0.05); drawnow();
 
 % initialises the GUI java objects
 initGUIJavaObjects(handles)
+updateCheckboxProps(handles);
+pause(0.05);
    
 % updates the sheet data
 updateSheetData(handles,true,1)
@@ -226,13 +229,7 @@ for i = 1:iData.nTab
     iSel = iData.tData.iSel(i);
     if ~isempty(iData.tData.Data{i}{iSel})      
         % resets all numeric strings to numerical values
-        if ~isempty(iData.tData.DataN{i}{iSel})
-            DataNw = iData.tData.DataN{i}{iSel};        
-        else                        
-            DataNw = iData.tData.Data{i}{iSel};        
-            ii = cellfun(@(x)(~isnan(str2double(x))),DataNw);
-            DataNw(ii) = num2cell(cellfun(@str2double,DataNw(ii)));            
-        end
+        DataNw = iData.tData.Data{i}{iSel};        
                         
         % updates the loadbar
         wStrNw = sprintf('%s (%s %i of %i)',wStr,sType{fIndex},i,iData.nTab);
@@ -342,7 +339,6 @@ end
 ii = (1:iData.nTab) ~= iData.cTab;
 iData.tData.Name = iData.tData.Name(ii);
 iData.tData.Data = iData.tData.Data(ii);
-iData.tData.DataN = iData.tData.DataN(ii);
 iData.tData.iPara = iData.tData.iPara(ii);
 iData.tData.iSel = iData.tData.iSel(ii);
 iData.tData.mSel = iData.tData.mSel(ii);
@@ -351,7 +347,7 @@ iData.tData.stInd = iData.tData.stInd(ii);
 iData.tData.altChk = iData.tData.altChk(ii);
 iData.tData.alignV = iData.tData.alignV(ii,:);
 iData.tData.hTab = iData.tData.hTab([ii,true]);
-[iData.appOut,iData.expOut] = deal(iData.appOut(:,ii),iData.expOut(:,ii));
+[iData.appOut,iData.expOut] = deal(iData.appOut(ii),iData.expOut(ii));
 [iRowD,iColD] = deal(iRowD(ii),iColD(ii));
 
 % decrements the tab count
@@ -440,7 +436,6 @@ jTab = find(jj == iTab0);
 % reorders the arrays
 iData.tData.Name = iData.tData.Name(jj);
 iData.tData.Data = iData.tData.Data(jj);
-iData.tData.DataN = iData.tData.DataN(jj);
 iData.tData.iPara = iData.tData.iPara(jj);
 iData.tData.iSel = iData.tData.iSel(jj);
 iData.tData.mSel = iData.tData.mSel(jj);
@@ -448,7 +443,7 @@ iData.tData.mInd = iData.tData.mInd(jj);
 iData.tData.stInd = iData.tData.stInd(jj);
 iData.tData.altChk = iData.tData.altChk(jj);
 iData.tData.alignV = iData.tData.alignV(jj,:);
-[iData.appOut,iData.expOut] = deal(iData.appOut(:,jj),iData.expOut(:,jj));
+[iData.appOut,iData.expOut] = deal(iData.appOut(jj),iData.expOut(jj));
 [iRowD,iColD] = deal(iRowD(jj),iColD(jj));
 
 % updates the tab properties
@@ -506,7 +501,6 @@ iSel = iData.tData.iSel(iData.cTab);
 % resets the data struct fields
 iData.tData.altChk{iData.cTab}{iSel}(:) = false;
 iData.tData.Data{iData.cTab}{iSel} = [];
-iData.tData.DataN{iData.cTab}{iSel} = [];
 iData.tData.iPara{iData.cTab}{iSel}(1) = {[]};
 iData.tData.mInd{iData.cTab}{iSel} = [];
 
@@ -524,6 +518,56 @@ updateButtonProps(handles)
 updateSheetInfo(handles)
 updateTableProperties(handles)
 % updateSheetData(handles,true); 
+
+% --------------------------- %
+% --- VIEW ITEM FUNCTIONS --- %
+% --------------------------- %
+
+% -------------------------------------------------------------------------
+function menuOptSize_Callback(hObject, eventdata, handles)
+
+% global variables
+global updateFlag
+
+% initialisations
+hFig = handles.output;
+
+% calculates the left/bottom coordinates
+fPos = get(hFig,'Position');
+fPos0 = getappdata(hFig,'fPos0');
+pOfs = fPos(1:2) + (fPos(3:4) - fPos0(3:4))/2;
+
+% resets the figure positions
+updateFlag = 2;
+set(hFig,'Position',[pOfs,fPos0(3:4)]);
+updateFlag = 0;
+
+% resizes the figure
+figDataOutput_ResizeFcn(hFig, [], handles)
+
+% -------------------------------------------------------------------------
+function menuMaxSize_Callback(hObject, eventdata, handles)
+
+% global variables
+global updateFlag
+
+% sets the update flag to active
+updateFlag = 2;
+
+% initialisations
+hFig = handles.output;
+
+% retrieves the java-frame object
+wState = warning('off','all');
+jFrame = get(handle(hFig),'JavaFrame');
+jFrame.setMaximized(true);
+
+% resizes the figure
+figDataOutput_ResizeFcn(hFig, [], handles)
+
+% resets the warnings
+warning(wState);
+updateFlag = 0;
 
 %-------------------------------------------------------------------------%
 %                        FIGURE CALLBACK FUNCTIONS                        %
@@ -547,11 +591,13 @@ else
 end
 
 % parameters
-[pPos,Y0] = deal(get(handles.panelInfoOuter,'position'),10);
-[Wmin,Hmin] = deal(1000,pPos(4)+2*Y0);
-
-% retrieves the final position of the resized GUI
-fPos = getFinalResizePos(hObject,Wmin,Hmin);
+if isempty(eventdata)
+    fPos = get(hObject,'Position');
+else
+    [pPos,Y0] = deal(get(handles.panelInfoOuter,'position'),10);
+    [Wmin,Hmin] = deal(1000,pPos(4)+2*Y0);
+    fPos = getFinalResizePos(hObject,Wmin,Hmin);
+end
 
 % update the figure position
 resetFigSize(handles,fPos)
@@ -648,7 +694,7 @@ if (iSelT > 1)
 end
 
 % updates the checkbox properties
-updateCheckboxProps(handles,iSelT)
+updateCheckboxProps(handles,iSelT);
 
 % updates the other formating checkbox values
 % updateOtherFormatCheck(handles,iData,1)
@@ -752,7 +798,8 @@ import javax.swing.table.*
 
 % retrieves the GUI handles
 handles = guidata(hObject);
-iData = getappdata(handles.figDataOutput,'iData');
+hFig = handles.figDataOutput;
+iData = getappdata(hFig,'iData');
 
 % retrieves the original metric selection
 iSel0 = iData.tData.iSel(iData.cTab);
@@ -767,7 +814,7 @@ else
     mSel = get(eventdata.NewValue,'UserData');
     iData.tData.mSel(iData.cTab) = mSel;
     [iData.tData.iSel(iData.cTab),iSelNw] = deal(mSel + 1);
-    setappdata(handles.figDataOutput,'iData',iData)    
+    setappdata(hFig,'iData',iData)    
     
     % hides the currently visible table
     hTab1 = findall(handles.panelMetricInfo,'type','uitable','UserData',mSel);    
@@ -799,11 +846,17 @@ else
             end
         end
     end
+    
+    % updates the user group properites
+    resetUserGroupProps(handles)
 end
 
 % determines if the spreadsheet has/requires data output
 hasData = detIfHasData(iData,iSel0) || detIfHasData(iData,iSelNw);
-updateCheckboxProps(handles)
+updateCheckboxProps(handles);
+updateGroupTableBGCol(handles);
+updateOtherFormatCheck(handles);
+updateAlignPanelProps(handles);
 
 % creates a loadbar figure
 if (nargin == 2) && ~isa(eventdata,'double') && hasData
@@ -844,8 +897,8 @@ end
 
 % retrieves the row index
 handles = guidata(hObject);
-[iRow,iCol] = deal(eventdata.Indices(1),eventdata.Indices(2));
 iData = getappdata(handles.figDataOutput,'iData');
+[iRow,iCol] = deal(eventdata.Indices(1),eventdata.Indices(2));
 [nwVal,nwData,updateSheet] = deal(eventdata.NewData,[],false);
 
 % sets the parameter index (based on the table that was editted)
@@ -907,8 +960,8 @@ else
     % case is updating the SEM inclusion checkbox
     iPara{2}(iRow) = nwVal;    
     updateSheet = ~isempty(iPara{1});
-end
-    
+end   
+
 % % updates the data alignment panel properties
 % setPanelProps(handles.panelDataAlign,eStr{1+(length(iPara{1})>1)})
 
@@ -919,6 +972,9 @@ updateNumGroupCheck(handles);
 
 % updates the current tab
 updateOrderList(handles)
+updateAlignPanelProps(handles);
+
+% updates the sheet data
 if updateSheet; updateSheetData(handles,true); end
 
 % --- Executes when selected cell(s) is changed in the metric table objects
@@ -990,7 +1046,7 @@ if (iCol == 3) && (pInd == 2)
         updateOrderList(handles)
     end    
     
-    % updates the current sheet tab    
+    % updates the current sheet tab
     updateSheetData(handles,true);   
 end
 
@@ -1003,6 +1059,27 @@ iData = getappdata(handles.figDataOutput,'iData');
 % updates the worksheet tab (if there is any data)
 if detIfHasData(iData)
     updateSheetData(handles,true)
+end
+
+% --- resets the user group properties
+function resetUserGroupProps(handles)
+
+% field retrieval
+hFig = handles.figDataOutput;
+iData = getappdata(hFig,'iData');
+
+% sets the check value/tag handle arrays
+chkVal = {iData.getAppOut(),iData.getExpOut()};
+hTable = {handles.tableGroupInc,handles.tableExptInc};
+
+% updates the table values
+for i = 1:length(chkVal)
+    % updates the table
+    if isvalid(hTable{i})
+        Data = get(hTable{i},'Data');
+        Data(:,end) = num2cell(chkVal{i});
+        set(hTable{i},'Data',Data)
+    end
 end
 
 % ----------------------------------- %
@@ -1041,22 +1118,41 @@ if isempty(eventdata.Indices); return; end
 iData = getappdata(handles.figDataOutput,'iData');
 
 % retrieves the row/column indices
-iData.appOut(eventdata.Indices(1),iData.cTab) = eventdata.NewData;
-[Y,xStr] = deal(iData.appOut(:,iData.cTab),'genotype group');
+[eStr,mStr] = deal([]);
+iRow = eventdata.Indices(1);
+bgCol = get(hObject,'BackgroundColor');
+iData.setAppOut(eventdata.NewData,iRow);
+[Y,xStr] = deal(iData.getAppOut(),'genotype group');
 
-% determins if any of the inclusion indices have been set
+% determines if any of the inclusion indices have been set
 if ~any(Y)
-    % if not, then output an error
+    % if not, then set the error string
+    mStr = 'Output Selection Error';
     eStr = sprintf('Error! Data output must include at least one %s.',xStr);
-    waitfor(errordlg(eStr,'Output Selection Error','modal'))    
     
-    % resets the table
-    Data = get(hObject,'Data');
-    Data{eventdata.Indices(1),2} = true;
-    set(hObject,'Data',Data)
-else
+elseif (iRow <= size(bgCol,1)) && (bgCol(iRow,1) < 1)    
+    % else if the group is infeasible, then set the error string
+    mStr = 'Infeasible Group Selection';
+    eStr = 'The selected group is infeasible for the experiment selection.';
+end
+
+% determines if there was an error message set
+if isempty(eStr)
+    % updates the data alignment panel properties
+    updateAlignPanelProps(handles)
+    
     % updates the sheet data (if there is data)
-    if detIfHasData(iData); updateSheetData(handles,true); end
+    if detIfHasData(iData)
+        updateSheetData(handles,true); 
+    end    
+else
+    % outputs the error to screen
+    waitfor(errordlg(eStr,mStr,'modal'))        
+
+    % updates the tables properties
+    Data = get(hObject,'Data');
+    Data{eventdata.Indices(1),2} = true;    
+    updateGroupTableProps(handles,2,Data);    
 end
 
 % --- Executes when entered data in editable cell(s) in tableExptInc.
@@ -1068,8 +1164,8 @@ if isempty(eventdata.Indices); return; end
 iData = getappdata(hFig,'iData');
 
 % retrieves the row/column indices
-iData.expOut(eventdata.Indices(1),iData.cTab) = eventdata.NewData;
-[Y,xStr] = deal(iData.expOut(:,iData.cTab),'experiment');
+iData.setExpOut(eventdata.NewData,eventdata.Indices(1));
+[Y,xStr] = deal(iData.getExpOut(),'experiment');
 hChk = handles.checkSepByExpt;
 
 % determins if any of the inclusion indices have been set
@@ -1084,7 +1180,7 @@ if ~any(Y)
     set(hObject,'Data',Data)
 else    
     % updates the checkbox flag and array value (if not ok)
-    if sum(iData.expOut(:,iData.cTab)) == 0
+    if sum(iData.getExpOut()) == 0
         % removes the check label for the separation                 
         mSel = iData.tData.mSel(iData.cTab);
         iData.tData.altChk{iData.cTab}{mSel}(get(hChk,'Max')) = false;
@@ -1109,16 +1205,49 @@ grayCol = 0.81;
 hFig = handles.figDataOutput;
 iData = getappdata(hFig,'iData');
 snTot = getappdata(hFig,'snTot');
+hTabG = findall(hFig,'tag','userTabGrp');
+jTabG = getappdata(hTabG,'UserData');
 
 % determines the inclusion flags for each genotype group
-snTotE = snTot(iData.expOut);
-fOK = cell2mat(arrayfun(@(x)(cellfun(@any,x.iMov.flyok)),snTotE(:)','un',0));
-hasX = any(fOK,2);
+snTotE = snTot(iData.getExpOut);
+bgCol = ones(length(iData.getAppOut),3);
 
-% updates the table background colour
-bgCol = ones(length(iData.appOut),3);
-bgCol(~hasX,:) = grayCol;
-set(handles.tableGroupInc,'BackgroundColor',bgCol)
+if ~isempty(jTabG)
+    if (jTabG.TabCount == 3) && jTabG.isEnabledAt(2)
+        % determines the
+        fOK = arrayfun(@(x)(cellfun(@any,x.iMov.flyok)),snTotE(:)','un',0);
+        hasX = any(cell2mat(fOK),2);
+        
+        % sets the background colour array
+        bgCol(~hasX,:) = grayCol;
+    end
+end
+    
+% updates the tables properties
+updateGroupTableProps(handles,1,bgCol);
+
+% --- updates the group selection properties
+function updateGroupTableProps(handles,iType,varargin)
+
+% field retrieval
+hTableG = handles.tableGroupInc;
+
+% retrieves the current table location
+jTabH = getJavaTable(hTableG); 
+hView = jTabH.getParent; 
+p0 = hView.getViewPosition();
+
+% updates the table properties
+switch iType
+    case 1
+        set(hTableG,'RowStriping','on','BackgroundColor',varargin{1})
+    case 2
+        set(hTableG,'Data',varargin{1})
+end
+
+% refreshes the table
+pause(0.05);
+hView.setViewPosition(p0);
 
 % --------------------------------------- %
 % --- OTHER DATA FORMATTING FUNCTIONS --- %
@@ -1157,10 +1286,7 @@ setappdata(handles.figDataOutput,'iData',iData)
 % hR = findall(handles.panelDataAlign,'style','radiobutton');
 switch get(hObject,'tag')
     case 'checkSepByApp'
-        isOK = (get(hObject,'Value')>0) && ...
-                strcmp(get(hObject,'enable'),'on') && ...
-                ~any(iSel == [1,5]);    
-        setPanelProps(handles.panelDataAlign,isOK);
+        updateAlignPanelProps(handles)
         
     case 'checkSepByExpt'
         resetExptTabProps(handles,iData,get(hObject,'Value')>0)
@@ -1354,7 +1480,7 @@ iPara = iData.tData.iPara{cTab};
 mInd = [find(any(getappdata(handles.figDataOutput,'metType'),1)),(nMetG-1)];
 
 % updates the statistical test table (if required)
-if iData.metStats
+if iData.metStats && isvalid(handles.tableStatTest)
     % resets the table data
     Data = get(handles.tableStatTest,'Data');
     [Data(:,2),Data(:,3)] = deal({false},{''});
@@ -1405,13 +1531,13 @@ end
 
 % updates the group inclusion flags table
 DataG = get(handles.tableGroupInc,'Data');
-DataG(:,2) = num2cell(iData.appOut(:,iData.cTab));
+DataG(:,2) = num2cell(iData.getAppOut());
 set(handles.tableGroupInc,'Data',DataG)
 
 % updates the experiment inclusion flags table (if required)
 try
     DataE = get(handles.tableExptInc,'Data');
-    DataE(:,2) = num2cell(iData.expOut(:,iData.cTab));
+    DataE(:,2) = num2cell(iData.getExpOut());
     set(handles.tableExptInc,'Data',DataE)
 end
 
@@ -1442,7 +1568,6 @@ end
 % resets the data struct fields
 iData.tData.Name{end+1} = getUniqueTabName(iData.tData.Name);
 iData.tData.Data = [iData.tData.Data;{a}];
-iData.tData.DataN = [iData.tData.DataN;{a}];
 iData.tData.iPara{end+1} = addOrderArray(metType);
 iData.tData.iSel(end+1) = get(hRS,'UserData');
 iData.tData.mSel(end+1) = iData.tData.mSel(iData.cTab);
@@ -1450,8 +1575,8 @@ iData.tData.mInd{end+1} = cell(1,nMetG);
 iData.tData.stInd{end+1} = NaN(size(iData.tData.stInd{1}));
 iData.tData.altChk{end+1} = repmat({false(1,nChk)},1,nMetG);
 iData.tData.alignV = [iData.tData.alignV;true(1,nMetG)];
-iData.appOut = [iData.appOut,true(size(iData.appOut,1),1)];
-iData.expOut = [iData.expOut,true(size(iData.expOut,1),1)];
+iData.appOut{end+1} = true(iData.nApp,nMetG);
+iData.expOut{end+1} = true(iData.nExp,nMetG);
 % iData.stData = [iData.stData,cell(size(iData.stData,1),1)];
 [iData.nTab,iData.cTab] = deal(iData.nTab + 1);
 
@@ -1782,7 +1907,7 @@ global pTolT
 % other initialisations
 hasTest = getappdata(handles.figDataOutput,'hasTest');
 [sStr,tStr] = deal({'NS','S'},pData.appName');
-[jRow,aOut] = deal(hasTest(iRow),find(iData.appOut(:,iData.cTab)));           
+[jRow,aOut] = deal(hasTest(iRow),find(iData.getAppOut()));           
 [pStrS,Type] = deal(stData.pStr,stData.Type);
 [mStr,Stats] = deal(iData.fName{jRow},pData.oP.yVar(jRow).Stats);
 
@@ -1871,7 +1996,7 @@ switch stData.Type
             tStr = tStr0;
         else        
             % using the binned group strings
-            tStr = iData.appName(iData.appOut(:,iData.cTab))';
+            tStr = iData.appName(iData.getAppOut())';
         end
         
     case 'CompMulti'
@@ -2050,7 +2175,7 @@ switch (Type)
     
     case ('CompMulti')
         % allocates memory for the data array
-        aOut = find(iData.appOut(:,iData.cTab));
+        aOut = find(iData.getAppOut());
         [AP,nApp,nVar] = deal({[]},length(aOut),length(tStr));
         
         % repeats the 
@@ -2085,8 +2210,8 @@ switch (Type)
         AP(:,2) = tStr;
     case {'TTest','ZTest','TTestGroup','ZTestGroup'}
         % initialisations
-        appStr = iData.appName(iData.appOut(:,iData.cTab));
-        nApp = length(find(iData.appOut(:,iData.cTab)));
+        appStr = iData.appName(iData.getAppOut());
+        nApp = length(find(iData.getAppOut()));
         N = size(pStr,1)/nApp;
         
         if (N == 1)
@@ -2273,7 +2398,7 @@ set(findall(hRadio,'UserData',1+(iData.tData.iSel(cTab)>1)),'Value',1)
 [~,iData.tData.iSel(cTab)] = getSelectedIndexType(handles);
 setappdata(handles.figDataOutput,'iData',iData)
 
-% % updates the other formating checkbox values
+% updates the other formating checkbox values
 % updateOtherFormatCheck(handles,iData)
 
 % updates the panel selection
@@ -2299,9 +2424,9 @@ iData = getappdata(hFig,'iData');
 jTab = getappdata(getSheetTableHandle(handles),'jTable');
 
 % other initialisations
+[Data,h] = deal([],[]);
 iSel = iData.tData.iSel(iData.cTab);
 iPara = iData.tData.iPara{iData.cTab}{iSel};
-[Data,h] = deal([],[]);
 
 % sets the tab worksheet data cell array
 if ~isRecalc
@@ -2314,7 +2439,7 @@ elseif ~isempty(iPara{1})
     iData.tData.Data{iData.cTab}{iSel} = [];
     
     % sets up the signal data array object
-    sObj = DataOutputSetup(hFig,nargin==2);
+    sObj = DataOutputSetup(hFig,h);
     if sObj.ok    
         % if successful, then updates the sheet data array
         Data = sObj.Data;        
@@ -2362,7 +2487,7 @@ end
 cEdit = true(1,size(Data,2));
 cForm = repmat({'char'},1,size(Data,2));          
 set(hTab,'ColumnFormat',cForm,'ColumnName',colN,...
-         'ColumnEditable',cEdit,'RowName',rowN);                              
+         'ColumnEditable',cEdit,'RowName',rowN);
      
 % sets the table data and adds the table popup menu
 setFinalSheetData(handles,jTab,Data,colN,get(hTab,'UserData'))                        
@@ -2384,12 +2509,13 @@ warning(wState);
 function setFinalSheetData(handles,jTab,Data,colN,cTab)
 
 % global variables
-global rngRow rngCol iRowD iColD
+global iRowD iColD
 
 % java class imports
 import javax.swing.BorderFactory
 
 % initialisations
+pT = 1.5;
 pPos = get(handles.panelDataOuter,'position');
 [iRowD{cTab},iColD{cTab}] = deal([],[]);
 [cCol,tPos] = deal(125/255,[10,10,pPos(3:4)-[22 42]]);
@@ -2398,7 +2524,9 @@ jTab = javaObjectEDT(jTab);
 
 % sets the row/column counts
 [nRow,nCol] = size(Data);
-[iRow,iCol] = deal(1:min(nRow,rngRow),1:min(nCol,rngCol));
+cellSz = jTab.getCellRect(0,0,1);
+iCol = 1:min(nCol,ceil(pT*tPos(3)/cellSz.width));
+iRow = 1:min(nRow,ceil(pT*tPos(4)/cellSz.height));
 
 % deletes any existing scrollpane objects
 hSP0 = findall(handles.panelDataOuter,'tag','hSP','UserData',cTab);
@@ -2418,8 +2546,8 @@ jTM.setColumnCount(max(nCol,20))
 jTab.setModel(jTM);
 
 % sets the horizonal/vertical scrollbar callback functions
+jView = jTab.getParent;
 hSP = handle(jSP,'CallbackProperties'); 
-[jView,cellSz] = deal(jTab.getParent,jTab.getCellRect(0,0,1));
 [jSBH, jSBV] = deal(hSP.getHorizontalScrollBar, hSP.getVerticalScrollBar);
 cbFcnH = setupAdjustCBFcn(Data,jView,jTM,cellSz,cTab,0);
 cbFcnV = setupAdjustCBFcn(Data,jView,jTM,cellSz,cTab,1);
@@ -2427,14 +2555,6 @@ cbFcnV = setupAdjustCBFcn(Data,jView,jTM,cellSz,cTab,1);
 % sets the callback functions
 addJavaObjCallback(jSBH,'AdjustmentValueChangedCallback',cbFcnH)
 addJavaObjCallback(jSBV,'AdjustmentValueChangedCallback',cbFcnV)
-
-% retrieves the statistical test table java object handle
-jTabH = getappdata(handles.tableGroupInc,'jTable');        
-if isempty(jTabH)
-    % sets the table java object (if not set)
-    jTabH = getJavaTable(handles.tableGroupInc);
-    setappdata(handles.tableGroupInc,'jTable',jTabH)
-end   
 
 % sets the tables cell selection to non-contiguous
 LSM = jTab.getSelectionModel();
@@ -2451,13 +2571,13 @@ jTab.setGridColor(java.awt.Color(cCol,cCol,cCol));
 jTab.setBorder(jTabLB)
 jTab.revalidate;
 
-% determines if the header renderer has been set
-if ~isempty(Data)
-    % updates the default renderer
-    jTabHR = jTabH.getColumnModel.getColumn(0).getHeaderRenderer;
-    jTab.getTableHeader.setDefaultRenderer(jTabHR)
-    jTab.getTableHeader.revalidate
-end
+% % determines if the header renderer has been set
+% if ~isempty(Data)
+%     % updates the default renderer
+%     jTabC = javax.swing.table.TableColumn;
+%     jTab.getTableHeader.setDefaultRenderer(jTabC.getHeaderRenderer)
+%     jTab.getTableHeader.revalidate
+% end
 
 % clears any potential java errors
 pause(0.5)
@@ -2608,7 +2728,8 @@ end
 setTabGroupCallbackFunc(hTabGrpU,{@changeInfoTab});
 
 % sets the table data and resizes
-set(hTableI,'Data',[iData.appName,num2cell(iData.appOut)],'RowName',[]);                                          
+appOutF = iData.getAppOut();
+set(hTableI,'Data',[iData.appName,num2cell(appOutF)],'RowName',[]);
                       
 % ----------------------------------- %
 % --- METRIC TABLE INITIALSATIONS --- %
@@ -2646,21 +2767,23 @@ end
 % sets the table properties
 [eFcn,sFcn] = deal({@tableCellEdit},{@metTableCellSelect});
                 
-% if not any statistical tests, then disable the radio button               
-if any(hasTest)
-    % sets the stats sheet data
-    sD = [sDN,num2cell(false(nStrS,1)),repmat({''},nStrS,1)];
-    set(handles.tableStatTest,'Data',sD,'ColumnFormat',...
-                {'char','logical',[]},'CellEditCallback',eFcn);    
-            
-    % sets the table column resize flags
-    autoResizeTableColumns(handles.tableStatTest);
-else
+% REMOVE ME WHEN STATISTICAL TESTS ARE DONE!
+
+% % if not any statistical tests, then disable the radio button               
+% if any(hasTest)
+%     % sets the stats sheet data
+%     sD = [sDN,num2cell(false(nStrS,1)),repmat({''},nStrS,1)];
+%     set(handles.tableStatTest,'Data',sD,'ColumnFormat',...
+%                 {'char','logical',[]},'CellEditCallback',eFcn);    
+%             
+%     % sets the table column resize flags
+%     autoResizeTableColumns(handles.tableStatTest);
+% else
     % otherwise, remove the table and resets the object properties    
     delete(handles.tableStatTest)
     set(handles.radioMetricData,'value',1)
     setObjEnable(handles.radioStatTest,'off')
-end
+% end
 
 % sets the enabled properties of the metric data radio button
 setObjEnable(handles.radioMetricData,any(metType(:)))    
@@ -2818,7 +2941,7 @@ setObjEnable(handles.menuDeleteTab,'off')
 setObjEnable(handles.menuMoveTab,'off')
 
 % sets the enabled properties of the checkboxes
-updateCheckboxProps(handles);
+updateAlignPanelProps(handles);
 
 % sets the callback functions for the other formatting checkboxes
 hCheck = findall(handles.panelManualData,'style','checkbox');
@@ -2858,7 +2981,7 @@ end
 if length(hTabU) == 3
     % sets the experiment inclusion data
     sName = getappdata(hFig,'sName');
-    DataExp = [sName(:),num2cell(iData.expOut)];
+    DataExp = [sName(:),num2cell(iData.getExpOut())];
 
     % sets the table properties
     set(handles.tableExptInc,'parent',hTabU{3},'Data',DataExp,...
@@ -2988,77 +3111,94 @@ updateButtonProps(handles)
 % --- updates the other formatting checkbox values
 function updateOtherFormatCheck(handles,iData,varargin)
 
-% global variables
-global nMetG
-
-% retrieves the checkbox handles
-hCheck = findall(handles.panelManualData,'style','checkbox');
-
-% sets the metric parameter index
-iSelT = iData.tData.iSel(iData.cTab);
-
-% updates the checkbox values
-for i = 1:length(hCheck)
-    hCheckNw = findall(hCheck,'Max',i);    
-    set(hCheckNw,'value',i*iData.tData.altChk{iData.cTab}{iSelT}(i))
-    
-    switch get(hCheckNw,'tag')
-        case 'checkSepByExpt'
-            % sets the check box enabled properties
-            isOK = (any(iSelT == 2)) && iData.sepExp;
-            enableChk = isOK && (sum(iData.expOut(:,iData.cTab))>1);
-            setObjEnable(hCheckNw,enableChk)            
-            
-            isChk = iData.tData.altChk{iData.cTab}{iSelT}(2);
-            if (nargin < 3)
-                resetExptTabProps(handles,iData,isChk);
-            end
-            
-        case 'checkSepByApp'
-            isOK = all(iSelT ~= [5:8 nMetG]) && ...
-                            (getSelectedIndexType(handles) ==2 );
-            setObjEnable(hCheckNw,isOK&&(sum(iData.appOut(:,iData.cTab))>1)) 
-            
-        case 'checkNumGroups'
-            % determines
-            switch iSelT
-                case (1) % case is the statistical tests            
-                    iiV = getappdata(handles.figDataOutput,'hasTest');
-                    
-                case (nMetG) % case is the other properties
-                    iiV = [];    
-                    
-                otherwise % case is the other metrics
-                    metType = getappdata(handles.figDataOutput,'metType');
-                    iiV = metType(:,iSelT-1);    
-            end            
-            
-            % determines if there are any grouped variables
-            if ~isempty(iiV)
-                % values could be grouped
-                [Var,Type] = field2cell(iData.xVar,{'Var','Type'});
-                xDepY = field2cell(iData.yVar(iiV),'xDep');
-                isE = cellfun(@isempty,xDepY);
-                if all(isE)
-                    % no grouping independent variables
-                    hasGrp = false;
-                else
-                    % determines if any of the metrics could be grouped
-                    hasGrp = any(cellfun(@(x)(any(strcmp(cellfun(@(y)(...
-                            Type(strcmp(y,Var))),x),'Group'))),xDepY(~isE)));
-                end
-            else
-                % values are not grouped
-                hasGrp = false;
-            end
-                            
-            % updates the checkbox enabled properties
-            setObjEnable(hCheckNw,hasGrp)                                        
-    end
+% retrieves the data struct (if not provided)
+if ~exist('iData','var')
+    iData = getappdata(handles.figDataOutput,'iData');
 end
 
-% updates the separation by apparatus checkbox callback
-checkOtherFormat(handles.checkSepByApp,'1')
+% retrieves the checkbox handles
+hCheck = findall(handles.panelOtherFormats,'style','checkbox');
+chkVal = iData.tData.altChk{iData.cTab}{iData.tData.iSel(iData.cTab)};
+
+% updates the checkbox values
+arrayfun(@(x,y)(set(x,'Value',y)),hCheck(:),chkVal(:))
+
+% % global variables
+% global nMetG
+% 
+% % retrieves the data struct (if not provided)
+% if ~exist('iData','var')
+%     iData = getappdata(handles.figDataOutput,'iData');
+% end
+% 
+% % retrieves the checkbox handles
+% hCheck = findall(handles.panelManualData,'style','checkbox');
+% 
+% % sets the metric parameter index
+% iSelT = iData.tData.iSel(iData.cTab);
+% 
+% % updates the checkbox values
+% for i = 1:length(hCheck)
+%     hCheckNw = findall(hCheck,'Max',i);    
+%     set(hCheckNw,'value',i*iData.tData.altChk{iData.cTab}{iSelT}(i))
+%     
+%     switch get(hCheckNw,'tag')
+%         case 'checkSepByExpt'
+%             % sets the check box enabled properties
+%             isOK = (any(iSelT == 2)) && iData.sepExp;
+%             enableChk = isOK && (sum(iData.getExpOut())>1);
+%             setObjEnable(hCheckNw,enableChk)            
+%             
+%             isChk = iData.tData.altChk{iData.cTab}{iSelT}(2);
+%             if (nargin < 3)
+%                 resetExptTabProps(handles,iData,isChk);
+%             end
+%             
+%         case 'checkSepByApp'
+%             isOK = all(iSelT ~= [5:8 nMetG]) && ...
+%                             (getSelectedIndexType(handles) ==2 );
+%             setObjEnable(hCheckNw,isOK&&(sum(iData.getAppOut())>1)) 
+%             
+%         case 'checkNumGroups'
+%             % determines
+%             switch iSelT
+%                 case (1) % case is the statistical tests            
+%                     iiV = getappdata(handles.figDataOutput,'hasTest');
+%                     
+%                 case (nMetG) % case is the other properties
+%                     iiV = [];    
+%                     
+%                 otherwise % case is the other metrics
+%                     metType = getappdata(handles.figDataOutput,'metType');
+%                     iiV = metType(:,iSelT-1);    
+%             end            
+%             
+%             % determines if there are any grouped variables
+%             if ~isempty(iiV)
+%                 % values could be grouped
+%                 [Var,Type] = field2cell(iData.xVar,{'Var','Type'});
+%                 xDepY = field2cell(iData.yVar(iiV),'xDep');
+%                 isE = cellfun(@isempty,xDepY);
+%                 if all(isE)
+%                     % no grouping independent variables
+%                     hasGrp = false;
+%                 else
+%                     % determines if any of the metrics could be grouped
+%                     hasGrp = any(cellfun(@(x)(any(strcmp(cellfun(@(y)(...
+%                             Type(strcmp(y,Var))),x),'Group'))),xDepY(~isE)));
+%                 end
+%             else
+%                 % values are not grouped
+%                 hasGrp = false;
+%             end
+%                             
+%             % updates the checkbox enabled properties
+%             setObjEnable(hCheckNw,hasGrp)                                        
+%     end
+% end
+% 
+% % updates the separation by apparatus checkbox callback
+% checkOtherFormat(handles.checkSepByApp,'1')
 
 % --- sets the time unit object properties
 function setTimeUnitObjProps(handles,mSel)
@@ -3407,7 +3547,13 @@ if (nargin == 1); iSel = iData.tData.iSel(iData.cTab); end
 
 % determines if the data array is empty (if not, then has data)
 Data0 = string(iData.tData.Data{iData.cTab}{iSel}(:));
-hasData = ~isempty(find(~cellfun(@isempty,Data0),1,'first'));
+if isempty(Data0)
+    hasData = false;
+elseif iscell(Data0)
+    hasData = ~isempty(find(~cellfun(@isempty,Data0),1,'first'));
+else
+    hasData = size(char(Data0),2) > 1;
+end
 
 % --- updates the checkbox properties
 function updateCheckboxProps(handles,iSelT)
@@ -3416,30 +3562,45 @@ function updateCheckboxProps(handles,iSelT)
 global nMetG
 
 % sets the default input arguments
-if ~exist('iSelT','var')
+hasSelT = exist('iSelT','var');
+if ~hasSelT
     [~,iSelT] = getSelectedIndexType(handles);
 end
 
+% retrieves the table group object
+hFig = handles.figDataOutput;
+hTabG = findall(hFig,'tag','userTabGrp');
+jTabG = getappdata(hTabG,'UserData'); 
+
 % if the parameter tab is selected then disable all checkboxes and exit
 if iSelT == nMetG
+    % disables all the checkboxes
     hCheck = findall(handles.panelOtherFormats,'Style','Checkbox');
     arrayfun(@(x)(set(setObjEnable(x,0),'Value',0)),hCheck)
+    
+    % disables the 
+    if ~isempty(jTabG)
+        jTabG.setEnabledAt(0,0);
+        jTabG.setEnabledAt(2,0);
+        set(hTabG,'SelectedTab',findall(hTabG,'UserData',2));
+    end
+    
+    % exits the function
     return
 end
 
 % retrieves the group count
-hFig = handles.figDataOutput;
 eData = getappdata(hFig,'eData');
 iData = getappdata(hFig,'iData');
 
 % determines the group/experiment counts
-nApp = sum(iData.appOut(:,iData.cTab));
-nExp = sum(iData.expOut(:,iData.cTab));
+nApp = sum(iData.getAppOut());
+nExp = sum(iData.getExpOut());
 
 % retrieves the base experimental data fields
 useDay = eData.mltDay;
 useApp = eData.mltApp & (nApp > 1);
-useExp = eData.mltExp & (nExp > 1);
+[useExp1,useExp2] = deal(eData.mltExp & (nExp > 1),true);
 
 % metric specific alterations
 switch iSelT
@@ -3449,21 +3610,38 @@ switch iSelT
     
     case {3,5} 
         % case is the population metrics
-        [useExp,useDay] = deal(false);        
+        [useExp2,useDay] = deal(false);        
         
     case {4,7}
         % case is the individual metrics
-        [useApp,useExp] = deal(false);
-        
-        % resets the alignment radio button/panel properties
-        set(handles.radioAlignHorz,'value',1);
-        setPanelProps(handles.panelDataAlign,'off')
+        [useExp2,useApp] = deal(false);        
         
     case 6
         % case is the individual signals
-        [useExp,useApp] = deal(false);        
+        [useExp2,useApp] = deal(false);          
         
-end             
+end
+
+% sets the final experiment flag
+useExp = useExp1 && useExp2;
+
+% updates the experiment info tab (based on the experiment separation flag)
+if ~isempty(jTabG)
+    jTabG.setEnabledAt(0,1);
+    nChild = length(get(hTabG,'Children'));
+    if nChild == 3
+        % determines the experiment output tab enabled flag
+        useExpG = eData.mltExp && (useExp2 || any(iSelT == [4,6]));
+        jTabG.setEnabledAt(length(get(hTabG,'Children'))-1,useExpG);
+        
+        % updates the 
+        iTabSel = get(get(hTabG,'SelectedTab'),'UserData');
+        if (iTabSel == nChild) && ~useExpG
+            hTabNw = findall(hTabG,'UserData',1);
+            set(hTabG,'SelectedTab',hTabNw);
+        end
+    end
+end
 
 % sets the checkbox enabled properties
 setCheckProps(handles.checkSepByApp,useApp)
@@ -3471,20 +3649,41 @@ setCheckProps(handles.checkSepByExpt,useExp)
 setCheckProps(handles.checkSepByDay,useDay)
 updateNumGroupCheck(handles,iSelT)
 
-% updates the experiment info tab (based on the experiment separation flag)
-hTabG = findall(hFig,'tag','userTabGrp');
-jTabG = getappdata(hTabG,'UserData'); 
-if ~isempty(jTabG)
-    nChild = length(get(hTabG,'Children'));
-    if nChild == 3
-        jTabG.setEnabledAt(length(get(hTabG,'Children'))-1,useExp);    
-        iTabSel = get(get(hTabG,'SelectedTab'),'UserData');
-        if (iTabSel == nChild) && ~useExp
-            hTabNw = findall(hTabG,'UserData',1);
-            set(hTabG,'SelectedTab',hTabNw);
+% --- updates the data alignment panel properites
+function updateAlignPanelProps(handles)
+
+% field retrieval
+iData = getappdata(handles.figDataOutput,'iData');
+iSel0 = iData.tData.iSel(iData.cTab);
+[appOutS,expOutS] = deal(iData.getAppOut(),iData.getExpOut());
+
+% sets the alignment flag based on the selection
+if get(handles.checkSepByApp,'Value') || any(iSel0 == [4])
+    if length(appOutS) > 1
+        if all(expOutS)
+            % case is all experiments are used
+            useAlign = sum(appOutS) > 1;
+        else
+            % case is not all are experiments are selected
+            bgCol = get(handles.tableGroupInc,'BackgroundColor');
+            if size(bgCol,1) == 1
+                % case is all regions are feasible
+                useAlign = sum(appOutS) > 1;
+            else
+                % case is not all regions are feasible
+                useAlign = sum((bgCol(:,1) == 1) & appOutS) > 1;
+            end
         end
+    else
+        useAlign = false;
     end
+else
+    iSel0 = iData.tData.iSel(iData.cTab);
+    useAlign = length(iData.tData.iPara{iData.cTab}{iSel0}{1}) > 1;
 end
+    
+% updates the panel properties
+setPanelProps(handles.panelDataAlign,useAlign)
 
 % --- updates the group number checkbox object
 function updateNumGroupCheck(handles,iSelT)

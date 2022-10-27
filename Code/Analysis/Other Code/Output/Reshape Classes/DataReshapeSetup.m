@@ -27,9 +27,9 @@ classdef DataReshapeSetup < handle
         nPara        
         
         % boolean array fields
-        appOut
+        appOut        
+        expOut
         appName
-        expOut                
         
         % boolean flag fields
         sepDay
@@ -106,8 +106,8 @@ classdef DataReshapeSetup < handle
             
             % other memory allocations
             obj.Y = cell(1,nMetG);
-            obj.expOut = true(obj.nExp,1);
-            obj.appOut = true(obj.nApp,1);
+            obj.expOut = {true(obj.nExp,nMetG)};
+            obj.appOut = {true(obj.nApp,nMetG)};
             obj.Data0 = cell(1,nMetG-1);
             obj.stData = cell(obj.nPara,1); 
             
@@ -130,7 +130,7 @@ classdef DataReshapeSetup < handle
             global nMetG nChk           
             
             % tab data struct initialisation
-            tD = struct('Name',[],'Data',[],'DataN',[],'hTab',[],...
+            tD = struct('Name',[],'Data',[],'hTab',[],...
                     'iPara',[],'mInd',[],'stInd',[],'altChk',[],...
                     'alignV',[],'iSel',1,'mSel',1);
             
@@ -140,11 +140,73 @@ classdef DataReshapeSetup < handle
             % memory allocation and other field initialisations
             tD.Name = {'Sheet 1'};
             tD.iPara = {obj.addOrderArray(obj.Type)};            
-            [tD.Data,tD.DataN,tD.mInd] = deal({a});
+            [tD.Data,tD.mInd] = deal({a});
             [tD.stInd,tD.alignV] = deal({NaN(obj.nPara,2)},true(1,nMetG));
             tD.altChk = {repmat({false(1,nChk)},1,nMetG)};
                 
-        end                        
+        end    
+        
+        % --- sets the output group index values
+        function setAppOut(obj,nwVal,iRow)
+            
+            % sets the default input argument
+            if ~exist('iRow','var')
+                iRow = 1:length(nwVal);
+            end
+            
+            % updates the group selected indices
+            iSelT = obj.getSelectedMetricTab();
+            obj.appOut{obj.cTab}(iRow,iSelT) = nwVal;
+            
+        end
+        
+        % --- retrieves the current tab's output group index values
+        function appOutS = getAppOut(obj,iRow)
+            
+            % updates the group selected indices
+            iSelT = obj.getSelectedMetricTab();
+            appOutS = obj.appOut{obj.cTab}(:,iSelT);
+            
+            % reduces the index array (if provided)
+            if exist('iRow','var'); appOutS = appOutS(iRow); end
+            
+        end
+        
+        % --- sets the output group index values
+        function setExpOut(obj,nwVal,iRow)
+            
+            % sets the default input argument
+            if ~exist('iRow','var')
+                iRow = 1:length(nwVal);
+            end
+            
+            % updates the group selected indices
+            iSelT = obj.getSelectedMetricTab();
+            obj.expOut{obj.cTab}(iRow,iSelT) = nwVal;
+            
+        end        
+        
+        % --- retrieves the current tab's output group index values
+        function expOutS = getExpOut(obj,iRow)
+            
+            % updates the group selected indices
+            iSelT = obj.getSelectedMetricTab();
+            expOutS = obj.expOut{obj.cTab}(:,iSelT);
+            
+            % reduces the index array (if provided)
+            if exist('iRow','var'); expOutS = expOutS(iRow); end
+            
+        end
+        
+        % --- retrieves the currently selected data type tab
+        function iSelT = getSelectedMetricTab(obj)
+            
+            hTabS = findall(obj.hFig,'tag','metricTabGrp');
+            iSelT = get(get(hTabS,'SelectedTab'),'UserData');
+            
+            if isempty(iSelT); iSelT = 1; end
+            
+        end
         
     end
     
@@ -217,7 +279,7 @@ classdef DataReshapeSetup < handle
 
             end            
             
-        end
+        end            
         
     end
     

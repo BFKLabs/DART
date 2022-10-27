@@ -484,12 +484,13 @@ elseif isExLoc
         
         % sets the fill objects coordinates        
         ii = ~all(isnan(iC2T),2);
+        [X0,Y0] = getCircCentreCoords(iMov);
         for i = reshape(find(ii),1,sum(ii))
             % sets the apparatus/fly indices
             [iApp,iFly] = deal(iC2T(i,1),iC2T(i,2));
             
             % sets the limits of the fill object
-            [pX0,pY0] = deal(iMov.autoP.X(iFly,iApp),iMov.autoP.Y(iFly,iApp));
+            [pX0,pY0] = deal(X0(iFly,iApp),Y0(iFly,iApp));
             if (isLE)
                 % the edge is the region for stimulation
                 [X2{i},Y2{i}] = deal(pX0+(R+Rdel)*cP,pY0+(R+Rdel)*sP);

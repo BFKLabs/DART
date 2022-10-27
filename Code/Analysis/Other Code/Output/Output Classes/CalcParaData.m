@@ -1,7 +1,7 @@
 classdef CalcParaData < DataOutputArray 
     
     % class properties
-    properties
+    properties                
         
         % main class parameters
         gPara
@@ -112,7 +112,7 @@ classdef CalcParaData < DataOutputArray
             end
 
             % sets the final data array
-            obj.Data = combineCellArrays({'',''},cell2cell(DataT),0);            
+            obj.combineFinalArray(DataT,[1,1]); 
             
         end                
         

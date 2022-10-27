@@ -38,10 +38,10 @@ classdef MetricIndivData < DataOutputArray
     methods
         
         % --- class constructor
-        function obj = MetricIndivData(hFig) 
+        function obj = MetricIndivData(hFig,hProg) 
             
             % creates the super-class object
-            obj@DataOutputArray(hFig);            
+            obj@DataOutputArray(hFig,hProg);
             
             % sets up the data array
             obj.initClassFields();
@@ -62,7 +62,7 @@ classdef MetricIndivData < DataOutputArray
         end
             
         % --- initialises the class fields
-        function initClassFields(obj)                     
+        function initClassFields(obj)
             
             % sets the global metric indices
             Type = field2cell(obj.iData.yVar,'Type',1); 
@@ -106,7 +106,7 @@ classdef MetricIndivData < DataOutputArray
                 % reduces the genotype groups to those that appear >= once
                 iOut = find(obj.appOut);
                 hasF = cellfun(@(x)(any(cell2mat(x(1,:))>0)),obj.nFly);
-                appOutF = obj.appOut & setGroup(iOut(hasF),size(hasF));
+                appOutF = obj.appOut & setGroup(iOut(hasF),size(obj.appOut));
                 
                 obj.iFly = obj.iFly(hasF,:);
                 obj.nFly = obj.nFly(hasF,:);
@@ -133,7 +133,7 @@ classdef MetricIndivData < DataOutputArray
         function setupGroupHeaders(obj)
             
             % initialisations
-            [a,b,iOfs] = deal({''},'',1+obj.sepExp);
+            [a,b,iOfs] = deal({''},'',1+(obj.nExp>1));
             isKeep = [(obj.nGrp>1),obj.sepGrp2];
             
             % retrieves the independent variables
@@ -173,8 +173,8 @@ classdef MetricIndivData < DataOutputArray
                     end
                     
                     % sets the other fields
-                    if obj.sepExp; mStrC{1,1} = 'Experiment'; end
-                    mStrC{1,obj.sepExp+1} = 'Fly Index';
+                    if (obj.nExp > 1); mStrC{1,1} = 'Experiment'; end
+                    mStrC{1,iOfs} = 'Fly Index';
                     
                     % sets the final data array
                     obj.mStrT{i,k} = mStrC;
@@ -292,32 +292,9 @@ classdef MetricIndivData < DataOutputArray
                 end
             end
             
-            % ------------------------- %
-            % --- FINAL ARRAY SETUP --- %
-            % ------------------------- %
-            
-            % initialisations
-            cOfs = 1;
-            szD = cell2mat(cellfun(@size,DataF0(:),'un',0));
-            
-            % memory allocation
-            nRowMx = max(szD(:,1));            
-            obj.Data = strings(nRowMx,sum(szD(:,2))+(numel(DataF0)+1));
-            
-            % sets the data into the final array
-            for i = 1:numel(DataF0)
-                if szD(i,1) > 0
-                    % sets the data for the current block
-                    iR = 1:size(DataF0{i},1);
-                    iC = (1:size(DataF0{i},2)) + cOfs;
-                    obj.Data(iR,iC) = DataF0{i};
-                    
-                    % increments the column offset
-                    cOfs = (cOfs + 1) + size(DataF0{i},2);
-                    DataF0{i} = [];                    
-                end
-            end           
-            
+            % combines the final array
+            obj.combineFinalArray(DataF0,[1,1]);
+                        
         end
         
         % ------------------------------- %

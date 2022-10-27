@@ -33,7 +33,8 @@ for iApp = 1:nApp
     % only analyse if the sub-region has not been rejected
     if iMov.ok(iApp)
         % retrieves the 2D coordinates
-        [DPX,DPY,~,IND,dp0] = get2DCoords(snTot,iApp);    
+        [DPX,DPY,~,IND,dp0] = get2DCoords(snTot,iApp); 
+        [X0,Y0] = getCircCentreCoords(iMov);
     
         % sets the values into the final array
         for iFly = 1:nFly(iApp)
@@ -49,8 +50,8 @@ for iApp = 1:nApp
             if iMov.flyok(iFly,iApp)                                
                 % calculates the x/y coordinates in the global coordinates
                 k = IND{1}(iFly);
-                x0 = iMov.autoP.X(k) + dp0{1}(1,iFly);
-                y0 = iMov.autoP.Y(k) + dp0{1}(2,iFly);
+                x0 = X0(k) + dp0{1}(1,iFly);
+                y0 = Y0(k) + dp0{1}(2,iFly);
 
                 % sets the files x/y coordinates and orientation angles 
                 for iFile = 1:nFile                        
@@ -134,7 +135,8 @@ Bw = logical(getExclusionBin(iMov,[],iApp,iFly));
 sz = size(Bw);
 
 % calculates the distance/orientation masks
-[xM,yM] = deal(iMov.autoP.X(indG)-x0,iMov.autoP.Y(indG)-y0);
+[X0G,Y0G] = getCircCentreCoords(iMov);
+[xM,yM] = deal(X0G(indG)-x0,Y0G(indG)-y0);
 [XX,YY] = meshgrid((1:size(Bw,2))-xM,(1:size(Bw,1))-yM);
 
 % sets the region 

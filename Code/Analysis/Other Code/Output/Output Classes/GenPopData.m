@@ -2,7 +2,7 @@ classdef GenPopData < DataOutputArray
     
     % class properties
     properties
-
+        
         % string/index array fields        
         mIndG
         mStrH
@@ -18,10 +18,10 @@ classdef GenPopData < DataOutputArray
     methods
         
         % --- class constructor
-        function obj = GenPopData(hFig) 
+        function obj = GenPopData(hFig,hProg)                        
             
             % creates the super-class object
-            obj@DataOutputArray(hFig);            
+            obj@DataOutputArray(hFig,hProg);            
             
             % sets up the data array
             obj.initClassFields();
@@ -54,10 +54,7 @@ classdef GenPopData < DataOutputArray
         function setupDataArray(obj)
             
             % sets up the header/data values for the output array
-            obj.setupMetricData();
-            
-            % combines the final output data array
-            obj.setupFinalDataArray();            
+            obj.setupMetricData();                        
             
         end        
         
@@ -74,6 +71,7 @@ classdef GenPopData < DataOutputArray
             % sets up the final data output array
             for i = 1:obj.nMet
                 % memory allocation
+                [a,b] = deal({''},'');
                 DataT{i} = cell(1,obj.nApp);
                 obj.mStrH{1,2} = obj.mStrB{i};
 
@@ -84,9 +82,9 @@ classdef GenPopData < DataOutputArray
 
                     % combines the metric data values
                     YRnw = obj.YR{i}{j};                    
-                    DataT0 = combineCellArrays(obj.mStrH,YRnw,0);
-                    DataT0 = combineCellArrays(DataT0,{NaN});
-                    DataT{i}{j} = combineCellArrays(DataT0,{NaN},0);                    
+                    DataT0 = combineCellArrays(obj.mStrH,YRnw,0,b);
+                    DataT0 = combineCellArrays(DataT0,a,1,b);
+                    DataT{i}{j} = combineCellArrays(DataT0,a,0,b);                    
                 end
 
                 % combines the data array over each group
@@ -94,7 +92,7 @@ classdef GenPopData < DataOutputArray
             end
             
             % combines the individual arrays into a single array
-            obj.Data = cell2cell(DataT);            
+            obj.combineFinalArray(DataT);
             
         end 
         

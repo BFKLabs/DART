@@ -39,10 +39,10 @@ classdef MetricPopData < DataOutputArray
     methods
         
         % --- class constructor
-        function obj = MetricPopData(hFig)
+        function obj = MetricPopData(hFig,hProg)
             
             % creates the super-class object
-            obj@DataOutputArray(hFig);            
+            obj@DataOutputArray(hFig,hProg);
             
             % sets up the data array
             obj.initClassFields();
@@ -274,13 +274,9 @@ classdef MetricPopData < DataOutputArray
                 obj.YM{i} = [obj.mStrT{i},obj.YM{i}];
                 obj.mStrT{i} = [];
             end
-
-            % appends gaps to the top/left of the genotype groups data
-            obj.YM = cellfun(@(x)(combineCellArrays(a,x,1,b)),obj.YM,'un',0);
-            obj.YM = cellfun(@(x)(combineCellArrays(a,x,0,b)),obj.YM,'un',0);
             
             % sets the final data array
-            obj.Data = cell2cell(obj.YM,1);           
+            obj.combineFinalArray(obj.YM);
             
         end                
         

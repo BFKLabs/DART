@@ -5,7 +5,7 @@ classdef DataOutputSetup < handle
         
         % main class fields
         hFig
-        showLB
+        hProg
         
         % data array fields
         mInd
@@ -26,11 +26,11 @@ classdef DataOutputSetup < handle
     methods
         
         % --- class constructor
-        function obj = DataOutputSetup(hFig,showLB)
+        function obj = DataOutputSetup(hFig,hProg)
         
             % sets the input arguments
             obj.hFig = hFig;
-            obj.showLB = showLB;
+            obj.hProg = hProg;
             
             % initialises the class fields
             obj.initClassFields();
@@ -53,11 +53,6 @@ classdef DataOutputSetup < handle
         % --- sets up the output data array
         function setupOutputDataArray(obj)
             
-%             % creates the load bar    
-%             if obj.showLB
-%                 h = ProgressLoadbar('Initialising Data Table Array...');
-%             end
-
             % updates the GUI
             pause(0.05);                
             
@@ -65,7 +60,7 @@ classdef DataOutputSetup < handle
                 switch obj.iSel
                     case (1) 
                         % case is the statistical test
-                        dataObj = StatsTestData(obj.hFig);
+                        dataObj = StatsTestData(obj.hFig,obj.hProg);
 
 %                         % determines the output variables indices 
 %                         stInd = obj.iData.tData.stInd{obj.iData.cTab};
@@ -95,31 +90,31 @@ classdef DataOutputSetup < handle
 
                     case 2
                         % case is the population metric output
-                        dataObj = MetricPopData(obj.hFig);
+                        dataObj = MetricPopData(obj.hFig,obj.hProg);
 
                     case 3 
                         % case is the population metric (fixed) output
-                        dataObj = MetricFixedData(obj.hFig);
+                        dataObj = MetricFixedData(obj.hFig,obj.hProg);
 
                     case 4
                         % case is the individual metric output
-                        dataObj = MetricIndivData(obj.hFig);
+                        dataObj = MetricIndivData(obj.hFig,obj.hProg);
 
                     case 5 
                         % case is the population signal output 
-                        dataObj = SigPopData(obj.hFig);
+                        dataObj = SigPopData(obj.hFig,obj.hProg);
 
                     case 6 
                         % case is the individual signal output 
-                        dataObj = SigIndivData(obj.hFig);
+                        dataObj = SigIndivData(obj.hFig,obj.hProg);
 
                     case 7 
                         % case is the general population data array
-                        dataObj = GenPopData(obj.hFig);
+                        dataObj = GenPopData(obj.hFig,obj.hProg);
 
                     case 8
                         % case is the general individual data array
-                        dataObj = GenIndivData(obj.hFig);
+                        dataObj = GenIndivData(obj.hFig,obj.hProg);
 
                     otherwise
                         % case is the calculation parameter
@@ -128,13 +123,7 @@ classdef DataOutputSetup < handle
                 end
                 
                 % retrieves the final data array
-                obj.Data = dataObj.Data;
-                
-%                 % removes any non-numerical fields
-%                 if ~any(obj.iSel == [5 6])
-%                     isN = find(cellfun(@isnumeric,obj.Data));
-%                     obj.Data(isN(cellfun(@isnan,obj.Data(isN)))) = {''}; 
-%                 end
+                obj.Data = dataObj.Data;                
                 
                 % re-adds any manually entered values
                 if ~isempty(obj.mInd)
@@ -150,14 +139,14 @@ classdef DataOutputSetup < handle
                                     {x(1),x(2)})),num2cell(obj.mInd+1,2));
                         obj.mInd = obj.mInd(ii,:);
 
-                        % if there are still manual indices, then set the 
-                        % cell entries from the previous data array into 
-                        % the new one
-                        if ~isempty(obj.mInd)
-                            [szD,indM] = deal(size(obj.Data),obj.mInd+1);
-                            jj = sub2ind(szD,indM(:,1),indM(:,2));
-                            obj.Data(jj) = Data0(jj);
-                        end
+%                         % if there are still manual indices, then set the 
+%                         % cell entries from the previous data array into 
+%                         % the new one
+%                         if ~isempty(obj.mInd)
+%                             [szD,indM] = deal(size(obj.Data),obj.mInd+1);
+%                             jj = sub2ind(szD,indM(:,1),indM(:,2));
+%                             obj.Data(jj) = Data0(jj);
+%                         end
                     end
                 end                
                 

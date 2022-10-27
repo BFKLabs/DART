@@ -1,7 +1,7 @@
 classdef SigIndivData < DataOutputArray
     
     % class properties
-    properties
+    properties        
         
         % index/cell array fields        
         xDep        
@@ -62,10 +62,10 @@ classdef SigIndivData < DataOutputArray
     methods
         
         % --- class constructor
-        function obj = SigIndivData(hFig)
+        function obj = SigIndivData(hFig,hProg)
             
             % creates the super-class object
-            obj@DataOutputArray(hFig);            
+            obj@DataOutputArray(hFig,hProg);                                 
             
             % sets up the data array
             obj.initClassFields();
@@ -123,11 +123,7 @@ classdef SigIndivData < DataOutputArray
                 
                 % clears the temporary data fields
                 obj.DataT = [];
-            end            
-            
-%             % removes any NaN fields
-%             iiN = cellfun(@(x)(obj.getNaNStatus(x)),obj.Data);            
-%             [obj.Data(iiN),obj.DataN(iiN)] = deal({''});
+            end
             
         end
         
@@ -151,7 +147,7 @@ classdef SigIndivData < DataOutputArray
         end
         
         % --- initialises the class fields for the current metric
-        function initMetricClassFields(obj)
+        function initMetricClassFields(obj)            
             
             % sets the time vector properites
             if obj.hasTime(obj.iMet)
@@ -187,7 +183,7 @@ classdef SigIndivData < DataOutputArray
 
             % determines the number of days each experiment runs for            
             if ~obj.iData.sepDay || all(cellfun(@isempty,YY{2}))
-                obj.nDay = ones(length(YY{1}),1);
+                obj.nDay = ones(obj.nExp,1);
             else
                 [Y1,Y2] = deal(YY{1}{1},YY{2}{1});
                 obj.nDay = arr2vec(cellfun(@(x,y)((size(x,2)-1)/...
@@ -274,7 +270,7 @@ classdef SigIndivData < DataOutputArray
         end
         
         % --- sets up the column header string arrays
-        function setupAllGroupHeaders(obj)
+        function setupAllGroupHeaders(obj)                        
             
             % initialisations      
             obj.mStrT = cell(obj.nApp,obj.nExp);            
@@ -324,19 +320,34 @@ classdef SigIndivData < DataOutputArray
                 switch iLvl
                     case 1
                         % case is the fly separation
-                        mStr0{iLvl} = arrayfun(@(x)...
-                                (sprintf('Fly #%i',x)),1:nP(1),'un',0);                        
+                        xiE = 1:nP(1);
+                        if obj.numGrp
+                            mStr0{iLvl} = arrayfun(@num2str,xiE,'un',0);
+                        else
+                            mStr0{iLvl} = arrayfun(@(x)...
+                                (sprintf('Fly #%i',x)),xiE,'un',0);
+                        end
                         
                     case 2
                         % case is the day separation
-                        mStr0{iLvl} = arrayfun(@(x)...
+                        xiD = 1:nP(2);
+                        if obj.numGrp
+                            mStr0{iLvl} = arrayfun(@num2str,xiD,'un',0);
+                        else
+                            mStr0{iLvl} = arrayfun(@(x)...
                                 (sprintf('Day #%i',x)),1:nP(2),'un',0);
+                        end
                             
                     case {3,4}
                         % case is the bin/grouping separation
-                        mStr0{iLvl} = arr2vec(getStructField...
+                        mStrNw = arr2vec(getStructField...
                                 (obj.plotD,obj.xDep{obj.iMet}{iLvl-1}))';
-                            
+                        if obj.numGrp
+                            xiM = 1:length(mStrNw);
+                            mStr0{iLvl} = arrayfun(@num2str,xiM,'un',0);                            
+                        else
+                            mStr0{iLvl} = mStrNw;
+                        end
                 end
             end
             
@@ -363,6 +374,11 @@ classdef SigIndivData < DataOutputArray
         
         % --- sets up the metric data strings
         function setupMetricData(obj)
+        
+            % updates the loadbar
+            lStr0 = 'Metric Data Array Setup';
+            lStr = sprintf('%s (Metric %i of %i)',lStr0,obj.iMet,obj.nMet);
+            obj.hProg.StatusMessage = lStr;                        
             
             % other memory allocation
             a = {''};
@@ -450,8 +466,13 @@ classdef SigIndivData < DataOutputArray
         % --- combines the header & metric data arrays into the final array
         function setupFinalDataArray(obj)
             
+            % updates the loadbar
+            lStr0 = 'Combining Final Data Array';
+            lStr = sprintf('%s (Metric %i of %i)',lStr0,obj.iMet,obj.nMet);
+            obj.hProg.StatusMessage = lStr;                    
+            
             % combines the data/number index arrays
-            colOfs = 0;
+            [cOfs,rOfs] = deal(0,1);
             [obj.mData,obj.mStrT] = deal(obj.mData',obj.mStrT');
             iOK = cell2mat(cell2cell(obj.nFly)') > 0; 
             i0 = find(iOK,1,'first');
@@ -468,11 +489,12 @@ classdef SigIndivData < DataOutputArray
                 % stores the data values
                 i = iOK(j);
                 mDataT = [obj.mStrT{i};obj.mData{i}];
-                [iR,iC] = deal(1:size(mDataT,1),(1:size(mDataT,2))+colOfs);
+                iR = (1:size(mDataT,1)) + rOfs;
+                iC = (1:size(mDataT,2)) + cOfs;
                 obj.DataT(iR,iC) = mDataT;
                 
                 % increments the column offset
-                colOfs = colOfs + szD(j,2);                
+                cOfs = cOfs + szD(j,2);                
             end
                 
 %             % combines the header

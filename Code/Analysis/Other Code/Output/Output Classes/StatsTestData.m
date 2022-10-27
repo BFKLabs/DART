@@ -10,10 +10,10 @@ classdef StatsTestData < DataOutputArray
     methods
         
         % --- class constructor
-        function obj = StatsTestData(hFig) 
+        function obj = StatsTestData(hFig,hProg) 
             
             % creates the super-class object
-            obj@DataOutputArray(hFig);            
+            obj@DataOutputArray(hFig,hProg);            
             
             % sets up the data array
             obj.setupDataArray();

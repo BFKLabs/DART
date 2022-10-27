@@ -32,8 +32,8 @@ function [dPx,dPy,Rad] = get2DCoordsBGNew(snTot,iApp)
 
 % field retrieval
 [cID,iMov] = deal(snTot.cID,snTot.iMov);
-[X0,Y0] = deal(iMov.autoP.X0,iMov.autoP.Y0);
 [sFac,hasApp,fok] = deal(snTot.sgP.sFac,~isempty(iApp),iMov.flyok);
+[X0,Y0] = getCircCentreCoords(iMov);
 
 % memory allocation
 nApp = max(1,length(snTot.Px));

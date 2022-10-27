@@ -51,7 +51,7 @@ for i = 1:length(PxNw)
 end
 
 % sets the x/y coordinates of the circle centres
-[X0,Y0] = deal(iMov.autoP.X,iMov.autoP.Y);
+[X0,Y0] = getCircCentreCoords(iMov);
 if (Type == 0)
     % for the old solution file version, offset the y-position
     Y0 = Y0 - min(cellfun(@(x)(x(1)-1),iMov.iR)); 

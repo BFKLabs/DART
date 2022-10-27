@@ -2688,7 +2688,7 @@ if isdeployed
     else
         % otherwise, set the file names relative to the analysis file
         % directory on the new computer
-        fFile = cellfun(@(x)(fullfile(dDir{1},x)),fName,'un',0);
+        fFile = cellfun(@(x)(fullfile(dDir,x)),fName,'un',0);
     end
 
     % determines if any of the files are missing from where they should be
@@ -3175,21 +3175,6 @@ global axPosX axPosY
 % calculates the global coordinates
 pPos = getObjGlobalCoord(handles.panelPlot);
 [axPosX,axPosY] = deal(pPos(1)+[0,pPos(3)],pPos(2)+[0,pPos(4)]);
-
-% --- retrieves the original object dimensions
-function objDim0 = getInitObjDim(hFig)
-
-% retrieves the handles of objects within the figure
-hObj = findall(hFig);
-
-% removes the menu/toolbar items from the list
-hObjM = findall(hObj,'Type','uimenu');
-hObjT = findall(hObj,'Type','uitoolbar');
-hObjTT = findall(hObj,'Type','uitoggletool');
-hObj = setdiff(hObj,[hObjM;hObjT;hObjTT]);
-
-% returns the object handles and position vectors
-objDim0 = {num2cell(hObj),get(hObj,'Position')};
 
 % --- resets the toolbar objects
 function resetToolbarObj(handles)

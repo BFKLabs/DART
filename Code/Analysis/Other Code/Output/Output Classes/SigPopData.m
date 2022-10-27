@@ -34,10 +34,10 @@ classdef SigPopData < DataOutputArray
     methods
         
         % --- class constructor
-        function obj = SigPopData(hFig)
+        function obj = SigPopData(hFig,hProg)
             
             % creates the super-class object
-            obj@DataOutputArray(hFig);            
+            obj@DataOutputArray(hFig,hProg);
             
             % sets up the data array
             obj.initClassFields();
@@ -227,24 +227,7 @@ classdef SigPopData < DataOutputArray
 
             % appends the data            
             DataF0 = cellfun(@(x,y)([x;y]),mStrTF(iiD),obj.YR(iiD),'un',0);
-            szD = cell2mat(cellfun(@size,DataF0(:),'un',0));            
-            
-            % other initialisations            
-            cOfs = 1;
-            nRowMx = max(szD(:,1));
-            obj.Data = strings(nRowMx,sum(szD(:,2))+(length(DataF0)+1));
-
-            % sets the data into the final array
-            for i = 1:numel(DataF0)
-                % sets the data for the current block
-                iR = 1:size(DataF0{i},1);
-                iC = (1:size(DataF0{i},2)) + cOfs;
-                obj.Data(iR,iC) = DataF0{i};
-                
-                % increments the column offset
-                cOfs = (cOfs + 1) + size(DataF0{i},2);
-                DataF0{i} = [];                
-            end
+            obj.combineFinalArray(DataF0,[1,1]);
             
         end        
             
