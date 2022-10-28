@@ -1868,7 +1868,7 @@ addJavaObjCallback(jTM,'TableChangedCallback',@dataSheetEdit)
 % resets the updating flag
 isUpdating = false;
 
-% --- 
+% --- stops editing and removes selection (for an editted cell)
 function resetSelectedCell(jTab,iRow,iCol)
 
 % if editting, then stop editting
@@ -1885,6 +1885,7 @@ function ind = setDataTableIndices(x0,rSz,vSz,mxSz,del)
 [dimLo,dimHi] = calcIndLim(x0,rSz,vSz);
 ind = max(0,dimLo-del):min(mxSz-1,dimHi+del);
 
+% --- sets the lower/higher limit indices
 function [dimLo,dimHi] = calcIndLim(x0,rSz,vSz)
 
 dimLo = floor(x0/rSz);
@@ -2538,12 +2539,26 @@ jSP = javaObjectEDT('javax.swing.JScrollPane', jTab);
 set(hC,'Position',tPos,'tag','hSP','UserData',cTab,'Interruptible','off')
 jSP.setViewportView(jTab);
 
+%
+pause(0.01);
+jTH = jTab.getTableHeader();
+sz0 = jTH.getPreferredSize();
+[wid0,hght0] = deal(sz0.width,sz0.height);
+
 % updates the table data
-jTM = javax.swing.table.DefaultTableModel(Data(iRow,iCol),colN);
+DataNw = Data(iRow,iCol);
+jTM = javax.swing.table.DefaultTableModel(DataNw,string(colN));
 addJavaObjCallback(jTM,'TableChangedCallback',@dataSheetEdit)
 jTM.setRowCount(max(nRow,50))
 jTM.setColumnCount(max(nCol,20))
 jTab.setModel(jTM);
+
+% resets the original header height (fixes weird header resize issue...?)
+jTH.setOpaque(false);
+jTH.setPreferredSize(java.awt.Dimension(wid0,hght0));
+jTH.setBackground(java.awt.Color(0.94,0.94,0.94))
+% jTH.setDefaultRenderer(jDR);
+jTH.repaint
 
 % sets the horizonal/vertical scrollbar callback functions
 jView = jTab.getParent;
@@ -3122,83 +3137,6 @@ chkVal = iData.tData.altChk{iData.cTab}{iData.tData.iSel(iData.cTab)};
 
 % updates the checkbox values
 arrayfun(@(x,y)(set(x,'Value',y)),hCheck(:),chkVal(:))
-
-% % global variables
-% global nMetG
-% 
-% % retrieves the data struct (if not provided)
-% if ~exist('iData','var')
-%     iData = getappdata(handles.figDataOutput,'iData');
-% end
-% 
-% % retrieves the checkbox handles
-% hCheck = findall(handles.panelManualData,'style','checkbox');
-% 
-% % sets the metric parameter index
-% iSelT = iData.tData.iSel(iData.cTab);
-% 
-% % updates the checkbox values
-% for i = 1:length(hCheck)
-%     hCheckNw = findall(hCheck,'Max',i);    
-%     set(hCheckNw,'value',i*iData.tData.altChk{iData.cTab}{iSelT}(i))
-%     
-%     switch get(hCheckNw,'tag')
-%         case 'checkSepByExpt'
-%             % sets the check box enabled properties
-%             isOK = (any(iSelT == 2)) && iData.sepExp;
-%             enableChk = isOK && (sum(iData.getExpOut())>1);
-%             setObjEnable(hCheckNw,enableChk)            
-%             
-%             isChk = iData.tData.altChk{iData.cTab}{iSelT}(2);
-%             if (nargin < 3)
-%                 resetExptTabProps(handles,iData,isChk);
-%             end
-%             
-%         case 'checkSepByApp'
-%             isOK = all(iSelT ~= [5:8 nMetG]) && ...
-%                             (getSelectedIndexType(handles) ==2 );
-%             setObjEnable(hCheckNw,isOK&&(sum(iData.getAppOut())>1)) 
-%             
-%         case 'checkNumGroups'
-%             % determines
-%             switch iSelT
-%                 case (1) % case is the statistical tests            
-%                     iiV = getappdata(handles.figDataOutput,'hasTest');
-%                     
-%                 case (nMetG) % case is the other properties
-%                     iiV = [];    
-%                     
-%                 otherwise % case is the other metrics
-%                     metType = getappdata(handles.figDataOutput,'metType');
-%                     iiV = metType(:,iSelT-1);    
-%             end            
-%             
-%             % determines if there are any grouped variables
-%             if ~isempty(iiV)
-%                 % values could be grouped
-%                 [Var,Type] = field2cell(iData.xVar,{'Var','Type'});
-%                 xDepY = field2cell(iData.yVar(iiV),'xDep');
-%                 isE = cellfun(@isempty,xDepY);
-%                 if all(isE)
-%                     % no grouping independent variables
-%                     hasGrp = false;
-%                 else
-%                     % determines if any of the metrics could be grouped
-%                     hasGrp = any(cellfun(@(x)(any(strcmp(cellfun(@(y)(...
-%                             Type(strcmp(y,Var))),x),'Group'))),xDepY(~isE)));
-%                 end
-%             else
-%                 % values are not grouped
-%                 hasGrp = false;
-%             end
-%                             
-%             % updates the checkbox enabled properties
-%             setObjEnable(hCheckNw,hasGrp)                                        
-%     end
-% end
-% 
-% % updates the separation by apparatus checkbox callback
-% checkOtherFormat(handles.checkSepByApp,'1')
 
 % --- sets the time unit object properties
 function setTimeUnitObjProps(handles,mSel)
