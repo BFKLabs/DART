@@ -63,9 +63,6 @@ classdef DataOutputArray < handle
         % --- initialises the class object fields
         function initMainClassFields(obj)     
             
-            % global variables
-            global nMet
-            
             % retrieves the important data fields
             obj.iData = getappdata(obj.hFig,'iData');
             obj.pData = getappdata(obj.hFig,'pData');
@@ -96,7 +93,7 @@ classdef DataOutputArray < handle
             % sets the other scalar fields
             obj.nApp = sum(obj.appOut);            
             obj.nMet = length(obj.iOrder);
-            obj.nMetT = nMet;
+            obj.nMetT = obj.iData.nMet;
             
         end
        

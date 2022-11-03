@@ -51,10 +51,7 @@ classdef MetricPopData < DataOutputArray
         end
         
         % --- initialises the class fields
-        function initClassFields(obj)
-            
-            % global variables
-            global nMet
+        function initClassFields(obj)            
             
             % reorders the array so the N values are at the top
             ii = obj.iOrder(:,2) ~= obj.nMetT;
@@ -81,7 +78,6 @@ classdef MetricPopData < DataOutputArray
             obj.YR = obj.getReducedDataArray();            
             
             % sets the other data fields
-            obj.nMet = nMet;
             obj.nExp = sum(obj.expOut);
             obj.nGrp = size(obj.YR{1}{1},1);
             obj.iGrpT = [obj.sepExp,obj.sepDay,(obj.nGrp>1)];

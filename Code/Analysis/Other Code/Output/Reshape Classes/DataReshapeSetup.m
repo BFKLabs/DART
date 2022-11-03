@@ -47,7 +47,10 @@ classdef DataReshapeSetup < handle
         incTab = 1;
         cInd = 1;
         cTab = 1;
-        nTab = 1;   
+        nTab = 1; 
+        nMetG = 9;
+        nMet = 11;
+        nChk
         
     end
     
@@ -68,11 +71,7 @@ classdef DataReshapeSetup < handle
         % --- initialises the main class fields
         function initMainClassFields(obj)
             
-            % global parameters
-            global nMetG nChk          
-            
             % initialisations
-            nMetG = 9;            
             pStrV = {'Stats','Type','Name'};
             
             % field retrieval
@@ -82,7 +81,7 @@ classdef DataReshapeSetup < handle
             % determines number of other formatting checkbox objects
             hFigH = guidata(obj.hFig);
             hChk = findall(hFigH.panelManualData,'style','checkbox');
-            nChk = length(hChk);            
+            obj.nChk = length(hChk);            
             
             % initialisations
             oP = pData.oP;
@@ -105,10 +104,10 @@ classdef DataReshapeSetup < handle
             [obj.xVar,obj.yVar] = deal(oP.xVar,oP.yVar);
             
             % other memory allocations
-            obj.Y = cell(1,nMetG);
-            obj.expOut = {true(obj.nExp,nMetG)};
-            obj.appOut = {true(obj.nApp,nMetG)};
-            obj.Data0 = cell(1,nMetG-1);
+            obj.Y = cell(1,obj.nMetG);
+            obj.expOut = {true(obj.nExp,obj.nMetG)};
+            obj.appOut = {true(obj.nApp,obj.nMetG)};
+            obj.Data0 = cell(1,obj.nMetG-1);
             obj.stData = cell(obj.nPara,1); 
             
             % boolean flag fields
@@ -119,32 +118,9 @@ classdef DataReshapeSetup < handle
             obj.grpComb = oP.grpComb;
             
             % initialises the tab class fields
-            obj.tData = obj.initTabClassFields();
+            obj.tData = DataOutputTable(obj);
             
-        end                
-        
-        % --- initialises the tab class fields
-        function tD = initTabClassFields(obj)
-            
-            % global parameters
-            global nMetG nChk           
-            
-            % tab data struct initialisation
-            tD = struct('Name',[],'Data',[],'hTab',[],...
-                    'iPara',[],'mInd',[],'stInd',[],'altChk',[],...
-                    'alignV',[],'iSel',1,'mSel',1);
-            
-            % other memory allocation
-            a = cell(1,nMetG);                
-                
-            % memory allocation and other field initialisations
-            tD.Name = {'Sheet 1'};
-            tD.iPara = {obj.addOrderArray(obj.Type)};            
-            [tD.Data,tD.mInd] = deal({a});
-            [tD.stInd,tD.alignV] = deal({NaN(obj.nPara,2)},true(1,nMetG));
-            tD.altChk = {repmat({false(1,nChk)},1,nMetG)};
-                
-        end    
+        end                        
         
         % --- sets the output group index values
         function setAppOut(obj,nwVal,iRow)
@@ -206,44 +182,12 @@ classdef DataReshapeSetup < handle
             
             if isempty(iSelT); iSelT = 1; end
             
-        end
+        end             
         
     end
     
     % static class methods
-    methods (Static)
-        
-        % --- creates a new index order array
-        function iPara = addOrderArray(metType)
-
-            % iPara Convention
-            %
-            % Element 1 - Statistical Test
-            % Element 2 - Population Metrics
-            % Element 3 - Fixed Metrics
-            % Element 4 - Individual Metrics
-            % Element 5 - Population Signals
-            % Element 6 - Individual Signals
-            % Element 7 - 2D Array
-            % Element 8 - Parameters
-
-            % global variables
-            global nMet nMetG
-
-            % memory allocation
-            [isMP,a] = deal(metType(:,1),[]);
-
-            % set the individual cell components (population metrics)
-            if any(isMP)
-                a = false(sum(isMP),nMet); 
-                [a(:,1),a(1,end)] = deal(true);
-            end
-
-            % sets the final array
-            iPara = repmat({{[]}},1,nMetG);
-            iPara{2} = {[],a};
-
-        end
+    methods (Static)        
         
         % --- retrieves the reshape function based on type
         function rFcn = getReshapeFunc(iType)

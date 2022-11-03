@@ -14,10 +14,13 @@ public class RowNumberTable extends JTable
 	implements ChangeListener, PropertyChangeListener, TableModelListener
 {
 	private JTable main;
+	private static int rowOfs;
 
-	public RowNumberTable(JTable table, boolean is2D)
+	public RowNumberTable(JTable table, int Type)
 	{
+		rowOfs = 0;		
 		main = table;        
+		
 		main.addPropertyChangeListener( this );
 		main.getModel().addTableModelListener( this );
                 
@@ -28,12 +31,17 @@ public class RowNumberTable extends JTable
 		TableColumn column = new TableColumn();
 		column.setHeaderValue(" ");
 		addColumn( column );
-		column.setCellRenderer(new RowNumberRenderer(is2D));
+		column.setCellRenderer(new RowNumberRenderer(Type));
 
 		getColumnModel().getColumn(0).setPreferredWidth(50);
 		setPreferredScrollableViewportSize(getPreferredSize());
         getTableHeader().setDefaultRenderer(new RowHeaderRenderer());
         getTableHeader().setReorderingAllowed(false);
+	}
+	
+	public void setRowOffsetCount(int rOfs)
+	{
+		rowOfs = rOfs;
 	}
 
 	@Override
@@ -81,7 +89,7 @@ public class RowNumberTable extends JTable
 	@Override
 	public Object getValueAt(int row, int column)
 	{
-		return Integer.toString(row + 1);
+		return Integer.toString(rowOfs + row + 1);
 	}
 
 	/*
@@ -149,12 +157,14 @@ public class RowNumberTable extends JTable
 	{
         private String typeStr;
         
-		public RowNumberRenderer(boolean is2D)
-		{            
-            if (is2D) {
-                typeStr = "Row";
+		public RowNumberRenderer(int Type)
+		{       
+			if (Type == 0) {
+                typeStr = "Fly #";
+            } else if (Type == 1) {
+                typeStr = "Row #";
             } else {
-                typeStr = "Fly";
+				typeStr = "";
             }  
             
 			setHorizontalAlignment(JLabel.CENTER);
@@ -176,7 +186,7 @@ public class RowNumberTable extends JTable
 			}          
             
 			setFont(new Font("Segoe UI", Font.PLAIN, 12));
-			setText((value == null) ? "" : typeStr + " #" + value.toString());
+			setText((value == null) ? "" : typeStr + value.toString());
 
 			return this;
 		}

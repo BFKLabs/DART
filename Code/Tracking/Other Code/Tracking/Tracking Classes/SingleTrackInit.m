@@ -585,8 +585,10 @@ classdef SingleTrackInit < SingleTrack
             QMetF = cellfun(@(x)(cell2mat(x)),num2cell(QMet0,2),'un',0);
             
             % determines which regions are potentially empty
-            isE = obj.iMov.flyok & (combineNumericCells(cellfun...
-                        (@(x)(sum(x>obj.pLim,2)),QMetF','un',0)) == 0);
+            isE = obj.iMov.flyok;
+            okNw = (combineNumericCells(cellfun(@(x)...
+                    (sum(x>obj.pLim,2)),QMetF(obj.iMov.ok)','un',0)) == 0);
+            isE(:,obj.iMov.ok) = isE(:,obj.iMov.ok) & okNw;
             if ~any(isE(:)); return; end
                         
             % closes the progressbar

@@ -4,7 +4,7 @@ classdef DataOutputStorage < DataReshapeSetup
     properties
         
         % main class fields
-        mObj
+        mObj        
         mFile
         hTimer
                         
@@ -22,7 +22,7 @@ classdef DataOutputStorage < DataReshapeSetup
         function obj = DataOutputStorage(hFig)
             
             % creates the super-class object
-            obj@DataReshapeSetup(hFig);  
+            obj@DataReshapeSetup(hFig);            
             
             % initialises the class fields
             obj.reshapeMetricData();
@@ -99,10 +99,7 @@ classdef DataOutputStorage < DataReshapeSetup
         % -------------------------------- %
         
         % --- reshapes the calculated metric data
-        function reshapeMetricData(obj)
-            
-            % global metrics
-            global nMet                       
+        function reshapeMetricData(obj)            
             
             % runs the reshape function for each metric type
             for iType = find(any(obj.Type,1))
@@ -113,7 +110,7 @@ classdef DataOutputStorage < DataReshapeSetup
                 switch iType
                     case 1
                         % case is the population metrics
-                        obj.Y{iType+1} = cell(nType,nMet,4);
+                        obj.Y{iType+1} = cell(nType,obj.nMet,4);
 
                     case {2,4,6,7}
                         % case is a single column array

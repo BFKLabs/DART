@@ -308,7 +308,7 @@ classdef FlyInfoGUI < handle
             end
             
             % creates the table row headers 
-            obj.rTable = RowNumberTable(obj.jTable,obj.iMov.is2D);
+            obj.rTable = RowNumberTable(obj.jTable,double(obj.iMov.is2D));
             
         end
         
