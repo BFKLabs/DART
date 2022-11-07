@@ -269,8 +269,7 @@ end
 warning(wState);
 
 % sets the tab selection change callback function
-tChngFcn = @(hTabGrp,e)StimInfo('stimEventTabChange',hTabGrp,e,handles);
-setObjCallbackFcn(hTabGrp,'TabGroup',tChngFcn);
+setObjCallbackFcn(hTabGrp,'TabGroup',@stimEventTabChange);
 uistack(hObj,'top');
 
 % updates the events fields
@@ -282,9 +281,10 @@ updateEventFields(handles)
 % ------------------------------------ %
 
 % --- callback function for altering the stimulus parameter tabs
-function stimEventTabChange(hObject, eventdata, handles)
+function stimEventTabChange(hObject, eventdata)
 
 % sets the data struct
+handles = guidata(hObject);
 hFig = handles.output;
 sData = get(hFig,'sData');
 

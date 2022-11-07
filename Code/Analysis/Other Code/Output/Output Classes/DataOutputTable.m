@@ -81,7 +81,7 @@ classdef DataOutputTable < dynamicprops & handle
                 metaprop = addprop(obj, propname{1});
                 metaprop.SetMethod = @(obj, varargin) ...
                     SetDispatch(obj, propname{1}, varargin{:});
-                metaprop.GetMethod = @(obj) GetDispatch(obj, propname{1});
+                metaprop.GetMethod = @(obj)GetDispatch(obj, propname{1});
             end
             
         end
@@ -424,6 +424,10 @@ classdef DataOutputTable < dynamicprops & handle
             % updates the table data
             obj.hTable{obj.cTab}.updateTableData(DataT);
             obj.Data{obj.cTab}{iSelT} = DataT;
+            
+            % clears the warning buffer
+            pause(0.05); drawnow();
+            fprintf(' \b');
             
             % updates the data field            
             clear DataT;            

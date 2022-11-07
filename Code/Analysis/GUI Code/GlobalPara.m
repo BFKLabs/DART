@@ -236,15 +236,12 @@ gPara = getappdata(handles.figGlobalPara,'gPara');
 % sets the panel object handle
 hPanel = handles.panelPara;
 hEdit = findall(hPanel,'style','edit');
+cbFcn = {@editCallback,handles};
 
 % initialises all the editboxes in the GUI
 for i = 1:length(hEdit)
-    % sets the editbox callback function   
     hObj = hEdit(i);
-    cbFcn = @(hObj,e)GlobalPara('editCallback',hObj,e,handles); 
-    
-    % sets the editbox properties
-    pStr = num2str(eval(sprintf('gPara.%s',get(hEdit(i),'UserData'))));    
+    pStr = num2str(getStructField(gPara,get(hEdit(i),'UserData')));    
     set(hObj,'string',pStr,'callback',cbFcn)
 end
 
@@ -260,15 +257,13 @@ set(handles.popupMovType,'string',{'Absolute Location';'Midline Crossing'}')
 % sets the panel object handle
 hPanel = handles.panelPara;
 hPopup = findall(hPanel,'style','popupmenu');
+cbFcn = {@popupCallback,handles};
 
 % initialises all the editboxes in the GUI
 for i = 1:length(hPopup)
-    % sets the editbox callback function   
-    hObj = hPopup(i);
-    cbFcn = @(hObj,e)GlobalPara('popupCallback',hObj,e,handles); 
-    
     % determines the item that is to be selected
-    pStr = eval(sprintf('gPara.%s',get(hPopup(i),'UserData')));    
+    hObj = hPopup(i);
+    pStr = getStructField(gPara,get(hPopup(i),'UserData'));    
     iSel = find(strcmp(pStr,get(hObj,'string')));
     
     % sets the popup menu properties    

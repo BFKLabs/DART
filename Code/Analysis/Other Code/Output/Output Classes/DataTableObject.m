@@ -727,7 +727,7 @@ classdef DataTableObject < handle
             while obj.keyDown
                 % if the time exceeds the pause time, then reset the key
                 % down flag
-                if (toc(tP) > obj.tPause)
+                if toc(tP) > obj.tPause
                     obj.keyDown = false;
                 end
                     

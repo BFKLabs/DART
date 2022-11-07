@@ -11,7 +11,8 @@ wStr = 'Orientation Angle Conversion';
 % initialisations
 fOK = num2cell(iMov.flyok,1)';
 axR = cellfun(@(x,y)(x(y)),pData.axR,fOK(:)','un',0);
-[~,paxR] = setupSignalCDF(cell2mat(cell2cell(axR,0)'));
+axRT = cell2mat(cell2cell(axR,0)');
+[~,paxR] = setupSignalCDF(axRT(~isnan(axRT)));
 
 % loops through all the frames/sub-regions determining if there is an issue
 for i = 1:nApp
@@ -449,7 +450,10 @@ if (range(Y) == 0)
     p = pchip([0 100],Y(1)*[1 1]);
 else
     [f,x] = ecdf(Y); 
-    p = pchip(x(2:end),f(2:end));     
+    
+    jj = 2:length(x);
+    ii = jj(~isinf(x(jj)));
+    p = pchip(x(ii),f(ii));    
 end
 
 Z = sY.*ppval(p,Y);

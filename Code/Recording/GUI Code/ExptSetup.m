@@ -1915,7 +1915,7 @@ if iProto(nProto)
     % updates the plot axes with the new duration
     hPopup = findobj(handles.panelExptDurEx,...
                      'style','popupmenu','UserData',1);
-    popupExptDuration(hPopup, '1', handles, dType)     
+    popupExptDuration(hPopup, '1', handles)     
     
     % sets the popup duration values
     iExpt = getappdata(hFig,'iExpt');
@@ -3107,7 +3107,7 @@ end
 set(hObject,'Value',iExpt0.Timing.Texp(iType)+1);
 
 % --- Executes on selection change in popupStartDayInfo.
-function popupStartTime(hObject, eventdata, handles, dType)
+function popupStartTime(hObject, eventdata, handles)
 
 % initialisations
 hFig = handles.figExptSetup;
@@ -4614,9 +4614,9 @@ function initDurObjProps(handles,pStr,pStr2)
 % sets the function string based on the popup string type
 switch (pStr)
     case ('Dur') % case is the experiment duration
-        fcnStr = 'popupExptDuration';
+        bFunc = {@popupExptDuration,handles,pStr2};
     case ('Stim') % case is the stimulus ISI duration       
-        fcnStr = 'popupStimDuration';
+        bFunc = {@popupStimDuration,handles,pStr2};
 end
 
 % sets the variable edit box string names
@@ -4628,10 +4628,7 @@ for i = 1:length(objStr)
     % retrieves the edit box handle
     objStrNw = sprintf('popup%s%s',pStr,objStr{i});
     if nargin == 3; objStrNw = sprintf('%s%s',objStrNw,pStr2); end
-    hObj = findobj(handles.figExptSetup,'tag',objStrNw);
-    
-    % sets the callback function
-    bFunc = @(hObj,e)ExptSetup(fcnStr,hObj,[],guidata(hObj),pStr2);
+    hObj = findobj(handles.figExptSetup,'tag',objStrNw);    
     
     % sets popup list string list
     dStr = getTimeDurationString(vMax(i));            

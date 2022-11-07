@@ -696,8 +696,9 @@ delete(handles.figTrackPara)
 function initParaEditBox(handles)
 
 % retrieves the segmentation parameters
+cFunc = {@editSegPara,handles};
 rtP = getappdata(handles.figTrackPara,'rtP');
-      
+
 % sets the properties for all the parameter edit boxes 
 hEdit = findall(handles.figTrackPara,'style','edit');
 for i = 1:length(hEdit)           
@@ -717,7 +718,6 @@ for i = 1:length(hEdit)
     end
     
     % sets the editbox parameter value/callback function
-    cFunc = @(hObj,e)TrackingPara('editSegPara',hObj,[],handles); 
     set(hEdit(i),'String',num2str(pVal),'Callback',cFunc);
 end
 
@@ -725,6 +725,7 @@ end
 function initParaCheckBox(handles)
 
 % retrieves the segmentation parameters
+cFunc = {@checkSegPara,handles};
 rtP = getappdata(handles.figTrackPara,'rtP');
 
 % sets the properties for all the parameter check boxes
@@ -735,7 +736,6 @@ for i = 1:length(hCheck)
     pVal = eval(sprintf('rtP.%s.%s',uD{1},uD{2}));       
     
     % sets the editbox parameter value/callback function
-    cFunc = @(hObj,e)TrackingPara('checkSegPara',hObj,[],handles); 
     set(hCheck(i),'Value',pVal,'Callback',cFunc);   
     checkSegPara(hCheck(i),'1',handles)
 end

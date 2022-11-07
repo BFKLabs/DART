@@ -7,7 +7,7 @@ global isCalib
 % sets the input arguments
 pVar = varargin;
 
-%
+% sets the main figure handle
 if isfield(handles,'output')
     hFig = handles.output;
 else
