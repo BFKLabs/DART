@@ -1,6 +1,8 @@
 classdef OrientationCalc < handle
+    
     % class properties
     properties
+        
         % main objects 
         I
         iMov
@@ -29,7 +31,8 @@ classdef OrientationCalc < handle
    
     % class methods
     methods 
-        % class constructor
+        
+        % --- class constructor
         function obj = OrientationCalc(iMov,I,fPos,iApp)
             
             % sets the input arguments
