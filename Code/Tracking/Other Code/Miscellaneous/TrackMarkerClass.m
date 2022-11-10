@@ -202,7 +202,7 @@ classdef TrackMarkerClass < handle
         end
         
         % --- sets up the x/y coordinates for a specific sub-region
-        function setSubRegionCoords(obj,iApp,iFly,iCol)            
+        function setSubRegionCoords(obj,iApp,iFly,iCol)
             
             switch obj.Type
                 case 'Circle'

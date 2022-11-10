@@ -481,6 +481,7 @@ classdef VideoCalibObj < handle
             % resets the trace title
             set(obj.hTitle,'String','Avg Intensity = N/A');
             set(obj.hTrace,'xData',NaN,'yData',NaN);
+            set(obj.hListH,'String',{'Original Parameters'})
             
             % deletes any existing markers
             if ~isempty(obj.hMark)

@@ -2921,11 +2921,15 @@ classdef SingleTrackInit < SingleTrack
                 
             end
             
-            % initialisations
-            II = normImg(II0(:));
-            N = (length(II)-1)/2;
+            % initialisations            
+            N = (length(II0)-1)/2;
             gaussEqn = 'A*exp(-(x/sd)^2)';            
             xi = (-N:N)';
+            
+            %
+            II = normImg(II0(:));
+            [iN,iP] = deal(find(xi<0),find(xi>0));
+            xiI = argMin(II(iN)):(argMin(II(iP)) + (N+1));
             
             % sets the fitting weights
             W0 = exp(-(xi/N).^2);
@@ -2933,9 +2937,8 @@ classdef SingleTrackInit < SingleTrack
             
             try
                 % fits the gaussian equation and returns the std-dev
-                p0 = [max(II(:)),1];
-                ff = fit(xi(:),II(:),gaussEqn,'Start',p0,...
-                                              'Weights',W);                                          
+                [p0,WI] = deal([max(II(:)),1],W(xiI));
+                ff = fit(xi(xiI),II(xiI),gaussEqn,'Start',p0,'Weights',WI);                                          
                 sD = ff.sd;
             catch
                 % if curve-fitting toolbox is unusable, then use the

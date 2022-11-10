@@ -478,12 +478,12 @@ if setMovie
             % if so, then determine if the sub-region data struct has been
             % set and the new/current video dimensions are equal
             szImg = getVideoDimensions(fDir,fName);
-            if iMov.isSet && isequal(iData.sz,szImg)
+            if iMov.isSet && compImageDim(iMov,iData,szImg)
                 % if so, ask the user if they would like to keep the same
                 % sub-window data. if not, then clear it
                 tStr = 'Keep Sub-Window Data';
-                uChoice = questdlg(['Do you want to keep the same ',...
-                                'sub-window data?'],tStr,'Yes','No','Yes');
+                qStr = 'Do you want to keep the same sub-window data?';
+                uChoice = questdlg(qStr,tStr,'Yes','No','Yes');
                 
                 if ~strcmp(uChoice,'Yes')
                     % re-initialises the sub-window data struct and 
@@ -497,15 +497,18 @@ if setMovie
                     [iData0.fData.dir,iData0.fData.name] = deal(fDir,fName);
 
                     % removes the background and resets the statuses    
-                    iMov.isSet = true;
+                    [iMov.isSet,iMov.phInfo] = deal(true,[]);
                     [iMov.Ibg,iMov.pStats,iMov.autoP] = deal([]);
                     for i = 1:length(iMov.Status)
                         iMov.Status{i}(:) = 0;
                     end
                     
-                    [iMov.ok(:),iMov.flyok(:)] = deal(true);
+                    % updates the sub-region data struct into the GUI
                     set(handles.output,'iMov',iMov);                    
 
+                    % deletes the existing markers
+                    hFig.mkObj.deleteTrackMarkers()
+                    
                     % deletes any progress file that may already exist
                     tDir = iData0.ProgDef.TempFile;
                     pFile = fullfile(tDir,'Progress.mat');
@@ -579,8 +582,8 @@ else
                     wStr = sprintf(['Matching file found:\n\n    => ',...
                         '%s"\n\nIs this the correct file?'],...
                         fullfile(ldData.dir,ldData.name));
-                    uChoice = questdlg(wStr,'Matching Solution Found',...
-                        'Yes','No','Yes');                                        
+                    tStr = 'Matching Solution Found';
+                    uChoice = questdlg(wStr,tStr,'Yes','No','Yes');                                        
                     if ~strcmp(uChoice,'Yes')
                         % if they do not, then exit the function
                         ok = menuOpenMovie_Callback(hObject, '1', handles);

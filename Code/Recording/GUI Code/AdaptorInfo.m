@@ -103,6 +103,7 @@ global outObj
 
 % gets the DAC only flag
 hFig = handles.figAdaptInfo;
+hFigM = getappdata(hFig,'hFigM');
 infoObj = getappdata(hFig,'infoObj');
 
 % creates a progressbar
@@ -114,7 +115,7 @@ h = ProgressLoadbar('Establishing Image Acquisition Device Connection...');
 
 % creates the image acquistion objects
 if infoObj.hasIMAQ && isempty(infoObj.reqdConfig)
-    infoObj = connectIMAQDevice(handles,infoObj);
+    infoObj = connectIMAQDevice(handles,infoObj,h);
 end
 
 % --------------------------------------- %
@@ -144,6 +145,12 @@ pause(0.1);
 
 % continues based on the way the AdaptorInfo gui was called
 switch infoObj.iType
+    case 0
+        % case is there was an error during initialisation
+        setObjVisibility(hFigM,1);
+        try; close(h); end
+        return
+    
     case 1
         % case is initialising from DART
         switch infoObj.exType
@@ -242,7 +249,7 @@ for i = 1:iStim.nDACObj
 end
 
 % --- connects the imaq recording device
-function infoObj = connectIMAQDevice(handles,infoObj)
+function infoObj = connectIMAQDevice(handles,infoObj,h)
 
 % exits if a stimuli only experiment
 if strcmp(infoObj.exType,'StimOnly') || infoObj.isTest
@@ -285,7 +292,11 @@ vStr = sprintf('%s, ''%s'')',vConStr(1:end-1),...
 try
     % attempts to create a connection with the recording device
     infoObj.objIMAQ = eval(vStr);
+    
 catch ME
+    % make the loadbar invisible
+    setObjVisibility(h.Control,0);
+    
     % case is there is an error...
     if strcmp(ME.identifier,'winvideo:internal:dxMsg')
         % case is the video is already in use...
@@ -302,7 +313,8 @@ catch ME
         waitfor(errordlg(eStr,'Recording Device Error','modal'))
     end
 
-    % exits the function
+    % resets the status flag exits the function
+    infoObj.iType = 0;
     return
 end
 
@@ -319,7 +331,10 @@ resetCameraROIPara(infoObj.objIMAQ)
 
 % sets the camera automatic fields to manual
 srcObj = getselectedsource(infoObj.objIMAQ);
-resetFld = {{'FocusMode','manual'},{'ExposureMode','auto'}};
+resetFld = [];
+% resetFld = {{'FocusMode','manual'},...
+%             {'ExposureMode','auto'},...
+%             {'WhiteBalanceMode','manual'}};
 
 % resets the flagged camera properties (if they exist)
 for i = 1:length(resetFld)
