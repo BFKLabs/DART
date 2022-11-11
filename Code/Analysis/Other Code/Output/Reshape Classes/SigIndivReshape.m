@@ -212,7 +212,8 @@ classdef SigIndivReshape < handle
             % memory allocation
             noID = all(cellfun(@isempty,iD));
             [nApp,nLvl,nExp] = deal(length(Y),2,length(fok));
-            Ygrp = cell(nLvl,nApp);            
+            Ygrp = cell(nLvl,nApp); 
+            [j0,j1] = deal(cell(nApp,1));
             
             % loops through each apparatus, level and bin group
             for j = 1:nLvl     
@@ -267,21 +268,21 @@ classdef SigIndivReshape < handle
                         end      
 
                         % determines the indices of first/last non-NaN rows
-                        j0 = cellfun(@(x)(find...
+                        j0{k} = cellfun(@(x)(find...
                                 (~all(isnan(x),2),1,'first')),YnwI,'un',0);
-                        j1 = cellfun(@(x)(find...
+                        j1{k} = cellfun(@(x)(find...
                                 (~all(isnan(x),2),1,'last')),YnwI,'un',0);  
 
                         % sets the first NaN row if no matches
-                        ii0 = cellfun(@isempty,j0);
+                        ii0 = cellfun(@isempty,j0{k});
                         if any(ii0)
-                           j0(ii0) = {1};                            
+                           j0{k}(ii0) = {1};                            
                         end
                         
                         % sets the last NaN row if no matches                        
-                        ii1 = cellfun(@isempty,j1); 
+                        ii1 = cellfun(@isempty,j1{k}); 
                         if any(ii1)
-                            j1(ii1) = cellfun(@(x)...
+                            j1{k}(ii1) = cellfun(@(x)...
                                         (size(x,1)),YnwI(ii1),'un',0);
                         end
                     else
@@ -297,7 +298,7 @@ classdef SigIndivReshape < handle
                             % case is signals are combined over all days
 
                             % resets the final combined output array
-                            ind = cellfun(@(x,y)(x:y),j0,j1,'un',0);
+                            ind = cellfun(@(x,y)(x:y),j0{k},j1{k},'un',0);
                             Ygrp{j,k} = cellfun...
                                     (@(x,y)(x(y,:)),Ynw{k},ind,'un',0);
 

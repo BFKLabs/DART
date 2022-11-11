@@ -172,8 +172,11 @@ classdef SigIndivData < DataOutputArray
             xiY = 1:(1+obj.iData.sepDay);
             YY = cellfun(@(x)(cellfun(@(y)(y(obj.expOut)),...
                     x,'un',0)),obj.Y(obj.iOrder(obj.iMet),xiY),'un',0);            
-            i0 = find(cellfun(@(x)(size(x,1)>1),YY{1}{1}),1,'first');                        
-            if isnumeric(YY{1}{1}{i0}(1))
+            i0 = find(cellfun(@(x)(size(x,1)>1),YY{1}{1}),1,'first'); 
+            if isempty(i0)
+                % no match found, so set flag to false
+                hasTSP0 = false;
+            elseif isnumeric(YY{1}{1}{i0}(1))
                 % case is for numerical time data
                 hasTSP0 = diff(YY{1}{1}{i0}(1:2,1)) == 0;
             else
