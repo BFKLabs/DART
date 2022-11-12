@@ -50,6 +50,7 @@ classdef VideoROIClass < handle
             obj.infoObj = getappdata(obj.hFigM,'infoObj');
             
             % creates the loadbar figure
+            setObjVisibility(obj.hFigM,0); pause(0.05);
             obj.hLoad = ProgressLoadbar('Initialising GUI Objects...');
             
             % initialises the class/gui object properties
@@ -115,7 +116,8 @@ classdef VideoROIClass < handle
             wState = warning('off','all');
             
             % resets the roi position to full region
-            set(obj.infoObj.objIMAQ,'ROIPosition',[0,0,obj.vRes])            
+            set(obj.infoObj.objIMAQ,'ROIPosition',[0,0,obj.vRes])
+            pause(0.1);
 
             % -------------------------------------- %
             % --- OBJECT PROPERTY INITIALISATION --- %

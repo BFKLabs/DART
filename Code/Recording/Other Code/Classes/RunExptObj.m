@@ -339,7 +339,7 @@ classdef RunExptObj < handle
             end         
 
             % retrieves the resolution of the recording image
-            vRes = getVideoResolution(obj.objIMAQ);                      
+            vRes = getVideoResolution(obj.objIMAQ,1);
             if obj.isRot
                 % case is the image is rotated
                 Img0 = zeros(vRes);
@@ -493,13 +493,12 @@ classdef RunExptObj < handle
             try
                 wState = warning('off','all');
                 delete(obj.hTimerCDown);     
-                delete(obj.hTimerExpt);
                 warning(wState);
             end
 
             % resets the preview axes image to black
             if obj.hasIMAQ
-                vRes = getVideoResolution(obj.objIMAQ);
+                vRes = getVideoResolution(obj.objIMAQ,1);
                 if obj.isRot
                     Img0 = zeros(vRes);    
                 else
@@ -1075,6 +1074,7 @@ classdef RunExptObj < handle
             % if the user aborted, then exit the experiment
             if ~obj.isError
                 if obj.isUserStop
+                    pause(0.05);
                     obj.finishExptObj()
                 end
             end        

@@ -63,5 +63,9 @@ menuExit_Callback(handles.menuExit, '1', handles)
 % -------------------------------------------------------------------------
 function menuExit_Callback(hObject, eventdata, handles)
 
+% retrieves the main GUI handle
+hFigM = getappdata(handles.figVideoROI,'hFigM');
+
 % deletes the gui
 delete(handles.figVideoROI);
+setObjVisibility(hFigM,1);

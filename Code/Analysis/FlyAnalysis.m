@@ -323,6 +323,7 @@ hOut = findall(0,'tag','figDataOutput');
 if ~isempty(hOut); delete(hOut); pause(0.05); end
 
 % runs the output data sub-GUI
+warning('off','all');
 DataOutput(handles.figFlyAnalysis)
 
 % -------------------------------------------------------------------------

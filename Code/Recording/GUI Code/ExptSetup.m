@@ -847,7 +847,7 @@ if infoObj.hasIMAQ
 end
 
 % deletes the experiment object struct
-% setObjVisibility(exObj.hMain,'off')
+setObjVisibility(exObj.hMain,'off')
 setappdata(hFig,'exObj',[])
 
 % updates the experiment title string

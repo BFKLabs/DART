@@ -853,5 +853,3 @@ else
     % video object is the image acquisition object
     rPos = get(infoObj.objIMAQ,'ROIPosition');
 end
-
-

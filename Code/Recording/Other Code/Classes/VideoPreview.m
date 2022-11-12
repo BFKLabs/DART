@@ -161,7 +161,7 @@ classdef VideoPreview < handle
                                         'BackgroundColor',[0.93,0.69,0.13])             
             
             % resets the start/stop preview button enabled properties
-            set(obj.hGUI.toggleVideoPreview,'string','Stop Video Preview');                       
+            set(obj.hGUI.toggleVideoPreview,'string','Stop Video Preview');             
             
             % sets the preview callback function
             if obj.isTest
@@ -283,7 +283,7 @@ classdef VideoPreview < handle
             pause(0.05);
 
             % resets the image axis     
-            vRes = getVideoResolution(obj.objIMAQ);
+            vRes = getVideoResolution(obj.objIMAQ,1);
             if obj.isRot
                 obj.hImage = image(zeros(vRes),'Parent',obj.hAx);           
                 [xL,yL] = deal([1 vRes(2)]+0.5,[1 vRes(1)]+0.5);        
