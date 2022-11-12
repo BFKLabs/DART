@@ -769,7 +769,6 @@ function menuSubPlot(hObject, eventdata, sInd0)
 handles = guidata(hObject);
 hFig = handles.figFlyAnalysis;
 hMenuSP = handles.menuSubPlot;
-
 hPara = getappdata(hFig,'hPara');
 sPara = getappdata(hFig,'sPara');
 pData = getappdata(hFig,'pData');
@@ -1131,6 +1130,7 @@ updateFlag = 0;
 
 % resets the original sub-plot index
 setappdata(hObject,'sInd',sInd0);
+resetPlotPanelCoords(handles)
 
 % --- figure button down callback function
 function figButtonClick(hFig, ~, hP)

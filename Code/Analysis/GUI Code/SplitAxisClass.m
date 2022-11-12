@@ -467,8 +467,8 @@ classdef SplitAxisClass < handle
             % determines the 
             pos = obj.detAllRegionPos();
 
-            % determines the string of the number whose location coincides with the
-            % clicked group region
+            % determines the string of the number whose location coincides 
+            % with the clicked group region
             [L,LW] = deal(pos(:,1),sum(pos(:,[1 3]),2));
             [B,BH] = deal(pos(:,2),sum(pos(:,[2 4]),2));
             iSub = find((mP(1) > L) & (mP(1) < LW) & ...
