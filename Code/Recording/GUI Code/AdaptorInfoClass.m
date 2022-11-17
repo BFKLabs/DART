@@ -8,6 +8,7 @@ classdef AdaptorInfoClass < handle
         hFigM
         hGUI
         iType
+        mainObj
         reqdConfig           
         
         % external device objects
@@ -122,7 +123,8 @@ classdef AdaptorInfoClass < handle
                 case 'figFlyRecord'
                     obj.iProg = getappdata(obj.hFigM,'iProg');                
                 otherwise
-                    obj.iProg = getappdata(obj.hFigM,'ProgDefNew');
+                    mObj = getappdata(obj.hFigM,'mObj');
+                    obj.iProg = mObj.getProgDefField('Recording');
             end
             
         end

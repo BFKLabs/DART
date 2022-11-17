@@ -24,9 +24,9 @@ end
 function FlyCombine_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % global variables
-global isAnalysis initDock scrSz updateFlag regSz 
+global isAnalysis initDock updateFlag regSz 
 [isAnalysis,initDock] = deal(false,true);
-updateFlag = 2; pause(0.1); 
+updateFlag = 2; pause(0.01); 
 
 % retrieves the regular size of the GUI
 regSz = get(handles.panelImg,'position');
@@ -36,6 +36,7 @@ h = ProgressLoadbar('Initialising Data Combining GUI...');
 
 % sets the GUI figure position (top-left corner)
 pos = get(hObject,'position');
+scrSz = getPanelPosPix(0,'Pixels','ScreenSize');
 set(hObject,'position',[10 (scrSz(4)-pos(4)) pos(3) pos(4)]);
 
 % ----------------------------------------------------------- %
@@ -43,21 +44,22 @@ set(hObject,'position',[10 (scrSz(4)-pos(4)) pos(3) pos(4)]);
 % ----------------------------------------------------------- %
 
 % sets the input arguments
-hDART = varargin{1};
+hFigM = varargin{1};
 
 % sets the input argument and the open GUI (makes invisible)
 set(hObject,'name','DART Fly Experiment Data Output Program')
 
 % retrieves the program default struct
-ProgDefNew = getappdata(hDART.figDART,'ProgDefNew');
-setObjVisibility(hDART.figDART,'off')                      
+mObj = getappdata(hFigM,'mObj');
+ProgDefNew = mObj.getProgDefField('Combine');
+setObjVisibility(hFigM,'off')                      
         
 % sets the input arguments
 setappdata(hObject,'iTab',1);
 setappdata(hObject,'sInfo',[]);
 setappdata(hObject,'hUndock',[]);
 setappdata(hObject,'hGUIInfo',[]);
-setappdata(hObject,'hDART',hDART);
+setappdata(hObject,'hDART',hFigM);
 setappdata(hObject,'iProg',ProgDefNew);
 
 % sets the default input opening files
@@ -95,8 +97,8 @@ try; delete(h); end
 handles.output = hObject;
 
 % ensures that the appropriate check boxes/buttons have been inactivated
-setObjVisibility(hObject,'on'); pause(0.1);
-updateFlag = 0; pause(0.1); 
+setObjVisibility(hObject,'on'); pause(0.01);
+updateFlag = 0; pause(0.01); 
 
 % initialises the table position
 setappdata(hObject,'jObjT',findjobj(handles.tableAppInfo))
@@ -205,7 +207,7 @@ if strcmp(uChoice,'Yes')
     
     % deletes the data combining GUI
     delete(hFig)    
-    setObjVisibility(hDART.figDART,'on');    
+    setObjVisibility(hDART,'on');    
 end
 
 % -------------------------------- %

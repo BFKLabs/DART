@@ -34,7 +34,7 @@ handles.output = hObject;
 
 % retrieves the regular size of the GUI
 regSz = get(handles.panelPlot,'position');
-pause(0.1);
+pause(0.01);
 
 % creates the load bar
 h = ProgressLoadbar('Initialising Analysis GUI...');
@@ -51,16 +51,13 @@ setappdata(hObject,'gPara',gPara)
 % --- FIELD INITIALISATIONS & DIRECTORY STRUCTURE SETTING --- %
 % ----------------------------------------------------------- %
 
-% sets the DART object handles (if provided) and the program directory
-switch length(varargin)
-    case (1) % case is running the program from DART main
-        % sets the input argument and the open GUI (makes invisible)
-        hDART = varargin{1};    
+% sets the input argument and the open GUI (makes invisible)
+hFigM = varargin{1};
                 
-        % retrieves the program default struct
-        ProgDefNew = getappdata(hDART.figDART,'ProgDefNew');
-        setObjVisibility(hDART.figDART,'off')        
-end
+% retrieves the program default struct
+mObj = getappdata(hFigM,'mObj');
+ProgDefNew = mObj.getProgDefField('Analysis');
+setObjVisibility(hFigM,'off')        
 
 % initialisation of the program data struct
 iData = initDataStruct(handles,ProgDefNew);
@@ -77,7 +74,7 @@ setappdata(hObject,'LoadSuccess',false);
 setappdata(hObject,'sInd',1)
 setappdata(hObject,'hPara',[])
 setappdata(hObject,'hUndock',[])
-setappdata(hObject,'hDART',hDART)
+setappdata(hObject,'hDART',hFigM)
 setappdata(hObject,'iData',iData)
 setappdata(hObject,'gPara',gPara)
 setappdata(hObject,'iProg',iData.ProgDef)
@@ -104,10 +101,10 @@ setappdata(hObject,'figButtonClick',fbcFcn)
 initGUIObjects(handles)
 scanPlotFuncDir(handles)
 centreFigPosition(hObject);
+updateFlag = 0; pause(0.01); 
 
 % closes the loadbar
 try; delete(h); end
-updateFlag = 0; pause(0.1); 
 
 % Update handles structure
 guidata(hObject, handles);

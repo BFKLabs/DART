@@ -24,16 +24,14 @@ end
 % --- Executes just before TrackingStats is made visible.
 function TrackingStats_OpeningFcn(hObject, eventdata, handles, varargin)
 
-% global variables
-global scrSz
-
 % Choose default command line output for TrackingStats
 handles.output = hObject;
 set(hObject, 'Renderer','painters');
+scrSz = getPanelPosPix(0,'Pixels','ScreenSize');
 
 % sets the input arguments
 hGUI = varargin{1};
-if (length(varargin) == 1)
+if length(varargin) == 1
     isExpt = false;
 else
     isExpt = varargin{2};    

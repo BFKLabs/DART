@@ -32,14 +32,9 @@ if updateTitle
     set(hFig,'Name',sprintf('%s %s',origName, progName))
 end
 
-% global variables
-global scrSz
-if isempty(scrSz)
-    scrSz = getPanelPosPix(0,'Pixels','ScreenSize');
-end
-
 % retrieves the screen and figure position
 hPos = get(hFig,'position');
+scrSz = getPanelPosPix(0,'Pixels','ScreenSize');
 p0 = [(scrSz(3)-hPos(3))/2,(scrSz(4)-hPos(4))/2];
 if ~isequal(p0,hPos(1:2))
     set(hFig,'position',[p0,hPos(3:4)])

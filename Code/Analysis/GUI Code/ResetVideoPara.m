@@ -2,6 +2,7 @@ classdef ResetVideoPara < handle
     
     % class properties
     properties
+        
         % main properties
         fObj
         
@@ -145,7 +146,7 @@ classdef ResetVideoPara < handle
                               'MenuBar','None','Toolbar','None',...
                               'Name','Experiment Concatenation Info',...
                               'NumberTitle','off','Visible','off',...
-                              'SizeChangedFcn',rszFcn);    
+                              'SizeChangedFcn',rszFcn);
                           
             % sets the class object into the figure
             setappdata(obj.hFig,'vpObj',obj)
@@ -201,10 +202,10 @@ classdef ResetVideoPara < handle
                         txtStr = 'Original Scale Factor: ';
                         pTxt = [obj.dX,obj.y0Txt,obj.widBut,obj.hghtTxt];
                         uicontrol(obj.hPanelEx{i},'String',txtStr,...
-                                'Units','Pixels','String',txtStr,...
+                                'Units','Pixels','Style','Text',...
                                 'FontUnits','Pixels','FontWeight','bold',...
                                 'FontSize',obj.fSzT,'Position',pTxt,...
-                                'HorizontalAlignment','Right','Style','Text');                                
+                                'HorizontalAlignment','Right');                                
                             
                         % creates the scale factor toggle button
                         cbFcnB = {@obj.buttonScaleFac};

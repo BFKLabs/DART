@@ -26,19 +26,25 @@ function FlyTrack_OpeningFcn(hObject, ~, handles, varargin)
 handles.output = hObject;
 
 % global variables
-global scrSz tubeSet updateFlag regSz 
-global pPos0 axPos0 figPos0
+global tubeSet updateFlag regSz pPos0 axPos0 figPos0
 [tubeSet,updateFlag] = deal(false,2); 
 pause(0.1); 
 
 % retrieves the regular size of the GUI
 wState = warning('off','all');
 regSz = get(handles.panelImg,'position');
+scrSz = getPanelPosPix(0,'Pixels','ScreenSize');
 
 % turns off all warnings
 setObjVisibility(hObject,'off'); pause(0.05);
 if ~verLessThan('matlab','9.2') 
     set(hObject,'Renderer','painters')
+end
+
+% creates the load bar
+if length(varargin) < 2
+    h = ProgressLoadbar('Initialising Tracking GUI...');
+    pause(0.05);
 end
 
 % --------------------------------------------------- %
@@ -86,12 +92,13 @@ switch length(varargin)
         % case is running the program from DART main
         
         % sets the input argument and the open GUI (makes invisible)
-        hDART = varargin{1};
+        hFigM = varargin{1};
+        mObj = getappdata(hFigM,'mObj');
         set(hObject,'hGUIOpen','figDART')                
                 
         % retrieves the program default struct
-        ProgDefNew = getappdata(hDART.figDART,'ProgDefNew');
-        setObjVisibility(hDART.figDART,'off')             
+        ProgDefNew = mObj.getProgDefField('Tracking');
+        setObjVisibility(hFigM,'off')             
                 
     case {2,3} 
         % case is calibration
@@ -115,7 +122,7 @@ switch length(varargin)
 
             % retrieves the program default struct
             try
-                ProgDefNew = getappdata(hGUI.figFlyRecord,'ProgDefNew');        
+                ProgDefNew = getappdata(hGUI.figFlyRecord,'ProgDefNew');
             catch
                 ProgDefNew = [];
             end
@@ -123,12 +130,7 @@ switch length(varargin)
 end
 
 % updates the calibration type
-set(hObject,'cType',cType)        
-    
-% creates the load bar
-if length(varargin) < 2
-    h = ProgressLoadbar('Initialising Tracking GUI...');
-end
+set(hObject,'cType',cType)            
 
 % initialisation of the program data struct
 hObject.iData = initDataStruct(handles,ProgDefNew);

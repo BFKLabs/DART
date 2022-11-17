@@ -85,7 +85,8 @@ if isempty(hDART)
     iProg = initProgDef(handles); 
 else
     % retrieves the program defaults from DART
-    iProg = getappdata(hDART,'ProgDefNew');
+    mObj = getappdata(hDART,'mObj');
+    iProg = mObj.getProgDefField('Recording');
 end
 
 % sets the program data struct

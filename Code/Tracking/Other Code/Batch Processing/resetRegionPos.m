@@ -2,7 +2,7 @@
 function iMov = resetRegionPos(iMov,szFrm,dpOfs)
 
 % resets the regions using the image offset
-for i = 1:length(iMov.iR)
+for i = find(iMov.ok(:)')
     % ------------------------ %
     % --- ROW INDEX UPDATE --- %
     % ------------------------ %    
