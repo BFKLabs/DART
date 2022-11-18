@@ -73,8 +73,8 @@ if isempty(h)  % no handle given, create dialog
         end
         pixelpos = getpixelposition(h);
         
-        wState = warning('off','all');
-        [jbarhg, jbarctrl] = createJavaComponent(jbar, [0 0 pixelpos(3) pixelpos(4)], h);
+        wState = warning('off','MATLAB:ui:javacomponent:FunctionToBeRemoved');
+        [jbarhg, jbarctrl] = javacomponent(jbar, [0 0 pixelpos(3) pixelpos(4)], h);
         warning(wState);
         
         set(jbarctrl, ...
