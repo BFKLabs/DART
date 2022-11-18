@@ -223,7 +223,7 @@ classdef DARTProgInstall < handle
             obj.jBarP = javax.swing.JProgressBar(0, 1000);
             obj.jBarP.setStringPainted(false);
             obj.jBarP.setIndeterminate(false); 
-            javacomponent(obj.jBarP,axPosP,hPanelP);
+            createJavaComponent(obj.jBarP,axPosP,hPanelP);
                      
             % creates the directory editbox
             tStrP0 = 'Waiting To Start Installation...';

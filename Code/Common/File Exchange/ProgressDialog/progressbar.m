@@ -74,7 +74,7 @@ if isempty(h)  % no handle given, create dialog
         pixelpos = getpixelposition(h);
         
         wState = warning('off','all');
-        [jbarhg, jbarctrl] = javacomponent(jbar, [0 0 pixelpos(3) pixelpos(4)], h);
+        [jbarhg, jbarctrl] = createJavaComponent(jbar, [0 0 pixelpos(3) pixelpos(4)], h);
         warning(wState);
         
         set(jbarctrl, ...

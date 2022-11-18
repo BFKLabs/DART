@@ -10,8 +10,6 @@ sDev = initSerialDeviceNames();
 % saves the parameter parameter structs to file
 pFile = fullfile(paraDir,'ProgPara.mat');
 save(pFile,'gPara','bgP','trkP','sDev');
-% save(pFile,'gPara','bgP','p1D','p2D','trkP','sDev','fOpto');
-% save(pFile,'gPara','bgP','p1D','p2D','trkP','sDev','lightR');
 
 % ------------------------------------------------- %
 % --- PARAMETER STRUCT INITIALISATION FUNCTIONS --- %
@@ -48,4 +46,3 @@ sDev = {'STMicroelectronics STLink COM Port';...
         'STMicroelectronics STLink Virtual COM Port';...
         'STMicroelectronics Virtual COM Port';...
         'USB Serial Device'};
-

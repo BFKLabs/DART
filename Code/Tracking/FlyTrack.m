@@ -97,6 +97,7 @@ switch length(varargin)
         set(hObject,'hGUIOpen','figDART')                
                 
         % retrieves the program default struct
+        mObj.hFigSub = hObject;
         ProgDefNew = mObj.getProgDefField('Tracking');
         setObjVisibility(hFigM,'off')             
                 
@@ -1056,8 +1057,12 @@ if strcmp(uChoice,'Yes')
             end
 
         case 'figDART'
+            % clears the main sub-figure field
+            mObj = getappdata(hFig,'mObj');
+            mObj.hFigSub = [];
+            
             % otherwise, reopen the GUI                
-            setObjVisibility(hFig,'on')
+            setObjVisibility(hFig,'on')                        
     end        
 end
 

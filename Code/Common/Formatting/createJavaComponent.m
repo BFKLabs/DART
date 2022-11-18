@@ -1,7 +1,7 @@
 function [jSP,hC] = createJavaComponent(jSP0,tPos,hParent)
 
 % turns off the warnings
-wState = warning('off','all');
+wState = warning('off','MATLAB:ui:javacomponent:FunctionToBeRemoved');
 
 % runs the javacomponent function (based on input arguments
 switch nargin

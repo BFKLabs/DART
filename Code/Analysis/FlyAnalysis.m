@@ -553,9 +553,14 @@ try
     end
 end
     
-% makes the main ZFTrack visible again
+% makes the main gui visible again
 hDART = findall(0,'tag','figDART','type','figure');
 if ~isempty(hDART)
+    % clears the main sub-figure field
+    mObj = getappdata(hDART,'mObj');
+    mObj.hFigSub = [];        
+    
+    % set the main as visible
     setObjVisibility(hDART,'on')
 end
 

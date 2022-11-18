@@ -203,7 +203,11 @@ if strcmp(uChoice,'Yes')
     end        
     
     % returns to the base GUI
-    hDART = getappdata(hFig,'hDART');    
+    hDART = getappdata(hFig,'hDART');  
+    
+    % clears the main sub-figure field
+    mObj = getappdata(hFig,'mObj');
+    mObj.hFigSub = [];    
     
     % deletes the data combining GUI
     delete(hFig)    

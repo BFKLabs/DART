@@ -110,8 +110,8 @@ classdef ProgDefaultDef < handle
 
                     case 'DART'
                         % case is the main program default directories
-                        PD = getappdata(obj.hFigM,'ProgDef');
-                        obj.ProgDef = PD.DART;                    
+                        mObj = getappdata(obj.hFigM,'mObj');
+                        obj.ProgDef = mObj.getProgDefField('DART');
 
                     case 'Tracking'
                         % case is the tracking default directories

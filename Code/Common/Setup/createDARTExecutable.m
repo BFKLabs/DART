@@ -139,7 +139,7 @@ javaFiles = {which('ColoredFieldCellRenderer.zip')};
 
 % sets up the main file, analysis function directory and other important
 % file directories add string
-fStr = [codeDir(:);{'DART.fig';'Para Files'};javaFiles(:)];
+fStr = [codeDir(:);{'Para Files'};javaFiles(:)];
 addStr = sprintf('-v ''%s'' -a ''%s''',fullfile(progDir,'DART.m'),fcnDir);
 for i = 1:length(fStr)
     switch fStr{i}

@@ -401,7 +401,7 @@ function hFig = displayObj(obj, objMethods, objProps, objCallbacks, objChildren,
       
       set(hFig, 'visible','on');
       pos = get(hFig,'position');
-      [obj, hcontainer] = javacomponent(globalPanel, [0,0,pos(3:4)], hFig);
+      [obj, hcontainer] = createJavaComponent(globalPanel, [0,0,pos(3:4)], hFig);
       set(hcontainer,'units','normalized');
       drawnow;
 

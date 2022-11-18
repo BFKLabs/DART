@@ -6,7 +6,7 @@ classdef DART < handle
         % main properties
         hFig        
         hProg
-        cData
+        cData        
         jFiles
         mainDir
         progDef
@@ -17,7 +17,7 @@ classdef DART < handle
         hEdit
         hBut
         hTxt
-        hMenu
+        hMenuP
         hTrack
         
         % dummy object handles
@@ -40,6 +40,8 @@ classdef DART < handle
         szEdit
         
         % other fields
+        uType
+        hasSep        
         tSz = 30;
         nMenu = 5;        
         tagStr = 'figDART';
@@ -266,6 +268,10 @@ classdef DART < handle
             % global variables
             global tDay hDay
             
+            % main field initialisation
+            obj.uType = getUserType();
+            obj.hasSep = (obj.uType == 0) && ~isdeployed;  
+            
             % calculates the variable dimensions
             obj.widFig = obj.widPanel + 2*obj.dX;
             obj.hghtFig = obj.hghtPanel + 2*obj.dX;
@@ -373,46 +379,91 @@ classdef DART < handle
             % ------------------------- % 
             
             % initialisations            
-            [mStrC,mFcnCB,mSep] = deal(cell(obj.nMenu,2));
+            A = cell(obj.nMenu,2);            
+            [mStrC,mFcnCB,mSep,mTagC,mAccC,eStateM] = deal(A);            
+            hasPkgFile = exist('runPackageInstaller','file') > 0;
+            hasExeU = (exist('ExeUpdate.exe','file') > 0) && ~isdeployed;
             
             % menu label strings
             mStrC(:,1) = {'Program Code I/O',...
                 'Program Installation Information',...
                 'Configure Serial Devices','Default Directories',...
                 'About DART'};
-            mStrC{1,2} = {'Update Program','Output Program',...
-                'Update Executable','Create DART Executable',...
-                'Run DART Installer Wizard','Add External Package'};
-                                 
+            mStrC{1,2} = {'Output Program','Update Executable',...
+                'Create DART Executable','Run DART Installer Wizard',...
+                'Add External Package'};
+
+            % menu item tag strings
+            mTagC(:,1) = {'menuProgCode','menuProgInstallInfo',...
+                'menuConfigSerial','menuProgPara','menuAboutDART'};
+            mTagC{1,2} = {'menuOutputProg','menuExeUpdate',...
+                'menuDeployExe','menuRunInstaller','menuAddPackage'};
+            
+            % menu item accelarator
+            mAccC(:,1) = {'','I','S','D','A'};
+            mAccC{1,2} = {'S','X','E','N','P'};
+            
+            % menu item enabled state
+            eStateM(:,1) = {'on','on','off','on','on'};
+            eStateM{1,2} = {'on','on','off','on','on'};            
+            
             % menu item callback function
             mFcnCB(:,1) = {[],...
                            @obj.menuProgInstallInfo,@obj.menuConfigSerial,...
                            @obj.menuProgPara,@obj.menuAboutDART};
-            mFcnCB{1,2} = {@obj.menuUpdateProg,@obj.menuOutputProg,...
-                           @obj.menuExeUpdate,@obj.menuDeployExe,...
-                           @obj.menuRunInstaller,@obj.menuAddPackage};
+            mFcnCB{1,2} = {@obj.menuOutputProg,@obj.menuExeUpdate,...
+                           @obj.menuDeployExe,@obj.menuRunInstaller,...
+                           @obj.menuAddPackage};
             
             % sets the separator flags
             mSep(:,1) = {0,1,0,0,1};
-            mSep{1,2} = [0,0,1,1,0,1];
-                       
+            mSep{1,2} = [0,1,0,1,1];                       
+            
             % creates the main menu item
-            hMenuP = uimenu(obj.hFig,'Label','DART');
+            obj.hMenuP = uimenu(obj.hFig,'Label','DART');
             
             % creates the other menu items
             for i = 1:obj.nMenu
                 % creates the sub-menu item
-                hMenuC = uimenu(hMenuP,'Label',mStrC{i,1},...
-                                       'Callback',mFcnCB{i,1},...
-                                       'Separator',mSep{i,1});
+                hMenuC = uimenu(obj.hMenuP,'Label',mStrC{i,1},...
+                                           'Callback',mFcnCB{i,1},...
+                                           'Separator',mSep{i,1},...
+                                           'Tag',mTagC{i,1},...
+                                           'Accelerator',mAccC{i,1},...
+                                           'Enable',eStateM{i,1});
                    
                 % creates the sub-sub-menu items (if they exist)
                 for j = 1:length(mStrC{i,2})
                     uimenu(hMenuC,'Label',mStrC{i,2}{j},...
                                   'Callback',mFcnCB{i,2}{j},...
-                                  'Separator',mSep{i,2}(j));
+                                  'Separator',mSep{i,2}(j),...
+                                  'Tag',mTagC{i,2}{j},...
+                                  'Accelerator',mAccC{i,2}{j},...
+                                  'Enable',eStateM{i,2}{j});
                 end
+            end                        
+            
+            % only include the add package menu item if the function exists
+            obj.setMenuProp('menuAddPackage','Visible',hasPkgFile);
+            
+            % sets the GUI properties based on how the program is being run
+            if isdeployed
+                % case is DART is run through the executable version
+                obj.setMenuProp('menuConfigSerial','Enable','on')
+                
+            elseif ispc
+                % case is DART is being run via Matlab on PC
+                obj.setMenuProp('menuDeployExe','Enable','on')
+                obj.setMenuProp('menuConfigSerial','Enable','on')
+                obj.setMenuProp('menuExeUpdate','Enable',hasExeU)                                
+                
             end
+            
+            % sets the I/O menu item properties
+            obj.setMenuProp('menuUpdateProg','Visible',obj.hasSep)
+            obj.setMenuProp('menuOutputProg','Visible',obj.hasSep)
+            obj.setMenuProp('menuDeployExe','Visible',obj.hasSep)
+            obj.setMenuProp('menuRunInstaller','Visible',~isdeployed)
             
             % ----------------------------- %
             % --- VERSION CONTROL SETUP --- %
@@ -428,7 +479,7 @@ classdef DART < handle
                 obj.checkGitFuncVer();
             end            
             
-        end            
+        end                    
         
         % -------------------------- %
         % --- CALLBACK FUNCTIONS --- %
@@ -464,7 +515,7 @@ classdef DART < handle
         end        
         
         % --- experimental setup button callback function
-        function buttonExitDART(obj,~,~)
+        function buttonExitDART(obj, ~, ~)
             
             % adds in the program directories
             if ~isdeployed
@@ -502,7 +553,7 @@ classdef DART < handle
         % ------------------------------------------------ %
 
         % --- update program menu item callback function
-        function menuProgInstallInfo(~,~,~)
+        function menuProgInstallInfo(~, ~, ~)
            
             % runs the installation information GUI
             InstallInfo();
@@ -510,7 +561,7 @@ classdef DART < handle
         end
         
         % --- update program menu item callback function
-        function menuConfigSerial(obj,~,~)
+        function menuConfigSerial(obj, ~, ~)
             
             % runs the diagnostic tool GUI
             SerialConfig(obj.hFig);
@@ -518,7 +569,7 @@ classdef DART < handle
         end
         
         % --- update program menu item callback function
-        function menuProgPara(obj,~,~)
+        function menuProgPara(obj, ~, ~)
             
             % runs the program default GUI
             ProgDefaultDef(obj.hFig,'DART');
@@ -526,7 +577,7 @@ classdef DART < handle
         end
         
         % --- about DART menu item callback function
-        function menuAboutDART(~,~,~)
+        function menuAboutDART(~, ~, ~)
             
             % runs the about DART GUI
             AboutDARTClass();
@@ -536,21 +587,109 @@ classdef DART < handle
         % ------------------------------------- %
         % --- OTHER MENU CALLBACK FUNCTIONS --- %
         % ------------------------------------- %                       
-
-        % --- update program menu item callback function
-        function menuUpdateProg(obj,hObj,~)
-            
-            
-        end
         
         % --- output program menu item callback function
-        function menuOutputProg(obj,hObj,~)
+        function menuOutputProg(obj, ~, ~)
             
+            % global variables
+            global isFull
+            
+            % initialisations
+            tStr = 'Select Program Zip File';            
+            fMode = {'*.zip;','Zip File (*.zip)'};
+            wStr0 = 'Creating Temporary Code Directories';
+            
+            % sets the default file name
+            dDir = obj.progDef.DART.DirVer;
+            dName = sprintf('DART (%s).zip',datestr(clock,'yyyy_mm_dd'));
+            dFile = fullfile(dDir,dName);
+            
+            % prompts the user for the program update .zip file
+            [zName,zDir,zIndex] = uiputfile(fMode,tStr,dFile);
+            if zIndex == 0
+                % if the user cancelled, then exit the function
+                return
+            end
+            
+            % sets up the temporary file directory
+            tmpDir = obj.getProgFileName('Temp Files');
+            zFile = fullfile(zDir,zName);
+            mkdir(tmpDir)
+            
+            % sets whether the full file is being output
+            tStrQ = 'Program Output Type';
+            qStr = ['Do you want to output the A) full code ',...
+                    'or B) partial code'];
+            uChoice = questdlg(qStr,tStrQ,'Full','Partial','Full');
+            isFull = strcmp(uChoice,'Full');
+            
+            % creates the loadbar figure
+            wState = warning('off','all');
+            h = ProgressLoadbar('Initialising...');
+            set(h.Control,'CloseRequestFcn',[]);
+            
+            % sets the file directory names
+            sName = {'DART Main';'Analysis';'Common';'Combine';...
+                     'Recording';'Tracking';'Analysis Functions'};
+            if isFull
+                sName = [sName;{'External Files';'Para Files'}];
+            end            
+            
+            % prepares the directories for outputting the data
+            nwDir = cell(length(sName),1);
+            for i = 1:length(sName)
+                % updates the loadbar
+                wStr = sprintf('%s (%s)',wStr0,sName{i});
+                h.StatusMessage = wStr;
+                
+                % sets the new temporary directory to copy
+                nwDir{i} = fullfile(tmpDir,sName{i}); mkdir(nwDir{i});
+                
+                % copies over the directories
+                switch sName{i}
+                    case ('DART Main')
+                        % case is the main DART directory
+                        copyAllFiles(obj.mainDir,nwDir{i},1);
+                        
+                    case {'External Files','Para Files'}
+                        % case is the external/parameter files
+                        cDir = obj.getProgFileName(sName{i});
+                        copyAllFiles(cDir,nwDir{i});
+                        
+                    case ('Analysis Functions')
+                        % case is the analysis functions
+                        copyAllFiles(obj.progDef.Analysis.DirFunc,nwDir{i});
+                        
+                    otherwise
+                        % case is the other code directories
+                        cDir = obj.getProgFileName('Code',sName{i});
+                        copyAllFiles(cDir,nwDir{i});
+                end
+            end
+            
+            % saves the zip file
+            h.StatusMessage = 'Saving Zip File...';
+            zip(zFile,nwDir);
+            
+            % updates the log-file
+            obj.updateLogFile(zFile);
+            
+            % removes the temporary directory
+            h.StatusMessage = 'Removing Temporary Directories...';
+            rmvAllFiles(tmpDir);
+            
+            % updates the status message
+            [h.Indeterminate,h.FractionComplete] = deal(false,1);
+            h.StatusMessage = 'Update File Creation Complete!'; pause(0.2)
+            try; delete(h); end
+            
+            % turns on all the warnings again            
+            warning(wState);
             
         end
         
         % --- update executable menu item callback function
-        function menuExeUpdate(obj,hObj,~)
+        function menuExeUpdate(obj, ~, ~)
             
             % runs the executable update GUI
             ExeUpdate(obj.hFig)
@@ -558,7 +697,7 @@ classdef DART < handle
         end
         
         % --- executable redeployment menu item callback function
-        function menuDeployExe(obj,~,~)
+        function menuDeployExe(obj, ~, ~)
             
             % initialisations
             titleStr = 'Set The Executable Output Directory';
@@ -573,7 +712,7 @@ classdef DART < handle
         end
         
         % --- DART installer menu item callback function
-        function menuRunInstaller(obj,~,~)
+        function menuRunInstaller(obj, ~, ~)
             
             % runs the dart installer wizard
             DARTInstallerL(obj.hFig);
@@ -581,7 +720,7 @@ classdef DART < handle
         end
         
         % --- external package addition menu item callback function
-        function menuAddPackage(obj,~,~)
+        function menuAddPackage(obj, ~, ~)
            
             % initialisations
             tStr = 'Select DART Package';
@@ -814,6 +953,76 @@ classdef DART < handle
             
         end
         
+        % ----------------------------------- %
+        % --- PROGRAM PARAMETER FUNCTIONS --- %
+        % ----------------------------------- %
+        
+        % --- checks the program parameter file
+        function checkProgParaFile(obj)
+            
+            % retrieves the program parameter file
+            pDir = obj.getProgFileName('Para Files');
+            pFile = fullfile(pDir,'ProgPara.mat');
+            
+            % determines if the program parameter file exists
+            if ~exist(pFile,'file')
+                % if the file is missing, then initialise it
+                initProgParaFile(pDir);
+                
+            else
+                % loads the parameter file
+                [A,isChange] = deal(load(pFile),false);
+                
+                % determines if the tracking parameters have been set
+                if ~isfield(A,'trkP')
+                    % initialises the tracking parameter struct
+                    [mSzP,mSzM,isChange] = deal(20,8,true);
+                    A.trkP = struct('nFrmS',25,'nPath',1,'PC',[],...
+                                    'Mac',[],'calcPhi',false);
+                    
+                    % sets the PC classification parameters
+                    A.trkP.PC.pNC = obj.setMarkProps([1,1,0],'.',mSzP);
+                    A.trkP.PC.pMov = obj.setMarkProps([0,1,0],'.',mSzP);                    
+                    A.trkP.PC.pStat = obj.setMarkProps([1,0.4,0],'.',mSzP);                    
+                    A.trkP.PC.pRej = obj.setMarkProps([1,0,0],'.',mSzP);
+                    
+                    % sets the Mac classification parameters
+                    A.trkP.Mac.pNC = obj.setMarkProps([1,1,0],'*',mSzM);                    
+                    A.trkP.Mac.pMov = obj.setMarkProps([0,1,0],'*',mSzM);                    
+                    A.trkP.Mac.pStat = obj.setMarkProps([1,0.4,0],'*',mSzM);                    
+                    A.trkP.Mac.pRej = obj.setMarkProps([1,0,0],'*',mSzM);                    
+                    
+                else
+                    % if the orientatation field is missing, then add it in
+                    if ~isfield(A.trkP,'calcPhi')
+                        [A.trkP.calcPhi,isChange] = deal(false,true);
+                    end
+                end
+                
+                % ensures the optimal down-sampling field is set
+                if ~isfield(A.bgP,'pPhase')
+                    isChange = true;
+                    A.bgP = DetectPara.initDetectParaStruct('pPhase');
+                end
+                
+                % determines if the serial device names have been set
+                if ~isfield(A,'sDev')
+                    % initialises the serial device names
+                    isChange = true;
+                    A.sDev = {'STMicroelectronics STLink COM Port',...
+                        'STMicroelectronics STLink Virtual COM Port',...
+                        'STMicroelectronics Virtual COM Port',...
+                        'USB Serial Device'};
+                end
+                
+                % updates the parameter file
+                if isChange
+                    save(pFile,'-struct','A');
+                end
+            end
+                
+        end        
+        
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %
         % ------------------------------- %             
@@ -884,6 +1093,43 @@ classdef DART < handle
             end
             
         end                
+        
+        % --- updates the menu item visibility fields
+        function setMenuProp(obj,tStrM,pFld,pVal)
+            
+            % finds the object handle corresponding to tStrM
+            hMenu = findall(obj.hMenuP,'tag',tStrM);
+            
+            % sets the menu item field property based on type
+            switch pFld
+                case 'Enable'
+                    % case is the enabled field 
+                    setObjEnable(hMenu,pVal)
+                    
+                case 'Visible'
+                    % case is the visibility field
+                    setObjVisibility(hMenu,pVal)
+                    
+                case 'Separator'
+                    % case is another field type
+                    eStr = {'off','on'};
+                    set(hMenu,pFld,eStr{1+pVal})
+            end
+            
+        end
+        
+        % --- updates the log-file with the new information
+        function updateLogFile(obj,zFile)
+            
+            % determines the zip-file name parts
+            [~,fName,fExtn] = fileparts(zFile);
+            
+            % resaves the log-file
+            [Time,File] = deal(clock,[fName,fExtn]);
+            logFile = obj.getProgFileName('Para Files','Update Log.mat');
+            save(logFile,'File','Time')
+            
+        end         
         
     end
         
@@ -963,20 +1209,14 @@ classdef DART < handle
    
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %
-        % ------------------------------- %        
+        % ------------------------------- %                        
         
-        % --- updates the log-file with the new information
-        function updateLogFile(zFile)
+        % --- sets up the marker properties sub-struct
+        function pStr = setMarkProps(pCol,pMark,mSz)
             
-            % determines the zip-file name parts
-            [~,fName,fExtn] = fileparts(zFile);
+            pStr = struct('pCol',pCol,'pMark',pMark,'mSz',mSz);
             
-            % resaves the log-file
-            [Time,File] = deal(clock,[fName,fExtn]);
-            logFile = getParaFileName('Update Log.mat');
-            save(logFile,'File','Time')
-            
-        end         
+        end        
         
     end
     

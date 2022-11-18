@@ -85,8 +85,9 @@ if isempty(hDART)
     iProg = initProgDef(handles); 
 else
     % retrieves the program defaults from DART
-    mObj = getappdata(hDART,'mObj');
+    mObj = getappdata(hDART,'mObj');    
     iProg = mObj.getProgDefField('Recording');
+    mObj.hFigSub = hObject;
 end
 
 % sets the program data struct
@@ -355,7 +356,11 @@ if strcmp(selection,'Yes')
         delete(hVidPara)
     end
 
-    % deletes the imageseg and makes the main DART GUI visible again
+    % clears the main sub-figure field
+    mObj = getappdata(hDART,'mObj');
+    mObj.hFigSub = [];        
+    
+    % deletes the figure and makes the main DART GUI visible again
     delete(handles.figFlyRecord)                
     setObjVisibility(hDART,'on');    
 end

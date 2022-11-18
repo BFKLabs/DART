@@ -193,7 +193,7 @@ classdef FileInstall < handle
             y0Ax = sum(tPosP([2,4])) + obj.dX/2;
             axPosP = [obj.dX,y0Ax,obj.widAxP,obj.hghtEdit];
             obj.jBarP = javax.swing.JProgressBar(0, 1000);
-            javacomponent(obj.jBarP,axPosP,hPanelP);                   
+            createJavaComponent(obj.jBarP,axPosP,hPanelP);                   
                           
             % creates the axes objects 
             cbFcnBP = @obj.downloadProgFile;

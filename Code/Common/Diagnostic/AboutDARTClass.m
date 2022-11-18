@@ -245,7 +245,7 @@ classdef AboutDARTClass < handle
                 % creates the information text object
                 pPosC = [obj.dX+obj.widTxtCL,y0C+1,obj.widTxtC,hghtTxtNw];
                 jLabel = javaObjectEDT('javax.swing.JLabel', '');
-                [hjLabel,~] = javacomponent(jLabel,pPosC,obj.hPanelD{2});
+                hjLabel = createJavaComponent(jLabel,pPosC,obj.hPanelD{2});
                     
                 % updates the label java object properties
                 switch tStr{i,2}
