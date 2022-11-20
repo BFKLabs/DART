@@ -416,8 +416,8 @@ classdef DART < handle
                            @obj.menuAddPackage};
             
             % sets the separator flags
-            mSep(:,1) = {0,1,0,0,1};
-            mSep{1,2} = [0,1,0,1,1];                       
+            mSep(:,1) = {'off','on','off','off','on'};
+            mSep{1,2} = {'off','on','off','on','on'};
             
             % creates the main menu item
             obj.hMenuP = uimenu(obj.hFig,'Label','DART');
@@ -426,22 +426,22 @@ classdef DART < handle
             for i = 1:obj.nMenu
                 % creates the sub-menu item
                 hMenuC = uimenu(obj.hMenuP,'Label',mStrC{i,1},...
-                                           'Callback',mFcnCB{i,1},...
-                                           'Separator',mSep{i,1},...
+                                           'Callback',mFcnCB{i,1},...                                           
                                            'Tag',mTagC{i,1},...
                                            'Accelerator',mAccC{i,1},...
                                            'Enable',eStateM{i,1});
+                obj.setMenuSeparatorField(hMenuC,mSep{i,1});                                       
                    
                 % creates the sub-sub-menu items (if they exist)
                 for j = 1:length(mStrC{i,2})
-                    uimenu(hMenuC,'Label',mStrC{i,2}{j},...
-                                  'Callback',mFcnCB{i,2}{j},...
-                                  'Separator',mSep{i,2}(j),...
-                                  'Tag',mTagC{i,2}{j},...
-                                  'Accelerator',mAccC{i,2}{j},...
-                                  'Enable',eStateM{i,2}{j});
+                    hMenuS = uimenu(hMenuC,'Label',mStrC{i,2}{j},...
+                                           'Callback',mFcnCB{i,2}{j},...
+                                           'Tag',mTagC{i,2}{j},...
+                                           'Accelerator',mAccC{i,2}{j},...
+                                           'Enable',eStateM{i,2}{j});
+                    obj.setMenuSeparatorField(hMenuS,mSep{i,2}{j});
                 end
-            end                        
+            end                                    
             
             % only include the add package menu item if the function exists
             obj.setMenuProp('menuAddPackage','Visible',hasPkgFile);
@@ -480,6 +480,50 @@ classdef DART < handle
             end            
             
         end                    
+        
+        % --- checks that the git function version is up to date 
+        %     (for non-developed users only)
+        function checkGitFuncVer(obj)
+            
+            % sets up the GitFunc class object
+            GF0 = GitFunc();
+            
+            % if a developer, then exit the function
+            if GF0.uType == 0
+                return
+            end
+            
+            % initialisations
+            rType = 'Git';
+            gDirP = obj.getProgFileName('Git');
+            gRepoDir = fullfile(gDirP,'Repo','DARTGit');
+            gName = 'Git Functions';
+            
+            % creates the git function object
+            gitEnvVarFunc('add','GIT_DIR',gRepoDir)
+            GF = GitFunc(rType,gDirP,gName);
+            
+            % removes/sets the origin url
+            GF.gitCmd('rmv-origin')
+            GF.gitCmd('set-origin')
+            
+            % determines the current/head commit ID
+            cID0 = GF.gitCmd('commit-id','origin/master');
+            cIDH = GF.gitCmd('branch-head-commits','master');
+            if ~startsWith(cID0,cIDH)
+                % if they don't match, then reset the repository so that 
+                % it matches the remote repository
+                GF.matchRemoteBranch('master');
+            end
+            
+            % removes the git directory environment variables
+            gitEnvVarFunc('remove','GIT_DIR');
+            GF.gitCmd('rmv-origin');
+            
+            % sets the directory to the main
+            cd(obj.getProgFileName())
+            
+        end        
         
         % -------------------------- %
         % --- CALLBACK FUNCTIONS --- %
@@ -1021,7 +1065,7 @@ classdef DART < handle
                 end
             end
                 
-        end        
+        end                      
         
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %
@@ -1138,51 +1182,7 @@ classdef DART < handle
         
         % --------------------------------- %
         % --- CONTROL VERSION FUNCTIONS --- %
-        % --------------------------------- %
-        
-        % --- checks that the git function version is up to date 
-        %     (for non-developed users only)
-        function checkGitFuncVer()
-            
-            % sets up the GitFunc class object
-            GF0 = GitFunc();
-            
-            % if a developer, then exit the function
-            if GF0.uType == 0
-                return
-            end
-            
-            % initialisations
-            rType = 'Git';
-            gDirP = obj.getProgFileName('Git');
-            gRepoDir = fullfile(gDirP,'Repo','DARTGit');
-            gName = 'Git Functions';
-            
-            % creates the git function object
-            gitEnvVarFunc('add','GIT_DIR',gRepoDir)
-            GF = GitFunc(rType,gDirP,gName);
-            
-            % removes/sets the origin url
-            GF.gitCmd('rmv-origin')
-            GF.gitCmd('set-origin')
-            
-            % determines the current/head commit ID
-            cID0 = GF.gitCmd('commit-id','origin/master');
-            cIDH = GF.gitCmd('branch-head-commits','master');
-            if ~startsWith(cID0,cIDH)
-                % if they don't match, then reset the repository so that 
-                % it matches the remote repository
-                GF.matchRemoteBranch('master');
-            end
-            
-            % removes the git directory environment variables
-            gitEnvVarFunc('remove','GIT_DIR');
-            GF.gitCmd('rmv-origin');
-            
-            % sets the directory to the main
-            cd(obj.getProgFileName())
-            
-        end        
+        % --------------------------------- %        
         
         % --- removes the git environment variable
         function gitEnvVarFunc(vN)
@@ -1217,6 +1217,17 @@ classdef DART < handle
             pStr = struct('pCol',pCol,'pMark',pMark,'mSz',mSz);
             
         end        
+        
+        % --- sets the menu separator field
+        function setMenuSeparatorField(hMenu,mSep)
+                
+            try
+                set(hMenu,'Separator',mSep)
+            catch
+                set(hMenu,'Separator',strcmp(mSep,'on'))
+            end                
+                
+        end
         
     end
     
