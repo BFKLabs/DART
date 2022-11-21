@@ -1,7 +1,7 @@
 classdef DART < handle
     
     % class properties
-    properties
+    properties (Hidden)
         
         % main properties
         hFig        
