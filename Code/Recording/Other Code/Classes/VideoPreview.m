@@ -58,7 +58,7 @@ classdef VideoPreview < handle
         % ------------------------------------------------- %      
         
         % --- starts the video preview
-        function startTrackPreview(obj,createMark)               
+        function startTrackPreview(obj,createMark)
             
             % resets the running flag
             cbFcn = [];

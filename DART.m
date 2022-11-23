@@ -537,28 +537,28 @@ classdef DART < handle
             
         end
         
-        % --- experimental setup button callback function
+        % --- tracking sub-GUI button callback function
         function buttonFlyTrack(obj, ~, ~)
             
             FlyTrack(obj.hFig)
             
         end
         
-        % --- experimental setup button callback function
+        % --- data combining sub-GUI button callback function
         function buttonFlyCombine(obj, ~, ~)
             
             FlyCombine(obj.hFig);
             
         end
         
-        % --- experimental setup button callback function
+        % --- analysis sub-GUI button callback function
         function buttonFlyAnalysis(obj, ~, ~)
             
             FlyAnalysis(obj.hFig);
             
         end        
         
-        % --- experimental setup button callback function
+        % --- DART close button callback function
         function buttonExitDART(obj, ~, ~)
             
             % adds in the program directories
@@ -736,7 +736,7 @@ classdef DART < handle
         function menuExeUpdate(obj, ~, ~)
             
             % runs the executable update GUI
-            ExeUpdate(obj.hFig)
+            ExeUpdate(obj.hFig);
             
         end
         
@@ -804,6 +804,9 @@ classdef DART < handle
         
         % --- removes the java files from the path
         function updateJavaFiles(obj,isAdd)
+            
+            % turns off any warnings
+            wState = warning('off','all');
         
             if isAdd
                 % adds the java files to the path
@@ -812,6 +815,9 @@ classdef DART < handle
                 % removes the java files from the path
                 cellfun(@javarmpath,obj.jFiles)
             end
+            
+            % turns off any warnings
+            warning(wState);            
                 
         end        
         
@@ -1178,7 +1184,7 @@ classdef DART < handle
     end
         
     % static class methods
-    methods (Static)      
+    methods (Static)
         
         % --------------------------------- %
         % --- CONTROL VERSION FUNCTIONS --- %
