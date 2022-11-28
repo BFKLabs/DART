@@ -3,7 +3,7 @@
 function T = setupBinnedTimeArray(Ttot,indB)
 
 % memory allocation
-[jj,T] = deal(cellfun(@length,indB) > 1,NaN(length(indB),1));
+[jj,T] = deal(cellfun('length',indB) > 1,NaN(length(indB),1));
 
 % allocates memory for the temporary data/time plot arrays
 T(jj) = cellfun(@(x)(mean(Ttot(x),'omitnan')),indB(jj));

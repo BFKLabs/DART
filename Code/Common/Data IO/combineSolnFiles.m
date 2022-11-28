@@ -341,7 +341,7 @@ for i = 1:nFile
         % of the flies
         for j = find(a.iMov.ok(:)')
             % fills any missing data values with NaN's
-            kk = cellfun(@isempty,fPos{j});
+            kk = cellfun('isempty',fPos{j});
             if any(kk)
                 [i0,jj] = deal(find(~kk,1,'first'),find(kk));
                 for k = 1:length(jj)
@@ -479,7 +479,7 @@ for i = 1:nApp
 end
 
 % determines if the total number of frames exceeds the total frame count
-nFrmTotal = sum(cellfun(@length,snTot.T));
+nFrmTotal = sum(cellfun('length',snTot.T));
 if size(snTot.Px{1},1) > nFrmTotal
     % if so, then reduce the x/y-coordinates
     snTot.Px = cellfun(@(x)(x(1:nFrmTotal,:)),snTot.Px,'un',0);

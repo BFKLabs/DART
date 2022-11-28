@@ -55,7 +55,7 @@ classdef ExptCompObj < handle
             if isempty(crDT0)
                 return
             else
-                crDT0(cellfun(@isempty,crDT0)) = {''};
+                crDT0(cellfun('isempty',crDT0)) = {''};
             end
             
             % determines 
@@ -72,7 +72,7 @@ classdef ExptCompObj < handle
                         if isfield(crDT{i}{1},'sTrain')
                             % case is the stimuli train fields
                             sT = cell(size(crDT{i}));
-                            ii = ~cellfun(@isempty,sT);                            
+                            ii = ~cellfun('isempty',sT);                            
                             
                             if (length(sT) > 1) && all(ii)
                                 sT = cellfun(@(x)(x.sTrain),crDT{i},'un',0);
@@ -153,7 +153,7 @@ classdef ExptCompObj < handle
             
             if any(indCr == iColStim)
                 % determines the experiments with stimuli
-                hasStim = ~cellfun(@isempty,obj.crData(:,iColStim));
+                hasStim = ~cellfun('isempty',obj.crData(:,iColStim));
                 [sTrain,sParaEx] = deal(cell(length(hasStim),1));
                 
                 % for the expts with stimuli, retrieve the train/expt data
@@ -274,10 +274,10 @@ classdef ExptCompObj < handle
             end
 
             % removes cells which have no grouping indices
-            indG = indG(~cellfun(@isempty,indG));
+            indG = indG(~cellfun('isempty',indG));
             
             % sorts the groups in descending size order
-            [~,iS] = sort(cellfun(@length,indG),'descend');
+            [~,iS] = sort(cellfun('length',indG),'descend');
             indG = indG(iS);
         
         end

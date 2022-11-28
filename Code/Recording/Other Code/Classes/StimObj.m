@@ -70,7 +70,7 @@ classdef StimObj < handle
 
             % calculates the global channel ID's
             obj.hasStim = cellfun(@(x)...
-                    (~cellfun(@isempty,x(:,1))),xySig,'un',0);
+                    (~cellfun('isempty',x(:,1))),xySig,'un',0);
             obj.iChMap = cell2mat(cellfun(@(i,x)([i*ones(sum(x),1),...
                     find(x(:))]),num2cell((1:obj.nDev)'),...
                     obj.hasStim,'un',0));
@@ -263,7 +263,7 @@ classdef StimObj < handle
             function sStr = setupDeviceInputString(obj,sType,iDev,iCh)
 
                 % sets up the device based on the channel dependence type
-                if sType == 3
+                if any(sType == [3,4])
                     % case is the V3 (optogenetics) serial devices
                     Ys = convertSerialValues(roundP(obj.yAmp{iDev}));
 

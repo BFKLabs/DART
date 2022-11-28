@@ -11,7 +11,7 @@ end
 % calculates the median baseline removal neighbourhood
 if is2D
     pW = 2/3;
-    h0 = ceil(pW*median(cellfun(@length,iMov.iRT{1})));               
+    h0 = ceil(pW*median(cellfun('length',iMov.iRT{1})));
 else
     h0 = 50;
 end

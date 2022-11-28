@@ -210,7 +210,7 @@ classdef BGCalibObj < handle
             for i = 1:obj.nApp
                 % retrieves the row/column indices                                
                 nCol = length(obj.iMov.iC{i});
-                nRow = cellfun(@length,obj.iMov.iRT{i}(:));
+                nRow = cellfun('length',obj.iMov.iRT{i}(:));
                 nRowT = nCol*length(nRow);
                 
                 % calculates the range signal row indices
@@ -391,7 +391,7 @@ classdef BGCalibObj < handle
             end
             
             % calculates the x-axis marker            
-            nRow = cellfun(@length,obj.iMov.iR);
+            nRow = cellfun('length',obj.iMov.iR);
             nRowMx = max(nRow);
             xLimAx = [1,nRowMx]+0.5*[-1,1];
             yLimAx = [0,obj.nApp-obj.yGap];
@@ -987,7 +987,7 @@ classdef BGCalibObj < handle
                 else
                     % removes the 
                     fok = obj.iMov.flyok;
-                    hasF = ~cellfun(@isempty,obj.hFillR);                    
+                    hasF = ~cellfun('isempty',obj.hFillR);
                     [fCN,fC0] = deal(obj.fCol{1},obj.fCol0);
                     [xi1,xi2] = deal(~fok & hasF,fok & hasF);
                     cellfun(@(x)(set(x,'xData',NaN,'yData',NaN)),obj.hRng)

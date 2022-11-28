@@ -33,7 +33,7 @@ else
     else
         % otherwise, use the values already set
         reduceIndices = true;
-        nFlyT = cellfun(@length,iMov.isUse(:,1));
+        nFlyT = cellfun('length',iMov.isUse(:,1));
     end
 
     % calculates the global sub-region index

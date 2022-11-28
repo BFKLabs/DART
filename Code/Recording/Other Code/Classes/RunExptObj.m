@@ -1165,7 +1165,7 @@ classdef RunExptObj < handle
                     obj.ExptSig(i).XY = xySigF{i};
 
                     % retrieves channel ID flags for each device stimuli 
-                    ii = find(~cellfun(@isempty,xySigF{i}(:,1)));
+                    ii = find(~cellfun('isempty',xySigF{i}(:,1)));
                     iChID = cell2mat(arrayfun(@(x)...
                             (x*ones(length(xySigF{i}{x,1}),1)),ii,'un',0));
 

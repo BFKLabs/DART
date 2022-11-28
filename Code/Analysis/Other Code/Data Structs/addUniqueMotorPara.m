@@ -8,7 +8,7 @@ tName = '3 - Device Para';
 
 % retrieves the stimuli protocol data structs for each experiment
 stimP = field2cell(snTot,'stimP');
-stimP = stimP(~cellfun(@isempty,stimP));
+stimP = stimP(~cellfun('isempty',stimP));
 
 % if there are more than 
 if isempty(stimP); return; end

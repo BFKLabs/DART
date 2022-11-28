@@ -2541,7 +2541,7 @@ classdef CalcBG < handle
                     otherwise
                         % case is there are unique solutions
                         IGrpMx = cellfun(@(x)(max(IRL{i}(x))),iGrpMx{i});
-                        AGrp = sqrt(cellfun(@length,iGrpMx{i}))/Dtol;
+                        AGrp = sqrt(cellfun('length',iGrpMx{i}))/Dtol;
                         iMx = argMax(IGrpMx.*AGrp);
                         
                         % retrieves the coordinates of the maxima

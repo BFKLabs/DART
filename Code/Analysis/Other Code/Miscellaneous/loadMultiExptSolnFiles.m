@@ -106,7 +106,7 @@ cellfun(@delete,A)
 
 % determines the fields for each of the solution files
 fStr = cellfun(@(x)(fieldnames(x)),snTot,'un',0);
-nStr = cellfun(@length,fStr);
+nStr = cellfun('length',fStr);
 
 % determines if there are any missing fields
 if range(nStr) ~= 0

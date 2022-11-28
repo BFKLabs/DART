@@ -353,7 +353,7 @@ classdef MetricPopData < DataOutputArray
                         % sets the data for each 
                         for j = 1:nExp
                             % reshapes the data for the current expt
-                            isOK = ~cellfun(@isempty,YR0{i}(:,j));
+                            isOK = ~cellfun('isempty',YR0{i}(:,j));
                             YRC = cell2cell(YR0{i}(isOK,j));
 
                             % stores the newe data

@@ -442,7 +442,7 @@ pause(0.05);
 % sets the time multiplier
 calcPhi = isfield(snTot,'Phi');
 Tmlt = getTimeScale(snTot.T{end}(end));
-nFrm = sum(cellfun(@length,snTot.T));
+nFrm = sum(cellfun('length',snTot.T));
 isMltTrk = detMltTrkStatus(iMov);
 use2D = iMov.is2D || isMltTrk;
 
@@ -1432,7 +1432,7 @@ elseif ~isempty(sInfo0)
     % newly loaded solution data
     indEx = cellfun(@(y)(find(cellfun(@(x)...
                             (isequaln(x,y)),sInfoNw))),sInfo0,'un',0);
-    isKeep{1}(cellfun(@isempty,indEx)) = false;
+    isKeep{1}(cellfun('isempty',indEx)) = false;
     isKeep{2}(setGroup(cell2mat(indEx),size(sInfo0))) = false;
 end
 
@@ -1734,7 +1734,7 @@ else
     % retrieves the currently selected region
     iApp = get(handles.popupAppPlot,'value');
     if isempty(Px{iApp}) && (nargin == 2)
-        iApp = find(~cellfun(@isempty,Px),1,'first');
+        iApp = find(~cellfun('isempty',Px),1,'first');
         set(handles.popupAppPlot,'Value',iApp)    
     end
     
@@ -2537,7 +2537,7 @@ if detMltTrkStatus(iMov)
     hGUIInfo = getappdata(hFig,'hGUIInfo');          
     
     iFlyF = hGUIInfo.setupMultiTrackIndices(iMov);
-    nRowMx = max(cellfun(@(x)(max(cellfun(@length,x))),iFlyF));
+    nRowMx = max(cellfun(@(x)(max(cellfun('length',x))),iFlyF));
     
 elseif iMov.is2D
     % case is a 2D experiment

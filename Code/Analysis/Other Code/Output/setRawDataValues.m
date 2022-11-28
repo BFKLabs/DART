@@ -23,7 +23,7 @@ switch Type
     case (3) %
         xi = num2cell(1:length(fok));
         A = cellfun(@(x)(Y(x,:)),indD,'un',0);
-        isE = cellfun(@isempty,A);
+        isE = cellfun('isempty',A);
         
         A(isE) = cellfun(@(x)(NaN(1,size(x,2))),A(isE),'un',0);
         Yr = cell2cell(cellfun(@(z)(cellfun(@(y)...

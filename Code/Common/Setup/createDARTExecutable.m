@@ -124,7 +124,7 @@ for i = 1:length(codeDir)
 end
 
 % sets the final code directory array
-codeDir = [codeDir(~cellfun(@isempty,codeDir));pkgName(:)];
+codeDir = [rmvEmptyCells(codeDir);pkgName(:)];
 
 % sets the java jar files
 javaFiles = {which('ColoredFieldCellRenderer.zip')};

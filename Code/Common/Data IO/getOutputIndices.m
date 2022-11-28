@@ -10,7 +10,7 @@ switch (Type)
     case ('Stats') % case is statistic calculations
         
         % retrieves the stats components of the output data array
-        isC = isC(cellfun(@length,oP(isC)) == 3);
+        isC = isC(cellfun('length',oP(isC)) == 3);
         A = cell2cell(oP(isC));
         
         % resets the 
@@ -57,7 +57,7 @@ switch (Type)
     case ('MetricMD') % case is the multi-dimension metric
         
         % retrieves the stats components of the output data array
-        isC = isC(cellfun(@length,oP(isC)) == 2);
+        isC = isC(cellfun('length',oP(isC)) == 2);
         [C,~,IC] = unique(cell2mat(cell2cell(oP(isC))),'rows');
                 
         % sets the unique x/y indices for the multi-dimensional data

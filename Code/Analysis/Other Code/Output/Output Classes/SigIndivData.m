@@ -185,7 +185,7 @@ classdef SigIndivData < DataOutputArray
             end            
 
             % determines the number of days each experiment runs for            
-            if ~obj.iData.sepDay || all(cellfun(@isempty,YY{2}))
+            if ~obj.iData.sepDay || all(cellfun('isempty',YY{2}))
                 obj.nDay = ones(obj.nExp,1);
             else
                 [Y1,Y2] = deal(YY{1}{1},YY{2}{1});
@@ -199,7 +199,7 @@ classdef SigIndivData < DataOutputArray
             
             % sets the reduces data array and non-empty data arrays
             obj.reduceDataArray();            
-            obj.isOK = cellfun(@(x)(~cellfun(@isempty,x)),obj.YR,'un',0);                        
+            obj.isOK = cellfun(@(x)(~cellfun('isempty',x)),obj.YR,'un',0);                        
             
             % determines the number of flies for each genotype/experiment
             if length(obj.xDep{obj.iMet}) > 1
@@ -214,7 +214,7 @@ classdef SigIndivData < DataOutputArray
                 obj.tStr = {obj.iData.xVar(jj).Name};
 
                 % sets the fly counts for each sub-region
-                obj.nFly = cellfun(@length,obj.iFly,'un',0);
+                obj.nFly = num2cell(cellfun('length',obj.iFly));
 
 %                 % sets the fly header column strings                        
 %                 gStrF = cellfun(@(x)...
@@ -234,7 +234,7 @@ classdef SigIndivData < DataOutputArray
                     
             else    
                 % sets the fly count/genotype group counts
-                obj.nFly = num2cell(num2cell(cellfun(@length,obj.iFly)),2)'; 
+                obj.nFly = num2cell(num2cell(cellfun('length',obj.iFly)),2)'; 
                 [obj.iFly,obj.nGrp] = deal(num2cell(obj.iFly,2)',1);    
 
 %                 % sets the fly index title strings    
@@ -557,7 +557,7 @@ classdef SigIndivData < DataOutputArray
             % sets up the final combined header string
             useT = nargin == 4;   
             mStrC = cell(size(mStrF));            
-            hasD = ~cellfun(@isempty,mStrF);
+            hasD = ~cellfun('isempty',mStrF);
             
             mStrC(hasD) = cellfun(@(xx,yy)(combineCellArrays({NaN},...
                     combineCellArrays(xx,setCombinedTitle...

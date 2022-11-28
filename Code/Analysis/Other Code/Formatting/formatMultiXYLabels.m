@@ -17,8 +17,8 @@ end
 [ix,iy,iz] = deal((m-1)*n + [1 n],[(m-1)*n+1 1],[m*n n]);
 
 % sets the axis handles into a single cell array
-nAx = sum(~cellfun(@isempty,hAx));
-if (any(cellfun(@length,hAx) > 1))
+nAx = sum(~cellfun('isempty',hAx));
+if (any(cellfun('length',hAx) > 1))
     hAx = num2cell(cell2cell(hAx));
 end
 

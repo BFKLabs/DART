@@ -5,7 +5,7 @@ if isempty(hObj)
 end
 
 if iscell(hObj)
-    hObj = hObj(~cellfun(@isempty,hObj));
+    hObj = rmvEmptyCells(hObj);
     if isempty(hObj)
         isOK = false;
     else

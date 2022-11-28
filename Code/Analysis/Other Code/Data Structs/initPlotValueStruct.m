@@ -58,7 +58,7 @@ if any(isRaw)
         
         % sets the number of flies in the experiment
 %         nFly = max(nFly,size(snTot(i).iMov.flyok,1));
-        nFly = max(nFly,max(cellfun(@length,snTot(i).iMov.flyok)));
+        nFly = max(nFly,max(cellfun('length',snTot(i).iMov.flyok)));
     end
         
     % creates the raw arrays for     

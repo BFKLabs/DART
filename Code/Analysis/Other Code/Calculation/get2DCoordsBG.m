@@ -12,7 +12,7 @@ end
 
 % reduces the arrays for the specified number of frames (if procided)
 if exist('indFrm','var')
-    ii = ~cellfun(@isempty,dPx);
+    ii = ~cellfun('isempty',dPx);
     dPx(ii) = cellfun(@(x)(x(indFrm,:)),dPx(ii),'un',0);
     dPy(ii) = cellfun(@(x)(x(indFrm,:)),dPy(ii),'un',0);
 end
@@ -53,7 +53,7 @@ if isMT
 end
 
 % reduces down the x/y-coordinates
-i0 = find(~cellfun(@isempty,Px),1,'first');
+i0 = find(~cellfun('isempty',Px),1,'first');
 [szG,nFrm] = deal(size(X0),size(Px{i0},1)); 
 
 % calculates the relative x/y-coordinates

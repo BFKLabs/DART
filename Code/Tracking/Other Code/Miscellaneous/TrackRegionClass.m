@@ -288,7 +288,7 @@ classdef TrackRegionClass < handle
             end
             
             % sets the region dimension vectors            
-            useOuter = cellfun(@isempty,pPos);
+            useOuter = cellfun('isempty',pPos);
             pPos(useOuter) = obj.iMov.posO(useOuter);
 
             % retrieves the handles to the horizontal/vertical lines
@@ -1311,7 +1311,7 @@ classdef TrackRegionClass < handle
 
                     % resets the vertical marker lines
                     pWid = W*cumsum(srObj.pWid{uData(2),uData(1)});         
-                    for i = find(~cellfun(@isempty,hMarkR(:,1)))'
+                    for i = find(~cellfun('isempty',hMarkR(:,1)))'
                         % recalculates the new position of the markers
                         pNw = [(p0nw(1)+pWid(i)*[1;1]),(p0nw(2)+H*[0;1])];
 
@@ -1322,7 +1322,7 @@ classdef TrackRegionClass < handle
 
                     % resets the horizontal marker lines
                     pHght = H*cumsum(srObj.pHght{uData(2),uData(1)}); 
-                    for i = find(~cellfun(@isempty,hMarkR(:,2)))'
+                    for i = find(~cellfun('isempty',hMarkR(:,2)))'
                         % recalculates the new position of the markers
                         pNw = [(p0nw(1)+W*[0;1]),(p0nw(2)+pHght(i)*[1;1])];
 

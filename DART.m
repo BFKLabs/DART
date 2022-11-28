@@ -564,7 +564,8 @@ classdef DART < handle
             % adds in the program directories
             if ~isdeployed
                 % initialisations
-                lStr = 'Closing Down DART Program...';                
+                lStr = 'Closing Down DART Program...';   
+                wState = warning('off','all');
                 
                 % creates a loadbar figure
                 h = ProgressLoadbar(lStr);
@@ -585,6 +586,7 @@ classdef DART < handle
                 % delete the progressbar and removes the progress dialog
                 h.delete();
                 rmpath(pbDir)
+                warning(wState);
             end
             
             % deletes the GUI

@@ -323,7 +323,7 @@ classdef FlyInfoGUI < handle
             % sets the time bin
             T = cell2mat(obj.snTot.T);
             indB = detTimeBinIndices(T,obj.tBin);             
-            hasData = ~cellfun(@isempty,obj.snTot.Px);
+            hasData = ~cellfun('isempty',obj.snTot.Px);
             
             % calculates the NaN counts/inactive times for each apparatus
             for i = find(hasData(:))'
@@ -349,8 +349,8 @@ classdef FlyInfoGUI < handle
 
                 % determines which flies were actually inactive, and 
                 % calculates the inactive times
-                ii = ~cellfun(@isempty,jGrp);    
-                tInactNw = cellfun(@(y)(max(cellfun(@length,y))),jGrp(ii))';                    
+                ii = ~cellfun('isempty',jGrp);    
+                tInactNw = cellfun(@(y)(max(cellfun('length',y))),jGrp(ii))';
                 obj.tInact(ii,i) = roundP(tInactNw*obj.tBin/60,1);
 
                 % clears the arrays

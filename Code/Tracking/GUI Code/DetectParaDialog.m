@@ -97,7 +97,7 @@ classdef DetectParaDialog < handle
             end
             
             % sets the maximum parameter count
-            obj.nParaMx = max(cellfun(@length,obj.tStr));
+            obj.nParaMx = max(cellfun('length',obj.tStr));
             
             % calculates the parameter panel height
             obj.hghtPanelP = obj.hghtBut*obj.nParaMx + 50;

@@ -415,7 +415,7 @@ classdef DataOutputTable < dynamicprops & handle
             end            
             
             % disables the save menu item
-            setObjEnable(obj.hFigH.menuSave,any(~cellfun(@isempty,obj.Data)))
+            setObjEnable(obj.hFigH.menuSave,any(~cellfun('isempty',obj.Data)))
             enableDisableFig(obj.hFig,'off');            
             
             % determine if there is sufficient memory to display the data

@@ -20,7 +20,7 @@ if isfield(iMov,'phInfo')
 end
 
 % sets the sub-image stacks
-isOK = ~cellfun(@isempty,I0);          
+isOK = ~cellfun('isempty',I0);
 IL(isOK) = cellfun(@(I)(I(iR,iC)),I0,'un',0); 
 if any(~isOK)
     % if the image is empty, then return NaN arrays

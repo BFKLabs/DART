@@ -80,7 +80,7 @@ switch (bData.sfData.Type)
         if (~isempty(fName))
             % determines the total number of files 
             nStr = regexp(fName{1},'\D','split');
-            nStr = nStr(~cellfun(@isempty,nStr));
+            nStr = rmvEmptyCells(nStr);
             nFile = str2double(nStr{2});
             
             % deletes the summary files whose index is > iFile

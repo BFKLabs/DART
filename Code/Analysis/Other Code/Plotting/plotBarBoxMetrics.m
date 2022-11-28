@@ -43,7 +43,7 @@ else
         
         if size(Yc,1) ~= 1
             % determines the empty cells and removes them
-            Yc = Yc(~cellfun(@isempty,Yc(:,1)),:);            
+            Yc = Yc(~cellfun('isempty',Yc(:,1)),:);            
             if isempty(Yc)
                 Yc = {NaN};
             else

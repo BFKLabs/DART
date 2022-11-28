@@ -49,7 +49,7 @@ pDataH = getStructField(getappdata(hPara,'pObj'),'pData');
 % determines which experiment/plot type has been selected, and determines
 % if there is more than one figure type selected
 [eInd,fInd,pInd] = getSelectedIndices(hGUIM);
-isCalc = ~cellfun(@isempty,plotD{pInd}(:,eInd));
+isCalc = ~cellfun('isempty',plotD{pInd}(:,eInd));
 nReg = size(sPara.pos,1);
 
 % updates the current plotting data struct parameters

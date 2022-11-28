@@ -1105,7 +1105,7 @@ classdef SplitAxisClass < handle
                     set(hLine,'UserData',uData);
                     
                     % updates the line contrain functions
-                    for i = find(~cellfun(@isempty,obj.hMove(:)'))
+                    for i = find(~cellfun('isempty',obj.hMove(:)'))
                         arrayfun(@(x)...
                              (obj.updateLineConstrainFcn(x)),obj.hMove{i});
                     end      

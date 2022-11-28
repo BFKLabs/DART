@@ -1500,7 +1500,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 iGrp0 = arrayfun(@(x)(find(iC==x)),(1:max(iC))','un',0);
 
                 % determines the repeat experiment file names
-                ii = cellfun(@length,iGrp0) == 1;
+                ii = cellfun('length',iGrp0) == 1;
                 expFileR = expFileU(~ii);
 
                 % sets the 
@@ -1659,7 +1659,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
         function indReset = getResetIndexArray(obj)
 
             % determines the valid solution file tab types
-            isOK = ~cellfun(@isempty,obj.sDir);
+            isOK = ~cellfun('isempty',obj.sDir);
             isOK(obj.iTab) = false;
 
             % sets the final reset index array

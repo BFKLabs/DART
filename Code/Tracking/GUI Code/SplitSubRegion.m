@@ -109,8 +109,8 @@ classdef SplitSubRegion < handle
                             
                             % sets up the parameter struct
                             p0 = struct('nRow',0,'nCol',0);
-                            pVal = {cellfun(@length,obj.pHght);...
-                            	    cellfun(@length,obj.pWid)}; 
+                            pVal = {cellfun('length',obj.pHght);...
+                            	    cellfun('length',obj.pWid)}; 
                         end
                         
                     case 'Circ'
@@ -121,7 +121,7 @@ classdef SplitSubRegion < handle
                             
                             % sets up the parameter struct
                             p0 = struct('nSeg',0);
-                            pVal = {cellfun(@length,obj.pPhi)};                            
+                            pVal = {cellfun('length',obj.pPhi)};                            
                         end
                 end
                 
@@ -716,7 +716,7 @@ classdef SplitSubRegion < handle
                     end
 
                     % sets the marker line hit-test
-                    ii = ~cellfun(@isempty,obj.hMarkR{iP,jP});
+                    ii = ~cellfun('isempty',obj.hMarkR{iP,jP});
                     hEnd1 = cellfun(@(x)(findall(x,'tag',tagStr)),...
                                          obj.hMarkR{iP,jP}(ii),'un',0);
                     cellfun(@(x)(set(x,'HitTest',htStr)),hEnd1)
@@ -1054,7 +1054,7 @@ classdef SplitSubRegion < handle
                 % removes any previous markers
                 if ~isempty(obj.hMarkR{j})
                     try
-                        ii = ~cellfun(@isempty,obj.hMarkR{j});
+                        ii = ~cellfun('isempty',obj.hMarkR{j});
                         if obj.isOld
                             cellfun(@delete,obj.hMarkR{j}(ii)); 
                         else

@@ -16,7 +16,7 @@ end
 if hasSR
     % if so, then 
     sD = iMov.srData;
-    nGrp = cellfun(@length,sD.iGrp);
+    nGrp = cellfun('length',sD.iGrp);
     [iOfs,nCol] = deal([0;cumsum(nGrp(1:end-1))],sum(nGrp));
 else
     % if not, then use the region count

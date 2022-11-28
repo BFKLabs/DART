@@ -13,7 +13,7 @@ c = cellfun(@(x)(strContains(x,sStr)),b);
 %
 ind = NaN(length(comAvail),1);
 for i = 1:length(ind)
-    indNw = find(c & ~cellfun(@isempty,(strfind(b,comAvail{i}))));
+    indNw = find(c & ~cellfun('isempty',strfind(b,comAvail{i})));
     if ~isempty(indNw)
         ind(i) = indNw;
     end

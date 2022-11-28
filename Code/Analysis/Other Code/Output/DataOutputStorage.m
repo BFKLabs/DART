@@ -79,7 +79,7 @@ classdef DataOutputStorage < DataReshapeSetup
             
             % sets up the output data struct
             yData = struct();
-            for i = find(~cellfun(@isempty,obj.Y))
+            for i = find(~cellfun('isempty',obj.Y))
                 pFld = sprintf('Y%i',i);
                 yData = setStructField(yData,pFld,obj.Y{i});
             end            

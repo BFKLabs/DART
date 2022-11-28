@@ -432,10 +432,10 @@ for i = 1:length(DataF)
 %                 num2cell(num2cell(DataF{i},1),3),'un',0);    
     
     if (iscell(DataF{1}{1}))
-        Ytmp = DataF{i}(~cellfun(@isempty,DataF{i}));
+        Ytmp = DataF{i}(~cellfun('isempty',DataF{i}));
         Data{i} = cell2mat(Ytmp(:));
     else
-        Ytmp = DataF{i}; %(~cellfun(@isempty,DataF{i}));
+        Ytmp = DataF{i}; %(~cellfun('isempty',DataF{i}));
         if length(Ytmp{1}) == 1
             Data{i} = combineNumericCells(Ytmp,0);                    
         else
@@ -706,7 +706,7 @@ function [A,ok] = setBoxPlotDataArray(pData,plotD,vName,sData,tStrP)
 plotD = reshape(plotD,1,length(plotD));
 
 % sets the indices of the current metric
-indSM = ~cellfun(@isempty,strfind(pData.oP(:,2),sprintf('%s_',vName)));
+indSM = ~cellfun('isempty',strfind(pData.oP(:,2),sprintf('%s_',vName)));
 
 % retrieves the metric values/stats title strings
 [TSM,fStr] = deal(pData.oP(indSM,1),pData.oP(indSM,2));

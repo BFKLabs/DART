@@ -39,7 +39,7 @@ switch stType
         
         % ensures all signal trains are stored in cells of cells        
         for i = 1:nDev
-            ii = ~cellfun(@isempty,xySig{i});
+            ii = ~cellfun('isempty',xySig{i});
             xySig{i}(ii) = cellfun(@(x)({x}),xySig{i}(ii),'un',0);           
         end        
         

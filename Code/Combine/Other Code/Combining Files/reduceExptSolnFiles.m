@@ -4,7 +4,7 @@ function snTot = reduceExptSolnFiles(snTot,indNw,appName)
 % sets the new indices (if not provided)
 if ~exist('indNw','var')
     indNw = num2cell(1:length(snTot.Px))'; 
-    indNw(cellfun(@isempty,snTot.Px)) = {[]};
+    indNw(cellfun('isempty',snTot.Px)) = {[]};
 end
 
 % sets the default region names

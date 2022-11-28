@@ -24,7 +24,7 @@ if (~iscell(hChild)); hChild = {hChild}; end
 
 % removes the x/y labels axes from the list
 jj = strcmp(get(hAx,'tag'),'xLabel') | strcmp(get(hAx,'tag'),'yLabel') | ...
-     strcmp(get(hAx,'tag'),'zLabel') | cellfun(@isempty,hChild);
+     strcmp(get(hAx,'tag'),'zLabel') | cellfun('isempty',hChild);
 hAxT = hAx(~jj);
 
 % determines the number of subplot axis
@@ -85,7 +85,7 @@ for i = 1:length(hAx)
         if (iscell(tPos)); tPos = cell2mat(tPos); end        
     
         % updates the font size for the axis object
-        hText = hText((tPos ~= 0) & cellfun(@isempty,get(hText,'tag')));
+        hText = hText((tPos ~= 0) & cellfun('isempty',get(hText,'tag')));
         for j = 1:length(hText)
             updateFontSize(hText(j),pF.Axis,fR,'text')    
         end

@@ -60,7 +60,7 @@ end
 % events took place and uses these to determine the effective time bands
 h.Update(1+wOfs,'Determining Time Bin Indices...',1/(2+nApp));
 iTs = cellfun(@(x)(find(Ttot<x,1,'last')),Ts,'un',0);
-iTs(cellfun(@isempty,iTs)) = {1};
+iTs(cellfun('isempty',iTs)) = {1};
 
 % resets the stimuli event/after times to account to remove any of the
 % empty index cells
@@ -94,9 +94,9 @@ if nargout > 2
     end
     
     % sets the time before/time         
-    ii = ~cellfun(@isempty,iTs) & ...
-         ~cellfun(@isempty,iTa1) & ...
-         ~cellfun(@isempty,iTa2);    
+    ii = ~cellfun('isempty',iTs) & ...
+         ~cellfun('isempty',iTa1) & ...
+         ~cellfun('isempty',iTa2);    
     
     % sets the indices of the after stimuli signal points and also set the
     % time signal values
@@ -108,7 +108,7 @@ if nargout > 2
     
 else
     % otherwise, determine if any of the groups are empty and remove them
-    ii = ~cellfun(@isempty,iTs);
+    ii = ~cellfun('isempty',iTs);
     iTs = cell2mat(iTs(ii));
 end
     

@@ -29,7 +29,7 @@ DataExpt = cell(nExpt+2,3);
 DataExpt(1,1:end-1) = {'Expt #','Expt Name'};
 DataExpt(2:(end-1),1) = arrayfun(@num2str,(1:nExpt)','un',0);
 DataExpt(2:(end-1),2) = exptName(:);
-DataExpt(cellfun(@isempty,DataExpt)) = {''};
+DataExpt(cellfun('isempty',DataExpt)) = {''};
 
 % sets up the stimuli train info array
 function DataStim = setupStimTrainInfo(blkInfo,ChN)
@@ -104,7 +104,7 @@ end
 
 % combines the arrays and fills in any missing entries
 DataStim = cell2cell(DataStim);
-DataStim(cellfun(@isempty,DataStim)) = {''};
+DataStim(cellfun('isempty',DataStim)) = {''};
 DataStim = combineCellArrays(DataStim,{''},0,'');
 
 % --- sets up the stimuli time information arrays
@@ -121,7 +121,7 @@ tStr = {'Stim #'};
 %
 for i = 1:nStim
     % data extraction and other local memory allocations
-    ii = find(~cellfun(@isempty,Ts{i}));
+    ii = find(~cellfun('isempty',Ts{i}));
     TsNw = combineNumericCells(Ts{i}(ii));
     TfNw = combineNumericCells(Tf{i}(ii));
     hStr0 = arrayfun(@(x)(sprintf('Expt #%i',x)),ii(:)','un',0);
@@ -145,7 +145,7 @@ end
 % combines the arrays and fills in any missing entries
 DataTimes = cell2cell(cellfun(@(x)...
                         (cell2cell(x,0)),num2cell(DataTimes,2),'un',0));
-DataTimes(cellfun(@isempty,DataTimes)) = {''};                    
+DataTimes(cellfun('isempty',DataTimes)) = {''};                    
                     
 %
 isN = cellfun(@isnumeric,DataTimes);
@@ -196,7 +196,7 @@ Tsig = field2cell(Stim,'Tsig');
 pStr = {'pDur','pAmp','iDelay','pDelay','sDelay'};
 
 % determines the longest time signal in the experiment
-imx = cellfun(@(x)(argMax(cellfun(@length,x))),Tsig);
+imx = cellfun(@(x)(argMax(cellfun('length',x))),Tsig);
 [~,jmx] = max(cellfun(@(x,y)(length(x{y})),Tsig,num2cell(imx)));
 DataYT = num2cell(Tsig{jmx}{imx(jmx)});
 
@@ -209,7 +209,7 @@ DataHM(5,:) = {'Stimuli Count',length(Stim(1).sigPara)};
 DataHM(6,1) = {'Train Count'};
 
 % sets the stimuli train count
-if (range(cellfun(@length,Stim(1).sigPara)) == 0)
+if (range(cellfun('length',Stim(1).sigPara)) == 0)
     % stimuli train count is fixed
     [DataHM{6,2},nTrain] = deal(length(Stim(1).sigPara{1}));
 else
@@ -266,4 +266,4 @@ end
 
 % combines the data into a single array
 Data = combineCellArrays(combineCellArrays(DataHM,DataHT,0),DataYT,0);
-Data(cellfun(@isempty,Data)) = {NaN};
+Data(cellfun('isempty',Data)) = {NaN};

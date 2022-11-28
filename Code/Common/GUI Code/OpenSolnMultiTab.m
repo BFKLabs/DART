@@ -1179,7 +1179,7 @@ classdef OpenSolnMultiTab < dynamicprops & handle
             rStr = '* REJECTED *';
             isRmv = strcmp(gName,' ') | ...
                     strcmp(gName,rStr) | ...                    
-                    cellfun(@isempty,gName);
+                    cellfun('isempty',gName);
 
             % removes any infeasible names
             gName = gName(~isRmv);    

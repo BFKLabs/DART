@@ -87,7 +87,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
         function runDetectionAlgo(obj)
             
             % field updates and other initialisations
-            obj.Img = obj.Img(~cellfun(@isempty,obj.Img));
+            obj.Img = rmvEmptyCells(obj.Img);
             obj.nImg = length(obj.Img); 
             
             % initialises the object fields

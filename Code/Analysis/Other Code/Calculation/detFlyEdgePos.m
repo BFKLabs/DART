@@ -37,6 +37,6 @@ for i = 1:size(D,2)
         
         % removes any points when the fly is in the outer region for only a
         % single frame 
-        onEdge(cell2mat(wGrp(cellfun(@length,wGrp) == 1)),i) = false;
+        onEdge(cell2mat(wGrp(cellfun('length',wGrp) == 1)),i) = false;
     end
 end

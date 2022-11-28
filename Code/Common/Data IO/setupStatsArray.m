@@ -108,7 +108,7 @@ end
 ii = cellfun(@(x)(strcmp(pStr,x)),pData.oP(:,2));
 if (~any(ii))
     % determines the parameter that closest matches the input string
-    ii = ~cellfun(@isempty,strfind(pData.oP(:,2),sprintf('%s_',pStr)));
+    ii = ~cellfun('isempty',strfind(pData.oP(:,2),sprintf('%s_',pStr)));
     j1 = find(ii,1,'first'); j2 = j1 + 1;
     
     % sets the metric and parameter strings
@@ -233,7 +233,7 @@ function [A,p,ok] = calcTTestStatsDN(pData,plotD,tStr,pStr,sStr,isMetGrp)
 ii = cellfun(@(x)(strcmp(pStr,x)),pData.oP(:,2));
 if (~any(ii))
     % determines the parameter that closest matches the input string
-    ii = ~cellfun(@isempty,strfind(pData.oP(:,2),sprintf('%s_',pStr)));
+    ii = ~cellfun('isempty',strfind(pData.oP(:,2),sprintf('%s_',pStr)));
     j1 = find(ii,1,'first'); j2 = j1 + 1;
     
     % sets the metric and parameter strings
@@ -555,17 +555,18 @@ function [A,ok] = setBoxPlotDataArray(pData,plotD,vName,sData,tStrP)
 plotD = reshape(plotD,1,length(plotD));
 
 % sets the indices of the current metric
-indSM = ~cellfun(@isempty,strfind(pData.oP(:,2),sprintf('%s_',vName)));
+indSM = ~cellfun('isempty',strContains(pData.oP(:,2),sprintf('%s_',vName)));
 
 % retrieves the metric values/stats title strings
 [TSM,fStr] = deal(pData.oP(indSM,1),pData.oP(indSM,2));
 
 % determines if any of the fields are missing (if so then output the error)
 ii = cellfun(@(x)(~any(strcmp(x,fieldnames(plotD)))),fStr);
-if (any(ii))
+if any(ii)
     % sets up the error variable string
-    eStr = sprintf('The following variables are missing from the plot data struct:\n\n');
-    for i = find(ii');
+    eStr = sprintf(['The following variables are missing from the ',...
+                    'plot data struct:\n\n']);
+    for i = find(ii')
         eStr = sprintf('%s  => %s\n',eStr,TSM{i});
     end
     eStr = sprintf('%s\nUnable to setup the statistics array.',eStr);

@@ -589,7 +589,7 @@ sTrain = storeExptTrainPara(hFig);
 
 % determines if any stimuli trains have been saved
 if ~strcmp(getappdata(hFig,'devType'),'RecordOnly')
-    if all(cellfun(@isempty,getStructFields(sTrain)))
+    if all(cellfun('isempty',getStructFields(sTrain)))
         wStr = ['Warning. There are currently no stimuli protocols set ',...
                 'for this experiment. Do you still wish to continue?'];
         uChoice = questdlg(wStr,'No Protocols Set?','Yes','No','Yes');
@@ -2655,7 +2655,7 @@ sRate = field2cell(iStim.oPara,'sRate',1);
 xySig = setupDACSignal(sTrainC,chInfo,1./sRate);
 
 % determines the unique device indices
-iDev = find(cellfun(@(x)(~all(cellfun(@isempty,x(:,1)))),xySig));
+iDev = find(cellfun(@(x)(~all(cellfun('isempty',x(:,1)))),xySig));
 
 % sets the sample rate for the device(s)
 if max(iDev) > length(iStim.oPara)
@@ -5067,7 +5067,7 @@ iCh = uData0{indFcn('iCh')};
 sPara = uData0{indFcn('sPara')};
 sParaExP = getStructField(sParaEx,sType(1));
 xyData = setupFullExptSignal(hFig,sTrainS,sParaExP);
-iChObj = find(~cellfun(@isempty,xyData));
+iChObj = find(~cellfun('isempty',xyData));
 
 % memory allocation for the signal offset/object handles
 [nChObj,nChTot] = deal(length(iChObj),length(sTrainS.chName));
@@ -7010,7 +7010,7 @@ sBlk.setPosition(rPos);
 
 % retrieves the full experiment signal
 xyData = setupFullExptSignal(hFig,sTrainS);
-iChObj = ~cellfun(@isempty,xyData);
+iChObj = ~cellfun('isempty',xyData);
 cellfun(@(h,x,pdx)(set(h,'xData',(x(:,1)-x(1))+(rPos(1)+pdx),'yData',x(:,2))),...
        num2cell(hSigObj),xyData(iChObj),num2cell(uData{indFcn('pDX')}))
 
@@ -7389,7 +7389,7 @@ devTypeBlk = field2cell(sTrainS.blkInfo,'devType');
 iCh0 = cellfun(@(x,y)(find(strcmp(sTrainS.chName,x) & ...
                            strcmp(sTrainS.devType,y))),...
                            chNameBlk,devTypeBlk,'un',0);
-iCh0 = cell2mat(iCh0(~cellfun(@isempty,iCh0)));
+iCh0 = cell2mat(iCh0(~cellfun('isempty',iCh0)));
 
 % returns the final channel indices
 iCh = sort((length(sTrainS.chName)+1) - iCh0);

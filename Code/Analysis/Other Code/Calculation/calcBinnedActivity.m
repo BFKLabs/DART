@@ -7,7 +7,7 @@ function I = calcBinnedActivity(snTot,T,indB,cP,ind,flyok)
 V0 = repmat({NaN(1,length(flyok))},length(indB),1);
 
 % calculates the binned fly movement
-jj = cellfun(@length,indB) > 1;
+jj = cellfun('length',indB) > 1;
 V0(jj) = calcBinnedFlyMovement(snTot,T,indB(jj),cP,ind,flyok);
 
 % converts the binned activity array to the full sized array

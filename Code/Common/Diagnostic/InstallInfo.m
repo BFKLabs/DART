@@ -109,7 +109,7 @@ pInfo = matlabshared.supportpkg.getInstalled;
 % determines the required toolboxes that are currently available
 [vName,vVer0] = field2cell(vInfo(:),{'Name','Version'});
 iInst = cellfun(@(x)(find(startsWith(vName,x))),toolStr,'un',0);
-isInst = ~cellfun(@isempty,iInst);
+isInst = ~cellfun('isempty',iInst);
 
 % sets up the required toolbox table data
 vData = cell(length(toolStr),nColV);

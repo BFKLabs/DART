@@ -9,7 +9,7 @@ pInfo = iMov.pInfo;
 isMT = detMltTrkStatus(iMov);
 
 % determines the number of frames
-i0 = find(~cellfun(@isempty,snTot.Px),1,'first');
+i0 = find(~cellfun('isempty',snTot.Px),1,'first');
 nFrm = size(snTot.Px{i0},1);
 
 % sets the data array fields to 

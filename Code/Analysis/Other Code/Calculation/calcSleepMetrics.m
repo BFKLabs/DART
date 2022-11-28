@@ -16,7 +16,7 @@ else
 end
 
 % memory allocations & parameters
-jj = ~cellfun(@isempty,indB);
+jj = ~cellfun('isempty',indB);
 i0 = find(jj,1,'first');
 
 % calculates the binned activity metrics   
@@ -34,7 +34,7 @@ iGrp = cellfun(@(x)(getGroupIndex(x)),num2cell(~Y,1),'un',0);
 % for each fly, determine which periods of inactivation were longer than
 % the sleep duration time (tSleep)
 for i = 1:length(iGrp)
-    nGrpNw = cellfun(@length,iGrp{i});
+    nGrpNw = cellfun('length',iGrp{i});
     Y(cell2mat(iGrp{i}(nGrpNw < cP.tSleep)),i) = true;
 end
 
@@ -65,8 +65,8 @@ if any(~fok) && (length(fok) == size(nBout{1},2))
 end
 
 % determines the time difference over each time group 
-[ii,dT] = deal(~cellfun(@isempty,indGrp),zeros(size(nBout)));
-dT(ii) = cellfun(@length,indGrp(ii));
+[ii,dT] = deal(~cellfun('isempty',indGrp),zeros(size(nBout)));
+dT(ii) = cellfun('length',indGrp(ii));
 
 % removes any small time groups from the analysis)
 jj = dT < tMin; 

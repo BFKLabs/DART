@@ -45,8 +45,8 @@ end
 if isfield(snTot,'iMov')
     is1D = ~is2DCheck(snTot.iMov);    
 else
-    is1D = all(cellfun(@isempty,field2cell(snTot,'Px'))) || ...
-           all(cellfun(@isempty,field2cell(snTot,'Py')));
+    is1D = all(cellfun('isempty',field2cell(snTot,'Px'))) || ...
+           all(cellfun('isempty',field2cell(snTot,'Py')));
 end
       
 if is1D

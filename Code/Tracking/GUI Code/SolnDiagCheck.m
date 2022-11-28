@@ -208,7 +208,7 @@ setObjVisibility(handles.figDiagCheck,'off')
 DfrmT = cellfun(@(x)(find(x > Dtol)),Dfrm,'un',0);
 
 % determines the array entries where the NaN count is greater than zero
-nDCount = cellfun(@length,DfrmT);
+nDCount = cellfun('length',DfrmT);
 if all(nDCount == 0)
     % resets the panel dimensions
     [hasD,pPos(4)] = deal(false,85);
@@ -287,7 +287,7 @@ tPos = get(handles.tableNaNCount,'position');
 hasNaN = true;
 
 % determines the array entries where the NaN count is greater than zero
-nNaNCount = cellfun(@length,nNaN);
+nNaNCount = cellfun('length',nNaN);
 if (all(nNaNCount == 0))
     % resets the panel dimensions
     [hasNaN,pPos(4)] = deal(false,55);

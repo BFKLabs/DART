@@ -239,7 +239,7 @@ indC = cellfun(@(x)(x(1):x(2)),xiC,'un',0);
 % if there are more rows than required, then reduce them down
 if length(indC) > dim(1)
     % determines which configuration closest matches the required
-    nC = cellfun(@length,indC);
+    nC = cellfun('length',indC);
     xi = 0:(length(indC)-dim(1));
     nCSum = arrayfun(@(x)(sum(nC(x+(1:dim(1))))),xi);
     
@@ -341,8 +341,8 @@ IR = (abs(Gy) + abs(Gx));
 
 % estimates the upper bound on the circle radius (which is the maximum of
 % the rows/columns for each of the individual arenas)
-nC = cellfun(@length,iMov.iCT);
-nR = combineNumericCells(cellfun(@(x)(cellfun(@length,x)),iMov.iRT,'un',0));
+nC = cellfun('length',iMov.iCT);
+nR = combineNumericCells(cellfun(@(x)(cellfun('length',x)),iMov.iRT,'un',0));
 Rnw = ceil(min(max(nC(:)),max(nR(:)))/2);                    
 
 % calculates the cross-correlation of the image with the template

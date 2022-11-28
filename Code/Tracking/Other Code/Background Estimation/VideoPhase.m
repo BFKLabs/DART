@@ -481,7 +481,7 @@ classdef VideoPhase < handle
             % ---------------------------------------- %            
             
             % reduces the empty frame grouping index cells
-            iCol = find(~cellfun(@isempty,iGrpF));
+            iCol = find(~cellfun('isempty',iGrpF));
             iGrpF = iGrpF(iCol);
             
             % sets up the feasible frame index array
@@ -1187,7 +1187,7 @@ classdef VideoPhase < handle
             if ~obj.calcOK; return; end
             
             % determines which frames are a) not empty, and b) not all NaNs
-            isOK = ~cellfun(@isempty,Img(:));
+            isOK = ~cellfun('isempty',Img(:));
             isOK(isOK) = ~cellfun(@(x)(all(isnan(x(:)))),Img(isOK));
                     
             % adds in any missing image frames

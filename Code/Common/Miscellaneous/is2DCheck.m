@@ -19,9 +19,9 @@ ARtol = 3;
 % calculates the aspect ratio and determines if is greater than tolerance
 if isempty(iMov.xTube) || (nargin == 2)         
     AR = cellfun(@(iC,iR)(mean...
-                    (cellfun(@length,iR))/length(iC)),iMov.iCT,iMov.iRT);  
+                    (cellfun('length',iR))/length(iC)),iMov.iCT,iMov.iRT);  
 else
-    isOK = ~cellfun(@isempty,iMov.yTube);
+    isOK = ~cellfun('isempty',iMov.yTube);
     [xT,yT] = deal(iMov.xTube(isOK),iMov.yTube(isOK));
     AR = cellfun(@(x,y)(diff(x(1,:))/diff(y(1,:))),xT,yT);    
 end

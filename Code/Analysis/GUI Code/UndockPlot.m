@@ -280,7 +280,7 @@ fPos = getFinalResizePos(hObject);
 if (nReg > 1)
     % if multiple subplots, check each subplot to see if a valid dataset
     % has been set
-    iReg = ~cellfun(@isempty,sPara.pData)';
+    iReg = ~cellfun('isempty',sPara.pData)';
 end
 
 % makes the figure invisible

@@ -9,7 +9,7 @@ if isempty(numStr)
 else
     % otherwise, determine which of the number strings contains the valid
     % file index (the 4-digit number)
-    nLen = cellfun(@length,numStr);
+    nLen = cellfun('length',numStr);
     isOK = nLen == 4;
     switch sum(isOK)
         case 0

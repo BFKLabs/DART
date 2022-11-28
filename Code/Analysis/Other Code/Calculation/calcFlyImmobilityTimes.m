@@ -25,7 +25,7 @@ if (nargin < 7); Tmlt = 60; end
 if (nargin < 6)
     % sets the time indices that correspond to the stimuli events
     iTs = cellfun(@(x)(find(T<x,1,'last')),Ts,'un',0);
-    iTs = cell2mat(iTs(~cellfun(@isempty,iTs)));
+    iTs = cell2mat(iTs(~cellfun('isempty',iTs)));
     
     % sets the index band array
     indB = num2cell([[1;(iTs(1:end-1)+1)],iTs],2);
@@ -80,10 +80,10 @@ global nGrpMin
 % determines the indices of the time points where the x-location of the fly
 % is greater than the
 iGrp = cellfun(@(x)(getGroupIndex(x)),num2cell(dPx,1),'un',0);
-iNw = cellfun(@(x)(find(cellfun(@length,x)>= nGrpMin,1,'first')),iGrp,'un',0);
+iNw = cellfun(@(x)(find(cellfun('length',x)>= nGrpMin,1,'first')),iGrp,'un',0);
 
 % sets the reaction times (for those that did react)
-[tReact,ii] = deal(NaN(1,length(iNw)),~cellfun(@isempty,iNw));
+[tReact,ii] = deal(NaN(1,length(iNw)),~cellfun('isempty',iNw));
 tReact(ii) = cellfun(@(x,y)(dT(x{y}(1))),iGrp(ii),iNw(ii));
 
 % --- calculate the reactivity band           

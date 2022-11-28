@@ -6,7 +6,7 @@ A = load(sFile);
 
 % determines if any videos have NaN time-stamps
 indN = cellfun(@(x)(find(isnan(x)|(x==0))),A.tStampV,'un',0);
-hasN = ~cellfun(@isempty,indN);
+hasN = ~cellfun('isempty',indN);
 
 % if there are such videos, then reset the time values
 if any(hasN)

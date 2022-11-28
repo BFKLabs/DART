@@ -149,7 +149,7 @@ classdef SigPopData < DataOutputArray
                     end
 
                     % sets up the signal header strings
-                    if all(cellfun(@isempty,obj.X(i,:)))
+                    if all(cellfun('isempty',obj.X(i,:)))
                         % case is there are no sub-group dependencies
                         mStrS = string([{''},obj.appName(:)']);
                     else
@@ -174,7 +174,7 @@ classdef SigPopData < DataOutputArray
             
             % initialisations
             b = '';         
-            nDep = cellfun(@length,obj.xDep);
+            nDep = cellfun('length',obj.xDep);
             mStrH = {'Group Name';'Metric';''};
 
             % memory allocation
@@ -223,7 +223,7 @@ classdef SigPopData < DataOutputArray
 
             % combines the header/metric arrays
             mStrTF = obj.mStrT;
-            iiD = ~cellfun(@isempty,obj.YR);
+            iiD = ~cellfun('isempty',obj.YR);
 
             % appends the data            
             DataF0 = cellfun(@(x,y)([x;y]),mStrTF(iiD),obj.YR(iiD),'un',0);
@@ -243,7 +243,7 @@ classdef SigPopData < DataOutputArray
             
             % initialisations
             a = {''};
-            hasX = ~cellfun(@isempty,X);
+            hasX = ~cellfun('isempty',X);
             [xi1,xi2] = deal(1:length(X{1}),1:length(X{2}));
             
             if all(hasX)
@@ -326,7 +326,7 @@ classdef SigPopData < DataOutputArray
         function reduceDataArray(obj)
             
             % field retrieval
-            hasX = ~cellfun(@isempty,obj.xDep);
+            hasX = ~cellfun('isempty',obj.xDep);
             xDepT0 = cell(size(hasX));
             xDepT0(hasX) = cellfun(@strjoin,obj.xDep,'un',0);
 %             xDepT0 = cellfun(@(x)(x{1}),obj.xDep,'un',0);

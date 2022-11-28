@@ -91,7 +91,7 @@ classdef FileTreeExplorer < handle
                            'iLvl',iLvl,'isSet',false);
             
             % determines the directory fields in the array
-            nDir = sum(~cellfun(@isempty,sFileSp),2) - 1;            
+            nDir = sum(~cellfun('isempty',sFileSp),2) - 1;            
             isDir = nDir > 0;              
             
             % determines the indices of the

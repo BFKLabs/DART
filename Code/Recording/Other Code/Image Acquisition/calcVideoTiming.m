@@ -412,7 +412,7 @@ while (1)
     % calculates the optimal bin indices   
     iBin = cellfun(@(x)(detOptBinIndiv(dFrm,ind(x:end),Tmax)),...
                                         num2cell(ind),'un',0);             
-    nVidNw = cellfun(@length,iBin); 
+    nVidNw = cellfun('length',iBin); 
     
     % determines if there are any groups to join
     if (all(nVidNw == 1))

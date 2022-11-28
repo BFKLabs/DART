@@ -8,7 +8,7 @@ tMin = max(20,tMinGrp);
 
 % memory allocations
 [nGrp0,Tgrp0] = deal(str2double(cP.nGrp),cP.Tgrp0); 
-jj = cellfun(@length,indB) > 1;
+jj = cellfun('length',indB) > 1;
 i0 = find(jj,1,'first');
 I = cell(length(indB),1);
 
@@ -44,7 +44,7 @@ iGrp = cellfun(@(x)(getGroupIndex(x)),num2cell(~Y,1),'un',0);
 % sets all the time bins where there is inactivity, but no sleep, to being 
 % active time bins
 for i = 1:length(iGrp)
-    nGrp = cellfun(@length,iGrp{i});
+    nGrp = cellfun('length',iGrp{i});
     Y(cell2mat(iGrp{i}(nGrp < cP.tSleep)),i) = true;
 end
 
@@ -54,7 +54,7 @@ indGrp = detTimeGroupIndices(Tmn,snTot.iExpt(1).Timing.T0,nGrp0,Tgrp0,true);
 
 % sets the number of the time points for each time group (remove small
 % time bins that are short)
-N = cellfun(@length,indGrp);
+N = cellfun('length',indGrp);
 N(N < tMin) = 0;
 indGrp(cellfun(@(x)(x==0),num2cell(N))) = {[]};
 

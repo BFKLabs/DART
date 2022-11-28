@@ -3,7 +3,7 @@ function iMov = resetBGImages(iMov)
 
 % retrieves the background images
 if iscell(iMov.Ibg{1})
-    Ibg0 = iMov.Ibg(~cellfun(@isempty,iMov.Ibg));
+    Ibg0 = iMov.Ibg(~cellfun('isempty',iMov.Ibg));
     i0 = find(cellfun(@(x)(~isempty(x{1})),Ibg0),1,'first');
     [Ibg,bgCell] = deal(Ibg0{i0},true);
 else
@@ -20,7 +20,7 @@ end
 if length(Ibg) ~= length(iR)
     % if not, attempt to match the regions by their sizes
     szBG = cell2mat(cellfun(@size,Ibg(:),'un',0));        
-    [nR,nC] = deal(cellfun(@length,iR),cellfun(@length,iC));
+    [nR,nC] = deal(cellfun('length',iR),cellfun('length',iC));
     
     % determines the closest matching regions 
     ind = zeros(length(nR),1);

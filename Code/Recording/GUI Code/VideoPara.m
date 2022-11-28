@@ -628,7 +628,7 @@ function [tWidMx,pWidMx] = ...
                 
 % removes any enumeration parameters which only have 1 choice
 cVal = field2cell(srcInfoENum,'ConstraintValue'); 
-isMulti = cellfun(@length,cVal) > 1;
+isMulti = cellfun('length',cVal) > 1;
 srcInfoENum = srcInfoENum(isMulti);
 
 % other initialisations

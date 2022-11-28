@@ -155,7 +155,7 @@ iData = getappdata(handles.figDataOutput,'iData');
 iProg = getappdata(getappdata(handles.figDataOutput,'hGUI'),'iProg');
 
 % determines if any of the data sheet tabs are empty
-ii = find(cellfun(@isempty,iData.tData.Data));
+ii = find(cellfun('isempty',iData.tData.Data));
 if ~isempty(ii)
     % if so, then create a warning message for the user
     wStr = sprintf('The following data tab sheets are empty:\n\n');
@@ -1557,7 +1557,7 @@ if (any(abs(dForm) == [2 3]))
 end
 
 % sets empty strings into the empty cells
-AT(cellfun(@isempty,AT)) = {''};
+AT(cellfun('isempty',AT)) = {''};
 
 % --- sets the final statistic test string arrays
 function A = setStatStringArray(iData,pData,pStr,tStr,Type,nGrpY)
@@ -2351,7 +2351,7 @@ Data0 = string(iData.tData.Data{iData.cTab}{iSel}(:));
 if isempty(Data0)
     hasData = false;
 elseif iscell(Data0)
-    hasData = ~isempty(find(~cellfun(@isempty,Data0),1,'first'));
+    hasData = ~isempty(find(~cellfun('isempty',Data0),1,'first'));
 else
     hasData = size(char(Data0),2) > 1;
 end

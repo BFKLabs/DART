@@ -1085,7 +1085,7 @@ end
 % ------------------------------ %
 
 % sets the indices of the frames that are to be kept
-sOfs = [0;cumsum(cellfun(@length,snTot.T))];
+sOfs = [0;cumsum(cellfun('length',snTot.T))];
 i0 = sOfs(iPara.indS(1)) + iPara.indS(2);
 i1 = sOfs(iPara.indF(1)) + iPara.indF(2);
 indNw = i0:i1;
@@ -2042,7 +2042,7 @@ if isempty(dfDir); return; end
 
 % splits the added directory paths and orders by descending size
 fDirSp = cellfun(@(x)(strsplit(x,filesep)),dfDir,'un',0);
-[~,iS] = sort(cellfun(@length,fDirSp),'descend');
+[~,iS] = sort(cellfun('length',fDirSp),'descend');
 dirRemove = dfDir(iS);
 
 % removes any of the added folders which are empty

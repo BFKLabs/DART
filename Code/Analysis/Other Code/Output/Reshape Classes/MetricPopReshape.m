@@ -53,7 +53,7 @@ classdef MetricPopReshape < handle
             
             % retrieves the data array
             mInd = iData.tData.iPara{iData.cTab}{2}{2};
-            mInd = mInd & cellfun(@isempty,YT(:,:,1));
+            mInd = mInd & cellfun('isempty',YT(:,:,1));
 
             % loops through each specified index reshaping the metrics
             for j = 1:length(obj.ind)
@@ -129,7 +129,7 @@ classdef MetricPopReshape < handle
                                 for i = 1:nExp  
                                     Ytmp = cellfun(@(x)(cell2mat(x)),...
                                         num2cell(Y{k}(:,:,i),1),'un',0);
-                                    Ytmp(cellfun(@isempty,Ytmp)) = {NaN};
+                                    Ytmp(cellfun('isempty',Ytmp)) = {NaN};
 
                                     Ygrp{j,k}{i} = cell2mat(Ytmp(:));
                                 end

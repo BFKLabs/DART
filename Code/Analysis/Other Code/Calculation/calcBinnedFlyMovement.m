@@ -4,7 +4,7 @@
 function V = calcBinnedFlyMovement(snTot,T,indB,cP,ind,flyok,varargin)
 
 % determines the non-empty time bins
-jj = cellfun(@length,indB) > 1;
+jj = cellfun('length',indB) > 1;
 V = cell(length(indB),1);
 
 % sets the new x/y fly location arrays

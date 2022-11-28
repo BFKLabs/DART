@@ -46,12 +46,12 @@ if iMov.is2D
                 % determines the grid column index
                 if iscell(iMov.iC{1})
                     % case is the columns are combined (very old format)
-                    iOfs = cumsum([0,cellfun(@length,iMov.iC(2:end))]);
+                    iOfs = cumsum([0,cellfun('length',iMov.iC(2:end))]);
                     iColF = cellfun(@(x)(find(cellfun(@(y)...
                                 (any(y==xMx)),x))),iMov.iC,'un',0);
                     
                     % sets the final column index
-                    ii = ~cellfun(@isempty,iColF);  
+                    ii = ~cellfun('isempty',iColF);  
                     iCol = iColF{ii}+iOfs(ii);
                     
                 else

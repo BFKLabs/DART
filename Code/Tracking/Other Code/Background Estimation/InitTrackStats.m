@@ -372,7 +372,7 @@ classdef InitTrackStats < handle
             end
                   
             % determines the phase/frame 
-            iFrmT = [0;cumsum(cellfun(@length,obj.bgObj.indFrm))];
+            iFrmT = [0;cumsum(cellfun('length',obj.bgObj.indFrm))];
             iPhase = find(iFrmG <= iFrmT(2:end),1,'first');
             iFrm = iFrmG - iFrmT(iPhase);   
             

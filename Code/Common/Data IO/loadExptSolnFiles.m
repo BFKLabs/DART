@@ -125,7 +125,7 @@ else
 
         elseif isSave
             % calculates the reshaping the solution struct        
-            nFrame = cellfun(@length,snTot.T);
+            nFrame = cellfun('length',snTot.T);
             iParaR = setupReshapeParaStruct(handles,snTot,ind);            
             snTot = reshapeSolnStruct(snTot,iParaR,1);
 
@@ -276,7 +276,7 @@ if sepData
     % resets the configuration ID flags (if required)
     if resetID
         snTot.cID = setupFlyLocID(snTot.iMov);        
-        snTot.iMov.ok = ~cellfun(@isempty,snTot.cID);
+        snTot.iMov.ok = ~cellfun('isempty',snTot.cID);
     end
 end
 

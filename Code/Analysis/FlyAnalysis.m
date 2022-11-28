@@ -352,7 +352,7 @@ end
 [stimP,sTrain] = field2cell(snTot,{'stimP','sTrainEx'});
 
 % removes the empty stimuli data arrays
-ii = ~cellfun(@isempty,stimP);
+ii = ~cellfun('isempty',stimP);
 if any(~ii)
     % if there are any experiments with missing stimuli data, then output a
     % message to screen
@@ -1034,7 +1034,7 @@ if nReg == 1
 else    
     % if multiple subplots, check each subplot to see if a valid dataset
     % has been set
-    iReg = ~cellfun(@isempty,sPara.pData)';
+    iReg = ~cellfun('isempty',sPara.pData)';
     isSet = any(iReg);
 end
 
@@ -2730,7 +2730,7 @@ else
     
     % sets the partial/full file names
     [fName,fFile] = deal(cell(length(dDir),1));
-    for i = find(~cellfun(@isempty,dDir(:)'))
+    for i = find(~cellfun('isempty',dDir(:)'))
         fName{i} = field2cell(dir(fullfile(dDir{i},'*.m')),'name');
         if ~isempty(fName{i})
             fFile{i} = cellfun(@(x)(fullfile(dDir{i},x)),fName{i},'un',0);
@@ -2925,7 +2925,7 @@ plotD = getappdata(handles.figFlyAnalysis,'plotD');
 [eInd,~,pInd] = getSelectedIndices(handles);
 switch lower(type)
     case ('expt') % case is the experiment selection
-        ii = any(~cellfun(@isempty,plotD{pInd}),1);
+        ii = any(~cellfun('isempty',plotD{pInd}),1);
         lCol = repmat({'k'},length(ii),1); lCol(ii) = {'r'};        
     case ('func') % case is the analysis function listbox
         % retrieves the data structs
@@ -2939,7 +2939,7 @@ switch lower(type)
         
         % determines which of the functions has values calculated and which
         % of the lines are non-header lines
-        kk = ~cellfun(@isempty,plotD{pInd}(:,eInd));
+        kk = ~cellfun('isempty',plotD{pInd}(:,eInd));
         jj = cellfun(@(x)(~strcmp(x(1),' ')),lStr); 
         
         % sets the index array of the functions that have calculated values

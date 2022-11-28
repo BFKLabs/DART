@@ -795,12 +795,12 @@ classdef AnalysisParaClass < handle
             obj.setupParaObjects('Calc');
             
             % retrieves the GUI object width dimensions
-            obj.hasTab = ~cellfun(@isempty,obj.hObj);
+            obj.hasTab = ~cellfun('isempty',obj.hObj);
             wObj = cellfun(@(x)(retObjDimPos(x,3)),obj.hObj(1:2),'un',0);
             
             % determines the maximum object widths over all objects/types
             for i = 1:2
-                for j = find(~cellfun(@isempty,obj.hObj{i})')
+                for j = find(~cellfun('isempty',obj.hObj{i})')
                     if length(obj.hObj{i}{j}) == 1
                         % case is a boolean parameter
                         wMax(3) = max(wMax(3),wObj{i}{j});
@@ -1368,7 +1368,7 @@ classdef AnalysisParaClass < handle
             if iType < 3
                 % determines the parameters with enabled prop fields
                 Enable = field2cell(p,'Enable');
-                indE = ~cellfun(@isempty,Enable);
+                indE = ~cellfun('isempty',Enable);
                 if ~any(indE); return; end
     
                 % determines the indices of the parent parameter objects
@@ -1712,7 +1712,7 @@ classdef AnalysisParaClass < handle
                         % determines if there are any stimuli events. if
                         % not, then remove the stimuli reponse fields
                         stimP = field2cell(snTotT,'stimP');
-                        hasStim = any(~cellfun(@isempty,stimP));
+                        hasStim = any(~cellfun('isempty',stimP));
                         if strcmp(gPara.movType,'Midline Crossing') ...
                                                 || ~hasStim
                             lStr = lStr(1:4);

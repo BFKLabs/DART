@@ -7,7 +7,7 @@ if isempty(A)
 end
 
 % memory allocation
-A = A(~cellfun(@isempty,A));
+A = rmvEmptyCells(A);
 if isempty(A)
     B = []; 
     return

@@ -69,14 +69,14 @@ for i = 1:nApp
         
     if (pData.isAvg)
         % if there is missing data, then use a NaN arrays to replace them
-        ii = cellfun(@isempty,Ynw);
-        if (all(ii))
+        ii = cellfun('isempty',Ynw);
+        if all(ii)
             % all values are missing, so set an empty array
             Y = repmat({'-----'},N,1);
         else
             % case is daily averaging the data. average the data an place
             % it into a single array    
-            Ynw(cellfun(@isempty,Ynw)) = {NaN(N,1)};
+            Ynw(cellfun('isempty',Ynw)) = {NaN(N,1)};
             Y = num2cell(combineNumericCells(cellfun(@(x)(...
                                 mean(x,2,'omitnan')),Ynw,'un',0)'));
         end

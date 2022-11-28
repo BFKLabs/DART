@@ -15,8 +15,8 @@ dPmax = 10;
 % from the non-empty groups, calculate the distance travelled over each
 % time group (divided by the time for each time group)
 iS = cellfun(@(x)(find(iT == x)),num2cell(xi),'un',0);
-nM = mode(cellfun(@length,iS));
-jj = cellfun(@length,iS) >= min(max(1,nM),max(1,nM/2));
+nM = mode(cellfun('length',iS));
+jj = cellfun('length',iS) >= min(max(1,nM),max(1,nM/2));
 
 % calculates the mean location for the given time periods
 if (any(jj))

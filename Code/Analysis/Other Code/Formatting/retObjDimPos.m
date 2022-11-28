@@ -7,7 +7,7 @@ else
     % converts the object array to a cell array (if not already)
     if ~iscell(hObj); hObj = num2cell(hObj); end
     
-    hasObj = ~cellfun(@isempty,hObj);    
+    hasObj = ~cellfun('isempty',hObj);    
     if ~any(hasObj)
         wObj = {};
     else

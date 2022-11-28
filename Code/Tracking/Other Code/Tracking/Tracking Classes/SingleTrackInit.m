@@ -148,11 +148,11 @@ classdef SingleTrackInit < SingleTrack
             DfPC = cellfun(@(x,y)(sum((y-x).^2,2).^0.5),fPmn,fPmx,'un',0);
             
             % sets up the distance array.
-            DfP = NaN(max(cellfun(@length,DfPC)),length(obj.iMov.ok));
+            DfP = NaN(max(cellfun('length',DfPC)),length(obj.iMov.ok));
             DfP(:,obj.iMov.ok) = combineNumericCells(DfPC(obj.iMov.ok)');
             
             % determines which regions are potentially empty 
-            ii = ~cellfun(@isempty,obj.iMov.StatusF);
+            ii = ~cellfun('isempty',obj.iMov.StatusF);
             if any(ii)
                 % sets the status flag array. any blobs which have been
                 % flagged as non-moving, but actually has moved appreciably
@@ -636,7 +636,7 @@ classdef SingleTrackInit < SingleTrack
             
             % retrieves the movement flags (for each sub-region) and
             % determines which have some sort of movement
-            Zflag = NaN(max(cellfun(@length,obj.mFlag(iPh,:))),obj.nApp);            
+            Zflag = NaN(max(cellfun('length',obj.mFlag(iPh,:))),obj.nApp);            
             Zflag(:,okF) = combineNumericCells(obj.mFlag(iPh,okF)');            
 
             % ----------------------------------- %
@@ -664,7 +664,7 @@ classdef SingleTrackInit < SingleTrack
             % with NaN values)
             DrngC0 = cellfun(@(x)(calcImageStackFcn...
                         (x,'range')),num2cell(obj.fPosL{iPh},2),'un',0); 
-            DrngC0(cellfun(@isempty,DrngC0)) = {NaN(1,2)};                    
+            DrngC0(cellfun('isempty',DrngC0)) = {NaN(1,2)};                    
             
             % calculates the range of each fly over all phases
             if obj.is2D
@@ -1022,7 +1022,7 @@ classdef SingleTrackInit < SingleTrack
                         
                         % calculates the distances between the
                         % known/potential points (over all frames)
-                        if ~any(all(cellfun(@isempty,fPosT)))
+                        if ~any(all(cellfun('isempty',fPosT)))
                             DC0 = cellfun(@(x)(pdist2(x,fPosC)),fPosT,'un',0);
                             DC = mean(combineNumericCells(DC0),2);
                             DCN = DC/obj.frObj.dTol;
@@ -1057,7 +1057,7 @@ classdef SingleTrackInit < SingleTrack
                 okPh = obj.iMov.vPhase < 3;
                 fPosPT = cellfun(@(x)(x{1,iT}),obj.fPosP(okPh,iApp),'un',0);    
                 
-                if any(cellfun(@isempty,fPosPT))
+                if any(cellfun('isempty',fPosPT))
                     indG = [];
                 else
                     indG = obj.frObj.findStaticPeakGroups(fPosPT);
@@ -1206,7 +1206,7 @@ classdef SingleTrackInit < SingleTrack
                     if isempty(obj.prData0)
                         % set the most likely grouping to be that with the
                         % highest phase count
-                        iMx = argMax(cellfun(@length,kGrp));
+                        iMx = argMax(cellfun('length',kGrp));
                     else
                         % retrieves the previous coordinates
                         fPpr = obj.prData0.fPosPr{k}{j}(end,:);
@@ -1222,7 +1222,7 @@ classdef SingleTrackInit < SingleTrack
                             % if the distance is too hight, then set the 
                             % most likely grouping to be that with the
                             % highest phase count                            
-                            iMx = argMax(cellfun(@length,kGrp));
+                            iMx = argMax(cellfun('length',kGrp));
                         end
                     end                                        
                     
@@ -1759,7 +1759,7 @@ classdef SingleTrackInit < SingleTrack
                         % case is there are multiple prominent maxima
                         BL = IRL{i} >= pTol;
                         [jGrp,pC] = getGroupIndex(BL,'Centroid');
-                        AGrp = cellfun(@length,jGrp)/dTol;
+                        AGrp = cellfun('length',jGrp)/dTol;
                         IGrp = cellfun(@(x)(mean(IRL{i}(x))),jGrp);
 
                         % recalculates the centre
@@ -2021,7 +2021,7 @@ classdef SingleTrackInit < SingleTrack
             
             % parameters and initialisations            
             iRTF = unique(cell2mat(iRT(:)'));     
-            nRT = cellfun(@length,iRT);
+            nRT = cellfun('length',iRT);
             mFlag = zeros(size(obj.iMov.flyok,1),1); 
             
             % ensures the images are stored in a cell array
@@ -2199,7 +2199,7 @@ classdef SingleTrackInit < SingleTrack
             % memory allocation
             ok = obj.iMov.ok;
             pFilt = cell(nApp,1);
-            Zflag = NaN(max(cellfun(@length,obj.mFlag)),nApp);
+            Zflag = NaN(max(cellfun('length',obj.mFlag)),nApp);
             
             % retrieves the movement flags (for each sub-region) and
             % determines which have some sort of movement
@@ -2219,7 +2219,7 @@ classdef SingleTrackInit < SingleTrack
             % with NaN values)
             DrngC0 = cellfun(@(x)(calcImageStackFcn...
                         (x,'range')),num2cell(obj.fPosL{iPh},2),'un',0); 
-            DrngC0(cellfun(@isempty,DrngC0)) = {NaN(1,2)};                    
+            DrngC0(cellfun('isempty',DrngC0)) = {NaN(1,2)};                    
             
             % calculates the range of each fly over all phases
             if obj.is2D
@@ -2820,7 +2820,7 @@ classdef SingleTrackInit < SingleTrack
             end              
             
             % calculates the vertical offset
-            yOfs = [0;cumsum(cellfun(@length,iRT(1:end-1)))];            
+            yOfs = [0;cumsum(cellfun('length',iRT(1:end-1)))];            
             
         end
             
@@ -2828,10 +2828,10 @@ classdef SingleTrackInit < SingleTrack
         function Itemp = setupWeightedTemplateImage(obj)
             
             % determines the low variance phases
-            isLoV = (obj.iMov.vPhase == 1) & ~cellfun(@isempty,obj.tPara);
+            isLoV = (obj.iMov.vPhase == 1) & ~cellfun('isempty',obj.tPara);
             
             % calculates a weighted sum of the existing templates
-            N = cellfun(@length,obj.indFrm(isLoV));
+            N = cellfun('length',obj.indFrm(isLoV));
             Itemp0 = cellfun(@(x)(x.Itemp),obj.tPara(isLoV),'un',0);
             Itemp = calcImageStackFcn(Itemp0,'weighted-sum',N/sum(N));            
             

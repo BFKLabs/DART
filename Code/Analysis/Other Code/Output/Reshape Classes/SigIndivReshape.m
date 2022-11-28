@@ -210,7 +210,7 @@ classdef SigIndivReshape < handle
             % 2nd Level - signal separated over individual days
 
             % memory allocation
-            noID = all(cellfun(@isempty,iD));
+            noID = all(cellfun('isempty',iD));
             [nApp,nLvl,nExp] = deal(length(Y),2,length(fok));
             Ygrp = cell(nLvl,nApp); 
             [j0,j1] = deal(cell(nApp,1));
@@ -230,7 +230,7 @@ classdef SigIndivReshape < handle
                         for i = 1:nExp; Y{k}(:,~fok{i}{k},i) = {[]}; end
 
                         % determines all empty cells for the metric
-                        isE = cellfun(@isempty,Y{k});
+                        isE = cellfun('isempty',Y{k});
                         for i = 1:size(isE,3)
                             if any(arr2vec(isE(:,:,i)))
                                 % fills in the empty cells
@@ -274,13 +274,13 @@ classdef SigIndivReshape < handle
                                 (~all(isnan(x),2),1,'last')),YnwI,'un',0);  
 
                         % sets the first NaN row if no matches
-                        ii0 = cellfun(@isempty,j0{k});
+                        ii0 = cellfun('isempty',j0{k});
                         if any(ii0)
                            j0{k}(ii0) = {1};                            
                         end
                         
                         % sets the last NaN row if no matches                        
-                        ii1 = cellfun(@isempty,j1{k}); 
+                        ii1 = cellfun('isempty',j1{k}); 
                         if any(ii1)
                             j1{k}(ii1) = cellfun(@(x)...
                                         (size(x,1)),YnwI(ii1),'un',0);

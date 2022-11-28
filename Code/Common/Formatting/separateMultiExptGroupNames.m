@@ -2,7 +2,7 @@ function gName = separateMultiExptGroupNames(snTot)
 
 % resets the group names    
 cID0 = snTot.cID;  
-ii = ~cellfun(@isempty,cID0);
+ii = ~cellfun('isempty',cID0);
 xiC = num2cell(1:length(ii))';
 pInfo = snTot.iMov.pInfo;
 

@@ -181,7 +181,7 @@ classdef TrackFull < Track
 
             % determines the last phase that has been segmented            
             isSeg = false(size(obj.fObj));
-            okPh = ~cellfun(@isempty,obj.fObj);            
+            okPh = ~cellfun('isempty',obj.fObj);
             isSeg(okPh) = cellfun(@(x)(~isempty(x.fPos)),obj.fObj(okPh));            
             iPhPr = find(isSeg(1:(iPhase-1)),1,'last');
             
@@ -911,7 +911,7 @@ classdef TrackFull < Track
                    obj.pData.fPosL,'un',0);
                
             % set the overall x/y-coordinate limits for each sub-region
-            isOK = ~cellfun(@isempty,pMin);
+            isOK = ~cellfun('isempty',pMin);
             [obj.xLim,obj.yLim] = deal(cell(size(pMax)));
             obj.xLim(isOK) = cellfun(@(x,y)...
                         ([x(:,1),y(:,1)]),pMin(isOK),pMax(isOK),'un',0);

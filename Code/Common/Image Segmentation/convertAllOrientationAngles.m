@@ -187,7 +187,7 @@ else
         
     % determines the small groups
     iGrp = getGroupIndex(B ~= 0);
-    smlGrp = find(cellfun(@length,iGrp) < nGrpMin);
+    smlGrp = find(cellfun('length',iGrp) < nGrpMin);
     
     %
     isOK = true(length(iGrp),1);
@@ -248,7 +248,7 @@ else
     
     % determines all the orphan directional frames
     kGrpF = [getGroupIndex(B == 1);getGroupIndex(B == -1)];
-    kGrpF = kGrpF(cellfun(@length,kGrpF) == 1);    
+    kGrpF = kGrpF(cellfun('length',kGrpF) == 1);    
     
     % if any orphan frames, then determine if they need to be flipped
     for i = 1:length(kGrpF)
@@ -270,7 +270,7 @@ else
         
     % determines any orphan non-feasible frames
     kGrpN = getGroupIndex(isnan(B));
-    kGrpN = kGrpN(cellfun(@length,kGrpN) == 1);      
+    kGrpN = kGrpN(cellfun('length',kGrpN) == 1);      
     
     % if any orphan frames, then determine if they need to be reset
     for i = 1:length(kGrpN)

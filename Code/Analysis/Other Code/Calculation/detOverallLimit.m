@@ -6,7 +6,7 @@ function yLim = detOverallLimit(Y,varargin)
 if (isempty(Y))
     yLim = NaN; return
 elseif (iscell(Y))
-    Y = Y(~cellfun(@isempty,Y));
+    Y = Y(~cellfun('isempty',Y));
     yLim0 = max(cellfun(@(x)(max(x(~isinf(x)))),Y));
 else
     yLim0 = max(Y(~isinf(Y)));

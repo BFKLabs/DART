@@ -22,4 +22,4 @@ for i = 1:length(volObj)
 end
 
 % removes the empty rows from the table
-volInfo = volInfo(~cellfun(@isempty,volInfo(:,1)),:);
+volInfo = volInfo(~cellfun('isempty',volInfo(:,1)),:);

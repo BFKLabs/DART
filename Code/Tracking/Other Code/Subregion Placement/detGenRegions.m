@@ -533,7 +533,7 @@ iGrp0 = [(1+mod((t0-tPer/2)-1,tPer)):tPer:(t0-tPer/2),...
 % groups the indices by their position
 xLim = num2cell([[0;iGrp0],[iGrp0;diP0(end)+1]],2);
 jGrp = cellfun(@(x)(find((diP0>=x(1))&(diP0<x(2)))),xLim,'un',0);
-jGrp = jGrp(~cellfun(@isempty,jGrp));
+jGrp = rmvEmptyCells(jGrp);
 
 % from each grouping, determine the peaks with the highest combined
 % amplitude/prominence score

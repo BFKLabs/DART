@@ -11,7 +11,7 @@ elseif isempty(pat)
     return
 elseif iscell(str)
     hasPat = false(size(str));
-    isOK = ~cellfun(@isempty,str);
+    isOK = ~cellfun('isempty',str);
     hasPat(isOK) = cellfun(@(x)(strContains(x,pat)),str(isOK));
     return
 end

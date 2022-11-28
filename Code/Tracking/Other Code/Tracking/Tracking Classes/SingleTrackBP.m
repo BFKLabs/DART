@@ -1260,7 +1260,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                         % resets the sub-region struct to the loaded files
                         [obj.iMov,obj.iMov0] = deal(B.iMov);                                        
                         if ~isempty(B.pData)
-                            nOK = cellfun(@length,B.pData.frmOK);                                                        
+                            nOK = cellfun('length',B.pData.frmOK);
                             if isequal(B.pData.nCount,nOK)
                                 % if all phases are segmented, then use the
                                 % next video for analysis
@@ -1681,7 +1681,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             nPhase = length(obj.iMov.vPhase);
             
             % determines the index of the first 
-            iPr = find(~cellfun(@isempty,obj.iMov0.Ibg),1,'first');
+            iPr = find(~cellfun('isempty',obj.iMov0.Ibg),1,'first');
 
             % loops through all the apparatus checking if the tube statuses
             % have been set correctly. if not, then update the statuses to 

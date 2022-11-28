@@ -972,7 +972,7 @@ classdef DARTProgInstall < handle
             
             % determines the unique directory names
             fDir = cellfun(@strtrim,obj.tData(:,1),'un',0);
-            fDirU = [fDirPr;unique(fDir(~cellfun(@isempty,fDir)),'stable')];
+            fDirU = [fDirPr;unique(fDir(~cellfun('isempty',fDir)),'stable')];
             tStrU = cellfun(@(x)(sprintf('Link To "%s"',x)),fDirU,'un',0);
             
             % resets the column format strings            
@@ -1063,7 +1063,7 @@ classdef DARTProgInstall < handle
         function ok = chkDirString(nwStr)
 
             % initialisations
-            spStr = './\:?"<>|@$!^&'' ';
+            spStr = './\:?"<>|@$!^&''';
             [ok,vStr] = deal(true,'String Input Error');
 
             % if the string is empty, then exit with a false flag
@@ -1080,14 +1080,10 @@ classdef DARTProgInstall < handle
                 if contains(nwStr,spStr(i))
                     % resets the flag and set the output error
                     ok = false;
-                    if strcmp(spStr(i),' ')
-                        eStr = 'Error! String can''t contain white-space.';
-                    else
-                        eStr = sprintf(...
-                            'Error! String can''t contain the string "%s".',spStr(i));
-                    end
-
-                    % outputs the error dialog (if not outputing error string)
+                    eStr = sprintf(['Error! String can''t ',...
+                        'contain the string "%s".'],spStr(i));
+                    
+                    % outputs the error message to screen and exits
                     waitfor(errordlg(eStr,vStr,'modal'));
                     return
                 end

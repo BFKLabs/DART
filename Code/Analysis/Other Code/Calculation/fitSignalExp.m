@@ -321,7 +321,7 @@ ii = cellfun(@(x)(find(strcmp(cStr,x))),pStr,'un',0);
 useDouble = any(strcmp(cStr,'A2'));
 
 % sets the indices of the parameters and scale factors
-indP = cell2mat(ii(~cellfun(@isempty,ii)));
+indP = cell2mat(ii(~cellfun('isempty',ii)));
 
 % retrieves the coefficient values and confidence intervals
 [pp,ppSEM] = deal(coeffvalues(pExp),diff(confint(pExp),[],1)/(2*1.96));

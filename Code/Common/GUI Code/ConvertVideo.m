@@ -788,7 +788,7 @@ classdef ConvertVideo < handle
         
             % initialisations
             fFile = obj.findAllVideoFiles(dirName);
-            isValid = any(~cellfun(@isempty,fFile));            
+            isValid = any(~cellfun('isempty',fFile));
                         
         end        
         

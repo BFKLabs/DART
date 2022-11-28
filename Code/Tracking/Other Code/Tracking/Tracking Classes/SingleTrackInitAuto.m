@@ -294,7 +294,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
             % calculates the template image from the estimated image
             IsubT = cell2cell(Isub);
             IsubN = cellfun(@(x)(max(0,median(x(:))-x)),...
-                                IsubT(~cellfun(@isempty,IsubT)),'un',0);
+                                IsubT(~cellfun('isempty',IsubT)),'un',0);
             Itemp = calcImageStackFcn(IsubN,'mean');
             
             % calculates the shape gaussian std. dev
@@ -397,7 +397,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
             end
             
             % calculates the spacing difference between sub-regions
-            Dtot = cell2mat(Dt(~cellfun(@isempty,Dt))); 
+            Dtot = cell2mat(Dt(~cellfun('isempty',Dt))); 
             N = histcounts(Dtot,1:max(Dtot)); 
             Ns = [0;smooth(N(2:end))];
             
@@ -461,7 +461,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
             N = length(obj.iMov.posO);
             
             % determines the horizontal extent of all valid regions
-            for i = find(~cellfun(@isempty,obj.yTube(:)'))
+            for i = find(~cellfun('isempty',obj.yTube(:)'))
                 % updates the progressbar
                 wStrNw = sprintf('Detecting Region Extent (%i of %i)',i,N);
                 if obj.hProg.Update(3+obj.wOfsL,wStrNw,i/N)

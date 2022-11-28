@@ -356,7 +356,7 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % calculates the change in the vertical location
             yDir = 3 - 2*get(hObj,'UserData');
-            dY = roundP(median(cellfun(@length,obj.iMov.iRT{iApp})));
+            dY = roundP(median(cellfun('length',obj.iMov.iRT{iApp})));
             obj.iMov.pos{iApp}(2) = obj.iMov.pos{iApp}(2) + yDir*dY;            
             obj.iMov.iR{iApp} = min(yMax,max(0,obj.iMov.iR{iApp}+yDir*dY));
             
@@ -608,7 +608,7 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % fills any missing elements with the outer region dimenions
             pPos = obj.iMov.pos;
-            useOuter = cellfun(@isempty,pPos);
+            useOuter = cellfun('isempty',pPos);
             pPos(useOuter) = obj.iMov.posO(useOuter);
             
             % sets the region local/outer region dimension vectors
@@ -633,7 +633,7 @@ classdef GridDetect < matlab.mixin.SetGet
             end            
             
             % calculates the offset
-            dY = roundP(median(cellfun(@length,obj.iMov.iRT{iApp})));
+            dY = roundP(median(cellfun('length',obj.iMov.iRT{iApp})));
             
             % updates the button enabled properties
             setObjEnable(obj.hButD{1},yHi-sum(pos([2,4]))>dY);

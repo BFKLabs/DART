@@ -137,8 +137,7 @@ classdef DARTInstallerL < handle
             pPosP = [obj.dX*[1,1],obj.widPanel,obj.hghtPanel];
             obj.hPanelM = uipanel(obj.hFig,'Title','','Units','Pixel',...
                                            'Position',pPosP);            
-            
-                                       
+                                                   
             % creates the button/label objects
             for i = 1:obj.nBut
                 % calculates the vertical offset
@@ -180,7 +179,7 @@ classdef DARTInstallerL < handle
             % installation of DART)
             isGit = cellfun(@(x)...
                     (find(strcmp(x,'git'))),obj.hFigS{2}.pStrS,'un',0);
-            iGrp = ~cellfun(@isempty,isGit);
+            iGrp = ~cellfun('isempty',isGit);
             if ~obj.hFigS{2}.isInst{iGrp}(isGit{iGrp}(1))
                 % if not, then disable the DART installation button
                 obj.ttStr{3} = ['You must install Git before being ',...

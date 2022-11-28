@@ -356,7 +356,7 @@ classdef FilterResObj < handle
             % calculates the number of significant residual peaks have been
             % determined for each sub-image
             jMx = cellfun(@(x)(obj.getSigPeaks(x,Bexc,1)),dIRL,'un',0);  
-            njMx = cellfun(@length,jMx);
+            njMx = cellfun('length',jMx);
             
             % determines frames where there is a unique significant peak
             isU = njMx == 1;
@@ -430,7 +430,7 @@ classdef FilterResObj < handle
             end
             
             % determines the number of maxima on each frame
-            nP = cellfun(@length,pRT);
+            nP = cellfun('length',pRT);
             if any(nP == 0)
                 % case is the sub-region is potentially empty?
                 pMaxT = repmat({NaN(1,2)},obj.nFrm,1);
@@ -703,7 +703,7 @@ classdef FilterResObj < handle
             [obj.iRI,obj.iCI] = deal(iRT,iCT);
             
             % sets up the region mapping indices
-            N = cellfun(@length,iRT);
+            N = cellfun('length',iRT);
             iOfs = [0;cumsum(N(1:end-1))];
             obj.iRM = arrayfun(@(n,i)(i+(1:n)'),N,iOfs,'un',0);
             
@@ -846,7 +846,7 @@ classdef FilterResObj < handle
             end
             
             % determines if there are any ambiguous points
-            ii = ~cellfun(@isempty,obj.fPosAm);
+            ii = ~cellfun('isempty',obj.fPosAm);
             if any(ii)
                 % if so then set up the plot values
                 fPosAmP = cellfun(@(x)(x{obj.iFrmP}),obj.fPosAm(ii),'un',0);                
@@ -1062,7 +1062,7 @@ classdef FilterResObj < handle
                     [~,i2O] = min(DP,[],2,'omitnan');
                     [i2,~,iC] = unique(i2O);
                     indG = arrayfun(@(x)(find(iC==x)),1:max(iC),'un',0);                
-                    for j = find(cellfun(@length,indG) > 1)
+                    for j = find(cellfun('length',indG) > 1)
                         indG{j} = indG{j}(argMin(DP(indG{j},i2(j))));                    
                     end
                 
@@ -1163,7 +1163,7 @@ classdef FilterResObj < handle
             end
             
             % determines the feasible groups
-            hasGrp = ~cellfun(@isempty,iGrp);
+            hasGrp = ~cellfun('isempty',iGrp);
             if ~any(hasGrp); hasGrp(1) = true; end
             
             % sets the final values
@@ -1324,7 +1324,7 @@ classdef FilterResObj < handle
                         jMx = {iMx};
                     else
                         jMx = cellfun(@(x)(intersect(iMx,x)),iGrpN,'un',0);
-                        jMx = jMx(~cellfun(@isempty,jMx));
+                        jMx = jMx(~cellfun('isempty',jMx));
                     end
                     
                     % sets the point for each blob with the highest value                    

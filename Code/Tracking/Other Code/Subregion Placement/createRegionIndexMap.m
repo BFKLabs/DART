@@ -92,7 +92,7 @@ for j = 1:nApp
 end
 
 % sets the global mapping indices
-nGrp = cellfun(@length,iGrp);
+nGrp = cellfun('length',iGrp);
 [nRow,nCol] = deal(iMov.pInfo.nRow,iMov.pInfo.nCol);
 [xiR,xiC] = deal(repmat((1:nCol),nRow,1),repmat((1:nRow)',1,nCol));
 

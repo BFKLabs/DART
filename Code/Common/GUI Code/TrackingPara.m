@@ -265,7 +265,7 @@ end
 % updates the column format for the channel connection table
 cFormT{3} = setupTableColumnFormat(iMov,rtP);    
 C2A = cellfun(@(x)(find(strcmp(x,cFormT{3}))-1),DataT(:,3),'un',0);
-ii = cellfun(@isempty,C2A);
+ii = cellfun('isempty',C2A);
 [C2A(ii),DataT(ii,3)] = deal({0},{'None'});
 
 % updates the channel to sub-region connection indices

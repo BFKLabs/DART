@@ -138,7 +138,7 @@ classdef MetricIndivData < DataOutputArray
             
             % retrieves the independent variables
             xDepT = strings(size(obj.xDep));
-            hasX = ~cellfun(@isempty,obj.xDep);
+            hasX = ~cellfun('isempty',obj.xDep);
             xDepT(hasX) = cellfun(@strjoin,obj.xDep(hasX),'un',0);
             
             % determines the unique sub-grouping types

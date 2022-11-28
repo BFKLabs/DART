@@ -84,7 +84,7 @@ for i = 1:m
 end
 
 % optimises the title placements
-hAxT = cellfun(@(x)(x(1)),hAx(~cellfun(@isempty,hAx)),'un',0);
+hAxT = cellfun(@(x)(x(1)),hAx(~cellfun('isempty',hAx)),'un',0);
 optTitlePlacement(hAxT,'Title')
 
 % %
@@ -114,7 +114,7 @@ hAx0 = hAx{1}(1);
 axP = cell2mat(cellfun(@(x)(get(x(1),'position')),hAx(1,:)','un',0));
 pX = cellfun(@(x)(get(x(1),'xtick')/max(get(x(1),'xlim'))),hAx(1,:),'un',0);
 pX = cellfun(@(x)(x((x >= 0) & (x <= 1))),pX,'un',0);    
-if (all(cellfun(@isempty,pX))); return; end
+if (all(cellfun('isempty',pX))); return; end
 
 % determines the overall maximum x-axis label width
 [txtX,fSz] = deal(get(hAx0,'xticklabel'),get(hAx0,'fontsize'));

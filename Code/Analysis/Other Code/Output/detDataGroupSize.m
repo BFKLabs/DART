@@ -29,10 +29,10 @@ if any(iiG)
         % determines the stat data structs
         yVar = iData.yVar(ind);
         if nargin == 3
-            isS = ~cellfun(@isempty,field2cell(yVar,'Stats'));
+            isS = ~cellfun('isempty',field2cell(yVar,'Stats'));
             XX = field2cell(yVar(isS),'Stats');
         else
-            isX = ~cellfun(@isempty,field2cell(yVar,'xDep'));
+            isX = ~cellfun('isempty',field2cell(yVar,'xDep'));
             XX = field2cell(yVar(isX),'xDep');
         end
         
@@ -49,7 +49,7 @@ if any(iiG)
             else
                 ii = cellfun(@(x)(find...
                         (cellfun(@(y)(any(strcmp(x,y))),Var))),XX,'un',0);
-                ii = cell2mat(ii(~cellfun(@isempty,ii)));                
+                ii = cell2mat(ii(~cellfun('isempty',ii)));                
                 [nGrp,VarX] = deal(nGrp(ii),VarX(unique(ii,'stable')));
             end
         end

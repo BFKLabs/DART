@@ -67,7 +67,7 @@ else
     % removes empty arrays and combines cell arrays into numerical arrays
     if ~any(cType == 6)
         Y = cellfun(@(x)...
-                (combineNumericCells3(x(~cellfun(@isempty,x)))),Y,'un',0);
+                (combineNumericCells3(x(~cellfun('isempty',x)))),Y,'un',0);
     end
 end
 

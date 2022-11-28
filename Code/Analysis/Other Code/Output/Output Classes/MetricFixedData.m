@@ -54,7 +54,7 @@ classdef MetricFixedData < DataOutputArray
 
             % sets the independent variable properties
             obj.xDep = field2cell(obj.iData.yVar(obj.mIndG),'xDep');
-            obj.hasXDep = [~cellfun(@isempty,obj.xDep),...
+            obj.hasXDep = [~cellfun('isempty',obj.xDep),...
                             cellfun(@(x)(length(x)>1),obj.xDep)];            
             
             % sets the other fields

@@ -1135,7 +1135,7 @@ classdef ExtnData < handle
                 obj.showFieldNameError(iExpC,iParaC);
             else
                 % otherwise, determine any data row/column is empty
-                isE = cellfun(@isempty,exDT.Data);
+                isE = cellfun('isempty',exDT.Data);
                 [isER,isEC] = deal(all(isE,2),all(isE,1));                
                 if any(isER) || any(isEC)
                     % case is at least one row/column is empty

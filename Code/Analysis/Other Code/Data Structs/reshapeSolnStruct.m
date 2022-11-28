@@ -2,7 +2,7 @@
 function snTot = reshapeSolnStruct(snTot,iPara,varargin)
 
 % sets the the frame offset for each of the movies
-nFrame = cellfun(@length,snTot.T);
+nFrame = cellfun('length',snTot.T);
 frmOfs = [0;cumsum(nFrame(1:end-1))];
 
 % determines the frame indices that are to be output
@@ -11,7 +11,7 @@ frmInd = (frmOfs(indS(1))+indS(2)):(frmOfs(indF(1))+indF(2));
 
 % resets the fly position x/y data arrays (if required)
 if nargin == 2
-    ii = ~cellfun(@isempty,snTot.Px);
+    ii = ~cellfun('isempty',snTot.Px);
     snTot.Px(ii) = cellfun(@(x)(x(frmInd,:)),snTot.Px(ii),'un',0);
     if ~isempty(snTot.Py)
         snTot.Py(ii) = cellfun(@(x)(x(frmInd,:)),snTot.Py(ii),'un',0);

@@ -124,4 +124,4 @@ for i = 1:size(imxBand,1)
 end
 
 % removes all non-feasible entries
-imx = imx(~cellfun(@isempty,imx));
+imx = imx(~cellfun('isempty',imx));

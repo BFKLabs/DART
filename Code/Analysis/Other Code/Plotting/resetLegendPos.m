@@ -134,7 +134,7 @@ hT = findobj(hLg,'type','text');
 
 % sorts the objects in ascending x-order
 pData = get(hP,pType{dim});
-pData = pData(cellfun(@length,pData)>1);
+pData = pData(cellfun('length',pData)>1);
 [~,ii] = sort(cellfun(@(x)(x(dim)),pData));
 [hP,pData,hT] = deal(hP(ii),pData(ii),hT(ii));
 

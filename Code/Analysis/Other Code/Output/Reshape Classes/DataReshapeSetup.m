@@ -89,7 +89,7 @@ classdef DataReshapeSetup < handle
             
             % sets the output class fields
             obj.Type = logical(cell2mat(pType0));
-            obj.hasTest = ~cellfun(@isempty,Stats);                        
+            obj.hasTest = ~cellfun('isempty',Stats);
             
             % sets the object dimension fields
             obj.nApp = length(pData.appName);
