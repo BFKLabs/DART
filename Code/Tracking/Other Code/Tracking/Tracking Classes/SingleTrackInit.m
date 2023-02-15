@@ -2885,7 +2885,7 @@ classdef SingleTrackInit < SingleTrack
     end    
     
     % class static methods
-    methods (Static)                
+    methods (Static)
         
         % --- retrieves the comparison phase index
         function [iPhC,iDir] = getCompPhaseIndex(isF,iPh)

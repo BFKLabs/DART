@@ -348,7 +348,7 @@ classdef AdaptorInfoClass < handle
             [obj.objIMAQDev,obj.sFormat,vStrIMAQ0] = deal(cell(nAdapt,1));
                   
             % loops through the adaptor strings retrieving the device names
-            for i = 1:length(adaptStr)                
+            for i = 1:length(adaptStr)
                 try 
                     % attempts to retrieve the device info
                     devInfo = imaqhwinfo(adaptStr{i});                    

@@ -30,6 +30,7 @@ classdef TrackMarkerClass < handle
         % other class fields
         iMov
         Type
+        mPara
         pltLocT
         pltAngT                
         isCG        
@@ -74,6 +75,16 @@ classdef TrackMarkerClass < handle
             hMenuV = findall(hMenuP,'tag','menuMarkerVis');            
             if isempty(hMenuV); setObjEnable(hMenuV,'off'); end
             
+            % determines if the tracking parameters have been set
+            A = load(getParaFileName('ProgPara.mat'));
+            if ispc
+                % track parameters have not been set, so initialise
+                obj.mPara = A.trkP.PC;
+            else
+                % track parameters have been set
+                obj.mPara = A.trkP.PC;
+            end            
+            
         end
         
         % ----------------------------- %
@@ -116,6 +127,7 @@ classdef TrackMarkerClass < handle
             end
 
             % retrieves the checkbox markers
+            [hTStr,hMStr] = deal('hTube','hMark');
             isOnT = get(obj.hChkT,'Value') && isOn;
             isOnM = get(obj.hChkM,'Value') && isOn;
             isOnD = get(obj.hChkD,'Value') && isOn;            
@@ -137,13 +149,12 @@ classdef TrackMarkerClass < handle
                 end
 
                 for j = iFlyR(:)'
-                    % sets the tag strings and the offsets                
-                    [hTStr,hMStr] = deal('hTube','hMark');
+                    % sets the tag strings and the offsets
                     hDStr = sprintf('hDir%i',i);
 
                     % sets the plot colour for the tubes
                     [pCol,fAlpha,eCol,pMark,mSz] = ...
-                                        obj.getMarkerProps(obj.iMov,i,j);        
+                                        obj.getMarkerProps(i,j);        
 
                     % sets the x/y coordinates of the tube regions (either 
                     % for single tracking, or multi-tracking for the first 
@@ -175,7 +186,7 @@ classdef TrackMarkerClass < handle
                     end
 
                     % creates the fly positional/orientation markers
-                    obj.hMark{i}{j} = plot(NaN,NaN,'Color',pCol,...
+                    obj.hMark{i}{j} = line(NaN,NaN,'Color',pCol,...
                             'Marker',pMark,'MarkerSize',mSz,'Parent',...
                             obj.hAx,'Visible','off','LineWidth',obj.lWid,...
                             'UserData',[i,j],'tag',hMStr);
@@ -733,7 +744,7 @@ classdef TrackMarkerClass < handle
 
                     for j = iFlyR(:)'
                         % retrieves the marker properties 
-                        [pCol,fAlpha,eCol] = obj.getMarkerProps(iMov,i,j);              
+                        [pCol,fAlpha,eCol] = obj.getMarkerProps(i,j);              
 
                         % sets the tube region patch based on the detection type 
                         switch obj.Type
@@ -958,7 +969,64 @@ classdef TrackMarkerClass < handle
                                 (setObjVisibility(y,0)),x)),hMarkOn)                
             end
                 
-        end        
+        end     
+        
+        % --- retrieves the tube/fly marker properties (based on the 
+        %     analysis type and the status of the fly/tube region)
+        function [pCol,fAlpha,eCol,pMark,mSz] = getMarkerProps(obj,i,j)
+
+            % global variables
+            global isCalib
+
+            % initialisations
+            eCol = 'y';
+            cStr = {'pNC','pMov','pStat','pRej'};
+
+            % sets the plot colour for the tubes
+            if isCalib
+                % determines if the fly has been accepted/rejected
+                if obj.iMov.flyok(j,i) && obj.iMov.ok(i)
+                    % case is fly is accepted
+                    fAlpha = 0.1;
+                    mSz = obj.mPara.pMov.mSz;
+                    pCol = obj.mPara.pMov.pCol;
+                    pMark = obj.mPara.pMov.pMark;
+                else
+                    % case is fly is rejected
+                    [eCol,fAlpha] = deal('k',0.50);
+                    mSz = obj.mPara.pRej.mSz;
+                    pCol = obj.mPara.pRej.pCol;
+                    pMark = obj.mPara.pRej.pMark;
+                end
+            else
+                % resets the status flag (if fly is flagged for rejection)
+                if detMltTrkStatus(obj.iMov)
+                    % case is multi-fly tracking
+                    Status = 1;
+
+                else
+                    % case is single fly tracking
+                    if ~(obj.iMov.flyok(j,i) && obj.iMov.ok(i))
+                        % case is the fly has been rejected
+                        [Status,obj.iMov.Status{i}(j)] = deal(3);
+
+                    elseif isnan(obj.iMov.Status{i}(j))
+                        % case is the status flag has not been set
+                        [Status,obj.iMov.Status{i}(j)] = deal(0);
+
+                    else
+                        % otherwise, set the status flag
+                        Status = obj.iMov.Status{i}(j);
+                    end    
+                end
+
+                % sets the facecolour and marker colour, type and size
+                fAlpha = 0.1*(1 + (Status~=1));   
+                mPF = getStructField(obj.mPara,cStr{1+Status});                
+                [pMark,mSz,pCol] = deal(mPF.pMark,mPF.mSz,mPF.pCol);
+            end
+
+        end                
         
     end
     
@@ -995,70 +1063,7 @@ classdef TrackMarkerClass < handle
             set(hArr,'xdata',xArr,'ydata',yArr);
 
         end        
-       
-        % --- retrieves the tube/fly marker properties (based on the 
-        %     analysis type and the status of the fly/tube region)
-        function [pCol,fAlpha,eCol,pMark,mSz] = getMarkerProps(iMov,i,j)
-
-            % global variables
-            global isCalib
-
-            % initialisations
-            eCol = 'y';
-            cStr = {'pNC','pMov','pStat','pRej'};
-
-            % determines if the tracking parameters have been set
-            A = load(getParaFileName('ProgPara.mat'));
-            if ispc
-                % track parameters have not been set, so initialise
-                mPara = A.trkP.PC;
-            else
-                % track parameters have been set
-                mPara = A.trkP.PC;
-            end
-
-            % sets the plot colour for the tubes
-            if isCalib
-                % determines if the fly has been accepted/rejected
-                if iMov.flyok(j,i) && iMov.ok(i)
-                    % case is fly is accepted
-                    [fAlpha,mSz] = deal(0.1,mPara.pMov.mSz);
-                    [pCol,pMark] = deal(mPara.pMov.pCol,mPara.pMov.pMark);
-                else
-                    % case is fly is rejected
-                    [eCol,fAlpha,mSz] = deal('k',0.50,mPara.pRej.mSz);
-                    [pCol,pMark] = deal(mPara.pRej.pCol,mPara.pRej.pMark);                            
-                end
-            else
-                % resets the status flag (if fly is flagged for rejection)
-                if detMltTrkStatus(iMov)
-                    % case is multi-fly tracking
-                    Status = 1;
-
-                else
-                    % case is single fly tracking
-                    if ~(iMov.flyok(j,i) && iMov.ok(i))
-                        % case is the fly has been rejected
-                        [Status,iMov.Status{i}(j)] = deal(3);
-
-                    elseif isnan(iMov.Status{i}(j))
-                        % case is the status flag has not been set
-                        [Status,iMov.Status{i}(j)] = deal(0);
-
-                    else
-                        % otherwise, set the status flag
-                        Status = iMov.Status{i}(j);
-                    end    
-                end
-
-                % sets the facecolour and marker colour, type and size
-                fAlpha = 0.1*(1 + (Status~=1));   
-                mPF = getStructField(mPara,cStr{1+Status});                
-                [pMark,mSz,pCol] = deal(mPF.pMark,mPF.mSz,mPF.pCol);
-            end
-
-        end
-        
+               
     end
     
 end

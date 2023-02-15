@@ -406,7 +406,8 @@ classdef CalcBG < handle
                         setObjVisibility(obj.hManualH,'off')                                              
                         
                         % disables everything else
-                        obj.manualButtonClick(hObject, 'alt') 
+                        obj.manualButtonClick(hObject, 'alt')
+                        obj.setManualDetectEnable;
                     end
                     
                 case 'alt'
@@ -2239,11 +2240,11 @@ classdef CalcBG < handle
                 obj.checkTubeRegions(obj.hGUI.checkTubeRegions, [])
             end  
             
-            % if the tubes are on, then remove them
-            if get(obj.hGUI.checkFlyMarkers,'value')
-                set(obj.hGUI.checkFlyMarkers,'value',false)
-                obj.checkFlyMarkers(obj.hGUI.checkFlyMarkers, [])
-            end               
+%             % if the tubes are on, then remove them
+%             if get(obj.hGUI.checkFlyMarkers,'value')
+%                 set(obj.hGUI.checkFlyMarkers,'value',false)
+%                 obj.checkFlyMarkers(obj.hGUI.checkFlyMarkers, [])
+%             end               
             
             % sets the mouse motion callback function            
             [obj.iCloseR,obj.iCloseSR,obj.iCloseF] = deal(-1);
@@ -2701,12 +2702,12 @@ classdef CalcBG < handle
             
             % creates the new marker
             hold(obj.hAx,'on')
-            hPlt = scatter(obj.hAx,xP,yP,'k','tag','hManualAdd',...
+            hPlt = scatter(obj.hAx,xP,yP,'ko','tag','hManualAdd',...
                                 'MarkerFaceColor','y','UserData',uListNw);            
             obj.hManual = [obj.hManual;hPlt];
             
             % turns off the axes hold            
-            uistack(hPlt,'bottom');
+%             uistack(hPlt,'bottom');
             hold(obj.hAx,'off')
             
         end        

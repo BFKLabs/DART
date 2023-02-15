@@ -143,6 +143,20 @@ Dtol = mean(obj.iMov.szObj);
 fPosNw = pData.fPos{iApp}{iTube};
 [iR,iRT,iC] = deal(iMov.iR{iApp},iMov.iRT{iApp}{iTube},iMov.iC{iApp});
 
+% if the status flag is not set properly, then determine the status flag
+% based on the positional coordinates
+if isnan(iMov.Status{iApp}(iTube))
+    if all(isnan(fPosNw(:)))
+        % no values were not calculated, so flag as rejected
+        iMov.Status{iApp}(iTube) = 3;
+        iMov.flyok(iTube,iApp) = false;
+    else
+        % otherwise, calculate the status flags based on position range
+        Drng = sqrt(sum(range(fPosNw,1).^2));
+        iMov.Status{iApp}(iTube) = 1 + (Drng < Dtol);
+    end
+end  
+
 % determines the nan frames
 ii = double(any(isnan(fPosNw),2));
 for i = find(iMov.vPhase >= 3)'

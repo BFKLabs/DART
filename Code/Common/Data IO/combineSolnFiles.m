@@ -29,7 +29,11 @@ if exist(smFile,'file')
     
     % determines the solution files which contain the base file name
     baseName = smData.iExpt.Info.BaseName;
-    hasBN = cellfun(@(x)(strContains(x,baseName)),sName);
+    if isempty(baseName)
+        hasBN = cellfun(@(x)(startsWith(x,' -')),sName);
+    else
+        hasBN = cellfun(@(x)(strContains(x,baseName)),sName);
+    end
     
     % retrieves the index of the first file
     if any(hasBN)

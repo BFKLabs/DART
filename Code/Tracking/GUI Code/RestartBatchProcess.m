@@ -395,6 +395,7 @@ else
     if isempty(iSel)
         prStr = 'N/A';
     else
+        bpNw = iExptAdd.bpData(iSel);
         isSegNw = iExptAdd.isSeg{iSel};    
         pComp = roundP(100*sum(isSegNw)/length(bpNw.mName),1);
         prStr = sprintf('%i%s',pComp,char(37));

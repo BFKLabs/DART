@@ -920,7 +920,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             end
 
             % closes the progress bar
-            try; hh.closeProgBar(); end
+            try hh.closeProgBar(); catch; end
             hh = [];            
             
             % if there was an error loading a directory/file, then 

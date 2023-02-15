@@ -223,9 +223,7 @@ classdef TrackRegionClass < handle
         function [rPos,hROI] = setupMainFrameRect(obj)
 
             % retrieves the outer region handle
-            hOuter = findall(obj.hAx,'Tag','hOuter');
-            
-            %
+            hOuter = findall(obj.hAx,'Tag','hOuter');            
             delete(hOuter); hOuter = [];
 
             % updates the position of the outside rectangle

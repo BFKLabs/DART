@@ -218,7 +218,12 @@ classdef FilterResObj < handle
             
             % sets up the exclusion binary masks    
             szL = cellfun(@(x)(size(x{1})),IRL,'un',0);
-            BexcT = cellfun(@(x)(~bwmorph(true(x),'remove')),szL,'un',0);            
+            if obj.iMov.is2D
+                BexcT = cellfun(@(x)(true(x)),szL,'un',0);
+            else
+                BexcT = cellfun(@(x)...
+                    (~bwmorph(true(x),'remove')),szL,'un',0);
+            end
 
             % determines the 
             if ~isShortPhase
@@ -241,10 +246,6 @@ classdef FilterResObj < handle
                     [obj.mFlag(iT),sFlagT] = deal(2,0);
                     
                 else
-%                     if iT == 12
-%                         a = 1;
-%                     end
-                    
                     % otherwise, use the residual based methods to
                     % determine the blob's locations
                     [sFlagT,uData] = obj.detSubRegionStatus...
@@ -704,7 +705,8 @@ classdef FilterResObj < handle
             
             % sets up the region mapping indices
             N = cellfun('length',iRT);
-            iOfs = [0;cumsum(N(1:end-1))];
+            iOfs = cellfun(@(x)(x(1)-1),obj.iRI);
+%             iOfs = [0;cumsum(N(1:end-1))];
             obj.iRM = arrayfun(@(n,i)(i+(1:n)'),N,iOfs,'un',0);
             
         end
@@ -1182,9 +1184,12 @@ classdef FilterResObj < handle
             
             % determines the regional maxima from the image
             kMx0 = find(imregionalmax(I) & B);
-            [yPF,xPF] = ind2sub(sz,kMx0);
+            if isempty(kMx0)
+                kMx0 = find(imregionalmax(I));
+            end
             
             %
+            [yPF,xPF] = ind2sub(sz,kMx0); 
             for i = 1:length(jMx0)
                 D = max(1,pdist2([xPF,yPF],[xP0(i),yP0(i)])/obj.dTol);
                 kMx(i) = kMx0(argMax(I(kMx0)./D));
@@ -1296,8 +1301,9 @@ classdef FilterResObj < handle
         % --- retrieves the signal peaks from the image, I
         function iMx = getSigPeaks(I,Bexc,isDR)
             
-            % parameters
-            pTolN = 0.5; 
+            % parameters            
+            pTolN = 0.5;
+            pSzR = 1/3.5;
 
             % determines the peaks from the normalised image
             IN = normImg(I);            
@@ -1311,13 +1317,26 @@ classdef FilterResObj < handle
             
             % if the residual difference calculations, then remove all
             % peaks that are part of the same thresholded blob
-            if isDR
-                % calculates the thresholded blob properties
-                iGrpN = getGroupIndex(BN);
-                [nMx,nGrpN] = deal(length(iMx),length(iGrpN));
+            if isDR && (length(iMx) > 1)
+                % calculates the thresholded blob properties/sizes
+                iGrpN = getGroupIndex(BN);                
+                nGrpSz = cellfun(@length,iGrpN);
+                ii = nGrpSz/max(nGrpSz) >= pSzR;
+                
+                % determines if there are any relatively small groups
+                if any(~ii)
+                    % if so, remove the maxima that intersects with the 
+                    % small binary blob groups
+                    jGrpN = cell2mat(iGrpN(~ii));
+                    iMx = setdiff(iMx,intersect(jGrpN,iMx));
+                    
+                    % removes the small binary blob groups
+                    iGrpN = iGrpN(ii);                    
+                end
                 
                 % if the peak/blob counts don't match, then reset the peak
                 % indices so that the highest value (for each blob) is set
+                [nMx,nGrpN] = deal(length(iMx),length(iGrpN));                
                 if nMx ~= nGrpN
                     % sets the blob/peak index groupings
                     if nGrpN == 1
@@ -1343,6 +1362,13 @@ classdef FilterResObj < handle
             
             % determines the regional maxima
             iMx0 = find(imregionalmax(I) & B);
+            if isempty(iMx0)
+                % relaxes the condition if no maxima were found
+                iMx0 = find(imregionalmax(I));
+            end
+            
+            % sorts the maxima in descending order (removes any relatively
+            % low maxima from the list)
             [IMx,iS] = sort(I(iMx0),'descend');            
             iMx = iMx0(iS(IMx/IMx(1) > pTolMx));
             
