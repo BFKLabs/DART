@@ -2725,8 +2725,9 @@ if isdeployed
 else
     % retrieves all potential analysis function directories
     mtDir = feval('runExternPackage','MultiTrack',handles,'InitAnalysis');
-    rtDir = feval('runExternPackage','RTTrack',handles,'InitAnalysis');        
-    dDir = {dDir;mtDir;rtDir};
+    rtDir = feval('runExternPackage','RTTrack',handles,'InitAnalysis');
+    afDir = feval('runExternPackage','AnalysisFunc',handles,'InitAnalysis');
+    dDir = [{dDir;mtDir;rtDir};afDir(:)];
     
     % sets the partial/full file names
     [fName,fFile] = deal(cell(length(dDir),1));

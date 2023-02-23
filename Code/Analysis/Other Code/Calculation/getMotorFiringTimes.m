@@ -45,6 +45,10 @@ if isempty(chType)
     if isfield(pMotor,'Ch')
         % case is all motors are the same
         [Ts,Tf] = deal(pMotor.Ch.Ts,pMotor.Ch.Tf);
+        
+        % removes any duplicate entries
+        [Ts,iA,~] = unique(Ts,'stable');
+        Tf = Tf(iA);        
     else
         % determines the names of the channels that were used
         pFld = fieldnames(pMotor);
@@ -62,6 +66,10 @@ else
         % if so, retrieve the start/finish stimuli times
         pMotorC = getStructField(pMotor,chType);
         [Ts,Tf] = deal(pMotorC.Ts,pMotorC.Tf);
+        
+        % removes any duplicate entries
+        [Ts,iA,~] = unique(Ts,'stable');
+        Tf = Tf(iA);        
     else
         % otherwise, return empty arrays
         [Ts,Tf] = deal([]);        

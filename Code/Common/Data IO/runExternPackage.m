@@ -88,6 +88,30 @@ if isOK
                     end
             end
             
+        case 'AnalysisFunc'
+            % case is the other analysis functions
+            switch class(varargin{1})
+                case 'struct'
+                    switch varargin{2}
+                        case 'InitAnalysis'
+                            % case is initialising the analysis
+                            pkgBase = getProgFileName('Code',...
+                                        'External Apps','AnalysisFunc'); 
+                            
+                            % retrieves the sub-directory names
+                            dInfo = dir(pkgBase);
+                            dName = field2cell(dInfo,'name');
+                            isDir = field2cell(dInfo,'isdir',1) & ...
+                                ~(strcmp(dName,'.') | strcmp(dName,'..'));
+                            
+                            % sets the package names
+                            if any(isDir)
+                                pkgObj = cellfun(@(x)(fullfile...
+                                    (pkgBase,x)),dName(isDir),'un',0);
+                            end
+                    end
+            end
+            
         case 'VideoCalibObj'
             % case is video calibration
             

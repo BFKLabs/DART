@@ -14,8 +14,10 @@ if ~iscell(hAx)
 end
 
 % retrieves the position of the axes
+wState = warning('off','all');
 cellfun(@(x)(set(x,'Units','normalized')),hAx);
 cellfun(@(x)(set(get(x(1),'Title'),'Units','Normalized')),hAx)
+warning(wState);
 
 % sets the overall original height/width of the subplots
 [xGap,yGap,dWmin] = deal(0.015,0.01,0.005);

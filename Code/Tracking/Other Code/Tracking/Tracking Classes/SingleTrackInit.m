@@ -453,7 +453,8 @@ classdef SingleTrackInit < SingleTrack
             obj.hProg.Update(1+obj.wOfsL,wStrNw,(3+nPh)/(obj.pWofs+nPh));
 
             % memory allocation
-            szL = cellfun(@size,IL{1}(1,:),'un',0);
+            iL0 = find(~cellfun('isempty',IL),1,'first');
+            szL = cellfun(@size,IL{iL0}(1,:),'un',0);
             A = cellfun(@(x)(NaN(x)),szL,'un',0);
             obj.Ibg = repmat({A},obj.nPhase,1);            
             
