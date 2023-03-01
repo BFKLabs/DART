@@ -93,22 +93,48 @@ if isOK
             switch class(varargin{1})
                 case 'struct'
                     switch varargin{2}
-                        case 'InitAnalysis'
+                        case {'InitAnalysis','OpenSolnFile'}
                             % case is initialising the analysis
                             pkgBase = getProgFileName('Code',...
                                         'External Apps','AnalysisFunc'); 
+                            if ~exist(pkgBase,'dir')
+                                % if the folder doesn't exist then exit
+                                return
+                            end
                             
                             % retrieves the sub-directory names
                             dInfo = dir(pkgBase);
                             dName = field2cell(dInfo,'name');
-                            isDir = field2cell(dInfo,'isdir',1) & ...
-                                ~(strcmp(dName,'.') | strcmp(dName,'..'));
                             
-                            % sets the package names
+                            % determines if there are any valid directories
+                            isDir = field2cell(dInfo,'isdir',1) & ...
+                                ~(strcmp(dName,'.') | strcmp(dName,'..'));                            
                             if any(isDir)
+                                % if so, then set the package directories
                                 pkgObj = cellfun(@(x)(fullfile...
                                     (pkgBase,x)),dName(isDir),'un',0);
-                            end
+                                if strcmp(varargin{2},'InitAnalysis')
+                                    % if initialising, then exit
+                                    varargout{1} = pkgObj;
+                                    return
+                                end
+                                
+                                % for each package, determine if there is a
+                                % menu initialisation function (run if so)
+                                for i = 1:length(pkgObj)
+                                    % sets the initialisation function
+                                    fPkg = getFileName(pkgObj{i});
+                                    fInit = sprintf('init%s',fPkg);
+                                    fPkgM = fullfile(pkgObj{i},'matlab');
+                                    
+                                    % if the file exists, then add it
+                                    fFile = fullfile(fPkgM,[fInit,'.m']);
+                                    if exist(fFile,'file')
+                                        addpath(fPkgM)
+                                        pkgObj = feval(fInit,varargin{3}); 
+                                    end
+                                end
+                            end                            
                     end
             end
             

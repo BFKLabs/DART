@@ -828,7 +828,7 @@ classdef OpenSolnMultiTab < dynamicprops & handle
         end
         
         % --- updates the final/linking table group names
-        function updateTableGroupNames(obj,iExp)
+        function updateTableGroupNames(obj)
 
             % parameters
             rejStr = '* REJECTED *';

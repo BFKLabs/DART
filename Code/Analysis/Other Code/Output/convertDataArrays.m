@@ -10,7 +10,11 @@ isMT = detMltTrkStatus(iMov);
 
 % determines the number of frames
 i0 = find(~cellfun('isempty',snTot.Px),1,'first');
-nFrm = size(snTot.Px{i0},1);
+if isempty(i0)
+    return
+else
+    nFrm = size(snTot.Px{i0},1);
+end
 
 % sets the data array fields to 
 pFld = {'Px'};

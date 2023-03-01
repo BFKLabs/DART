@@ -571,6 +571,9 @@ classdef DART < handle
                 h = ProgressLoadbar(lStr);
                 pbDir = fileparts(which('ProgressDialog'));                                
                 
+                % removes the java files
+                obj.updateJavaFiles(false);                
+                
                 % removes the main folders from the path
                 for i = 1:length(obj.prDir)
                     rmvDir = obj.getProgFileName(obj.prDir{i});
@@ -578,10 +581,7 @@ classdef DART < handle
                 end
                 
                 % removes the main code directory
-                rmpath(obj.getProgFileName())
-                
-                % removes the java files
-                obj.updateJavaFiles(false);
+                rmpath(obj.getProgFileName())                
                 
                 % delete the progressbar and removes the progress dialog
                 h.delete();

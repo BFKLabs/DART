@@ -861,7 +861,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                             
                             % sets up the fly location ID array
                             snTotNw.iMov = reduceRegionInfo(iMov);
-                            snTotNw.cID = setupFlyLocID(snTotNw.iMov);                            
+                            snTotNw.cID = setupFlyLocID(snTotNw.iMov);
                             
                             % reduces the region information             
                             obj.appendSolnInfo(snTotNw,fDirS{i});                
@@ -1180,7 +1180,9 @@ classdef OpenSolnFileTab < dynamicprops & handle
         function menuLoadExtnDataCB(obj, ~, ~)
             
             % runs the video parameter reset dialog
-            ExtnData(obj);
+            if ~isempty(obj.sInfo)
+                ExtnData(obj);
+            end
             
         end
         
@@ -1349,7 +1351,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                         sInfoNw{1}.expFile = getFileName(sFile);
                     end
 
-                case 3
+                case {3,4}
                     % case is the multi-experiment files
                     nFile = length(snTot);
                     sInfoNw = repmat(sInfoNw,nFile,1);
@@ -1678,7 +1680,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % initialisations
             pFileStr = 'N/A';
             exStr = {'1D','2D','MT'};
-            typeStr = {'soln','ssol','msol'};
+            typeStr = {'soln','ssol','msol','other'};
 
             % sets the solution file type strings/fields
             switch sInfoEx.iTab
@@ -1686,7 +1688,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                     % case is data from a video file directory
                     pFileStr = getFinalDirString(sInfoEx.sFile,1);
 
-                case 3
+                case {3,4}
                     % case is data from a multi-expt file
                     pFileStr = getFileName(sInfoEx.sFile);
 
@@ -1908,7 +1910,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                         sDirTT = fileparts(sInfo.sFile);
                     end
 
-                case 3
+                case {3,4}
                     % case is the multi-experiment files
                     sDirTT = fileparts(sInfo.sFile);
             end

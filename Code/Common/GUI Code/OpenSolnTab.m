@@ -69,7 +69,7 @@ classdef OpenSolnTab < handle
                     obj.mltObj = OpenSolnMultiTab(obj,1);
                     
                 case 3
-                    % expands the gui to incorporate the panels
+                    % case is opened within the Analysis GUI
                     obj.expandGUI();                    
                     
                     % case is the analysis file open gui
@@ -80,6 +80,10 @@ classdef OpenSolnTab < handle
                     if any(cellfun(@(x)(any(x)),obj.hasInfo))
                         obj.fcnObj = OpenSolnFuncTab(obj);
                     end
+                    
+                    % runs the analysis function external package
+                    feval('runExternPackage',...
+                        'AnalysisFunc',obj.hGUI,'OpenSolnFile',obj);
             end
             
             % centres the figure position

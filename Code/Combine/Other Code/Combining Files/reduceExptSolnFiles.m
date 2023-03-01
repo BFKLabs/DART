@@ -14,6 +14,7 @@ end
 
 % initialisations
 calcPhi = false;
+hasPx = isfield(snTot,'Px');
 nApp = length(indNw);
 ok = false(nApp,1);
 
@@ -48,60 +49,64 @@ for i = 1:nApp
         % sets the current indices
         for iNw = indNw{i}(:)'
             % updates the configuration ID array            
-            cID{i} = [cID{i};cID0{iNw}];            
-            indD = getDataArrayIndices(snTot.iMov,cID0{iNw});
+            cID{i} = [cID{i};cID0{iNw}];          
+            indD = getDataArrayIndices(snTot.iMov,cID0{iNw});            
             
-            % sets the fly x-locations            
-            Px{i} = [Px{i},getDataValues(isMT,snTot.Px,indD)];
-        
-            % sets the fly y-locations (if they exist)
-            try
-            if ~isempty(snTot.Py)
-                Py{i} = [Py{i},getDataValues(isMT,snTot.Py,indD)];
-            end
-            catch
-                a = 1;
-            end
-        
-            % sets the orientation angles/aspect ratios (if they exist)
-            if calcPhi
-                Phi{i} = [Phi{i},getDataValues(isMT,snTot.Phi,indD)];
-                AxR{i} = [AxR{i},getDataValues(isMT,snTot.AxR,indD)];
-            end
-
-            % reduces down the x-location scale values
-            if isfield(snTot,'pMapPx')
-                if ~isempty(snTot.pMapPx)                
-                    pMapX(i).xMin = ...
-                            cell2mat(field2cell(snTot.pMapPx(ii),'xMin'));
-                    pMapX(i).xMax = ...
-                            cell2mat(field2cell(snTot.pMapPx(ii),'xMax'));
+            if hasPx           
+                % sets the fly x-locations
+                Px{i} = [Px{i},getDataValues(isMT,snTot.Px,indD)];
+                
+                % sets the fly y-locations (if they exist)
+                if ~isempty(snTot.Py)
+                    Py{i} = [Py{i},getDataValues(isMT,snTot.Py,indD)];
                 end
+                
+                % sets the orientation angles/aspect ratios (if they exist)
+                if calcPhi
+                    Phi{i} = [Phi{i},getDataValues(isMT,snTot.Phi,indD)];
+                    AxR{i} = [AxR{i},getDataValues(isMT,snTot.AxR,indD)];
+                end
+                
+                % reduces down the x-location scale values
+                if isfield(snTot,'pMapPx')
+                    if ~isempty(snTot.pMapPx)
+                        pMapX(i).xMin = ...
+                            cell2mat(field2cell(snTot.pMapPx(ii),'xMin'));
+                        pMapX(i).xMax = ...
+                            cell2mat(field2cell(snTot.pMapPx(ii),'xMax'));
+                    end
 
-                % reduces down the y-location scale values
-                if ~isempty(snTot.pMapPy)
-                    if (i == 1); pMapY = repmat(snTot.pMapPy(1),nApp,1); end
-                    pMapY(i).xMin = ...
+                    % reduces down the y-location scale values
+                    if ~isempty(snTot.pMapPy)
+                        if (i == 1)
+                            pMapY = repmat(snTot.pMapPy(1),nApp,1); 
+                        end
+                        
+                        pMapY(i).xMin = ...
                             cell2mat(field2cell(snTot.pMapPy(iNw),'xMin'));
-                    pMapY(i).xMax = ...
+                        pMapY(i).xMax = ...
                             cell2mat(field2cell(snTot.pMapPy(iNw),'xMax'));        
+                    end
                 end
             end
 
             % reduces down the sub-region acceptance flags
             if iscell(snTot.iMov.flyok)
-                flyokNw = getDataValues(isMT,snTot.iMov.flyok(iNw),indD);
+                flyokNw = ...
+                    getDataValues(isMT,snTot.iMov.flyok(iNw),indD);
                 flyok{i} = [flyok{i};flyokNw(:)];
             else
                 szOK = size(snTot.iMov.flyok);
-                ii = cellfun(@(x)(sub2ind(szOK,x(1),x(2))),indD);                
+                ii = cellfun(@(x)(sub2ind(szOK,x(1),x(2))),indD);
                 flyok{i} = [flyok{i};snTot.iMov.flyok(ii)];
             end
         end
             
         % sets the fly acceptance flags        
-        ok(i) = true;     
-        [pMapX(i).nFrame,pMapY(i).nFrame] = deal(size(Px{i},1));
+        ok(i) = true;        
+        if hasPx
+            [pMapX(i).nFrame,pMapY(i).nFrame] = deal(size(Px{i},1));
+        end
         
     elseif isfield(snTot,'pMapPx')
         % if the apparatus is empty, then set the flags to empty/false
@@ -128,10 +133,17 @@ snTot.iMov.ok = logical(ok);
 snTot.iMov.flyok = cellfun(@(x)(logical(x)),flyok,'un',0);
 [snTot.iMov.pInfo.gName,snTot.Px] = deal(Name,Px);
 
-% sets the coordinates/mapping arrays (if required)
-if ~isempty(snTot.Py); snTot.Py = Py; end
-if calcPhi; [snTot.Phi,snTot.AxR] = deal(Phi,AxR); end
+% sets the y-coordinate values (if required)
+if isfield(snTot,'Py') && ~isempty(snTot.Py)
+    snTot.Py = Py; 
+end
 
+% sets the orientation/axis ratio values (if required)
+if calcPhi
+    [snTot.Phi,snTot.AxR] = deal(Phi,AxR); 
+end
+
+% sets the coordinates/mapping arrays (if required)
 if isfield(snTot,'pMapPx')
     if ~isempty(snTot.pMapPx); snTot.pMapPx = pMapX; end
     if ~isempty(snTot.pMapPy); snTot.pMapPy = pMapY; end
