@@ -99,6 +99,7 @@ if isOK
                                         'External Apps','AnalysisFunc'); 
                             if ~exist(pkgBase,'dir')
                                 % if the folder doesn't exist then exit
+                                varargout{1} = pkgObj;
                                 return
                             end
                             
