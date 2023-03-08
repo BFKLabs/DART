@@ -1,7 +1,13 @@
 function [Iexp,N] = expandImg(I,N)
 
-%
-if (nargin == 1); N = 10; end
+% sets the input arguments
+if ~exist('N','var'); N = 10; end
+
+% returns the original image if zero/negative expansion
+if all(N <= 0)
+    Iexp = I;
+    return
+end
 
 %
 sz = size(I);

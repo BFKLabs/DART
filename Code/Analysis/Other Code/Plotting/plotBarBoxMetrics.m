@@ -3,9 +3,9 @@
 function yLim = plotBarBoxMetrics(hAx,xi,p,pStr,pP,yL,col,sMlt)
 
 % sets the default input values
-if (nargin < 7); col = 'b'; end
-if (nargin < 8); sMlt = 1; end
-if (isempty(pP))
+if ~exist('col','var'); col = 'b'; end
+if ~exist('sMlt','var'); sMlt = 1; end
+if isempty(pP)
     pP = struct('pType','Bar Graph','plotErr',false); 
 end
 

@@ -29,7 +29,10 @@ if mod(length(varargin),2) == 0
 end
 
 % if there are no dependent variables, then exit
-if isempty(pData.oP.yVar); return; end
+if isempty(pData.oP.yVar)
+    plotD = repmat(plotD,nApp,1);
+    return; 
+end
 
 % allocates memory for metric raw data (if there are any)
 isRaw = logical(field2cell(pData.oP.yVar,'isRaw',1));

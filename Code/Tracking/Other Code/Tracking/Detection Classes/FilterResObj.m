@@ -289,8 +289,12 @@ classdef FilterResObj < handle
             
             % only set up the template if missing and there are fly
             % locations known with reasonable accuracy
-            if isempty(obj.hC{obj.iApp}) && any(obj.okS)
-                obj.setupFlyTemplate()
+            if isempty(obj.hC{obj.iApp})
+                if any(obj.okS)
+                    obj.setupFlyTemplate()
+                else
+                    return
+                end
             end            
             
             % --------------------------------- %
@@ -660,7 +664,7 @@ classdef FilterResObj < handle
                 B0 = setGroup((nH+1)*[1,1],(2*nH+1)*[1,1]);
                 
                 % sets up template image
-                hC0 = max(0,IsubMn - mean(IsubMn(:)));
+                hC0 = max(0,IsubMn - mean(IsubMn(:),'omitnan'));
                 [~,B] = detGroupOverlap(hC0>0,B0);
                 obj.hC{obj.iApp} = hC0.*B;            
 
@@ -1337,13 +1341,22 @@ classdef FilterResObj < handle
                 % if the peak/blob counts don't match, then reset the peak
                 % indices so that the highest value (for each blob) is set
                 [nMx,nGrpN] = deal(length(iMx),length(iGrpN));                
-                if nMx ~= nGrpN
+                if (nMx ~= nGrpN) && (nGrpN > 0)
                     % sets the blob/peak index groupings
                     if nGrpN == 1
-                        jMx = {iMx};
+                        if nMx == 0
+                            jMx = {iGrpN{1}(argMax(I(iGrpN{1})))};
+                        else
+                            jMx = {iMx};
+                        end
                     else
                         jMx = cellfun(@(x)(intersect(iMx,x)),iGrpN,'un',0);
                         jMx = jMx(~cellfun('isempty',jMx));
+                        
+                        if isempty(jMx)
+                            iGrpNT = cell2mat(iGrpN(:));
+                            jMx = {iGrpNT(argMax(I(iGrpNT)))};
+                        end
                     end
                     
                     % sets the point for each blob with the highest value                    
