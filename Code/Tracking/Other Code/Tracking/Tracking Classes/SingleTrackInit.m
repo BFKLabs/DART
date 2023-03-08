@@ -559,7 +559,6 @@ classdef SingleTrackInit < SingleTrack
                     (szMx(1)-s(1))/2)',(szMx(1)-s(1))/2)'),hCT0,sz,'un',0);
                 
                 % reset the missing template images
-                obj.frObj.isRedo = true;
                 obj.frObj.hC(noTemp) = {calcImageStackFcn(hCT)};
 
                 % sets up the raw/residual image stacks
