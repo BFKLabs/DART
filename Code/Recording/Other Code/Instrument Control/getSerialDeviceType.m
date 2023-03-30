@@ -45,6 +45,8 @@ switch sStr
                 sType = 'Motor';
             case ('Opto')
                 sType = 'Optogenetics';
+            case ('HTControllerV1')
+                sType = 'HTControllerV1';
             case ('InUse')
                 sType = [];
             otherwise

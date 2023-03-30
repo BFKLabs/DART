@@ -91,7 +91,9 @@ classdef VideoROIClass < handle
             obj.pL = [pL0(1),pL0(2)+min(dHmax)];
             
             % determines if the video is a large video
+            obj.manualUpdate = false;
             obj.isLV = obj.vRes(2)-obj.pL(1)*obj.vRes(1) > obj.pL(2);
+            centerfig(obj.hFig);
             
         end
         
@@ -313,11 +315,11 @@ classdef VideoROIClass < handle
             end
 
             % sets the x/y ROI coordinates
-            xROI = max(min(xROI,xLim(2)-0.5),xLim(1)+0.5);
-            yROI = max(min(yROI,yLim(2)-0.5),yLim(1)+0.5);
+            xROI = max(min(xROI,xLim(2)-0.5),xLim(1)-0.5);
+            yROI = max(min(yROI,yLim(2)-0.5),yLim(1)-0.5);
 
             % creates a patch object object
-            pROI = [xROI(1),yROI(1),diff(xROI),diff(yROI)];
+            pROI = [xROI(1),yROI(1),diff(xROI)+1,diff(yROI)+1];
             hRectS = InteractObj('rect',obj.hAx,pROI);
             hRectS.setFields('UserData',uData,'tag','hROILim')
 
@@ -349,6 +351,42 @@ classdef VideoROIClass < handle
             
         end
         
+        % --- resets the roi marker position vector (must be feasible and
+        %     dimensions must be a multiple of 2)
+        function p = resetRectPos(obj,p,uData)
+                        
+            % determines the odd dimensions
+            p = roundP(p);
+            if uData(1)
+                % case is a vertical marker
+                if mod(p(3),2) == 1
+                    if uData(2) == 1
+                        % case is the left marker
+                        p([1,3]) = p([1,3]) + [1,-1];
+                        
+                    else
+                        % case is the right marker
+                        p(3) = p(3) - 1;
+                        
+                    end                                        
+                end
+                
+            else
+                % case is a horizontal marker
+                if mod(p(4),2) == 1   
+                    if uData(2) == 2
+                        % case is the bottom
+                        p([2,4]) = p([2,4]) + [1,-1];
+                        
+                    else
+                        % case is the top
+                        p(4) = p(4) - 1;
+                    end                    
+                end                
+            end
+            
+        end
+        
         % --- callback function for moving the ROI marker object
 %         function moveROIMarker(obj,p,uData)
         function moveROIMarker(obj,varargin)
@@ -361,19 +399,19 @@ classdef VideoROIClass < handle
             switch length(varargin)
                 case 1
                     % case is old version roi callback
-                    p = varargin{1};
                     uData = get(get(gco,'Parent'),'UserData');
+                    p = varargin{1};
                     
                 case 2
                     % case is double input 
-                    p = get(varargin{1},'Position');
                     uData = varargin{2}.Source.UserData;
+                    p = get(varargin{1},'Position');                    
             end            
 
             % retrieves the location of the opposite marker object
             uDataF = [uData(1),1+(uData(2)==1)];
             hPatchF = findall(obj.hAx,'tag','hROILim','UserData',uDataF);
-            pF = getIntObjPos(hPatchF);
+            pF = getIntObjPos(hPatchF);            
             
             if uData(1)       
                 % sets the length dimension parameter object  
@@ -383,8 +421,9 @@ classdef VideoROIClass < handle
                 else
                     obj.rPos(3) = min(obj.vRes(1),roundP(p(1)-pF(3)));
                 end
-
+                
                 % sets the bottom coordinate
+                obj.rPos = obj.resetRectPos(obj.rPos,uData);
                 set(handles.editLeft,'string',num2str(obj.rPos(1)));
                 set(handles.editWidth,'string',num2str(obj.rPos(3)));
 
@@ -396,8 +435,9 @@ classdef VideoROIClass < handle
                 else
                     obj.rPos(4) = min(obj.vRes(2),roundP(pF(2)-p(4)));
                 end
-
-                % sets the bottom coordinate    
+                
+                % sets the bottom coordinate   
+                obj.rPos = obj.resetRectPos(obj.rPos,uData);
                 set(handles.editBottom,'string',num2str(obj.rPos(2)));
                 set(handles.editHeight,'string',num2str(obj.rPos(4)));
             end

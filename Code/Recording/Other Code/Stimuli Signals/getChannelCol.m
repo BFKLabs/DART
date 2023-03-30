@@ -10,14 +10,17 @@ devType = cellfun(@(x)(removeDeviceTypeNumbers(x)),devType0,'un',0);
 for i = 1:nDev
     j = nDev - (i-1);
     switch devType{i}
-        case 'Opto' % case is/ the optogenetics device
+        case 'Opto' 
+            % case is/ the optogenetics device
             chCol{j} = {'y','b','g','r'}';
 
-        case 'Motor' % case is a motor (with nCh motors)
+        case 'Motor'
+            % case is a motor (with nCh motors)
             chCol0 = {'r','g','b','m','y','c'}';
             chCol{j} = flip(chCol0((1:nCh(i))'));
 
-        case 'RecordOnly' % case is recording only (no colours required)
+        case 'RecordOnly' 
+            % case is recording only (no colours required)
             chCol{j} = [];
 
     end

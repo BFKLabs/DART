@@ -174,7 +174,7 @@ if (nDev > 0)
     
     % updates the device info table
     set(handles.tableDeviceInfo,'position',tPosD,'Data',Data,'Visible','on')
-    autoResizeTableColumns(handles.tableDeviceInfo);
+    autoResizeTableColumns(handles.tableDeviceInfo);    
 else
     % updates the panel dimensions
     pPosD = [X0 (Y0+sum(bPos([2 4]))) pPosP(3) (3.5*Y0 + tPos(4))];

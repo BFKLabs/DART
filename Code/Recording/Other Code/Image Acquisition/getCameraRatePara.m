@@ -3,6 +3,6 @@
 function fpsFld = getCameraRatePara(srcObj)
 
 switch get(srcObj,'DeviceVendorName')
-    case 'Allied Vision'
+    case {'Allied Vision','Basler'}
         fpsFld = 'AcquisitionFrameRate';
 end

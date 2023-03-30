@@ -1014,8 +1014,9 @@ if strcmp(uChoice,'Yes')
         
         % retrieves the full DART program default struct directory
         if ~isempty(hMain)
-            ProgDefFull = getappdata(findall(0,'tag','figDART'),'ProgDef');
-            setappdata(hMain.output,'ProgDefNew',ProgDefFull.Recording)
+            mObj = getappdata(findall(0,'tag','figDART'),'mObj');
+            ProgDefR = mObj.getProgDefField('Recording');
+            setappdata(hMain.output,'ProgDefNew',ProgDefR);
 
             % determines if the stimuli connections have been made. if so, 
             % then enable the ability run the experiments

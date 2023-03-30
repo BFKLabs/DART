@@ -62,31 +62,35 @@ switch (typeStr)
         
         if isempty(objDAQ)
             % no devices are loaded
-            isOpto = false;
+            dType = 0;
         else
             % determines if any of the loaded devices are opto
-            isOpto = strcmp(objDAQ.sType,'Opto');
+            dType = strcmp(objDAQ.sType,'HTControllerV1') + ...
+                    2*strcmp(objDAQ.sType,'Opto');
         end
         
-        % determines if there are any        
-        if any(isOpto)
+        % determines if there are any  
+        hasDev = dType > 0;
+        if any(hasDev)
             % IR string
-            sStr = '3,000,000,000,000,050\n';
+            dType = dType(hasDev);
+            sStr = {sprintf('4,%f\n',100),'3,000,000,000,000,050\n'};
 
             % loops through each opto device turning on the IR lights
-            hOpto = objDAQ.Control(isOpto);
-            for i = 1:length(hOpto)
+            hDev = objDAQ.Control(hasDev);
+            for i = 1:length(hDev)
                 % if the device is closed, then open it
-                if strcmp(get(hOpto{i},'Status'),'closed')
-                    fopen(hOpto{i});
+                if strcmp(get(hDev{i},'Status'),'closed')
+                    fopen(hDev{i});
                 end
                 
                 % turns on the IR lights
-                writeSerialString(hOpto{i},sStr);
+                writeSerialString(hDev{i},sStr{dType(i)});
             end
             
             % sets the toggle IR menu check
             set(handles.menuToggleIR,'Checked','On');
+            setObjVisibility(handles.menuToggleWhite,any(dType==2))
             setObjVisibility(handles.menuOpto,'on');
         else
             % makes the opto menu item invisible

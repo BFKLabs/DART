@@ -4,11 +4,15 @@ function initFrameRateSlider(hSlider,srcObj,fRateNum)
 % parameters
 pW = 0.1;
 dFPS = 0.01;
+fpsMax = 200;
 
 % retrieves the
 fpsFld = getCameraRatePara(srcObj);
 fpsInfo = propinfo(srcObj,fpsFld);
+
+% sets the fps limit
 fpsLim = fpsInfo.ConstraintValue;
+fpsLim(2) = min(fpsLim(2),fpsMax);
 
 % determines the rounded frame rate limits
 fpsLimR = round(fpsLim,1);

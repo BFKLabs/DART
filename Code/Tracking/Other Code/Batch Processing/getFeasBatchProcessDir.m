@@ -96,6 +96,20 @@ for i = 1:nFile
                 % video flag to false
                 isOK(i) = false;
             else
+                % determines if there is a size difference btwn arrays
+                szA = [length(A.bData.movOK),size(A.bData.dpImg,1)];
+                dR = length(isFeas) - szA;
+                
+                % adds on any missing rows (if required)
+                if dR(1) > 0
+                    A.bData.movOK = [A.bData.dpImg;ones(dR(1),2)];                    
+                end
+                
+                % adds on any missing rows (if required)
+                if dR(2) > 0
+                    A.bData.dpImg = [A.bData.dpImg;zeros(dR(2),2)];                    
+                end                    
+                
                 % otherwise, reduces down the feasible video files
                 movFile = movFile(isFeas);
                 A.bData.mName = A.bData.mName(isFeas);

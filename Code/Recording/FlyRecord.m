@@ -475,8 +475,9 @@ ExptSetup(handles.figFlyRecord);
 function menuCalibrateTrack_Callback(hObject, eventdata, handles)
 
 % retrieves the full DART program default struct directory
-ProgDefFull = getappdata(findall(0,'tag','figDART'),'ProgDef');
-setappdata(handles.figFlyRecord,'ProgDefNew',ProgDefFull.Tracking)
+hFig = handles.figFlyRecord;
+mObj = getappdata(findall(0,'tag','figDART'),'mObj');
+setappdata(hFig,'ProgDefNew',mObj.getProgDefField('Tracking'))
 
 % runs the Fly Tracking GUI to calibrate the video
 FlyTrack(handles,1);

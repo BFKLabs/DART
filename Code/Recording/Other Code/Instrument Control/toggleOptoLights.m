@@ -12,8 +12,9 @@ if isempty(objDAQ)
     return
 else
     % determines if there are any opto devices connected
-    isOpto = strcmp(objDAQ.sType,'Opto');
-    if ~any(isOpto)
+    dType = strcmp(objDAQ.sType,'HTControllerV1') + ...
+            2*strcmp(objDAQ.sType,'Opto');
+    if ~any(dType > 0)
         % if there are no connected opto devices, then exit
         return 
     end
@@ -23,7 +24,8 @@ end
 if strcmp(get(hObject,'Checked'),'off')
     % turns on the lights
     if isIR
-        sStr = sprintf('3,000,000,000,000,%s\n',yAmp);
+        sStr = {sprintf('4,%f\n',2*str2double(yAmp)),...
+                sprintf('3,000,000,000,000,%s\n',yAmp)};
     else
         sStr = sprintf('4,000,000,000,%s\n,000',yAmp);
     end
@@ -32,7 +34,8 @@ if strcmp(get(hObject,'Checked'),'off')
 else
     % turns off the lights
     if isIR
-        sStr = '3,000,000,000,000,000\n';
+        sStr = {sprintf('4,%f\n',0),...
+                sprintf('3,000,000,000,000,%s\n',yAmp)};
     else
         sStr = '4,000,000,000,000,000\n';
     end
@@ -41,11 +44,12 @@ else
 end
 
 % writes the serial string to each of the devices
-hOpto = objDAQ.Control(isOpto);
-if ~isempty(hOpto)
-    for i = 1:length(hOpto)
+iDev = find(dType > 0);
+hDev = objDAQ.Control(iDev);
+if ~isempty(hDev)
+    for i = 1:length(hDev)
         try
-            writeSerialString(hOpto{i},sStr);
+            writeSerialString(hDev{i},sStr{iDev(i)});
         end
     end
 end

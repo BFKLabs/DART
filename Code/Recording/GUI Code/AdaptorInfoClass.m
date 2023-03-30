@@ -52,7 +52,7 @@ classdef AdaptorInfoClass < handle
         hasDAQ
         hasIMAQ = true; 
         onlyDAQ        
-        vStr = {'Motor','Opto'};
+        vStr = {'Motor','Opto','HTControllerV1'};
         testFile = '';
         popStr
         iProg
@@ -495,9 +495,16 @@ classdef AdaptorInfoClass < handle
 
                 % if optogenetics serial device, then preset value to NaN
                 if i <= length(obj.objDAQ.sType)
-                    if strcmp(obj.objDAQ.sType{i},'Opto')
-                        set(hObjNw,'string','N/A')
-                        obj.nCh(i) = NaN;
+                    switch obj.objDAQ.sType{i}
+                        case 'Opto'
+                            % case is the optogenetics device
+                            set(hObjNw,'string','N/A')
+                            obj.nCh(i) = NaN;
+                            
+                        case 'HTControllerV1'
+                            % case is the HT ControllerV1 device
+                            set(hObjNw,'string','1')
+                            obj.nCh(i) = 1;                            
                     end
                 end
 

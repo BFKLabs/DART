@@ -83,7 +83,7 @@ switch infoObj.exType
         % case is a stimuli dependent experiment
 
         % retrives the device types from the device information struct
-        devType = infoObj.objDAQ.sType;
+        devType = resetDevType(infoObj.objDAQ.sType);
         nCh = infoObj.objDAQ.nChannel;
         extnObj = feval('runExternPackage','ExtnDevices');
 
@@ -3401,14 +3401,17 @@ calcAxesGlobalCoords(handles)
 chName = cell(1,nDev);
 for i = 1:nDev
     switch devType{i}
-        case 'Opto' % case is the optogenetic device
+        case 'Opto' 
+            % case is the optogenetic device
             chName{i} = getOptoChannelNames();
             nCh(i) = length(chName{i});
 
-        case 'Motor' % case is a motor device
+        case 'Motor'
+            % case is a motor device
             chName{i} = getMotorChannelNames(nCh(i),1);        
 
-        case 'RecordOnly' % case is recording only 
+        case 'RecordOnly' 
+            % case is recording only 
             [chName{i},hasStim] = deal([],false);
 
     end
@@ -8342,6 +8345,12 @@ pause(0.05);
 
 % resets the original titles
 cellfun(@(x,t)(set(x,'Title',t)),num2cell(hPanel),tStr);
+
+% --- resets the device type names
+function devType = resetDevType(devType)
+
+% converts 'HT ControllerV1' to 'Motor'
+devType(strcmp(devType,'HTControllerV1')) = {'Motor'};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%    UNUSED FUNCTIONS?    %%%%
