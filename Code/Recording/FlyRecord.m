@@ -465,7 +465,7 @@ setObjEnable(handles.menuOpto,'off')
 % setObjEnable(handles.menuRTTrack,'off')
 
 % otherwise, run the full stimuli experimental protocol GUI
-ExptSetup(handles.figFlyRecord);   
+ExptSetup(hFig);   
 
 % ------------------------------ %
 % --- CALIBRATION MENU ITEMS --- %

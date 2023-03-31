@@ -2,7 +2,8 @@
 function hS = createSerialDevObject(pStr,varargin)
     
 % serial controller baud rate
-bRate = 9600;
+% bRate = 9600;
+bRate = 115200;
 
 % creates the serial device object
 hS = serial(pStr,'BaudRate',bRate,'Parity','none','DataBits',8,'StopBits',1);    

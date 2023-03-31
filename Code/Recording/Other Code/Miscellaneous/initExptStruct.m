@@ -25,6 +25,21 @@ Info = struct('Title',tStr,'OutDir',outDir,'FileName',[],...
 Timing = struct('T0',[],'Tp',5,'Texp',[0,12,0,0],...
                 'fixedT0',false,'TexpU','Hours');
 Timing.T0 = [tNow(1:2),tNow(3)+tOfs,tStartH,0,0];
+ 
+% determines if the time vector is feasible
+dMax = getMonthDayCount(tNow(2));
+if Timing.T0(3) > dMax
+    % if the day exceeds the max count, then increment the month
+    Timing.T0(2) = Timing.T0(2) + 1;
+    Timing.T0(3) = mod(Timing.T0(3),dMax);
+    
+    % if the month is december, then start the expt next year in january
+    if Timing.T0(2) > 12
+        Timing.T0(1) = Timing.T0(1) + 1;
+        Timing.T0(2) = 1;
+    end
+end
+    
 
 % initialises the video field
 Video = struct('nCount',[],'Ts',[],'Tf',[],'FPS',5,...

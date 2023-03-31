@@ -49,7 +49,7 @@ switch length(varargin)
         iMov = getappdata(hMain,'iMov');    
         iProg = getappdata(hMain,'iProg');      
         infoObj = getappdata(hMain,'infoObj');
-
+        
     case 2    
         % case is running a stimuli only experiment
 
@@ -73,7 +73,7 @@ setObjVisibility(hMain,'off')
 
 % sets the device/channel count information (dependent on expt/devices)
 switch infoObj.exType
-    case 'RecordOnly' 
+    case 'RecordOnly'
         % case is a recording only experiment
 
         % sets the device type to record only
@@ -117,6 +117,11 @@ setappdata(hObject,'stimOnly',stimOnly)
 % initialises the GUI object properties
 initObjProps(handles,devType,nCh,true,hProg)
 
+% if a recording experiment, then set the image resolution info
+if ~stimOnly
+    setupCustResObjects(handles)
+end
+
 % makes the gui visible
 setObjVisibility(hObject,'on')
 pause(0.05);
@@ -136,6 +141,32 @@ function varargout = ExptSetup_OutputFcn(hObject, eventdata, handles)
 
 % Get default command line output from handles structure
 varargout{1} = handles.output;
+
+% --- sets up the custom video resolution objects
+function setupCustResObjects(handles)
+
+% field retrieval
+hFig = handles.figExptSetup;
+hText = findall(handles.panelVideoRes,'Style','Text');
+hEdit = findall(handles.panelVideoRes,'Style','Edit');
+infoObj = getappdata(hFig,'infoObj');
+
+% sets the video resolution data struct
+vRes = get(infoObj.objIMAQ,'VideoResolution');
+resInfo = struct('useCust',false,'W',vRes(1),'H',vRes(2));
+setappdata(hFig,'resInfo',resInfo)
+
+% sets up the editboxes
+for i = 1:length(hEdit)
+    % updates the editbox properties
+    pStr = get(hEdit(i),'UserData');
+    dimVal = num2str(getStructField(resInfo,pStr));
+    
+    % updates the object properties
+    set(hEdit(i),'Callback',{@editResDim,handles},...
+                 'Enable','off','String',dimVal);
+    set(hText(i),'Enable','Off');
+end
 
 %-------------------------------------------------------------------------%
 %                        FIGURE CALLBACK FUNCTIONS                        %
@@ -1098,8 +1129,8 @@ else
     % updates the experiment data struct
     setappdata(hFig,'iExpt',iExpt)
 
-    % enables the other panels and recalculates the video start times
-    panelRecordType_SelectionChangeFcn([], '1', handles)  
+    % sets the fixed duration panel properties
+    calcVideoTiming(handles);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1118,8 +1149,8 @@ fList = get(hObject,'String');
 iExpt.Video.FPS = str2double(fList(get(hObject,'Value')));
 setappdata(hFig,'iExpt',iExpt);
 
-% updates the recording parameters
-panelRecordType_SelectionChangeFcn([], '1', handles)
+% recalculates the video timing
+calcVideoTiming(handles);  
 
 % --- Executes on slider movement.
 function sliderFrmRate_Callback(hObject, eventdata, handles)
@@ -1141,8 +1172,8 @@ fpsInfo = propinfo(srcObj,fpsFld);
 fpsLim = fpsInfo.ConstraintValue;
 set(srcObj,fpsFld,max(min(iExpt.Video.FPS,fpsLim(2)),fpsLim(1)));
 
-% updates the recording parameters
-panelRecordType_SelectionChangeFcn([], '1', handles)
+% recalculates the video timing
+calcVideoTiming(handles);  
 
 % --- Executes on selection change in popupVideoCompression.
 function popupVideoCompression_Callback(hObject, eventdata, handles)
@@ -1159,32 +1190,6 @@ setappdata(hFig,'iExpt',iExpt);
 
 % updates the calculation video timing
 calcVideoTiming(handles);
-
-% --- Executes on selection change in panelRecordType.
-function panelRecordType_SelectionChangeFcn(hObject, eventdata, handles)
-
-% sets the selected radio button (if not provided)
-if (isa(eventdata,'char'))
-    NewValue = get(handles.panelRecordType,'SelectedObject');
-else
-    NewValue = eventdata.NewValue;
-end
-
-% updates the recording type index
-iExpt = getappdata(handles.figExptSetup,'iExpt');
-iExpt.Video.Type = get(NewValue,'UserData');
-setappdata(handles.figExptSetup,'iExpt',iExpt)
-
-% % sets the GUI object properties
-% propUpdate = ~strcmp(get(handles.checkStimFeas,'enable'),'off');
-% if (propUpdate)
-%     % sets the enabled strings of the text/edit boxes
-%     setOptButtonProp(handles)    
-%     setAllVideoProps(handles,'on')
-% end
-        
-% sets the fixed duration panel properties
-calcVideoTiming(handles);  
 
 % --- Executes on button press in buttonOptPlace.
 function buttonOptPlace_Callback(hObject, eventdata, handles)
@@ -1227,6 +1232,64 @@ setappdata(hFig,'iExpt',iExpt);
 
 % resets the video parameters
 popupVideoDuration(handles.popupVidHour, [], handles, 1)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%    VIDEO RESOLUTION OBJECT CALLBACKS    %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% --- Executes on button press in checkCustRes.
+function checkCustRes_Callback(hObject, eventdata, handles)
+
+% field retrieval
+hFig = handles.figExptSetup;
+hText = findall(handles.panelVideoRes,'Style','Text');
+hEdit = findall(handles.panelVideoRes,'Style','Edit');
+
+% updates the struct field
+resInfo = getappdata(hFig,'resInfo');
+resInfo.useCust = get(hObject,'Value');
+setappdata(hFig,'resInfo',resInfo)
+
+% updates the object enabled properties
+arrayfun(@(x)(setObjEnable(x,resInfo.useCust)),hText)
+arrayfun(@(x)(setObjEnable(x,resInfo.useCust)),hEdit)
+
+% retrieves the editbox value (based on the user choice type)
+if resInfo.useCust
+    % case is using the custom resolution
+    resInfo = getappdata(hFig,'resInfo');
+    eVal = getStructFields(resInfo,{'W','H'},1);
+else
+    % case is using the default resolution
+    infoObj = getappdata(hFig,'infoObj');
+    eVal = infoObj.objIMAQ.VideoResolution;
+end
+
+% updates the editbox values
+arrayfun(@(h,v)(set(h,'String',num2str(v))),hEdit(:),eVal(:));
+
+% --- Executes on editbox update
+function editResDim(hObject, eventdata, handles)
+
+% field retrieval
+hFig = handles.figExptSetup;
+pStr = get(hObject,'UserData');
+infoObj = getappdata(hFig,'infoObj');
+resInfo = getappdata(hFig,'resInfo');
+
+% retrieves the new value
+nwVal = str2double(get(hObject,'String'));
+vRes = infoObj.objIMAQ.VideoResolution;
+
+% determines if the new value is valid
+if chkEditValue(nwVal,[20,vRes(strcmp({'W','H'},pStr))],1)
+    % if so, then update the data struct
+    resInfo = setStructField(resInfo,pStr,nwVal);
+    setappdata(hFig,'resInfo',resInfo)
+else
+    % otherwise, reset to the last valid value
+    set(hObject,'String',num2str(getStructField(resInfo,pStr)));
+end
 
 %-------------------------------------------------------------------------%
 %                    WINDOWS MOTION CALLBACK FUNCTIONS                    %
@@ -3122,19 +3185,11 @@ switch (iType)
         iHour = get(handles.popupStartHourInfo,'Value');
         iExpt.Timing.T0(4) = iHour + 12*(iSel-1);    
     
-    case (2) % case is the month was selected
-        % sets the days in the month (based on the month selected)
-        switch (iSel)
-            case (2) % case is February
-                dMax = 28;
-            case {4,6,9,11} % case is the 30 day months
-                dMax = 30;                
-            otherwise % case is the 31 day months
-                dMax = 31;                
-                
-        end
+    case (2) 
+        % case is the month was selected
         
         % sets the day strings
+        dMax = getMonthDayCount(iSel);
         dStr = getTimeDurationString(dMax,1);
         
         % ensures the day is at most the maximum value, and resets the day
@@ -3894,7 +3949,7 @@ delete(h)
 
 % makes the GUI visible again
 if isInit
-    feval('runExternPackage','RunStreamPix',handles);     
+%     feval('runExternPackage','RunStreamPix',handles);     
 else
     setObjVisibility(hFig,'on'); 
 end
@@ -4708,7 +4763,7 @@ if hasVid
 else
     % disables the recording parameter panels
     setPanelProps(handles.panelVideoPara,'off')
-    setPanelProps(handles.panelRecordType,'off')
+    setPanelProps(handles.panelVideoRes,'off')
     setPanelProps(handles.panelFixedDur,'off')
     
     % disables the video parameter feasibility checkbox
@@ -4728,14 +4783,13 @@ else
 end
 
 % sets the enabled properties of the 
-setObjEnable(handles.radioFixedDur,hasStim && hasVid)
-setObjEnable(handles.radioBtwnStim,hasStim && hasVid)
 setObjEnable(handles.checkProtoFeas,hasStim)
 setObjEnable(handles.checkStimFeas,hasStim)
 
 % updates the recording parameters
 if hasVid
-    panelRecordType_SelectionChangeFcn([], '1', handles)
+    % sets the fixed duration panel properties
+    calcVideoTiming(handles);
 end
 
 % updates the minimum duration fields
@@ -8368,20 +8422,6 @@ for i = 1:length(tDurV)
     tDurV(i) = get(hPopup,'Value')-1;
 end
 
-% --- sets the enabled properties of the optimise video placement button
-function setOptButtonProp(handles)
-
-% check to see if the selected button is the fixed duration radio button
-if (get(handles.panelRecordType,'SelectedObject') == handles.radioFixedDur)
-    % if so, enable the optimise button if all video parameters are set
-    iExpt = getappdata(handles.figExptSetup,'iExpt');
-    hasStim = any(field2cell(iExpt.Stim,'nCount',1)>0);
-    setObjEnable(handles.buttonOptPlace,hasStim)   
-else
-    % otherwise, disable the button
-    setObjEnable(handles.buttonOptPlace,'off')    
-end
-
 % --- calculates the scaled experiment time
 function tVal = getExptScaledTime(sPara,pStr,dType)
 
@@ -8410,17 +8450,17 @@ if (strcmp(eStr,'on'))
     iExpt = getappdata(hFig,'iExpt');
     if (iExpt.Video.FPS > 0) && (sum(iExpt.Video.Dmax) > 0)
         % if so enable the recording type parameters
-        setPanelProps(handles.panelRecordType,'on') 
+        setPanelProps(handles.panelVideoRes,'on') 
         isCheck = all(field2cell(iExpt.Stim,'nCount',1) > 0);
         resetFields = false;
         
     else
         % disables the fixed duration objects panel
-        setPanelProps(handles.panelRecordType,'off')          
+        setPanelProps(handles.panelVideoRes,'off')          
     end            
 else
     % disables the fixed duration objects panel
-    setPanelProps(handles.panelRecordType,'off')
+    setPanelProps(handles.panelVideoRes,'off')
 end
     
 % sets the stimulus feasiblilty checkbox value

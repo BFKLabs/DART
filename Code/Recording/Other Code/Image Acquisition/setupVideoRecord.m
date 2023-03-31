@@ -181,26 +181,27 @@ if exObj.isMemLog
 
     try        
         % retrieves the read frames from the camera
+        szR = [exObj.resInfo.H,exObj.resInfo.W];
         nFrm = exObj.objIMAQ.FramesAvailable;
         [Img, tFrm] = getdata(exObj.objIMAQ,nFrm,'uint8','cell');   
         logFile = get(exObj.objIMAQ,'UserData');
         iFrm = zeros(length(Img),1);      
         
+        % sets the preview image
+        ImgNw = Img{end};
+        
         % updates the video/time stamps
         for i = 1:length(Img)    
-            % appends the new frame to the video    
-            if exObj.isRot
-                writeVideo(logFile, Img{i}');
-            else
-                writeVideo(logFile, Img{i});
-            end
+            % appends the new frame to the video
+            Img{i} = imresize(Img{i},szR);
+            writeVideo(logFile, Img{i});
             
             % updates the frame count
             iFrm(i) = logFile.FrameCount;
             if (iFrm(i) == 1) && (exObj.nCountV > 0)
                 % for the first frame on any video except the first, then
                 % calculates the total time offset
-                exObj.tOfsT = toc - tFrm(i);
+                exObj.tOfsT = toc(exObj.tExpt) - tFrm(i);
             end
             
             % updates the time stamp array
@@ -219,8 +220,7 @@ if exObj.isMemLog
         return
     end
     
-    % sets the new frame and clears the read image array
-    ImgNw = Img{end};
+    % sets the new frame and clears the read image array    
     clear Img;
 else    
     % registers the time stamp for the frame (off-setting by the time tOfs)
@@ -278,10 +278,7 @@ end
 if frmUpdate
     % retrieves the image (if not logging to memory)
     if ~exObj.isMemLog; ImgNw = getsnapshot(exObj.objIMAQ); end
-    
-    % retrieves the current camera image    
-    if exObj.isRot; ImgNw = ImgNw'; end    
-    
+        
     % checks to see if a real-time tracking experiment is being run. if so,
     % then update the real-time tracking stats GUI and stats   
     if isExpt && exObj.isRT

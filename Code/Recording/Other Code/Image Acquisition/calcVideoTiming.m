@@ -7,6 +7,7 @@ stimWait = 15;
 
 % retrieves the required data structs
 mStr = [];
+rType = 'FixedDur';
 hFig = handles.figExptSetup;
 iExpt = getappdata(hFig,'iExpt');
 sTrain = getappdata(hFig,'sTrain');
@@ -28,11 +29,6 @@ else
     hasStim = ~isempty(sTrain.Ex);
 end
 
-%
-hRadio = findobj(handles.panelRecordType,'Value',1);
-rTypeTag = get(hRadio,'tag');
-rType = rTypeTag(6:end);
-
 % if the number of frames
 tExp = vec2sec(iExpt.Timing.Texp);
 tVid = vec2sec([0,iExpt.Video.Dmax]);
@@ -43,21 +39,18 @@ if (tExp < tVid) && strcmp(iExpt.Info.Type,'RecordOnly')
     return
 end
 
-% sets the recording type (if not provided)
-if nargin == 1 
-    sTag = get(get(handles.panelRecordType,'SelectedObject'),'tag');
-    rType = sTag(6:end);
-end        
-
 % calculates video recording start/stop times given the recording type
 switch rType
-    case 'BtwnStim' % case is recording between the stimuli
+    case 'BtwnStim' 
+        % case is recording between the stimuli
         iExpt = calcBtwnStimTimes(iExpt);
         
-    case 'OnStim' % case is recording on the stimuli
+    case 'OnStim' 
+        % case is recording on the stimuli
         iExpt = calcOnStimTimes(iExpt);
         
-    case 'FixedDur' % case is recording fixed duration
+    case 'FixedDur' 
+        % case is recording fixed duration
         if isempty(varargin)
             % case is calculating the fixed duration times
             iExpt = calcFixedDurTimes(iExpt);

@@ -41,11 +41,7 @@ setappdata(hObject,'hMain',hMain)
 % disables the real-time tracking menu item (if available)
 if isfield(hMain,'menuRTTrack')
     setappdata(hObject,'eStr0',get(hMain.menuRTTrack,'enable'));
-    setObjEnable(hMain.menuRTTrack,'off')
-    
-    % sets the rotation checkbox flag
-    isRot = getappdata(hMain.figFlyRecord,'isRot');
-    set(handles.checkRotateVideo,'value',isRot)
+    setObjEnable(hMain.menuRTTrack,'off')    
 end
 
 % intialises the GUI panels and objects

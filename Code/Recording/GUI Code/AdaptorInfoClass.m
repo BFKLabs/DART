@@ -1003,7 +1003,11 @@ classdef AdaptorInfoClass < handle
             % if there are any valid devices then retrieve their details
             pStr = findSerialPort(sStr);
             if ~isempty(pStr)
-                % sets the object details                    
+                pStrT = cellfun(@strjoin,num2cell(pStr,2),'un',0);
+                [~,iA,~] = unique(pStrT);
+                pStr = pStr(iA,:);
+
+                % sets the object details                  
                 daqInfo = appendSerialInfo(daqInfo,pStr,obj.vStr);  
                 hasDevice = ~isempty(daqInfo.Control) || hasDevice;
             end        

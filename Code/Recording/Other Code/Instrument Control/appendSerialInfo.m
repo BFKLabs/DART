@@ -1,6 +1,10 @@
 % --- appends the new Serial information to the data struct
 function [A,isOK] = appendSerialInfo(A,pStr,vStr)
 
+% parameters
+% bRate = 9600;
+bRate = 115200;
+
 % memory allocation
 nStr = size(pStr,1);
 [Control,BoardNames] = deal(cell(nStr,1));

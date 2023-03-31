@@ -49,6 +49,7 @@ classdef RunExptObj < handle
         vPara
         vParaVV
         rfRate
+        resInfo
         
         % large-video handling fields
         vComp0
@@ -69,7 +70,6 @@ classdef RunExptObj < handle
         isRTB
         isRTBatch
         isRTExpt           
-        isRot
         isSaving
         isTrigger
         isUserStop
@@ -113,6 +113,7 @@ classdef RunExptObj < handle
                     obj.hExptF = hExptF;                                       
                     obj.sTrain = getappdata(obj.hExptF,'sTrain');
                     obj.extnObj = getappdata(obj.hExptF,'extnObj');
+                    obj.resInfo = getappdata(obj.hExptF,'resInfo');
                     
                     % sets up the experiment data struct
                     iExpt0 = obj.getExptDataStruct();
@@ -320,8 +321,7 @@ classdef RunExptObj < handle
             obj.checkVideoCompression();              
             
             % sets the rotation flag and recording logging mode            
-            obj.isRot = getappdata(obj.hMain,'isRot');            
-            if obj.isRot
+            if obj.resInfo.useCust
                 [obj.objIMAQ.LoggingMode,obj.isMemLog] = deal('memory',1);                
             else
                 [obj.objIMAQ.LoggingMode,obj.isMemLog] = deal('disk',0); 
@@ -340,13 +340,7 @@ classdef RunExptObj < handle
 
             % retrieves the resolution of the recording image
             vRes = getVideoResolution(obj.objIMAQ,1);
-            if obj.isRot
-                % case is the image is rotated
-                Img0 = zeros(vRes);
-            else
-                % case is the image is not rotated
-                Img0 = zeros(vRes([2 1]));
-            end
+            Img0 = zeros(flip(vRes));
 
             % sets the current access to be the main gui axes handle
             hPanelImg = findall(obj.hMain,'tag','panelImg');
@@ -499,11 +493,7 @@ classdef RunExptObj < handle
             % resets the preview axes image to black
             if obj.hasIMAQ
                 vRes = getVideoResolution(obj.objIMAQ,1);
-                if obj.isRot
-                    Img0 = zeros(vRes);    
-                else
-                    Img0 = zeros(vRes([2 1]));
-                end
+                Img0 = zeros(flip(vRes));
                 set(findobj(obj.hAx,'Type','Image'),'cData',Img0); 
             else
                 % force stops the streampix object (if available)
