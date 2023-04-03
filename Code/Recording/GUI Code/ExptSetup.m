@@ -1159,21 +1159,95 @@ function sliderFrmRate_Callback(hObject, eventdata, handles)
 hFig = handles.figExptSetup;
 iExpt = getappdata(hFig,'iExpt');
 infoObj = getappdata(hFig,'infoObj');
-
-% updates the frame rate
-iExpt.Video.FPS = round(get(hObject,'Value'),1);
-set(handles.textFrmRate,'String',num2str(iExpt.Video.FPS))
-setappdata(hFig,'iExpt',iExpt);
+nwVal = round(get(hObject,'Value'),1);
 
 % sets the camera frame rate
 srcObj = get(infoObj.objIMAQ,'Source');
 fpsFld = getCameraRatePara(srcObj);
-fpsInfo = propinfo(srcObj,fpsFld);
-fpsLim = fpsInfo.ConstraintValue;
-set(srcObj,fpsFld,max(min(iExpt.Video.FPS,fpsLim(2)),fpsLim(1)));
+fpsLim = getFrameRateLimits(srcObj,fpsFld);
+
+% converts the value to a character (if required)
+prVal = get(srcObj,fpsFld);
+if ischar(class(prVal))
+    % determines the matching fps value
+    fpsLimC = cellfun(@str2double,fpsLim);
+    ii = fpsLimC == iExpt.Video.FPS;        
+    if ~any(ii)
+        % if there are not any matches, then determine the closest
+        nwVal = fpsLim{argMin(abs(fpsLimC - iExpt.Video.FPS))};
+    else
+        % otherwise, use the matching value
+        nwVal = fpsLim{ii};
+    end
+    
+    nwValN = str2double(nwVal);
+    set(hObject,'Value',nwValN)    
+else
+    % case is a numerical value
+    [nwVal,nwValN] = deal(max(min(nwVal,fpsLim(2)),fpsLim(1)));
+end
+
+% updates the frame rate
+iExpt.Video.FPS = nwValN;
+set(handles.editFrmRate,'String',num2str(iExpt.Video.FPS))
+setappdata(hFig,'iExpt',iExpt);
 
 % recalculates the video timing
+set(srcObj,fpsFld,nwVal);
 calcVideoTiming(handles);  
+
+% --- Executes on updating editFrmRate
+function editFrmRate_Callback(hObject, eventdata, handles)
+
+% object retrieval
+hFig = handles.figExptSetup;
+iExpt = getappdata(hFig,'iExpt');
+infoObj = getappdata(hFig,'infoObj');
+nwVal = str2double(get(hObject,'String'));
+
+% sets the camera frame rate
+srcObj = get(infoObj.objIMAQ,'Source');
+fpsFld = getCameraRatePara(srcObj);
+fpsLim0 = getFrameRateLimits(srcObj,fpsFld);
+
+% converts the limits to numbers (if required)
+if iscell(fpsLim0)
+    fpsLim = cellfun(@str2double,fpsLim0);
+else
+    fpsLim = fpsLim0;
+end
+
+% determines if the new value is valid
+if chkEditValue(nwVal,fpsLim,0)   
+    % converts the value to a character (if required)
+    if ischar(class(get(srcObj,fpsFld)))
+        fpsInfo = propinfo(srcObj,fpsFld);
+        cVal = cellfun(@str2double,sort(fpsInfo.ConstraintValue));
+
+        % determines if the value matches
+        ii = cVal == nwVal;       
+        if ~any(ii)
+            ii = argMin(abs(cVal - nwVal));
+            nwVal = cVal(ii);
+            set(hObject,'String',nwVal)
+        end
+        
+        set(srcObj,fpsFld,fpsLim0{ii});
+    else
+        set(srcObj,fpsFld,nwVal);
+    end
+    
+    % updates the parameter value
+    iExpt.Video.FPS = nwVal;
+    setappdata(hFig,'iExpt',iExpt);    
+    
+    % recalculates the video timing
+    set(handles.sliderFrmRate,'Value',nwVal)
+    calcVideoTiming(handles);
+else
+    % otherwise, reset the edit value
+    set(handles.editFrmRate,'String',num2str(iExpt.Video.FPS))
+end
 
 % --- Executes on selection change in popupVideoCompression.
 function popupVideoCompression_Callback(hObject, eventdata, handles)
@@ -1232,6 +1306,24 @@ setappdata(hFig,'iExpt',iExpt);
 
 % resets the video parameters
 popupVideoDuration(handles.popupVidHour, [], handles, 1)
+
+% --- retrieves the frame rate limits
+function fpsLim = getFrameRateLimits(srcObj,fpsFld)
+
+% parameters
+fpsMax = 200;
+
+% retrieves the property information
+fpsInfo = propinfo(srcObj,fpsFld);
+
+% retrieves the limit values
+if iscell(fpsInfo.ConstraintValue)
+    fpsLim0 = sort(fpsInfo.ConstraintValue);   
+    fpsLim = fpsLim0([1,end]);
+else
+    fpsLim = fpsInfo.ConstraintValue;
+    fpsLim(2) = min(fpsLim(2),fpsMax);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%    VIDEO RESOLUTION OBJECT CALLBACKS    %%%%
@@ -4772,7 +4864,7 @@ else
     setObjEnable(handles.editBaseName,'off')  
     
     % removes the variable frame rate objects
-    setObjVisibility(handles.textFrmRate,'off');
+    setObjVisibility(handles.editFrmRate,'off');
     setObjVisibility(handles.sliderFrmRate,'off');
     
     % disables the video count/frame text labels
@@ -4871,7 +4963,7 @@ iExpt = getappdata(hFig,'iExpt');
 infoObj = getappdata(hFig,'infoObj');
 hPopup = handles.popupFrmRate;
 hSlider = handles.sliderFrmRate;
-hTxt = handles.textFrmRate;
+hEdit = handles.editFrmRate;
 
 % other initialisations
 Dmax = iExpt.Video.Dmax;
@@ -4884,9 +4976,10 @@ if infoObj.hasIMAQ
     [fRateNum,fRate,~] = detCameraFrameRate(srcObj,iExpt.Video.FPS);  
     
     % sets up the camera frame rate objects
+    isVarFPS = true;
     if isVarFPS
         % case is a variable frame rate camera
-        initFrameRateSlider(hSlider,srcObj,fRateNum)
+        initFrameRateSlider(hSlider,srcObj,iExpt.Video.FPS)
         sliderFrmRate_Callback(hSlider, [], handles) 
         setObjVisibility(hPopup,'off')
     else
@@ -4952,12 +5045,12 @@ if infoObj.hasIMAQ
     end        
     
     % sets the object visibility flags
-    setObjVisibility(hTxt,isVarFPS)
+    setObjVisibility(hEdit,isVarFPS)
     setObjVisibility(hSlider,isVarFPS)    
 else
     % retrieves the frame rate and set the object visibility flags 
     iExpt.Video.FPS = NaN; 
-    setObjVisibility(hTxt,0)
+    setObjVisibility(hEdit,0)
     setObjVisibility(hSlider,0)       
 end
 

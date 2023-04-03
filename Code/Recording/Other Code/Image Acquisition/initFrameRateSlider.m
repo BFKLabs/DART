@@ -11,8 +11,13 @@ fpsFld = getCameraRatePara(srcObj);
 fpsInfo = propinfo(srcObj,fpsFld);
 
 % sets the fps limit
-fpsLim = fpsInfo.ConstraintValue;
-fpsLim(2) = min(fpsLim(2),fpsMax);
+if iscell(fpsInfo.ConstraintValue)
+    fpsLim0 = sort(cellfun(@str2double,fpsInfo.ConstraintValue));
+    fpsLim = fpsLim0([1,end]);
+else
+    fpsLim = fpsInfo.ConstraintValue;
+    fpsLim(2) = min(fpsLim(2),fpsMax);
+end
 
 % determines the rounded frame rate limits
 fpsLimR = round(fpsLim,1);

@@ -44,6 +44,8 @@ classdef VideoPara < handle
         iC
         isEnum
         isNum
+        isFeas
+        cVal0
         hasP
         igFld
         igName
@@ -55,10 +57,10 @@ classdef VideoPara < handle
         widObjMx
         
         % scalar/string fields
-        eStr0
+	nCol
+	eStr0
         pSz = 13;
-        tSz = 12;
-        nCol = 2;   
+        tSz = 12;           
         pHght = 25;
         isOK = true;
         lArr = char(8594);
@@ -119,11 +121,11 @@ classdef VideoPara < handle
                 % exits with a false flag
                 obj.isOK = false;
                 return
-            end                        
-            
+            end                                    
+
             % memory allocation
             [A,B] = deal(zeros(1,2),cell(1,2));
-            [obj.sInfo,obj.hTxt,obj.hObj] = deal(B);
+            [obj.sInfo,obj.hTxt,obj.hObj,obj.isFeas,obj.cVal0] = deal(B);
             [obj.nPara,obj.nRow,obj.hghtPanel] = deal(A);
             [obj.widTxtMx,obj.widObjMx] = deal(A);
             obj.hasP = [any(obj.isNum),any(obj.isEnum)];
@@ -137,7 +139,27 @@ classdef VideoPara < handle
             % sets the source object handle and original parameter values into the GUI
             pStr = fieldnames(obj.srcObj);
             obj.pVal0 = [pStr(:),get(obj.srcObj,pStr(:))'];
+
+            % --- PROPERTY FEASIBILITY CALCULATIONS --- %
             
+            % case is the enumeration parameters
+            sInfoENum = obj.infoSrc(obj.isEnum);
+            obj.cVal0{1} = field2cell(sInfoENum,'ConstraintValue');
+            obj.isFeas{1} = cellfun('length',obj.cVal0{1}) > 1;
+
+            % case is the numerical parameters
+            sInfoNum = obj.infoSrc(obj.isNum);                
+            sInfoNum = obj.appendOtherNumPara(sInfoNum);            
+            obj.cVal0{2} = arrayfun(@(x)...
+                (double(x.ConstraintValue)),sInfoNum(:),'un',0);
+            obj.isFeas{2} = diff(cell2mat(obj.cVal0{2}),[],2) > 0;            
+
+            % calculates the optimal column count
+            fPos = get(0,'ScreenSize');
+            nParaT = sum(cellfun(@sum,obj.isFeas));
+            hghtT = fPos(4) - (7*obj.dX + obj.hghtPanelC);
+            obj.nCol = ceil(obj.pHght*nParaT/hghtT);
+
         end
         
         % --- initialises the class fields
@@ -541,10 +563,8 @@ classdef VideoPara < handle
                 end
                 
                 % case is the numerical parameters
-                sInfoENum = obj.infoSrc(obj.isEnum);
-                cVal = field2cell(sInfoENum,'ConstraintValue');
-                isFeas = cellfun('length',cVal) > 1;
-                [sInfo0,cVal] = deal(sInfoENum(isFeas),cVal(isFeas));
+                sInfoENum = obj.infoSrc(obj.isEnum);                
+                [sInfo0,cVal] = deal(sInfoENum(obj.isFeas{1}),obj.cVal0{1});
                 
             else                
                 % if there are no parameters then exit
@@ -554,13 +574,7 @@ classdef VideoPara < handle
                 
                 % sets the source information struct
                 sInfoNum = obj.infoSrc(obj.isNum);                
-                sInfoNum = obj.appendOtherNumPara(sInfoNum);
-                
-                % case is the enumeration parameters
-                cVal = arrayfun(@(x)...
-                    (double(x.ConstraintValue)),sInfoNum(:),'un',0);
-                isFeas = diff(cell2mat(cVal),[],2) > 0;
-                [sInfo0,cVal] = deal(sInfoNum(isFeas),cVal(isFeas));
+                [sInfo0,cVal] = deal(sInfoNum(obj.isFeas{2}),obj.cVal0{2});
             end            
             
             % removes any fields which have been flagged for being ignored
@@ -573,7 +587,7 @@ classdef VideoPara < handle
                 
                 % if the field exists, then set the fixed field value
                 if any(~isKeepNw)
-                    set(obj.sObj,obj.igFld{i}{1},obj.igFld{i}{2});
+                    set(obj.srcObj,obj.igFld{i}{1},obj.igFld{i}{2});
                 end
             end            
 
@@ -621,10 +635,13 @@ classdef VideoPara < handle
                 % creates the popup objects
                 cbFcn = @obj.popupCallback;
                 hObj = cellfun(@(p,i,s)(obj.createPopupObj...
-                    (hP,p,i,s,cbFcn)),cVal(:),iSel(:),sInfoC,'un',0);
+                    (hP,p,i,s,cbFcn)),cVal(:),iSel(:),sInfoC,'un',0);                
                 
-                
-%                 hPopup = createPopupObj(hP,lStr,iSel,sInfo,cbFcn)
+                % calculates maximum parameter object width
+                widTxtP = max(cellfun...
+                    (@(h,p)(obj.calcPopupWidth(hP,h,p)),hObj,cVal));                                
+                obj.widObjMx(k) = max(40,widTxtP);
+
             else                
                 % sets up the tooltip strings
                 pVal{end} = iExpt.Timing.Tp;                                
@@ -640,10 +657,10 @@ classdef VideoPara < handle
                 set(hObj{end},'Callback',@obj.editPauseTime);
                 cellfun(@(h)(obj.resetObjDim(h,4,obj.hghtEdit)),hObj)
                 cellfun(@(h,t)(set(h,'TooltipString',t)),hTxt,ttStr);
-            end
-            
-            % calculates maximum parameter object width
-            obj.widObjMx(k) = max(40,obj.getMaxObjWidths(hObj,isE));
+
+                % calculates maximum parameter object width
+                obj.widObjMx(k) = max(40,obj.getMaxObjWidths(hObj,0));                
+            end            
             
             % resets the bottom location of the objects
             yObj = yTxt + 2*isE;
@@ -653,7 +670,21 @@ classdef VideoPara < handle
 
         % ----------------------- %        
         % --- OTHER FUNCTIONS --- %
-        % ----------------------- %        
+        % ----------------------- %   
+
+        %
+        function widPop = calcPopupWidth(obj,hP,hPopup,pStr)
+
+            %
+            fSz = get(hPopup,'FontSize');
+            hTxtP = cellfun(@(t)(obj.createTextObj(hP,t)),pStr,'un',0);
+            cellfun(@(x)(set(x,'FontUnits','Pixels','FontSize',fSz)),hTxtP)
+
+            %
+            widPop = max(cellfun(@(h)(obj.getObjDim(h,3,0)),hTxtP));
+            cellfun(@delete,hTxtP)
+
+        end
         
         % --- retrieves the ignored field information
         function getIgnoredFieldInfo(obj)
@@ -795,6 +826,8 @@ classdef VideoPara < handle
         
         % --- retrieves the object dimensions
         function dVal = getObjDim(hObj,iDim,usePos)
+
+            if ~exist('usePos','var'); usePos = false; end
            
             % retrieves the object dimensions
             if any(iDim == [1,2]) || usePos
