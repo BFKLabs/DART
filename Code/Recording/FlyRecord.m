@@ -373,7 +373,7 @@ end
 function menuVideoProps_Callback(hObject, eventdata, handles)
 
 % runs the video parameter sub-GUI
-VideoPara(handles)
+VideoPara(handles);
 
 % -------------------------------------------------------------------------
 function menuTestRecord_Callback(hObject, eventdata, handles)
