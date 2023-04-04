@@ -1168,7 +1168,7 @@ fpsLim = getFrameRateLimits(srcObj,fpsFld);
 
 % converts the value to a character (if required)
 prVal = get(srcObj,fpsFld);
-if ischar(class(prVal))
+if ischar(prVal)
     % determines the matching fps value
     fpsLimC = cellfun(@str2double,fpsLim);
     ii = fpsLimC == iExpt.Video.FPS;        
@@ -1180,6 +1180,7 @@ if ischar(class(prVal))
         nwVal = fpsLim{ii};
     end
     
+    % sets the numerical values
     nwValN = str2double(nwVal);
     set(hObject,'Value',nwValN)    
 else
