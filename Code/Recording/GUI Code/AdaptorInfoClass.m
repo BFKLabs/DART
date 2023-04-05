@@ -186,6 +186,8 @@ classdef AdaptorInfoClass < handle
                 if isempty(obj.objDAQ)
                     % case is there no previous information
                     obj.nCh = zeros(obj.nDAQMax,1); 
+                    obj.objDAQ = struct('sType',[]);
+                    obj.objDAQ.sType = repmat({'N/A'},obj.nDAQMax,1);
                 else
                     % otherwise, retrieve the previous info
                     obj.vSelDAQ = obj.objDAQ.vSelDAQ;
@@ -458,21 +460,29 @@ classdef AdaptorInfoClass < handle
             
             % initialises the device channel count editbox
             obj.nDAQMax = min(obj.nDAQMax,length(obj.vStrDAQ));
-            obj.initChannelEdit();    
-            
+            obj.initChannelEdit();               
+
             % sets the name strings within the list box
             set(handles.listDACObj,'String',obj.vStrDAQ,'value',[])              
             
             % sets the list/channel values (if adaptors have been set)
             if obj.onlyDAQ
+                % updates the list selection value
                 set(handles.listDACObj,'value',obj.vSelDAQ)
+                isHT = strcmp(obj.objDAQ.sType,'HTControllerV1');
+                
                 for i = 1:length(obj.vSelDAQ)
                     j = obj.vSelDAQ(i);
                     hEdit = findobj(handles.panelDACObj,...
                                             'style','edit','UserData',j);
-                    if isnan(obj.nCh(j))
+                    if isnan(obj.nCh(j)) || isHT(i)
+                        % if opto or ht-controller then set inactive cell
                         obj.setEditProp(j,'opto')
+                        if isHT(i)
+                            set(hEdit,'String','1')
+                        end
                     else
+                        % otherwise, set the cell to be active
                         nChStr = num2str(obj.nCh(j));
                         set(hEdit,'backgroundcolor','w','enable','on',...
                                   'ForegroundColor','k','string',nChStr)
@@ -714,11 +724,12 @@ classdef AdaptorInfoClass < handle
             handles = obj.hGUI;
             obj.vSelDAQ = get(hObject,'Value');
             isOpto = strcmp(obj.objDAQ.sType,'Opto');
+            isHT = strcmp(obj.objDAQ.sType,'HTControllerV1');
             stimOnly = strcmp(obj.exType,'StimOnly');
 
             % sets the flags of the edit boxes that need to be updated
             [ii,jj] = deal(true(obj.nDAQMax,1),false(obj.nDAQMax,1));
-            [ii(obj.vSelDAQ),jj(isOpto)] = deal(false,true);
+            [ii(obj.vSelDAQ),jj(isOpto | isHT)] = deal(false,true);
 
             % resets the edit-box properties
             obj.setEditProp(find(ii),'inactive')
@@ -881,11 +892,12 @@ classdef AdaptorInfoClass < handle
                 case 0
                     % case is the device channel type/count is not provided
                     nChD = obj.objDAQ.nChannel;
-                    sTypeD = obj.objDAQ.sType;
+                    sTypeD = obj.convertStimTypes(obj.objDAQ.sType);
 
                 case 2
                     % case is the device channel type/count is provided
-                    [sTypeD,nChD] = deal(varargin{1},varargin{2});
+                    nChD = varargin{2};
+                    sTypeD = obj.convertStimTypes(varargin{1});
             end
 
             % for each required device, determine if a matching device 
@@ -1010,7 +1022,8 @@ classdef AdaptorInfoClass < handle
                 % sets the object details                  
                 daqInfo = appendSerialInfo(daqInfo,pStr,obj.vStr);  
                 hasDevice = ~isempty(daqInfo.Control) || hasDevice;
-            end        
+            end 
+
         end
         
         % --- updates the required device strings/colours
@@ -1106,6 +1119,13 @@ classdef AdaptorInfoClass < handle
                             
         end
         
+        % --- converts the stimuli device type strings
+        function sType = convertStimTypes(sType)
+
+            sType(strcmp(sType,'HTControllerV1')) = {'Motor'};
+
+        end
+
     end
     
 end

@@ -158,7 +158,7 @@ classdef VideoPara < handle
             fPos = get(0,'ScreenSize');
             nParaT = sum(cellfun(@sum,obj.isFeas));
             hghtT = fPos(4) - (7*obj.dX + obj.hghtPanelC);
-            obj.nCol = ceil(obj.pHght*nParaT/hghtT);
+            obj.nCol = max(2,ceil(obj.pHght*nParaT/hghtT));
 
         end
         
@@ -564,7 +564,8 @@ classdef VideoPara < handle
                 
                 % case is the numerical parameters
                 sInfoENum = obj.infoSrc(obj.isEnum);                
-                [sInfo0,cVal] = deal(sInfoENum(obj.isFeas{1}),obj.cVal0{1});
+                sInfo0 = sInfoENum(obj.isFeas{1});
+                cVal = obj.cVal0{1}(obj.isFeas{1});
                 
             else                
                 % if there are no parameters then exit
@@ -574,7 +575,9 @@ classdef VideoPara < handle
                 
                 % sets the source information struct
                 sInfoNum = obj.infoSrc(obj.isNum);                
-                [sInfo0,cVal] = deal(sInfoNum(obj.isFeas{2}),obj.cVal0{2});
+                sInfoNum = obj.appendOtherNumPara(sInfoNum);   
+                sInfo0 = sInfoNum(obj.isFeas{2});
+                cVal = obj.cVal0{2}(obj.isFeas{2});
             end            
             
             % removes any fields which have been flagged for being ignored
@@ -672,16 +675,19 @@ classdef VideoPara < handle
         % --- OTHER FUNCTIONS --- %
         % ----------------------- %   
 
-        %
+        % --- calculates the width of the popup menus
         function widPop = calcPopupWidth(obj,hP,hPopup,pStr)
 
-            %
+            % parameters
+            dWid = 35;
+
+            % creates the dummy text objects
             fSz = get(hPopup,'FontSize');
             hTxtP = cellfun(@(t)(obj.createTextObj(hP,t)),pStr,'un',0);
             cellfun(@(x)(set(x,'FontUnits','Pixels','FontSize',fSz)),hTxtP)
 
-            %
-            widPop = max(cellfun(@(h)(obj.getObjDim(h,3,0)),hTxtP));
+            % retrieves the max text object width and deletes the objects
+            widPop = max(cellfun(@(h)(obj.getObjDim(h,3,0)),hTxtP)) + dWid;
             cellfun(@delete,hTxtP)
 
         end
@@ -870,7 +876,7 @@ classdef VideoPara < handle
            
             % creates a copy of the sub-struct fields
             sInfoNw = sInfoN(1);
-            sInfoNw.Name = 'Inter-Video Pause';
+            sInfoNw.Name = 'Inter Video Pause';
             sInfoNw.ConstraintValue = [5 600];
             
             % appends the new field to the struct

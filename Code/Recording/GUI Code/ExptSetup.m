@@ -4977,7 +4977,7 @@ if infoObj.hasIMAQ
     [fRateNum,fRate,~] = detCameraFrameRate(srcObj,iExpt.Video.FPS);  
     
     % sets up the camera frame rate objects
-    isVarFPS = true;
+%     isVarFPS = true;
     if isVarFPS
         % case is a variable frame rate camera
         initFrameRateSlider(hSlider,srcObj,iExpt.Video.FPS)

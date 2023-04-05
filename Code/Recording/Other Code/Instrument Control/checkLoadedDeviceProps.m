@@ -56,7 +56,13 @@ if isempty(objDAQ0)
     devType = [];
     [nCh,nDev] = deal(NaN,0);
 else
+    % sets the device types
     devType = objDAQ0.sType;
+
+    % special case - converting controllers to other types
+    devType(strcmp(devType,'HTControllerV1')) = {'Motor'};
+
+    % retrieves the channel/device counts
     nCh = objDAQ0.nChannel(1:length(devType));
     nDev = cellfun(@(x)(sum(strContains(devType,x))),devStr);
 end
