@@ -896,7 +896,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                         % loads the multi-experiment solution file
                         fFileS = fullfile(fDirS{i},fNameS{i});
                         [snTotNw,mNameNw,ok] = ...
-                                 loadMultiExptSolnFiles(tDir,fFileS,[],hh);
+                                 loadMultiExptSolnFiles(tDir,fFileS,[],hh);                             
                         if ~ok
                             % if the user cancelled, then exit the function
                             return

@@ -2,8 +2,8 @@
 function [A,isOK] = appendSerialInfo(A,pStr,vStr)
 
 % parameters
-% bRate = 9600;
-bRate = 115200;
+bRate = 9600;
+% bRate = 115200;
 
 % memory allocation
 nStr = size(pStr,1);
@@ -13,7 +13,7 @@ nStr = size(pStr,1);
 % creates the serial objects
 for i = 1:nStr
     % sets up the controller handle and boardname string
-    Control{i} = serial(pStr{i,1},'BaudRate',9600,'Parity',...
+    Control{i} = serial(pStr{i,1},'BaudRate',bRate,'Parity',...
                                   'none','DataBits', 8,'StopBits', 1);    
     BoardNames{i} = pStr{i,2};    
     

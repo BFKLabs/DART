@@ -223,11 +223,11 @@ classdef DART < handle
                 for i = 1:length(obj.prDir)
                     addDir = obj.getProgFileName(obj.prDir{i});
                     obj.updateSubDir(addDir,1)
-                end                
-                
-                % adds the java files to the path
-                obj.updateJavaFiles(true);                
+                end                                               
             end            
+            
+            % adds the java files to the path
+            obj.updateJavaFiles(true);             
             
             % loads/initialises the default directory path file
             defFile = getParaFileName('ProgDef.mat');

@@ -84,8 +84,12 @@ else
         return 
 
     else
+        % loads the solution file
+        wState = warning('off','all');
+        snTot = load(fullfile(TempDir,fNameS{indD}));        
+        warning(wState);
+        
         % otherwise, load the file data file
-        snTot = load(fullfile(TempDir,fNameS{indD}));
         if ~isfield(snTot,'Type')
             % sets the type if it hasn't been set
             snTot.Type = 0; 

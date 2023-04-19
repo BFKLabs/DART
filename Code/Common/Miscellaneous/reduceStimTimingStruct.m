@@ -39,9 +39,11 @@ for i = 1:length(dTypeB)
             end
             
             % combines the start times/indices into single arrays
-            Ts{j} = combineNumericCells(Ts{j});
-            Tf{j} = combineNumericCells(Tf{j});
-            iStim{j} = combineNumericCells(iStim{j});
+            if nCh > 0
+                Ts{j} = combineNumericCells(Ts{j});
+                Tf{j} = combineNumericCells(Tf{j});
+                iStim{j} = combineNumericCells(iStim{j});
+            end
             
             % determines if the channel properties are similar across all
             % channels. if so, combine these similar channels            

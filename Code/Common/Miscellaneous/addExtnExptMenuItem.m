@@ -18,5 +18,9 @@ end
 
 % creates the new menu item
 menuTag = sprintf('menu%s',lblStr);
-hMenuNew = uimenu(hMenuExtn,...
-    'label',lblStr,'tag',menuTag,'MenuSelectedFcn',cbFcn);
+hMenuNew = uimenu(hMenuExtn,'label',lblStr,'tag',menuTag);
+if isprop(hMenuNew,'MenuSelectedFcn')
+    set(hMenuNew,'MenuSelectedFcn',cbFcn)
+else
+    set(hMenuNew,'Callback',cbFcn)
+end

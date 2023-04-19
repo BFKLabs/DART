@@ -127,8 +127,10 @@ end
 codeDir = [rmvEmptyCells(codeDir);pkgName(:)];
 
 % sets the java jar files
-javaFiles = {which('ColoredFieldCellRenderer.zip')};
-
+% javaFiles = {which('ColoredFieldCellRenderer.zip');...
+%              getProgFileName('Code','Executable Only','CondCheckTable.zip')};
+javaFiles = {which('ColoredFieldCellRenderer.zip')};         
+         
 % % retrieves the names of all the folders within the Code directory
 % codeDir = cell2cell(codeDir);
 
@@ -139,7 +141,7 @@ javaFiles = {which('ColoredFieldCellRenderer.zip')};
 
 % sets up the main file, analysis function directory and other important
 % file directories add string
-fStr = [codeDir(:);{'Para Files'};javaFiles(:)];
+fStr = [codeDir(:);javaFiles(:);{'Para Files'}];
 addStr = sprintf('-v ''%s'' -a ''%s''',fullfile(progDir,'DART.m'),fcnDir);
 for i = 1:length(fStr)
     switch fStr{i}

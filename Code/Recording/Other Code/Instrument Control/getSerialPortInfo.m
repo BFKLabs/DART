@@ -3,8 +3,9 @@ function [comAvail,comDetect] = getSerialPortInfo()
 
 % determines the available serial ports
 try
-    insInfo = instrhwinfo('serial');
-    comAvail = insInfo.AvailableSerialPorts;
+%     insInfo = instrhwinfo('serial');
+%     comAvail = insInfo.AvailableSerialPorts;
+    comAvail = serialportlist;
 catch
     [comAvail,comDetect] = deal([]);
     return
