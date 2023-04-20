@@ -90,9 +90,12 @@ classdef DART < handle
             % global variables
             global mainProgDir
             
+            % clears the screen
+            clc            
+            
             % initialisations
             ok = true;
-            [obj.mainDir,mainProgDir] = deal(pwd);
+            [obj.mainDir,mainProgDir] = deal(pwd);                    
             
             % determines if there are any existing DART sessions
             hFigPr = findall(0,'tag',obj.tagStr);
@@ -848,10 +851,7 @@ classdef DART < handle
                     % if it failed then pause and then retry
                     pause(0.1);
                 end
-            end
-            
-            % clears the screen
-            clc
+            end            
             
         end        
         
