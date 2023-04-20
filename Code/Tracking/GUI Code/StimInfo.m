@@ -58,6 +58,7 @@ set(hObject,'T',iData.Tv(iData.Frm0:iMov.sRate:end));
 delete(handles.editOuter);
 
 % initialises the tab objects
+handles = initObjProps(handles);
 initListBoxes(handles)
 initEventTabGroup(handles)
 autoResizeTableColumns(handles.tableStimPara)
@@ -193,6 +194,23 @@ figure(hFig)
 % --------------------------------------- %
 % --- OBJECT INITIALISATION FUNCTIONS --- %
 % --------------------------------------- %
+
+% --- initialises the gui object properties
+function handles = initObjProps(handles)
+
+% Create tableStimPara
+tPos = [5 7 440 166];
+cWid = {60, 55, 'auto', 'auto', 55, 'auto'};
+cEdit = [false false false false false false];
+cName = {'Type';'Count';'Period (s)';...
+         'Amplitude (%)';'Offset (s)';'Duration (s)'};
+
+% creates the table object    
+handles.tableStimPara = uitable(handles.panelStimPara,...
+    'Units','Pixels','ColumnName',cName,'ColumnWidth',cWid,...
+    'ColumnEditable',cEdit,'Tag','tableStimPara',...
+    'FontUnits','Pixels','FontSize',11,'Position',tPos,...
+    'ColumnFormat',{[] [] [] [] [] []});
 
 % --- initialises the channel listbox object --- %
 function initListBoxes(handles)
@@ -429,3 +447,4 @@ function tStr = setCellEntry(tVal)
 
 % rounds the value to 0.001 and converts to a string
 tStr = num2str(roundP(tVal,0.001));
+

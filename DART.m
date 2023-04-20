@@ -282,12 +282,15 @@ classdef DART < handle
             A = load(cdFile);
             obj.cData = A.cDataStr;           
             
-            % loads the global analysis parameters from the program parameter file
+            % loads global analysis parameters from program parameter file
             A = load(getParaFileName('ProgPara.mat'));
             [tDay,hDay] = deal(A.gPara.Tgrp0,A.gPara.TdayC);
             
             % uses software opengl format
             opengl('save','software')
+            
+            % turns off the warnings
+            warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
         
         end
         
@@ -832,7 +835,7 @@ classdef DART < handle
             % re-draws
             drawnow; pause(0.05);
             
-            % keep trying to determine the object dimensions until they are found
+            % keep determining the object dimensions until they are found
             while true
                 try
                     % attempts to retrieve the object dimensions
@@ -846,6 +849,9 @@ classdef DART < handle
                     pause(0.1);
                 end
             end
+            
+            % clears the screen
+            clc
             
         end        
         

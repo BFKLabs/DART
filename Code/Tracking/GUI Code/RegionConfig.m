@@ -222,7 +222,7 @@ if hObject.isMTrk
 end
 
 % initialises the object properties
-initObjProps(handles,true);
+handles = initObjProps(handles,true);
 
 % ------------------------------- %
 % --- HOUSE-KEEPING EXERCISES --- %
@@ -1301,7 +1301,7 @@ set(hFig,'iMov',iMov)
 % ------------------------------------- %
 
 % --- initialises the object properties
-function initObjProps(handles,isInit)
+function varargout = initObjProps(handles,isInit)
 
 % object handle retrieval
 hAx = handles.axesConfig;
@@ -1353,7 +1353,6 @@ end
 % retrieves the tab panel object handles
 hPanel = arrayfun(@(x)(findall(hPanelConfig,'UserData',x,...
                             'type','uipanel')),1:length(tStr),'un',0);
-
 if isInit
     % sets the object positions
     tabPos = getTabPosVector(handles.panelRegionConfig,[5,-40,-10,40]);
@@ -1382,6 +1381,9 @@ if isInit
     set(hFig,'hTab',hTab);
     set(hFig,'hTabGrp',hTabGrp);
     set(hFig,'jTabGrp',jTabGrp);
+
+    % initialises the table objects
+    handles = initTableObj(handles);
     
 else
     % otherwise, retrieve the table group java object handle
@@ -1560,11 +1562,72 @@ if isInit
     % initialises the plot axis
     set(hAx,'xtick',[],'xticklabel',[],'ytick',[],'yticklabel',[],...
             'box','on');
+        
+    % sets the output variables
+    varargout = {handles};
 end
 
 % resets the configuration axes
 resetConfigAxes(handles)
-    
+
+% --- initialises the table objects
+function handles = initTableObj(handles)
+
+% common parameters
+fSz = 10.6666666666667;
+
+% ---------------------------- %
+% --- 1D REGION INFO TABLE --- %
+% ---------------------------- %
+
+% table properties
+cWid = {45, 45, 45, 91};
+tabPos = [10 10 245 112];
+cEdit = [false false true true];
+cName = {'Row #'; 'Col #'; 'Count'; 'Group'};
+cbFcnCE = {@tableRegionInfo1D_CellEditCallback,handles};
+cbFcnCS = {@tableRegionInfo1D_CellSelectionCallback,handles};
+
+% creates the table object
+handles.tableRegionInfo1D = uitable(handles.panelRegionInfo1D,...
+    'Units','Pixels','FontUnits','Pixels','Position',tabPos,...
+    'ColumnName',cName,'ColumnWidth',cWid,'RowName','',...
+    'ColumnEditable',cEdit,'FontSize',fSz,'Tag','tableRegionInfo1D',...
+    'CellEditCallback',cbFcnCE,'CellSelectionCallback',cbFcnCS);
+
+% -------------------------------- %
+% --- 1D GROUP NAME INFO TABLE --- %
+% -------------------------------- %
+
+% table properties
+cWid = {197, 'auto'};
+cEdit = [true false];
+tabPos = [10 10 245 94];
+cName = {'Group Name'; ''};
+
+% creates the table object
+handles.tableGroupNames1D = uitable(handles.panelGroupNames1D,...
+    'Units','Pixels','FontUnits','Pixels','Position',tabPos,...
+    'ColumnEditable',cEdit,'Tag','tableGroupNames1D',...
+    'ColumnName',cName,'ColumnWidth',cWid,'FontSize',fSz);
+
+% -------------------------------- %
+% --- 2D GROUP NAME INFO TABLE --- %
+% -------------------------------- %
+
+% creates the table object
+handles.tableGroupNames2D = uitable(handles.panelGroupNames2D,...
+    'Units','Pixels','FontUnits','Pixels','Position',tabPos,...
+    'ColumnEditable',cEdit,'Tag','tableGroupNames2D',...
+    'ColumnName',cName,'ColumnWidth',cWid,'FontSize',fSz);
+
+% ------------------------------- %
+% --- HOUSE-KEEPING EXERCISES --- %
+% ------------------------------- %
+
+% Update handles structure
+guidata(handles.figRegionSetup, handles);
+
 % --- updates the group table column format
 function updateRegionInfoTable(handles)
 

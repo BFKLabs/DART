@@ -54,6 +54,7 @@ classdef VideoROIClass < handle
             obj.hLoad = ProgressLoadbar('Initialising GUI Objects...');
             
             % initialises the class/gui object properties
+            obj.initAxesObj();
             obj.initClassFields();
             obj.initObjCallbacks();
             obj.initObjProps();
@@ -62,18 +63,27 @@ classdef VideoROIClass < handle
             delete(obj.hLoad)
             
         end  
+
+        % --- initialises the class object fields
+        function initAxesObj(obj)            
+                       
+            % creates the image axes 
+            hPanelAx = obj.hGUI.panelImageAxes;
+            pPosAx = get(hPanelAx,'Position');
+            axPos = [obj.dX*[1,1],pPosAx(3:4)-2*obj.dX];            
+            obj.hAx = axes(hPanelAx,'Units','Pixels',...
+                            'Position',axPos,'box','on');
+           
+            % creates the large dimension axes object
+            hPanelLV = obj.hGUI.panelLargeDim;
+            axPos = [obj.dX*[1,3],190,140];            
+            obj.hAxLV = axes(hPanelLV,'Units','Pixels',...
+                            'Position',axPos,'box','on');
+            
+        end
         
         % --- initialises the class object fields
-        function initClassFields(obj)
-            
-            % initialisations
-            handles = obj.hGUI;
-            obj.hAx = handles.axesImg;
-            obj.hAxLV = handles.axesLargeVideo;
-
-            % sets up the main image axes handle
-            hPanelP = findall(obj.hFigM,'tag','panelImg');
-            obj.hAxM = findobj(obj.hFigM,'type','axes','Parent',hPanelP);             
+        function initClassFields(obj)            
 
             % retrieves the current/full video resolution
             obj.rPos = get(obj.infoObj.objIMAQ,'ROIPosition');

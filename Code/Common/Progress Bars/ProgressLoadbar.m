@@ -8,4 +8,6 @@ hFig = get(groot,'CurrentFigure');
 h = ProgressDialog('StatusMessage',wStr,'Indeterminate',true);
 
 % resets the current figure
-if ~isempty(hFig); set(0,'CurrentFigure',hFig); end
+if ~isempty(hFig) && isvalid(hFig)
+    set(0,'CurrentFigure',hFig); 
+end

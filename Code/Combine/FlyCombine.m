@@ -15,8 +15,8 @@ end
 
 if nargout
     [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
-else
-    gui_mainfcn(gui_State, varargin{:});
+else    
+    gui_mainfcn(gui_State, varargin{:});    
 end
 % End initialization code - DO NOT EDIT
 
@@ -80,7 +80,7 @@ cla(handles.axesStim);
 axis(handles.axesStim,'off')
 
 % sets the other object properties
-initObjProps(handles)
+handles = initObjProps(handles);
 
 % % sets up the git menus
 % if exist('GitFunc','file')
@@ -99,6 +99,9 @@ handles.output = hObject;
 % ensures that the appropriate check boxes/buttons have been inactivated
 setObjVisibility(hObject,'on'); pause(0.01);
 updateFlag = 0; pause(0.01); 
+
+% auto-resizes the table columns
+autoResizeTableColumns(handles.tableAppInfo);
 
 % initialises the table position
 setappdata(hObject,'jObjT',findjobj(handles.tableAppInfo))
@@ -1527,13 +1530,13 @@ pause(0.05);
 % --------------------------------------- %
 
 % --- initialises the GUI object properties
-function initObjProps(handles)
+function handles = initObjProps(handles)
 
 % initialisations
+bgCol = ones(4,3);
 hFig = handles.figFlyCombine;
 hPanelEx = handles.panelExptOuter;
 hPanelOut = handles.panelOuter;
-hTable = handles.tableAppInfo;
 
 % sets the object positions
 tabPos = getTabPosVector(hPanelEx,[5,5,-10,-8]);
@@ -1549,6 +1552,22 @@ set(hTab,'ButtonDownFcn',{@tabSelected,handles})
 % pause to allow figure update
 pause(0.05);
 
+% table object properties
+nRow = 4;
+cWid = {255,55};
+tPos = [10,10,400,94];
+cEdit = [false,true];
+cForm = {'char','logical'};
+cName = {'Sub-Region Group Name','Include'};
+eFcn = {@tableAppInfo_CellEditCallback,handles};
+rwName = arrayfun(@(x)(sprintf('Group #%i',x)),(1:nRow)','un',0);
+
+% creates the table object
+handles.tableAppInfo = uitable(handles.panelAppInfo,'Units','Pixels',...
+    'Position',tPos,'ColumnFormat',cForm,'CellEditCallback',eFcn,...
+    'ColumnName',cName,'BackgroundColor',bgCol,'ColumnWidth',cWid,...
+    'RowName',rwName,'ColumnEditable',cEdit,'Enable','off');
+
 % updates the tab group information
 setappdata(hFig,'hTab',{hTab});
 setappdata(hFig,'hTabGrp',hTabGrp)
@@ -1559,7 +1578,6 @@ resetObjPos(hPanelOut,'Bottom',5)
 resetObjPos(hPanelOut,'Left',5)  
 
 % sets the table background colour
-set(hTable,'BackgroundColor',ones(4,3));
 autoResizeTableColumns(handles.tableAppInfo);
 
 % disables the save/clear data manu items

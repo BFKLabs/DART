@@ -79,6 +79,9 @@ setObjVisibility(handles.panelBGDetect,'off')
 % creates the region marker class object
 hObject.rgObj = TrackRegionClass(hObject,handles.imgAxes);
     
+% initialises the gui objects
+handles = initObjProps(handles);
+
 % ----------------------------------------------------------- %
 % --- FIELD INITIALISATIONS & DIRECTORY STRUCTURE SETTING --- %
 % ----------------------------------------------------------- %
@@ -771,7 +774,7 @@ else
 end 
 
 % retrieve the summary file path from the solution file
-sFile = getSummaryFilePath(solnData.fData);
+sFile = getSummaryFilePath(solnData.fData,fDir);
 if exist(sFile,'file')
     % loads the summary file
     sData = load(sFile);
@@ -2273,6 +2276,28 @@ setTrackGUIProps(handles,'MinorGridCheck')
 %-------------------------------------------------------------------------%
 %                             OTHER FUNCTIONS                             %
 %-------------------------------------------------------------------------%
+
+% --------------------------------------- %
+% --- OBJECT INITIALISATION FUNCTIONS --- %
+% --------------------------------------- %
+
+% --- sets the other object properties
+function handles = initObjProps(handles)
+
+% table object properties
+fSz = 10.6666666666667;
+tPos = [10,39,277,200];
+cWid = {45,50,50,80,'Auto'};
+cEdit = false(1,length(cWid));
+cForm = {'numeric','numeric','numeric','numeric',[]};
+cName = {'Phase','Frame','Region','Sub-Region',''};
+
+% creates the table object
+handles.tableFlyUpdate = uitable(handles.panelManualSelect,...
+    'Units','Pixels','ColumnName',cName,'ColumnWidth',cWid,...
+    'ColumnEditable',cEdit,'Enable','off','Position',tPos,...
+    'Tag','tableFlyUpdate','FontUnits','Pixels','FontSize',fSz,...
+    'ColumnFormat',cForm);
 
 % ------------------------------- %
 % --- IMAGE DISPLAY FUNCTIONS --- %

@@ -1,4 +1,10 @@
-function summFile = getSummaryFilePath(iData)
+function summFile = getSummaryFilePath(iData,fDir)
+
+% searches the input file directory (if provided)
+if exist('fDir','var')
+    summFile = fullfile(fDir,'Summary.mat');
+    if exist(summFile,'file'); return; end    
+end
 
 % sets the path for the summary file (from the solution file directory)
 if isfield(iData,'sfData')

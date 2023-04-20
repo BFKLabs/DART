@@ -1799,6 +1799,7 @@ pData = getappdata(hFig,'pData');
 warning off all
 
 % updates the data struct with the
+fSz = 10.6666666666667;    
 mInd = find(any(metType,1));
 iData.tData.mSel = mInd(1);
 setappdata(hFig,'iData',iData)
@@ -1831,6 +1832,29 @@ set(handles.textSolnFile,'string',sName,'tooltipstring',sName)
 % --------------------------------------- %
 % --- USER INFO GROUP INITIALISATIONS --- %
 % --------------------------------------- %
+
+% Create tableGroupInc
+cWid = {200, 50};
+cEdit = [false true];
+tabPos = [10 10 300 94];
+cName = {'Genotype Group Name'; 'Include'};
+cbFcn = {@tableGroupInc_CellEditCallback,handles};
+handles.tableGroupInc = uitable(handles.panelUserInfo,...
+    'Units','Pixels','FontUnits','Pixels','Position',tabPos,...
+    'ColumnName',cName,'ColumnWidth',cWid,...
+    'ColumnEditable',cEdit,'RowStriping','off',...
+    'Tag','tableGroupInc','FontSize',fSz,...
+    'CellEditCallback',cbFcn);
+
+% Create tableExptInc
+cName = {'Experiment Name'; 'Include'};
+cbFcn = {@tableExptInc_CellEditCallback,handles};
+handles.tableExptInc = uitable(handles.panelUserInfo,...
+    'Units','Pixels','FontUnits','Pixels','Position',tabPos,...
+    'ColumnName',cName,'ColumnWidth',cWid,'RowName','',...
+    'ColumnEditable',cEdit,'RowStriping','off',...
+    'Tag','tableExptInc','FontSize',fSz,...
+    'CellEditCallback',cbFcn);
 
 % initialisations
 hTableI = handles.tableGroupInc;
@@ -1887,6 +1911,19 @@ for i = 1:length(dD)
         dD{i} = [dDN,num2cell(false(nStrD,1))];
     end
 end
+
+% Create tableStatTest
+cWid = {140, 50, 110};
+cEdit = [false true false];
+tabPos = [10 10 320 94];
+cName = {'Metric'; 'Include'; 'Test Type'};
+handles.tableStatTest = uitable(handles.panelStatTest,...
+    'Units','Pixels','FontUnits','Pixels','Position',tabPos,...
+    'ColumnName',cName,'ColumnWidth',cWid,'RowName','',...
+    'ColumnEditable',cEdit,'RowStriping','off',...
+    'Tag','tableStatTest','FontSize',fSz,...            
+    'CellSelectionCallback',@metTableCellSelect);
+guidata(hFig,handles);
 
 % sets the table properties
 [eFcn,sFcn] = deal({@tableCellEdit},{@metTableCellSelect});
