@@ -13,8 +13,8 @@ else
 end
 
 % sets the row heights to the original
-jTable.setRowHeight(HWT);
-jTable.repaint();
+try jTable.setRowHeight(HWT); catch; end
+try jTable.repaint(); catch; end
 
 % sets the output arguments (if required)
 if nargout == 1

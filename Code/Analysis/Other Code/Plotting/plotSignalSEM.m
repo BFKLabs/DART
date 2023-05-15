@@ -26,10 +26,16 @@ function plotSignalSEM(Ysig,Ysem,Xsig,col,fAlpha)
 iGrp = getGroupIndex(~isnan(Ysig));
 
 % sets the input arguments (for those not provided)
-if (nargin < 3); Xsig = 1:length(Ysig); end
-if (nargin < 4); col = 'b'; end
-if (nargin < 5); fAlpha = 0.3; elseif (isnan(fAlpha)); fAlpha = 0.3; end
-if (isempty(Xsig)); Xsig = (1:length(Ysig))'; end
+if ~exist('Xsig','var'); Xsig = 1:length(Ysig); end
+if ~exist('col','var'); col = 'b'; end
+if ~exist('fAlpha','var')
+    fAlpha = 0.3; 
+elseif isnan(fAlpha)
+    fAlpha = 0.3; 
+end
+
+% sets the initial signal vector
+if isempty(Xsig); Xsig = (1:length(Ysig))'; end
 
 % % interpolates the signal values for those that are missing
 % for i = 1:size(Ysem,2)
@@ -65,6 +71,7 @@ for i = 1:length(iGrp)
     [xFill,yFill] = deal([XsigNw;XsigNw(end:-1:1)],[YL;YU(end:-1:1)]);
 
     % creates the fill object    
-    hFill = fill(xFill,yFill,col,'facealpha',fAlpha,'linestyle','none');
+    hFill = fill(xFill,yFill,col,...
+        'facealpha',fAlpha,'linestyle','none','HitTest','off');
     set(hFill,'parent',hAx)
 end

@@ -323,7 +323,7 @@ for i = find(iReg)
         rpFcn = {'Stimuli Response','Pre & Post'};
         isRPFcn = cellfun(@(x)(strContains(pDataNw.Name,x)),rpFcn);        
         hPP = findall(handles.panelPlot,'tag','hPolar');
-        isReplot = ((pDataNw.hasRS) && (isempty(hPP))) || any(isRPFcn);
+        isReplot = (pDataNw.hasRS && isempty(hPP)) || any(isRPFcn);
     end    
     
     % determines if the axis is reset or not

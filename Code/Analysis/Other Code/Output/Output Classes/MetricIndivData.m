@@ -191,8 +191,14 @@ classdef MetricIndivData < DataOutputArray
                 obj.xiD = 1:max(szD);
                 mStrD0 = string(arrayfun(@(x)...
                                 (sprintf('Day #%i',x)),obj.xiD,'un',0));
-                obj.mStrD = cell2cell(cellfun(@(x)(combineCellArrays...
-                                ({x},mStrD0,0,b)),obj.mStrD,'un',0),0);
+                            
+                if iscell(obj.mStrD)
+                    obj.mStrD = cell2cell(cellfun(@(x)(combineCellArrays...
+                                    ({x},mStrD0,0,b)),obj.mStrD,'un',0),0);
+                else
+                    obj.mStrD = cell2cell(arrayfun(@(x)(combineCellArrays...
+                                    ({x},mStrD0,0,b)),obj.mStrD,'un',0),0);                    
+                end
             end
             
         end        

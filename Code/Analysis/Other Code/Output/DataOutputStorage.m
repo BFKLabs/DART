@@ -99,7 +99,7 @@ classdef DataOutputStorage < DataReshapeSetup
         % -------------------------------- %
         
         % --- reshapes the calculated metric data
-        function reshapeMetricData(obj)            
+        function reshapeMetricData(obj)
             
             % runs the reshape function for each metric type
             for iType = find(any(obj.Type,1))

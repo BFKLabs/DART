@@ -2,6 +2,7 @@ classdef FuncFilterTree < matlab.mixin.SetGet
     
     % class properties
     properties
+        
         % main object fields
         hFig
         hCheck
@@ -32,7 +33,8 @@ classdef FuncFilterTree < matlab.mixin.SetGet
         isLoading
         nCol = 6;        
         isUpdating = false;
-        rType = {'Scope','Dur','Shape','Stim','Spec'};        
+        rType = {'Scope','Dur','Shape','Stim','Spec'}; 
+        
     end
     
     % class methods
@@ -131,9 +133,10 @@ classdef FuncFilterTree < matlab.mixin.SetGet
             for iExp = 1:nExp
                 % experiment shape string
                 obj.fcnInfo{iExp,2} = expStr{1+iMov{iExp}.is2D};
-                if ~isempty(iMov{iExp}.autoP)
+                if isfield(iMov{iExp},'autoP') && ...
+                        ~isempty(iMov{iExp}.autoP.X0)
                     obj.fcnInfo{iExp,2} = sprintf('%s (%s)',...
-                                obj.fcnInfo{iExp,2},iMov{iExp}.autoP.Type);
+                        obj.fcnInfo{iExp,2},iMov{iExp}.autoP.Type);
                 end
 
                 % stimuli type string
@@ -453,9 +456,6 @@ classdef FuncFilterTree < matlab.mixin.SetGet
             % if there is no loaded data, then exit
             if isempty(obj.snTot); return; end
             
-            % sets the default input arguments
-            if ~exist('fScope','var'); fScope = []; end            
-            
             % memory allocation
             nFunc = size(obj.fcnData,1);
             [nExp,nReq] = size(obj.fcnInfo);
@@ -466,7 +466,7 @@ classdef FuncFilterTree < matlab.mixin.SetGet
                 % retrieves the requirement data for the current function
                 fcnDataF = obj.fcnData(iFunc,3:end);
 
-                % determines if each of the requirements matches for each expt
+                % determines if the requirements match for each expt
                 isMatch = true(nReq,nExp);
                 for iReq = 1:nReq
                     if ~strcmp(fcnDataF{iReq},'None')
@@ -475,12 +475,12 @@ classdef FuncFilterTree < matlab.mixin.SetGet
                     end
                 end                
 
-                % calculates the overall compatibility (all 
+                % calculates the overall compatibility
                 obj.cmpData(iFunc,:) = all(isMatch,1);                           
             end
             
             % accounts for the function scope (if provided)
-            if ~isempty(fScope)
+            if exist('fScope','var')
                 B = repmat(strContains(obj.fcnData(:,2),fScope),1,nExp);
                 obj.cmpData = obj.cmpData & B;
             end                 
@@ -502,9 +502,9 @@ classdef FuncFilterTree < matlab.mixin.SetGet
             
             % sets the panel offset
             if obj.isLoading
-                dY = 2*(1+obj.dX);                 
+                dY = 2*(1 + obj.dX);                 
             else
-                dY = 4+3*obj.dX;                               
+                dY = 4 + 3*obj.dX;                               
             end
 
             % ressets the tree/panel dimensions
@@ -558,7 +558,8 @@ classdef FuncFilterTree < matlab.mixin.SetGet
                 
                 % calculates the mapping indices
                 iM = cellfun(@(x)(find(strcmp(reqData(:,1),x))),Name(:));
-                obj.Imap(iM,i) = 1:length(iM);                
+                obj.Imap(iM,i) = 1:length(iM); 
+                
             end
 
         end            

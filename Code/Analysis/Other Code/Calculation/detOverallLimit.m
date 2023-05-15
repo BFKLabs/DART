@@ -3,11 +3,12 @@
 function yLim = detOverallLimit(Y,varargin)
 
 % calculates the overall maximum value
-if (isempty(Y))
+if isempty(Y)
     yLim = NaN; return
-elseif (iscell(Y))
+elseif iscell(Y)
     Y = Y(~cellfun('isempty',Y));
-    yLim0 = max(cellfun(@(x)(max(x(~isinf(x)))),Y));
+    Ymx0 = cellfun(@(x)(max(x(~isinf(x)))),Y,'un',0);
+    yLim0 = max(cell2mat(Ymx0));
 else
     yLim0 = max(Y(~isinf(Y)));
 end

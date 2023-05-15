@@ -22,9 +22,9 @@ function pData = initPlotDataStruct(mFcn,cFcn,pFcn,oFcn)
 % hasSP - boolean flag indicating whether subplots are fixed or not
 % hasSR - boolean flag indicating whether the stimuli response table is required
 % canComb - boolean flag indicating is subplots can be combined into a
-%              single figure (must has hasSP = true)
+%              single figure (must have hasSP = true)
 % hasRC - boolean flag indicating if the subplot table has the rows/columns
-%         selection fields (must has hasSP = true)
+%         selection fields (must have hasSP = true)
 % hasRS - boolean flag indicating if the subplots are reset
 
 % pFcn - plotting function handle name

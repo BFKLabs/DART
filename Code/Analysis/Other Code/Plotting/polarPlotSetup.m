@@ -19,28 +19,31 @@ else
 end
 
 % sets up the parent object and axis colors
-set(hAx,'box','off','color','none','xcolor',bgCol,'ycolor',bgCol,'tag','hPolar');
+set(hAx,'box','off','color','none','xcolor',bgCol,'ycolor',bgCol,...
+        'tag','hPolar','HitTest','off');
     
 % turns the hold on and sets the axis to equal aspect ratio    
 hold(hAx,'on');
 
 % creates the circle patch 
-patch(xC,yC,'w');
+patch(xC,yC,'w','HitTest','off');
 
 % plots the radial markers and text labels
+rCol = 0.5*ones(1,3);
 hText = zeros((length(xL)-isFull),1);
 for i = 1:(length(xL)-isFull)
     % creates the radial marker
-    plot(hAx,[0,xL(i)],[0,yL(i)],':','linewidth',0.5,'color',0.5*ones(1,3))
+    plot(hAx,[0,xL(i)],[0,yL(i)],':','linewidth',0.5,...
+                                 'color',rCol,'HitTest','off')
     
     % sets the text label string based on the type    
     phiNw = roundP(deg2bear(phiL(i)));
-    if (isFull)
+    if isFull
         % 
         if (nargin < 5); fullAngle = true; end
         
         % sets the full polar plot angle string
-        if ((~fullAngle) && (phiNw > 180))        
+        if ~fullAngle && (phiNw > 180)
             % case is not using full angle (and 
             tStr = num2str(phiNw-360);
         else
@@ -49,7 +52,7 @@ for i = 1:(length(xL)-isFull)
         end
     else
         % case is the half polar plot
-        if (phiNw > 180)
+        if phiNw > 180
             % case is for negative angles
             tStr = num2str(phiNw-360);
         else
@@ -68,7 +71,7 @@ tPos = cell2mat(get(hText,'extent'));
 xLim = max(abs(min(tPos(:,1))),max(sum(tPos(:,[1 3]),2)))*[-1 1];
 
 % sets the y-axis limits
-if (isFull)
+if isFull
     % case is for a full circle
     yLim = max(abs(min(tPos(:,2))),max(sum(tPos(:,[2 4]),2)))*[-1 1];
 else

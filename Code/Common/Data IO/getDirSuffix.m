@@ -2,13 +2,13 @@
 function dirSuf = getDirSuffix(dirFull)
 
 % determines if the path is actually a directory path
-if (isdir(dirFull))
+if isfolder(dirFull)
     % if so, retrieve the directory suffix
     dirSuf = [];    
-    while (isempty(dirSuf))
+    while isempty(dirSuf)
         % keep looping until a valid suffix has been found
         [dirFull,dirSuf,~] = fileparts(dirFull);
-        if (isempty(dirFull))
+        if isempty(dirFull)
             % if there is no more path to split, then exit the function
             return
         end

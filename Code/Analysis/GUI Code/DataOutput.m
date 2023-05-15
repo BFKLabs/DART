@@ -148,7 +148,7 @@ varargout{1} = handles.output;
 function menuSave_Callback(~, ~, handles)
 
 % turns off annoying warnings...
-warning off all
+wState = warning('off','all');
 
 % retrieves the data structs
 iData = getappdata(handles.figDataOutput,'iData');
@@ -168,7 +168,7 @@ if ~isempty(ii)
     
     % prompts the user if they still want to continue
     uChoice = questdlg(wStr,'Empty Data Sheet Tabs','Yes','No','Yes');
-    if (~strcmp(uChoice,'Yes'))
+    if ~strcmp(uChoice,'Yes')
         % if not, then exit the function
         return
     end
@@ -255,7 +255,7 @@ for i = 1:iData.nTab
 end
 
 % turns on warnings again
-warning on all
+warning(wState);
 
 % -------------------------------------------------------------------------
 function menuExit_Callback(~, ~, handles)
@@ -1728,6 +1728,7 @@ end
 function writeXLSFile(fFile,DataNw,sName,h)
 
 % initialisations
+DataNw = cellstr(DataNw);
 [blkSz,i0] = deal(100000,25);
 [nRow,nCol] = size(DataNw);
 
@@ -2416,8 +2417,9 @@ if iSelT == iData.nMetG
     
     % disables the
     if ~isempty(jTabG)
+        nTab = jTabG.TabCount;        
         jTabG.setEnabledAt(0,0);
-        jTabG.setEnabledAt(2,0);
+        if nTab > 2; jTabG.setEnabledAt(2,0); end
         set(hTabG,'SelectedTab',findall(hTabG,'UserData',2));
     end
     

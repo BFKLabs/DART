@@ -1,15 +1,18 @@
 % --- function that creates either a bar graph or boxplot for the metric
 %     specified by the variable, pStr
-function yLim = plotBarBoxMetrics(hAx,xi,p,pStr,pP,yL,col,sMlt)
+function yLim = plotBarBoxMetrics(hAx,xiP,p,pStr,pP,yL,col,sMlt)
 
 % sets the default input values
 if ~exist('col','var'); col = 'b'; end
 if ~exist('sMlt','var'); sMlt = 1; end
+
+% creates a dummy parameter struct (if not provided)
 if isempty(pP)
     pP = struct('pType','Bar Graph','plotErr',false); 
 end
 
 % determines the plot type
+xi = 1:length(xiP);
 isBar = strcmp(pP.pType,'Bar Graph');
 
 % creates the graph based on the plot type
@@ -17,12 +20,13 @@ if isBar
     % retrieves the mean/SEM values
     Y = field2cell(p,[pStr,'_mn'],1)*sMlt;
     Ysem = field2cell(p,[pStr,'_sem'],1)*sMlt;
-            
+    [Y,Ysem] = deal(Y(xiP),Ysem(xiP));        
+    
     % creates the bar graph
     bar(hAx,xi,Y,pP.pW,col,'tag','hBar');    
         
     % plots the errorbars (if requested)
-    if (pP.plotErr && any(Ysem(:) > 0))
+    if pP.plotErr && any(Ysem(:) > 0)
         addBarError(hAx,xi,Y,Ysem,'g');
         yLim = [0,max(max(Y+Ysem))];
     else
@@ -34,7 +38,11 @@ if isBar
 else
     % retrieves all the data values and places into single array
     if length(p) == 1
-        Yc = eval(sprintf('p.%s',pStr));
+        % retrieves and reduces down the metric array
+        Yc0 = getStructField(p,pStr);
+        Yc = cellfun(@(x)(x(:,xiP)),Yc0,'un',0);
+        
+        % converts the data array to its final form
         if size(Yc,3)*size(Yc,1) > 1
             Yc = num2cell(cell2mat(Yc(:)),1);
         else
@@ -61,7 +69,7 @@ else
         
         if (length(p) > 1) && (iscell(Yc{1}))
             % vectorises all array cells
-            if (~all(cellfun(@(y)(all(cellfun(@(x)(size(x,2)),y)==1)),Yc)))
+            if ~all(cellfun(@(y)(all(cellfun(@(x)(size(x,2)),y)==1)),Yc))
                 for i = 1:length(Yc)
                     Yc{i} = cellfun(@(x)(x(:)),Yc{i},'un',0);
                 end
@@ -74,9 +82,10 @@ else
        
     % sets the values into a single array
     Y = combineNumericCells(cellfun(@(x)(x(:)),Yc,'un',0))*sMlt;
-    uData0 = get(hAx,'UserData');
+    Y(isinf(Y)) = NaN;    
     
     % creates the box plot and retrieves the max value
+    uData0 = get(hAx,'UserData');
     if pP.plotErr
         % outliers are included
         hBox = boxplot(Y,'sym','r*');
@@ -99,7 +108,7 @@ else
 end
 
 % determines the overall y-axis limit
-if isempty(yL)
+if isempty(yL) || any(isnan(yL))
     if isBar
         if pP.plotErr
             yL = [0,detOverallLimit(Y+Ysem)]; 

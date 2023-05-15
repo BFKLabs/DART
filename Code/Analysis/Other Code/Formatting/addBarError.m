@@ -1,9 +1,10 @@
 % --- adds in the errorbars to the data on the axis, hAx --- %
-function hErr = addBarError(hAx,xi,Y,Ysem,col,lWid,pW)
+function hErr = addBarError(hAx,xi,Y,Ysem,col,lWid,pW,yLim)
 
 % sets the default parameters (if not provided)
 if ~exist('lWid','var'); lWid = 2.5; end
 if ~exist('pW','var'); pW = 0.75; end
+if ~exist('yLim','var'); yLim = []; end
 
 % initialisations and parameters
 if isempty(xi); xi = 1:length(Y); end
@@ -28,6 +29,11 @@ if strcmp(hAx.Type,'bar')
     hPE = get(hAx,'Parent');
 else
     hPE = hAx;
+end
+
+% applies the value limits (if provided)
+if ~isempty(yLim)
+    [YL,YU] = deal(min(YL,Y),min(YU,yLim(2)-Y));
 end
 
 % creates the error bar

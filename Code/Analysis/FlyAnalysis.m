@@ -24,7 +24,7 @@ end
 function FlyAnalysis_OpeningFcn(hObject, ~, handles, varargin)
 
 % global variables
-global isDocked initDock regSz  
+global isDocked initDock regSz
 global updateFlag canSelect isAnalysis isUpdating
 [isDocked,initDock,canSelect,isAnalysis] = deal(true);
 [isUpdating,updateFlag] = deal(false,2);
@@ -53,11 +53,11 @@ setappdata(hObject,'gPara',gPara)
 
 % sets the input argument and the open GUI (makes invisible)
 hFigM = varargin{1};
-                
+
 % retrieves the program default struct
 mObj = getappdata(hFigM,'mObj');
 ProgDefNew = mObj.getProgDefField('Analysis');
-setObjVisibility(hFigM,'off')        
+setObjVisibility(hFigM,'off')
 
 % initialisation of the program data struct
 iData = initDataStruct(handles,ProgDefNew);
@@ -101,7 +101,7 @@ setappdata(hObject,'figButtonClick',fbcFcn)
 initGUIObjects(handles)
 scanPlotFuncDir(handles)
 centreFigPosition(hObject);
-updateFlag = 0; pause(0.01); 
+updateFlag = 0; pause(0.01);
 
 % closes the loadbar
 try; delete(h); end
@@ -142,8 +142,8 @@ end
 resetToolbarObj(handles)
 
 % if there is currently loaded data, then combine the sInfo and snTot data
-% structs for the 
-if ~isempty(getappdata(hFig,'sInfo'))  
+% structs for the
+if ~isempty(getappdata(hFig,'sInfo'))
     % saves a copy of the currently loaded solution file data
     tempSolnDataIO(handles,'store')
     
@@ -162,7 +162,7 @@ function menuOpenSubConfig_Callback(~, ~, handles)
 % loads the data structs from the GUI
 hFig = handles.figFlyAnalysis;
 iData = getappdata(hFig,'iData');
-dDir = iData.ProgDef.OutFig; 
+dDir = iData.ProgDef.OutFig;
 
 % prompts the user for the solution file directory
 tStr = 'Select The Subplot Configuration File';
@@ -173,7 +173,7 @@ if fIndex == 0
     return
 else
     % makes the figure invisible
-    setObjVisibility(hFig,'off'); 
+    setObjVisibility(hFig,'off');
     pause(0.05);
     
     % opens the file and retrieves the subplot parameter data struct
@@ -182,7 +182,7 @@ else
     
     % removes any existing panels/plots
     hPanel = findall(handles.panelPlot,'tag','subPanel');
-    if ~isempty(hPanel); delete(hPanel); end    
+    if ~isempty(hPanel); delete(hPanel); end
     
     % deletes/clears the analysis parameter GUI
     hPara = getappdata(hFig,'hPara');
@@ -191,16 +191,16 @@ else
     
     % creates the new subplot panels and menu items
     nReg = size(A.sPara.pos,1);
-    setupSubplotPanels(handles.panelPlot,A.sPara)      
+    setupSubplotPanels(handles.panelPlot,A.sPara)
     resetSubplotMenuItems(hFig,obj.menuSubPlot,nReg);
     
-    % updates the panel selection    
-    setappdata(hFig,'sInd',1)    
+    % updates the panel selection
+    setappdata(hFig,'sInd',1)
     menuSubPlot(hFig,[])
     
     % makes the figure visible again
     setObjEnable(handles.menuSaveSubConfig,'on')
-    setObjVisibility(handles.figFlyAnalysis,'on');     
+    setObjVisibility(handles.figFlyAnalysis,'on');
 end
 
 % -------------------------------------------------------------------------
@@ -213,7 +213,7 @@ dDir = iData.ProgDef.TempData;
 
 % prompts the user if they wish to continue. if not, then exit
 qStr = {['This action will clear any currently calculated data and ',...
-         'can''t be undone.'];'';'Are you sure you wish to continue?'};
+    'can''t be undone.'];'';'Are you sure you wish to continue?'};
 uChoice = questdlg(qStr,'Continue Temporary Data Load?','Yes','No','Yes');
 if ~strcmp(uChoice,'Yes'); return; end
 
@@ -223,9 +223,9 @@ fMode = {'*.tdat;','Temporary Data File (*.tdat)'};
 if fIndex == 0
     % if the user cancelled, then exit
     return
-else    
+else
     % sets the solution file name
-    tName = fullfile(tDir,tName);    
+    tName = fullfile(tDir,tName);
 end
 
 % creates the load bar
@@ -251,8 +251,8 @@ if ~strcmp(fName0,A.sData.fName)
 elseif ~isequal(sName0,A.sData.sName)
     % individual solution file names do not match
     eStr = ['The solution files comprising the multi-experiment ',...
-            'solution file do not match. You will need to load the',...
-            'matching multi-experiment solution file'];
+        'solution file do not match. You will need to load the',...
+        'matching multi-experiment solution file'];
 end
 
 % if there was an error, then output a message to screen and exit
@@ -266,8 +266,8 @@ end
 pData = getappdata(hFig,'pData');
 plotD = getappdata(hFig,'plotD');
 hPara = getappdata(hFig,'hPara');
-for i = 1:length(pData) 
-    if ~isempty(pData{i}) && ~isempty(A.pData{i})      
+for i = 1:length(pData)
+    if ~isempty(pData{i}) && ~isempty(A.pData{i})
         % retrieves the function names for the current function type
         funcT = field2cell(cell2mat(A.pData{i}(:,1)),'Func');
         
@@ -298,7 +298,7 @@ setObjEnable(handles.menuSaveTempData,'on')
 
 % resets the selecting indices
 [eInd,fInd,pInd] = getSelectedIndices(handles);
-if fInd > 0    
+if fInd > 0
     % updates the parameter struct into the parameter gui
     pObj = getappdata(hPara,'pObj');
     pObj.updatePlotData(pData{pInd}{fInd,eInd})
@@ -311,7 +311,7 @@ popupExptIndex_Callback(handles.popupExptIndex, '1', handles)
 % ------------------------------ %
 % --- DATA FILE OUTPUT ITEMS --- %
 % ------------------------------ %
-                    
+
 % -------------------------------------------------------------------------
 function menuSaveData_Callback(~, ~, handles)
 
@@ -360,13 +360,13 @@ if any(~ii)
     
     % sets up the warning message
     mStr = sprintf(['The following experiments have ',...
-                    'missing stimuli data:\n\n']);    
+        'missing stimuli data:\n\n']);
     for i = 1:length(exptEmpty)
         mStr = sprintf('%s => %s\n',mStr,exptEmpty{i});
-    end    
+    end
     mStr = sprintf(['%s\nRe-check the relevant solution files to ',...
-                    'ensure have been created correctly.'],mStr);
-                
+        'ensure have been created correctly.'],mStr);
+    
     % outputs the message to screen
     waitfor(warndlg(mStr,'Missing Stimuli Data','modal'))
     
@@ -381,7 +381,7 @@ end
 % saves the stimuli data based on the file extension
 switch fExtn
     case ('.mat')
-        % saves the stimuli data to file        
+        % saves the stimuli data to file
         save(fFile,'exptName','stimP','Ts','Tf','blkInfo','ChN');
         
     case ('.csv')
@@ -395,7 +395,7 @@ function menuSaveSubConfig_Callback(~, ~, handles)
 % loads the data structs from the GUI
 sPara = getappdata(handles.figFlyAnalysis,'sPara');
 iData = getappdata(handles.figFlyAnalysis,'iData');
-dDir = iData.ProgDef.OutFig; 
+dDir = iData.ProgDef.OutFig;
 
 % prompts the user for the solution file directory
 tStr = 'Set The Subplot Configuration Output File';
@@ -407,12 +407,12 @@ if fIndex == 0
 else
     % clears the fields
     sPara.calcReqd(:) = false;
-    [sPara.pData(:),sPara.plotD(:),sPara.ind(:)] = deal({[]},{[]},NaN);    
+    [sPara.pData(:),sPara.plotD(:),sPara.ind(:)] = deal({[]},{[]},NaN);
     
     % outputs the subplot data struct to file
     save(fullfile(fDir,fName),'sPara');
 end
-    
+
 % -------------------------------------------------------------------------
 function menuSaveTempData_Callback(~, ~, handles)
 
@@ -428,10 +428,10 @@ if fIndex == 0
     return
 else
     % sets the solution file name
-    tName = fullfile(tDir,tName);    
+    tName = fullfile(tDir,tName);
 end
 
-% loads the plot/analysis function data structs 
+% loads the plot/analysis function data structs
 hFig = handles.figFlyAnalysis;
 plotD = getappdata(hFig,'plotD');
 pData = getappdata(hFig,'pData');
@@ -448,7 +448,7 @@ h = ProgressLoadbar('Outputting Temporarily Calculated Data To File...');
 
 % saves the data to file
 A = struct('plotD',plotD,'pData',pData,'gPara',gPara,...
-           'sPara',sPara,'sData',sData);
+    'sPara',sPara,'sData',sData);
 save(tName,'-struct','A');
 
 % closes the loadbar
@@ -477,7 +477,7 @@ end
 % resets the toolbar objects
 resetToolbarObj(handles)
 
-% disables 
+% disables
 hPanel = findall(hFig,'type','uipanel');
 for i = 1:length(hPanel)
     switch get(hPanel(i),'tag')
@@ -503,7 +503,7 @@ end
 % deletes the analysis parameter gui (if it exists)
 hPara = findall(0,'tag','figAnalysisPara');
 if ~isempty(hPara)
-    delete(hPara);    
+    delete(hPara);
 end
 
 % resets the data/object fields within the gui
@@ -518,8 +518,8 @@ setappdata(hFig,'sNameFull',[])
 % disables the relevant menu items
 setObjEnable(hObject,'off')
 setObjEnable(handles.menuSave,'off')
-setObjEnable(handles.menuPlot,'off') 
-setObjEnable(handles.menuGlobal,'off') 
+setObjEnable(handles.menuPlot,'off')
+setObjEnable(handles.menuGlobal,'off')
 
 % -------------------------------------------------------------------------
 function menuProgPara_Callback(~, ~, handles)
@@ -532,7 +532,7 @@ function menuExit_Callback(~, ~, handles)
 
 % prompts the user if they wish to close the tracking gui
 uChoice = questdlg('Are you sure want to close the Analysis GUI?',...
-                     'Close Analysis GUI?','Yes','No','Yes');
+    'Close Analysis GUI?','Yes','No','Yes');
 if ~strcmp(uChoice,'Yes')
     return
 end
@@ -544,7 +544,7 @@ try
         try; delete(hPara); end
     end
 end
-    
+
 % deletes the parameter GUI
 try
     hUndock = getappdata(handles.figFlyAnalysis,'hUndock');
@@ -552,13 +552,13 @@ try
         try; delete(hUndock); end
     end
 end
-    
+
 % makes the main gui visible again
 hDART = findall(0,'tag','figDART','type','figure');
 if ~isempty(hDART)
     % clears the main sub-figure field
     mObj = getappdata(hDART,'mObj');
-    mObj.hFigSub = [];        
+    mObj.hFigSub = [];
     
     % set the main as visible
     setObjVisibility(hDART,'on')
@@ -569,7 +569,7 @@ if ~isdeployed
     iData = getappdata(handles.figFlyAnalysis,'iData');
     rmpath(iData.ProgDef.DirFunc);
 end
-    
+
 % removes the temporary solution file (if it exists)
 tempSolnDataIO(handles,'remove')
 
@@ -585,7 +585,7 @@ function menuClearPlot_Callback(hObject, ~, handles)
 
 % prompts the user if they want to clear the figure
 uChoice = questdlg('Are you sure you want to clear the Analysis figure?',...
-                   'Clear Analysis Figure?','Yes','No','Yes');
+    'Clear Analysis Figure?','Yes','No','Yes');
 if ~strcmp(uChoice,'Yes')
     return
 end
@@ -607,8 +607,8 @@ popupPlotType_Callback(handles.popupPlotType, '1', handles)
 hPara = getappdata(handles.figFlyAnalysis,'hPara');
 if ~isempty(hPara)
     pObj = getappdata(hPara,'pObj');
-    pObj.updatePlotData(pData);    
-    resetRecalcObjProps(handles,'Yes')    
+    pObj.updatePlotData(pData);
+    resetRecalcObjProps(handles,'Yes')
 end
 
 % -------------------------------------------------------------------------
@@ -617,12 +617,12 @@ function menuResetData_Callback(~, eventdata, handles)
 % prompts the user if they want to clear the figure
 if ~isa(eventdata,'char')
     qStr = ['Are you sure you want to clear all the locally ',...
-            'stored analysis data?'];
+        'stored analysis data?'];
     uChoice = questdlg(qStr,'Clear Analysis Data?','Yes','No','Yes');
     if strcmp(uChoice,'Yes')
-        resetAll = true;        
+        resetAll = true;
     else
-        return        
+        return
     end
 else
     resetAll = strcmp(eventdata,'All');
@@ -643,13 +643,13 @@ resetToolbarObj(handles)
 [eInd,~,pInd] = getSelectedIndices(handles);
 if isnan(eInd); set(handles.popupExptIndex,'value',1); end
 if isnan(pInd)
-    set(handles.popupPlotType,'value',2+(length(snTot)>1)); 
+    set(handles.popupPlotType,'value',2+(length(snTot)>1));
 end
-    
+
 % rescans the analysis function directory
 if isempty(getappdata(hFig,'hPara'))
     delete(h);
-    return; 
+    return;
 else
     scanPlotFuncDir(handles)
     clearAxesObject(handles,1);
@@ -658,7 +658,7 @@ end
 % determines if there are any subplots set
 if size(sPara.pos,1) > 1
     % if so, then clear all the indices and other data arrays
-    [sPara.plotD{:},sPara.pData{:}] = deal([]);            
+    [sPara.plotD{:},sPara.pData{:}] = deal([]);
     [sPara.ind(:),sPara.calcReqd(:)] = deal(NaN,true);
     setappdata(hFig,'sPara',sPara);
     
@@ -671,12 +671,12 @@ end
 if resetAll
     setappdata(hFig,'pData',resetPlotDataStructs(handles,1))
     setappdata(hFig,'plotD',resetPlotDataStructs(handles))
-else    
+else
     % clears the plot data for the multi-experiments
     plotD = getappdata(hFig,'plotD'); plotD{3}(:) = {[]};
-    setappdata(hFig,'plotD',plotD);   
+    setappdata(hFig,'plotD',plotD);
 end
-    
+
 % updates the listbox/popup menu colour strings
 resetExptListStrings(handles)
 updateListColourStrings(handles,'func')
@@ -686,15 +686,15 @@ popupPlotType_Callback(handles.popupPlotType, '1', handles)
 
 % disables the listboxes
 setObjProps(handles,'on')
-setObjEnable(handles.menuSaveTempData,'off'); 
+setObjEnable(handles.menuSaveTempData,'off');
 
 % deletes the parameter GUI
 [hPara,pData] = deal(getappdata(hFig,'hPara'),getappdata(hFig,'pData'));
-if ~isempty(hPara)        
+if ~isempty(hPara)
     % updates the parameter GUI data struct
     [eInd,fInd,pInd] = getSelectedIndices(handles);
-    if fInd > 0        
-        resetRecalcObjProps(handles,'Yes')        
+    if fInd > 0
+        resetRecalcObjProps(handles,'Yes')
         pObj = getappdata(hPara,'pObj');
         pObj.updatePlotData(pData{pInd}{fInd,eInd});
     else
@@ -704,7 +704,7 @@ end
 
 % deletes the loadbar
 delete(h);
-    
+
 % -------------------------------------------------------------------------
 function menuUndock_Callback(~, ~, handles)
 
@@ -746,18 +746,18 @@ function menuResetPara_Callback(~, ~, handles)
 % global variables
 global tDay
 
-% prompts the user if they wish to reset the parameter struct. 
+% prompts the user if they wish to reset the parameter struct.
 qStr = 'Are you sure you want to reset the Global Parameters?';
 uChoice = questdlg(qStr,'Reset Global Parameters?','Yes','No','Yes');
 if strcmp(uChoice,'Yes')
     % if so, then re-initialise the global parameter struct
     A = load(getParaFileName('ProgPara.mat'));
-    gPara = A.gPara;    
+    gPara = A.gPara;
     tDay = gPara.Tgrp0;
-        
+    
     % resets all the calculated/plotted data
     setappdata(handles.figFlyAnalysis,'gPara',gPara);
-    menuResetData_Callback(handles.menuResetData, 'All', handles)    
+    menuResetData_Callback(handles.menuResetData, 'All', handles)
 end
 
 % ------------------------------ %
@@ -791,7 +791,7 @@ switch class(hObject)
         sInd = getappdata(hObject,'sInd');
         
 end
-   
+
 % resets the menu check items
 set(findall(hMenuSP,'Checked','On'),'Checked','off')
 set(findall(hMenuSP,'UserData',sInd),'Checked','on');
@@ -803,30 +803,30 @@ set(findobj(hPanel,'tag','subPanel','UserData',sInd),'HighlightColor','r');
 
 % determines if there are any valid indices selected
 [eInd,fInd,pInd] = getSelectedIndices(handles);
-if ~isempty(hPara) && ~isa(eventdata,'char')  
+if ~isempty(hPara) && ~isa(eventdata,'char')
     if all([eInd,fInd,pInd] > 0)
         % if so, then update the plotting data struct
         pObj = getappdata(hPara,'pObj');
         sPara.pData{sInd0} = pObj.pData;
         setappdata(hFig,'sPara',sPara);
-
-        % updates the plot data struct        
+        
+        % updates the plot data struct
         pData{pInd}{fInd,eInd} = pObj.pData;
         setappdata(hFig,'pData',pData);
-    end        
+    end
 end
 
 % determines if the plot data has been set for the current sub-plot
 if ~isempty(sPara.pData{sInd}) && ~any(isnan(sPara.ind(sInd,:)))
     % sets the new selected indices
-    fIndNw = fObj.getFuncIndex(sPara.pData{sInd}.Name,pInd);  
+    fIndNw = fObj.getFuncIndex(sPara.pData{sInd}.Name,pInd);
     
-    % if so, then update the popup menu/list value 
+    % if so, then update the popup menu/list value
     setObjEnable(handles.menuUndock,'on')
     setObjEnable(handles.menuSaveData,'on')
     setObjEnable(handles.buttonUpdateFigure,'on')
     set(handles.popupExptIndex,'value',sPara.ind(sInd,1))
-    set(handles.popupPlotType,'value',sPara.ind(sInd,3)) 
+    set(handles.popupPlotType,'value',sPara.ind(sInd,3))
     setSelectedNode(handles,fIndNw)
     
     % updates the parameter GUI
@@ -845,16 +845,16 @@ if ~isempty(sPara.pData{sInd}) && ~any(isnan(sPara.ind(sInd,:)))
     
 else
     % otherwise, remove the plot list
-    setSelectedNode(handles)    
-    setObjVisibility(hPara,'off'); 
+    setSelectedNode(handles)
+    setObjVisibility(hPara,'off');
     setObjEnable(handles.menuSaveData,'off')
     
     % enables the undocking menu item
     if size(sPara.pos,1) == 1
         setObjEnable(handles.menuUndock,'off')
     else
-        setObjEnable(handles.menuUndock,any(~isnan(sPara.ind(:))))        
-    end      
+        setObjEnable(handles.menuUndock,any(~isnan(sPara.ind(:))))
+    end
     
     % disables the update button
     [gCol,hButton] = deal((240/255)*[1 1 1],handles.buttonUpdateFigure);
@@ -892,7 +892,7 @@ end
 
 % resizes the figure
 figFlyAnalysis_ResizeFcn(hFig, [], handles)
-    
+
 % -------------------------------------------------------------------------
 function menuMaxSize_Callback(~, ~, handles)
 
@@ -950,26 +950,28 @@ end
 function menuDataCursor_ClickedCallback(hObject, ~, ~)
 
 % initialisations
-[hFig,cbFcn] = deal(gcf,[]);
+hFig = gcf;
+dcObj = getappdata(hFig,'dcObj');
 
 % toggles the data cursor based on the button state
 if strcmp(get(hObject,'state'),'on')
-    % updates the 
-    [eInd,fInd,pInd] = getSelectedIndices(guidata(hFig));
-    pData0 = getappdata(hFig,'pData');
-    cbFcn = pData0{pInd}{fInd,eInd}.dcFunc;    
-
-    % if there is no callback function, then turn on the data cursor mode
-    if isempty(cbFcn)
-        set(setObjEnable(datacursormode(hFig),'on'),'DisplayStyle','window')
+    if isempty(dcObj)
+        dcObj = DataCursorObj(hFig);
+        setappdata(hFig,'dcObj',dcObj)
+    else
+        dcObj.initClassFields();
     end
-else
-    % otherwise, turn off the data cursor mode
-    setObjEnable(datacursormode(hFig),'off')    
+    
+    % turns off the data cursor mode
+    dcObj.openObject()
+    
+elseif ~isempty(dcObj)
+    % turns off the data cursor mode
+    dcObj.closeObject()
 end
 
-% updates the window motion callback function
-set(hFig,'WindowButtonMotionFcn',cbFcn);
+% % updates the window motion callback function
+% set(hFig,'WindowButtonMotionFcn',cbFcn);
 
 %-------------------------------------------------------------------------%
 %                        FIGURE CALLBACK FUNCTIONS                        %
@@ -1019,7 +1021,7 @@ try
 catch
     return
 end
-    
+
 % updating from the list box then exit (no need to re-update plot)
 if updateFlag == 1; return; end
 
@@ -1027,11 +1029,11 @@ if updateFlag == 1; return; end
 [isSet,nReg] = deal(false,size(sPara.pos,1));
 if nReg == 1
     % if only one subplot, check to see if a valid dataset has been set
-    [eInd,fInd,pInd] = getSelectedIndices(handles);    
+    [eInd,fInd,pInd] = getSelectedIndices(handles);
     if all([eInd,fInd,pInd] > 0)
         [isSet,iReg] = deal(~isempty(plotD{pInd}{fInd,eInd}),true);
     end
-else    
+else
     % if multiple subplots, check each subplot to see if a valid dataset
     % has been set
     iReg = ~cellfun('isempty',sPara.pData)';
@@ -1042,12 +1044,12 @@ end
 if isSet
     % creates a loadbar
     h = ProgressLoadbar('Updating Analysis Plot...');
-
+    
     % initialises axes and runs the plotting function
     for i = find(iReg)
         if nReg == 1
             % retrieves the axis handle
-            hP = handles.panelPlot;            
+            hP = handles.panelPlot;
             
             % retrieves the plot data struct
             if ~isempty(hPara)
@@ -1055,7 +1057,7 @@ if isSet
                 pDataNw = pObj.pData;
                 plotDNw = plotD{pInd}{fInd,eInd};
             end
-        else           
+        else
             % updates the subplot index
             setappdata(hObject,'sInd',i);
             
@@ -1069,62 +1071,62 @@ if isSet
         
         % determines if there are any annotations
         hPanelP = handles.panelPlot;
-        hGG = findall(get(hPanelP,'parent'),'type','annotation');     
+        hGG = findall(get(hPanelP,'parent'),'type','annotation');
         
-        % determines if there are any annotations        
+        % determines if there are any annotations
         if ~isempty(hGG)
             isReplot = true;
         else
             rpFcn = {'Stimuli Response','Pre & Post'};
-            isRPFcn = cellfun(@(x)(strContains(pDataNw.Name,x)),rpFcn);             
+            isRPFcn = cellfun(@(x)(strContains(pDataNw.Name,x)),rpFcn);
             hPP = findall(handles.panelPlot,'tag','hPolar');
             isReplot = (pDataNw.hasRS && isempty(hPP)) || any(isRPFcn);
         end
         
         % determines if the axis is reset or not
-        if isReplot                                           
+        if isReplot
             % clears the plot axis
-            initAxesObject(handles); 
+            initAxesObject(handles);
             
             % recreates the new plot
             if pInd == 3
-                feval(pDataNw.pFcn,snTot,pDataNw,plotDNw);           
+                feval(pDataNw.pFcn,snTot,pDataNw,plotDNw);
             else
                 feval(pDataNw.pFcn,reduceSolnAppPara(snTot(eInd)),...
-                                            pDataNw,plotDNw);           
+                    pDataNw,plotDNw);
             end
             
             % ensures the figure is still invisible
-            setObjVisibility(hObject,'off'); 
+            setObjVisibility(hObject,'off');
         else
             % resets the plot axis based on the number of subplots
             [hAx,hLg,m,n] = resetPlotFontResize(hP,pDataNw);
-                                                
-            % resets the plot axis based on the number of subplots 
-            resetAxesPos(hAx,m,n);  
+            
+            % resets the plot axis based on the number of subplots
+            resetAxesPos(hAx,m,n);
             
             % determines if the plots axes need to be resized for legend
-            % objects that are outside the plot regions            
+            % objects that are outside the plot regions
             if ~isempty(hLg)
                 % determines if any legend objects are outside the axes
                 isInAx = ~strcmp(get(hLg,'location'),'none');
                 if any(~isInAx)
                     % if any legends outside of the axis, then reposition
                     set(hLg(~isInAx),'Units','Normalized')
-                    resetLegendPos(hLg(~isInAx),hAx)     
+                    resetLegendPos(hLg(~isInAx),hAx)
                     set(hLg(~isInAx),'Units','Pixels')
                 end
-            end               
+            end
         end
     end
-
+    
     % deletes the loadbar and makes the GUI visible again
-    delete(h)            
+    delete(h)
 end
 
 % makes the figure visible again
 updateFlag = 2;
-setObjVisibility(hObject,'on'); 
+setObjVisibility(hObject,'on');
 
 % ensures the figure doesn't resize again (when maximised)
 pause(tWait);
@@ -1143,7 +1145,7 @@ if isOverAxes(mPos)
     % if so, then determine which object was clicked
     hHover = findAxesHoverObjects(hFig,{'tag','subPanel'},hP);
     if ~isempty(hHover)
-        % updates the popup sub index 
+        % updates the popup sub index
         sInd0 = getappdata(hFig,'sInd');
         setappdata(hFig,'sInd',get(hHover(1),'UserData'))
         menuSubPlot(hFig,[],sInd0)
@@ -1164,12 +1166,12 @@ pData = getappdata(hFig,'pData');
 snTot = getappdata(hFig,'snTot');
 eIndex = getappdata(hFig,'eIndex');
 
-% check to see if the new experiment 
+% check to see if the new experiment
 if (eIndex ~= get(hObject,'value')) || isa(eventdata,'char')
     if ~isempty(hPara)
         % updates the parameter struct in the overall array
         [~,fInd,pInd] = getSelectedIndices(handles);
-
+        
         % updates the parameter struct
         if fInd > 0
             pObj = getappdata(hPara,'pObj');
@@ -1181,20 +1183,20 @@ if (eIndex ~= get(hObject,'value')) || isa(eventdata,'char')
             end
             
             % updates the parameter struct
-            setappdata(hFig,'pData',pData);    
+            setappdata(hFig,'pData',pData);
         end
     end
     
     % updates the experiment index and experiment information
     setappdata(hFig,'eIndex',get(hObject,'value'));
-    setExptInfo(handles,snTot); 
+    setExptInfo(handles,snTot);
     resetToolbarObj(handles);
     
     % resets the plotting function listbox
     popupPlotType_Callback(handles.popupPlotType, '1', handles)
     treeSelectChng([], '1', handles)
-end   
-    
+end
+
 % ---------------------------------------- %
 % --- PLOTTING TYPE CALLBACK FUNCTIONS --- %
 % ---------------------------------------- %
@@ -1216,7 +1218,7 @@ if ~isa(eventdata,'char')
         if ~isempty(hPara)
             % updates the parameter struct in the overall array
             [eInd,fInd,~] = getSelectedIndices(handles);
-
+            
             % updates the corresponding parameter struct
             if fInd > 0
                 pObj = getappdata(hPara,'pObj');
@@ -1227,13 +1229,13 @@ if ~isa(eventdata,'char')
         end
         
         % if so, updates the plotting function selected index
-        setappdata(hFig,'pIndex',get(hObject,'value'));        
+        setappdata(hFig,'pIndex',get(hObject,'value'));
     else
         % if the selected value is not unique, then exit the function
         return
-    end   
+    end
 end
-   
+
 % retrieves the selected string
 eStr = 'on';
 lStr = cellstr(get(hObject,'string'));
@@ -1242,18 +1244,18 @@ indNw = get(hObject,'value');
 % depending on the selection, retrieve the function names and add them to
 % the list box
 switch lStr{indNw}
-    case ('Multi-Experiment Analysis') 
+    case ('Multi-Experiment Analysis')
         % case is multi-solution
         A = pDataT.Multi;
         eStr = 'inactive';
         
-    case ('Experiment Analysis (Population)') 
+    case ('Experiment Analysis (Population)')
         % case is single-solution population analysis
         A = pDataT.Pop;
         
-    case ('Experiment Analysis (Individual)') 
+    case ('Experiment Analysis (Individual)')
         % case is single-solution individual analysis
-        A = pDataT.Indiv;      
+        A = pDataT.Indiv;
 end
 
 % otherwise, update the function filter
@@ -1264,12 +1266,12 @@ if ~isa(eventdata,'char')
 end
 
 % creates the explorer tree (if there are functions available)
-if ~isempty(A)    
-    createFuncExplorerTree(handles);   
+if ~isempty(A)
+    createFuncExplorerTree(handles);
 end
 
 % resets the experiment list strings
-resetExptListStrings(handles,snTot)       
+resetExptListStrings(handles,snTot)
 setObjEnable(handles.popupExptIndex,eStr)
 resetToolbarObj(handles)
 
@@ -1283,7 +1285,7 @@ function toggleFuncFilter_Callback(hObject, ~, handles)
 % object handles
 isOpen = get(hObject,'Value');
 
-% updates the funcion filter panel visibility            
+% updates the funcion filter panel visibility
 setObjVisibility(handles.panelFuncFilter,isOpen);
 
 % updates the toggle button string
@@ -1291,8 +1293,8 @@ if isOpen
     set(hObject,'String','Close Analysis Function Filter')
 else
     set(hObject,'String','Open Analysis Function Filter')
-end  
-    
+end
+
 % --- Executes on button press in buttonUpdateFigure.
 function buttonUpdateFigure_Callback(~, ~, handles)
 
@@ -1320,7 +1322,7 @@ fcnStack = getappdata(hFig,'fcnStack');
 
 % retrieves the parameter GUI handle
 hPara = getappdata(hFig,'hPara');
-try 
+try
     guidata(hPara);
 catch
     hPara = AnalysisPara(handles);
@@ -1332,7 +1334,7 @@ nReg = size(sPara.pos,1);
 
 % sets the new solution data struct for the analysis
 if pInd == 3
-    % case is for the multi-experiment file analysis    
+    % case is for the multi-experiment file analysis
     snTot = snTot(iData.indExpt);
 else
     % case is for a single experiment file analysis
@@ -1344,7 +1346,7 @@ hAx = initAxesObject(handles);
 
 % creates the plot data struct
 if isempty(pData{pInd}{fInd,eInd})
-    pData{pInd}{fInd,eInd} = feval(fcnStack{fInd},snTot(1)); 
+    pData{pInd}{fInd,eInd} = feval(fcnStack{fInd},snTot(1));
     setappdata(hFig,'pData',pData);
 elseif ~isempty(hPara)
     pDataNw = feval(getappdata(hPara,'getPlotData'),hPara);
@@ -1352,7 +1354,7 @@ elseif ~isempty(hPara)
     setappdata(hFig,'pData',pData);
 end
 
-% retrieves the necessary data structs 
+% retrieves the necessary data structs
 pDataNw = pData{pInd}{fInd,eInd};
 setObjVisibility(hPara,'off')
 
@@ -1360,7 +1362,7 @@ setObjVisibility(hPara,'off')
 try
     switch pDataNw.Name
         case ('Multi-Dimensional Scaling')
-            plotDCalc = feval(pDataNw.cFcn,snTot,pDataNw,gPara,[],pDataT);             
+            plotDCalc = feval(pDataNw.cFcn,snTot,pDataNw,gPara,[],pDataT);
         otherwise
             % if running the stimuli response metric calculations, then
             % update the table with the new values
@@ -1375,37 +1377,37 @@ try
                     return
                 end
             end
-                        
+            
             % performs the function calculations
-            plotDCalc = feval(pDataNw.cFcn,snTot,pDataNw,gPara); 
-    end    
+            plotDCalc = feval(pDataNw.cFcn,snTot,pDataNw,gPara);
+    end
 catch err
     % if there was an error with the calculations then exit with an error
     eStr = {'Error! There was an issue with the calculation function. '...
-            'Read the error message associated with this issue.'};
-    waitfor(errordlg(eStr,'Analysis Function Calculation Error','modal'))    
+        'Read the error message associated with this issue.'};
+    waitfor(errordlg(eStr,'Analysis Function Calculation Error','modal'))
     
     % enables the listboxes again
     setObjVisibility(hPara,'on')
     setObjProps(handles,'on')
     rethrow(err)
-end   
+end
 
 if isempty(plotDCalc)
     % if the user cancelled, then exit the function
-    setObjVisibility(hPara,'on')    
+    setObjVisibility(hPara,'on')
     setObjProps(handles,'on')
-    return    
+    return
 else
-    % otherwise, overwrite the struct to the new one 
-    pDataNw = resetPlottingData(handles,pDataNw);    
+    % otherwise, overwrite the struct to the new one
+    pDataNw = resetPlottingData(handles,pDataNw);
     plotDNw = {plotDCalc};
 end
 
 % appends the new string to the legend string array
-iNw = length(plotDNw);    
-pDataNw.pF.Legend(1).String{iNw} = sprintf('Trace #%i',iNw);    
-    
+iNw = length(plotDNw);
+pDataNw.pF.Legend(1).String{iNw} = sprintf('Trace #%i',iNw);
+
 % if the parameter GUI is open, then update the struct there as well
 if ~isempty(hPara)
     resetRecalcObjProps(handles,'No')
@@ -1423,19 +1425,19 @@ catch
 end
 
 % updates the main axes figure
-try    
+try
     pDataNw = feval(pDataNw.pFcn,snTot,pDataNw,plotDNw);
 catch err
     % if there was an error with the calculations then exit with an error
     eStr = {'Error! There was an issue with the plotting function. '...
-            'Read the error message associated with this issue'};
-    waitfor(errordlg(eStr,'Analysis Function Plotting Error','modal'))   
+        'Read the error message associated with this issue'};
+    waitfor(errordlg(eStr,'Analysis Function Plotting Error','modal'))
     
     % enables the listboxes again
     setObjVisibility(hPara,'on')
     setObjProps(handles,'on')
     rethrow(err)
-end   
+end
 
 % if the parameter GUI is open, then update the struct there as well
 if ~isempty(hPara)
@@ -1446,8 +1448,8 @@ end
 % updates the sub-plot parameters (if more than one subplot)
 if nReg > 1
     % retrieves the currently selected index
-    sInd = getappdata(hFig,'sInd');    
-
+    sInd = getappdata(hFig,'sInd');
+    
     % updates the parameters
     sPara.ind(sInd,:) = [eInd,fInd,pInd];
     sPara.plotD{sInd} = {plotDCalc};
@@ -1455,32 +1457,32 @@ if nReg > 1
     sPara.calcReqd(sInd) = false;
     
     % updates the sub-plot data struct
-    setappdata(hFig,'sPara',sPara);    
+    setappdata(hFig,'sPara',sPara);
 end
 
 % updates the new parameter data struct into the total struct
 pData{pInd}{fInd,eInd} = pDataNw;
-setappdata(hFig,'pData',pData);      
+setappdata(hFig,'pData',pData);
 
 % sets the plot data into the main GUI
 setObjEnable(handles.menuUndock,'on')
 setObjEnable(handles.menuClearPlot,'on')
-setObjEnable(handles.menuResetData,'on'); 
-setObjEnable(handles.menuSaveTempData,'on'); 
+setObjEnable(handles.menuResetData,'on');
+setObjEnable(handles.menuSaveTempData,'on');
 
 % sets the save data menu item
 isOn = ~(isempty(pDataNw.oP) || isempty(pDataNw.oP.yVar));
-setObjEnable(handles.menuSaveData,isOn); 
+setObjEnable(handles.menuSaveData,isOn);
 
 % disables the listboxes
 setObjVisibility(hPara,'on')
-setObjEnable(handles.menuZoom,'on') 
-setObjEnable(handles.menuDataCursor,'on') 
+setObjEnable(handles.menuZoom,'on')
+setObjEnable(handles.menuDataCursor,'on')
 setObjProps(handles,'on')
 
 % updates the plot data struct with the newly calculated values
 plotD{pInd}{fInd,eInd} = plotDNw;
-setappdata(hFig,'plotD',plotD);  
+setappdata(hFig,'plotD',plotD);
 
 % updates the listbox/popup menu colour strings
 resetExptListStrings(handles)
@@ -1502,8 +1504,8 @@ function iData = initDataStruct(handles,ProgDefNew)
 
 % initialises the format structs and calculates the fixed metrics
 iData = struct('fmtStr',[],'ProgDef',[],'indExpt',[]);
-       
-% sets the sub-fields        
+
+% sets the sub-fields
 if isempty(ProgDefNew)
     iData.ProgDef = initProgDef(handles);
 else
@@ -1511,27 +1513,27 @@ else
     if ~isfield(ProgDefNew,'TempData')
         % sets the data directory name
         tDir = fileparts(ProgDefNew.TempFile);
-        nwDir = fullfile(tDir,'3 - Temporary Data');    
+        nwDir = fullfile(tDir,'3 - Temporary Data');
         if ~exist(nwDir,'dir')
             % if the directory does not exist, then create it
             mkdir(nwDir)
-        end    
-
+        end
+        
         % sets the new fields into the data struct
         ProgDefNew.TempData = nwDir;
         ProgDefNew.fldData.TempData = {'Analysis','3 - Temporary Data'};
         
         % updates the default directory defaults file
         hDART = guidata(findall(0,'tag','figDART'));
-        ProgDef = getappdata(hDART.figDART,'ProgDef');    
+        ProgDef = getappdata(hDART.figDART,'ProgDef');
         ProgDef.Analysis = ProgDefNew;
-        setappdata(hDART.figDART,'ProgDef',ProgDef)        
+        setappdata(hDART.figDART,'ProgDef',ProgDef)
         set(hDART.buttonFlyAnalysis,'UserData',ProgDefNew)
         
         % updates the program default file
         progFile = getParaFileName('ProgDef.mat');
         save(progFile,'ProgDef');
-    end    
+    end
     
     % sets the program default data struct
     iData.ProgDef = ProgDefNew;
@@ -1541,7 +1543,7 @@ end
 % --- GUI PROPERTY FUNCTIONS --- %
 % ------------------------------ %
 
-% --- initialises the plotting image axis 
+% --- initialises the plotting image axis
 function hAx = initAxesObject(handles)
 
 % global variables
@@ -1552,34 +1554,34 @@ cbFcn = [];
 uStr = 'pixels';
 hFig0 = handles.figFlyAnalysis;
 sInd = getappdata(hFig0,'sInd');
-sPara = getappdata(hFig0,'sPara'); 
+sPara = getappdata(hFig0,'sPara');
 
 % resets the toolbar objects
 resetToolbarObj(handles)
 
-% sets the units string/axis handles for setting up the figure   
+% sets the units string/axis handles for setting up the figure
 if isDocked
     % retrieves the sub-plot parameter struct
     [h,hFig] = deal(handles,hFig0);
     sInd = getappdata(hFig,'sInd');
-    sPara = getappdata(hFig,'sPara');    
+    sPara = getappdata(hFig,'sPara');
 else
     % if the plot axis is undocked, then use normalized coordinates
     hFig = getappdata(hFig0,'hUndock');
-    h = guidata(hFig);            
+    h = guidata(hFig);
 end
-       
+
 % makes the GUI invisible and deletes all previous axes objects
 clearAxesObject(handles)
-    
+
 % creates a new axis
 hAx = axes('Units','normalized','outerposition',[0 0 1 1]);
-axis(hAx,'off');    
+axis(hAx,'off');
 
 % determines how many axis there are
-if size(sPara.pos,1) == 1       
+if size(sPara.pos,1) == 1
     % only one axis, so set with the overall plot panel
-    set(hAx,'parent',h.panelPlot,'Units',uStr)        
+    set(hAx,'parent',h.panelPlot,'Units',uStr)
     set(h.panelPlot,'Units','Pixels')
     newSz = get(h.panelPlot,'position');
     
@@ -1587,22 +1589,22 @@ else
     % sets the button down callback function
     cbFcn = {@figButtonClick,handles.panelPlot};
     
-    % set the plot within the new plot panel    
-    hPanel = findall(h.panelPlot,'tag','subPanel','UserData',sInd);                          
-    set(hAx,'parent',hPanel,'Units',uStr,'UserData',sInd)        
-
+    % set the plot within the new plot panel
+    hPanel = findall(h.panelPlot,'tag','subPanel','UserData',sInd);
+    set(hAx,'parent',hPanel,'Units',uStr,'UserData',sInd)
+    
     % retrieves the panel dimensions (in pixels)
-    set(hPanel,'Units','Pixels')        
+    set(hPanel,'Units','Pixels')
     newSz = get(hPanel,'position');
-    set(hPanel,'Units','Normalized')        
+    set(hPanel,'Units','Normalized')
 end
 
 % clears the axis and ensures it is off
 set(0,'CurrentFigure',hFig)
 set(hFig,'CurrentAxes',hAx,'WindowButtonDownFcn',cbFcn)
-cla(hAx); rotate3d(hAx,'off');     
+cla(hAx); rotate3d(hAx,'off');
 
-% --- initialises the plotting image axis 
+% --- initialises the plotting image axis
 function clearAxesObject(handles,varargin)
 
 % global variables
@@ -1614,9 +1616,9 @@ nReg = size(sPara.pos,1);
 
 % deletes all the axis objects
 if nReg == 1
-    if isDocked       
+    if isDocked
         h = handles.figFlyAnalysis;
-        hAx = findall(handles.panelPlot,'type','axes');    
+        hAx = findall(handles.panelPlot,'type','axes');
     else
         h = getappdata(handles.figFlyAnalysis,'hUndock');
         hAx = findall(h,'type','axes');
@@ -1642,26 +1644,26 @@ else
             % case is the figure is undocked
             h = getappdata(handles.figFlyAnalysis,'hUndock');
             hP = findall(h,'tag','subPanel','UserData',i);
-        end    
-    
+        end
+        
         % retrieves the axis object
         hAx = findall(hP,'type','axes');
         if ~isempty(hAx); delete(hAx); end
-    end        
+    end
 end
 
 % removes any annotations
 hGG = findall(h,'type','annotation');
 if ~isempty(hGG); delete(hGG); end
-    
-% --- initialises the object properties within the GUI 
+
+% --- initialises the object properties within the GUI
 function initGUIObjects(handles)
 
 % disables all the panels
 setPanelProps(handles.panelSolnData,'off')
 setPanelProps(handles.panelExptInfo,'off')
 setPanelProps(handles.panelPlotFunc,'off')
-setPanelProps(handles.panelFuncDesc,'off')    
+setPanelProps(handles.panelFuncDesc,'off')
 
 % makes the panel description object invisible
 setObjVisibility(handles.textFuncDesc,'off')
@@ -1727,7 +1729,7 @@ resetObjPos(h.panelOuter,'Height',fPos(4) - 2*dY)
 % ------------------------------------------- %
 
 % --- initialises and confirms that A) the program default file exists, and
-%     B) the directories listed in the file are valid 
+%     B) the directories listed in the file are valid
 function ProgDef = initProgDef(handles)
 
 % sets the program default file name
@@ -1742,7 +1744,7 @@ if exist(progFile,'file')
     % if so, loads the program preference file and set the program
     % preferences (based on the OS type)
     A = load(progFile);
-    ProgDef = checkDefaultDir(A.ProgDef);         
+    ProgDef = checkDefaultDir(A.ProgDef);
 else
     % displays a warning
     uChoice = questdlg(['Program default file not found. Would you like ',...
@@ -1753,7 +1755,7 @@ else
             % user chose to setup manually, so load the ProgDef sub-GUI
             ProgDef = ProgParaAnalysis(handles.figFlyAnalysis,[],1);
         case 'Automatically'
-            % user chose to setup automatically then create the directories            
+            % user chose to setup automatically then create the directories
             ProgDef = setupAutoDir(progFile);
             pause(0.05); % pause required otherwise program crashes?
     end
@@ -1795,17 +1797,17 @@ for i = 1:length(fldNames)
         isExist(i) = false;
         if nargin == 1
             wStr = sprintf('Warning! The "%s" %s is not set.',dirName,type);
-            waitfor(warndlg(wStr,'Directory Location Error','modal'))   
+            waitfor(warndlg(wStr,'Directory Location Error','modal'))
         end
         
     elseif ~exist(nwDir,fType)
         % if the directory does not exist, then clear the directory field
         % and flag a warning
         isExist(i) = false;
-        eval(sprintf('%s = [];',nwVar));        
+        eval(sprintf('%s = [];',nwVar));
         if nargin == 1
             wStr = sprintf('Warning! The "%s" %s does not exist.',...
-                            dirName,type);
+                dirName,type);
             waitfor(warndlg(wStr,'Missing File/Directory','modal'))
         end
     end
@@ -1819,7 +1821,7 @@ if any(~isExist)
     end
 end
 
-% --- function that automatically sets up the default directories 
+% --- function that automatically sets up the default directories
 function ProgDef = setupAutoDir(progFile)
 
 % retrieves the base data files directory
@@ -1838,7 +1840,7 @@ b = fieldnames(a);
 for i = 1:length(b)
     % sets the new directory name
     nwDir = eval(sprintf('a.%s',b{i}));
-
+    
     % if the directory does not exist, then create it
     if exist(nwDir,'dir') == 0
         mkdir(nwDir)
@@ -1858,7 +1860,7 @@ function createFuncExplorerTree(handles)
 
 % initialisations
 hFig = handles.figFlyAnalysis;
-hPanel = handles.panelFuncList; 
+hPanel = handles.panelFuncList;
 [eInd,~,pInd] = getSelectedIndices(handles);
 
 % field retrieval
@@ -1872,7 +1874,7 @@ fObj.detExptCompatibility(fScope);
 % retrieves the requirement fields for each feasible function
 rFld = fieldnames(fObj.rGrp);
 indS = find(any(fObj.cmpData,2));
-X = fObj.fcnData(indS,3:end); 
+X = fObj.fcnData(indS,3:end);
 
 % retrieves the currently selected nodes
 sNode = fObj.getSelectedNodes();
@@ -1939,8 +1941,8 @@ for i = 1:size(ImapU,1)
             end
         end
         
-        % creates the new tree node  
-        hNodeNw = createUITreeNode(fcnNameNw,fcnNameNw,[],true);             
+        % creates the new tree node
+        hNodeNw = createUITreeNode(fcnNameNw,fcnNameNw,[],true);
         hNodeNw.setUserObject(iFcn);
         hNodeP.add(hNodeNw);
     end
@@ -1949,7 +1951,7 @@ end
 % creates the tree object
 wState = warning('off','all');
 [hTreeF,hC] = uitree('v0','Root',hRoot,'position',tPos,...
-                     'SelectionChangeFcn',{@treeSelectChng,handles});
+    'SelectionChangeFcn',{@treeSelectChng,handles});
 set(hC,'Visible','off')
 set(hC,'Parent',hPanel,'visible','on')
 warning(wState);
@@ -1967,7 +1969,7 @@ function treeSelectChng(~, eventdata, handles)
 % global variables
 global updateFlag isUpdating
 
-% determines if the 
+% determines if the
 if isUpdating
     return
 else
@@ -1994,7 +1996,7 @@ resetToolbarObj(handles);
 if all([pInd,fIndNw,eInd] > 0)
     % sets the required object handles/data structs
     set(handles.textFuncDesc,'enable','on',...
-                    'string',pData{pInd}{fIndNw,eInd}.fDesc);        
+        'string',pData{pInd}{fIndNw,eInd}.fDesc);
 else
     % non-function field is not selected
     set(handles.textFuncDesc,'string','');
@@ -2005,15 +2007,15 @@ end
 
 % retrieves the current node
 if isShowPara
-    % enables the calculate/plot function button    
-    setObjEnable(handles.buttonUpdateFigure,'on')        
+    % enables the calculate/plot function button
+    setObjEnable(handles.buttonUpdateFigure,'on')
     
     % checks to see if the plot index has changed index
     fIndex = getappdata(hFig,'fIndex');
     if (fIndex ~= fIndNw) || isa(eventdata,'char') || (nReg > 1)
         % clears the plot axis and resets the data
         if ~isa(eventdata,'char'); eventdata = '0'; end
-        clearAxesObject(handles)                       
+        clearAxesObject(handles)
         
         % creates the new parameter GUI
         hPara = getappdata(hFig,'hPara');
@@ -2025,19 +2027,19 @@ if isShowPara
             if nReg > 1
                 % retrieves the currently selected index
                 sInd = getappdata(hFig,'sInd');
-
+                
                 % updates the parameters
                 sPara.ind(sInd,:) = [eInd,fIndNw,pInd];
                 sPara.pData{sInd} = pData{pInd}{fIndNw,eInd};
                 sPara.plotD{sInd} = plotD{pInd}{fIndNw,eInd};
-
+                
                 % updates the sub-plot data struct
-                setappdata(hFig,'sPara',sPara);            
-            end              
+                setappdata(hFig,'sPara',sPara);
+            end
         else
             % updates the parameter struct in the overall array
-            if (fIndex > 0) && (str2double(eventdata) == 0)                 
-                % updates the 
+            if (fIndex > 0) && (str2double(eventdata) == 0)
+                % updates the
                 pObj = getappdata(hPara,'pObj');
                 pDataOld = pObj.pData;
                 pData{pInd}{fIndex,eInd} = pDataOld;
@@ -2048,17 +2050,17 @@ if isShowPara
             if nReg > 1
                 % retrieves the currently selected index
                 sInd = getappdata(hFig,'sInd');
-
+                
                 % updates the parameters
                 sPara.ind(sInd,:) = [eInd,fIndNw,pInd];
                 sPara.pData{sInd} = pData{pInd}{fIndNw,eInd};
                 sPara.plotD{sInd} = plotD{pInd}{fIndNw,eInd};
-
+                
                 % updates the sub-plot data struct
-                setappdata(hFig,'sPara',sPara);            
-            end             
+                setappdata(hFig,'sPara',sPara);
+            end
             
-            % reinitialises the function parameter struct 
+            % reinitialises the function parameter struct
             if ishandle(hPara)
                 % if the gui is valid, then re-initialise it
                 pObj = getappdata(hPara,'pObj');
@@ -2073,7 +2075,7 @@ if isShowPara
             pData = getappdata(hFig,'pData');
         end
         
-        % makes the parameter GUI         
+        % makes the parameter GUI
         setappdata(hFig,'fIndex',fIndNw)
     else
         % if the selection was not unique, then exit the function
@@ -2082,15 +2084,15 @@ if isShowPara
     end
     
 else
-    % clears the axes and resets the experiment listbox strings    
-    clearAxesObject(handles) 
+    % clears the axes and resets the experiment listbox strings
+    clearAxesObject(handles)
     
     % disables the calculate/plot function button
     resetRecalcObjProps(handles,'No')
-    setObjEnable(handles.buttonUpdateFigure,'off')        
+    setObjEnable(handles.buttonUpdateFigure,'off')
     setappdata(hFig,'fIndex',0)
     
-    % makes the parameter figure invisible 
+    % makes the parameter figure invisible
     hPara = getappdata(hFig,'hPara');
     setObjVisibility(hPara,'off');
 end
@@ -2099,20 +2101,20 @@ end
 [eInd,fInd,pInd] = getSelectedIndices(handles);
 if all([eInd,fInd,pInd] > 0)
     % enables/disables the hold menu item (depending on whether the
-    % hold flag is set to true)        
-    if ~isempty(plotD{pInd}{fInd,eInd})              
-        % if there is, then replot the data        
-        snTot = getappdata(hFig,'snTot'); 
-        pDataNw = pData{pInd}{fInd,eInd};        
-                
+    % hold flag is set to true)
+    if ~isempty(plotD{pInd}{fInd,eInd})
+        % if there is, then replot the data
+        snTot = getappdata(hFig,'snTot');
+        pDataNw = pData{pInd}{fInd,eInd};
+        
         % initialises axes and runs the plotting function
-        initAxesObject(handles);            
+        initAxesObject(handles);
         if pInd == 3
-            feval(pDataNw.pFcn,snTot,pDataNw,plotD{pInd}{fInd,eInd});           
+            feval(pDataNw.pFcn,snTot,pDataNw,plotD{pInd}{fInd,eInd});
         else
             feval(pDataNw.pFcn,reduceSolnAppPara(snTot(eInd)),...
-                                        pDataNw,plotD{pInd}{fInd,eInd});           
-        end                           
+                pDataNw,plotD{pInd}{fInd,eInd});
+        end
         
         % enables the listboxes/popup menus
         setObjProps(handles,'on')
@@ -2120,46 +2122,46 @@ if all([eInd,fInd,pInd] > 0)
         % enables the clear plot menu item
         setObjEnable(handles.menuUndock,'on')
         setObjEnable(handles.menuClearPlot,'on')
-        setObjEnable(handles.menuZoom,'on')                
-        setObjEnable(handles.menuDataCursor,'on')                        
+        setObjEnable(handles.menuZoom,'on')
+        setObjEnable(handles.menuDataCursor,'on')
         if isShowPara; setObjVisibility(hPara,'on'); end
         
         % if there are output data parameters, then enable the save menu
         if isempty(pData{pInd}{fInd,eInd}.oP)
-            setObjEnable(handles.menuSaveData,'off'); 
+            setObjEnable(handles.menuSaveData,'off');
         elseif isempty(pData{pInd}{fInd,eInd}.oP.yVar)
-            setObjEnable(handles.menuSaveData,'off'); 
+            setObjEnable(handles.menuSaveData,'off');
         else
             setObjEnable(handles.menuSaveData,'on');
-        end   
+        end
         
         % resets the flag
-        updateFlag = 0;               
+        updateFlag = 0;
         
         % exits the function
         return
     else
         % otherwise, disable the menu items
-        setObjEnable(handles.menuZoom,'off')                
-        setObjEnable(handles.menuDataCursor,'off')   
+        setObjEnable(handles.menuZoom,'off')
+        setObjEnable(handles.menuDataCursor,'off')
         
         % enables the undocking menu item
         if nReg == 1
             setObjEnable(handles.menuUndock,'off')
         end
-    end    
+    end
 else
     % enables the undocking menu item
     if nReg == 1
         setObjEnable(handles.menuUndock,'off')
-    end    
+    end
 end
 
 % if there is more than one subplot, update the data values
 if nReg > 1
     % retrieves the currently selected index
     sInd = getappdata(hFig,'sInd');
-
+    
     % updates the parameters
     sPara.ind(sInd,:) = NaN;
     sPara.plotD{sInd} = [];
@@ -2168,7 +2170,7 @@ if nReg > 1
     
     % updates the sub-plot data struct
     setObjEnable(handles.menuUndock,any(~isnan(sPara.ind(:))))
-    setappdata(hFig,'sPara',sPara);            
+    setappdata(hFig,'sPara',sPara);
 end
 
 % enables the listboxes/popup menus
@@ -2189,13 +2191,13 @@ function hNodeP = createTreeParent(hNodeP,sNode,Imap)
 % initialisations
 fStr = fieldnames(sNode);
 
-% 
-for i = 1:length(Imap)   
+%
+for i = 1:length(Imap)
     % retrieves the struct field
     isAdd = true;
     fVal = getStructField(sNode,fStr{i});
     
-    % determines if a new 
+    % determines if a new
     if hNodeP.getChildCount > 0
         % retrieves the names of the children nodes
         xiC = (1:hNodeP.getChildCount)' - 1;
@@ -2214,13 +2216,13 @@ for i = 1:length(Imap)
     if isAdd
         % sets up the node string
         try
-        nodeStr0 = getNodeString(fStr{i},fVal{Imap(i)});
-        nodeStr = setHTMLColourString('kb',nodeStr0,1);
+            nodeStr0 = getNodeString(fStr{i},fVal{Imap(i)});
+            nodeStr = setHTMLColourString('kb',nodeStr0,1);
         catch
             a = 1;
         end
         
-        % creates the new node      
+        % creates the new node
         hNodeNw = createUITreeNode(nodeStr,nodeStr,[],false);
         hNodeNw.setUserObject(fVal{Imap(i)});
         hNodeP.add(hNodeNw);
@@ -2254,11 +2256,11 @@ switch fStr
         % case is the experiment shape requirement
         switch fVal
             case '1D'
-                % case is 1D expts 
+                % case is 1D expts
                 nodeStr = 'General 1D Functions';
                 
             case '2D'
-                % case is 2D expts 
+                % case is 2D expts
                 nodeStr = 'General 2D Functions';
                 
             case '2D (Circle)'
@@ -2266,13 +2268,13 @@ switch fStr
                 nodeStr = '2D (Circle) Functions';
                 
             case '2D (General)'
-                % case is 2D General shape expts 
+                % case is 2D General shape expts
                 nodeStr = '2D (General) Functions';
                 
             case 'None'
                 % case is shape independent
                 nodeStr = 'Shape Independent Functions';
-        end        
+        end
         
     case 'Stim'
         % case is the duration requirement
@@ -2288,7 +2290,7 @@ switch fStr
             case 'None'
                 % case is stimuli independent expts
                 nodeStr = 'Stimuli Independent Functions';
-        end        
+        end
         
     case 'Spec'
         % case is special experiments
@@ -2296,11 +2298,11 @@ switch fStr
             case 'MT'
                 % case is multi-tracking
                 nodeStr = 'Multi-Tracking';
-            
+                
             case 'None'
                 % case is duration independent
                 nodeStr = 'Non-Speciality Functions';
-        end        
+        end
         
 end
 
@@ -2321,7 +2323,7 @@ for i = 1:hTree.getRoot.getLeafCount
     hTree.expand(hNodeP.getParent);
 end
 
-% --- sets the selected node to function with user data, iFcn 
+% --- sets the selected node to function with user data, iFcn
 function setSelectedNode(handles,iFcn)
 
 % global variables
@@ -2341,8 +2343,8 @@ if exist('iFcn','var')
     hTreeF.setSelectedNode(hNodeL{iFcn==iFcnN});
 else
     hTreeF.setSelectedNode([]);
-%     hTreeF.setSelectedNode(hNodeL{1});
-end   
+    %     hTreeF.setSelectedNode(hNodeL{1});
+end
 
 % resets the update flag
 pause(0.05);
@@ -2400,7 +2402,7 @@ for i = 1:nExp
     else
         snTot{i} = orderfields(sInfo{i}.snTot,snTot{1});
     end
-        
+    
     sInfo{i}.snTot = [];
 end
 
@@ -2422,7 +2424,7 @@ snTot = num2cell(getappdata(hFig,'snTot'));
 % sets the solution data field for each experiment
 for i = 1:length(sInfo)
     % separates the multi-experiment group names
-    gName = separateMultiExptGroupNames(snTot{i});    
+    gName = separateMultiExptGroupNames(snTot{i});
     
     % updates the group names
     snTot{i}.iMov.pInfo.gName = gName;
@@ -2430,7 +2432,7 @@ for i = 1:length(sInfo)
     % converts the data value arrays for the new format files
     snTot{i} = splitAcceptanceFlags(snTot{i});
     sInfo{i}.snTot = convertDataArrays(snTot{i});
-    sInfo{i}.snTot.iMov = reduceRegionInfo(sInfo{i}.snTot.iMov);  
+    sInfo{i}.snTot.iMov = reduceRegionInfo(sInfo{i}.snTot.iMov);
     sInfo{i}.gName = gName;
     
     % converts the data arrays
@@ -2469,16 +2471,16 @@ if snTot(1).iMov.is2D
     if isempty(iMov.autoP)
         % case is no region shape was used
         setupStr = 'General 2D Region Setup';
-    else        
-        % sets the region string 
+    else
+        % sets the region string
         switch iMov.autoP.Type
             case {'Circle','Rectangle'}
                 setupStrS = iMov.autoP.Type;
             case 'GeneralR'
-                setupStrS = 'General Repeating';            
+                setupStrS = 'General Repeating';
             case 'GeneralC'
                 setupStrS = 'General Custom';
-        end   
+        end
         
         % sets the final string
         setupStr = sprintf('2D Grid (%s Regions)',setupStrS);
@@ -2508,7 +2510,7 @@ set(handles.textStimType,'string',stimStr)
 % enables the solution data panel
 setPanelProps(handles.panelSolnData,'on');
 
-% --- resets the GUI objects with the new solution file struct, snTot 
+% --- resets the GUI objects with the new solution file struct, snTot
 function resetGUIObjects(handles,varargin)
 
 % global variables
@@ -2518,15 +2520,15 @@ updateFlag = 0;
 % retrieves the solution struct and solution directory/file names
 hFig = handles.figFlyAnalysis;
 if nargin == 1
-    snTot = getappdata(hFig,'snTot');    
+    snTot = getappdata(hFig,'snTot');
 else
     snTot = varargin{1};
 end
 
 % updates the experiment indices
-iData = getappdata(hFig,'iData');    
+iData = getappdata(hFig,'iData');
 iData.indExpt = true(length(snTot),1);
-setappdata(hFig,'iData',iData)    
+setappdata(hFig,'iData',iData)
 
 % initialises the experiment, function type and plotting function indices
 setappdata(hFig,'eIndex',1)
@@ -2541,15 +2543,15 @@ sName = getappdata(hFig,'sName');
 sName = cellfun(@(x)(simpFileName(x,18)),sName,'un',0);
 set(handles.popupExptIndex,'string',sName,'value',1)
 
-% sets the experiment information 
+% sets the experiment information
 clearAxesObject(handles)
 setPlotInfo(handles,snTot);
 
 % enables the menu/toolbar items
 setObjEnable(handles.menuResetData,'on')
-setObjEnable(handles.menuZoom,'off') 
-setObjEnable(handles.menuDataCursor,'off') 
-setObjEnable(handles.menuGlobal,'on') 
+setObjEnable(handles.menuZoom,'off')
+setObjEnable(handles.menuDataCursor,'off')
+setObjEnable(handles.menuGlobal,'on')
 setObjEnable(handles.menuPlot,'on')
 setObjEnable(handles.menuSplitPlot,'on')
 setObjEnable(handles.menuSaveData,'off')
@@ -2561,15 +2563,15 @@ setObjEnable(handles.menuClearData,'on')
 
 % removes any existing panels/plots
 hPanel = findall(handles.panelPlot,'tag','subPanel');
-if ~isempty(hPanel); delete(hPanel); end    
+if ~isempty(hPanel); delete(hPanel); end
 
 % updates the plot type popup
 popupPlotType_Callback(handles.popupPlotType, '1', handles)
 
-% % resets the experiment listbox strings 
+% % resets the experiment listbox strings
 % resetExptListStrings(handles,snTot)
 
-% --- resets the experiment listbox strings 
+% --- resets the experiment listbox strings
 function resetExptListStrings(handles,snTot)
 
 % retrieves the solution struct (if not provided)
@@ -2585,16 +2587,16 @@ hPopup = handles.popupExptIndex;
 % re-enables the save menu item
 if pInd == 3
     % case is the multi-experiment type has been selected
-    setObjEnable(hPopup,'off')   
+    setObjEnable(hPopup,'off')
     set(hPopup,'Value',1,'String',{'Multi-Experiment Calculations'})
     
     % updates the experimental information
-    setExptInfo(handles,[]);    
+    setExptInfo(handles,[]);
 else
     % retrieves the lists colour strings
     sName = getappdata(hFig,'sName');
     sName = cellfun(@(x)(simpFileName(x,18)),sName,'un',0);
-    sName = getListColourStrings(handles,sName,'Expt');         
+    sName = getListColourStrings(handles,sName,'Expt');
     
     % determines if the solution file is for a multi-expt solution file
     if length(snTot) > 1
@@ -2608,7 +2610,7 @@ else
     % updates the experimental information
     setExptInfo(handles,snTot);
 end
-    
+
 % --- sets the experiment information
 function setExptInfo(handles,snTot)
 
@@ -2633,11 +2635,11 @@ iMov = snTot(eInd).iMov;
 if iMov.is2D
     % sets the full string
     configStr = sprintf('%i x %i Grid Assay',...
-                        size(iMov.flyok,1),iMov.nCol);
+        size(iMov.flyok,1),iMov.nCol);
 else
     % sets the experiment string
     configStr = sprintf('%i x %i Assay (Max Count = %i)',...
-            iMov.pInfo.nRow,iMov.pInfo.nCol,iMov.pInfo.nFlyMx);
+        iMov.pInfo.nRow,iMov.pInfo.nCol,iMov.pInfo.nFlyMx);
 end
 
 % sets the setup configuration string
@@ -2652,9 +2654,9 @@ setPanelProps(handles.panelFuncDesc,'on')
 
 % sets the listbox strings
 lName = {'Experiment Analysis (Individual)',...
-         'Experiment Analysis (Population)'};
-if length(snTot) > 1    
-    lName = [lName,{'Multi-Experiment Analysis'}];         
+    'Experiment Analysis (Population)'};
+if length(snTot) > 1
+    lName = [lName,{'Multi-Experiment Analysis'}];
 end
 
 % sets the popup strings to the highest level solution data type (either
@@ -2670,7 +2672,7 @@ function scanPlotFuncDir(handles)
 % scans the plotting function directory for any functions
 iProg = getappdata(handles.figFlyAnalysis,'iProg');
 dDir = iProg.DirFunc;
-        
+
 % initialises the struct for the plotting function data types
 a = struct('fcn',[],'Name',[],'fType',[],'fDesc',[],'rI',[]);
 pDataT = struct('Indiv',[],'Pop',[],'Multi',[]);
@@ -2682,8 +2684,8 @@ if isdeployed
     
     % sets the partial/full file names
     [fDir,fName,eStr] = deal(pData.fDir,pData.fName,[]);
-        
-    % determines if this is the computer the executable was created on 
+    
+    % determines if this is the computer the executable was created on
     [~, hName] = system('hostname');
     if strcmp(hName,pData.hName)
         % if so, set the analysis files relative to the current computer
@@ -2693,34 +2695,34 @@ if isdeployed
         % directory on the new computer
         fFile = cellfun(@(x)(fullfile(dDir,x)),fName,'un',0);
     end
-
+    
     % determines if any of the files are missing from where they should be
     ii = cellfun(@(x)(exist(x,'file')),fFile) > 0;
     if any(~ii)
-        % if there are missing files, then 
+        % if there are missing files, then
         eStr = sprintf(['The following files appear to be missing from ',...
-                        'the analysis function path:\n\n']);
+            'the analysis function path:\n\n']);
         jj = find(~ii);
         for i = reshape(jj,1,length(jj))
-            eStr = sprintf('%s => %s\n',eStr,fName{i}); 
+            eStr = sprintf('%s => %s\n',eStr,fName{i});
         end
-    end        
-        
-    % for the files that are remaining, determine the difference in the 
-    % file sizes from their original 
+    end
+    
+    % for the files that are remaining, determine the difference in the
+    % file sizes from their original
     fData = cell2mat(cellfun(@(x)(dir(x)),fFile(ii),'un',0));
     jj = ii(find((field2cell(fData,'bytes',1) - pData.fSize(ii)) > 0)');
     if ~isempty(jj)
-        % if there is a change, then flag that the executable may need 
+        % if there is a change, then flag that the executable may need
         % to be updated to include these changes
         if ~isempty(eStr); eStr = sprintf('%s\n',eStr); end
         eStr = sprintf(['%sThe following files in the default analysis file ',...
-                        'directory are not up to date:\n\n'],eStr);
-
+            'directory are not up to date:\n\n'],eStr);
+        
         kk = find(jj);
-        for i = reshape(kk,1,length(kk)) 
-            eStr = sprintf('%s => %s\n',eStr,fName{i}); 
-        end  
+        for i = reshape(kk,1,length(kk))
+            eStr = sprintf('%s => %s\n',eStr,fName{i});
+        end
     end
 else
     % retrieves all potential analysis function directories
@@ -2742,10 +2744,10 @@ else
     [fName,fFile] = deal(cell2cell(fName),cell2cell(fFile));
 end
 
-% determines all the valid m-files in the plotting function directory 
+% determines all the valid m-files in the plotting function directory
 for i = 1:length(fName)
     % retrieves the function file name
-    fcnName = getFileName(fName{i});    
+    fcnName = getFileName(fName{i});
     try
         % attempts to run the function and set the function handle to the
         % corresponding function type
@@ -2758,7 +2760,7 @@ for i = 1:length(fName)
         if isfield(pDataNw,'rI'); a.rI = pDataNw.rI; end
         
         % sets the field type strings
-        tStr = pDataNw.Type; 
+        tStr = pDataNw.Type;
         if ~iscell(tStr); tStr = {tStr}; end
         
         % sets the new type field string
@@ -2778,12 +2780,12 @@ end
 % resorts the function names by type
 fNames = fieldnames(pDataT);
 for i = 1:length(fNames)
-    A = eval(sprintf('pDataT.%s',fNames{i}));    
+    A = eval(sprintf('pDataT.%s',fNames{i}));
     [~,ii] = sortrows(setFuncTypeList(A));
     pDataT = setStructField(pDataT,fNames{i},A(ii));
 end
 
-% updates the plotting function 
+% updates the plotting function
 setappdata(handles.figFlyAnalysis,'pDataT',pDataT)
 
 % --- re-initialises the plotting values struct
@@ -2807,7 +2809,7 @@ for i = 1:length(fName)
         N = 1;
     else
         N = nSoln;
-    end    
+    end
     
     % retrieves the sub-struct and allocates memory for the data struct
     p = eval(sprintf('pDataT.%s;',fName{i}));
@@ -2821,13 +2823,13 @@ for i = 1:length(fName)
                     pData{i}{j,k} = feval(p(j).fcn,snTot);
                 else
                     pData{i}{j,k} = ...
-                            feval(p(j).fcn,reduceSolnAppPara(snTot(k)));
+                        feval(p(j).fcn,reduceSolnAppPara(snTot(k)));
                 end
                 
                 pData{i}{j,k}.fDesc = p(j).fDesc;
             end
         end
-    end    
+    end
 end
 
 % --- resets the plotting data structs
@@ -2835,11 +2837,11 @@ function pDataNw = resetPlottingData(handles,varargin)
 
 % resets the legend strings
 [eInd,fInd,pInd] = getSelectedIndices(handles);
-if ~any([eInd,fInd,pInd] == 0)   
+if ~any([eInd,fInd,pInd] == 0)
     % retrieves the relevant data/parameter structs
     snTot = getappdata(handles.figFlyAnalysis,'snTot');
-    pDataT = getappdata(handles.figFlyAnalysis,'pDataT');   
-    pData = getappdata(handles.figFlyAnalysis,'pData');   
+    pDataT = getappdata(handles.figFlyAnalysis,'pDataT');
+    pData = getappdata(handles.figFlyAnalysis,'pData');
     fName = fieldnames(pDataT);
     
     % reduces the solution struct (if not analysing multi-experiment)
@@ -2855,30 +2857,30 @@ if ~any([eInd,fInd,pInd] == 0)
     if nargin == 2
         pDataNw = varargin{1};
         pDataNw.pF = A.pF;
-    else        
-        pDataNw = A;    
+    else
+        pDataNw = A;
     end
-        
+    
     % resets the data struct
     pDataNw.fDesc = p(fInd).fDesc;
-    pData{pInd}{fInd,eInd} = pDataNw;            
-    setappdata(handles.figFlyAnalysis,'pData',pData);            
-            
+    pData{pInd}{fInd,eInd} = pDataNw;
+    setappdata(handles.figFlyAnalysis,'pData',pData);
+    
     % resets the output array into the main GUI
-    plotD = getappdata(handles.figFlyAnalysis,'plotD');    
-    plotD{pInd}{fInd,eInd} = [];                
-    setappdata(handles.figFlyAnalysis,'plotD',plotD);            
-end 
+    plotD = getappdata(handles.figFlyAnalysis,'plotD');
+    plotD{pInd}{fInd,eInd} = [];
+    setappdata(handles.figFlyAnalysis,'plotD',plotD);
+end
 
 % --- updates the list string, specified by type
 function updateListColourStrings(handles,type)
- 
+
 % global variables
 global isUpdating
 
 % sets the list object to read (based on the type flag)
 switch type
-    case 'func' 
+    case 'func'
         % case is for the analysis function list
         
         % field initialisation
@@ -2901,54 +2903,54 @@ switch type
         isUpdating = false;
         
         
-    case 'expt' 
-        % case is for the experiment selection list                
+    case 'expt'
+        % case is for the experiment selection list
         
         % object handle retrieval
         hObj = handles.popupExptIndex;
-
+        
         % updates the list string
         StrOld = get(hObj,'string');
         Str = cellfun(@(x)(retHTMLColouredStrings(x)),StrOld,'un',0);
-        set(hObj,'string',getListColourStrings(handles,Str,type))        
+        set(hObj,'string',getListColourStrings(handles,Str,type))
 end
-    
-% --- converts the list strings, lStr, to coloured strings depending on A) 
-%     whether data has been calculated for the function/experiment, and B) 
+
+% --- converts the list strings, lStr, to coloured strings depending on A)
+%     whether data has been calculated for the function/experiment, and B)
 %     whether the list is for the type 'expt' (experiment popup) or 'func'
 %     (the analysis function listbox)
 function lStrCol = getListColourStrings(handles,lStr,type)
 
 % retrieves the plot data and the selected experiment/plot type indices
-plotD = getappdata(handles.figFlyAnalysis,'plotD');        
+plotD = getappdata(handles.figFlyAnalysis,'plotD');
 
-% determines which of the 
+% determines which of the
 [eInd,~,pInd] = getSelectedIndices(handles);
 switch lower(type)
     case ('expt') % case is the experiment selection
         ii = any(~cellfun('isempty',plotD{pInd}),1);
-        lCol = repmat({'k'},length(ii),1); lCol(ii) = {'r'};        
+        lCol = repmat({'k'},length(ii),1); lCol(ii) = {'r'};
     case ('func') % case is the analysis function listbox
         % retrieves the data structs
-        snTot = getappdata(handles.figFlyAnalysis,'snTot');        
-        pData = getappdata(handles.figFlyAnalysis,'pData');        
+        snTot = getappdata(handles.figFlyAnalysis,'snTot');
+        pData = getappdata(handles.figFlyAnalysis,'pData');
         
         % determines the feasible experiments in the function list
         fType = setFuncTypeList(cell2mat(pData{pInd}(:,1)));
-%         fType = cell2mat(field2cell(cell2mat(pData{pInd}(:,1)),'fType'));
+        %         fType = cell2mat(field2cell(cell2mat(pData{pInd}(:,1)),'fType'));
         isFeas = detExptType(snTot,fType);
         
         % determines which of the functions has values calculated and which
         % of the lines are non-header lines
         kk = ~cellfun('isempty',plotD{pInd}(:,eInd));
-        jj = cellfun(@(x)(~strcmp(x(1),' ')),lStr); 
+        jj = cellfun(@(x)(~strcmp(x(1),' ')),lStr);
         
         % sets the index array of the functions that have calculated values
         jj2 = ~jj; jj = find(jj);
         ii = false(length(lStr),1); ii(jj(kk)) = true;
         
         % sets the final string colours
-        lCol = repmat({'k'},length(ii),1); 
+        lCol = repmat({'k'},length(ii),1);
         [lCol(ii),lCol(jj2)] = deal({'r'},{'kb'});
         lCol(jj(~isFeas)) = {'gr'};
 end
@@ -2956,26 +2958,26 @@ end
 % sets the valid colour strings to read and sets the coloured strings
 lStrCol = setHTMLColourString(lCol,lStr);
 
-% --- updates the object property enabled states 
+% --- updates the object property enabled states
 function setObjProps(handles,state,varargin)
 
 % enables the listboxes/popup menus
-setObjEnable(handles.popupPlotType,state); 
+setObjEnable(handles.popupPlotType,state);
 
 % checking against the plot type
 if nargin == 2
     if strcmp(state,'on')
-        % if plot type is 
-        [~,~,pInd] = getSelectedIndices(handles);    
-        if pInd ~= 3       
-            setObjEnable(handles.popupExptIndex,'on'); 
+        % if plot type is
+        [~,~,pInd] = getSelectedIndices(handles);
+        if pInd ~= 3
+            setObjEnable(handles.popupExptIndex,'on');
         end
     else
-        setObjEnable(handles.popupExptIndex,state); 
+        setObjEnable(handles.popupExptIndex,state);
     end
 end
 
-% --- retrieves the solution file tooltip strings 
+% --- retrieves the solution file tooltip strings
 function sNameTT = getToolTipStrings(handles,ind)
 
 % retrieves the full solution file name strings
@@ -2996,7 +2998,7 @@ hFig = handles.figFlyAnalysis;
 iData = getappdata(hFig,'iData');
 tFile = fullfile(iData.ProgDef.OutData,'TempSolnData.mat');
 
-% performs the solution file 
+% performs the solution file
 switch Type
     case ('store') % case is storing the data
         % retrieves the solution data
@@ -3025,14 +3027,14 @@ switch Type
             delete(tFile);
             
             % closes the loadbar
-            try delete(h); end            
+            try delete(h); end
             
             % removes the sub-region and solution file data struct
             setappdata(hFig,'sInfo',a.sInfo);
             setappdata(hFig,'snTot',a.snTot);
         end
-                
-    case ('remove') % case is removing the data        
+        
+    case ('remove') % case is removing the data
         if exist(tFile,'file')
             % deletes the temporary solution file (if it exists)
             delete(tFile)
@@ -3044,13 +3046,13 @@ function sPara = initSubRegionStruct()
 
 % intialises the sub-region data-struct
 sPara = struct('pos',[0 0 1 1],'nRow',1,'nCol',1,...
-               'pData',[],'plotD',[],'ind',[],'calcReqd',[]);
+    'pData',[],'plotD',[],'ind',[],'calcReqd',[]);
 
 % memory allocation
 [sPara.pData,sPara.plotD] = deal(cell(1));
 [sPara.ind,sPara.calcReqd] = deal(NaN(1,3),true);
 
-% --- initialises the graph format struct 
+% --- initialises the graph format struct
 function fmtStr = initFormatStruct(iData,tStr,xStr,yStr,x,y,fID)
 
 % default font sizes
@@ -3070,7 +3072,7 @@ fmtStr = struct('Title',a,'Label',b,'Axis',c,'Plt',d,'fID',fID);
 % sets up the smoothing filter vectors
 xi = 1:length(x);
 fmtStr.Plt.xSm = smooth(xi,fmtStr.Plt.x,iData.sSpan,'sgolay');
-fmtStr.Plt.ySm = smooth(xi,fmtStr.Plt.y,iData.sSpan,'sgolay'); 
+fmtStr.Plt.ySm = smooth(xi,fmtStr.Plt.y,iData.sSpan,'sgolay');
 
 % --- retrieves the currently selected analysis scope flag
 function fScope = getAnalysisScopeFlag(hFig)
@@ -3089,30 +3091,27 @@ function postSolnLoadFunc(hFig,sInfoNw)
 handles = guidata(hFig);
 
 % performs the actions based on the user input
-if ~exist('sInfoNw','var')      
+if ~exist('sInfoNw','var')
     % if the user cancelled or there was no change, then exit the function
     tempSolnDataIO(handles,'reload')
     
-    % if the parameter gui is present, then make it visible   
+    % if the parameter gui is present, then make it visible
     hPara = findall(0,'tag','figAnalysisPara');
     if ~isempty(hPara)
         setObjVisibility(hPara,1);
-    end
-    
-    % closes the loadbar
-    try; close(h); end
+    end    
     
     % makes the gui visible again and exits the function
     setObjVisibility(hFig,'on');
     return
     
-elseif isempty(sInfoNw)    
+elseif isempty(sInfoNw)
     % if all data was cleared, then reset the gui
     menuClearData_Callback(handles.menuClearData, [], handles)
     
     % makes the gui visible again
     tempSolnDataIO(handles,'remove')
-    setObjVisibility(hFig,'on');        
+    setObjVisibility(hFig,'on');
     return
 end
 
@@ -3135,7 +3134,7 @@ setappdata(hFig,'LoadSuccess',true);
 % retrieves the stored data
 pDataT = getappdata(hFig,'pDataT');
 snTot = num2cell(getappdata(hFig,'snTot'));
-   
+
 % creates the function filter
 fObj = FuncFilterTree(hFig,snTot,pDataT);
 set(fObj,'treeUpdateExtn',@updateFuncFilter);
@@ -3187,14 +3186,14 @@ function resetToolbarObj(handles)
 hZoom = handles.menuZoom;
 if strcmp(get(hZoom,'State'),'on')
     set(hZoom,'State','off');
-    menuZoom_ClickedCallback(hZoom, [], []);    
+    menuZoom_ClickedCallback(hZoom, [], []);
 end
 
 % removes the zoom selection (if on)
 hDC = handles.menuDataCursor;
 if strcmp(get(hDC,'State'),'on')
     set(hDC,'State','off');
-    menuDataCursor_ClickedCallback(hDC, [], []);    
+    menuDataCursor_ClickedCallback(hDC, [], []);
 end
 
 % closes the function filter (if open)
@@ -3202,4 +3201,11 @@ hToggle = handles.toggleFuncFilter;
 if get(hToggle,'Value')
     set(hToggle,'Value',false)
     toggleFuncFilter_Callback(hToggle, [], handles)
+end
+
+
+function deleteDataCursorObj(hObj)
+
+if ~isempty(hObj)
+    delete(hObj)
 end

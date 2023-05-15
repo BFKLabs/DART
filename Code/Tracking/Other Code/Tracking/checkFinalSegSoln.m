@@ -458,8 +458,8 @@ else
     dPos = abs(X-fPosMn(1));
 end
 
-% sets up the distance the masks
-BD = bwdist(setGroup(roundP(fPosMn),[length(iRT),length(iC)])) <= dTol;
+% % sets up the distance the masks
+% BD = bwdist(setGroup(roundP(fPosMn),[length(iRT),length(iC)])) <= dTol;
 
 % if there are a large number of mistracked flies, then reset all of the
 % coordinates to be the median location

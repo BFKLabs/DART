@@ -468,7 +468,7 @@ classdef OpenSolnFuncTab < dynamicprops & handle
             
             % resets the row sorter filter
             jRowSort = obj.jTable.getRowSorter;
-            jRowSort.setRowFilter(RowFilter.andFilter(obj.objFcn.cFiltTot))            
+            jRowSort.setRowFilter(RowFilter.andFilter(obj.objFcn.cFiltTot))
             
             % resets the function compatibility colours
             obj.resetFuncCompColours()               

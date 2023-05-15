@@ -1,14 +1,14 @@
 % --- plots a double bar graph/boxplot figure
-function [hPlot,xTick] = plotDoubleBarBoxMetrics(hAx,p,pStr,pP,col)   
+function [hPlot,xTick] = plotDoubleBarBoxMetrics(hAx,p,pStr,pP,xiP)   
 
 % converts the metric string to a cell array (if it is not already)
-if (~iscell(pStr)); pStr = {pStr}; end
+if ~iscell(pStr); pStr = {pStr}; end
 
-%
-if (isfield(pP,'grpTime'))
-    grpTime = pP.grpTime;
+% sets the group time field
+if isfield(pP,'grpType')
+    grpType = pP.grpType;
 else
-    grpTime = false;
+    grpType = false;
 end
 
 % determines the plot type
@@ -16,42 +16,53 @@ hold(hAx,'on')
 [isBar,N,Np] = deal(strcmp(pP.pType,'Bar Graph'),length(p),length(pStr));
 
 % creates the graph based on the plot type
-if (isBar)
+if isBar
     % retrieves the mean/SEM values
     [YY,YYs] = deal(cell(Np,1));
     for i = 1:Np
+        % retrieves the mean/sem values
         [YY{i},YYs{i}] = field2cell(p,{[pStr{i},'_mn'],[pStr{i},'_sem']});
+        
+        % reduces down the arrays (if required)
+        if exist('xiP','var')
+            YY{i} = cellfun(@(x)(x(xiP)),YY{i},'un',0);
+            YYs{i} = cellfun(@(x)(x(xiP)),YYs{i},'un',0);
+        end
     end
         
     % retrieves the mean/SEM values
     [Y,Ysem] = deal([]);
-    if (N == 1)        
+    if N == 1        
         % sets the data into a single array        
         for i = 1:Np
             [Y,Ysem] = deal([Y;cell2mat(YY{i})],[Ysem;cell2mat(YYs{i})]);
         end
         
         % if not grouping by time, then transpose the mean/sem data arrays
-        if (grpTime); [Y,Ysem] = deal(Y',Ysem'); end                   
+        if ~grpType
+            [Y,Ysem] = deal(Y',Ysem'); 
+        end
     else
         % sets the data into a single array
         for i = 1:Np
-            [Y,Ysem] = deal([Y;cell2mat(YY{i})],[Ysem;cell2mat(YYs{i})]);
+            Y = [Y,arr2vec(cell2mat(YY{i}))];
+            Ysem = [Ysem,arr2vec(cell2mat(YYs{i}))];
         end
         
         % if not grouping by time, then transpose the mean/sem data arrays
-        if (~grpTime); [Y,Ysem] = deal(Y',Ysem'); end                           
+        if grpType
+            [Y,Ysem] = deal(Y',Ysem'); 
+        end
     end
             
     % creates the bar + errorbar plot
-    if (nargin < 5); col = []; end
-    [hPlot,xTick] = plotBarError(hAx,Y,Ysem,pP.plotErr,pP.pW,col);
+    [hPlot,xTick] = plotBarError(hAx,Y,Ysem,pP.plotErr,pP.pW,[]);
 else    
     % retrieves the overall data values
-    if (N == 1)
+    if N == 1
         % sets the data into a single cell array
-        Y1 = eval(sprintf('p.%s',pStr{1}));
-        Y2 = eval(sprintf('p.%s',pStr{2}));
+        Y1 = cellfun(@(x)(x(:,xiP)),getStructField(p,pStr{1}),'un',0);
+        Y2 = cellfun(@(x)(x(:,xiP)),getStructField(p,pStr{2}),'un',0);
         
         % combines the data into a single array based on type
         [m1,n1] = size(Y1);
@@ -64,7 +75,7 @@ else
             Yc = [Y1(:),Y2(:)];
         end                
         
-        if (pP.grpTime)
+        if ~grpType
             % data is grouped by pre/post-stimuli 
             nGrp = 2;        
             Yc = [Yc',cellfun(@(x)(NaN(size(x))),Yc(1,:),'un',0)']';   
@@ -88,17 +99,20 @@ else
             end
                
             % sets the values into the overall array
-            if (grpTime)
+            if ~grpType
                 % memory allocations
-                if (i == 1)
-                    [Y,nGrp] = deal(repmat({NaN},1,(1+2*(Np-1))*N-(Np-1)),Np); 
+                if i == 1                    
+                    Y = repmat({NaN},1,(1+2*(Np-1))*N-(Np-1)); 
+                    nGrp = Np;
                 end                                                   
                 
                 % sets the values into the array
                 for j = 1:Np; Y{(i-1)*Np+((Np-1)*(i-1)+j)} = Ynw(:,j); end
             else
                 % memory allocations
-                if (i == 1); [Y,nGrp] = deal(repmat({NaN},1,Np*N-(Np-1)),N); end                                                   
+                if i == 1
+                    [Y,nGrp] = deal(repmat({NaN},1,Np*N-(Np-1)),N); 
+                end                                                   
                 
                 % sets the values into the array
                 for j = 1:Np; Y{(j-1)*(N+(Np-1))+i} = Ynw(:,1); end                
@@ -107,7 +121,7 @@ else
         
         %
         for i = 1:length(Y)
-            if (iscell(Y{i}))
+            if iscell(Y{i})
                 Y{i} = cell2cell(Y{i});
             end
         end
@@ -115,15 +129,13 @@ else
         % combines the data into a single array
         Y = combineNumericCells(Y);
     end
-    
-    % sets the boxplot colours (if not provided)
-    if (nargin < 5); col = num2cell(distinguishable_colors(nGrp,'w'),2); end
-    
-    % creates the boxplot    
+        
+    % field retrieval
     uData0 = get(hAx,'UserData');
+    col = num2cell(distinguishable_colors(nGrp,'w'),2); 
     
     % creates the box plot
-    if (pP.plotErr)
+    if pP.plotErr
         % outliers are included
         hh = boxplot(Y,'sym','r*');    
     else
@@ -133,17 +145,15 @@ else
         
     % resets the colours of the boxplots
     hPlot = zeros(nGrp,1);
-    if (nGrp > 1)
-        for i = 1:nGrp        
-            set(hh(1:end-1,i:(nGrp+1):size(Y,2)),'color',col{i})
-            hPlot(i) = hh(3,i);
-        end
+    for i = 1:nGrp
+        set(hh(1:end-1,i:(nGrp+1):size(Y,2)),'color',col{i})
+        hPlot(i) = hh(3,i);
     end
     
     % sets the x-tick indices
     xTick = ((nGrp/2):(nGrp+(Np-1)):size(Y,2)) + 0.5;
     
-    %
+    % performs the house-keeping operations
     delete(findall(hAx,'type','text'))
     set(hAx,'ticklength',[0 0],'box','on','UserData',uData0)      
 end

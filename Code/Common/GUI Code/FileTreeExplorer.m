@@ -42,7 +42,8 @@ classdef FileTreeExplorer < handle
             obj.sFileT = obj.findFileAll(obj.sDir);
             if ~isempty(bObj.sInfo)
                 % removes any previously loaded files from the search
-                sFile0 = cellfun(@(x)(x.sFile),bObj.sInfo,'un',0);
+                sFile0 = cell2cell(cellfun(@(x)(cell2cell...
+                    (field2cell(x.snTot,'sName'))),bObj.sInfo,'un',0));
                 obj.sFileT = setdiff(obj.sFileT,sFile0);
             end
             
@@ -132,7 +133,7 @@ classdef FileTreeExplorer < handle
         function setupExplorerTree(obj)
             
             % imports the checkbox tree
-            import com.mathworks.mwswing.checkboxtree.*            
+            import com.mathworks.mwswing.checkboxtree.*
             
             % deletes any existing tree objects within the panel object
             jTreePr = findall(obj.hP,'type','hgjavacomponent');

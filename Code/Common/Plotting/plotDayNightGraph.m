@@ -50,10 +50,12 @@ for j = 1:length(ind)
         % creates the fill object depending on type
         if (isD)
             % case is a day phase
-            fill(xPlt(ii),yPlt(jj),'y','facealpha',fAlpha,'tag','hDN');
+            fill(xPlt(ii),yPlt(jj),'y','facealpha',fAlpha,...
+                'tag','hDN','HitTest','off');
         else
             % case is a night phase
-            fill(xPlt(ii),yPlt(jj),'k','facealpha',0.5,'tag','hDN');
+            fill(xPlt(ii),yPlt(jj),'k','facealpha',0.5,...
+                'tag','hDN','HitTest','off');
         end        
     end
 end

@@ -3,7 +3,7 @@ function [mObj,vObj,ok] = setupVideoObject(vidFile,varargin)
 
 % initialisations
 [~,~,fExtn] = fileparts(vidFile);
-[mObj,vObj,ok] = deal([],[],true);
+[mObj,vObj,ok] = deal([],[],false);
 
 % attempts to determine if the movie file is valid
 if exist(vidFile,'file')
@@ -20,16 +20,16 @@ if exist(vidFile,'file')
                 [vObj,~] = mmread(vidFile,inf,[],false,true,'');
         end
         
+        % flag that the video object was a success
+        ok = true;
+        
     catch
         % if an error occured, then output an error and exit the function
         if nargin == 1
             eStr = ['Error! Video appears to be corrupted. ',...
                     'Suggest deleting file.'];
             waitfor(errordlg(eStr,'Corrupted Video File','modal'))
-        end
-        
-        % sets the exit flag to false
-        ok = false;         
+        end       
     end
     
 end
