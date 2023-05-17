@@ -16,6 +16,8 @@ classdef FuncDiagnosticTree < handle
         hTreeF 
         mTreeF
         jTreeF
+        jCompF
+        hNodeLS
         
         % index/mapping array fields
         iCG
@@ -30,12 +32,14 @@ classdef FuncDiagnosticTree < handle
         fcnName        
         
         % other scalar/string fields
-        dX = 10;        
+        dX = 10;  
+        fSz = 9;
         nType = 2;        
         isInit = true;
-        useSubGrp = true;
+        useSubGrp = true;        
         sScope = {'I','S','M'};        
-        rootStr = setHTMLColourString('kb','FILTERED FUNCTION LIST',1);    
+        rootStr = 'FILTERED FUNCTION LIST';
+        isOldVer = verLessThan('matlab','9.10');
         sType = {'Individual','Single Experiment','Multiple Experiments'};
         
     end
@@ -130,12 +134,19 @@ classdef FuncDiagnosticTree < handle
             wState = warning('off','all');
             
             % deletes any previous explorer trees
-            hTreePr = findall(obj.hPanel,'type','hgjavacomponent');
-            if ~isempty(hTreePr); delete(hTreePr); end            
+            hTreePr = findall(obj.hPanel,'Type','uicheckboxtree');
+            if ~isempty(hTreePr); delete(hTreePr); end     
+            
+            % imports the checkbox tree
+            if obj.isOldVer
+                obj.hTreeF = [];
+            else
+                obj.hTreeF = uitree(obj.hPanel,'CheckBox','Position',...
+                    obj.tPos,'FontWeight','Bold','FontSize',obj.fSz);
+            end
             
             % creates the tree root node
-            obj.hRoot = obj.createTreeNode(obj.rootStr);
-
+            obj.hRoot = obj.createTreeNode(obj.hTreeF,obj.rootStr);
             for pInd = 1:length(obj.sScope)                                
                 % determines the experiment compatibility
                 obj.ffObj.detExptCompatibility(obj.sScope{pInd});
@@ -146,33 +157,31 @@ classdef FuncDiagnosticTree < handle
                     obj.setupScopeBranch(pInd)
                 end
             end
-            
-            % creates the tree object
-            if obj.nType == 1
-                % creates the tree object
-                cbFcn = @obj.treeSelectChng;                
-                [obj.hTreeF,hC] = uitree('v0','Root',obj.hRoot,...
-                    'position',obj.tPos,'SelectionChangeFcn',cbFcn);
+                        
+            % expands the explorer tree (new version only)
+            if obj.isOldVer
+                % checkbox tree import
+                import com.mathworks.mwswing.checkboxtree.*                  
                 
-                % sets the other object properties
-                set(hC,'Visible','off')
-                set(hC,'Parent',obj.hPanel,'visible','on')
-            else
-                % imports the checkbox tree
-                import com.mathworks.mwswing.checkboxtree.*                
-                
+                % creates the final tree explorer object
                 obj.hTreeF = com.mathworks.mwswing.MJTree(obj.hRoot);
-                obj.mTreeF = handle(CheckBoxTree...
-                            (obj.hTreeF.getModel),'CallbackProperties');            
-                jSP = com.mathworks.mwswing.MJScrollPane(obj.mTreeF);
-                [obj.jTreeF,~] = createJavaComponent(jSP,obj.tPos,obj.hPanel);                      
+                jTreeCB = handle(CheckBoxTree(obj.hTreeF.getModel),...
+                                              'CallbackProperties');
+                jSP = com.mathworks.mwswing.MJScrollPane(jTreeCB);
+
+                % creates the scrollpane object
+                objP = get(obj.hPanel,'position');
+                tPosSP = [obj.dX-[1 0],objP(3:4)-2*obj.dX];
+                [~,~] = createJavaComponent(jSP,tPosSP,obj.hPanel);                
+            else                
+                obj.hTreeF.CheckedNodes = obj.hRoot;
+                expand(obj.hTreeF,'All');
+                uistack(obj.hPanelF,'top')
+                
+                set(obj.hTreeF,'CheckedNodesChangedFcn',@obj.treeSelectChng)
             end
             
-            % expands the explorer tree
-            obj.expandExplorerTreeNodes()
-            
-            % ensures the function filter is always on top
-            uistack(obj.hPanelF,'top')
+            % ensures the function filter is always on top            
             warning(wState);            
             
         end       
@@ -181,10 +190,8 @@ classdef FuncDiagnosticTree < handle
         function setupScopeBranch(obj,pInd)
             
             % creates the function scope root node
-            pStr0 = sprintf('Function Scope = %s',obj.sType{pInd});
-            pStr = setHTMLColourString('kb',pStr0,1);
-            hRootF = obj.createTreeNode(pStr);
-            obj.hRoot.add(hRootF);
+            pStr = sprintf('Function Scope = %s',obj.sType{pInd});
+            hRootF = obj.createTreeNode(obj.hRoot,pStr);
 
             % sets the scope root node as the parent (if not grouping)
             if ~obj.useSubGrp; hNodeP = hRootF; end
@@ -204,13 +211,10 @@ classdef FuncDiagnosticTree < handle
                     iFcn = obj.ffObj.Imap(obj.indS(indC(j)),pInd);
 
                     % creates the new tree node
-                    hNodeNw = obj.createTreeNode(fcnNameNw);
-                    if obj.nType == 1
-                        hNodeNw.setUserObject(iFcn);
+                    hNodeNw = obj.createTreeNode(hNodeP,fcnNameNw);
+                    if ~obj.isOldVer
+                        hNodeNw.UserData = iFcn;
                     end
-                    
-                    % adds the new node to the parent
-                    hNodeP.add(hNodeNw);
                 end
             end           
             
@@ -228,74 +232,63 @@ classdef FuncDiagnosticTree < handle
                 isAdd = true;
                 fVal = getStructField(obj.sNode,fStr{i});
                 
+                % determines if the parent node has any 
+                if obj.isOldVer
+                    hasChild = hNodeP.getChildCount > 0;
+                else
+                    hasChild = ~isempty(hNodeP.Children);
+                end
+                
                 % determines if a new
-                if hNodeP.getChildCount > 0
+                if hasChild
                     % retrieves the names of the children nodes
-                    xiC = (1:hNodeP.getChildCount)' - 1;
-                    hNodeC = arrayfun...
-                        (@(x)(hNodeP.getChildAt(x)),xiC,'un',0);
-                    nodeName = cellfun...
-                        (@(x)(char(x.getUserObject)),hNodeC,'un',0);
-                    
-                    %
-                    if obj.nType == 1
-                        hasC = strcmp(nodeName,fVal{ImapU(i)});
+                    if obj.isOldVer
+                        xiC = (1:hNodeP.getChildCount)' - 1;
+                        hNodeC = cell2mat(arrayfun(@(x)...
+                            (hNodeP.getChildAt(x)),xiC,'un',0));
+                        nodeName = arrayfun(@char,hNodeC,'un',0);
                     else
-                        nStrPr = obj.getNodeString(fStr{i},fVal{ImapU(i)});
-                        hasC = strContains(nodeName,nStrPr);
+                        hNodeC = hNodeP.Children;
+                        nodeName = arrayfun(@(x)(x.Text),hNodeC,'un',0);
                     end
+                    
+                    % determines the overlapping parent nodes
+                    nStrPr = obj.getNodeString(fStr{i},fVal{ImapU(i)});
+                    hasC = strContains(nodeName,nStrPr);
                     
                     % determines if there is a match
                     if any(hasC)
                         % if so, then update the parent node
-                        [hNodeP,isAdd] = deal(hNodeC{hasC},false);
+                        [hNodeP,isAdd] = deal(hNodeC(hasC),false);
                     end
                 end
                 
                 % creates the new tree node (if required)
                 if isAdd
                     % sets up the node string
-                    nodeStr0 = obj.getNodeString(fStr{i},fVal{ImapU(i)});
-                    nodeStr = setHTMLColourString('kb',nodeStr0,1);
+                    nodeStr = obj.getNodeString(fStr{i},fVal{ImapU(i)});
                     
                     % creates the new node
-                    hNodeNw = obj.createTreeNode(nodeStr);
-                    if obj.nType == 1
-                        hNodeNw.setUserObject(fVal{ImapU(i)});
+                    hNodeNw = obj.createTreeNode(hNodeP,nodeStr);
+                    if ~obj.isOldVer
+                        hNodeNw.UserData = fVal{ImapU(i)};
                     end
                     
                     % resets the parent node
-                    hNodeP.add(hNodeNw);
                     hNodeP = hNodeNw;
                 end
             end
         
-        end                                      
-        
-        % --- creates the tree node (dependent on type)
-        function hNode = createTreeNode(obj,pStr)
-            
-            % creates the tree node dependent on type
-            if obj.nType == 1
-                hNode = createUITreeNode(pStr,pStr,[],false);
-            else
-                % imports the checkbox tree
-                import com.mathworks.mwswing.checkboxtree.*                 
-                hNode = DefaultCheckBoxNode(pStr);
-                hNode.setSelectionState(SelectionState.SELECTED)
-            end
-            
-        end
+        end                                              
         
         % -------------------------------- %
         % --- EVENT CALLBACK FUNCTIONS --- %
         % -------------------------------- %                     
         
         % --- tree update callback function
-        function treeSelectChng(obj, hObj, evnt)
+        function treeSelectChng(obj, ~, evnt)
             
-            %
-            a = 1;
+            obj.hNodeLS = evnt.LeafCheckedNodes;
             
         end          
         
@@ -311,7 +304,29 @@ classdef FuncDiagnosticTree < handle
             
             % retrieves the selected node information
             pFld = fieldnames(obj.pDataT);
-            fStrS = obj.getBranchSelectedNodes(obj.hRoot,1);
+            
+            %
+            if obj.isOldVer
+                fStrS = obj.getBranchSelectedNodes(obj.hRoot,1);
+            else                
+                % retrieves all the selected leaf nodes
+                hNodeC = obj.hTreeF.CheckedNodes;
+                isLeaf = arrayfun(@(x)(isempty(x.Children)),hNodeC);
+                
+                if any(isLeaf)
+                    % retrieves all the selected leaf nodes
+                    hNodeCL = hNodeC(isLeaf);                    
+                    
+                    % sets the function info (if leaf nodes)
+                    fStr = arrayfun(@(x)(x.Text),hNodeCL,'un',0);
+                    sStr = arrayfun(@(x)(obj.getScopeType...
+                        (obj.getSubRootNode(x))),hNodeCL,'un',0);
+                    fStrS = [fStr(:),sStr(:)];
+                else
+                    % case is there are no matches
+                    fStrS = [];
+                end
+            end
             
             % if there are no selections, then exit
             if isempty(fStrS)
@@ -334,7 +349,7 @@ classdef FuncDiagnosticTree < handle
                 end
             end
                             
-        end
+        end        
         
         % --- retrieves the indices of the selected nodes on the branch
         function fStrS = getBranchSelectedNodes(obj,hNodeP,iLvl)
@@ -416,7 +431,30 @@ classdef FuncDiagnosticTree < handle
 
                     % retrieves the selected node
                     obj.hTreeF.expand(hNodeP.getParent);
-                end            
+                end  
+            else
+                %
+                expand(obj.hTreeF,'all');
+            end
+            
+        end                
+        
+        % --- creates the tree node (dependent on type)
+        function hNode = createTreeNode(obj,hP,pStr)
+
+            % imports the checkbox tree  
+            if obj.isOldVer
+                % checkbox tree import
+                import com.mathworks.mwswing.checkboxtree.*                                
+                hNode = DefaultCheckBoxNode(pStr);
+                hNode.setSelectionState(SelectionState.SELECTED);
+                
+                if ~isempty(hP)
+                    hP.add(hNode);
+                end
+            else
+                % case is the newer matlab version object
+                hNode = uitreenode(hP,'Text',pStr);
             end
             
         end                
@@ -500,7 +538,17 @@ classdef FuncDiagnosticTree < handle
                     
             end
             
-        end           
+        end                   
+        
+        % --- retrieves the name of the sub-root node
+        function rNodeStr = getSubRootNode(hNode)
+            
+            while isa(hNode.Parent,'matlab.ui.container.TreeNode')
+                rNodeStr = hNode.Text;
+                hNode = hNode.Parent;
+            end
+            
+        end        
         
     end    
     

@@ -1013,8 +1013,9 @@ else
     % updates the checkbox flag and array value (if not ok)
     if sum(iData.getExpOut()) == 0
         % removes the check label for the separation
-        mSel = iData.tData.mSel(iData.cTab);
-        iData.tData.altChk{iData.cTab}{mSel}(get(hChk,'Max')) = false;
+        iChk = get(hChk,'UserData');
+        mSel = iData.tData.mSel(iData.cTab);        
+        iData.tData.altChk{iData.cTab}{mSel}(iChk) = false;
         set(hChk,'value',0)
     end
     
@@ -1180,7 +1181,7 @@ end
 function checkOtherFormat(hObject,eventdata)
 
 % retrieves the selection type
-[handles,iType] = deal(guidata(hObject),get(hObject,'Max'));
+[handles,iType] = deal(guidata(hObject),get(hObject,'UserData'));
 iData = getappdata(handles.figDataOutput,'iData');
 
 % sets the metric parameter index
@@ -2258,7 +2259,8 @@ hCheck = findall(handles.panelOtherFormats,'style','checkbox');
 chkVal = iData.tData.altChk{iData.cTab}{iData.tData.iSel(iData.cTab)};
 
 % updates the checkbox values
-arrayfun(@(x,y)(set(x,'Value',y)),hCheck(:),chkVal(:))
+hCheck = hCheck(cell2mat(get(hCheck,'UserData')));
+arrayfun(@(h,v)(set(h,'Value',v)),hCheck(:),chkVal(:));
 
 % --- sets the time unit object properties
 function setTimeUnitObjProps(handles,mSel)
@@ -2580,5 +2582,5 @@ function setCheckProps(hCheck,isOn)
 
 setObjEnable(hCheck,isOn)
 if ~isOn
-    set(setObjEnable(hCheck,isOn),'Value',false)
+    set(hCheck,'Value',false)
 end

@@ -160,7 +160,7 @@ classdef DataOutputStorage < DataReshapeSetup
             end
             
             % retrieves the sub-fields (if necessary)
-            for i = 1:length(varargin)            
+            for i = 1:length(varargin)
                 Ynw = Ynw{varargin{i}};
             end
             

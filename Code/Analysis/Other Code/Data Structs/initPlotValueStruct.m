@@ -2,6 +2,7 @@
 function plotD = initPlotValueStruct(snTot,pData,cP,varargin)
 
 % parameters
+tMin = 300;
 tMinTol = 59;
 
 % sets the number of input arguments (if already set)
@@ -56,7 +57,7 @@ if any(isRaw)
             % determines the number of days the expt runs for
             Texp = [0,T0(4:6)] + sec2vec(snTot(i).T{end}(end));
             Texp(1:2) = [Texp(1)+floor(Texp(2)/24),mod(Texp(2),24)];
-            nDay = max(nDay,Texp(1)+(sum(Texp)>0)); 
+            nDay = max(nDay,Texp(1)+(vec2sec([0,Texp(2:4)]) > tMin)); 
         end
         
         % sets the number of flies in the experiment

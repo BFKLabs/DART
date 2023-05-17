@@ -9,13 +9,13 @@ if (nargin < 3)
     [h,hasWait] = deal(0,false);
 else
     hasWait = isobject(h);
-    if (hasWait)        
+    if hasWait
         wStr = 'Writing CSV File';
     end
 end
 
 % opens the file for writing
-if (~iscell(Data)); Data = num2cell(Data); end
+if ~iscell(Data); Data = num2cell(Data); end
 fid = fopen(fName,'w');
 
 % creates the waitbar figure
@@ -31,10 +31,10 @@ end
 
 % writes the data to the csv file
 for i = 1:m
-    if (mod(i,dW)-1 == 0) && (hasWait)
+    if (mod(i,dW)-1 == 0) && hasWait
         % updates the waitbar figure        
         wStrNw = sprintf('%s (%i%s Complete)',wStr,roundP(100*i/m),char(37));
-        if (~updateLoadbar(h,wStrNw))        
+        if ~updateLoadbar(h,wStrNw)      
             % if the user cancelled, then exit the function
             fclose(fid);
             delete(fName)
@@ -52,7 +52,7 @@ for i = 1:m
         fprintf(fid,'\n');
     catch ME
         try fclose(fid); end
-        if (hasWait); try; close(h); end; end
+        if hasWait; try; close(h); end; end
         ok = false; 
         return
     end
@@ -65,13 +65,17 @@ fclose(fid);
 function printNewValue(fid,Y,isFirst)
 
 % sets the prefix string
-if (isFirst); str0 = ''; else str0 = ','; end
+if isFirst
+    str0 = '';
+else
+    str0 = ','; 
+end
 
 % prints the new character
-if (isnan(Y))
-    fprintf(fid,str0);
-elseif (isnumeric(Y))
-    if (mod(Y,1) == 0)
+if isnumeric(Y)
+    if isnan(Y)
+        fprintf(fid,str0);    
+    elseif mod(Y,1) == 0
         fprintf(fid,[str0,'%i'],Y);
     else
         fprintf(fid,[str0,'%.4f'],Y);

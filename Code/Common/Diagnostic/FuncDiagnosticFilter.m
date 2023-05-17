@@ -1,19 +1,19 @@
-classdef FuncFilterTree < matlab.mixin.SetGet
+classdef FuncDiagnosticFilter < matlab.mixin.SetGet
     
     % class properties
     properties
         
         % main object fields
         hFig
-        hCheck
         hPanel
         hButton        
         
         % function filter objects
-        jSP
+        hTree
         jTree        
         jRoot
         jTable
+        hNodeLS
 
         % function handles
         treeUpdateExtn
@@ -30,7 +30,7 @@ classdef FuncFilterTree < matlab.mixin.SetGet
          
         % other scalar parameters
         dX = 5;  
-        isLoading
+        fSz = 9;
         nCol = 6;        
         isUpdating = false;
         rType = {'Scope','Dur','Shape','Stim','Spec'}; 
@@ -41,7 +41,7 @@ classdef FuncFilterTree < matlab.mixin.SetGet
     methods
         
         % --- class constructors
-        function obj = FuncFilterTree(hFig,snTot,pDataT)
+        function obj = FuncDiagnosticFilter(hFig,snTot,pDataT)
             
             % ensures the solution file data is stored in a cell array
             if ~iscell(snTot); snTot = num2cell(snTot); end            
@@ -53,11 +53,7 @@ classdef FuncFilterTree < matlab.mixin.SetGet
             
             % retrieves the solution file information
             obj.snTot = snTot;
-            obj.pDataT = pDataT;            
-            
-            % sets the input argument
-            obj.hCheck = findall(obj.hFig,'tag','checkGrpExpt');
-            obj.isLoading = ~isempty(obj.hCheck);
+            obj.pDataT = pDataT;                        
             
             % initialises the tree object
             obj.initExptInfo();
@@ -184,9 +180,6 @@ classdef FuncFilterTree < matlab.mixin.SetGet
         
         % --- creates the explorer tree object
         function initTreeObj(obj,isReset)
-            
-            % checkbox tree import
-            import com.mathworks.mwswing.checkboxtree.*
         
             % parameters      
             rFld = fieldnames(obj.rGrp);
@@ -200,22 +193,20 @@ classdef FuncFilterTree < matlab.mixin.SetGet
                 if ~isempty(hTree0); delete(hTree0); end
             end   
             
-            %
-            if ~obj.isLoading
-                cmpFcn = obj.fcnData(obj.cmpData(:,1),3:end);
-                T = unique(cell2table(cmpFcn,'VariableNames',rFld(2:end)));
-            end
-                  
-            % creates the root node
-            obj.jRoot = DefaultCheckBoxNode('Function Requirement Categories');
-            obj.jRoot.setSelectionState(SelectionState.SELECTED);
-
+            % sets up the compatibility table
+            cmpFcn = obj.fcnData(obj.cmpData(:,1),3:end);
+            T = unique(cell2table(cmpFcn,'VariableNames',rFld(2:end)));
+               
+            % retrieves the object position
+            objP = get(obj.hPanel,'position');
+            tPos = [obj.dX-[1 0],objP(3:4)-2*obj.dX];
+            obj.hTree = uitree(obj.hPanel,'CheckBox','Position',tPos,...
+                'FontWeight','Bold','FontSize',obj.fSz);            
+            
             % creates all the requirement categories and their sub-nodes
             for i = 1:length(rFld)
                 % retrieves the requirement filter fields
-                if obj.isLoading
-                    rVal = getStructField(obj.rGrp,rFld{i});
-                elseif i > 1
+                if i > 1
                     rVal = unique(getStructField(T,rFld{i}));
                 else
                     rVal = [];
@@ -224,44 +215,27 @@ classdef FuncFilterTree < matlab.mixin.SetGet
                 % retrieves the sub              
                 if length(rVal) > 1                 
                     % sets the requirement type node
-                    jTreeR = DefaultCheckBoxNode(fldStr{i});
-                    obj.jRoot.add(jTreeR);
-                    jTreeR.setSelectionState(SelectionState.SELECTED);    
-
-                    % adds on each sub-category for the requirements node
+                    hNodeP = uitreenode(obj.hTree,'Text',fldStr{i});
                     for j = 1:length(rVal)
-                        jTreeSC = DefaultCheckBoxNode(rVal{j});
-                        jTreeR.add(jTreeSC);
-                        jTreeSC.setSelectionState(SelectionState.SELECTED);
+                        uitreenode(hNodeP,'Text',rVal{j});
                     end
                 end
             end
-
-            % retrieves the object position
-            objP = get(obj.hPanel,'position');
-
-            % creates the final tree explorer object
-            obj.jTree = com.mathworks.mwswing.MJTree(obj.jRoot);
-            jTreeCB = handle(CheckBoxTree(obj.jTree.getModel),...
-                                          'CallbackProperties');
-            obj.jSP = com.mathworks.mwswing.MJScrollPane(jTreeCB);
             
-            % creates the scrollpane object
-            tPos = [obj.dX-[1 0],objP(3:4)-2*obj.dX];
-            [~,~] = createJavaComponent(obj.jSP,tPos,obj.hPanel);
-
-            % resets the cell renderer
-            obj.jTree.setEnabled(false)
-            obj.jTree.repaint;
+            % sets all the selected nodes
+            hChildN = findall(obj.hTree,'type','uitreenode');
+            if ~isempty(hChildN)
+                obj.hTree.CheckedNodes = hChildN;
+            end
 
             % sets the callback function for the mouse clicking of the tree structure
-            set(jTreeCB,'MouseClickedCallback',@obj.treeUpdateClick,...
-                        'TreeCollapsedCallback',@obj.treeCollapseClick,...
-                        'TreeExpandedCallback',@obj.treeExpandClick) 
+            set(obj.hTree,'CheckedNodesChangedFcn',@obj.treeUpdateClick,...
+                          'NodeCollapsedFcn',@obj.treeCollapseClick,...
+                          'NodeExpandedFcn',@obj.treeExpandClick) 
                     
-            % resets the tree panel position
-            nwHeight = jTreeCB.getMaximumSize.getHeight;
-            obj.resetTreePanelPos(nwHeight)            
+%             % resets the tree panel position
+%             nwHeight = jTreeCB.getMaximumSize.getHeight;
+%             obj.resetTreePanelPos(nwHeight)            
 
         end
         
@@ -270,100 +244,16 @@ classdef FuncFilterTree < matlab.mixin.SetGet
         % ------------------------------- %        
         
         % --- callback for updating selection of the function filter tree
-        function treeUpdateClick(obj,~,~)
+        function treeUpdateClick(obj,~,evnt)
             
-            % java imports
-            import javax.swing.RowFilter
-
             % if updating elsewhere, then exit
             if obj.isUpdating
                 return
             end
 
-            % initialisation       
-            rFld = fieldnames(obj.rGrp);
-            obj.cFiltTot = java.util.ArrayList;
-            
-            % determines if the check value has been made
-            if obj.isLoading
-                isCheck = get(obj.hCheck,'Value');                
-            else
-                isCheck = true;
-            end
-
-            % reduces the search if only looking for compatible functions
-            if isCheck
-                % create a regexp filter list for the "yes" cells
-                cFiltArr = java.util.ArrayList;       
-                for i = 1:length(obj.snTot)
-                    j = size(obj.fcnData,2)+(i+1); 
-                    cFiltArr.add(RowFilter.regexFilter('Yes',j));
-                end
-
-                % adds the compatibility filter to the total filter
-                obj.cFiltTot.add(RowFilter.orFilter(cFiltArr)); 
-            end
-            
-            for i = 1:obj.jRoot.getChildCount
-                % retrieves the child node
-                jNodeC = obj.jRoot.getChildAt(i-1);
-                nStr = char(jNodeC.getUserObject);
-                i0 = find(cellfun(@(x)(strContains(nStr,x)),rFld));
-
-                % sets the filter field cell arrays
-                switch char(jNodeC.getSelectionState)
-                    case 'mixed'
-                        % retrieves the leaf node objects
-                        xiC = 1:jNodeC.getChildCount;
-                        jNodeL = arrayfun(@(x)...
-                                    (jNodeC.getChildAt(x-1)),xiC','un',0);
-
-                        % determines which of the leaf nodes are selected
-                        isSel = cellfun(@(x)(strcmp(char...
-                                (x.getSelectionState),'selected')),jNodeL);
-                        fFld = cellfun(@(x)...
-                                (x.getUserObject),jNodeL(isSel),'un',0);
-
-                    otherwise
-                        % case is either all or none are selected 
-                        fFld = getStructField(obj.rGrp,rFld{i0});
-                end  
-
-                % creates the category filter array
-                cFiltArr = java.util.ArrayList;
-                for j = 1:length(fFld)
-                    % loops through each type setting the regex filters
-                    if i0 == 1
-                        % case is the analysis scope requirement
-                        cFiltArr.add(RowFilter.regexFilter(fFld{j}(1),i0));
-                    else
-                        % case is the other filter types, so split 
-                        % the filter string
-                        fFldSp = strsplit(fFld{j});
-                        if length(fFldSp) == 1
-                            % if the filter string is only one word, then 
-                            % create the filter using this string
-                            cFiltArr.add(RowFilter.regexFilter(fFld{j},i0));
-                        else
-                            % otherwise create an and filter from each word
-                            cFiltSp = java.util.ArrayList;
-                            for k = 1:length(fFldSp)
-                                cFiltSp.add...
-                                    (RowFilter.regexFilter(fFldSp{k},i0));
-                            end
-                            cFiltArr.add(RowFilter.andFilter(cFiltSp));
-                        end
-                    end
-                end
-
-                % adds the category filter to the total filter
-                obj.cFiltTot.add(RowFilter.orFilter(cFiltArr));
-            end
-
             % runs the external update function
-            if ~isempty(obj.treeUpdateExtn)
-                feval(obj.treeUpdateExtn)
-            end             
+            obj.hNodeLS = evnt.LeafCheckedNodes;
+            feval(obj.treeUpdateExtn)
             
         end
         
@@ -374,7 +264,7 @@ classdef FuncFilterTree < matlab.mixin.SetGet
             obj.isUpdating = true;
 
             % resets the tree panel dimensions
-            obj.resetTreePanelPos(hObject.getMaximumSize.getHeight)
+%             obj.resetTreePanelPos(hObject.getMaximumSize.getHeight)
             pause(0.05);
 
             % flags that the tree is updating
@@ -389,7 +279,7 @@ classdef FuncFilterTree < matlab.mixin.SetGet
             obj.isUpdating = true;
 
             % resets the tree panel dimensions
-            obj.resetTreePanelPos(hObject.getMaximumSize.getHeight)
+%             obj.resetTreePanelPos(hObject.getMaximumSize.getHeight)
             pause(0.05);
 
             % flags that the tree is updating
@@ -406,16 +296,20 @@ classdef FuncFilterTree < matlab.mixin.SetGet
             
             % initialisations
             sNode = struct();
-            xiG = (1:obj.jRoot.getChildCount)'-1;
-            hNodeG = arrayfun(@(x)(obj.jRoot.getChildAt(x)),xiG,'un',0);
             
-            % retrieves the selection state of the nodes
-            sStateG = obj.getSelectState(hNodeG);            
+            % sets the checked/grouping nodes
+            if isempty(obj.hNodeLS)                                
+                hNodeC = obj.hTree.CheckedNodes;
+                hNodeG = intersect(hNodeC,obj.hTree.Children);
+            else
+                hNodeC = obj.hNodeLS;
+                hNodeG = unique(arrayfun(@(x)(get(x,'Parent')),hNodeC));
+            end
             
             % retrieves the 
-            for i = find(~strcmp(sStateG,'not selected'))'
+            for i = 1:length(hNodeG)
                 % sets the struct fields string
-                switch char(hNodeG{i})
+                switch get(hNodeG(i),'Text')
                     case 'Duration Requirements'
                         % case is the duration requirements
                         fStr = 'Dur';
@@ -435,17 +329,12 @@ classdef FuncFilterTree < matlab.mixin.SetGet
                 end                
                 
                 % retrieves the children nodes of the sub-node
-                xiC = (1:hNodeG{i}.getChildCount)'-1;
-                hNodeC = arrayfun(@(x)(hNodeG{i}.getChildAt(x)),xiC,'un',0);
+                hNC = hNodeG(i).Children;
+                fSel = arrayfun(@(x)(get(x,'Text')),hNC,'un',0);
+                isSel = arrayfun(@(x)(~isempty(intersect(hNodeC,x))),hNC);
                 
-                %
-                fSel = cellfun(@char,hNodeC,'un',0);
-                sStateC = obj.getSelectState(hNodeC); 
-                isSel = ~strcmp(sStateC,'not selected');
-                
-                %
-                sNode = setStructField(sNode,fStr,fSel(isSel));
-                
+                % updates the node struct field
+                sNode = setStructField(sNode,fStr,fSel(isSel));                
             end
             
         end
@@ -501,12 +390,8 @@ classdef FuncFilterTree < matlab.mixin.SetGet
             bPos = getObjGlobalCoord(obj.hButton);
             
             % sets the panel offset
-            if obj.isLoading
-                dY = 2*(1 + obj.dX);                 
-            else
-                dY = 4 + 3*obj.dX;                               
-            end
-
+            dY = 4 + 3*obj.dX;                               
+            
             % ressets the tree/panel dimensions
             resetObjPos(obj.hPanel,'Height',hghtPanel);
             resetObjPos(obj.hPanel,'Bottom',bPos(2)-(hghtPanel+dY))

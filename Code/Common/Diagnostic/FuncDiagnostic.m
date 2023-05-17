@@ -40,11 +40,11 @@ classdef FuncDiagnostic < handle
         widPanelR = 340;        
         widPanelFilt = 290; 
         hghtPanelO = 550;
-        hghtPanelI = 140;
+        hghtPanelI = 130;
         hghtPanelP = 140;
         hghtPanelFilt = 180; 
         hghtEdit = 21;
-        hghtBut = 25;
+        hghtBut = 21;
         hghtTxt = 16;    
         widTxtI = 155;
         
@@ -58,10 +58,12 @@ classdef FuncDiagnostic < handle
         hghtPanelFcn         
                 
         % other scalar/string fields
-        hSz = 13;
-        tSz = 12;
-        gCol = (240/255)*[1 1 1];
+        hSz = 12;
+        tSz = 10;
+        tLong = 12;
+        tDurS = {'Short','Long'};
         tagStr = 'figFuncDiagnostic';
+        isOldVer = verLessThan('matlab','9.10');
         
     end
     
@@ -94,11 +96,17 @@ classdef FuncDiagnostic < handle
             obj.widPanelO = (obj.widPanelL + obj.widPanelR) + 3*obj.dX;            
             obj.hghtPanelF = obj.hghtPanelO - (obj.hghtPanelI + 2*obj.dX);
             obj.hghtPanelD = obj.hghtPanelO - (obj.hghtPanelP + 2*obj.dX);
-            obj.hghtPanelFcn = obj.hghtPanelF - 9*obj.dX;
+            obj.hghtPanelFcn = obj.hghtPanelF - 8*obj.dX;
             
             % calculates the figure dimensions
             obj.widFig = obj.widPanelO + 2*obj.dX;
             obj.hghtFig = obj.hghtPanelO + 2*obj.dX;
+            
+            % resets the font sizes (old version only)
+            if obj.isOldVer
+                obj.hSz = 13;
+                obj.tSz = 12;
+            end
             
         end
         
@@ -118,15 +126,16 @@ classdef FuncDiagnostic < handle
             fPos = [100,100,obj.widFig,obj.hghtFig];
             
             % creates the figure object
-            obj.hFig = figure('Position',fPos,'tag',obj.tagStr,...
-                              'MenuBar','None','Toolbar','None',...
-                              'Name',figName,'Resize','off',...
-                              'NumberTitle','off','Visible','off');
+            obj.hFig = createUIObj('figure','Position',fPos,...
+                'tag',obj.tagStr,'MenuBar','None','Toolbar','None',...
+                'Name',figName,'Resize','off','NumberTitle','off',...
+                'Visible','off');
             
             % creates the experiment combining data panel
             pPos = [obj.dX*[1,1],obj.widPanelO,obj.hghtPanelO];
-            obj.hPanelO = uipanel(obj.hFig,'Title','','Units',...
-                                           'Pixels','Position',pPos);                        
+            if ~obj.isOldVer; pPos(2) = 150; end
+            obj.hPanelO = createUIObj...
+                ('panel',obj.hFig,'Title','','Position',pPos);
             
             % ------------------------------- %
             % --- ANALYSIS FUNCTION PANEL --- %
@@ -140,52 +149,58 @@ classdef FuncDiagnostic < handle
             
             % creates the experiment combining data panel
             pPosF = [obj.dX*[1,1],obj.widPanelL,obj.hghtPanelF];
-            obj.hPanelF = uipanel(obj.hPanelO,'Title',tStrF,'Units',...
-                        'Pixels','Position',pPosF,'FontUnits','Pixels',...
-                        'FontSize',obj.hSz,'FontWeight','bold');
+            obj.hPanelF = createUIObj('panel',obj.hPanelO,'Title',...
+                tStrF,'Position',pPosF,'FontSize',obj.hSz,...
+                'FontWeight','bold');
 
             % creates the experiment combining data panel
-            pPosFcn = [obj.dX*[1,4],obj.widPanelFcn,obj.hghtPanelFcn];
-            obj.hPanelFcn = uipanel(obj.hPanelF,'Title','','Units',...
-                        'Pixels','Position',pPosFcn);   
+            pPosFcn = [obj.dX*[1,3],obj.widPanelFcn,obj.hghtPanelFcn];
+            obj.hPanelFcn = createUIObj('panel',obj.hPanelF,'Title','',...
+                'Position',pPosFcn);   
                     
             % creates the sub-type grouping checkbox
             chkStr = 'Group Analysis Functions By Sub-Types';
-            cPos = [obj.dX*[1,1],pPosFcn(3)-2*obj.dX,obj.hghtEdit];
-            obj.hCheckGrp = uicontrol(obj.hPanelF,'Style','CheckBox',...
-                'Units','Pixels','Position',cPos,'FontWeight','Bold',...
-                'FontUnits','Pixels','FontSize',obj.tSz,'Value',1,...
-                'Callback',@obj.checkFuncGroup,'String',chkStr);
+            cPos = [obj.dX*[1,0.5],pPosFcn(3)-obj.dX,obj.hghtEdit];
+            obj.hCheckGrp = createUIObj('checkbox',obj.hPanelF,...
+                'Position',cPos,'FontWeight','Bold','String',chkStr,...
+                'ValueChangedFcn',@obj.checkFuncGroup,...
+                'FontSize',obj.tSz,'Value',1);
                     
             % creates the toggle button
             lPosB = obj.dX + widTxtL;
-            yPosB = sum(pPosFcn([2,4])) + 1;
+            yPosB = sum(pPosFcn([2,4])) + (1 + obj.dX/2);
             cbFcnB = @obj.toggleFilter;
             bPosB = [lPosB,yPosB,obj.widPanelFilt,obj.hghtBut];
-            obj.hToggleFilt = uicontrol(obj.hPanelF,'Style',...
-                        'ToggleButton','Position',bPosB,'FontUnits',...
-                        'Pixels','FontWeight','Bold','FontSize',obj.tSz,...
-                        'String',tStrB,'Tag','toggleFuncFilter',...
-                        'Callback',cbFcnB);
+            obj.hToggleFilt = createUIObj('togglebutton',obj.hPanelF,...
+                'Position',bPosB,'FontWeight','Bold','FontSize',obj.tSz,...
+                'Tag','toggleFuncFilter','ValueChangedFcn',cbFcnB,...
+                'String',tStrB);
                     
             % creates the experiment combining data panel
             yPosFilt = yPosB - (obj.hghtPanelFilt - 1);            
             szFilt = [obj.widPanelFilt-1,obj.hghtPanelFilt];
             pPosFilt = [lPosB+1,yPosFilt,szFilt];
             obj.hPanelFilt = uipanel(obj.hPanelF,'Title','','Units',...
-                        'Pixels','Position',pPosFilt,'Visible','off',...
-                        'Tag','panelFuncFilter');                        
+                'Pixels','Position',pPosFilt,'Visible','off',...
+                'Tag','panelFuncFilter');                        
                     
             % creates the text label
-            yPosL = yPosB + (obj.dX/2 - 1);
+            yPosL = yPosB + 1;
             tPosL = [obj.dX,yPosL,widTxtL,obj.hghtTxt];
-            uicontrol(obj.hPanelF,'Style','Text','Position',tPosL,...
-                        'FontUnits','Pixels','FontWeight','Bold',...
-                        'FontSize',obj.tSz,'String',tStrL,...
-                        'HorizontalAlignment','right');            
+            createUIObj('text',obj.hPanelF,'Position',tPosL,...
+                'FontWeight','Bold','FontSize',obj.tSz,'String',tStrL,...
+                'HorizontalAlignment','right');            
             
             % creates the function filter tree object
-            obj.ffObj = FuncFilterTree(obj.hFig,obj.snTot,obj.pDataT);
+            if obj.isOldVer
+                obj.ffObj = ...
+                    FuncFilterTree(obj.hFig,obj.snTot,obj.pDataT);
+            else
+                obj.ffObj = ...
+                    FuncDiagnosticFilter(obj.hFig,obj.snTot,obj.pDataT);
+            end           
+            
+            % sets the function filter callback function
             set(obj.ffObj,'treeUpdateExtn',@obj.updateFuncFilter);
             
             % creates the diagnostic tree object
@@ -195,6 +210,13 @@ classdef FuncDiagnostic < handle
             % ------------------------------------ %
             % --- EXPERIMENTAL DATA INFO PANEL --- %
             % ------------------------------------ %
+            
+            % sets the text properties field
+            if obj.isOldVer
+                tFldP = 'String';
+            else
+                tFldP = 'Text';
+            end
             
             % panel object properties
             tStrI = 'EXPERIMENTAL DATA INFORMATION';  
@@ -215,7 +237,7 @@ classdef FuncDiagnostic < handle
             for i = 1:nFld
                 % sets the bottom coordinate of the object
                 j = length(hStrI) - i;
-                y0 = obj.dX*(1 + 2*j) + (obj.dX/2)*(i < nFld);
+                y0 = obj.dX*(0.5 + 2*j) + (obj.dX/2)*(i < nFld);
                 
                 % sets the object type fields
                 switch i
@@ -230,21 +252,29 @@ classdef FuncDiagnostic < handle
                 
                 % creates
                 [hTxtL,obj.hTxtI{i}] = obj.createObjPairs...
-                    (obj.hPanelI,pTypeNw,obj.widTxtI,y0);
+                          (obj.hPanelI,pTypeNw,obj.widTxtI,y0);
                 
                 % sets the label properties
                 hStrIF = sprintf('%s: ',hStrI{i});
-                set(hTxtL,'FontUnits','Pixels','FontWeight','Bold',...
-                        'FontSize',obj.tSz,'String',hStrIF,...
-                        'HorizontalAlignment','right')
+                set(hTxtL,'FontWeight','Bold','FontSize',obj.tSz,...
+                          'HorizontalAlignment','right',tFldP,hStrIF)
                     
                 % sets the information field
                 tFld = obj.getInfoField(hStrI{i});
-                set(obj.hTxtI{i},'String',tFld,'FontUnits','Pixels',...
-                        'FontSize',obj.tSz,'HorizontalAlignment','Left');                    
-                if (i == nFld) && (length(tFld) == 1)
+                set(obj.hTxtI{i},'FontSize',obj.tSz);
+                if (i < nFld)
+                    set(obj.hTxtI{i},...
+                        tFldP,tFld,'HorizontalAlignment','Left');                
+                else
                     % disables the popup menu (if only one expt)
-                    setObjEnable(obj.hTxtI{i},0)
+                    setObjEnable(obj.hTxtI{i},length(tFld) > 1)
+                    
+                    % sets the other properties
+                    if obj.isOldVer
+                        set(obj.hTxtI{i},'String',tFld,'Value',1);
+                    else
+                        set(obj.hTxtI{i},'Items',tFld,'Value',tFld{1});
+                    end
                 end
             end
                     
@@ -281,8 +311,8 @@ classdef FuncDiagnostic < handle
             % --- HOUSE-KEEPING EXERCISES --- %
             % ------------------------------- %                          
             
-            % ensures the function filter is always on top
-            uistack(obj.hPanelFilt,'top')            
+%             % ensures the function filter is always on top
+%             uistack(obj.hPanelFilt,'top')            
             
             % centers the figure and makes it visible
             centreFigPosition(obj.hFig,2);
@@ -310,29 +340,33 @@ classdef FuncDiagnostic < handle
                 switch pType{i}
                     case 'T'
                         % case is a text label
-                        pObj(2) = pObj(2) + 1;
-                        [pStr,pObj(4)] = deal('Text',obj.hghtTxt);
+                        pObj(4) = obj.hghtTxt;
+                        pObj(2) = pObj(2) + 2;
+                        pStyle = 'text';
                         
                     case 'C'
                         % case is a checkbox
-                        [pStr,pObj(4)] = deal('CheckBox',obj.hghtEdit);
+                        pObj(4) = obj.hghtEdit;
+                        pStyle = 'checkbox';
                         
                     case 'P'
-                        % case is a checkbox
-                        [pStr,pObj(4)] = deal('PopupMenu',obj.hghtEdit);                        
+                        % case is a popupmenu
+                        pObj(4) = obj.hghtEdit;
+                        pStyle = 'popupmenu';
                         
                     case 'B'
                         % case is a pushbutton
-                        [pStr,pObj(4)] = deal('PushButton',obj.hghtBut);
+                        pObj(4) = obj.hghtBut;
+                        pStyle = 'pushbutton';
                         
                     case 'E'
                         % case is an editbox
-                        [pStr,pObj(4)] = deal('Edit',obj.hghtEdit);                        
+                        pObj(4) = obj.hghtEdit;
+                        pStyle = 'edit';
                 end
                 
                 % creates the object
-                hObj{i} = uicontrol...
-                    (hP,'Units','Pixels','Style',pStr,'Position',pObj);
+                hObj{i} = createUIObj(pStyle,hP,'Position',pObj);
             end
             
             % sets the left/right objects
@@ -342,9 +376,6 @@ classdef FuncDiagnostic < handle
             
         % --- retrieves the experiment data field
         function tFld = getInfoField(obj,hStrI)
-           
-            % REMOVE ME
-            tFld = 'Finish Me!';
             
             % retrieves the info field based on the type
             switch hStrI
@@ -353,10 +384,49 @@ classdef FuncDiagnostic < handle
                     tFld = num2str(length(obj.snTot));
                     
                 case 'Experiment Duration Type'
+                    % case is the experiment duration
+                    Ts = arrayfun(@(x)(x.T{1}(1)),obj.snTot);
+                    Tf = arrayfun(@(x)(x.T{end}(length(x.T{end}))),obj.snTot);
+                    isLong = any((Tf - Ts) > obj.tLong);                    
+                    tFld = sprintf('%s Experiment',obj.tDurS{1+isLong});
                     
                 case 'External Stimuli Type'
+                    % case is the stimuli type
+                    stimP = obj.snTot(1).stimP;
+                    if isempty(stimP)
+                        % no external stimuli
+                        tFld = 'No External Stimuli';
+                    else
+                        % external stimuli, so strip out the stimuli types
+                        stimType = strjoin(fieldnames(stimP)','/');
+                        tFld = sprintf('%s External Stimuli',stimType);
+                    end
                     
                 case 'Setup Configuration'
+                    % case is the setup configuration
+                    iMov = obj.snTot(1).iMov;
+                    if iMov.is2D
+                        if isempty(iMov.autoP)
+                            % case is no region shape was used
+                            tFld = 'General 2D Region Setup';
+                        else
+                            % sets the region string
+                            switch iMov.autoP.Type
+                                case {'Circle','Rectangle'}
+                                    tFldS = iMov.autoP.Type;
+                                case 'GeneralR'
+                                    tFldS = 'General Repeating';
+                                case 'GeneralC'
+                                    tFldS = 'General Custom';
+                            end
+                            
+                            % sets the final string
+                            tFld = sprintf('2D Grid (%s Regions)',tFldS);
+                        end
+                    else
+                        % case is a 1D experimental setup
+                        tFld = '1D Test-Tube Assay';
+                    end                    
         
                 case 'Experiment Names'
                     % case is the experiment names
@@ -370,25 +440,32 @@ classdef FuncDiagnostic < handle
         % --- OBJECT CALLBACK FUNCTIONS --- %
         % --------------------------------- %
         
-        % --- the function filter toggle button
+        % --- the function filter toggle button callback
         function toggleFilter(obj, hObj, ~)
             
             % object handles
             isOpen = get(hObj,'Value');
+            
+            % sets the text field string
+            if obj.isOldVer
+                tFldP = 'String';
+            else
+                tFldP = 'Text';
+            end
 
             % updates the funcion filter panel visibility
             setObjVisibility(obj.hPanelFilt,isOpen);
 
             % updates the toggle button string
             if isOpen
-                set(hObj,'String','Close Analysis Function Filter')
+                set(hObj,tFldP,'Close Analysis Function Filter')
             else
-                set(hObj,'String','Open Analysis Function Filter')
+                set(hObj,tFldP,'Open Analysis Function Filter')
             end            
             
         end
         
-        % --- 
+        % --- function sub-grouping checkbox callback
         function checkFuncGroup(obj, hObj, ~)
             
             obj.fTreeObj.useSubGrp = get(hObj,'Value');
@@ -418,7 +495,7 @@ classdef FuncDiagnostic < handle
         
     end
     
-    %
+    % static class methods
     methods (Static)
         
         % --- sets up the tree node string

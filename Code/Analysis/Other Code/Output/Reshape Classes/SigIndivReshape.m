@@ -194,15 +194,10 @@ classdef SigIndivReshape < handle
             iData.setData(Y,1+obj.iType);
             
         end                
-        
-    end
-    
-    % static class methods
-    methods (Static)
-        
+
         % --- splits the data (for each apparatus) to denote the separation 
         %     of the data (i.e., by either day or experiment)
-        function Ygrp = dataGroupSplit(iData,T,iD,Y,fok,hasTime)
+        function Ygrp = dataGroupSplit(obj,iData,T,iD,Y,fok,hasTime)
 
             % Ygrp Convention
             %
@@ -242,28 +237,45 @@ classdef SigIndivReshape < handle
 
                         % fills in any empty cells with NaN values
                         Ytmp = cellfun(@(x)...
-                                    (cell2mat(x)),num2cell(Y{k},1),'un',0);     
+                                    (cell2mat(x)),num2cell(Y{k},1),'un',0);
                                 
                         % combines the data with the time vectors
+                        X = reshape(num2cell(Ytmp,2),size(T(:,1)));
                         if noID
                             if hasTime
-                                Ynw{k} = cellfun(@(t,x)([t,combineNumericCells(x(:)')]),...
-                                    T(:,1),reshape(num2cell(Ytmp,2),size(T(:,1))),'un',0);
-                                YnwI = cellfun(@(x)(x(:,2:end)),Ynw{k},'un',0);                    
-                            else
-                                Ynw{k} = cellfun(@(t,x)([t,num2cell(combineNumericCells(x(:)'))]),...
-                                    T(:,1),reshape(num2cell(Ytmp,2),size(T(:,1))),'un',0);                    
-                                YnwI = cellfun(@(x)(cell2mat(x(:,2:end))),Ynw{k},'un',0);
+%                                 Ynw{k} = cellfun(@(t,x)...
+%                                     ([t,combineNumericCells(x(:)')]),...
+%                                     T(:,1),reshape(num2cell(Ytmp,2),...
+%                                     size(T(:,1))),'un',0);
+                                Ynw{k} = cellfun(@(t,x)...
+                                    (obj.concatArrays(t,x,[],1)),...
+                                    T(:,1),X,'un',0);
+                                YnwI = cellfun(@(x)...
+                                    (x(:,2:end)),Ynw{k},'un',0);                    
+                            else                                
+%                                 Ynw{k} = cellfun(@(t,x)([t,num2cell...
+%                                     (combineNumericCells(x(:)'))]),...
+%                                     T(:,1),reshape(num2cell(Ytmp,2),...
+%                                     size(T(:,1))),'un',0);   
+                                Ynw{k} = cellfun(@(t,x)...
+                                    (obj.concatArrays(t,x,2)),...
+                                    T(:,1),X,'un',0);
+                                YnwI = cellfun(@(x)...
+                                    (cell2mat(x(:,2:end))),Ynw{k},'un',0);
                             end                                                                     
                         else
                             if hasTime
-                                Ynw{k} = cellfun(@(id,t,x)([id,t,combineNumericCells(x(:)')]),...
-                                    iD,T(:,1),reshape(num2cell(Ytmp,2),size(T(:,1))),'un',0);
-                                YnwI = cellfun(@(x)(x(:,3:end)),Ynw{k},'un',0);                    
+                                Ynw{k} = cellfun(@(id,t,x)...
+                                    (obj.concatArrays([id,t],x,1)),...                                    
+                                    iD,T(:,1),X,'un',0);
+                                YnwI = cellfun(@(x)...
+                                    (x(:,3:end)),Ynw{k},'un',0);                    
                             else
-                                Ynw{k} = cellfun(@(id,t,x)([id,t,num2cell(combineNumericCells(x(:)'))]),...
-                                    iD,T(:,1),reshape(num2cell(Ytmp,2),size(T(:,1))),'un',0);                    
-                                YnwI = cellfun(@(x)(cell2mat(x(:,3:end))),Ynw{k},'un',0);
+                                Ynw{k} = cellfun(@(id,t,x)...
+                                    (obj.concatArrays([id,t],x,2)),...
+                                    iD,T(:,1),X,'un',0);                    
+                                YnwI = cellfun(@(x)...
+                                    (cell2mat(x(:,3:end))),Ynw{k},'un',0);
                             end                                                 
                         end      
 
@@ -303,21 +315,75 @@ classdef SigIndivReshape < handle
                                     (@(x,y)(x(y,:)),Ynw{k},ind,'un',0);
 
                         case 2
-                            % case is signals are separated over all days                
+                            % case is signals are separated over all days    
+                            X = reshape(num2cell(Ytmp{k},2),size(T(:,2)));
                             if iData.sepDay
                                 % resets the final combined output array
                                 if hasTime
-                                    Ygrp{j,k} = cellfun(@(t,x)([t,cell2mat(x(:)')]),T(:,2),...
-                                            reshape(num2cell(Ytmp{k},2),size(T(:,2))),'un',0);
+                                    Ygrp{j,k} = cellfun(@(t,x)...
+                                        (obj.concatArrays(t,x,3)),...
+                                        T(:,2),X,'un',0);
                                 else
-                                    Ygrp{j,k} = cellfun(@(t,x)([t,num2cell(cell2mat(x(:)'))]),T(:,2),...
-                                            reshape(num2cell(Ytmp{k},2),size(T(:,2))),'un',0);                        
+                                    Ygrp{j,k} = cellfun(@(t,x)...
+                                        (obj.concatArrays(t,x,4)),...
+                                        T(:,2),X,'un',0);                        
                                 end
                             end
                     end
                 end
             end
 
+        end        
+        
+    end
+    
+    % static class methods
+    methods (Static)
+        
+        % --- concatenates the arrays
+        function Y = concatArrays(t,x,cType)
+            
+            % combines the data arrays (based on type)
+            switch cType
+                case 1
+                    X = combineNumericCells(x(:)');
+                    
+                case 2
+                    X = num2cell(combineNumericCells(x(:)'));
+                    
+                case 3
+                    X = cell2mat(x(:)');
+                    
+                case 4
+                    X = num2cell(cell2mat(x(:)'));
+            end
+            
+            % array dimensions
+            nRX = size(X,1);
+            [nRT,nCT] = size(t);
+            
+            % if the arrays are not the same size, then append the time
+            % array so that they do match
+            if nRX > nRT
+                % appends the new time values
+                dnRow = nRX - nRT;
+                dtNw = diff(t(1:2,end));
+                tNw = t(end,end) + (1:dnRow)*dtNw;
+                
+                % appends the new time values
+                if nCT == 1
+                    % case is there is no id values
+                    t = [t;tNw(:)];
+                else
+                    % case is there are new id values
+                    idNw = (t(end,1)+1)*ones(dnRow,1);
+                    t = [t;[idNw(:),tNw(:)]];
+                end                
+            end
+            
+            % concatenates the two arrays
+            Y = [t,X];
+            
         end
         
     end

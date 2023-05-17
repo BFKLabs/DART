@@ -2467,7 +2467,7 @@ Tf = arrayfun(@(x)(x.T{end}(end)),snTot);
 durStr = sprintf('%s:%s:%s:%s (DD:HH:MM:SS)',tStr{1},tStr{2},tStr{3},tStr{4});
 
 % expt setup type
-if snTot(1).iMov.is2D
+if iMov.is2D
     if isempty(iMov.autoP)
         % case is no region shape was used
         setupStr = 'General 2D Region Setup';

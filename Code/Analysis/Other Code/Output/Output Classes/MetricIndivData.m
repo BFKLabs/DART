@@ -38,7 +38,7 @@ classdef MetricIndivData < DataOutputArray
     methods
         
         % --- class constructor
-        function obj = MetricIndivData(hFig,hProg) 
+        function obj = MetricIndivData(hFig,hProg)
             
             % creates the super-class object
             obj@DataOutputArray(hFig,hProg);
@@ -219,7 +219,10 @@ classdef MetricIndivData < DataOutputArray
                 % retrieves the data from the metric data arrays
                 for j = 1:obj.nMet
                     % retrieves and sets the data (for the current metric)
-                    Ytmp = cell(1,size(obj.YR{j}{i},1),obj.nExp);
+                    B = cell(1,size(obj.YR{j}{i},1));
+                    Ytmp = repmat({B},[1,obj.nExp]);
+%                     nGrpM = size(obj.YR{j}{i},1);
+%                     Ytmp = cell(1,nGrpM,obj.nExp);
                     A = num2cell(obj.YR{j}{i},1);
                     
                     k = obj.iiU == obj.iiX(j);
@@ -229,10 +232,21 @@ classdef MetricIndivData < DataOutputArray
 
                         % stores the final data values (if available)
                         if any(cell2mat(nFlyT) > 0)
+                            % reduces down the data values to remove the
+                            % rejected flies
                             iFlyT = obj.iFly{i,k}(:,iExp);
-                            Ytmp(1,:,iExp) = cellfun(@(x,y,z)(x...
+                            Ytmp0 = cellfun(@(x,y,z)(x...
                                 (y(1:z*obj.nGrpG),:)),A{iExp},iFlyT,...
                                 nFlyT,'un',0)';
+                            
+                            % re-orders the array so that the data is
+                            % grouped by the individual flies
+                            xiM = 1:size(Ytmp0{1},1);
+                            Ytmp{iExp} = cell2cell(arr2vec(arrayfun(@(i)...
+                                (cell2cell(cellfun(@(y)(y(i,:)),...
+                                Ytmp0(:),'un',0))),xiM,'un',0)));
+                        else
+                            Ytmp{iExp} = [];
                         end
                     end
                     
@@ -248,7 +262,7 @@ classdef MetricIndivData < DataOutputArray
                     if obj.sepDay && (size(obj.YM{i}{j},2) < obj.xiD(end))
                         % ensures the metric data array aligns with the 
                         % correct number of days (for the header string)
-                        dYgap = obj.xiD{end}-size(obj.YM{i}{j},2);
+                        dYgap = obj.xiD(end)-size(obj.YM{i}{j},2);
                         Ygap = strings(1,dYgap);
                         obj.YM{i}{j} = combineCellArrays(obj.YM{i}{j},Ygap);
                     end        
