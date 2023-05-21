@@ -132,6 +132,8 @@ setappdata(hObject,'iExpt',iExpt);
 
 % initialises the GUI properties
 handles = setRecordGUIProps(handles,'InitGUI',infoObj.exType);
+
+% resets the video preview dimensions
 resetVideoPreviewDim(handles)
 
 % creates the video preview object
@@ -304,7 +306,9 @@ selection = questdlg('Are you sure you want to close the Recording GUI?',...
                      'Close Recording GUI?','Yes','No','Yes');
 if strcmp(selection,'Yes')
     % retrieves the DART handle
-    hDART = findall(0,'tag','figDART','type','figure');         
+    hFig = handles.figFlyRecord;
+    hDART = findall(0,'tag','figDART','type','figure');
+    infoObj = getappdata(hFig,'infoObj');
 
     % deletes any existing timer objects
     hT = timerfindall();
@@ -323,22 +327,29 @@ if strcmp(selection,'Yes')
         if ~isempty(daqObj)
             delete(daqObj)
         end
+    catch
     end
 
     % deletes any previous imaq objects in memory
     try
-        imaqObj = imaqfind;
-        if ~isempty(imaqObj)
-            delete(imaqObj)
+        if infoObj.isWebCam
+            delete(infoObj.objIMAQ);
+        else
+            imaqObj = imaqfind;
+            if ~isempty(imaqObj)
+                delete(imaqObj)
+            end
         end
+    catch
     end
 
     % closes and deletes any open serial objects
     hh = instrfind();
     if ~isempty(hh)
         try
-            fclose(hh)
-            delete(hh)
+            fclose(hh);
+            delete(hh);
+        catch
         end
     end
     
@@ -361,7 +372,7 @@ if strcmp(selection,'Yes')
     mObj.hFigSub = [];        
     
     % deletes the figure and makes the main DART GUI visible again
-    delete(handles.figFlyRecord)                
+    delete(hFig)                
     setObjVisibility(hDART,'on');    
 end
 
@@ -562,15 +573,29 @@ wState = warning('off','all');
 
 % determines if the new roi position has been provided
 if isReset
+    % updates the position of the ROI field (webcam only)
+    if infoObj.isWebCam        
+        vResS = infoObj.objIMAQ.Resolution;
+        vRes = cellfun(@str2double,strsplit(vResS,'x'));
+    else
+        vRes = getVideoResolution(infoObj.objIMAQ);    
+    end
+    
     % calculates the bottom location of the preview
-    vRes = getVideoResolution(infoObj.objIMAQ);    
-    rPos(2) = vRes(2) - sum(rPos([2,4]));     
+    rPos(2) = max(0,vRes(2) - sum(rPos([2,4])));     
     
     % resets the dimensions of the preview axes
     if ~infoObj.isTest            
         % inverts the bottom location of the ROI
-        set(infoObj.objIMAQ,'ROIPosition',rPos); 
-        set(hAx,'xlim',[0,rPos(3)],'ylim',[0,rPos(4)])
+        if infoObj.isWebCam
+            infoObj.objIMAQ.pROI = rPos;
+            xL = rPos(1) + [0,rPos(3)];
+            yL = rPos(2) + [0,rPos(4)];
+            set(hAx,'xlim',xL,'ylim',yL)            
+        else
+            set(infoObj.objIMAQ,'ROIPosition',rPos);
+            set(hAx,'xlim',[0,rPos(3)],'ylim',[0,rPos(4)])
+        end           
     end
     
     % if the camera preview is off, then reset the axes image
@@ -578,11 +603,20 @@ if isReset
     if ~prObj.isOn
         % retrieves the image resolution
         hImage = findall(hAx,'type','Image');
-        set(hImage,'CData',uint8(zeros(rPos([4,3]))));
+        if infoObj.isWebCam
+            set(hImage,'CData',uint8(zeros(vRes([2,1]))));
+        else
+            set(hImage,'CData',uint8(zeros(rPos([4,3]))));
+        end
     end
 else
     % otherwise, retrieve the current roi position 
     rPos = getVideoROIPosition(infoObj);
+    
+    % updates the position of the ROI field (webcam only)
+    if infoObj.isWebCam
+        infoObj.objIMAQ.pROI = rPos;
+    end    
 end
 
 % calculates the change in the GUI height
@@ -787,10 +821,14 @@ set(hFig,'CurrentAxes',hAx);
 infoObj = getappdata(hFig,'infoObj');
 
 % retrieves the image size
-vRes = get(infoObj.objIMAQ,'VideoResolution');
-sz = vRes([2 1]);
+if isprop(infoObj.objIMAQ,'pROI')
+    vRes = infoObj.objIMAQ.pROI(3:4);    
+else
+    vRes = get(infoObj.objIMAQ,'VideoResolution');
+end
 
 % retrieves the greatest common denominator
+sz = vRes([2 1]);
 D = gcd(sz(1),sz(2));
 N = ceil(min(20*D./sz))*(sz/D);
 
@@ -856,6 +894,9 @@ function rPos = getVideoROIPosition(infoObj)
 if infoObj.isTest
     % video object is the test file
     rPos = [1,1,flip(infoObj.objIMAQ.szImg)];
+elseif infoObj.isWebCam
+    % case is a webcam
+    rPos = infoObj.objIMAQ.pROI;
 else
     % video object is the image acquisition object
     rPos = get(infoObj.objIMAQ,'ROIPosition');

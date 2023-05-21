@@ -19,7 +19,7 @@ end
 % End initialization code - DO NOT EDIT
 
 % --- Executes just before AdaptorInfo is made visible.
-function AdaptorInfo_OpeningFcn(hObject, eventdata, handles, varargin)
+function AdaptorInfo_OpeningFcn(hObject, ~, handles, varargin)
 
 % turns off all warnings
 wState = warning('off','all');
@@ -61,7 +61,7 @@ centreFigPosition(hObject);
 
 % closes the loadbar
 warning(wState);
-try; delete(h); end
+try delete(h); catch; end
 
 % wait for user response (daq matching only)
 if any(p.iType == [2,3])
@@ -69,7 +69,7 @@ if any(p.iType == [2,3])
 end
 
 % --- Outputs from this function are returned to the command line.
-function varargout = AdaptorInfo_OutputFcn(hObject, eventdata, handles)
+function varargout = AdaptorInfo_OutputFcn(~, ~, ~)
 
 % global variables
 global outObj
@@ -82,7 +82,7 @@ varargout{1} = outObj;
 %-------------------------------------------------------------------------%
 
 % --- Executes when user attempts to close figAdaptInfo.
-function figAdaptInfo_CloseRequestFcn(hObject, eventdata, handles)
+function figAdaptInfo_CloseRequestFcn(~, ~, handles)
 
 % exits the gui
 buttonExit_Callback(handles.buttonExit, [], handles)
@@ -96,7 +96,7 @@ buttonExit_Callback(handles.buttonExit, [], handles)
 % ------------------------------- %
 
 % --- Executes on button press in buttonConnect.
-function buttonConnect_Callback(hObject, eventdata, handles)
+function buttonConnect_Callback(~, ~, handles)
 
 % global variables
 global outObj
@@ -148,7 +148,7 @@ switch infoObj.iType
     case 0
         % case is there was an error during initialisation
         setObjVisibility(hFigM,1);
-        try; close(h); end
+        try close(h); catch; end
         return
     
     case 1
@@ -172,10 +172,10 @@ switch infoObj.iType
 end
 
 % closes the progressbar
-try; close(h); end
+try close(h); catch; end
 
 % --- Executes on button press in buttonExit.
-function buttonExit_Callback(hObject, eventdata, handles)
+function buttonExit_Callback(~, ~, handles)
 
 % global variables
 global outObj
@@ -264,7 +264,8 @@ vIndIMAQ = infoObj.vIndIMAQ;
 objIMAQDev = infoObj.objIMAQDev;
 
 % retrieves the selected video input object index
-iSelV = get(handles.listIMAQObj,'Value');        
+iSelV = get(handles.listIMAQObj,'Value');   
+infoObj.isWebCam = isCamUVC(objIMAQDev{iSelV}.DeviceName);
 
 % deletes any previous camera objects
 prImaqObj = imaqfind;
@@ -287,11 +288,13 @@ catch
 end
 
 % creates the video object constructor object string
-vStr = sprintf('%s, ''%s'')',vConStr(1:end-1),...
-                                sFormat{vSelIMAQ}{infoObj.sInd(vSelIMAQ)});
+sFormatF = sFormat{vSelIMAQ}{infoObj.sInd(vSelIMAQ)};
+dName = objIMAQDev{vIndIMAQ(vSelIMAQ,1)}(vIndIMAQ(vSelIMAQ,2)).DeviceName;
+
+vStr = sprintf('%s, ''%s'')',vConStr(1:end-1),sFormatF);
 try
     % attempts to create a connection with the recording device
-    infoObj.objIMAQ = eval(vStr);
+    objIMAQ0 = eval(vStr);
     
 catch ME
     % make the loadbar invisible
@@ -318,37 +321,68 @@ catch ME
     return
 end
 
-% ensure that the video object writes avi objects to disk
-try
-    set(infoObj.objIMAQ,'ReturnedColorSpace','grayscale');
-    set(infoObj.objIMAQ,'Name',objIMAQDev{vIndIMAQ(vSelIMAQ,1)}...
-                                    (vIndIMAQ(vSelIMAQ,2)).DeviceName);
-end
-triggerconfig(infoObj.objIMAQ,'manual')
+if infoObj.isWebCam
+    % retrieves the source information (deleting the video object)
+    pInfo = propinfo(objIMAQ0.Source);
+    delete(objIMAQ0)
+    pause(0.05);
 
-% resets any ROI parameters
-resetCameraROIPara(infoObj.objIMAQ)
+    % creates the webcam object
+    infoObj.objIMAQ = webcam(objIMAQDev{iSelV}.DeviceName);
+    addprop(infoObj.objIMAQ,'pInfo');
+    addprop(infoObj.objIMAQ,'pROI');
+    addprop(infoObj.objIMAQ,'resTemp');
 
-% sets the camera automatic fields to manual
-srcObj = getselectedsource(infoObj.objIMAQ);
-resetFld = [];
-% resetFld = {{'FocusMode','manual'},...
-%             {'ExposureMode','auto'},...
-%             {'WhiteBalanceMode','manual'}};
+    % determines the camera resolution string
+    availForm = infoObj.objIMAQ.AvailableResolutions;
+    sFormatN = regexp(sFormatF,'(\d*)','match');
+    sFormatW = strjoin(sFormatN,'x');
 
-% resets the flagged camera properties (if they exist)
-for i = 1:length(resetFld)
-    if isprop(srcObj,resetFld{i}{1})
-        try
-            set(srcObj,resetFld{i}{1},resetFld{i}{2})
+    % sets the webcam object fields
+    infoObj.objIMAQ.pInfo = pInfo;
+    infoObj.objIMAQ.resTemp = availForm{strcmp(availForm,sFormatW)};
+    infoObj.objIMAQ.pROI = [0,0,cellfun(@str2double,sFormatN)];
+
+else
+    % case is a non-webcam device
+    infoObj.objIMAQ = objIMAQ0;
+        
+    % ensure that the video object writes avi objects to disk
+    try
+        set(infoObj.objIMAQ,'ReturnedColorSpace','grayscale');
+        set(infoObj.objIMAQ,'Name',dName);
+    catch
+    end
+
+    % sets the trigger configuration flag
+    triggerconfig(infoObj.objIMAQ,'manual')
+    
+    % resets any ROI parameters
+    resetCameraROIPara(infoObj.objIMAQ)
+    
+    % sets the camera automatic fields to manual
+    srcObj = getselectedsource(infoObj.objIMAQ);
+    resetFld = [];
+    % resetFld = {{'FocusMode','manual'},...
+    %             {'ExposureMode','auto'},...
+    %             {'WhiteBalanceMode','manual'}};
+    
+    % resets the flagged camera properties (if they exist)
+    for i = 1:length(resetFld)
+        if isprop(srcObj,resetFld{i}{1})
+            try
+                set(srcObj,resetFld{i}{1},resetFld{i}{2})
+            catch
+            end
         end
     end
-end
-
-% increases the amount of memory available to the camera
-try
-    a = imaqmem;
-    imaqmem(min(a.AvailVirtual,2*a.FrameMemoryLimit));
+    
+    % increases the amount of memory available to the camera
+    try
+        a = imaqmem;
+        imaqmem(min(a.AvailVirtual,2*a.FrameMemoryLimit));
+    catch
+    end
 end
 
 % --- updates the DAQ device information
@@ -366,6 +400,7 @@ try
     if ~isempty(prDaqObj)
         delete(prDaqObj)
     end
+catch
 end
 
 % sets the channel count array (removes non-selected items)

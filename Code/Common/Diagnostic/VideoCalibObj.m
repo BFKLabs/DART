@@ -55,7 +55,7 @@ classdef VideoCalibObj < handle
         hTrace
         
         % other objects
-        iPara
+        iPara        
         dY = 2;
         dX = 10;
         nTX = 6;
@@ -66,6 +66,7 @@ classdef VideoCalibObj < handle
         Tmin = 10;  
         Tmax = 300;  
         lWid = 2;
+        isOpen = false;
         
     end
     
@@ -87,7 +88,7 @@ classdef VideoCalibObj < handle
 
         % --------------------------------------- %
         % --- OBJECT INITIALISATION FUNCTIONS --- %
-        % --------------------------------------- %    
+        % --------------------------------------- %    s
         
         % --- initialises the video calibration objects
         function initCalibObjects(obj)
@@ -249,7 +250,7 @@ classdef VideoCalibObj < handle
         
             % initialisations
             eStr = {'off','on'};
-            isCheck = strcmp(get(hObj,'Checked'),'on');
+            isCheck = strcmp(get(hObj,'Checked'),'on');                        
 
             % initialises the traces
             if ~isCheck
@@ -259,6 +260,7 @@ classdef VideoCalibObj < handle
             % updates the object properties
             set(hObj,'Checked',eStr{~isCheck+1})
             setObjEnable(obj.hGUI.menuExpt,isCheck)
+            obj.isOpen = ~isCheck;
 
             % resets the width of the main figure
             dW = (1-2*isCheck)*(obj.widPanelO+obj.dX);
@@ -372,7 +374,7 @@ classdef VideoCalibObj < handle
         end
         
         % --- appends the frame data and updates the axes
-        function newCalibFrame(obj,eData)
+        function newCalibFrame(obj,eData,isCB)
             
             % determines if the max time step has been reached
             if obj.iStp == obj.nStp
@@ -384,24 +386,37 @@ classdef VideoCalibObj < handle
                 % initialises the data vector (if first time step)
                 if obj.iStp == 0                    
                     % sets the initial time stamp
-                    obj.T0 = datevec(eData.Timestamp);
-
+                    if isCB
+                        obj.T0 = datevec(eData.Timestamp);
+                    else
+                        obj.T0 = eData.Timestamp;
+                    end
+                    
                     % allocates memory for the new data                    
                     [obj.Tt,obj.Yt] = deal(NaN(obj.nStp,1));
                 end
                 
                 % updates the camera video frame rate
-                fRateStr = strsplit(eData.FrameRate);
-                obj.FPS = ceil(str2double(fRateStr{1}));                
+                if isCB
+                    fRateStr = strsplit(eData.FrameRate);
+                    obj.FPS = ceil(str2double(fRateStr{1}));
+                else
+                    obj.FPS = eData.FrameRate;
+                end
            
                 % increment the step counter
                 obj.iStp = obj.iStp + 1;
             end            
+                        
+            if isCB
+                Tnw = datevec(eData.Timestamp);
+            else
+                Tnw = eData.Timestamp;
+            end
             
-            % calculates the new time/frame value
-            Tnw = datevec(eData.Timestamp);
+            % updates the time/avg. intensity values
             obj.Tt(obj.iStp) = etime(Tnw,obj.T0);
-            obj.Yt(obj.iStp) = mean(double(eData.Data(:)),'omitnan');
+            obj.Yt(obj.iStp) = mean(double(eData.Data(:)),'omitnan');            
             
             % updates the plot axes
             obj.updateTraceAxes();

@@ -8,6 +8,7 @@ classdef VideoPreview < handle
         hGUI
         hAx
         hImage
+        hTimer
         objIMAQ
         
         % other data structs/arrays
@@ -19,8 +20,10 @@ classdef VideoPreview < handle
         isRot      
         isOn
         isTest
+        isWebCam
         
         % other parameters
+        szI
         tPause = 1;
         initMarkers = false;
         
@@ -67,7 +70,8 @@ classdef VideoPreview < handle
             
             % sets the image acquisition object handle
             obj.isTest = obj.hFig.infoObj.isTest;
-            obj.objIMAQ = obj.hFig.infoObj.objIMAQ;            
+            obj.objIMAQ = obj.hFig.infoObj.objIMAQ;  
+            obj.isWebCam = isa(obj.objIMAQ,'webcam');
             
             % other initialisations
             initStr = 'Initialising...';
@@ -155,6 +159,7 @@ classdef VideoPreview < handle
             infoObj = getappdata(obj.hFig,'infoObj');
             obj.isTest = infoObj.isTest;
             obj.objIMAQ = infoObj.objIMAQ;
+            obj.isWebCam = isa(obj.objIMAQ,'webcam');
             
             % updates the video status
             set(obj.hGUI.editVideoStatus,'string','Initialising...',...
@@ -220,19 +225,43 @@ classdef VideoPreview < handle
 
             % stops the video preview
             if obj.isTest
+                % case is testing
                 obj.objIMAQ.stopVideo();
+                
+            elseif obj.isWebCam   
+                % case is a webcam
+                if ~isempty(obj.hTimer)
+                    if strcmp(obj.hTimer.Running,'on')
+                        % stops the timer (if it is running
+                        stop(obj.hTimer)
+                        delete(obj.hTimer)
+                    end
+                end
+                
+                % closes the preview object
+                closePreview(obj.objIMAQ)                
+                
             else
+                % case is the other camera types 
                 closepreview(obj.objIMAQ)
             end
 
             % resets the start/stop preview button enabled properties
             set(obj.hGUI.toggleVideoPreview,'string',tStr);                
 
-            % resets the preview axes image to black            
-            if obj.isRot
-                Img = zeros(vRes);
+            % resets the preview axes image to black       
+            if obj.isWebCam
+                if obj.isRot
+                    Img = zeros(obj.szI);
+                else
+                    Img = zeros(flip(obj.szI));
+                end                
             else
-                Img = zeros(flip(vRes));
+                if obj.isRot
+                    Img = zeros(vRes);
+                else
+                    Img = zeros(flip(vRes));
+                end
             end
 
             % updates the image on the axis            
@@ -261,10 +290,14 @@ classdef VideoPreview < handle
         function ok = initPreviewImage(obj,cbFcn)
             
             if ~obj.isTest
-                % ensures the camera is not running                
-                if strcmp(get(obj.objIMAQ,'Running'),'on')
-                    stop(obj.objIMAQ); pause(0.05);
-                end                        
+                % ensures the camera is not running 
+                if obj.isWebCam
+%                     obj.objIMAQ.Resolution = obj.objIMAQ.resTemp;
+                else
+                    if strcmp(get(obj.objIMAQ,'Running'),'on')
+                        stop(obj.objIMAQ); pause(0.05);
+                    end 
+                end
             end
             
             % retrieves the position of the axes parent panel
@@ -283,14 +316,30 @@ classdef VideoPreview < handle
             pause(0.05);
 
             % resets the image axis     
-            vRes = getVideoResolution(obj.objIMAQ,1);
-            if obj.isRot
-                obj.hImage = image(zeros(vRes),'Parent',obj.hAx);           
-                [xL,yL] = deal([1 vRes(2)]+0.5,[1 vRes(1)]+0.5);        
+            if obj.isWebCam
+                pR = obj.objIMAQ.pROI;                
+                vResS = obj.objIMAQ.Resolution;
+                obj.szI = cellfun(@str2double,strsplit(vResS,'x'));
+                [xL,yL] = deal((pR(1)+0.5)+[0,pR(3)],(pR(2)+0.5)+[0,pR(4)]);                
+                
+                if obj.isRot
+                    [xL,yL] = deal(yL,xL);                    
+                    obj.hImage = image(zeros(obj.szI),'Parent',obj.hAx);
+                else
+                    obj.hImage = image...
+                        (zeros(flip(obj.szI)),'Parent',obj.hAx);
+                end                
+                
             else
-                obj.hImage = image(zeros(flip(vRes)),'Parent',obj.hAx);        
-                [xL,yL] = deal([1 vRes(1)]+0.5,[1 vRes(2)]+0.5);
-            end        
+                vRes = getVideoResolution(obj.objIMAQ,1);
+                if obj.isRot
+                    obj.hImage = image(zeros(vRes),'Parent',obj.hAx);
+                    [xL,yL] = deal([1 vRes(2)]+0.5,[1 vRes(1)]+0.5);
+                else
+                    obj.hImage = image(zeros(flip(vRes)),'Parent',obj.hAx);
+                    [xL,yL] = deal([1 vRes(1)]+0.5,[1 vRes(2)]+0.5);
+                end
+            end
             
             % sets the axis properties
             set(obj.hImage,'CDataMapping','scaled')
@@ -317,10 +366,33 @@ classdef VideoPreview < handle
                     obj.objIMAQ.startVideo(~obj.isRecord);                    
                 else
                     % case is the camera object
-                    setappdata(obj.hImage,'UpdatePreviewWindowFcn',cbFcn)
-                    preview(obj.objIMAQ,obj.hImage)
+                    if obj.isWebCam
+                        if ~isempty(obj.vcObj) && ...
+                                get(obj.vcObj.hMenu,'Checked')
+                            % if calibrating (and is open) then create the
+                            % update timer object
+                            obj.hTimer = timer('TimerFcn',@obj.calibRec,...
+                                'ExecutionMode','FixedRate','Period',0.1,...
+                                'StartDelay',1,'TasksToExecute',inf,...
+                                'tag','StartTimer');
+                            start(obj.hTimer);
+                            
+                        else
+                            % otherwise, set an empty timer
+                            obj.hTimer = [];
+                        end
+                    else
+                        setappdata...
+                            (obj.hImage,'UpdatePreviewWindowFcn',cbFcn)                        
+                    end
+
+                    % starts the preview
+                    preview(obj.objIMAQ,obj.hImage) 
+                    if obj.isWebCam
+                        set(obj.hAx,'xLim',xL,'yLim',yL)
+                    end
                 end
-                
+
             catch
                 % makes the loadbar invisible
                 ok = false;
@@ -333,11 +405,11 @@ classdef VideoPreview < handle
                         {['Suggest changing the camera USB-Port ',...
                           'and restart Matlab']}];
                 waitfor(errordlg(eStr,tStr,'modal'))                
-            end                                 
+            end    
             
         end        
 
-        % --- preview update for the tracking GUI
+        % --- preview update for the recording GUI
         function previewRec(obj, ~, event, ~)
 
             % updates preview image (based on whether the image is rotated)
@@ -350,9 +422,21 @@ classdef VideoPreview < handle
             
             % updates the video calibration trace data
             if ~isempty(obj.vcObj)
-                obj.vcObj.newCalibFrame(event)
+                obj.vcObj.newCalibFrame(event,true)
             end
                 
+        end
+        
+        % --- timer function update for the recording GUI
+        function calibRec(obj, hObj, evnt)
+            
+            % sets up the event struct object
+            p = struct('Timestamp',evnt.Data.time,...
+                'Data',obj.hImage.CData,'FrameRate',1/hObj.Period);
+            
+            % runs the frame calibration update function
+            obj.vcObj.newCalibFrame(p,false)
+            
         end
         
         % --- preview update for the tracking GUI

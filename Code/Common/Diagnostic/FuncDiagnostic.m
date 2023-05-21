@@ -11,6 +11,7 @@ classdef FuncDiagnostic < handle
         % sub-class objects
         ffObj
         fTreeObj
+        prObj
         
         % index/mapping arrays
         iCG
@@ -19,6 +20,10 @@ classdef FuncDiagnostic < handle
         Imap
         ImapU
         sNode
+        hEditL
+        hasData
+        useScope
+        logStr
         
         % class object handles fields
         hFig
@@ -27,40 +32,56 @@ classdef FuncDiagnostic < handle
         hPanelI
         hPanelF
         hPanelD
+        hPanelL
         hPanelP
         hPanelFcn
         hToggleFilt
         hPanelFilt  
         hTxtI
         hCheckGrp
+        hPanelPC
+        hButC
+        hTxtP
+        hMenu
+        hTableD
         
         % fixed object dimensions        
         dX = 10;
         widPanelL = 400;
-        widPanelR = 340;        
+        widPanelR = 355;        
         widPanelFilt = 290; 
         hghtPanelO = 550;
         hghtPanelI = 130;
-        hghtPanelP = 140;
+        hghtPanelP = 190;        
         hghtPanelFilt = 180; 
+        hghtPanelPC = 40;
         hghtEdit = 21;
         hghtBut = 21;
         hghtTxt = 16;    
         widTxtI = 155;
+        hdrHght = 29;
+        rowHght = 20;        
         
         % variable object dimensions
         widFig
         widPanelO
         widPanelFcn        
+        widButC
+        widTableD
         hghtFig
         hghtPanelF
         hghtPanelD
+        hghtPanelL
         hghtPanelFcn         
-                
-        % other scalar/string fields
+        hghtTableD        
+        
+        % other scalar/string fields        
+        nColD
+        nRowD = 3;
         hSz = 12;
         tSz = 10;
-        tLong = 12;
+        nBut = 2;
+        tLong = 12;       
         tDurS = {'Short','Long'};
         tagStr = 'figFuncDiagnostic';
         isOldVer = verLessThan('matlab','9.10');
@@ -91,21 +112,37 @@ classdef FuncDiagnostic < handle
         % --- initialises the class fields
         function initClassFields(obj)
             
+            % memory allocation
+            obj.logStr = '';
+            A = [true(1,obj.nRowD-1),length(obj.snTot)>1];
+            [obj.useScope,obj.hasData] = deal(A);
+            
             % calculates the panel dimensions
             obj.widPanelFcn = obj.widPanelL - 2*obj.dX;
             obj.widPanelO = (obj.widPanelL + obj.widPanelR) + 3*obj.dX;            
-            obj.hghtPanelF = obj.hghtPanelO - (obj.hghtPanelI + 2*obj.dX);
-            obj.hghtPanelD = obj.hghtPanelO - (obj.hghtPanelP + 2*obj.dX);
-            obj.hghtPanelFcn = obj.hghtPanelF - 8*obj.dX;
+            obj.hghtPanelF = obj.hghtPanelO - (obj.hghtPanelI + 2*obj.dX);           
+            obj.hghtPanelFcn = obj.hghtPanelF - 8*obj.dX;            
+            obj.widButC = (obj.widPanelR - (3 + obj.nBut)*obj.dX)/obj.nBut;            
+            
+            % calculates the table dimensions
+            obj.widTableD = obj.widPanelR - 2*obj.dX;
+            obj.hghtTableD = obj.hdrHght + obj.nRowD*obj.rowHght;            
+            obj.hghtPanelD = 4*obj.dX + obj.hghtTableD;
+            
+            % calculates the height of the progress log panel
+            hghtPanelT = obj.hghtPanelD + obj.hghtPanelP;
+            obj.hghtPanelL = obj.hghtPanelO - (hghtPanelT + obj.dX);
             
             % calculates the figure dimensions
             obj.widFig = obj.widPanelO + 2*obj.dX;
-            obj.hghtFig = obj.hghtPanelO + 2*obj.dX;
+            obj.hghtFig = obj.hghtPanelO + 2*obj.dX;                        
             
             % resets the font sizes (old version only)
             if obj.isOldVer
                 obj.hSz = 13;
-                obj.tSz = 12;
+                obj.tSz = 12;                
+                obj.hdrHght = 22;
+                obj.rowHght = 18;
             end
             
         end
@@ -133,7 +170,6 @@ classdef FuncDiagnostic < handle
             
             % creates the experiment combining data panel
             pPos = [obj.dX*[1,1],obj.widPanelO,obj.hghtPanelO];
-            if ~obj.isOldVer; pPos(2) = 150; end
             obj.hPanelO = createUIObj...
                 ('panel',obj.hFig,'Title','','Position',pPos);
             
@@ -164,7 +200,7 @@ classdef FuncDiagnostic < handle
             obj.hCheckGrp = createUIObj('checkbox',obj.hPanelF,...
                 'Position',cPos,'FontWeight','Bold','String',chkStr,...
                 'ValueChangedFcn',@obj.checkFuncGroup,...
-                'FontSize',obj.tSz,'Value',1);
+                'FontSize',obj.tSz,'Value',false);
                     
             % creates the toggle button
             lPosB = obj.dX + widTxtL;
@@ -206,7 +242,8 @@ classdef FuncDiagnostic < handle
             % creates the diagnostic tree object
             obj.fTreeObj = FuncDiagnosticTree...
                 (obj.ffObj,obj.hPanelFcn,obj.pDataT,obj.snTot);            
-                        
+            obj.fTreeObj.extnSelectFcn = @obj.updateTableData;        
+            
             % ------------------------------------ %
             % --- EXPERIMENTAL DATA INFO PANEL --- %
             % ------------------------------------ %
@@ -284,13 +321,58 @@ classdef FuncDiagnostic < handle
             
             % panel object properties
             lPosP = obj.widPanelL + 2*obj.dX;            
-            tStrP = 'DIAGNOSTIC ANALYSIS PROGRESS';            
+            tStrP = 'DIAGNOSTIC ANALYSIS PROGRESS'; 
+            bStrPC = {'Start Diagnosis','Cancel Diagnosis'}; 
+            cbFcnB = {@obj.startDiagnostic,@obj.cancelDiagnostic};
             
             % creates the experiment combining data panel
-            pPosP = [lPosP,obj.dX,obj.widPanelR,obj.hghtPanelP];
             obj.hPanelP = uipanel(obj.hPanelO,'Title',tStrP,'Units',...
-                        'Pixels','Position',pPosP,'FontUnits','Pixels',...
-                        'FontSize',obj.hSz,'FontWeight','bold');                    
+                        'Pixels','FontUnits','Pixels',...
+                        'FontSize',obj.hSz,'FontWeight','bold');                                                            
+            
+            % creates the control buttons
+            widP = obj.widPanelR-2*obj.dX;
+            pPosPC = [obj.dX*[1,1],widP,obj.hghtPanelPC];
+            obj.hPanelPC = createUIObj('panel',obj.hPanelP,'Title','',...
+                'Position',pPosPC);               
+            
+            % creates the diagnostic progress bar
+            obj.prObj = FuncDiagnosticProg(obj.hPanelPC);
+                    
+            % resets the position of the progress panel
+            pPosPr = get(obj.prObj.hPanel,'Position');
+            hghtPanelPF = sum(pPosPr([2,4])) + 3*obj.dX;
+            pPosP = [lPosP,obj.dX,obj.widPanelR,hghtPanelPF];
+            set(obj.hPanelP,'Position',pPosP);
+            
+            % creates the control button objects
+            for i = 1:obj.nBut                
+                lPosB = obj.dX + (i-1)*(obj.widButC + obj.dX);
+                bPosPC = [lPosB,obj.dX,obj.widButC,obj.hghtBut];
+                obj.hButC{i} = createUIObj('pushbutton',obj.hPanelPC,...
+                    'Text',bStrPC{i},'Position',bPosPC,...
+                    'FontWeight','Bold','ButtonPushedFcn',cbFcnB{i},...
+                    'FontSize',obj.tSz);
+                setObjEnable(obj.hButC{i},i==1);
+            end            
+
+            % -------------------------- %
+            % --- PROGRESS LOG PANEL --- %
+            % -------------------------- %            
+            
+            % panel object properties
+            tStrL = 'PROGRESS LOG';
+                        
+            % creates the experiment combining data panel
+            yPosL = sum(pPosP([2,4])) + obj.dX/2;
+            pPosL = [lPosP,yPosL,obj.widPanelR,obj.hghtPanelL];
+            obj.hPanelL = uipanel(obj.hPanelO,'Title',tStrL,'Units',...
+                        'Pixels','FontUnits','Pixels','Position',pPosL,...
+                        'FontSize',obj.hSz,'FontWeight','bold');  
+                    
+            % creates the log
+            lPosL = [obj.dX*[1,1],pPosL(3:4)-obj.dX*[2,4]];
+            obj.hEditL = createUIObj('edit',obj.hPanelL,'Position',lPosL);            
             
             % -------------------------------- %
             % --- SOLUTION FILE DATA PANEL --- %
@@ -301,18 +383,47 @@ classdef FuncDiagnostic < handle
             tStrP = 'DIAGNOSTIC ANALYSIS PARAMETERS';            
             
             % creates the experiment combining data panel
-            yPosD = sum(pPosP([2,4])) + obj.dX/2;
+            yPosD = sum(pPosL([2,4])) + obj.dX/2;
             pPosD = [lPosP,yPosD,obj.widPanelR,obj.hghtPanelD];
             obj.hPanelD = uipanel(obj.hPanelO,'Title',tStrP,'Units',...
                         'Pixels','Position',pPosD,'FontUnits','Pixels',...
                         'FontSize',obj.hSz,'FontWeight','bold');                    
                     
+            % creates the table object
+            cWid = {70,65,70,56};            
+            cbFcnD = @obj.tableCellEdit;
+            cEdit = [true,false,false,false];
+            cForm = {'logical','char','char','char'};
+            tPos = [obj.dX*[1,1],obj.widTableD,obj.hghtTableD];
+            rName = {'Individual','Single Expt','Multi-Expt'};
+            cName = {'Analyse?','Selected','Warnings','Errors'};               
+            Data = cell(length(rName),length(cName));
+            obj.hTableD = createUIObj('table',obj.hPanelD,...
+                        'Position',tPos,'FontSize',10,...
+                        'RowName',rName,'Data',Data,'FontName','FixedWidth',...
+                        'ColumnWidth',cWid,'ColumnFormat',cForm,...
+                        'ColumnEditable',cEdit,'CellEditCallback',cbFcnD);
+            set(obj.hTableD,'ColumnName',cName);
+                                
+            % updates the table data
+            obj.nColD = length(cName);
+            obj.updateTableData();
+            
+            % ------------------------- %
+            % --- MENU ITEM OBJECTS --- %
+            % ------------------------- %            
+            
+            % creates the menu items
+            obj.hMenu = uimenu(obj.hFig,'Label','File','Tag','menuFile');
+            uimenu(obj.hMenu,'Label','Exit','Callback',@obj.menuExit,...
+                             'Accelerator','X');                             
+                    
             % ------------------------------- %
             % --- HOUSE-KEEPING EXERCISES --- %
             % ------------------------------- %                          
             
-%             % ensures the function filter is always on top
-%             uistack(obj.hPanelFilt,'top')            
+            % pause for update
+            pause(0.05);
             
             % centers the figure and makes it visible
             centreFigPosition(obj.hFig,2);
@@ -371,6 +482,118 @@ classdef FuncDiagnostic < handle
             
             % sets the left/right objects
             [hObjL,hObjR] = deal(hObj{1},hObj{2});
+            
+        end            
+        
+        % --------------------------------- %
+        % --- OBJECT CALLBACK FUNCTIONS --- %
+        % --------------------------------- %
+        
+        % --- the function filter toggle button callback
+        function toggleFilter(obj, hObj, ~)
+            
+            % object handles
+            isOpen = get(hObj,'Value');
+            
+            % sets the text field string
+            if obj.isOldVer
+                tFldP = 'String';
+            else
+                tFldP = 'Text';
+            end
+
+            % updates the funcion filter panel visibility
+            setObjVisibility(obj.hPanelFilt,isOpen);
+
+            % updates the toggle button string
+            if isOpen
+                set(hObj,tFldP,'Close Analysis Function Filter')
+            else
+                set(hObj,tFldP,'Open Analysis Function Filter')
+            end            
+            
+        end
+        
+        % --- function sub-grouping checkbox callback
+        function checkFuncGroup(obj, hObj, ~)
+            
+            obj.fTreeObj.useSubGrp = get(hObj,'Value');
+            obj.updateFuncFilter();            
+            
+        end
+        
+        % --- table data cell edit callback 
+        function tableCellEdit(obj,hTable,evnt)
+            
+            % field retrieval
+            iLvl = evnt.Indices(1);            
+            Data = get(hTable,'Data');
+            bgCol = get(hTable,'BackgroundColor');
+            
+            % determines if the scope is feasible
+            if obj.hasData(iLvl)
+                % if so, update the tables background colour
+                obj.useScope(iLvl) = evnt.NewData;
+                bgCol(iLvl,:) = 0.94 + 0.06*evnt.NewData;
+                set(hTable,'BackgroundColor',bgCol);                                
+                
+                % updates the function filter
+                obj.updateFuncFilter();  
+                
+                % updates the table fields based on what was selected
+                if evnt.NewData                    
+                    % resets the table data
+                    [~,iSel] = obj.fTreeObj.getCurrentSelectedNodes();
+                    Data{iLvl,2} = length(iSel{iLvl});
+                    Data(iLvl,3:4) = {0};                    
+            
+                else
+                    % case is the box is being unchecked
+                    Data(iLvl,2:4) = {'N/A'};
+                end                                            
+                
+                % determines if the new value is feasible
+                setObjEnable(obj.hButC{1},any(cell2mat(Data(:,1))))
+                
+            else
+                % otherwise, reset the field value
+                Data{iLvl,1} = evnt.PreviousData;
+            end
+            
+            % resets the table data
+            set(hTable,'Data',Data);            
+            
+        end        
+        
+        % --- start diagnostic button callback function
+        function startDiagnostic(obj,hObj,evnt)
+            
+            
+        end
+        
+        % --- cancel diagnostic button callback function
+        function cancelDiagnostic(obj,hObj,evnt)
+            
+            
+        end        
+        
+        % --- exit menu item callback function
+        function menuExit(obj,hObj,evnt)
+            
+            delete(obj.hFig)
+            
+        end        
+        
+        % ------------------------------- %
+        % --- MISCELLANEOUS FUNCTIONS --- %
+        % ------------------------------- %
+        
+        % --- updates function for the analysis function filter 
+        function updateFuncFilter(obj)
+            
+            % updates the function compatibility
+            set(0,'CurrentFigure',obj.hFig);            
+            obj.fTreeObj.setupExplorerTree(obj.useScope);
             
         end
             
@@ -434,62 +657,31 @@ classdef FuncDiagnostic < handle
                     
             end
             
-        end
+        end                        
         
-        % --------------------------------- %
-        % --- OBJECT CALLBACK FUNCTIONS --- %
-        % --------------------------------- %
-        
-        % --- the function filter toggle button callback
-        function toggleFilter(obj, hObj, ~)
+        % --- updates the table data
+        function updateTableData(obj)
             
-            % object handles
-            isOpen = get(hObj,'Value');
+            % memory allocation
+            bgCol = 0.94*ones(obj.nRowD,3);
+            bgCol(~obj.hasData,:) = 0.8;
+            Data = repmat({'N/A'},obj.nRowD,obj.nColD);
+            Data(:,1) = {false};
             
-            % sets the text field string
-            if obj.isOldVer
-                tFldP = 'String';
-            else
-                tFldP = 'Text';
+            % retrieves the currently selected functions
+            [~,iSel] = obj.fTreeObj.getCurrentSelectedNodes();            
+            
+            % resets the table data
+            xiS = 1:length(iSel);
+            for i = find(~cellfun(@isempty,iSel) & obj.useScope(xiS))
+                Data{i,1} = true;
+                Data{i,2} = length(iSel{i});
+                Data(i,3:4) = {0};
+                bgCol(i,:) = 1;
             end
-
-            % updates the funcion filter panel visibility
-            setObjVisibility(obj.hPanelFilt,isOpen);
-
-            % updates the toggle button string
-            if isOpen
-                set(hObj,tFldP,'Close Analysis Function Filter')
-            else
-                set(hObj,tFldP,'Open Analysis Function Filter')
-            end            
-            
-        end
-        
-        % --- function sub-grouping checkbox callback
-        function checkFuncGroup(obj, hObj, ~)
-            
-            obj.fTreeObj.useSubGrp = get(hObj,'Value');
-            obj.updateFuncFilter();            
-            
-        end
-        
-        % ------------------------------- %
-        % --- MISCELLANEOUS FUNCTIONS --- %
-        % ------------------------------- %
-        
-        % --- updates function for the analysis function filter 
-        function updateFuncFilter(obj)
-            
-            % updates the function compatibility
-            set(0,'CurrentFigure',obj.hFig);            
-            obj.fTreeObj.setupExplorerTree();
-            
-        end
-            
-        % --- closes the window
-        function close(obj)
-            
-            delete(obj.hFig)
+                
+            % resets the table data
+            set(obj.hTableD,'Data',Data,'BackgroundColor',bgCol);
             
         end
         

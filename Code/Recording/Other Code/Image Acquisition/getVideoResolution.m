@@ -15,17 +15,21 @@ else
     if ~exist('vType','var'); vType = 0; end
     
     % retrieves the video resolution (dependent on type)
-    if vType
-        % video object is the image acquisition object
-        try
-            rPos = get(vObj,'ROIPosition');
-            vRes = rPos(3:4);
-        catch
-            vRes = get(vObj,'VideoResolution');
-        end        
+    if isprop(vObj,'pROI')
+        vRes = vObj.pROI(3:4);
     else
-        % case is retrieving the video resolution
-        vRes = get(vObj,'VideoResolution');
+        if vType
+            % video object is the image acquisition object
+            try
+                rPos = get(vObj,'ROIPosition');
+                vRes = rPos(3:4);
+            catch
+                vRes = get(vObj,'VideoResolution');
+            end        
+        else
+            % case is retrieving the video resolution
+            vRes = get(vObj,'VideoResolution');
+        end
     end
 
 end

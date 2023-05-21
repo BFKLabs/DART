@@ -1,7 +1,11 @@
 function resetCameraROIPara(objIMAQ)
 
 % retrieves the camera source object information
-srcObj = get(objIMAQ,'Source');
+if isprop(objIMAQ,'Source')
+    srcObj = get(objIMAQ,'Source');
+else
+    return
+end
 
 % updates the video ROI (depending on camera type)
 switch get(objIMAQ,'Name')

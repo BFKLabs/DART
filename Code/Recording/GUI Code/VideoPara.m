@@ -55,10 +55,12 @@ classdef VideoPara < handle
         sInfo
         widTxtMx
         widObjMx
+        isWebCam
+        sObj
         
         % scalar/string fields
-	nCol
-	eStr0
+        nCol
+        eStr0
         pSz = 13;
         tSz = 12;           
         pHght = 25;
@@ -76,7 +78,7 @@ classdef VideoPara < handle
             
             % sets the input arguments
             obj.hMain = hMain;
-            obj.hFigM = hMain.figFlyRecord;
+            obj.hFigM = hMain.figFlyRecord;            
             
             % initialises the class fields/objects
             obj.initClassFields();            
@@ -93,10 +95,17 @@ classdef VideoPara < handle
             % retrieves the data struct/class objects
             obj.iProg = getappdata(obj.hFigM,'iProg');
             obj.infoObj = getappdata(obj.hFigM,'infoObj');
+            obj.isWebCam = isa(obj.infoObj.objIMAQ,'webcam');
             
             % retrieves the source information fields
-            obj.srcObj = getselectedsource(obj.infoObj.objIMAQ);
-            obj.infoSrc = combineDataStruct(propinfo(obj.srcObj));
+            if obj.isWebCam
+                obj.sObj = obj.infoObj.objIMAQ;
+                obj.infoSrc = combineDataStruct(obj.sObj.pInfo);
+            else
+                obj.srcObj = getselectedsource(obj.infoObj.objIMAQ);
+                obj.infoSrc = combineDataStruct(propinfo(obj.srcObj));
+                obj.sObj = obj.srcObj;
+            end
             
             % retrieves the field names and the original property values
             fType = field2cell(obj.infoSrc,'Type');
@@ -136,10 +145,27 @@ classdef VideoPara < handle
             % sets up the camera fields to ignore            
             obj.getIgnoredFieldInfo();            
             
-            % sets the source object handle and original parameter values into the GUI
-            pStr = fieldnames(obj.srcObj);
-            obj.pVal0 = [pStr(:),get(obj.srcObj,pStr(:))'];
-
+            % sets the source object handle and original parameter values 
+            % into the GUI
+            if obj.isWebCam
+                % case is a webcam object
+                fStr = field2cell(obj.infoSrc,'Name');
+                pStr0 = fieldnames(obj.infoObj.objIMAQ);                
+                [pStr,iA,~] = intersect(fStr,pStr0,'Stable');
+                
+                % reduces down the arrays
+                obj.isNum = obj.isNum(iA);
+                obj.isEnum = obj.isEnum(iA);
+                obj.infoSrc = obj.infoSrc(iA);               
+                
+            else
+                % case is another camera type
+                pStr = fieldnames(obj.sObj);
+            end
+            
+            % sets the combined array
+            obj.pVal0 = [pStr(:),get(obj.sObj,pStr(:))'];            
+            
             % --- PROPERTY FEASIBILITY CALCULATIONS --- %
             
             % case is the enumeration parameters
@@ -320,11 +346,18 @@ classdef VideoPara < handle
             
             % field retrieval
             srcInfo = get(hObj,'UserData');
-            prVal = get(obj.srcObj,srcInfo.Name);
             nwVal = str2double(get(hObj,'string'));
+            prVal = get(obj.sObj,srcInfo.Name);
+            
+            % retrieves the source information struct for the parameter
+            if obj.isWebCam
+                fName = field2cell(obj.infoSrc,'Name');
+                srcInfoNw = obj.infoSrc(strcmp(fName,srcInfo.Name));
+            else                
+                srcInfoNw = propinfo(obj.srcObj,srcInfo.Name);                
+            end
             
             % retrieves the current parameters constraints values
-            srcInfoNw = propinfo(obj.srcObj,srcInfo.Name);
             nwLim = srcInfoNw.ConstraintValue;
             isInt = all(mod(nwLim,1) == 0);
             
@@ -332,7 +365,7 @@ classdef VideoPara < handle
             if chkEditValue(nwVal,nwLim,isInt)
                 try
                     % if so, then update the camera parameters
-                    set(obj.srcObj,srcInfo.Name,nwVal)
+                    set(obj.sObj,srcInfo.Name,nwVal)    
                     obj.specialParaUpdate(srcInfo.Name,nwVal)
                     
                     % enables the reset button
@@ -358,16 +391,32 @@ classdef VideoPara < handle
             
             % retrieves the current property value
             lStr = get(hObj,'String');
-            prVal = get(obj.srcObj,srcInfo.Name);
             nwVal = lStr{get(hObj,'value')};
+            prVal = get(obj.sObj,srcInfo.Name);
             
             try
-                % updates the relevant field in the source object                
-                set(obj.srcObj,srcInfo.Name,nwVal)                
-                obj.specialParaUpdate(srcInfo.Name,nwVal)
+                % updates the relevant field in the source object
+                if obj.isWebCam
+                    switch srcInfo.Name
+                        case 'BacklightCompensation'
+                            % case is the backlight compensation
+                            isOn = strcmp(nwVal,'on');
+                            set(obj.sObj,srcInfo.Name,isOn)
+                            
+                        otherwise
+                            % case is the other parameters
+                            set(obj.sObj,srcInfo.Name,nwVal)
+                    end
+                    
+                else
+                    % case is the other camer types
+                    set(obj.sObj,srcInfo.Name,nwVal)
+                end                
                 
                 % enables the reset button
+                obj.specialParaUpdate(srcInfo.Name,nwVal)                
                 setObjEnable(obj.hButC{3},'on')
+                
             catch
                 % otherwise, output an error and resets last valid value
                 obj.outputUpdateErrorMsg();
@@ -497,17 +546,17 @@ classdef VideoPara < handle
                     if i == 1
                         % resets the camera properties and editbox string
                         try
-                            set(obj.srcObj,uData.Name,pVal);
+                            set(obj.sObj,uData.Name,pVal);
                             set(obj.hObj{i}(j),'string',num2str(pVal))
                         catch
-                            pValPr = get(obj.srcObj,uData.Name);
+                            pValPr = get(obj.sObj,uData.Name);
                             set(obj.hObj{i}{j},'string',num2str(pValPr))
                         end
                     else
                         % resets the camera properties and popup index
                         iSel = find(strcmp(uData.ConstraintValue,pVal));
                         if ~isempty(iSel)
-                            set(obj.srcObj,uData.Name,pVal);
+                            set(obj.sObj,uData.Name,pVal);
                             set(obj.hObj{i}{j},'Value',iSel)
                         end
                     end
@@ -696,7 +745,11 @@ classdef VideoPara < handle
         function getIgnoredFieldInfo(obj)
             
             % initialisations
-            pROI = get(obj.infoObj.objIMAQ,'ROIPosition');
+            if isprop(obj.infoObj.objIMAQ,'pROI')
+                pROI = obj.infoObj.objIMAQ.pROI;                
+            else
+                pROI = get(obj.infoObj.objIMAQ,'ROIPosition');
+            end
             
             % sets the ignored field information/names
             obj.igFld = {{'AcquisitionFrameRateEnable','True'},...
@@ -762,7 +815,7 @@ classdef VideoPara < handle
             
             % if video calibrating is on, then update the calibration info
             vcObj = getappdata(obj.hFigM,'vcObj');            
-            if ~isempty(vcObj)
+            if ~isempty(vcObj) && vcObj.isOpen
                 vcObj.appendVideoProp(pName,pVal);
             end
             
@@ -772,7 +825,11 @@ classdef VideoPara < handle
         function pVal = getParaVal(obj,sInfo)
             
             try
-                pVal = get(obj.srcObj,sInfo.Name);
+                if obj.isWebCam
+                    pVal = get(obj.infoObj.objIMAQ,sInfo.Name);
+                else
+                    pVal = get(obj.srcObj,sInfo.Name);
+                end
             catch
                 pVal = {'Not Applicable'};
             end

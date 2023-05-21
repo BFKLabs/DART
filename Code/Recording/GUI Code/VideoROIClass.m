@@ -30,6 +30,7 @@ classdef VideoROIClass < handle
         
         % parameters
         dX = 10;  
+        isWebCam
         manualUpdate = false;        
         
     end
@@ -48,6 +49,11 @@ classdef VideoROIClass < handle
             % retrieves the 
             obj.prObj = getappdata(obj.hFigM,'prObj');
             obj.infoObj = getappdata(obj.hFigM,'infoObj');
+            obj.isWebCam = isa(obj.infoObj.objIMAQ,'webcam');
+            
+            % sets the main axes handle
+            hGUIM = guidata(obj.hFigM);
+            obj.hAxM = hGUIM.axesPreview;
             
             % creates the loadbar figure
             setObjVisibility(obj.hFigM,0); pause(0.05);
@@ -65,7 +71,7 @@ classdef VideoROIClass < handle
         end  
 
         % --- initialises the class object fields
-        function initAxesObj(obj)            
+        function initAxesObj(obj)
                        
             % creates the image axes 
             hPanelAx = obj.hGUI.panelImageAxes;
@@ -83,11 +89,17 @@ classdef VideoROIClass < handle
         end
         
         % --- initialises the class object fields
-        function initClassFields(obj)            
+        function initClassFields(obj)
 
             % retrieves the current/full video resolution
-            obj.rPos = get(obj.infoObj.objIMAQ,'ROIPosition');
-            obj.vRes = get(obj.infoObj.objIMAQ,'VideoResolution');
+            if obj.isWebCam
+                vResS = get(obj.infoObj.objIMAQ,'Resolution');                
+                obj.rPos = obj.infoObj.objIMAQ.pROI;                
+                obj.vRes = cellfun(@str2double,strsplit(vResS,'x'));
+            else
+                obj.rPos = get(obj.infoObj.objIMAQ,'ROIPosition');
+                obj.vRes = get(obj.infoObj.objIMAQ,'VideoResolution');
+            end
             
             % retrieves the video preview callback function
             obj.resetFcn = getappdata(obj.hFigM,'resetVideoPreviewDim');
@@ -128,7 +140,17 @@ classdef VideoROIClass < handle
             wState = warning('off','all');
             
             % resets the roi position to full region
-            set(obj.infoObj.objIMAQ,'ROIPosition',[0,0,obj.vRes])
+            if obj.isWebCam
+                % resets the axis limits
+                xL = [0,obj.vRes(1)] + 0.5;
+                yL = [0,obj.vRes(2)] + 0.5;                
+                set(obj.hAxM,'xLim',xL,'yLim',yL);
+            else
+                % resets the roi position
+                set(obj.infoObj.objIMAQ,'ROIPosition',[0,0,obj.vRes])
+            end
+            
+            % pauses for a little bit...
             pause(0.1);
 
             % -------------------------------------- %
@@ -249,7 +271,13 @@ classdef VideoROIClass < handle
             set(obj.hAx,'xlim',xLim+del*[-1,1],'ylim',yLim+del*pAR*[-1,1])   
                     
             % resets the camera to the original ROI position
-            set(obj.infoObj.objIMAQ,'ROIPosition',obj.rPos)            
+            if obj.isWebCam
+                xL = (obj.rPos(1)+0.5) + [0,obj.rPos(3)];
+                yL = (obj.rPos(2)+0.5) + [0,obj.rPos(4)];                
+                set(obj.hAxM,'xLim',xL,'yLim',yL);                
+            else
+                set(obj.infoObj.objIMAQ,'ROIPosition',obj.rPos)
+            end
             
             % resets the warnings
             warning(wState);
@@ -282,7 +310,7 @@ classdef VideoROIClass < handle
         function buttonUpdateROICB(obj,~,~)
                         
             % resets the ROI dimensions
-            pROI = roundP(obj.getCurrentROIDim());
+            pROI = roundP((obj.getCurrentROIDim()-0.01));
             obj.resetFcn(guidata(obj.hFigM),pROI);
             
         end        
@@ -359,43 +387,7 @@ classdef VideoROIClass < handle
             hRectS.setObjMoveCallback(@obj.moveROIMarker);
             hRectS.setConstraintRegion(xLim,yLim);
             
-        end
-        
-        % --- resets the roi marker position vector (must be feasible and
-        %     dimensions must be a multiple of 2)
-        function p = resetRectPos(obj,p,uData)
-                        
-            % determines the odd dimensions
-            p = roundP(p);
-            if uData(1)
-                % case is a vertical marker
-                if mod(p(3),2) == 1
-                    if uData(2) == 1
-                        % case is the left marker
-                        p([1,3]) = p([1,3]) + [1,-1];
-                        
-                    else
-                        % case is the right marker
-                        p(3) = p(3) - 1;
-                        
-                    end                                        
-                end
-                
-            else
-                % case is a horizontal marker
-                if mod(p(4),2) == 1   
-                    if uData(2) == 2
-                        % case is the bottom
-                        p([2,4]) = p([2,4]) + [1,-1];
-                        
-                    else
-                        % case is the top
-                        p(4) = p(4) - 1;
-                    end                    
-                end                
-            end
-            
-        end
+        end        
         
         % --- callback function for moving the ROI marker object
 %         function moveROIMarker(obj,p,uData)
@@ -601,7 +593,8 @@ classdef VideoROIClass < handle
             
             % parameters
             ImgMdTol = 220;
-            tPause = 0.25;            
+            tPause = 0.25;  
+            pause(1)
             
             % retrieves the initial image
             obj.Img0 = obj.getSnapShot();
@@ -618,7 +611,13 @@ classdef VideoROIClass < handle
         % --- retrieves the image snapshot (converts to rgb)
         function Img = getSnapShot(obj)
             
-            ImgNw = double(getsnapshot(obj.infoObj.objIMAQ));
+            if obj.isWebCam
+                ImgNw = double(snapshot(obj.infoObj.objIMAQ));
+            else
+                ImgNw = double(getsnapshot(obj.infoObj.objIMAQ));
+            end
+               
+            % scales the image
             Img = 255*normImg(ImgNw);
             
         end      
@@ -675,5 +674,42 @@ classdef VideoROIClass < handle
 
         end        
         
+        % --- resets the roi marker position vector (must be feasible and
+        %     dimensions must be a multiple of 2)
+        function p = resetRectPos(p,uData)
+                        
+            % determines the odd dimensions
+            p = roundP(p);
+            if uData(1)
+                % case is a vertical marker
+                if mod(p(3),2) == 1
+                    if uData(2) == 1
+                        % case is the left marker
+                        p([1,3]) = p([1,3]) + [1,-1];
+                        
+                    else
+                        % case is the right marker
+                        p(3) = p(3) - 1;
+                        
+                    end                                        
+                end
+                
+            else
+                % case is a horizontal marker
+                if mod(p(4),2) == 1   
+                    if uData(2) == 2
+                        % case is the bottom
+                        p([2,4]) = p([2,4]) + [1,-1];
+                        
+                    else
+                        % case is the top
+                        p(4) = p(4) - 1;
+                    end                    
+                end                
+            end
+            
+        end        
+        
     end
+    
 end

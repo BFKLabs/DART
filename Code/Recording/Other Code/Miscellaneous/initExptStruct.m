@@ -17,6 +17,7 @@ end
 
 % initialises the information field
 outDir = pwd;
+isWebCam = isa(objIMAQ,'webcam');
 tStr = sprintf('Experiment Date - %s',datestr(tNow,1));
 Info = struct('Title',tStr,'OutDir',outDir,'FileName',[],...
               'BaseName','Video','Type',exptType);
@@ -48,8 +49,14 @@ Video = struct('nCount',[],'Ts',[],'Tf',[],'FPS',5,...
 % sets the sub-struct fields
 if ~isempty(objIMAQ) && ~isa(objIMAQ,'DummyVideo')
     % sets the camera frame rate
-    [fRate,~,iSel] = detCameraFrameRate(getselectedsource(objIMAQ),[]);
-    Video.FPS = fRate(iSel); 
+    if isWebCam
+        % case is for webcams
+        Video.FPS = str2double(objIMAQ.pInfo.FrameRate.DefaultValue);
+    else
+        % case is for the other camera types
+        [fRate,~,iSel] = detCameraFrameRate(getselectedsource(objIMAQ),[]);
+        Video.FPS = fRate(iSel); 
+    end
     
     % sets the camera specific properties
     switch get(objIMAQ,'Name')

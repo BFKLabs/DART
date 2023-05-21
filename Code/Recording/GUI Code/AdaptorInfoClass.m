@@ -57,6 +57,7 @@ classdef AdaptorInfoClass < handle
         popStr
         iProg
         isTest = false;
+        isWebCam
         
     end
 

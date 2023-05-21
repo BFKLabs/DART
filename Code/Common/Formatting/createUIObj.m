@@ -9,14 +9,22 @@ isOldVer = verLessThan('matlab','9.10');
 % creates the object based on matlab version type
 if isOldVer
     % case is using an older version of matlab
-    switch fType
+    switch lower(fType)
         case 'figure'
             % case is the figure object
             [hObj,p] = deal(figure(),varargin);
+
+        case 'table'
+            % case is the table object
+            hObj = uitable(varargin{1},'FontUnits','Pixels');            
             
         case 'panel'
             % case is the panel object
             hObj = uipanel(varargin{1},'FontUnits','Pixels');
+            
+        case 'axes'
+            % case is an axes object
+            hObj = axes(varargin{1},'FontUnits','Pixels');
             
         otherwise
             % case is the other object types
@@ -30,10 +38,14 @@ if isOldVer
     
 else
     % case is using a newer version of matlab    
-    switch fType
+    switch lower(fType)
         case 'figure'
             % case is the figure object
             [hObj,p] = deal(uifigure(),varargin);
+
+        case 'table'
+            % case is the table objects
+            hObj = uitable(varargin{1});            
             
         case 'panel'
             % case is the panel objects
@@ -42,6 +54,10 @@ else
         case 'text'
             % case is a text label
             hObj = uilabel(varargin{1});
+            
+        case 'edit'
+            % case is an editbox
+            hObj = uieditfield(varargin{1});
             
         case 'checkbox'
             % case is a checkbox
@@ -58,6 +74,14 @@ else
         case 'popupmenu'
             % case is a popupmenu
             hObj = uidropdown(varargin{1});
+            
+        case 'axes'
+            % case is an axes
+            hObj = uiaxes(varargin{1});
+            
+        case 'listbox'
+            % case is a listbox
+            hObj = uilistbox(varargin{1});
             
         otherwise
             % REMOVE ME
@@ -89,11 +113,17 @@ for i = 1:nProp
                 pFld = 'String';
             end            
             
-        case 'valuechangedfcn'
+        case {'valuechangedfcn','buttonpushedfcn'}
             %
             if isOldVer
                 pFld = 'Callback';
-            end            
+            end      
+            
+        case 'items'
+            %
+            if isOldVer
+                pFld = 'String';
+            end
     end
 
     % case is the other property types

@@ -1,6 +1,8 @@
 classdef RunExptObj < handle
+    
     % class properties
     properties
+
         % object handles/arrays
         hMain
         hExpt
@@ -82,6 +84,7 @@ classdef RunExptObj < handle
 
     % class methods
     methods
+        
         % class constructor
         function obj = RunExptObj(hMain,vidType,varargin)
             
@@ -321,7 +324,7 @@ classdef RunExptObj < handle
             obj.checkVideoCompression();              
             
             % sets the rotation flag and recording logging mode            
-            if obj.resInfo.useCust
+            if ~isempty(obj.resInfo) && obj.resInfo.useCust
                 [obj.objIMAQ.LoggingMode,obj.isMemLog] = deal('memory',1);                
             else
                 [obj.objIMAQ.LoggingMode,obj.isMemLog] = deal('disk',0); 

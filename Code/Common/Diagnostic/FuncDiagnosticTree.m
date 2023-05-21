@@ -24,19 +24,20 @@ classdef FuncDiagnosticTree < handle
         indS
         indF
         Imap
-        ImapU        
+        ImapU
         
         % position vector/other cell array fields
         tPos
         pPos
-        fcnName        
+        fcnName     
+        extnSelectFcn
         
         % other scalar/string fields
         dX = 10;  
         fSz = 9;
         nType = 2;        
         isInit = true;
-        useSubGrp = true;        
+        useSubGrp = false;        
         sScope = {'I','S','M'};        
         rootStr = 'FILTERED FUNCTION LIST';
         isOldVer = verLessThan('matlab','9.10');
@@ -72,31 +73,35 @@ classdef FuncDiagnosticTree < handle
         % --------------------------------------------- %        
         
         % --- initialises the class fields
-        function initClassFields(obj)
-                        
-            % sets up the mapping indices
-            obj.setupMappingIndices();
+        function initClassFields(obj)                        
             
             % removes multi-expt fields (if single expt)
             if length(obj.snTot) == 1            
                 obj.sType = obj.sType(1:end-1);                
                 obj.sScope = obj.sScope(1:end-1);                
-            end
+            end            
             
             % initialisations
+            A = cell(length(obj.sScope),1);
             obj.pPos = get(obj.hPanel,'Position');                                    
-            obj.tPos = [obj.dX*[1,1],obj.pPos(3:4)-2*obj.dX];              
+            obj.tPos = [obj.dX*[1,1],obj.pPos(3:4)-2*obj.dX];   
+            [obj.ImapU,obj.iCG,obj.indF,obj.indS,obj.fcnName] = deal(A);
+            
+            % sets up the mapping indices
+            for pInd = 1:length(obj.sType)
+                obj.setupMappingIndices(pInd);
+            end            
             
         end        
         
         % --- sets up the analysis function mapping indices
-        function setupMappingIndices(obj)
+        function setupMappingIndices(obj,pInd)
                         
             % retrieves the requirement fields for each feasible function
             rFld = fieldnames(obj.ffObj.rGrp);
-            obj.indS = find(any(obj.ffObj.cmpData,2));                        
-            obj.fcnName = obj.ffObj.fcnData(obj.indS,1);            
-            X = obj.ffObj.fcnData(obj.indS,3:end);
+            obj.indS{pInd} = find(any(obj.ffObj.cmpData,2));                        
+            obj.fcnName{pInd} = obj.ffObj.fcnData(obj.indS{pInd},1);            
+            X = obj.ffObj.fcnData(obj.indS{pInd},3:end);
             
             % retrieves the currently selected nodes
             obj.sNode = obj.ffObj.getSelectedNodes();
@@ -117,9 +122,10 @@ classdef FuncDiagnosticTree < handle
             end            
             
             % determines the unique mappings
-            obj.indF = find(~any(isnan(obj.Imap(:,iCol)),2));
-            [obj.ImapU,~,iC] = unique(obj.Imap(obj.indF,iCol),'rows');            
-            obj.iCG = arrayfun(@(x)(find(iC == x)),1:max(iC),'un',0);                                
+            obj.indF{pInd} = find(~any(isnan(obj.Imap(:,iCol)),2));
+            [obj.ImapU{pInd},~,iC] = ...
+                unique(obj.Imap(obj.indF{pInd},iCol),'rows');            
+            obj.iCG{pInd} = arrayfun(@(x)(find(iC == x)),1:max(iC),'un',0);                                
             
         end        
         
@@ -128,14 +134,21 @@ classdef FuncDiagnosticTree < handle
         % ------------------------------------- %
         
         % --- sets up the function explorer tree
-        function setupExplorerTree(obj)
+        function setupExplorerTree(obj,useScope)
             
             % initialisations
             wState = warning('off','all');
+            if ~exist('useScope','var')
+                useScope = true(1,length(obj.sScope));
+            end
             
             % deletes any previous explorer trees
             hTreePr = findall(obj.hPanel,'Type','uicheckboxtree');
             if ~isempty(hTreePr); delete(hTreePr); end     
+            
+            % exits if there are no valid values
+            pIndT = find(useScope(:)');            
+            if isempty(pIndT); return; end
             
             % imports the checkbox tree
             if obj.isOldVer
@@ -146,16 +159,18 @@ classdef FuncDiagnosticTree < handle
             end
             
             % creates the tree root node
-            obj.hRoot = obj.createTreeNode(obj.hTreeF,obj.rootStr);
-            for pInd = 1:length(obj.sScope)                                
+            for pInd = pIndT                              
                 % determines the experiment compatibility
                 obj.ffObj.detExptCompatibility(obj.sScope{pInd});
-                obj.setupMappingIndices();
+                obj.setupMappingIndices(pInd);
+            end
                 
+            % creates the root tree node
+            obj.ImapU(~useScope) = {[]};
+            obj.hRoot = obj.createTreeNode(obj.hTreeF,obj.rootStr);            
+            for pInd = find(~cellfun(@isempty,obj.ImapU)')       
                 % creates the function scope root node
-                if ~isempty(obj.ImapU)
-                    obj.setupScopeBranch(pInd)
-                end
+                obj.setupScopeBranch(pInd)
             end
                         
             % expands the explorer tree (new version only)
@@ -172,7 +187,10 @@ classdef FuncDiagnosticTree < handle
                 % creates the scrollpane object
                 objP = get(obj.hPanel,'position');
                 tPosSP = [obj.dX-[1 0],objP(3:4)-2*obj.dX];
-                [~,~] = createJavaComponent(jSP,tPosSP,obj.hPanel);                
+                [~,~] = createJavaComponent(jSP,tPosSP,obj.hPanel);  
+                
+                % sets the tree structure mouse click callback function 
+                set(jTreeCB,'MouseClickedCallback',@obj.treeSelectChng);
             else                
                 obj.hTreeF.CheckedNodes = obj.hRoot;
                 expand(obj.hTreeF,'All');
@@ -197,18 +215,18 @@ classdef FuncDiagnosticTree < handle
             if ~obj.useSubGrp; hNodeP = hRootF; end
 
             % case is grouping function by sub-type
-            for i = 1:size(obj.ImapU,1)
+            for i = 1:size(obj.ImapU{pInd},1)
                 % creates the tree parent node
                 if obj.useSubGrp
-                    hNodeP = obj.createTreeParent(hRootF,obj.ImapU(i,:));
+                    hNodeP = obj.createTreeParent(hRootF,obj.ImapU{pInd}(i,:));
                 end
 
                 % adds the leaf nodes for each of the functions
-                indC = obj.indF(obj.iCG{i});
+                indC = obj.indF{pInd}(obj.iCG{pInd}{i});
                 for j = 1:length(indC)
                     % retrieves the function name/index
-                    fcnNameNw = obj.fcnName{indC(j)};
-                    iFcn = obj.ffObj.Imap(obj.indS(indC(j)),pInd);
+                    fcnNameNw = obj.fcnName{pInd}{indC(j)};
+                    iFcn = obj.ffObj.Imap(obj.indS{pInd}(indC(j)),pInd);
 
                     % creates the new tree node
                     hNodeNw = obj.createTreeNode(hNodeP,fcnNameNw);
@@ -288,7 +306,13 @@ classdef FuncDiagnosticTree < handle
         % --- tree update callback function
         function treeSelectChng(obj, ~, evnt)
             
-            obj.hNodeLS = evnt.LeafCheckedNodes;
+            if ~obj.isOldVer
+                obj.hNodeLS = evnt.LeafCheckedNodes;
+            end
+            
+            if ~isempty(obj.extnSelectFcn)
+                feval(obj.extnSelectFcn)
+            end
             
         end          
         
