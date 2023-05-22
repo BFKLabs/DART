@@ -142,32 +142,6 @@ function varargout = ExptSetup_OutputFcn(hObject, eventdata, handles)
 % Get default command line output from handles structure
 varargout{1} = handles.output;
 
-% --- sets up the custom video resolution objects
-function setupCustResObjects(handles)
-
-% field retrieval
-hFig = handles.figExptSetup;
-hText = findall(handles.panelVideoRes,'Style','Text');
-hEdit = findall(handles.panelVideoRes,'Style','Edit');
-infoObj = getappdata(hFig,'infoObj');
-
-% sets the video resolution data struct
-vRes = get(infoObj.objIMAQ,'VideoResolution');
-resInfo = struct('useCust',false,'W',vRes(1),'H',vRes(2));
-setappdata(hFig,'resInfo',resInfo)
-
-% sets up the editboxes
-for i = 1:length(hEdit)
-    % updates the editbox properties
-    pStr = get(hEdit(i),'UserData');
-    dimVal = num2str(getStructField(resInfo,pStr));
-    
-    % updates the object properties
-    set(hEdit(i),'Callback',{@editResDim,handles},...
-                 'Enable','off','String',dimVal);
-    set(hText(i),'Enable','Off');
-end
-
 %-------------------------------------------------------------------------%
 %                        FIGURE CALLBACK FUNCTIONS                        %
 %-------------------------------------------------------------------------%
@@ -1355,7 +1329,11 @@ if resInfo.useCust
 else
     % case is using the default resolution
     infoObj = getappdata(hFig,'infoObj');
-    eVal = infoObj.objIMAQ.VideoResolution;
+    if infoObj.isWebCam
+        eVal = infoObj.objIMAQ.pROI(3:4);
+    else
+        eVal = infoObj.objIMAQ.VideoResolution;
+    end
 end
 
 % updates the editbox values
@@ -1372,7 +1350,7 @@ resInfo = getappdata(hFig,'resInfo');
 
 % retrieves the new value
 nwVal = str2double(get(hObject,'String'));
-vRes = infoObj.objIMAQ.VideoResolution;
+vRes = getRecordingResolution(infoObj);
 
 % determines if the new value is valid
 if chkEditValue(nwVal,[20,vRes(strcmp({'W','H'},pStr))],1)
@@ -4971,11 +4949,19 @@ Dmax = iExpt.Video.Dmax;
 
 % sets the frame rate box
 if infoObj.hasIMAQ
-    % resorts the frame rate array
-    isVarFPS = detIfFrameRateVariable(infoObj.objIMAQ);
-    srcObj = getselectedsource(infoObj.objIMAQ);
-    [fRateNum,fRate,~] = detCameraFrameRate(srcObj,iExpt.Video.FPS);  
-    
+    % retrieves the camera frame rate
+    FPS = iExpt.Video.FPS;
+    if infoObj.isWebCam
+        % sets the frame rate values/selections
+        isVarFPS = false;
+        [~,fRate,~] = detWebcameFrameRate(infoObj.objIMAQ,FPS);
+    else
+        % sets the frame rate values/selections
+        isVarFPS = detIfFrameRateVariable(infoObj.objIMAQ);
+        srcObj = getselectedsource(infoObj.objIMAQ);
+        [~,fRate,~] = detCameraFrameRate(srcObj,FPS);
+    end
+        
     % sets up the camera frame rate objects
 %     isVarFPS = true;
     if isVarFPS
@@ -8499,6 +8485,42 @@ function devType = resetDevType(devType)
 
 % converts 'HT ControllerV1' to 'Motor'
 devType(strcmp(devType,'HTControllerV1')) = {'Motor'};
+
+% --- sets up the custom video resolution objects
+function setupCustResObjects(handles)
+
+% field retrieval
+hFig = handles.figExptSetup;
+hText = findall(handles.panelVideoRes,'Style','Text');
+hEdit = findall(handles.panelVideoRes,'Style','Edit');
+infoObj = getappdata(hFig,'infoObj');
+
+% sets the video resolution data struct
+vRes = getRecordingResolution(infoObj);
+resInfo = struct('useCust',false,'W',vRes(1),'H',vRes(2));
+setappdata(hFig,'resInfo',resInfo)
+
+% sets up the editboxes
+for i = 1:length(hEdit)
+    % updates the editbox properties
+    pStr = get(hEdit(i),'UserData');
+    dimVal = num2str(getStructField(resInfo,pStr));
+    
+    % updates the object properties
+    set(hEdit(i),'Callback',{@editResDim,handles},...
+                 'Enable','off','String',dimVal);
+    set(hText(i),'Enable','Off');
+end
+
+% --- retrieves the current recording device resolution
+function vRes = getRecordingResolution(infoObj)
+
+% retrieves the camera resolution
+if infoObj.isWebCam
+    vRes = infoObj.objIMAQ.pROI(3:4);
+else
+    vRes = infoObj.objIMAQ.VideoResolution;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%    UNUSED FUNCTIONS?    %%%%

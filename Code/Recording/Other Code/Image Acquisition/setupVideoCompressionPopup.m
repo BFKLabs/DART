@@ -8,7 +8,11 @@ uStr = cellfun(@(x)(x.FileExtensions{1}),vidProf,'un',0)';
 
 % sets the feasible compression types (ignore indexed AVI)
 ii = ~cellfun(@(x)(strcmp(x,'Indexed AVI')),pStr);
-if isa(vObj,'VideoReader')
+if isa(vObj,'webcam')
+    % removes the grayscale AVI compression type
+    ii = ii & ~cellfun(@(x)(strcmp(x,'Grayscale AVI')),pStr);
+    
+elseif isa(vObj,'VideoReader')
     if vObj.BitsPerPixel == 24
         % removes the uncompressed AVI compression type
         ii = ii & ~cellfun(@(x)(strcmp(x,'Uncompressed AVI')),pStr);        

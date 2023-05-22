@@ -401,7 +401,7 @@ classdef VideoCalibObj < handle
                     fRateStr = strsplit(eData.FrameRate);
                     obj.FPS = ceil(str2double(fRateStr{1}));
                 else
-                    obj.FPS = eData.FrameRate;
+                    obj.FPS = ceil(eData.FrameRate);
                 end
            
                 % increment the step counter
@@ -506,7 +506,8 @@ classdef VideoCalibObj < handle
                 
                 try
                     % deletes any existing markers
-                    arrayfun(@delete,hMark0)                    
+                    arrayfun(@delete,hMark0)   
+                catch
                 end
             end            
             

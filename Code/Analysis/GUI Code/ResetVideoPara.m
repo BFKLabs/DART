@@ -55,6 +55,7 @@ classdef ResetVideoPara < handle
     
     % class methods
     methods
+        
         % --- class constructor
         function obj = ResetVideoPara(fObj)
    

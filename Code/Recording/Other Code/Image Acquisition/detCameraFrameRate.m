@@ -1,8 +1,10 @@
 % --- retrieves the list of camera frame rate numbers/strings
 function [fRate,fRateS,iSel,cFPSS] = detCameraFrameRate(srcObj,FPS)
 
-% retrieves the camera object handle
+% retrieves the video input device object
 objIMAQ = get(srcObj,'parent');
+
+% retrieves the camera object handle
 if strContains(objIMAQ.Name,'UV155xLE-C')
     % temporary fix for webcam (offset rate by 5/6)
 %     W = (5/6);
@@ -36,8 +38,8 @@ else
         fRateTmp = fRateTmp(ii);
 
         % sets the selection index
-        if (nargin == 2)
-            if (isempty(FPS))
+        if nargin >= 2
+            if isempty(FPS)
                 iSel = find(fRate == str2double(cFPS));
             else
                 iSel = find(fRate == FPS);  
@@ -51,11 +53,11 @@ else
         cFPSS = fRateTmp{iSel};
     catch
         % set the image acquisition device properties based on camera type    
-        switch (get(objIMAQ,'Name'))
+        switch get(objIMAQ,'Name')
             case ('USB 2861 Device') % TECHview camera
                 % retrieves the current camera resolution
                 vRes = getVideoResolution(objIMAQ);           
-                switch (vRes(1))
+                switch vRes(1)
                     case (176)
                         fRate = 29;
                     case (352)
@@ -109,4 +111,4 @@ else
 end
     
 % sets the frame rate strings
-fRateS = cellfun(@num2str,num2cell(fRate),'un',false); 
+fRateS = arrayfun(@num2str,fRate,'un',0); 

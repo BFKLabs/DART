@@ -67,6 +67,7 @@ varargout{1} = vPara;
 %                        FIGURE CALLBACK FUNCTIONS                        %
 %-------------------------------------------------------------------------%
 
+% ---------------------------------- %
 % --- MOVIE RECORDING PARAMETERS --- %
 % ---------------------------------- %
 
@@ -139,6 +140,7 @@ function popupVideoCompression_Callback(hObject, eventdata, handles)
 % retrieves the video parameter struct
 vPara = getappdata(handles.figTestMovie,'vPara');    
 
+% ------------------------------- %
 % --- PROGRAM CONTROL BUTTONS --- %
 % ------------------------------- %
 
@@ -207,11 +209,18 @@ hPopup = handles.popupFrmRate;
 hSlider = handles.sliderFrmRate;
 vPara = getappdata(hFig,'vPara');
 infoObj = getappdata(hFig,'infoObj');
-isVarFPS = detIfFrameRateVariable(infoObj.objIMAQ);
 
 % retrieves the camera frame rate
-srcObj = getselectedsource(infoObj.objIMAQ);
-[fRateNum,fRate,iSel] = detCameraFrameRate(srcObj,vPara.FPS);
+if infoObj.isWebCam
+    % sets the frame rate values/selections    
+    isVarFPS = false;
+    [fRateN,fRateS,iSel] = detWebcameFrameRate(infoObj.objIMAQ,vPara.FPS);        
+else
+    % sets the frame rate values/selections
+    isVarFPS = detIfFrameRateVariable(infoObj.objIMAQ);
+    srcObj = getselectedsource(infoObj.objIMAQ);
+    [fRateN,fRateS,iSel] = detCameraFrameRate(srcObj,vPara.FPS);
+end
 
 % sets the object visibility flags
 setObjVisibility(hPopup,~isVarFPS)
@@ -221,16 +230,16 @@ setObjVisibility(hSlider,isVarFPS)
 % sets up the camera frame rate objects
 if isVarFPS
     % case is a variable frame rate camera
-    initFrameRateSlider(hSlider,srcObj,fRateNum);    
+    initFrameRateSlider(hSlider,srcObj,fRateN);    
     sliderFrmRate_Callback(hSlider, [], handles) 
 else
     % updates the video frame rate
-    vPara.FPS = fRateNum(iSel);
+    vPara.FPS = fRateN(iSel);
     setappdata(hFig,'vPara',vPara)    
 
     % initialises the frame rate listbox
-    set(hPopup,'string',fRate,'value',iSel)
-    if length(fRateNum) == 1; setObjEnable(hPopup,0); end
+    set(hPopup,'string',fRateS,'value',iSel)
+    if length(fRateN) == 1; setObjEnable(hPopup,0); end
     popupFrmRate_Callback(hPopup, [], handles)
 end
 

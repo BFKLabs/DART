@@ -308,7 +308,7 @@ catch ME
              'use. Please re-select.'];'';['If using multiple ',...
              'cameras ensure they are attached to individual ports.']};
         waitfor(errordlg(eStr,tStr,'modal'))
-        return
+
     else
         % if there is another error type, then output another message
         eStr = ['Critical error with the selected recording ',...
@@ -335,7 +335,8 @@ if infoObj.isWebCam
 
     % determines the camera resolution string
     availForm = infoObj.objIMAQ.AvailableResolutions;
-    sFormatN = regexp(sFormatF,'(\d*)','match');
+    sFormatF = strsplit(sFormatF,'_');
+    sFormatN = regexp(sFormatF{2},'(\d*)','match');
     sFormatW = strjoin(sFormatN,'x');
 
     % sets the webcam object fields

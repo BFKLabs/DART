@@ -25,6 +25,7 @@ classdef VideoPreview < handle
         % other parameters
         szI
         tPause = 1;
+        updateVC = false;
         initMarkers = false;
         
     end
@@ -238,8 +239,8 @@ classdef VideoPreview < handle
                     end
                 end
                 
-                % closes the preview object
-                closePreview(obj.objIMAQ)                
+%                 % closes the preview object
+%                 closePreview(obj.objIMAQ)                
                 
             else
                 % case is the other camera types 
@@ -252,7 +253,7 @@ classdef VideoPreview < handle
             % resets the preview axes image to black       
             if obj.isWebCam
                 if obj.isRot
-                    Img = zeros(obj.szI);
+                    Img = zeros(obj.szI,3);
                 else
                     Img = zeros(flip(obj.szI));
                 end                
@@ -292,7 +293,7 @@ classdef VideoPreview < handle
             if ~obj.isTest
                 % ensures the camera is not running 
                 if obj.isWebCam
-%                     obj.objIMAQ.Resolution = obj.objIMAQ.resTemp;
+                    obj.objIMAQ.Resolution = obj.objIMAQ.resTemp;
                 else
                     if strcmp(get(obj.objIMAQ,'Running'),'on')
                         stop(obj.objIMAQ); pause(0.05);
@@ -345,6 +346,7 @@ classdef VideoPreview < handle
             set(obj.hImage,'CDataMapping','scaled')
             set(obj.hAx,'xtick',[],'ytick',[],'xticklabel',[],...
                         'yticklabel',[],'xLim',xL,'yLim',yL) 
+            colormap(obj.hAx,'gray');
         
             % if the sub-regions have been set then recreate the markers
             if obj.initMarkers
@@ -367,29 +369,25 @@ classdef VideoPreview < handle
                 else
                     % case is the camera object
                     if obj.isWebCam
-                        if ~isempty(obj.vcObj) && ...
-                                get(obj.vcObj.hMenu,'Checked')
-                            % if calibrating (and is open) then create the
-                            % update timer object
-                            obj.hTimer = timer('TimerFcn',@obj.calibRec,...
-                                'ExecutionMode','FixedRate','Period',0.1,...
-                                'StartDelay',1,'TasksToExecute',inf,...
-                                'tag','StartTimer');
-                            start(obj.hTimer);
-                            
-                        else
-                            % otherwise, set an empty timer
-                            obj.hTimer = [];
-                        end
-                    else
-                        setappdata...
-                            (obj.hImage,'UpdatePreviewWindowFcn',cbFcn)                        
-                    end
+                        % determines if the calibration needs update
+                        obj.updateVC = ...
+                            ~isempty(obj.vcObj) && obj.vcObj.isOpen;
 
-                    % starts the preview
-                    preview(obj.objIMAQ,obj.hImage) 
-                    if obj.isWebCam
+                        % if calibrating (and is open) then create the
+                        % update timer object
+                        obj.hTimer = timer('TimerFcn',@obj.calibRec,...
+                            'ExecutionMode','FixedRate','Period',0.1,...
+                            'StartDelay',1,'TasksToExecute',inf,...
+                            'Tag','StartTimer');
+                        start(obj.hTimer);
+                        
+                        % updates the image axes limit
                         set(obj.hAx,'xLim',xL,'yLim',yL)
+                    else
+                        % case is another 
+                        setappdata...
+                            (obj.hImage,'UpdatePreviewWindowFcn',cbFcn)
+                        preview(obj.objIMAQ,obj.hImage)
                     end
                 end
 
@@ -431,11 +429,15 @@ classdef VideoPreview < handle
         function calibRec(obj, hObj, evnt)
             
             % sets up the event struct object
-            p = struct('Timestamp',evnt.Data.time,...
-                'Data',obj.hImage.CData,'FrameRate',1/hObj.Period);
+            Img = rgb2gray(snapshot(obj.objIMAQ));
+            set(obj.hImage,'CData',Img);
             
-            % runs the frame calibration update function
-            obj.vcObj.newCalibFrame(p,false)
+            % runs the frame calibration update function (if required)
+            if obj.updateVC            
+                p = struct('Timestamp',evnt.Data.time,...
+                    'Data',Img,'FrameRate',1/hObj.Period);                
+                obj.vcObj.newCalibFrame(p,false)
+            end
             
         end
         
