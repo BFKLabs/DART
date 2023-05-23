@@ -52,6 +52,8 @@ classdef RunExptObj < handle
         vParaVV
         rfRate
         resInfo
+        iRW
+        iCW
         
         % large-video handling fields
         vComp0
@@ -75,6 +77,7 @@ classdef RunExptObj < handle
         isSaving
         isTrigger
         isUserStop
+        isWebCam
         hasDAQ
         hasIMAQ
         userStop   
@@ -102,7 +105,8 @@ classdef RunExptObj < handle
             infoObj = getappdata(obj.hMain,'infoObj');
             obj.hasDAQ = infoObj.hasDAQ;
             obj.hasIMAQ = infoObj.hasIMAQ;
-            obj.objIMAQ = infoObj.objIMAQ;               
+            obj.objIMAQ = infoObj.objIMAQ;
+            obj.isWebCam = infoObj.isWebCam;
             
             %
             switch obj.vidType
@@ -151,6 +155,7 @@ classdef RunExptObj < handle
                     [obj.isRT,obj.isRTB] = deal(false);
                     obj.iExpt = getappdata(obj.hMain,'iExpt');                       
                     obj.vCompStr = 'obj.vPara.vCompress';                                      
+                    obj.rfRate = roundP(obj.vPara.FPS);
                     
                     % checks the video resolution is correct
                     obj.isOK = checkVideoResolution(obj.objIMAQ,obj.vPara);
@@ -158,7 +163,12 @@ classdef RunExptObj < handle
                         obj.initCameraProperties()
                     end
                     
-            end                                   
+            end    
+            
+            % sets up the ROI row/column indices (webcam only)
+            if obj.isWebCam
+                obj.setupROIIndices();
+            end
                                             
         end        
 
@@ -218,8 +228,7 @@ classdef RunExptObj < handle
                 h.StatusMessage = 'Setting Up Stimuli Devices...';
                 
                 % initialisations and array dimensioning                
-                ID = field2cell(obj.ExptSig,'ID',1);  
-                
+                ID = field2cell(obj.ExptSig,'ID',1);                  
                 [~,~,iC] = unique(ID(:,1));
                 isS = strcmp(obj.objDAQ.dType(unique(iC)),'Serial');
                 nCh = size(unique(ID,'rows'),1);
@@ -260,7 +269,7 @@ classdef RunExptObj < handle
             setappdata(obj.hProg,'iExpt',obj.iExpt)   
             
             % deletes the progressbar
-            try; delete(h); end
+            try delete(h); catch; end
 
             % initalises the countdown/experiment timers            
             obj.initExptTimer();
@@ -310,48 +319,67 @@ classdef RunExptObj < handle
             setappdata(obj.hMain,'hTrack',obj.hTrack)
             set(findobj(obj.hMain,'tag','checkShowMarkers'),...
                        'value',1,'enable','on')                        
-        end
+        end        
         
         % --- initialises the camera properties
         function initCameraProperties(obj)
             
+            % removes the timer object
+            if obj.isWebCam && ~isempty(obj.objIMAQ.hTimer)
+                obj.objIMAQ.hTimer = [];
+            end
+            
             % if the camera is running, then stop it
-            if isrunning(obj.objIMAQ)
-                stop(obj.objIMAQ)
+            if isDeviceRunning(obj)
+                stopRecordingDevice(obj)
             end            
             
             % checks the video compression
             obj.checkVideoCompression();              
             
-            % sets the rotation flag and recording logging mode            
-            if ~isempty(obj.resInfo) && obj.resInfo.useCust
-                [obj.objIMAQ.LoggingMode,obj.isMemLog] = deal('memory',1);                
+            % sets the rotation flag and recording logging mode 
+            if obj.isWebCam
+                % case is using a webcam
+                obj.isMemLog = 0;
             else
-                [obj.objIMAQ.LoggingMode,obj.isMemLog] = deal('disk',0); 
-                imaqmex('feature','-limitPhysicalMemoryUsage',false)
-            end            
+                % case is using a videoinput object
+                if ~isempty(obj.resInfo) && obj.resInfo.useCust
+                    obj.isMemLog = 1;
+                    obj.objIMAQ.LoggingMode = 'memory';
+                else
+                    obj.isMemLog = 0;
+                    obj.objIMAQ.LoggingMode = 'disk';
+                    imaqmex('feature','-limitPhysicalMemoryUsage',false)
+                end                
+            end
 
             % sets the camera frame rate
-            srcObj = getselectedsource(obj.objIMAQ);
-            [fRate,~,iSel] = detCameraFrameRate(srcObj,[]);
-            obj.FPS = fRate(iSel);        
+            if obj.isWebCam
+                [fRate,~,iSel] = detWebcamFrameRate(obj.objIMAQ,[]);
+            else            
+                srcObj = getselectedsource(obj.objIMAQ);
+                [fRate,~,iSel] = detCameraFrameRate(srcObj,[]);
+            end
 
             % initialises the real-time batch processing (if required)
+            obj.FPS = fRate(iSel);            
             if obj.isRTB
                 initRTBatchProcess()             
             end         
 
             % retrieves the resolution of the recording image
-            vRes = getVideoResolution(obj.objIMAQ,1);
-            Img0 = zeros(flip(vRes));
-
+            if ~obj.isWebCam
+                vRes = getVideoResolution(obj.objIMAQ,1);
+                Img0 = zeros(flip(vRes));
+                set(findobj(obj.hAx,'Type','Image'),'cData',Img0);
+            end
+            
             % sets the current access to be the main gui axes handle
             hPanelImg = findall(obj.hMain,'tag','panelImg');
             obj.hAx = findobj(hPanelImg,'type','axes');
             set(obj.hMain,'CurrentAxes',obj.hAx);        
 
-            % sets the empty images into the recording axes
-            set(findobj(obj.hAx,'Type','Image'),'cData',Img0);
+            % sets the empty images into the recording axes            
             setupVideoRecord(obj);
             setappdata(obj.hAx,'hImage',[]);                    
         
@@ -482,6 +510,7 @@ classdef RunExptObj < handle
                 try
                     stop(obj.hTimerExpt);
                     pause(0.05);
+                catch
                 end
                 warning(wState);
             end
@@ -491,13 +520,27 @@ classdef RunExptObj < handle
                 wState = warning('off','all');
                 delete(obj.hTimerCDown);     
                 warning(wState);
+            catch
             end
 
             % resets the preview axes image to black
             if obj.hasIMAQ
-                vRes = getVideoResolution(obj.objIMAQ,1);
+                % retrieves the original axis limits
+                [xL,yL] = deal(get(obj.hAx,'xLim'),get(obj.hAx,'yLim'));
+                
+                % retrieves the camera resolution
+                if obj.isWebCam
+                    vResS = get(obj.objIMAQ,'Resolution');
+                    vRes = cellfun(@str2double,strsplit(vResS,'x'));
+                else
+                    vRes = getVideoResolution(obj.objIMAQ,1);
+                end
+                
+                % resets the axes image/limits
                 Img0 = zeros(flip(vRes));
                 set(findobj(obj.hAx,'Type','Image'),'cData',Img0); 
+                set(obj.hAx,'xLim',xL,'yLim',yL)
+
             else
                 % force stops the streampix object (if available)
                 if ~isempty(obj.spixObj) && obj.isUserStop
@@ -523,7 +566,7 @@ classdef RunExptObj < handle
             if ~obj.isStart
                 % attempts to close any logfile (if one exists)
                 wState = warning('off','all');
-                try; close(getLogFile(obj.objIMAQ)); end
+                try close(getLogFile(obj.objIMAQ)); catch; end
                 warning(wState);
 
                 % deletes the video output directory
@@ -552,11 +595,11 @@ classdef RunExptObj < handle
 
                 % determines if the disk logger object still exists
                 if obj.hasIMAQ
-                    if obj.objIMAQ.TriggersExecuted == 1
-                        % if so, then close and delete the movie   
-                        logFile = getLogFile(obj.objIMAQ);
-                        fName = get(logFile,'FileName');
-
+                    % if so, then close and delete the movie
+                    logFile = getLogFile(obj.objIMAQ);
+                    fName = get(logFile,'FileName');
+                    
+                    if exist(fName,'file')
                         % closes the log file and deletes it
                         wState = warning('off','all');
                         close(logFile);                             
@@ -598,9 +641,9 @@ classdef RunExptObj < handle
                 % saves the summary file to disk
                 obj.saveSummaryFile()
             else
-                % waits until the camera stops logging
-                if obj.hasIMAQ
-                    while islogging(obj.objIMAQ)
+                % waits until the camera stops logging (videoinput only)
+                if obj.hasIMAQ && ~obj.isWebCam
+                    while isDeviceLogging(obj)
                         pause(0.1)
                     end
                 end
@@ -612,7 +655,7 @@ classdef RunExptObj < handle
             end
 
             % closes the experiment progress GUI
-            try; delete(obj.hProg); end                 
+            try delete(obj.hProg); catch; end                 
 
             % if there are any stimuli devices then ensure they are stopped
             if ~isempty(obj.sTrain)
@@ -640,9 +683,13 @@ classdef RunExptObj < handle
                 setObjVisibility(obj.hExptF,'on')
                 figure(obj.hExptF)
 
-                % clears the camera callback functions
-                [obj.objIMAQ.StopFcn,obj.objIMAQ.StartFcn] = deal([]);
-                [obj.objIMAQ.TriggerFcn,obj.objIMAQ.TimerFcn] = deal([]);
+                % clears the camera callback functions (videoinput only)
+                if ~obj.isWebCam
+                    [obj.objIMAQ.StopFcn,obj.objIMAQ.StartFcn] = deal([]);
+                    [obj.objIMAQ.TriggerFcn,obj.objIMAQ.TimerFcn] = deal([]);
+                end
+                
+                % resets the original experiment data struct
                 setappdata(obj.hMain,'iExpt',obj.iExpt0)    
 
                 % if running a RT-tracking experiment (and outputting the 
@@ -764,6 +811,13 @@ classdef RunExptObj < handle
         
         % --- initalises the experiment timer
         function initExptTimer(obj)
+            
+            % deletes any previous timer objects
+            tagStr = 'hTimerExpt';
+            hTimerExptPr = timerfindall('tag',tagStr);
+            if ~isempty(hTimerExptPr)
+                deleteTimerObjects(hTimerExptPr)
+            end
 
             % creates the timer object
             obj.timerOfs = 0;
@@ -773,8 +827,13 @@ classdef RunExptObj < handle
             if obj.hasIMAQ
                 if isempty(obj.iExpt.Video.FPS)
                     % sets the camera frame rate
-                    srcObj = getselectedsource(obj.objIMAQ);
-                    [fRate,~,iSel] = detCameraFrameRate(srcObj,[]);
+                    if obj.isWebCam
+                        [fRate,~,iSel] = detWebcamFrameRate(obj.objIMAQ,[]);
+                    else
+                        srcObj = getselectedsource(obj.objIMAQ);
+                        [fRate,~,iSel] = detCameraFrameRate(srcObj,[]);
+                    end
+                    
                     obj.iExpt.Video.FPS = fRate(iSel);               
                 end
 
@@ -792,7 +851,7 @@ classdef RunExptObj < handle
                                'StartFcn',{@(h,e)obj.startExptFcn},...
                                'TimerFcn',{@(h,e)obj.timerExptFcn},...
                                'StopFcn',{@(h,e)obj.stopExptFcn},...
-                               'TasksToExecute',inf);
+                               'TasksToExecute',inf,'tag',tagStr);
             setappdata(obj.hProg,'exptTimer',obj.hTimerExpt)                
 
         end
@@ -819,18 +878,18 @@ classdef RunExptObj < handle
                
         % --- the experiment timer callback function       
         function timerExptFcn(obj)
-
+            
             % gets the current frames
             try
                 hTimer = obj.hTimerExpt;
                 iFrm = get(hTimer,'TasksExecuted') + obj.indOfs;        
             catch
                 return
-            end
+            end                   
 
             % sets the sub-structs            
             tTot = vec2sec(obj.iExpt.Timing.Texp);
-            VV = obj.iExpt.Video;
+            VV = obj.iExpt.Video;            
 
             % checks to see if the user aborted the experiment. if so, then 
             % stop the timer object and exit the function
@@ -839,10 +898,10 @@ classdef RunExptObj < handle
                 [obj.isUserStop,obj.userStop] = deal(true);
 
                 % stops the timer object and the camera
-                if (get(obj.objIMAQ,'TriggersExecuted') >= 1)
+                if ~obj.isWebCam && (get(obj.objIMAQ,'TriggersExecuted')>=1)
                     % camera has been triggered, so remove stop function
-                    stop(obj.objIMAQ)    
-            %         obj.hTimerExpt.StopFcn = [];
+                    stopRecordingDevice(obj);
+%                     obj.hTimerExpt.StopFcn = [];
                 else
                     % attempts to close the video file
                     if obj.hasIMAQ
@@ -858,10 +917,13 @@ classdef RunExptObj < handle
                 end
                 
                 % stops/deletes the experiment timer
-                try                    
+                try
                     stop(obj.hTimerExpt)
                     delete(obj.hTimerExpt)
+                catch
                 end
+                
+                % exits the function
                 return
             end
 
@@ -873,7 +935,7 @@ classdef RunExptObj < handle
             if obj.iEvent <= size(obj.tEvent,1)
                 % if not logging, then retrieve the current time
                 if obj.hasIMAQ
-                    if ~islogging(obj.objIMAQ)
+                    if ~isDeviceLogging(obj)                     
                         if isempty(obj.tExpt)
                             obj.tNew = 0;
                         else
@@ -899,28 +961,10 @@ classdef RunExptObj < handle
                             % experimental video, keep pausing the program
                             while obj.isSaving
                                 pause(1/obj.FPS)
-                            end                                    
+                            end
 
                             % attempt to trigger the camera.
-                            nTrig = 0;
-                            while ~islogging(obj.objIMAQ)
-                                % if there was an error, then pause for a
-                                % little bit
-                                if (nTrig > 0)
-                                    pause(0.25); 
-                                    fprintf(['Re-Triggering Attempt ',...
-                                             '#%i\n'],nTrig)
-                                end                        
-
-                                % if the camera is off, then restart it
-                                if strcmp(get(obj.objIMAQ,'running'),'off')
-                                    start(obj.objIMAQ);
-                                end
-
-                                % attempts to re-trigger the camera
-                                trigger(obj.objIMAQ);                
-                                nTrig = nTrig + 1;
-                            end
+                            obj.triggerVideoInput();                            
                         end
                     end
 
@@ -955,7 +999,7 @@ classdef RunExptObj < handle
                     % stops the timer if the current experiment time
                     % exceeds experiment duration (stimuli expt only)
                     if (tCurr >= tTot) && ~obj.hasIMAQ
-                        try; stop(obj.hTimerExpt); end
+                        try stop(obj.hTimerExpt); catch; end
                         obj.finishExptObj()
                         return
                     end
@@ -999,7 +1043,7 @@ classdef RunExptObj < handle
                 end                        
 
                 % loops through all the information fields getting the 
-                for i = 1:nInfo 
+                for i = 1:nInfo
                     % retrieves the current/total event counts
                     k = nInfo - (i-1);
                     jStim = str2double(get(hText{k,2},'string'));
@@ -1054,11 +1098,18 @@ classdef RunExptObj < handle
                 end   
             end       
 
+            % updates the timer function
+            if obj.isWebCam && isDeviceRunning(obj)
+                tFcn = obj.objIMAQ.hTimer.TimerFcn{1};
+                tFcn(hTimer,[],obj);
+            end
+            
             % sets the new frame index (the total number of task executed)
             try
                 obj.indFrmNw = get(hTimer,'TasksExecuted');
+            catch
             end
-
+            
         end
         
         % --- the experiment timer stop callback function       
@@ -1091,7 +1142,7 @@ classdef RunExptObj < handle
                 % repeats/appends the signals depending on repetition count 
                 xySigS{1} = arrayfun(@(x)(xySigS{1}+...
                         (x-1)*tStimNw + tOfs),(1:sParaEx.nCount)','un',0);
-                xySigS{2} = repmat({xySigS{2}},sParaEx.nCount,1);   
+                xySigS{2} = repmat(xySigS(2),sParaEx.nCount,1);   
                                        
             end
 
@@ -1306,7 +1357,51 @@ classdef RunExptObj < handle
             % sets the time event field
             obj.tEvent = tEvent0;
         
-        end
+        end                                  
+        
+        % --- re-triggers the camera until it starts again
+        function triggerVideoInput(obj)
             
+            % initialisations
+            nTrig = 0;            
+            
+            % 
+            while ~isDeviceLogging(obj)
+                % if there was an error, then pause for a
+                % little bit
+                if (nTrig > 0)
+                    pause(0.25);
+                    fprintf(['Re-Triggering Attempt ',...
+                        '#%i\n'],nTrig)
+                end
+                
+                % if the camera is off, then restart it
+                if ~isDeviceRunning(obj)
+                    startRecordingDevice(obj)
+                end
+                
+                % attempts to re-trigger the camera
+                if ~obj.isWebCam; trigger(obj.objIMAQ); end
+                nTrig = nTrig + 1;
+            end
+            
+        end        
+        
+        % --- sets up the webcam ROI indices
+        function setupROIIndices(obj)
+            
+            % initialisations
+            pROI = obj.objIMAQ.pROI;            
+            vResS = get(obj.objIMAQ,'Resolution');
+            vRes = cellfun(@str2double,strsplit(vResS,'x'));
+            yOfs = vRes(2) - sum(pROI([2,4]));
+            
+            % sets the row/column indices
+            obj.iCW = (pROI(1)+1):min(vRes(1),sum(pROI([1,3])));
+            obj.iRW = (yOfs+1):min(vRes(2),yOfs+pROI(4));
+            
+        end
+        
     end
+    
 end

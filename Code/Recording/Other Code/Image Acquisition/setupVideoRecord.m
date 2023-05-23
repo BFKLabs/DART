@@ -6,8 +6,10 @@ function setupVideoRecord(exObj)
 [exObj.isTrigger,exObj.isSaving] = deal(false);
 [exObj.tVid,exObj.tNew,exObj.tExpt] = deal(0,0,[]);
 
-% stops the camera (if it is currently running)
-if isrunning(exObj.objIMAQ); stop(exObj.objIMAQ); end
+% stops the videoinput (if it is currently running)
+if isDeviceRunning(exObj)
+    stopRecordingDevice(exObj)
+end
 
 % sets the timer/stop functions
 switch exObj.vidType
@@ -18,18 +20,38 @@ switch exObj.vidType
         exObj.hProg.wStr = {'Recording Video - '};
         
         % retrieves the video logging mode
-        exObj.isMemLog = strcmp(exObj.objIMAQ.LoggingMode,'memory');
-        if exObj.isMemLog; exObj.tOfsT = 0; end                       
+        if ~exObj.isWebCam
+            exObj.isMemLog = strcmp(exObj.objIMAQ.LoggingMode,'memory');
+            if exObj.isMemLog; exObj.tOfsT = 0; end
+        end
                 
         % sets up the video log file
         setupLogVideo(exObj,exObj.vPara);
         
-        % sets the image acquisition callback functions        
-        exObj.objIMAQ.TimerFcn = {@timerFunc,exObj};
-        exObj.objIMAQ.ErrorFcn = {@errorFunc,exObj};
-        exObj.objIMAQ.StopFcn = {@finishRecord,exObj};
-        exObj.objIMAQ.FramesAcquiredFcn = {@frmAcquired,exObj,0};
-        exObj.objIMAQ.TriggerFcn = {@trigCamera,exObj};  
+        % sets the image acquisition callback functions    
+        if exObj.isWebCam
+            % deletes any previous timer objects
+            hTimerPr = timerfindall('Tag','vObjW');
+            if ~isempty(hTimerPr); delete(hTimerPr); end            
+            
+            % case is using a webcam object
+            tPer = roundP(1/exObj.vPara.FPS,0.001);
+            exObj.objIMAQ.hTimer = timer(...
+                'TimerFcn',{@timerFunc,exObj},...
+                'ErrorFcn',{@errorFunc,exObj},...
+                'StopFcn',{@finishRecord,exObj},...
+                'StartFcn',{@trigCamera,exObj},...
+                'ExecutionMode','FixedRate','Period',tPer,...
+                'TasksToExecute',inf,'UserData',0,'Tag','vObjW');            
+            
+        else
+            % case is using a videoinput object
+            exObj.objIMAQ.TimerFcn = {@timerFunc,exObj};
+            exObj.objIMAQ.ErrorFcn = {@errorFunc,exObj};
+            exObj.objIMAQ.StopFcn = {@finishRecord,exObj};            
+            exObj.objIMAQ.TriggerFcn = {@trigCamera,exObj};
+            exObj.objIMAQ.FramesAcquiredFcn = {@frmAcquired,exObj,0};
+        end
         
         % allocates memory for the time stamp array
         [exObj.nCountV,exObj.nMaxV] = deal(1);
@@ -65,20 +87,42 @@ switch exObj.vidType
         exObj.vPara = setVideoParameters(exObj.iExpt.Info,VV);
         setupLogVideo(exObj,exObj.vPara(exObj.nCountV));        
                         
-        % sets the image acquisition callback functions        
-        exObj.objIMAQ.TimerFcn = {@timerFunc,exObj};
-        exObj.objIMAQ.FramesAcquiredFcn = {@frmAcquired,exObj,0};
-        exObj.objIMAQ.StopFcn = {@finishRecord,exObj};        
-        exObj.objIMAQ.TriggerFcn = {@trigCamera,exObj};                
+        % sets the image acquisition callback functions   
+        if exObj.isWebCam
+%             % deletes any previous timer objects
+%             hTimerPr = timerfindall('Tag','vObjW');
+%             if ~isempty(hTimerPr); delete(hTimerPr); end
+            
+            % case is using a webcam object
+            exObj.objIMAQ.hTimer = struct(...
+                'TimerFcn',[],'StopFcn',[],'TriggerFcn',[],...
+                'UserData',0,'Tag','vObjW','iFrm',0,'Running','off',...
+                'FramesAcquired',0);            
+
+            % sets the timer callback function
+            exObj.objIMAQ.hTimer.TimerFcn = {@timerFunc,exObj};
+            exObj.objIMAQ.hTimer.StopFcn = {@finishRecord,exObj};
+            exObj.objIMAQ.hTimer.TriggerFcn = {@trigCamera,exObj};            
+            
+        else
+            % case is using a videoinput object
+            exObj.objIMAQ.TimerFcn = {@timerFunc,exObj};
+            exObj.objIMAQ.StopFcn = {@finishRecord,exObj};
+            exObj.objIMAQ.TriggerFcn = {@trigCamera,exObj};
+            exObj.objIMAQ.FramesAcquiredFcn = {@frmAcquired,exObj,0};            
+        end
 end
 
-% sets the combined properties
-exObj.objIMAQ.FramesAcquiredFcnCount = 1;
-exObj.objIMAQ.TriggerRepeat = 0;
-exObj.objIMAQ = setupCameraProps(exObj.objIMAQ,exObj.vPara(1));
-
-% starts video object (needs to be triggered to start recording)
-start(exObj.objIMAQ); 
+% sets the videoinput specific fields
+if ~exObj.isWebCam
+    % sets up the camera properties
+    exObj.objIMAQ.FramesAcquiredFcnCount = 1;
+    exObj.objIMAQ.TriggerRepeat = 0;    
+    setupCameraProps(exObj.objIMAQ,exObj.vPara(1));
+    
+    % starts video object (needs to be triggered to start recording)
+    start(exObj.objIMAQ); 
+end
 
 %-------------------------------------------------------------------------%
 %                         IMAQ CALLBACK FUNCTIONS                         %
@@ -88,10 +132,18 @@ start(exObj.objIMAQ);
 % ----------------------------------------- %
 
 % --- callback function for triggering the camera
-function trigCamera(objIMAQ,event,exObj)
+function trigCamera(~,~,exObj)
 
 % flag that the camera has been triggered
 exObj.isTrigger = true;
+
+% opens the disklogger object (if running from webcam)
+if exObj.isWebCam
+    open(exObj.objIMAQ.DiskLogger)    
+    if isstruct(exObj.objIMAQ.hTimer)
+        exObj.objIMAQ.hTimer.Running = 'on';
+    end
+end
 
 % updates the video counter
 if strcmp(exObj.vidType,'Expt')
@@ -100,13 +152,22 @@ if strcmp(exObj.vidType,'Expt')
 end
 
 % --- callback function for the imaq object timer --- %
-function timerFunc(objIMAQ,event,exObj)
+function timerFunc(hTimer,~,exObj)
 
 % this function basically updates the summary waitbar figure
-
-% if the camera has not been triggered yet, then exit
 if ~exObj.isTrigger
+    % if the camera has not been triggered yet, then exit
     return
+    
+elseif exObj.isWebCam
+    % acquires the new frame
+    frmAcquired([],[],exObj,exObj.objIMAQ.hTimer.UserData);
+    
+    % only update figure at of 1 FPS
+    iFrm = get(hTimer,'TasksExecuted');
+    if mod(iFrm,exObj.rfRate) ~= 1
+        return
+    end
 end
 
 try
@@ -119,7 +180,7 @@ try
 catch
     % if user stopped the video prematurely, then stop recording
     [exObj.userStop,exObj.isUserStop] = deal(true);
-    stop(exObj.objIMAQ);   
+    stopRecordingDevice(exObj);
 end
 
 % sets the waitbar proportion value and new waitbar string
@@ -131,12 +192,14 @@ ppWait = floor(100*pWait);
 % sets the waitbar figure + properties (depending on recording type)
 try
     switch exObj.vidType
-        case ('Test') % case is for a test recording   
+        case ('Test') 
+            % case is for a test recording   
             [ind,wStrT] = deal(1,wStr{1});
             wStrNw = sprintf('%s (%i%s Complete)',wStrT,ppWait,'%');
             isCancel = exObj.hProg.Update(ind,wStrNw,pWait);
             
-        case ('Expt') % case is for an experiment recording
+        case ('Expt') 
+            % case is for an experiment recording
             wFunc = getappdata(exObj.hProg,'pFunc');
             [ind,wStrT] = deal(2,wStr{2});
             wStrNw = sprintf('%s (%i%s Complete)',wStrT,ppWait,'%');            
@@ -147,39 +210,52 @@ try
     if isCancel
         % if user stopped the video prematurely, then stop recording
         exObj.userStop = true;
-        stop(exObj.objIMAQ);    
+        stopRecordingDevice(exObj); 
     end
+    
 catch ME
     % if user stopped the video prematurely, then stop recording
     exObj.userStop = true;
-    stop(exObj.objIMAQ);        
+    stopRecordingDevice(exObj);
+    
 end
     
 % --- function that runs for each frame that is acquired
-function frmAcquired(objIMAQ,event,exObj,tOfs)
+function frmAcquired(hTimer,~,exObj,tOfs)
 
 % -------------------------- %
 % --- TIME STAMP SETTING --- %
 % -------------------------- %
 
 % retrieves the time-stamp array
-VV = exObj.vParaVV;
-[iFrm,isStop] = deal(exObj.objIMAQ.FramesAcquired,false);
-if iFrm == 0; iFrm = 1; end
+[VV,isStop] = deal(exObj.vParaVV,false);
+if exObj.isWebCam
+    % case is a webcam object
+    if isstruct(exObj.objIMAQ.hTimer)
+        % case is an experiment recording
+        iFrm = exObj.objIMAQ.hTimer.FramesAcquired + 1;
+        exObj.objIMAQ.hTimer.FramesAcquired = iFrm;
+    else
+        % case is a test recording
+        iFrm = max(1,exObj.objIMAQ.hTimer.TasksExecuted);
+    end
+else
+    % case is a videoinput object
+    iFrm = max(1,exObj.objIMAQ.FramesAcquired);
+end
 
 % if the first frame of the first video, then start the clock    
 if isempty(exObj.tExpt)
     exObj.tExpt = tic; 
 end
-
-% reads in the new frame (if logging to memory)
+    
 if exObj.isMemLog  
     % wait for the new frame to be available
     while exObj.objIMAQ.FramesAvailable == 0
         java.lang.Thread.sleep(1);
     end
 
-    try        
+    try
         % retrieves the read frames from the camera
         szR = [exObj.resInfo.H,exObj.resInfo.W];
         nFrm = exObj.objIMAQ.FramesAvailable;
@@ -226,6 +302,12 @@ else
     % registers the time stamp for the frame (off-setting by the time tOfs)
     exObj.tVid = toc(exObj.tExpt);
     [exObj.tStampV{exObj.nCountV}(iFrm),exObj.tNew] = deal(exObj.tVid+tOfs);
+    
+    % reads in the new frame (if logging to memory)
+    if exObj.isWebCam
+        ImgNw = getPreviewFrame(exObj);
+        writeVideo(exObj.objIMAQ.DiskLogger,ImgNw(exObj.iRW,exObj.iCW,:));
+    end
 end
 
 % if the video exceeds duration, then stop the recording
@@ -235,31 +317,41 @@ if exObj.tStampV{exObj.nCountV}(iFrm) >= VV.Tf(exObj.nCountV)
 end
 
 % flushes the image acqusition object frame buffer
-flushdata(exObj.objIMAQ)
+if ~exObj.isWebCam; flushdata(exObj.objIMAQ); end
 
 % if the video has reached the required duration then stop the recording
-if isStop; stop(exObj.objIMAQ); end
+if isStop
+    stopRecordingDevice(exObj);
+end
        
 % ----------------------------- %
 % --- CAMERA PREVIEW UPDATE --- %
 % ----------------------------- %
 
 % sets the camera FPS
-if strcmp(exObj.vidType,'Expt')
+isExpt = strcmp(exObj.vidType,'Expt');
+if isExpt || exObj.isWebCam
     % sets the variable input arguments    
-    [FPS,isExpt] = deal(roundP(VV.FPS),true);
-else
-    % retrieves the frame rate from the camera directly
-    [srcObj,isExpt] = deal(getselectedsource(exObj.objIMAQ),false);    
+    FPS = roundP(VV.FPS);
     
-    % sets the current camera frame rate
-    [fRate,~,iSel] = detCameraFrameRate(srcObj,exObj.iExpt.Video.FPS);
+else
+    % sets the camera frame rate
+    FPS0 = exObj.iExpt.Video.FPS;
+    if exObj.isWebCam
+        [fRate,~,iSel] = detWebcamFrameRate(exObj.objIMAQ,FPS0);
+    else
+        srcObj = getselectedsource(exObj.objIMAQ);
+        [fRate,~,iSel] = detCameraFrameRate(srcObj,FPS0);
+    end
+    
+    % sets the final frame rate
     FPS = roundP(fRate(iSel));
 end
 
 % determines if the frame required updating
 if exObj.userStop || isStop || exObj.isError
     frmUpdate = false;
+    
 elseif any(mod(iFrm,2) == 0)
     % frame rate is an even number
     if exObj.isRT && isExpt
@@ -277,7 +369,9 @@ end
 % updates the main image (only every second)
 if frmUpdate
     % retrieves the image (if not logging to memory)
-    if ~exObj.isMemLog; ImgNw = getsnapshot(exObj.objIMAQ); end
+    if ~exObj.isMemLog && ~exist('ImgNw','var')
+        ImgNw = getPreviewFrame(exObj); 
+    end    
         
     % checks to see if a real-time tracking experiment is being run. if so,
     % then update the real-time tracking stats GUI and stats   
@@ -292,13 +386,16 @@ if frmUpdate
         end
     else    
         % retrieves the current preview 
-        hImage = getappdata(exObj.hAx,'hImage');
-        if isempty(hImage)
+        hImage = getappdata(exObj.hAx,'hImage');              
+        if isempty(hImage)            
+            % retrieves the original axis limits
+            [xL,yL] = deal(get(exObj.hAx,'xLim'),get(exObj.hAx,'yLim'));  
+            
             % if there is no image, then create a new image object
             image(ImgNw,'Parent',exObj.hAx);
-            set(exObj.hAx,'xtick',[],'xticklabel',[],...
-                          'ytick',[],'yticklabel',[])   
             axis(exObj.hAx,'image');
+            set(exObj.hAx,'xtick',[],'xticklabel',[],'ytick',[],...
+                          'yticklabel',[],'xLim',xL,'yLim',yL)               
             setappdata(exObj.hAx,'hImage',hImage)
         else
             % otherwise, update the axes preview image
@@ -338,7 +435,7 @@ warning(wState);
 finishRecord([],[],exObj)    
     
 % --- callback function for finishing data logging --- %
-function finishRecord(objIMAQ,event,exObj)
+function finishRecord(~,~,exObj)
 
 % determines if there was an error which caused the experiment to end
 if ~exObj.isError
@@ -351,49 +448,55 @@ if ~exObj.isError
         exObj.isSaving = true;
     end
     
-    % checks to see if the user stopped the recording
+    % updates the progressbar
     switch exObj.vidType
         case ('Test') % case is the test output
             try
                 exObj.userStop = exObj.hProg.Update...
                                     (1,'Outputing Video To File...',1);
             catch               
+                % if there was an error then flag a stop
                 exObj.userStop = true;
             end
             
-        case ('Expt') % case is the experiment output
+        case ('Expt') 
+            % case is the experiment output
             try
+                % updates the progressbar
                 wFunc = getappdata(exObj.hProg,'pFunc');
                 wFunc(2,'Outputing Video To File...',1,exObj.hProg);
                 
-                % checks to see if the user aborted. if so, then flag a stop
+                % checks if the user aborted. if so then flag a stop
                 if get(getappdata(exObj.hProg,'hBut'),'value')
                     exObj.userStop = true;
                 end                
             catch
+                % if there was an error then flag a stop
                 exObj.userStop = true;
             end
     end
 end
 
 % retrieves the log file 
-logFile = getLogFile(exObj.objIMAQ);
-    
+logFile = getLogFile(exObj.objIMAQ);    
+if isempty(logFile); return; end
+
 % closes the video object
 fName = get(logFile,'Filename');
 fFile = fullfile(get(logFile,'Path'),fName);
 
 % attempts to close the video file
 wState = warning('off','all');
-try         
+try
     % flushes the frame data already from the IMAQ object
-    close(logFile); pause(0.05);    
-    flushdata(exObj.objIMAQ)        
+    close(logFile); pause(0.05);
+    if ~exObj.isWebCam; flushdata(exObj.objIMAQ); end
+catch
 end
-    
+
 % turns on all warnings again
 warning(wState)
-
+    
 % if the user stopped the recording, then prompt them if they want to
 % save the partial file
 if exObj.userStop && exObj.isStart
@@ -421,6 +524,7 @@ else
             else
                 close(exObj.hProg)
             end
+        catch
         end
     end
     
@@ -450,8 +554,8 @@ if strcmp(exObj.vidType,'Expt')
         set(exObj.objIMAQ,'UserData',[]) 
     else
         % if the camera is running still then stop it
-        if isrunning(exObj.objIMAQ)
-            stopCamera(exObj.objIMAQ);   
+        if isDeviceRunning(exObj)
+            stopRecordingDevice(exObj,true);   
         end             
         
         % clears the disk logging file
@@ -483,17 +587,21 @@ if strcmp(exObj.vidType,'Expt')
                     
         % if the camera is still logging, then stop the camera (disables
         % the stop function as this isn't required)
-        if islogging(exObj.objIMAQ)
-            stopCamera(exObj.objIMAQ);   
+        if isDeviceLogging(exObj)
+            stopRecordingDevice(exObj,1);   
         end
                              
         % resets the imaq log file and video camera properties
-        vParaNw = vPara(exObj.nCountV);
-        setupLogVideo(exObj,vPara(exObj.nCountV));
-        exObj.objIMAQ = setupCameraProps(exObj.objIMAQ,vParaNw);
+        setupLogVideo(exObj,vPara(exObj.nCountV));        
         
         % flushes the frame data already from the IMAQ object
-        flushdata(exObj.objIMAQ)
+        if exObj.isWebCam
+            exObj.objIMAQ.hTimer.FramesAcquired = 0;
+        else
+            vParaNw = vPara(exObj.nCountV);
+            setupCameraProps(exObj.objIMAQ,vParaNw);
+            flushdata(exObj.objIMAQ)
+        end
         
         % if running a real-time tracking experiment (and outputting the
         % solution files directly) then re-initialise the data struct)
@@ -504,8 +612,9 @@ if strcmp(exObj.vidType,'Expt')
         % updates the waitbar figure
         wFunc(2,'Starting Camera Object...',0,exObj.hProg);
         
-        % restarts the camera        
-        start(exObj.objIMAQ); pause(0.05)
+        % restarts the camera (video input only)
+        startRecordingDevice(exObj);
+        pause(0.05)
         
         % updates the waitbar figure
         wFunc(2,'Waiting For Camera Trigger...',0,exObj.hProg);             
@@ -515,46 +624,42 @@ if strcmp(exObj.vidType,'Expt')
     end
 else
     % pauses a bit for things to update...
-    pause(1);
+    pause(0.5);
+    
+    % retrieves the original axis limits
+    [xL,yL] = deal(get(exObj.hAx,'xLim'),get(exObj.hAx,'yLim'));    
     
     % converts the recordings (if required)
-    exObj.convertExptVideos();
+    exObj.convertExptVideos();    
     
     % resets the preview axes image to black
-    vRes = getVideoResolution(exObj.objIMAQ);
-    Img0 = zeros(vRes([2 1]));
+    if exObj.isWebCam 
+        vResS = get(exObj.objIMAQ,'Resolution');
+        vRes = cellfun(@str2double,strsplit(vResS,'x'));
+    else
+        vRes = getVideoResolution(exObj.objIMAQ);
+    end
+    
+    % resets the display image
+    Img0 = zeros(flip(vRes)); 
     set(findobj(exObj.hAx,'Type','Image'),'cData',Img0);
+    set(exObj.hAx,'xLim',xL,'yLim',yL)
     
     % enables the video preview toggle    
     hMainH = guidata(exObj.hMain);
     setObjEnable(hMainH.toggleVideoPreview,'on')
 end
-
-% --- function that stops the camera
-function stopCamera(objIMAQ)
-
-% removes the camera stop function
-sFunc = objIMAQ.stopFcn; 
-objIMAQ.stopFcn = [];
-
-% stops the camera
-stop(objIMAQ); 
-
-% resets the camera stop function
-objIMAQ.StopFcn = sFunc;  
             
 %-------------------------------------------------------------------------%
 %                             OTHER FUNCTIONS                             %
 %-------------------------------------------------------------------------%
 
 % --- initialises the log video for recording --- %
-function objIMAQ = setupCameraProps(objIMAQ,vPara)
-
-% sets the frame rate of the recording by altering the camera parameters
-srcObj = getselectedsource(objIMAQ);
+function setupCameraProps(objIMAQ,vPara)
 
 % sets the camera frame rate
-if isfield(propinfo(srcObj),'FrameRate')   
+srcObj = getselectedsource(objIMAQ);
+if isfield(propinfo(srcObj),'FrameRate')
     [~,fRateS,~,cFPS] = detCameraFrameRate(srcObj,vPara.FPS);
     if length(fRateS) > 1
         set(srcObj,'FrameRate',cFPS);
@@ -581,7 +686,7 @@ wState = warning('off','all');
 % exObj.isConvert = ~strcmp(vPara.vCompress,vCompressF);
 
 % flushes any frame data already in the IMAQ object
-flushdata(exObj.objIMAQ)
+if ~exObj.isWebCam; flushdata(exObj.objIMAQ); end
 
 % sets the log-file name
 logName = fullfile(vPara.Dir,vPara.Name);
@@ -590,8 +695,13 @@ logName = fullfile(vPara.Dir,vPara.Name);
 logFile = VideoWriter(logName,vPara.vCompress); 
 if isempty(vPara.FPS)
     % sets the camera frame rate
-    srcObj = getselectedsource(exObj.objIMAQ);
-    [fRate,~,iSel] = detCameraFrameRate(srcObj,[]);
+    if exObj.isWebCam
+        [fRate,~,iSel] = detWebcamFrameRate(exObj.objIMAQ,[]);
+    else
+        srcObj = getselectedsource(exObj.objIMAQ);
+        [fRate,~,iSel] = detCameraFrameRate(srcObj,[]);
+    end
+        
     logFile.FrameRate = fRate(iSel);            
 else
     logFile.FrameRate = vPara.FPS;
@@ -603,10 +713,12 @@ if strcmp(vPara.vCompress,'Indexed AVI')
 end
 
 % sets the other video parameters
-if strcmp(exObj.objIMAQ.LoggingMode,'memory')
+if ~exObj.isWebCam && strcmp(exObj.objIMAQ.LoggingMode,'memory')
+    % case is logging to memory
     exObj.objIMAQ.UserData = logFile;
     open(logFile); 
 else
+    % case is either a webcam or loging to disk
     exObj.objIMAQ.DiskLogger = logFile;
 end
 
@@ -665,3 +777,11 @@ end
 if ~isempty(iExpt.Info.OutSoln)                
     setappdata(exObj.hProg,'rtPos',setupRTExptStruct(iMov)); 
 end     
+
+function ImgNw = getPreviewFrame(exObj)
+        
+if exObj.isWebCam
+    ImgNw = snapshot(exObj.objIMAQ);
+else
+    ImgNw = getsnapshot(exObj.objIMAQ);
+end

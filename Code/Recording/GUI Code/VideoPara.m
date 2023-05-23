@@ -765,21 +765,27 @@ classdef VideoPara < handle
         function outputUpdateErrorMsg(obj)
             
             % field retrieval
-            srcInfo = obj.infoSrc;
+            if obj.isWebCam
+                isPr = false;
+                pFldStr = obj.infoObj.objIMAQ.Name;
+            else
+                pFldStr = obj.infoSrc.Name;
+                isPr = strcmp(get(obj.infoObj.objIMAQ,'Previewing'),'on');
+            end
             
             % if update failed, then determine if camera is previewing
-            if strcmp(get(obj.infoObj.objIMAQ,'Previewing'),'on')
+            if isPr
                 % if so, then prompt the user to turn off the camera
                 eStr = sprintf(['The "%s" property can only be ',...
                     'altered when not previewing. Turn off ',...
-                    'the video preview and try again.'],srcInfo.Name);
+                    'the video preview and try again.'],pFldStr);
                 waitfor(msgbox(eStr,'Video Property Update Error','modal'))
             else
                 % otherwise, a critical error has occured with the camera
                 tStr = 'Video Property Update Error';
                 eStr = sprintf(['The "%s" property could not be ',...
                     'correctly. Please ensure the camera is ',...
-                    'operating correctly and try again.'],srcInfo.Name);
+                    'operating correctly and try again.'],pFldStr);
                 waitfor(errordlg(eStr,tStr,'modal'))
             end
             

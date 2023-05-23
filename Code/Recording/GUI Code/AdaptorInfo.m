@@ -331,7 +331,9 @@ if infoObj.isWebCam
     infoObj.objIMAQ = webcam(objIMAQDev{iSelV}.DeviceName);
     addprop(infoObj.objIMAQ,'pInfo');
     addprop(infoObj.objIMAQ,'pROI');
+    addprop(infoObj.objIMAQ,'hTimer');    
     addprop(infoObj.objIMAQ,'resTemp');
+    addprop(infoObj.objIMAQ,'DiskLogger');    
 
     % determines the camera resolution string
     availForm = infoObj.objIMAQ.AvailableResolutions;

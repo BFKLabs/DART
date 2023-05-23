@@ -23,7 +23,8 @@ Info = struct('Title',tStr,'OutDir',outDir,'FileName',[],...
               'BaseName','Video','Type',exptType);
 
 % initialises the timing field
-Timing = struct('T0',[],'Tp',5,'Texp',[0,12,0,0],...
+Tp = 1 + 4*(~isWebCam);
+Timing = struct('T0',[],'Tp',Tp,'Texp',[0,12,0,0],...
                 'fixedT0',false,'TexpU','Hours');
 Timing.T0 = [tNow(1:2),tNow(3)+tOfs,tStartH,0,0];
  

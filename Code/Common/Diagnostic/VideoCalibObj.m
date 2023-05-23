@@ -386,11 +386,7 @@ classdef VideoCalibObj < handle
                 % initialises the data vector (if first time step)
                 if obj.iStp == 0                    
                     % sets the initial time stamp
-                    if isCB
-                        obj.T0 = datevec(eData.Timestamp);
-                    else
-                        obj.T0 = eData.Timestamp;
-                    end
+                    obj.T0 = datevec(eData.Timestamp);
                     
                     % allocates memory for the new data                    
                     [obj.Tt,obj.Yt] = deal(NaN(obj.nStp,1));
@@ -407,15 +403,10 @@ classdef VideoCalibObj < handle
                 % increment the step counter
                 obj.iStp = obj.iStp + 1;
             end            
-                        
-            if isCB
-                Tnw = datevec(eData.Timestamp);
-            else
-                Tnw = eData.Timestamp;
-            end
-            
-            % updates the time/avg. intensity values
-            obj.Tt(obj.iStp) = etime(Tnw,obj.T0);
+                                    
+            % updates the time/avg. intensity values  
+            Tnw = datevec(eData.Timestamp);
+            obj.Tt(obj.iStp) = etime(Tnw,obj.T0);            
             obj.Yt(obj.iStp) = mean(double(eData.Data(:)),'omitnan');            
             
             % updates the plot axes

@@ -2,6 +2,7 @@ classdef VideoROIClass < handle
     
     % class properties
     properties
+        
         % main class objects
         hFig
         hGUI
@@ -180,22 +181,23 @@ classdef VideoROIClass < handle
             obj.getInitSnapshot();
 
             % if there is no image object, then create a new one
-            imagesc(obj.Img0,'parent',obj.hAx);    
+            image(obj.Img0,'parent',obj.hAx);    
             set(obj.hAx,'xtick',[],'ytick',[],'xticklabel',[],...
                         'yticklabel',[],'ycolor','w','xcolor','w',...
-                        'box','off','clim',[0,255])   
-            colormap(obj.hAx,gray)   
+                        'box','off','CLimMode','Auto')   
+%             colormap(obj.hAx,gray)   
             
             % creates the image markers
             for i = 1:2
                 % sets the horizontal/vertical marker locations
                 if i == 1
                     % case is the left side markers
-                    [xV,yH] = deal(obj.rPos(1),obj.rPos(2));
+                    xV = obj.rPos(1);
+                    yH = size(obj.Img0,1) - sum(obj.rPos([2,4]));
                 else
                     % case is the right side markers
                     xV = sum(obj.rPos([1,3]));
-                    yH = sum(obj.rPos([2,4]));
+                    yH = yH + obj.rPos(4);
                 end
 
                 % creates the horizontal/vertical markers
@@ -272,8 +274,9 @@ classdef VideoROIClass < handle
                     
             % resets the camera to the original ROI position
             if obj.isWebCam
+                yOfs = size(obj.Img0,1) - sum(obj.rPos([2,4]));
                 xL = (obj.rPos(1)+0.5) + [0,obj.rPos(3)];
-                yL = (obj.rPos(2)+0.5) + [0,obj.rPos(4)];                
+                yL = (obj.rPos(2)+yOfs+0.5) + [0,obj.rPos(4)];                 
                 set(obj.hAxM,'xLim',xL,'yLim',yL);                
             else
                 set(obj.infoObj.objIMAQ,'ROIPosition',obj.rPos)
@@ -592,19 +595,27 @@ classdef VideoROIClass < handle
         function getInitSnapshot(obj)
             
             % parameters
-            ImgMdTol = 220;
+            dITol = 5;
             tPause = 0.25;  
             pause(1)
             
+            % sets 
+            I = {double(obj.getSnapShot()),[]};
+            pause(tPause);
+            I{2} = double(obj.getSnapShot());
+            
             % retrieves the initial image
-            obj.Img0 = obj.getSnapShot();
-            while median(obj.Img0(:),'omitnan') > ImgMdTol
+            while mean(abs(I{2}(:) - I{1}(:))) > dITol
                 % pauses for the required time
                 pause(tPause);
                 
                 % retrieves the new image
-                obj.Img0 = obj.getSnapShot();
+                I{1} = I{2};
+                I{2} = double(obj.getSnapShot());
             end                            
+            
+            % sets the final image
+            obj.Img0 = uint8(I{2});
             
         end
 

@@ -189,9 +189,13 @@ setObjVisibility(hFig,'off'); pause(0.05);
 
 % retrieves the camera field names and property values
 if ~infoObj0.isTest
-    srcObj = getselectedsource(infoObj0.objIMAQ);
-    [~,fldNames] = combineDataStruct(propinfo(srcObj));
-    pVal0 = get(srcObj,fldNames);
+    if infoObj0.isWebCam
+        a = 1;
+    else
+        srcObj = getselectedsource(infoObj0.objIMAQ);
+        [~,fldNames] = combineDataStruct(propinfo(srcObj));
+        pVal0 = get(srcObj,fldNames);
+    end
 end
 
 % if the IR lights are on, then turn them off
@@ -260,8 +264,20 @@ setRecordGUIProps(handles,propStr)
 if ~infoObj.isTest && ~infoObj0.isTest 
     % retrieves the current camera properties and resets any class fields
     % that don't match
-    srcObjNw = getselectedsource(infoObj.objIMAQ);
-    [srcInfoNw,fldNamesNw] = combineDataStruct(propinfo(srcObjNw));
+    if infoObj.isWebcam && infoObj0.isWebcam
+        % case is both recording devices are webcam objects
+        a = 1;
+        
+    elseif ~infoObj.isWebcam && ~infoObj0.isWebcam
+        % case is both recording devices are videoinput objects
+        srcObjNw = getselectedsource(infoObj.objIMAQ);
+        [srcInfoNw,fldNamesNw] = combineDataStruct(propinfo(srcObjNw));
+        
+    else
+        % case is there is a mismatch between device types
+        fldNamesNw = [];
+    end
+    
     if isequal(fldNamesNw,fldNames)
         % only updates the non read-only fields
         for i = 1:length(fldNamesNw)
@@ -333,8 +349,10 @@ if strcmp(selection,'Yes')
     % deletes any previous imaq objects in memory
     try
         if infoObj.isWebCam
+            % case is camera is a webcam object
             delete(infoObj.objIMAQ);
         else
+            % case is camera is videoinput object
             imaqObj = imaqfind;
             if ~isempty(imaqObj)
                 delete(imaqObj)
@@ -448,7 +466,11 @@ if ~isempty(vPara)
     
     % starts the test object
     exObj.isStart = true;
-    trigger(exObj.objIMAQ)     
+    if exObj.isWebCam
+        start(exObj.objIMAQ.hTimer);
+    else
+        trigger(exObj.objIMAQ)
+    end
 end
 
 % -------------------------------------------------------------------------
@@ -579,20 +601,25 @@ if isReset
         vRes = cellfun(@str2double,strsplit(vResS,'x'));
     else
         vRes = getVideoResolution(infoObj.objIMAQ);    
-    end
-    
-    % calculates the bottom location of the preview
-    rPos(2) = max(0,vRes(2) - sum(rPos([2,4])));     
+    end    
     
     % resets the dimensions of the preview axes
     if ~infoObj.isTest            
         % inverts the bottom location of the ROI
-        if infoObj.isWebCam
+        if infoObj.isWebCam            
+            % sets the offset
+            yOfs = vRes(2) - sum(rPos([2,4]));
+            
+            % resets the ROI and axes limits
             infoObj.objIMAQ.pROI = rPos;
             xL = rPos(1) + [0,rPos(3)];
-            yL = rPos(2) + [0,rPos(4)];
+            yL = yOfs + [0,rPos(4)];
             set(hAx,'xlim',xL,'ylim',yL)            
         else
+            % calculates the bottom location of the preview
+            rPos(2) = max(0,vRes(2) - sum(rPos([2,4])));
+
+            % resets the videoinput ROI and axes limits
             set(infoObj.objIMAQ,'ROIPosition',rPos);
             set(hAx,'xlim',[0,rPos(3)],'ylim',[0,rPos(4)])
         end           
@@ -894,9 +921,11 @@ function rPos = getVideoROIPosition(infoObj)
 if infoObj.isTest
     % video object is the test file
     rPos = [1,1,flip(infoObj.objIMAQ.szImg)];
+    
 elseif infoObj.isWebCam
     % case is a webcam
     rPos = infoObj.objIMAQ.pROI;
+
 else
     % video object is the image acquisition object
     rPos = get(infoObj.objIMAQ,'ROIPosition');

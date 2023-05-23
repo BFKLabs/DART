@@ -214,7 +214,8 @@ infoObj = getappdata(hFig,'infoObj');
 if infoObj.isWebCam
     % sets the frame rate values/selections    
     isVarFPS = false;
-    [fRateN,fRateS,iSel] = detWebcameFrameRate(infoObj.objIMAQ,vPara.FPS);        
+    [fRateN,fRateS,iSel] = detWebcamFrameRate(infoObj.objIMAQ,vPara.FPS);
+    
 else
     % sets the frame rate values/selections
     isVarFPS = detIfFrameRateVariable(infoObj.objIMAQ);
@@ -232,6 +233,7 @@ if isVarFPS
     % case is a variable frame rate camera
     initFrameRateSlider(hSlider,srcObj,fRateN);    
     sliderFrmRate_Callback(hSlider, [], handles) 
+    
 else
     % updates the video frame rate
     vPara.FPS = fRateN(iSel);

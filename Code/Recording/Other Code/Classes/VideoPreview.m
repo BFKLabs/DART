@@ -231,7 +231,7 @@ classdef VideoPreview < handle
                 
             elseif obj.isWebCam   
                 % case is a webcam
-                if ~isempty(obj.hTimer)
+                if ~isempty(obj.hTimer) && isvalid(obj.hTimer)
                     if strcmp(obj.hTimer.Running,'on')
                         % stops the timer (if it is running
                         stop(obj.hTimer)
@@ -321,7 +321,10 @@ classdef VideoPreview < handle
                 pR = obj.objIMAQ.pROI;                
                 vResS = obj.objIMAQ.Resolution;
                 obj.szI = cellfun(@str2double,strsplit(vResS,'x'));
-                [xL,yL] = deal((pR(1)+0.5)+[0,pR(3)],(pR(2)+0.5)+[0,pR(4)]);                
+                
+                yOfs = obj.szI(2) - sum(pR([2,4]));
+                xL = (pR(1)+0.5)+[0,pR(3)];
+                yL = (yOfs+0.5)+[0,pR(4)];
                 
                 if obj.isRot
                     [xL,yL] = deal(yL,xL);                    
@@ -375,8 +378,9 @@ classdef VideoPreview < handle
 
                         % if calibrating (and is open) then create the
                         % update timer object
+                        tPer = 0.1;
                         obj.hTimer = timer('TimerFcn',@obj.calibRec,...
-                            'ExecutionMode','FixedRate','Period',0.1,...
+                            'ExecutionMode','FixedRate','Period',tPer,...
                             'StartDelay',1,'TasksToExecute',inf,...
                             'Tag','StartTimer');
                         start(obj.hTimer);
@@ -426,17 +430,18 @@ classdef VideoPreview < handle
         end
         
         % --- timer function update for the recording GUI
-        function calibRec(obj, hObj, evnt)
+        function calibRec(obj, hObj, ~)
             
             % sets up the event struct object
-            Img = rgb2gray(snapshot(obj.objIMAQ));
+            Img = snapshot(obj.objIMAQ);
             set(obj.hImage,'CData',Img);
-            
+                                    
             % runs the frame calibration update function (if required)
-            if obj.updateVC            
-                p = struct('Timestamp',evnt.Data.time,...
-                    'Data',Img,'FrameRate',1/hObj.Period);                
-                obj.vcObj.newCalibFrame(p,false)
+            if obj.updateVC               
+                % updates the calibration axes
+                p = struct('Timestamp',now,...
+                    'Data',Img,'FrameRate',1/hObj.Period); 
+                obj.vcObj.newCalibFrame(p,false);
             end
             
         end

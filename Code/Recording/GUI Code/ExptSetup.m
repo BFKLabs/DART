@@ -24,14 +24,15 @@ function ExptSetup_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % Choose default command line output for ExptSetup
 handles.output = hObject;
+setObjVisibility(hObject,'off');
 
 % global variables
 global axLimMax mType dyMax isUpdating isCreateBlk
 global objOff mpStrDef hSigTmp hSigSel iSigObj
-global t2sStatus updateList
+global t2sStatus updateList isInit
 [axLimMax,mType,dyMax,isUpdating,isCreateBlk] = deal(900,0,2.5,false,false);
 [objOff,mpStrDef,hSigTmp,hSigSel,iSigObj] = deal(true,'arrow',[],[],0);
-[t2sStatus,updateList] = deal(-1,true);
+[t2sStatus,updateList,isInit] = deal(-1,true,true);
 
 % initialisations
 hProg = [];
@@ -129,6 +130,7 @@ pause(0.05);
 % resets the full experiment panel titles (this fixes a weird bug
 % where the objects within the panels drop down by around 20 pixels?)
 resetFullExptPanels(handles)
+isInit = false;
 
 % Update handles structure
 guidata(hObject, handles);
@@ -156,7 +158,10 @@ menuExit_Callback(handles.menuExit, [], handles)
 function figExptSetup_WindowButtonMotionFcn(hFig, eventdata, handles)
 
 % global variables
-global mType mpStrDef
+global mType mpStrDef isInit
+
+% if initialising the axes, then exit
+if isInit; return; end
 
 % ignore mouse clicjs on the experiment information tab
 hTabSel = get(getappdata(hFig,'hTabGrp'),'SelectedTab');
@@ -838,10 +843,10 @@ hMainH = guidata(getappdata(hFig,'hMain'));
     
 % turns off the camera (if still running)
 if infoObj.hasIMAQ
-    if strcmp(get(infoObj.objIMAQ,'Running'),'on')
-        stop(infoObj.objIMAQ);
+    if isDeviceRunning(infoObj)
+        stopRecordingDevice(infoObj)
     end
-
+    
     % converts the videos (if required)
     exObj.convertExptVideos();
 
@@ -4364,7 +4369,7 @@ for i = 1:length(dStr)
         end
         
         % sets the strings/properties of the popup object
-        cbFcn = {@popupStartTime,handles,pStr};
+        cbFcn = {@popupStartTime,handles};
         set(hPopup,'String',durStr,'UserData',i,'Callback',cbFcn)
     end   
 end
@@ -4954,7 +4959,7 @@ if infoObj.hasIMAQ
     if infoObj.isWebCam
         % sets the frame rate values/selections
         isVarFPS = false;
-        [~,fRate,~] = detWebcameFrameRate(infoObj.objIMAQ,FPS);
+        [~,fRate,~] = detWebcamFrameRate(infoObj.objIMAQ,FPS);
     else
         % sets the frame rate values/selections
         isVarFPS = detIfFrameRateVariable(infoObj.objIMAQ);

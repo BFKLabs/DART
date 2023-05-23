@@ -24,8 +24,9 @@ end
 if strcmp(get(hObject,'Checked'),'off')
     % turns on the lights
     if isIR
-        sStr = {sprintf('4,%f\n',2*str2double(yAmp)),...
-                sprintf('3,000,000,000,000,%s\n',yAmp)};
+%         sStr = {sprintf('4,%f\n',2*str2double(yAmp)),...
+%                 sprintf('3,000,000,000,000,%s\n',yAmp)};
+        sStr = {sprintf('4,%f\n',100)};        
     else
         sStr = sprintf('4,000,000,000,%s\n,000',yAmp);
     end
@@ -34,8 +35,9 @@ if strcmp(get(hObject,'Checked'),'off')
 else
     % turns off the lights
     if isIR
-        sStr = {sprintf('4,%f\n',0),...
-                sprintf('3,000,000,000,000,%s\n',yAmp)};
+%         sStr = {sprintf('4,%f\n',0),...
+%                 sprintf('3,000,000,000,000,%s\n',yAmp)};
+        sStr = {sprintf('4,%f\n',0)};
     else
         sStr = '4,000,000,000,000,000\n';
     end
