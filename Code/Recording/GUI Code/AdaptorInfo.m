@@ -326,25 +326,10 @@ if infoObj.isWebCam
     pInfo = propinfo(objIMAQ0.Source);
     delete(objIMAQ0)
     pause(0.05);
-
+    
     % creates the webcam object
-    infoObj.objIMAQ = webcam(objIMAQDev{iSelV}.DeviceName);
-    addprop(infoObj.objIMAQ,'pInfo');
-    addprop(infoObj.objIMAQ,'pROI');
-    addprop(infoObj.objIMAQ,'hTimer');    
-    addprop(infoObj.objIMAQ,'resTemp');
-    addprop(infoObj.objIMAQ,'DiskLogger');    
-
-    % determines the camera resolution string
-    availForm = infoObj.objIMAQ.AvailableResolutions;
-    sFormatF = strsplit(sFormatF,'_');
-    sFormatN = regexp(sFormatF{2},'(\d*)','match');
-    sFormatW = strjoin(sFormatN,'x');
-
-    % sets the webcam object fields
-    infoObj.objIMAQ.pInfo = pInfo;
-    infoObj.objIMAQ.resTemp = availForm{strcmp(availForm,sFormatW)};
-    infoObj.objIMAQ.pROI = [0,0,cellfun(@str2double,sFormatN)];
+    devName = objIMAQDev{iSelV}.DeviceName;
+    infoObj.objIMAQ = createWebCamObj(devName,pInfo,sFormatF);
 
 else
     % case is a non-webcam device

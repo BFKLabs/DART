@@ -813,8 +813,8 @@ classdef RunExptObj < handle
         function initExptTimer(obj)
             
             % deletes any previous timer objects
-            tagStr = 'hTimerExpt';
-            hTimerExptPr = timerfindall('tag',tagStr);
+            tagStr = 'hTimerEx';
+            hTimerExptPr = timerfind('tag',tagStr);
             if ~isempty(hTimerExptPr)
                 deleteTimerObjects(hTimerExptPr)
             end

@@ -189,13 +189,27 @@ setObjVisibility(hFig,'off'); pause(0.05);
 
 % retrieves the camera field names and property values
 if ~infoObj0.isTest
+    % retrives the device/property info field names    
     if infoObj0.isWebCam
-        a = 1;
+        % case is a webcam device
+        fldNames = getWebCamProps(infoObj0.objIMAQ);
+                
     else
-        srcObj = getselectedsource(infoObj0.objIMAQ);
-        [~,fldNames] = combineDataStruct(propinfo(srcObj));
-        pVal0 = get(srcObj,fldNames);
+        % case is a videoinput device
+        sObj = getselectedsource(infoObj0.objIMAQ);
+        [~,fldNames] = combineDataStruct(propinfo(sObj));
     end
+    
+    % retrieves the initial property values
+    pVal0 = arr2vec(get(sObj,fldNames));
+end
+
+% ensures the preview is off
+hToggle = handles.toggleVideoPreview;
+prevOn = get(handles.toggleVideoPreview,'Value');
+if prevOn
+    set(hToggle,'Value',0)    
+    toggleVideoPreview_Callback(hToggle, '1', handles)
 end
 
 % if the IR lights are on, then turn them off
@@ -204,14 +218,38 @@ if onIR
     menuToggleIR_Callback(handles.menuToggleIR, '1', handles)    
 end
 
+% turns off the webcam (if it is open)
+if infoObj0.isWebCam
+    % makes a copy of the temporary webcam fields
+    sObj = infoObj0.objIMAQ;
+    [devName,pInfo0] = deal(sObj.Name,sObj.pInfo);
+    [resTemp0,pROI0] = deal(sObj.resTemp,sObj.pROI);
+    
+    % deletes the webcam object
+    delete(sObj);
+end
+
 % initialises the experimental adaptors
 iStimNw = initTotalStimParaStruct();
 infoObj = AdaptorInfo('hFigM',hFig,'iType',2,'iStim',iStimNw);
 if isempty(infoObj)
+    % restarts the webcam (if required)
+    if infoObj0.isWebCam
+        % creates the new webcam object
+        infoObj0.objIMAQ = createWebCamObj(devName,pInfo0);
+        infoObj0.objIMAQ.resTemp = resTemp0;
+        infoObj0.objIMAQ.pROI = pROI0;
+    end
+        
     % if the IR was originally on, then turn the light back on
     if onIR
         menuToggleIR_Callback(handles.menuToggleIR, '1', handles)    
     end    
+   
+    if prevOn
+        set(hToggle,'Value',1)
+        toggleVideoPreview_Callback(hToggle, '1', handles)
+    end
     
     % makes the gui visible again and exits
     setObjVisibility(hFig,'on')
@@ -264,11 +302,11 @@ setRecordGUIProps(handles,propStr)
 if ~infoObj.isTest && ~infoObj0.isTest 
     % retrieves the current camera properties and resets any class fields
     % that don't match
-    if infoObj.isWebcam && infoObj0.isWebcam
+    if infoObj.isWebCam && infoObj0.isWebCam
         % case is both recording devices are webcam objects
-        a = 1;
+        [srcInfoNw,fldNamesNw] = combineDataStruct(infoObj.objIMAQ.pInfo);
         
-    elseif ~infoObj.isWebcam && ~infoObj0.isWebcam
+    elseif ~infoObj.isWebCam && ~infoObj0.isWebCam
         % case is both recording devices are videoinput objects
         srcObjNw = getselectedsource(infoObj.objIMAQ);
         [srcInfoNw,fldNamesNw] = combineDataStruct(propinfo(srcObjNw));
@@ -281,13 +319,17 @@ if ~infoObj.isTest && ~infoObj0.isTest
     if isequal(fldNamesNw,fldNames)
         % only updates the non read-only fields
         for i = 1:length(fldNamesNw)
-            if (~strcmp(srcInfoNw(i).ReadOnly,'always'))
-                switch (fldNames{i})
+            if ~strcmp(srcInfoNw(i).ReadOnly,'always')
+                switch fldNames{i}
                     case ('FrameRate')
+                        % case is the framerate field
                         set(srcObjNw,fldNames{i},srcObjNw.FrameRate)
+                        
                     otherwise
+                        % case is the other properties
                         try
                             set(srcObjNw,fldNames{i},pVal0{i})
+                        catch
                         end
                 end
             end

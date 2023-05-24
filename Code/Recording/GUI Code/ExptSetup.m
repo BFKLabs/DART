@@ -20,11 +20,10 @@ end
 % End initialization code - DO NOT EDIT
 
 % --- Executes just before ExptSetup is made visible.
-function ExptSetup_OpeningFcn(hObject, eventdata, handles, varargin)
+function ExptSetup_OpeningFcn(hObject, ~, handles, varargin)
 
 % Choose default command line output for ExptSetup
 handles.output = hObject;
-setObjVisibility(hObject,'off');
 
 % global variables
 global axLimMax mType dyMax isUpdating isCreateBlk
@@ -139,7 +138,7 @@ guidata(hObject, handles);
 % uiwait(handles.figExptSetup);
 
 % --- Outputs from this function are returned to the command line.
-function varargout = ExptSetup_OutputFcn(hObject, eventdata, handles)
+function varargout = ExptSetup_OutputFcn(~, ~, handles)
 
 % Get default command line output from handles structure
 varargout{1} = handles.output;
@@ -149,13 +148,13 @@ varargout{1} = handles.output;
 %-------------------------------------------------------------------------%
 
 % --- Executes when user attempts to close figExptSetup.
-function figExptSetup_CloseRequestFcn(hFig, eventdata, handles)
+function figExptSetup_CloseRequestFcn(~, ~, handles)
 
 % runs the exit menu item
 menuExit_Callback(handles.menuExit, [], handles)
 
 % --- Executes on mouse motion over figure - except title and menu.
-function figExptSetup_WindowButtonMotionFcn(hFig, eventdata, handles)
+function figExptSetup_WindowButtonMotionFcn(hFig, ~, ~)
 
 % global variables
 global mType mpStrDef isInit
@@ -372,7 +371,7 @@ figExptSetup_WindowButtonMotionFcn(hFig, [], handles)
 
 % --- Executes on mouse press over figure background, over a disabled or
 % --- inactive control, or over an axes background.
-function figExptSetup_WindowButtonUpFcn(hFig, eventdata, handles)
+function figExptSetup_WindowButtonUpFcn(hFig, ~, ~)
 
 % global variables
 global mType hSigSel iSigObj isReleased
@@ -396,7 +395,7 @@ end
 %-------------------------------------------------------------------------%
 
 % -------------------------------------------------------------------------
-function menuNewProto_Callback(hObject, eventdata, handles)
+function menuNewProto_Callback(~, ~, handles)
 
 % prompts the user if they wish to continue clearing the current protocol
 uChoice = questdlg(sprintf(['Are you sure you want to clear the current ',...
@@ -432,7 +431,7 @@ initObjProps(handles,devType,nCh,false)
 tabSelected(findall(hFig,'Title',pType0), [], handles)
 
 % -------------------------------------------------------------------------
-function menuOpenProto_Callback(hObject, eventdata, handles)
+function menuOpenProto_Callback(~, ~, handles)
 
 % initialisations 
 hFig = handles.figExptSetup;  
@@ -590,7 +589,7 @@ initObjProps(handles,dType(:)',nCh,false)
 tabSelected(findall(hFig,'Title',pType0), [], handles)
 
 % -------------------------------------------------------------------------
-function menuSaveProto_Callback(hObject, eventdata, handles)
+function menuSaveProto_Callback(~, ~, handles)
 
 % initialisations 
 hFig = handles.figExptSetup;  
@@ -641,13 +640,13 @@ if (fIndex ~= 0)
 end
 
 % -------------------------------------------------------------------------
-function menuDiskSpace_Callback(hObject, eventdata, handles)
+function menuDiskSpace_Callback(~, ~, ~)
 
 % runs the disk space gui
 DiskSpace()
 
 % -------------------------------------------------------------------------
-function menuExit_Callback(hObject, eventdata, handles)
+function menuExit_Callback(~, ~, handles)
 
 % prompts the user if they want to close the GUI
 qStr = 'Are you sure you want to close the GUI?';
@@ -712,7 +711,7 @@ switch infoObj.exType
 end
 
 % -------------------------------------------------------------------------
-function menuRunExpt_Callback(hObject, eventdata, handles)
+function menuRunExpt_Callback(~, ~, handles)
 
 % retrieves the fly record GUI handles
 hFig = handles.figExptSetup;
@@ -821,13 +820,13 @@ setappdata(hFig,'exObj',exObj)
 exObj.startExptObj()
 
 % --------------------------------------------------------------------
-function menuToggleIR_Callback(hObject, eventdata, handles)
+function menuToggleIR_Callback(hObject, ~, handles)
 
 % toggles the IR lights
 toggleOptoLights(handles,hObject,true)
 
 % --------------------------------------------------------------------
-function menuToggleWhite_Callback(hObject, eventdata, handles)
+function menuToggleWhite_Callback(hObject, ~, handles)
 
 % toggles the white lights
 toggleOptoLights(handles,hObject,false)
@@ -929,25 +928,25 @@ setappdata(hFig,'sType',sObj.sName)
 %-------------------------------------------------------------------------%
 
 % --------------------------------------------------------------------
-function buttonNewProto_ClickedCallback(hObject, eventdata, handles)
+function buttonNewProto_ClickedCallback(~, ~, handles)
 
 % runs the new protocol menu item
 menuNewProto_Callback(handles.menuNewProto, [], handles)
 
 % -------------------------------------------------------------------------
-function buttonOpenProto_ClickedCallback(hObject, eventdata, handles)
+function buttonOpenProto_ClickedCallback(~, ~, handles)
 
 % runs the open protocol menu item
 menuOpenProto_Callback(handles.menuSaveProto, [], handles)
 
 % -------------------------------------------------------------------------
-function buttonSaveProto_ClickedCallback(hObject, eventdata, handles)
+function buttonSaveProto_ClickedCallback(~, ~, handles)
 
 % runs the save protocol menu item
 menuSaveProto_Callback(handles.menuOpenProto, [], handles)
 
 % -------------------------------------------------------------------------
-function toggleZoomAxes_ClickedCallback(hObject, eventdata, handles)
+function toggleZoomAxes_ClickedCallback(hObject, ~, handles)
 
 % updates the axes zoom properties
 setAxesZoomProperties(handles,get(hObject,'State'))
@@ -961,7 +960,7 @@ setAxesZoomProperties(handles,get(hObject,'State'))
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % --- Executes on button press in buttonOutDir.
-function buttonOutDir_Callback(hObject, eventdata, handles)
+function buttonOutDir_Callback(~, ~, handles)
 
 % retrieves the experimental protocol data struct
 hFig = handles.figExptSetup;
@@ -1044,7 +1043,7 @@ end
 updateFeasFlag(handles,'checkUniqDir',isUniq)
 
 % --- Executes on updating editBaseName.
-function editBaseName_Callback(hObject, eventdata, handles)
+function editBaseName_Callback(hObject, ~, handles)
 
 % retrieves the experimental protocol data struct
 hFig = handles.figExptSetup;
@@ -1070,7 +1069,7 @@ else
 end
 
 % --- Executes on button press in checkFixStart.
-function checkFixStart_Callback(hObject, eventdata, handles)
+function checkFixStart_Callback(hObject, ~, handles)
 
 % updates the 
 set(handles.radioFreeExptStart,'Value',~get(hObject,'Value'));
@@ -1081,7 +1080,7 @@ hPanel = handles.panelExptStartTime;
 panelExptStartTime_SelectionChangedFcn(hPanel, '1', handles)
 
 % --- Executes on selection change in popupStartDay.
-function popupVideoDuration(hObject, eventdata, handles, varargin)
+function popupVideoDuration(hObject, ~, handles, varargin)
 
 % loads the data struct
 hFig = handles.figExptSetup;
@@ -1117,7 +1116,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % --- Executes on selection change in popupFrmRate.
-function popupFrmRate_Callback(hObject, eventdata, handles)
+function popupFrmRate_Callback(hObject, ~, handles)
 
 % loads the data struct and frame list strings
 hFig = handles.figExptSetup;
@@ -1132,7 +1131,7 @@ setappdata(hFig,'iExpt',iExpt);
 calcVideoTiming(handles);  
 
 % --- Executes on slider movement.
-function sliderFrmRate_Callback(hObject, eventdata, handles)
+function sliderFrmRate_Callback(hObject, ~, handles)
 
 % object retrieval
 hFig = handles.figExptSetup;
@@ -1177,7 +1176,7 @@ set(srcObj,fpsFld,nwVal);
 calcVideoTiming(handles);  
 
 % --- Executes on updating editFrmRate
-function editFrmRate_Callback(hObject, eventdata, handles)
+function editFrmRate_Callback(hObject, ~, handles)
 
 % object retrieval
 hFig = handles.figExptSetup;
@@ -1230,7 +1229,7 @@ else
 end
 
 % --- Executes on selection change in popupVideoCompression.
-function popupVideoCompression_Callback(hObject, eventdata, handles)
+function popupVideoCompression_Callback(hObject, ~, handles)
 
 % retrieves the experimental data struct
 hFig = handles.figExptSetup;
@@ -1246,7 +1245,7 @@ setappdata(hFig,'iExpt',iExpt);
 calcVideoTiming(handles);
 
 % --- Executes on button press in buttonOptPlace.
-function buttonOptPlace_Callback(hObject, eventdata, handles)
+function buttonOptPlace_Callback(~, ~, handles)
 
 % initialisations
 hFig = handles.figExptSetup;
@@ -1310,7 +1309,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % --- Executes on button press in checkCustRes.
-function checkCustRes_Callback(hObject, eventdata, handles)
+function checkCustRes_Callback(hObject, ~, handles)
 
 % field retrieval
 hFig = handles.figExptSetup;
@@ -1345,7 +1344,7 @@ end
 arrayfun(@(h,v)(set(h,'String',num2str(v))),hEdit(:),eVal(:));
 
 % --- Executes on editbox update
-function editResDim(hObject, eventdata, handles)
+function editResDim(hObject, ~, handles)
 
 % field retrieval
 hFig = handles.figExptSetup;
@@ -1543,7 +1542,7 @@ if ~isempty(csObj)
 end
 
 % --- callback function for selecting the single stimuli tabs
-function tabSelectedPara(hObj, ~, handles, dType)
+function tabSelectedPara(hObj, ~, handles, ~)
 
 % de-selects any selected groups
 hFig = handles.figExptSetup;
@@ -1594,7 +1593,7 @@ setObjEnableProps(hFig,'buttonAddSig',hasStim);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % --- updates on editing the stimuli name editbox
-function editStimName(hObject, eventdata, handles, dType)
+function editStimName(hObject, ~, handles, dType)
 
 % sets the parameter string
 sParaStr = sprintf('sPara%s',dType);
@@ -1608,7 +1607,7 @@ sPara.sName = get(hObject,'string');
 setappdata(hFig,sParaStr,sPara)
 
 % --- updates on editing the stimuli duration editbox
-function editTotalDur(hObject, eventdata, handles, dType)
+function editTotalDur(hObject, ~, handles, dType)
 
 % global variables
 global axLimMax
@@ -1658,7 +1657,7 @@ end
 set(hObject,'string',num2str(sPara.tDur))
 
 % --- Executes on selection change in popupTotalDurU.
-function popupTotalDurU(hObject, eventdata, handles)
+function popupTotalDurU(hObject, ~, handles)
 
 % updates the current selection
 nDP = 0.001;
@@ -1691,7 +1690,7 @@ resetExptTimeAxes(handles,'L',tDur0)
 set(handles.editTotalDurL,'string',num2str(sPara.tDur));
 
 % --- updates on editing a single stimuli parameter editbox
-function ok = editSingleStimPara(hObject, eventdata, handles, dType)
+function ok = editSingleStimPara(hObject, ~, handles, dType)
 
 % global variables
 global hSigSel
@@ -1899,7 +1898,7 @@ end
 set(hObject,'string',num2str(eval(pStr)))
 
 % --- updates on changing the stimuli duration units popupmenu
-function popupStimTimeUnits(hObject, eventdata, handles, dType)
+function popupStimTimeUnits(hObject, ~, handles, ~)
 
 % global variables
 global hSigSel
@@ -1958,7 +1957,7 @@ else
 end
 
 % --- Executes on button press in buttonResetParaS/L.
-function buttonResetPara(hObject, eventdata, handles)
+function buttonResetPara(hObject, ~, handles)
 
 % global variables
 global hSigSel
@@ -2005,7 +2004,7 @@ setObjEnable(hObject,'off')
 %%%%%F%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % --- Executes on button press for buttonUseMinSigS/L/Ex
-function buttonUseMinSig(hObject, eventdata, handles, tMin)
+function buttonUseMinSig(hObject, ~, handles, tMin)
 
 % global parameters
 global nProto
@@ -2095,7 +2094,7 @@ pause(0.05);
 setObjEnable(hObject,'off')
 
 % --- Executes on button press in buttonAddSigS/L.
-function buttonAddSig(hObject, eventdata, handles, dType)
+function buttonAddSig(~, ~, handles, ~)
 
 % global variables
 global mpStrDef mType nProto
@@ -2134,7 +2133,7 @@ else
 end
 
 % --- Executes on button press in buttonAddSigS/L.
-function buttonDeselectSig(hObject, eventdata, handles)
+function buttonDeselectSig(hObject, ~, handles)
 
 % removes the signal block hightlight
 hFig = handles.figExptSetup;
@@ -2144,7 +2143,7 @@ figExptSetup_WindowButtonDownFcn(hFig, [], handles, 'alt')
 setObjEnable(hObject,'off')
 
 % --- Executes on button press in buttonCopySigS/L.
-function buttonCopySig(hObject, eventdata, handles)
+function buttonCopySig(~, ~, handles)
 
 % global variables
 global yGap
@@ -2223,7 +2222,7 @@ else
 end
 
 % --- Executes on button press in buttonDelSigS/L.
-function buttonDelSig(hObject, eventdata, handles)
+function buttonDelSig(~, ~, handles)
 
 % global variables
 global hSigSel
@@ -2280,7 +2279,7 @@ figExptSetup_WindowButtonMotionFcn(hFig, [], handles)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % --- Executes on button press in buttonClearChanS/L.
-function buttonClearChan(hObject, eventdata, handles)
+function buttonClearChan(hObject, ~, handles)
 
 % global variables
 global hSigSel nProto iSigObj
@@ -2449,7 +2448,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % --- Executes on button press in buttonSaveTrainS/L.
-function buttonSaveTrain(hObject, eventdata, handles)
+function buttonSaveTrain(~, ~, handles)
 
 % initialisations
 hFig = handles.figExptSetup;
@@ -2557,7 +2556,7 @@ for i = 1:length(sPara)
 end
 
 % --- Executes on button press in buttonSaveTrainS/L.
-function buttonDeleteTrain(hObject, eventdata, handles)
+function buttonDeleteTrain(hObject, ~, handles)
 
 % initialisations
 hFig = handles.figExptSetup;
@@ -2628,7 +2627,7 @@ else
 end
 
 % --- Executes on button press in buttonUpdateTrainS/L.
-function buttonUpdateTrain(hObject, eventdata, handles)
+function buttonUpdateTrain(~, ~, handles)
 
 % global parameters
 global hSigSel
@@ -2723,13 +2722,13 @@ if ~ok
 end
 
 % --- Executes on button press in buttonRepeatTrainS/L.
-function buttonRepeatTrain(hObject, eventdata, handles)
+function buttonRepeatTrain(~, ~, ~)
 
 % FINISH ME!
 a = 1;
 
 % --- Executes on selecting listStimTrainS/L.
-function listStimTrain(hObject, eventdata, handles)
+function listStimTrain(hObject, ~, handles)
 
 % retrieves the
 hFig = handles.figExptSetup;
@@ -2756,7 +2755,7 @@ else
 end
 
 % --- Executes on button press in buttonTestTrain.
-function buttonTestTrain_Callback(hObject, eventdata, handles)
+function buttonTestTrain_Callback(hObject, ~, handles)
 
 % global variables
 global timerTest 
@@ -2955,13 +2954,13 @@ hDL{2}.setPosition([sum(rPos([1,3])),tLim(2)],pDL(:,2));
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % --- the signal test start callback function
-function startTest(obj, event, hSigTest)
+function startTest(obj, ~, hSigTest)
 
 % turns on the signal test line
 setObjVisibility(hSigTest,'on');
 
 % --- the signal test timer callback function
-function timerTest(obj, event, hButton, hSigTest)
+function timerTest(obj, ~, hButton, hSigTest)
 
 % determines if the toggle button has be clicked again
 if ~get(hButton,'Value')
@@ -2975,7 +2974,7 @@ else
 end
 
 % --- the signal test stop callback function
-function stopTest(obj, event, hButton, hSigTest)
+function stopTest(obj, ~, hButton, hSigTest)
 
 % turns off the signal test line
 setObjVisibility(hSigTest,'off');
@@ -2989,13 +2988,13 @@ delete(obj)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % --- updates on editing an experiment stimuli parameter editbox
-function listExptStimPara(hObject, eventdata, handles, dType)
+function listExptStimPara(~, ~, ~, ~)
 
 % finish me?
 a = 1;
 
 % --- updates on editing an experiment stimuli parameter editbox
-function editExptStimPara(hObject, eventdata, handles, dType)
+function editExptStimPara(hObject, ~, handles, dType)
 
 % global variables
 global hSigSel
@@ -3171,7 +3170,7 @@ if isempty(varargin)
 end
 
 % --- callback function for updating the experiment duration popup boxes.
-function popupExptDuration(hObject, eventdata, handles, dType)
+function popupExptDuration(hObject, eventdata, handles, ~)
 
 % initialisations
 hFig = handles.figExptSetup;
@@ -3246,7 +3245,7 @@ end
 set(hObject,'Value',iExpt0.Timing.Texp(iType)+1);
 
 % --- Executes on selection change in popupStartDayInfo.
-function popupStartTime(hObject, eventdata, handles)
+function popupStartTime(hObject, ~, handles)
 
 % initialisations
 hFig = handles.figExptSetup;
@@ -3316,7 +3315,7 @@ setappdata(hFig,'iExpt',iExpt);
 resetExptTimeAxes(handles,'Ex')
 
 % --- Executes on selection change for an experiment time unit popup
-function popupExptTimeUnits(hObject, eventdata, handles, dType)
+function popupExptTimeUnits(hObject, ~, handles, dType)
 
 %
 hFig = handles.figExptSetup;
@@ -3345,7 +3344,7 @@ eval(sprintf('sParaEx.%s=sPara;',dType))
 setappdata(hFig,'sParaEx',sParaEx)
 
 % --- callback function for updating the experiment duration popup boxes.
-function popupStimDuration(hObject, eventdata, handles, dType)
+function popupStimDuration(hObject, ~, handles, dType)
 
 % global variables
 global hSigSel

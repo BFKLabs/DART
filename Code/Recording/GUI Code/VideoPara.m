@@ -354,7 +354,7 @@ classdef VideoPara < handle
                 fName = field2cell(obj.infoSrc,'Name');
                 srcInfoNw = obj.infoSrc(strcmp(fName,srcInfo.Name));
             else                
-                srcInfoNw = propinfo(obj.srcObj,srcInfo.Name);                
+                srcInfoNw = propinfo(obj.srcObj,srcInfo.Name);
             end
             
             % retrieves the current parameters constraints values
@@ -462,28 +462,33 @@ classdef VideoPara < handle
                 % loads the video preset data file
                 vprData = importdata(fullfile(fDir,fName));
                 
-                % retrieves the source object information       
-                pInfo = propinfo(obj.srcObj);
-                [obj.infoSrc,fldNames] = combineDataStruct(pInfo);
-                ii = ~cellfun(@(x)(strcmp(x,'Parent')),fldNames);
+                % retrieves the source object information 
+                if obj.isWebCam
+                    [fldNames,infoSrcNw] = ...
+                        getWebCamProps(obj.infoObj.objIMAQ);
+                else
+                    pInfo = propinfo(obj.srcObj);
+                    [infoSrcNw,fldNames] = combineDataStruct(pInfo);
+                end
                 
                 % determines if camera properties match that from file
-                A = fldNames(ii);
-                isM = cellfun(@(x)(any(strcmp(vprData.fldNames,x))),A);
-                if ~all(isM)
+                A = fldNames(~cellfun(@(x)(strcmp(x,'Parent')),fldNames));
+                if ~isequal(A,vprData.fldNames)
                     % if not, then exit with an error
                     tStr = 'Invalid Camera Presets';
                     eStr = 'Camera presets do not match video properties.';
                     waitfor(errordlg(eStr,tStr,'modal'))
                     return
+                    
                 else
                     % resets the parameter struct and updates the fields
-                    obj.pVal0 = [vprData.fldNames,vprData.pVal];
+                    obj.infoSrc = infoSrcNw;
+                    obj.pVal0 = [vprData.fldNames(:),vprData.pVal(:)];
                     obj.buttonReset(obj.hButC{3},[])
                 end
             end
             
-        end
+        end        
         
         % --- Executes on button press in save button
         function buttonSave(obj, ~, ~)
@@ -494,10 +499,14 @@ classdef VideoPara < handle
                 'Save Stimulus Playlist File',obj.iProg.CamPara);
             if (fIndex ~= 0)
                 % retrieves the current parameter values and field names
-                fldNames = fieldnames(obj.srcObj);
-                pVal = arr2vec(get(obj.srcObj,fldNames));
+                if obj.isWebCam
+                    fldNames = getWebCamProps(obj.infoObj.objIMAQ);
+                else
+                    fldNames = fieldnames(obj.srcObj);
+                end
                 
                 % removes the parent object from the struct
+                pVal = arr2vec(get(obj.sObj,fldNames));
                 ii = ~cellfun(@(x)(strcmp(x,'Parent')),fldNames);
                 [fldNames,pVal] = deal(fldNames(ii),pVal(ii));
                 
@@ -556,8 +565,11 @@ classdef VideoPara < handle
                         % resets the camera properties and popup index
                         iSel = find(strcmp(uData.ConstraintValue,pVal));
                         if ~isempty(iSel)
-                            set(obj.sObj,uData.Name,pVal);
-                            set(obj.hObj{i}{j},'Value',iSel)
+                            try
+                                set(obj.sObj,uData.Name,pVal);
+                                set(obj.hObj{i}{j},'Value',iSel)
+                            catch
+                            end
                         end
                     end
                 end
@@ -592,8 +604,12 @@ classdef VideoPara < handle
             % deletes the sub-GUI
             delete(obj.hFig);
             
-        end
-               
+        end               
+
+        % ----------------------- %        
+        % --- OTHER FUNCTIONS --- %
+        % ----------------------- %   
+
         % --- sets up the parameter in the panel, hE
         function [hTxt,hObj] = setupParaObj(obj,hP,isE)
         
@@ -718,12 +734,23 @@ classdef VideoPara < handle
             yObj = yTxt + 2*isE;
             cellfun(@(h,y)(obj.resetObjDim(h,2,y)),hObj,num2cell(yObj(:)));
             
-        end
-
-        % ----------------------- %        
-        % --- OTHER FUNCTIONS --- %
-        % ----------------------- %   
-
+        end                
+        
+        % --- sets up the tooltip string
+        function ttStr = setupTTString(obj,sInfo,pL,pV)
+        
+            ttStr = sprintf(['%s\n %s Lower Limit = %s',...
+                             '\n %s Upper Limit = %s',...
+                             '\n %s Initial Value = %s'],...
+                             sInfo.Name,obj.lArr,num2str(pL(1)),...
+                             obj.lArr,num2str(pL(2)),obj.lArr,num2str(pV));            
+            
+        end        
+        
+        % ------------------------------------------- %        
+        % --- DIMENSION/FIELD RETRIEVAL FUNCTIONS --- %
+        % ------------------------------------------- %        
+        
         % --- calculates the width of the popup menus
         function widPop = calcPopupWidth(obj,hP,hPopup,pStr)
 
@@ -739,28 +766,63 @@ classdef VideoPara < handle
             widPop = max(cellfun(@(h)(obj.getObjDim(h,3,0)),hTxtP)) + dWid;
             cellfun(@delete,hTxtP)
 
-        end
+        end        
         
-        % --- retrieves the ignored field information
-        function getIgnoredFieldInfo(obj)
+        % --- calculates the max object width
+        function widObj = getMaxObjWidths(obj,hObj,isE)
             
-            % initialisations
-            if isprop(obj.infoObj.objIMAQ,'pROI')
-                pROI = obj.infoObj.objIMAQ.pROI;                
+            if ~exist('isE','var'); isE = false; end
+            
+            if isempty(hObj)
+                widObj = 0;
             else
-                pROI = get(obj.infoObj.objIMAQ,'ROIPosition');
+                widObj = max(cellfun(@(h)(obj.getObjDim(h,3,isE)),hObj));
             end
             
-            % sets the ignored field information/names
-            obj.igFld = {{'AcquisitionFrameRateEnable','True'},...
-                         {'AutoModeRegionOffsetX',pROI(1)},...
-                         {'AutoModeRegionOffsetY',pROI(2)},...
-                         {'AutoModeRegionWidth',pROI(3)},...
-                         {'AutoModeRegionHeight',pROI(4)}};
-            obj.igName = cellfun(@(x)(x{1}),obj.igFld,'un',0);
+        end                
+        
+        % --- retrieves the value for the given parameter
+        function pVal = getParaVal(obj,sInfo)
             
-        end
-
+            try
+                if obj.isWebCam
+                    pVal = get(obj.infoObj.objIMAQ,sInfo.Name);
+                else
+                    pVal = get(obj.srcObj,sInfo.Name);
+                end
+            catch
+                pVal = {'Not Applicable'};
+            end
+            
+        end        
+        
+        % ------------------------------- %        
+        % --- MISCELLANEOUS FUNCTIONS --- %
+        % ------------------------------- %          
+        
+        % --- post parameter update function (for specific parameters)
+        function specialParaUpdate(obj,pName,pVal)
+                        
+            % updates the video ROI (depending on camera type)
+            switch get(obj.infoObj.objIMAQ,'Name')
+                case 'Allied Vision 1800 U-501m NIR'
+                    switch pName
+                        case {'AutoModeRegionOffsetX',...
+                              'AutoModeRegionOffsetY',...
+                              'AutoModeRegionWidth',...
+                              'AutoModeRegionHeight'}
+                            resetCameraROI(obj.hMain,obj.infoObj.objIMAQ)
+                    end
+            end
+            
+            % if video calibrating is on, then update the calibration info
+            vcObj = getappdata(obj.hFigM,'vcObj');            
+            if ~isempty(vcObj) && vcObj.isOpen
+                vcObj.appendVideoProp(pName,pVal);
+            end
+            
+        end                
+            
         % --- outputs the update error message
         function outputUpdateErrorMsg(obj)
             
@@ -789,70 +851,28 @@ classdef VideoPara < handle
                 waitfor(errordlg(eStr,tStr,'modal'))
             end
             
-        end
+        end        
         
-        % --- calculates the max object width
-        function widObj = getMaxObjWidths(obj,hObj,isE)
+        % --- retrieves the ignored field information
+        function getIgnoredFieldInfo(obj)
             
-            if ~exist('isE','var'); isE = false; end
-            
-            if isempty(hObj)
-                widObj = 0;
+            % initialisations
+            if isprop(obj.infoObj.objIMAQ,'pROI')
+                pROI = obj.infoObj.objIMAQ.pROI;                
             else
-                widObj = max(cellfun(@(h)(obj.getObjDim(h,3,isE)),hObj));
+                pROI = get(obj.infoObj.objIMAQ,'ROIPosition');
             end
+            
+            % sets the ignored field information/names
+            obj.igFld = {{'AcquisitionFrameRateEnable','True'},...
+                         {'AutoModeRegionOffsetX',pROI(1)},...
+                         {'AutoModeRegionOffsetY',pROI(2)},...
+                         {'AutoModeRegionWidth',pROI(3)},...
+                         {'AutoModeRegionHeight',pROI(4)}};
+            obj.igName = cellfun(@(x)(x{1}),obj.igFld,'un',0);
             
         end        
         
-        % --- post parameter update function (for specific parameters)
-        function specialParaUpdate(obj,pName,pVal)
-                        
-            % updates the video ROI (depending on camera type)
-            switch get(obj.infoObj.objIMAQ,'Name')
-                case 'Allied Vision 1800 U-501m NIR'
-                    switch pName
-                        case {'AutoModeRegionOffsetX',...
-                              'AutoModeRegionOffsetY',...
-                              'AutoModeRegionWidth',...
-                              'AutoModeRegionHeight'}
-                            resetCameraROI(obj.hMain,obj.infoObj.objIMAQ)
-                    end
-            end
-            
-            % if video calibrating is on, then update the calibration info
-            vcObj = getappdata(obj.hFigM,'vcObj');            
-            if ~isempty(vcObj) && vcObj.isOpen
-                vcObj.appendVideoProp(pName,pVal);
-            end
-            
-        end
-        
-        % --- retrieves the value for the given parameter
-        function pVal = getParaVal(obj,sInfo)
-            
-            try
-                if obj.isWebCam
-                    pVal = get(obj.infoObj.objIMAQ,sInfo.Name);
-                else
-                    pVal = get(obj.srcObj,sInfo.Name);
-                end
-            catch
-                pVal = {'Not Applicable'};
-            end
-            
-        end        
-        
-        % --- sets up the tooltip string
-        function ttStr = setupTTString(obj,sInfo,pL,pV)
-        
-            ttStr = sprintf(['%s\n %s Lower Limit = %s',...
-                             '\n %s Upper Limit = %s',...
-                             '\n %s Initial Value = %s'],...
-                             sInfo.Name,obj.lArr,num2str(pL(1)),...
-                             obj.lArr,num2str(pL(2)),obj.lArr,num2str(pV));            
-            
-        end
-            
     end    
     
     % static class methods

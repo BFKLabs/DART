@@ -100,7 +100,7 @@ classdef AdaptorInfoClass < handle
         end
         
         % --- initialises the class object fields
-        function initClassFields(obj)                 
+        function initClassFields(obj)
             
             % initialises the parameter file path
             obj.pFile = getParaFileName('ProgPara.mat');
@@ -117,7 +117,7 @@ classdef AdaptorInfoClass < handle
             [obj.Wmax,obj.Hmax] = deal(scrSz(3),scrSz(4));   
             
             % external device initialisations
-            obj.extnObj = feval('runExternPackage','ExtnDevices');            
+            obj.extnObj = runExternPackage('ExtnDevices');            
             
             % sets the program default directory struct
             switch get(obj.hFigM,'tag')
@@ -301,6 +301,7 @@ classdef AdaptorInfoClass < handle
                 try
                     daqreset; 
                     pause(0.1); 
+                catch
                 end
 
                 % sets the exit button string
@@ -360,6 +361,8 @@ classdef AdaptorInfoClass < handle
                         obj.objIMAQDev{i} = devInfo.DeviceInfo;
                         isOK(i) = true;
                         nInfo(i) = length(obj.objIMAQDev{i});
+
+                        % determines the feasible formats for the camera
                         vStrIMAQ0{i} = field2cell...
                                     (obj.objIMAQDev{i}(:),'DeviceName');
                         obj.sFormat{i} = obj.detFeasCamFormat(i);
@@ -539,7 +542,7 @@ classdef AdaptorInfoClass < handle
             % error and exit the function
             if ~(obj.hasDAQ || obj.hasIMAQ)
                 % deletes the loadbar
-                try; delete(obj.hLoad); end
+                try delete(obj.hLoad); catch; end
 
                 % outputs the error message
                 tStr = 'No Video/External Devices Detected';
@@ -573,7 +576,7 @@ classdef AdaptorInfoClass < handle
             end
             
             % deletes the loadbar
-            try; delete(obj.hLoad); end            
+            try delete(obj.hLoad); catch; end            
             
         end
         
@@ -950,31 +953,43 @@ classdef AdaptorInfoClass < handle
         % --- determines the feasible camera formats --- %
         function sFormat = detFeasCamFormat(obj,iAdapt)
 
-            % sets the upper limit on the camera
+            % memory allocation and field retrieval
             imaqInfoDev = obj.objIMAQDev{iAdapt};
+            sDir = {'ascend','descend','descend'};
             sFormat = cell(length(imaqInfoDev),1);
 
             % sets the camera formats (for each camera type)
             for i = 1:length(sFormat)
                 % determines the supported strings
                 A = imaqInfoDev(i).SupportedFormats;
-                if any(strContains(A,'_x'))
-                    sFormatS = cellfun(@(x)...
-                                (splitStringRegExp(x,'_x')'),A,'un',0);
+                if any(strContains(A,'_') & strContains(A,'x'))
+                    sFormatS = cell2cell(cellfun(@(x)...
+                           (splitStringRegExp(x,'_x')'),A,'un',0));
+                    if size(sFormatS,2) == 3
+                        % converts and sorts the format array
+                        sFormatS(:,2:3) = ...
+                               cellfun(@str2double,sFormatS(:,2:3),'un',0);
+                        [sFormatS,ii] = sortrows(sFormatS,[1,2,3],sDir);
+                        A = A(ii);
 
-                    % removes the non-feasible camera settings
-                    if length(sFormatS{1}) == 3
-                        isFeas = cellfun(@(x)(...
-                                (str2double(x{2}) <= obj.Wmax)) && ...
-                                (str2double(x{3}) <= obj.Hmax),sFormatS);
+                        % retrieves the maximum feasible camera dimensions
+                        W = cell2mat(sFormatS(:,2));
+                        H = cell2mat(sFormatS(:,3));
+                        [WmaxF,HmaxF] = ...
+                            obj.detMaxVideoDim(imaqInfoDev(i).DeviceName);
+
+                        % removes the non-feasible camera settings
+                        isFeas = (W <= WmaxF) & (H <= HmaxF);
                         sFormat{i} = A(isFeas);
                     end
+
                 elseif any(strContains(A,'Mono8'))
                     % removes any non Mono8 fields
                     A = A(:);
                     hasMono = strContains(A,'Mono');
                     isMono8 = strContains(A,'Mono8');
                     sFormat{i} = [A(~hasMono);A(isMono8)];
+
                 else
                     sFormat{i} = A(:);
                 end
@@ -1106,6 +1121,20 @@ classdef AdaptorInfoClass < handle
             
         end        
         
+        % --- determines the maximum video dimensions (based on device)
+        function [WmaxF,HmaxF] = detMaxVideoDim(obj,devName)
+
+            switch devName
+                case 'UV155xLE-C_3500006372'
+                    [WmaxF,HmaxF] = deal(800,600);
+
+                otherwise
+                    [WmaxF,HmaxF] = deal(obj.Wmax,obj.Hmax);
+
+            end
+
+        end
+
     end
     
     % static class methods
