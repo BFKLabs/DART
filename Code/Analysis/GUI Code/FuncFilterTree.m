@@ -134,7 +134,7 @@ classdef FuncFilterTree < matlab.mixin.SetGet
                 % experiment shape string
                 obj.fcnInfo{iExp,2} = expStr{1+iMov{iExp}.is2D};
                 if isfield(iMov{iExp},'autoP') && ...
-                        ~isempty(iMov{iExp}.autoP.X0)
+                        ~isempty(iMov{iExp}.autoP)
                     obj.fcnInfo{iExp,2} = sprintf('%s (%s)',...
                         obj.fcnInfo{iExp,2},iMov{iExp}.autoP.Type);
                 end
@@ -296,7 +296,7 @@ classdef FuncFilterTree < matlab.mixin.SetGet
                 % create a regexp filter list for the "yes" cells
                 cFiltArr = java.util.ArrayList;       
                 for i = 1:length(obj.snTot)
-                    j = size(obj.fcnData,2)+(i+1); 
+                    j = size(obj.fcnData,2) + i; 
                     cFiltArr.add(RowFilter.regexFilter('Yes',j));
                 end
 
@@ -468,19 +468,17 @@ classdef FuncFilterTree < matlab.mixin.SetGet
 
                 % determines if the requirements match for each expt
                 isMatch = true(nReq,nExp);
-                for iReq = 1:nReq
-                    if ~strcmp(fcnDataF{iReq},'None')
-                        isMatch(iReq,:) = cellfun(@(x)(strContains(...
+                for iReq = find(~strcmp(fcnDataF,'None'))
+                    isMatch(iReq,:) = cellfun(@(x)(strContains(...
                              x,fcnDataF{iReq})),obj.fcnInfo(:,iReq));
-                    end
-                end                
+                end
 
                 % calculates the overall compatibility
                 obj.cmpData(iFunc,:) = all(isMatch,1);                           
             end
             
             % accounts for the function scope (if provided)
-            if exist('fScope','var')
+            if exist('fScope','var') && ~isempty(fScope)
                 B = repmat(strContains(obj.fcnData(:,2),fScope),1,nExp);
                 obj.cmpData = obj.cmpData & B;
             end                 

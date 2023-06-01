@@ -42,6 +42,8 @@ classdef PhaseTrack < matlab.mixin.SetGet
         NszB
         xLim
         yLim
+        ImgS0
+        ImgSL0
         
         % other object fields                     
         y0      
@@ -49,6 +51,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
         nI
         dTol
         isHV
+        isHT1
         nPr = 5;  
         cFlag
         
@@ -58,12 +61,11 @@ classdef PhaseTrack < matlab.mixin.SetGet
     methods
         
         % class constructor
-        function obj = PhaseTrack(iMov,hProg,isHV)
+        function obj = PhaseTrack(iMov,hProg)
             
             % sets the input arguments
             obj.iMov = iMov;
             obj.hProg = hProg;
-            obj.isHV = isHV;
             
             % array dimensioning
             obj.nApp = length(obj.iMov.iR);
@@ -99,7 +101,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 pW = 0.5*(1+iApp/(1+obj.nApp));
                 wStr = sprintf(['Residual Calculations ',...
                                 '(Region %i of %i)'],iApp,obj.nApp);
-                if obj.hProg.Update(2+obj.wOfs,wStr,pW)
+                if obj.hProg.Update(obj.wOfs+2,wStr,pW)
                     % if the user cancelled, then exit
                     obj.calcOK = false;
                     return
@@ -223,16 +225,28 @@ classdef PhaseTrack < matlab.mixin.SetGet
             % sets up the region image stack
             iRT0 = obj.iMov.iRT{iApp};
             [ImgL,ImgBG] = obj.setupRegionImageStack(iApp);            
-            [iRT,iCT] = obj.getSubRegionIndices(iApp,size(ImgBG,2));            
+            [iRT,iCT] = obj.getSubRegionIndices(iApp,size(ImgL{1},2));
+            
+            % sets up the special image stack
+            if obj.isHT1
+                ImgSegS = obj.setupSpecialImgStack(ImgL,iRT,iCT,iApp,fok);
+            end
             
             % segments the location for each feasible sub-region
             for iTube = find(fok(:)')
-                % sets the sub-region image stack
-                ImgSR = cellfun(@(x)(x(iRT{iTube},iCT)),ImgL,'un',0);
-                
-                % sets up the residual image stack                        
-                ImgBGL = ImgBG(iRT{iTube},iCT);
-                ImgSeg = obj.setupResidualStack(ImgSR,ImgBGL);                 
+                % sets up the image stack for segmentation
+                if obj.isHT1
+                    % case is a special phase
+                    ImgSeg = ImgSegS{iTube};
+                    
+                else
+                    % sets the sub-region image stack
+                    ImgSR = cellfun(@(x)(x(iRT{iTube},iCT)),ImgL,'un',0);
+                    
+                    % case is another phase type
+                    ImgBGL = ImgBG(iRT{iTube},iCT);
+                    ImgSeg = obj.setupResidualStack(ImgSR,ImgBGL);
+                end
                 
                 % segments the image stack
                 [fP0nw,IP0nw] = obj.segmentSubRegion...
@@ -790,29 +804,74 @@ classdef PhaseTrack < matlab.mixin.SetGet
         function [ImgL,ImgBG] = setupRegionImageStack(obj,iApp)
             
             % sets the region row/column indices
-            [iR,iC] = deal(obj.iMov.iR{iApp},obj.iMov.iC{iApp});
             ImgL = getRegionImgStack...
                             (obj.iMov,obj.Img,obj.iFrmR,iApp,obj.isHV);
             
             % calculates the background/local images from the stack    
-            ImgBG = obj.iMov.Ibg{obj.iPh}{iApp};             
-            Iref = mean(ImgBG(:),'omitnan');
-            
-            % determines if mean of any of the frame images are outside the
-            % tolerance, pTolPh (=5)
-            ImgLmn = cellfun(@(x)(mean(x(:),'omitnan')),ImgL);
-            isOK = abs(ImgLmn-Iref) < obj.trkP.pTolPh;  
-            if any(~isOK)
-                % if so, then reset the 
-                ImgL(~isOK) = cellfun(@(x,dy)(x-(dy-Iref)),...
-                            ImgL(~isOK),num2cell(ImgLmn(~isOK)),'un',0);
-            end
-            
-            % removes the rejected regions from the sub-images
-            Bw = getExclusionBin(obj.iMov,[length(iR),length(iC)],iApp);
-            [ImgBG,ImgL] = deal(ImgBG.*Bw,cellfun(@(I)(I.*Bw),ImgL,'un',0));
+            if obj.isHT1
+                ImgBG = [];
+                
+            else
+                ImgBG = obj.iMov.Ibg{obj.iPh}{iApp};             
+                Iref = mean(ImgBG(:),'omitnan');
+
+                % determines if mean of any of the frame images are outside 
+                % the tolerance, pTolPh (=5)
+                ImgLmn = cellfun(@(x)(mean(x(:),'omitnan')),ImgL);
+                isOK = abs(ImgLmn-Iref) < obj.trkP.pTolPh;  
+                if any(~isOK)
+                    % if so, then reset the 
+                    ImgL(~isOK) = cellfun(@(x,dy)(x-(dy-Iref)),...
+                                ImgL(~isOK),num2cell(ImgLmn(~isOK)),'un',0);
+                end
+                
+                % removes the rejected regions from the sub-images
+                [iR,iC] = deal(obj.iMov.iR{iApp},obj.iMov.iC{iApp});
+                Bw = getExclusionBin(obj.iMov,[length(iR),length(iC)],iApp);
+                ImgBG = ImgBG.*Bw;
+                ImgL = cellfun(@(I)(I.*Bw),ImgL,'un',0);
+            end            
             
         end           
+
+        % ------------------------------------------------ %
+        % --- SPECIAL PHASE IMAGE STACK SETUP FUNCTION --- %
+        % ------------------------------------------------ %
+        
+        % --- sets up the special phase image stack for analysis
+        function ImgSegS = setupSpecialImgStack(obj,ImgL,iRT,iCT,iApp,fok)
+            
+            % memory allocation
+            initSL0 = false;
+            ImgSegS = cell(size(fok));  
+            
+            % allocates memory for the edge images (if not already set)
+            if isempty(obj.ImgSL0{iApp})
+                [obj.ImgSL0{iApp},initSL0] = deal(ImgSegS,true);
+            end
+            
+            % sets up the image stack for all sub-regions
+            for iT = find(fok(:)')
+                % retrieves the image stack for the sub-region
+                ImgSL = cellfun(@(x)(x(iRT{iT},iCT)),ImgL,'un',0);
+                Bw = getExclusionBin(obj.iMov,size(ImgSL{1}),[]);
+                
+                %
+                if initSL0
+                    I0 = cellfun(@(x)...
+                            (x(iRT{iT},iCT)),obj.ImgS0{iApp},'un',0);
+                    I1 = cellfun(@(x)...
+                            (min(0,Bw.*applyHMFilter(x))),I0,'un',0);
+                    obj.ImgSL0{iApp}{iT} = ...
+                            cellfun(@(x)(imfilter(x,obj.hS)),I1,'un',0);
+                end
+                
+                % sets up the special residual image stack
+                ImgSegS{iT} = obj.calcSpecialResidualImages...
+                                        (ImgSL,Bw,obj.ImgSL0{iApp}{iT});
+            end
+            
+        end        
         
         % -------------------------- %
         % --- PLOTTING FUNCTIONS --- %
@@ -956,7 +1015,40 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 isIn = any(dxLim < obj.dTol/2);
             end
             
-        end
+        end        
+        
+    end
+    
+    % static class methods
+    methods (Static)
+        
+        % --- calculates the special phase residual image stack
+        function ImgSR = calcSpecialResidualImages(ImgSL0,Bw,I0)
+            
+            % parameters            
+            nFrmSL = length(ImgSL0);
+            ImgSR = cell(nFrmSL,1);
+
+            % 
+            hS = fspecial('gaussian');            
+            ImgSL = cellfun(@(x)(Bw.*applyHMFilter(x)),ImgSL0,'un',0);
+            ImgSL = cellfun(@(x)(min(0,imfilter(x,hS))),ImgSL,'un',0);
+            
+            % sets up the residual images for all frames
+            xiF = 1:nFrmSL;
+            for i = xiF
+                % sets up the surrounding frame indices
+                xiSL = xiF ~= i;
+                
+                % calculates the residual image mask
+                Inw = [ImgSL(xiSL),I0];
+                Itmp = cellfun(@(x)(max(0,x-ImgSL{i})),Inw,'un',0);
+                ImgSR{i} = calcImageStackFcn(Itmp,'max');
+%                 ImgSR{i} = calcImageStackFcn(Itmp,'max')./(1 + ImgSL0{i});
+            end
+            
+        end        
+        
     end
     
 end

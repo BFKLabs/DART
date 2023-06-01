@@ -355,7 +355,8 @@ if strcmp(chN,'Ch')
 else   
     % otherwise, determine all blocks that correspond to the current
     % device/channel name
-    chName = field2cell(sPara.sTrain(indS).blkInfo,'chName');
+    chName0 = field2cell(sPara.sTrain(indS).blkInfo,'chName');
+    chName = cellfun(@(x)(strrep(x,' #','')),chName0,'un',0);
     isM = strcmp(dType,dT) & strcmp(chName,chN);
     blkInfo = sTrain.blkInfo(isM);
 end

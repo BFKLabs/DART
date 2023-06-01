@@ -434,6 +434,7 @@ tabSelected(findall(hFig,'Title',pType0), [], handles)
 function menuOpenProto_Callback(~, ~, handles)
 
 % initialisations 
+resetStimTrain = true;
 hFig = handles.figExptSetup;  
 iProg = getappdata(hFig,'iProg');
 infoObj = getappdata(hFig,'infoObj');
@@ -453,9 +454,6 @@ if fIndex == 0
     % if the user cancelled, then exit the function
     return
 end
-    
-% flag intialisation
-resetStimTrain = true;
 
 % removes any currently selected signal blocks
 figExptSetup_WindowButtonDownFcn(hFig, [], handles, 'alt')
@@ -502,7 +500,7 @@ switch fExtn
         % otherwise, set the stimulus protocol playlist and sets 
         % up the experimental playlist struct
         [sTrainS,dType,nCh] = convertStimData(fData);        
-        iExpt = initExptStruct(objIMAQ,exptType);
+        iExpt = initExptStruct(infoObj.objIMAQ,exptType,infoObj.objDAQ);
         iStim = initTotalStimParaStruct();
         sTrainEx = [];
 end

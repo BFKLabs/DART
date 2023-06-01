@@ -21,6 +21,8 @@ classdef Track < matlab.mixin.SetGet
         calcOK = true;
         isBatch = false; 
         isCalib = false;
+        ivPhRej = 5;
+        ivPhFeas = [1,2,4];
 
         % boolean flags and other count variables
         is2D
@@ -123,6 +125,14 @@ classdef Track < matlab.mixin.SetGet
             obj.is2D = is2DCheck(obj.iMov);
         
         end
+        
+        % --- determines which phases are feasible (from feasInd)
+        function okPh = getFeasPhase(obj,indF)
+
+            if ~exist('indF','var'); indF = obj.ivPhFeas; end
+            okPh = arrayfun(@(x)(any(indF==x)),obj.iMov.vPhase);
+
+        end        
             
     end
     

@@ -291,7 +291,7 @@ classdef FilterResObj < handle
             % locations known with reasonable accuracy
             if isempty(obj.hC{obj.iApp})
                 if any(obj.okS)
-                    obj.setupFlyTemplate()
+                    obj.setupFlyTemplate(dIRL)
                 else
                     return
                 end
@@ -622,7 +622,7 @@ classdef FilterResObj < handle
         % ------------------------------------------ %
         
         % --- calculates the fly template image (for the current region) 
-        function setupFlyTemplate(obj)
+        function setupFlyTemplate(obj,dIRL)
 
             % sets the sub-region size
             N = ceil(obj.dTol);
@@ -631,29 +631,32 @@ classdef FilterResObj < handle
             end
                 
             % sets the known fly location coordinates/linear indices
-            yOfsT = cell2mat(obj.yOfs(obj.okS));
-            pOfsT = [zeros(sum(obj.okS),1),yOfsT(:)];            
-            fPosT = cellfun(@(x)(x(obj.okS,:)+pOfsT),obj.fPos,'un',0);
-                       
+            dIRL = cell2cell(dIRL(obj.okS),0);
+            fPosT = cellfun(@(x)(x(obj.okS,:)),obj.fPos,'un',0);                     
+            
             % calculates the residual image stacks
-            IR0 = cellfun(@(y)(cellfun(@(h)(...
-                    (imfiltersym(y,h)-y)),obj.hS,'un',0)),obj.IL0,'un',0);
-            IR0s = cellfun(@(x)(calcImageStackFcn(x,'mean')),IR0,'un',0);
-                        
+%             IR0 = cellfun(@(y)(cellfun(@(h)(...
+%                     (imfiltersym(y,h)-y)),obj.hS,'un',0)),obj.IL0,'un',0);
+%             IR0s = cellfun(@(x)(calcImageStackFcn(x,'mean')),IR0,'un',0);
+            
+%             IR0 = cellfun(@(y)(cellfun(@(h)(...
+%                     (imfiltersym(y,h))),obj.hS,'un',0)),obj.IL0,'un',0);                
+%             IR0s = cellfun(@(x)(255*(1-normImg(x))),obj.IL0,'un',0);
+%             IR0s = dIRL;
+
             % keep looping until the filtered binary mask no-longer touches
             % the edge of the sub-region frame
             while 1
                 % retrieves the fly sub-image stack (for all known points)
                 Isub = cell(obj.nFrm,sum(obj.okS));
                 for i = 1:obj.nFrm
-                    Isub(i,:) = cellfun(@(x)(obj.getPointSubImage...
-                           (IR0s{i},x,N)),num2cell(fPosT{i},2),'un',0)';
-%                     Isub(i,:) = cellfun(@(x)(obj.getPointSubImage...
-%                            (obj.IRs{i},x,N)),num2cell(fPosT{i},2),'un',0)';
+                    Isub(i,:) = cellfun(@(x,y)(obj.getPointSubImage...
+                         (y,x,N)),num2cell(fPosT{i},2)',dIRL(i,:),'un',0);
                 end
                 
                 % calculates the 
-                Bsub = cellfun(@(x)(detLargestBinary(-x)),Isub,'un',0);
+                pOfs = (size(Isub{1})+1)/2;
+                Bsub = cellfun(@(x)(detLargestBinary(-x,pOfs)),Isub,'un',0);
 
                 % calculates the sub-image stack mean image
                 Q = cellfun(@(x,y)(x.*y),Isub,Bsub,'un',0);
@@ -666,7 +669,11 @@ classdef FilterResObj < handle
                 % sets up template image
                 hC0 = max(0,IsubMn - mean(IsubMn(:),'omitnan'));
                 [~,B] = detGroupOverlap(hC0>0,B0);
-                obj.hC{obj.iApp} = hC0.*B;            
+                
+                %
+                hCF = hC0.*B;
+                ii = obj.getTemplateInterpIndices(hCF);                
+                [obj.hC{obj.iApp},B] = deal(hCF(ii,ii),B(ii,ii));
 
                 % thresholds the filtered sub-image
                 Brmv = B & (normImg(obj.hC{obj.iApp}) > obj.pTolBB);   
@@ -678,15 +685,15 @@ classdef FilterResObj < handle
                 end
             end
             
+            % determines the approx blob size (if not already set)
             if ~isfield(obj.iMov,'szObj') || isempty(obj.iMov.szObj)
-                % calculates the binary mask of the gaussian
                 BrmvD = sum(Brmv(logical(eye(size(Brmv)))));                                
                 obj.iMov.szObj = BrmvD*[1,1];
                 obj.dTol = obj.calcDistTol();                
             end
             
         end
-
+        
         % ------------------------------------- %
         % --- IMAGE INTERPOLATION FUNCTIONS --- %
         % ------------------------------------- % 
@@ -1408,6 +1415,19 @@ classdef FilterResObj < handle
             % calculates the z-scores of the sub-image maxima
             Zmx = (Imx - pI.Imu)./pI.Isd;
 
+        end        
+        
+        % --- 
+        function indI = getTemplateInterpIndices(B)
+            
+            %
+            xiF = 1:2:size(B,2);
+            ii = any(B(:,xiF),1) | any(B(xiF,:),2)';
+            
+            %
+            N = min(find(ii,1,'first'),(length(ii)+1)-find(ii,1,'last'));
+            indI = xiF(N):xiF(end-(N-1));
+            
         end        
         
     end    

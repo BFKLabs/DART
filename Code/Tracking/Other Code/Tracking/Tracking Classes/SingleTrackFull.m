@@ -108,15 +108,15 @@ classdef SingleTrackFull < TrackFull & SingleTrack
             end
 
             % if there are no high variance phases, then exit the function            
-            ii = obj.iMov.vPhase == 3;
-            if ~any(ii)
+            iiHV = obj.iMov.vPhase == 3;
+            if ~any(iiHV)
                 return
             end
             
             % initialisations
             T = obj.pData.T;
             iPh = obj.iMov.iPhase;
-            iGrp = getGroupIndex(ii);
+            iGrp = getGroupIndex(iiHV);
             
             % determines the interpolation (non-NaN) frames
             i0 = find(obj.iMov.ok,1,'first');

@@ -61,6 +61,10 @@ classdef OpenSolnFileTab < dynamicprops & handle
             
         end        
         
+        % --------------------------------------- %
+        % --- OBJECT INITIALISATION FUNCTIONS --- %
+        % --------------------------------------- %             
+        
         % --- initialises the class object fields with that parent object
         function linkParentProps(obj)
            
@@ -82,7 +86,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
             cbObj = {'buttonSetDir','buttonAddSoln','buttonClearExpt',...
                      'buttonClearAll','buttonShowProtocol',...
                      'buttonHideProtocol','menuCombExpt',...
-                     'menuScaleFactor','menuLoadExtnData'};
+                     'menuScaleFactor','menuLoadExtnData',...
+                     'buttonContinue'};
             for i = 1:length(cbObj)
                 hObj = getStructField(obj.hGUI,cbObj{i});
                 cbFcn = eval(sprintf('@obj.%sCB',cbObj{i}));
@@ -170,6 +175,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             if ~isempty(obj.sInfo)
                 % sets the added list strings    
                 setObjEnable(handles.buttonClearAll,'on')
+                obj.setContinueProps('on')
                 setPanelProps(handles.panelExptInfo,'on')
                 set(handles.textExptCount,'string',num2str(obj.nExp))    
 
@@ -998,6 +1004,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             setObjEnable(handles.buttonShowProtocol,0)
             setObjVisibility(handles.tableGroupNames,0)
             setObjEnable(handles.buttonClearAll,obj.nExp>0)
+            obj.setContinueProps(obj.nExp>0)
             setObjEnable(handles.menuScaleFactor,0);
             setObjEnable(handles.menuCombExpt,obj.nExp>1);            
             set(setObjEnable(hText,1),'string',num2str(obj.nExp))
@@ -1098,11 +1105,12 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % disables all the buttons
             setObjEnable(handles.buttonClearAll,0)
             setObjEnable(handles.buttonClearExpt,0)
-            setObjEnable(handles.buttonShowProtocol,0)
-            setObjVisibility(handles.tableGroupNames,0)
+            setObjEnable(handles.buttonShowProtocol,0)                     
             setObjEnable(handles.menuScaleFactor,0);
             setObjEnable(handles.menuCombExpt,0);
             setObjEnable(handles.menuLoadExtnData,0);
+            obj.setContinueProps(0)
+            setObjVisibility(handles.tableGroupNames,0)
             set(handles.textExptCount,'string',0)
 
             % disables the added experiment information fields
@@ -1128,6 +1136,13 @@ classdef OpenSolnFileTab < dynamicprops & handle
             
             % deletes the loadbar
             delete(hProg)
+            
+        end
+
+        % --- callback function for clicking buttonClearAll
+        function buttonContinueCB(obj, ~, ~)
+            
+            obj.baseObj.exitFcn([],[],obj.hGUI)
             
         end
         
@@ -1315,6 +1330,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             handles = obj.hGUI;
             setPanelProps(handles.panelExptInfo,'on');
             setObjEnable(handles.buttonClearAll,'on');
+            obj.setContinueProps('on')            
             set(handles.textExptCount,'string',num2str(obj.nExp),...
                                       'enable','on')                       
             
@@ -1322,6 +1338,30 @@ classdef OpenSolnFileTab < dynamicprops & handle
             obj.isChange = true;          
             
         end        
+        
+        % --- sets the continue button properties (based on the state)
+        function setContinueProps(obj, State)
+            
+            % converts 
+            if ischar(State)
+                State = strcmp(State,'on');
+            end            
+
+            % sets the button properties based on the state
+            if State
+                % case is enabling the button
+                bCol = [1,0,0];
+                
+            else
+                % case is disabling the button
+                bCol = 0.94*[1,1,1];
+            end
+            
+            % updates the button enabled props
+            setObjEnable(obj.hGUI.buttonContinue,State);
+            set(obj.hGUI.buttonContinue,'BackgroundColor',bCol)
+            
+        end
         
         % --- appends the new solution information 
         function appendSolnInfo(obj,snTot,sFile,expFile)
@@ -2050,5 +2090,6 @@ classdef OpenSolnFileTab < dynamicprops & handle
             
         end               
         
-    end    
+    end
+    
 end

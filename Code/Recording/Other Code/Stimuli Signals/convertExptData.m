@@ -17,8 +17,8 @@ if ~isempty(handles)
     hFig = handles.figExptSetup;
     iExpt = initExptStruct(hFig);
 else
-    hFig = [];
-    iExpt = initExptStruct('RecordStim',[]);
+    hFig = [];    
+    iExpt = initExptStruct('RecordStim',[],[]);
 end
 
 % updates the timing sub-struct fields

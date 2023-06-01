@@ -351,6 +351,11 @@ classdef SingleTrackInitAuto < SingleTrackInit
                     obj.iMov,y))),obj.iMov.iR(obj.fOK),num2cell(obj.fOK));
             dtMax = min(dTMaxR);
             
+            % ensures the min period is less that the max (check on this?)
+            if dtMin > dtMax
+                dtMin = dtMax/2;
+            end
+            
             % --------------------------------------- %
             % --- INITIAL GRID SPACING ESTIMATION --- %
             % --------------------------------------- %
@@ -409,7 +414,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
             
             % removes the peaks that are infeasible. the estimate of the
             % grid spacing is taken as the time with the highest peak
-            ii = (tPD >= dtMin) & (tPD <= dtMax);
+            ii = (tPD >= dtMin) & (tPD <= dtMax);                
             [tPD,yPD] = deal(tPD(ii),yPD(ii));
             tPerEst = tPD(argMax(yPD));
             

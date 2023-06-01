@@ -65,7 +65,7 @@ end
 
 % reads the frames from the images
 if outImgStack
-    h.Update(1+iOfs,'Reading Phase Frames...',2/nStep);
+    h.Update(1+iOfs,'Reading Final Phase Frames...',1);
     [Img,sImgS] = phObj.readPhaseFrames();
 end
 

@@ -82,6 +82,10 @@ classdef CalcBG < handle
         cMapJet
         isUpdating
         
+        % fixed variables
+        ivRej = 5;
+        feasInd = [1,2,4];
+        
     end
     
     % class methods
@@ -618,9 +622,9 @@ classdef CalcBG < handle
             
             % determines if any of the detected phses are trackable
             if phaseDetected
-                isFeas = any(obj.iMov.vPhase < 3);
+                isFeas = any(obj.detFeasPhase());
             end
-            
+                            
             % flag whether the update button is enabled
             canUpdate = (phaseDetected && isFeas) || obj.isCalib;
             
@@ -788,13 +792,16 @@ classdef CalcBG < handle
             if ~exist('isInit','var'); isInit = false; end
             
             % base image type (raw image only)
+            cPh = obj.iPara.cPhase;            
             hPopup = obj.hGUI.popupImgType;
             popStr = {'Raw Image';'Smoothed Image'};
             
             % case is the background has been calculated
             if ~isempty(obj.iMov.Ibg)
-                if ~isempty(obj.iMov.Ibg{obj.iPara.cPhase})
-                    if ~isfield(obj.trkObj,'IbgT0') || ...
+                if ~isempty(obj.iMov.Ibg{cPh})
+                    if (obj.iMov.vPhase(cPh) == 4)
+                        popStrNw = {'Cross-Correlation'};                    
+                    elseif ~isfield(obj.trkObj,'IbgT0') || ...
                         isempty(obj.trkObj.IbgT0)
                         popStrNw = {'Background';...
                                     'Residual (Filtered)';...
@@ -919,7 +926,7 @@ classdef CalcBG < handle
                 Img0 = obj.ImgC{1}{ipara.cFrm};
             else
                 iFrmS = obj.indFrm{iPhase}(ipara.cFrm);
-                Img0 = double(getDispImage(idata,obj.iMov,iFrmS,false,[],1));                                
+                Img0 = double(getDispImage(idata,obj.iMov,iFrmS,false,[],1));
             end
             
             % sets the image            
@@ -1261,9 +1268,9 @@ classdef CalcBG < handle
             ipara = obj.iPara;
             
             % parameters
-            pCol = {'k','b','m','r'};
+            pCol = {'k','b','m',[255,165,0]/255,'r'};
             pType = {'Low Variance','High Variance',...
-                     'Untrackable','Rejected'};
+                     'Untrackable','Special','Rejected'};
 
             % variance string toolstrings
             ttStr = {sprintf(['* Low pixel intensity variance within phase.\n',...
@@ -1276,6 +1283,9 @@ classdef CalcBG < handle
                               '--> Pixel range is either too low or mean pixel intensity too low/high',...
                               '--> Fly locations determined by interpolating from surrounding phases.\n',...
                               '--> Tracking efficacy will be low.']);...
+                     sprintf(['* Special phase.\n',...
+                              '--> Pixel range fluctuates due to motor activation (HT1 Controller)',...                     
+                              '--> Fly locations determined by special interpolation method.\n']);...                              
                      sprintf(['* Reject phase.\n',...
                               '--> Phase has been manually rejected by the user.\n',...
                               '--> No tracking will be undertaken.'])};
@@ -1311,9 +1321,10 @@ classdef CalcBG < handle
                 set(hgui.textEndFrame,'string',num2str(iPhaseNw(2)))                 
                 
                 % updates the tracking phase checkbox object
-                set(hgui.checkTrackPhase,'Value',vP<4);                
-                setObjEnable(hgui.checkTrackPhase,obj.vPhase0(cPhase)<4)
-                setObjEnable(hgui.checkFlyMarkers,vP<4);
+                canTrack = obj.vPhase0(cPhase) < obj.ivRej;
+                set(hgui.checkTrackPhase,'Value',canTrack);                
+                setObjEnable(hgui.checkTrackPhase,canTrack)
+                setObjEnable(hgui.checkFlyMarkers,canTrack);
                 
                 % updates the image type and properties
                 if ~isempty(obj.fPos)
@@ -1600,7 +1611,7 @@ classdef CalcBG < handle
             obj.vPhase0 = obj.iMov.vPhase;
             
             % sets the phase index
-            okPh = imov.vPhase < 3;
+            okPh = obj.detFeasPhase();
             if any(okPh)
                 obj.iPara.cPhase = find(okPh,1,'first');
             else
@@ -1764,7 +1775,7 @@ classdef CalcBG < handle
             if isOn
                 obj.iMov.vPhase(iPh) = obj.vPhase0(iPh);
             else
-                obj.iMov.vPhase(iPh) = 4;                                
+                obj.iMov.vPhase(iPh) = obj.ivRej;                                
                 
                 % if the tubes are on, then remove them
                 if get(obj.hGUI.checkFlyMarkers,'value')
@@ -2057,7 +2068,7 @@ classdef CalcBG < handle
             wOfs1 = 0;
             
             % if there are no trackable frames then exit
-            if ~any(obj.iMov.vPhase < 3)
+            if ~any(obj.detFeasPhase())
                 mStr = ['This video does not appear to have any ',...
                         'trackable frames.'];
                 waitfor(msgbox(mStr,'No Trackable Frames?','modal'))
@@ -2970,6 +2981,14 @@ classdef CalcBG < handle
             % sets the menu item
             setObjEnable(obj.hMenuBG,eState)
             
+        end        
+        
+        % --- determines which phases are feasible (from feasInd)
+        function okPh = detFeasPhase(obj,indF)
+
+            if ~exist('indF','var'); indF = obj.feasInd; end
+            okPh = arrayfun(@(x)(any(indF==x)),obj.iMov.vPhase);
+
         end        
         
     end

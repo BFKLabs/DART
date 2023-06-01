@@ -71,8 +71,7 @@ switch fExtn
         % sets the time-span for the frame and reads it from file
         iFrm0 = roundP(iData.nFrmT/2);
         tFrm = iFrm0/iData.exP.FPS + (1/(2*iData.exP.FPS))*[-1 1];
-        [VT,~] = mmread(fStr,[],tFrm,false,true,'');
-%         I = VT.frames(1).cdata;
+        [~,~] = mmread(fStr,[],tFrm,false,true,'');
         
 end
 warning(wState);
@@ -127,6 +126,9 @@ if ~isempty(sStr)
     iData.Tv0 = Tv(1);
     iData.Tv = Tv(:) - iData.Tv0;      
     
+    % sets the experimental data struct
+    iData.iExpt = A.iExpt;
+    
 %     %     
 %     iszTv = (Tv == 0); iszTv(1) = false;
 %     nanTv = isnan(A.tStampV{iVid}) | iszTv;
@@ -147,7 +149,7 @@ if ~isempty(sStr)
    
     
     % retrieves the videos stimuli information
-    if ~isempty(iData.stimP)
+    if isempty(iData.stimP)
         summFile = getSummaryFilePath(iData);
         [iData.stimP,iData.sTrainEx] = getExptStimInfo(summFile,Tv);
     end    
@@ -281,7 +283,7 @@ if ~isBatch
         % if the buffer timer is running, then stop it
         if strcmp(get(bufData.tObjChk,'Running'),'on')
             stop(bufData.tObjChk)
-            try; stop(bufData.tObjChk); end
+            try stop(bufData.tObjChk); catch; end
         end
         
         % deletes the temporary file (if it exists)

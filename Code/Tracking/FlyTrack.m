@@ -66,9 +66,9 @@ global isMovChange isDetecting isBatch isCalib isRTPChange
 % initialses the custom property field string
 pFldStr = {'pData','hSolnT','hMainGUI','mObj','vcObj','mkObj','rgObj',...
            'vidTimer','hGUIOpen','reopenGUI','cType','infoObj','hTrack',...
-           'isText','iMov','rtP','rtD','iData','ppDef','frmBuffer',...
-           'bgObj','prObj','objDACInfo','iStim','hTT','pColF','isTest',...
-           'fPosNew'};
+           'isText','iMov','rtP','rtD','iData','iExpt','ppDef',...
+           'frmBuffer','bgObj','prObj','objDACInfo','iStim','hTT',...
+           'pColF','isTest','fPosNew'};
 initObjPropFields(hObject,pFldStr);
 
 % ensures the background detection panel is invisible
@@ -319,7 +319,7 @@ end
 
 % Choose default command line output for FlyTrack
 initSelectionProps(handles)
-try; delete(h); end
+try delete(h); catch; end
 
 % ensures that the appropriate check boxes/buttons have been inactivated
 setObjVisibility(hObject,'on'); pause(0.1);
@@ -333,7 +333,7 @@ guidata(hObject, handles);
 % uiwait(handles.figFlyTrack);
     
 % --- Outputs from this function are returned to the command line.
-function varargout = FlyTrack_OutputFcn(~, ~, handles) 
+function varargout = FlyTrack_OutputFcn(~, ~, handles)
 
 varargout{1} = handles.output;
 
@@ -384,7 +384,7 @@ if isOverAxes(mPos)
                 set(hFig.hTT,'Position',mP(1,:),'String',flyStr);
             catch
                 % if there was an error, then recreate it
-                try; delete(hFig.hTT); end
+                try delete(hFig.hTT); catch; end
                 hFig.hTT = createTooltipMarker(hAx,mP(1,1:2),flyStr);
             end
         end
@@ -570,7 +570,7 @@ else
                 
                 % searches for the matching movie file
                 ldData = fileMatchSearch(eventdata,iData0.ProgDef.DirMov);                                    
-                try; delete(h); end
+                try delete(h); catch; end
                 
                 % determines if there was a file match
                 if isempty(ldData)
@@ -790,9 +790,16 @@ if exist(sFile,'file')
     tStampV = checkVideoTimeStamps(sData.tStampV,sData.iExpt.Timing.Tp);
     iData.Tv = tStampV{iVid};
     
+    % sets the experimental data field (if available)
+    if isfield(sData,'iExpt')
+        iData.iExpt = sData.iExpt;
+    else
+        iData.iExpt = [];
+    end
+    
 else
     % otherwise, set an empty time array
-    iData.Tv = [];
+    [iData.Tv,iData.iExpt] = deal([]);
 end
 
 % sets the tube positional data struct depending whether it is empty or not
@@ -862,7 +869,7 @@ end
 
 % closes the loadbar (for opening solution file directly only)
 if ~isempty(hObject)
-    try; delete(h); end
+    try delete(h); catch; end
 end
 
 % ----------------------- %
@@ -920,7 +927,7 @@ h = ProgressLoadbar('Saving Solution File...');
 saveSolutionFile(fullfile(fDir,fName),iData,iMov,pData)
 
 % closes the loadbar
-try; close(h); end
+try close(h); catch; end
 
 % ------------------------ %
 % --- OTHER MENU ITEMS --- %
@@ -997,14 +1004,14 @@ if strcmp(uChoice,'Yes')
             
             % determines if the tracking GUI is open (delete if so)
             if ~isempty(hFig.hTrack)
-                try; delete(hFig.hTrack); end
+                try delete(hFig.hTrack); catch; end
             end            
         end        
         
         % determines if the analysis option GUI is open (delete if so)
         hAnalyOpt = findall(0,'tag','figAnalyOpt');    
         if ~isempty(hAnalyOpt)
-            try; delete(hAnalyOpt); end
+            try delete(hAnalyOpt); catch; end
         end        
         
         % if running the camera object, then stop it and reset the logging
@@ -1032,18 +1039,18 @@ if strcmp(uChoice,'Yes')
     
     % deletes the solution progress tracking GUI (if it exists)
     if ~isempty(hFig.hSolnT)
-        try; delete(hFig.hSolnT); end
+        try delete(hFig.hSolnT); catch; end
     end
     
     % stop and deletes the data buffering timer objects
     if ~isempty(bufData)
         % stops and deletes the frame object timer
-        try; stop(bufData.tObjChk); end
-        try; delete(bufData.tObjChk); end
+        try stop(bufData.tObjChk); catch; end
+        try delete(bufData.tObjChk); catch; end
         
         % stops and deletes the file object timer
-        try; stop(bufData.tObjFile); end
-        try; delete(bufData.tObjFile); end        
+        try stop(bufData.tObjFile); catch; end
+        try delete(bufData.tObjFile); catch; end        
     end
     
     % deletes the figure and exits the program
@@ -1100,7 +1107,7 @@ if strcmp(get(hObject,'checked'),'off')
     iMov = get(handles.output,'iMov');
     
     % closes the loadbar    
-    try; close(h); end
+    try close(h); catch; end
     
     % adds the check to the menu item
     set(hObject,'checked','on') 
@@ -1118,6 +1125,7 @@ else
     % attempts to delete the solution tracking GUI
     try
         delete(handles.output.hSolnT)
+    catch
     end    
     
     % removes the check and GUI handle
@@ -1257,7 +1265,7 @@ end
 dispImage(handles);
 
 % --------------------------------------------------------------------
-function menuUseGray_Callback(hObject, eventdata, handles)
+function menuUseGray_Callback(hObject, ~, handles)
 
 % toggles the check item
 toggleMenuCheck(hObject);
@@ -1378,7 +1386,7 @@ if strcmp(get(hObject,'checked'),'on')
     
     % if the tracking GUI is open, then delete it    
     if ~isempty(hFig.hTrack)
-        try; delete(hFig.hTrack); end
+        try delete(hFig.hTrack); catch; end
     end     
     
 %     % if the RT tracking is running, then stop it
@@ -1432,7 +1440,7 @@ is2D = iMov.is2D;
 if isChecked    
     % deletes the tracking stats GUI (if it tracking was being performed)
     if ~isempty(hFig.hTrack)        
-        try; delete(hFig.hTrack); end
+        try delete(hFig.hTrack); catch; end
         set(hFig,'hTrack',[])
     end     
     
@@ -1515,7 +1523,7 @@ TrackingPara(handles.output)
 % ----------------------------- %
 
 % --- Executes when figFlyTrack is resized.
-function figFlyTrack_ResizeFcn(hObject, evnt, handles)
+function figFlyTrack_ResizeFcn(hObject, ~, handles)
 
 % global variables
 global updateFlag
@@ -2187,7 +2195,7 @@ pData = get(hFig,'pData');
 % creates the tracking object based on the tracking type
 if detMltTrkStatus(iMov)
     % case is tracking multiple objects
-    trkObj = feval('runExternPackage','MultiTrack',iData,'Full');
+    trkObj = runExternPackage('MultiTrack',iData,'Full');
     
 else
     % case is tracking single objects
@@ -2714,7 +2722,7 @@ if exist(bufData.tmpFile,'file') && ~bufData.changeArray
             
             % sets the data from the file and delete it
             bufData.I{indGrpNw} = A.Istack;
-            try; delete(bufData.tmpFile); end
+            try delete(bufData.tmpFile); catch; end
 
             % if the group being added is at the extremities, then arrays and
             % indices so that they match the new setup
@@ -2734,6 +2742,7 @@ if exist(bufData.tmpFile,'file') && ~bufData.changeArray
             bufData.canUpdate = true;     
             bufData.changeArray = false;
         end
+    catch
     end        
 end
 
@@ -3016,7 +3025,7 @@ if isChange
     end
     
     % deletes the loadbar
-    try; delete(hLoad); end
+    try delete(hLoad); catch; end
 else    
     % otherwise, reset the original object properties
     if isCalib

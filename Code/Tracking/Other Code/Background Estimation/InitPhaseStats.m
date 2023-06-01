@@ -106,7 +106,6 @@ classdef InitPhaseStats < handle
         function initObjProps(obj)
             
             % initialisations
-            hasF = obj.phInfo.hasF;
             hasT = any(obj.phInfo.hasT);  
             iPhase = obj.bgObj.iMov.iPhase;
             vPhase = obj.bgObj.iMov.vPhase;            
@@ -721,7 +720,7 @@ classdef InitPhaseStats < handle
         % --- retrieves the patch colour
         function pCol = getPatchColour(vPhase)
 
-            pCol0 = {'g','y','r','k'};
+            pCol0 = {'g','y','r',[255,165,0]/255,'k'};
             pCol = pCol0{vPhase};
 
         end        

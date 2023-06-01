@@ -37,6 +37,7 @@ setappdata(hObject,'nExpMax',4);
 setappdata(hObject,'hFigM',hFigM);
 setappdata(hObject,'isChange',false);
 setappdata(hObject,'iProg',getappdata(hFigM,'iProg'));
+setappdata(hObject,'menuExit_Callback',@menuExit_Callback);
 
 % hide the main gui
 setObjVisibility(hFigM,'off')
@@ -83,7 +84,7 @@ menuExit_Callback(handles.menuExit, [], handles)
 %-------------------------------------------------------------------------%
 
 % -------------------------------------------------------------------------
-function menuExit_Callback(hObject, eventdata, handles)
+function menuExit_Callback(~, ~, handles)
 
 % initialisations
 hFig = handles.figOpenSoln;

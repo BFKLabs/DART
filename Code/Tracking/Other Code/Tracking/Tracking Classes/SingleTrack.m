@@ -92,15 +92,15 @@ classdef SingleTrack < Track
             % algorithm/segmentation types
             for i = 1:length(sInd)
                 switch sInd(i)
-                    case {1,2}
-                        % case is low variance calculations
-                        isHV = sInd(i) == 2;
-                        obj.fObj{i} = PhaseTrack(obj.iMov,obj.hProg,isHV);
-                        obj.fObj{i}.nI = floor(max(getCurrentImageDim())/800);                        
-                                                
-
-                    case {3,4}
-                        % case is an untrackable phase
+                    case {1,2,4}
+                        % case is a trackable phase
+                        obj.fObj{i} = PhaseTrack(obj.iMov,obj.hProg);
+                        obj.fObj{i}.nI = getImageInterpRate();
+                        obj.fObj{i}.isHV = sInd(i) == 2;
+                        obj.fObj{i}.isHT1 = sInd(i) == 4;
+                        
+                    case 3
+                        % case is an untrackable/special phase
                         obj.fObj{i} = [];                        
                     
                     case 5
@@ -108,6 +108,7 @@ classdef SingleTrack < Track
                         obj.fObj{i} = ManualDetect(obj.iMov,obj.hProg);
                         
                     otherwise
+                        % ??
 
                 end
             end

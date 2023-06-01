@@ -135,7 +135,7 @@ classdef SingleTrackInit < SingleTrack
             % sets the background images into the sub-region data struct
             obj.iMov.Ibg = obj.Ibg;
             obj.iMov.pTolF = obj.pTolF;
-            okPh = obj.iMov.vPhase < 3;
+            okPh = obj.getFeasPhase();
             
             % sets the status flags for each phase (full and overall)
             sFlag0 = cellfun(@(x)(3-x),obj.sFlag,'un',0);
@@ -389,7 +389,7 @@ classdef SingleTrackInit < SingleTrack
             
             % memory allocation
             IL = cell(obj.nPhase,1);
-            okPh = obj.iMov.vPhase < 3;
+            okPh = obj.getFeasPhase(1:2);
             
             % segments the phases (from low to high variance phases)
             for j = 1:obj.nPhase
@@ -437,10 +437,16 @@ classdef SingleTrackInit < SingleTrack
             % matches up the blob locations between phases
             obj.interPhasePosMatch();
             obj.frObj.hC = obj.expandImageArray(obj.frObj.hC);
+                        
+            % analyses any special phases
+            for i = find(obj.iMov.vPhase(:)' == 4)
+                obj.analyseSpecialPhase(i);
+                obj.calcGlobalCoords(i);
+            end                 
             
             % calculates the overall quality of the flies (prompting the
             % user to exclude any empty/anomalous regions)
-            if any(obj.iMov.vPhase < 3)
+            if any(obj.getFeasPhase())
                 obj.calcOverallQuality()
             end
             
@@ -464,7 +470,7 @@ classdef SingleTrackInit < SingleTrack
             obj.iMov.szObj = obj.bSzT*[1,1];
             
             % calculates background image estimates (for feasible phases)
-            okPh = obj.iMov.vPhase < 3;
+%             okPh = obj.getFeasPhase(1:2);
             for iPh = find(okPh(:)')
                 % updates the progressbar
                 wStrNw = sprintf('Analysing Phase (%i of %i)',iPh,nPh);
@@ -474,7 +480,7 @@ classdef SingleTrackInit < SingleTrack
                 end
                 
                 % calculates the background image estimate
-                if nFrmPh(iPh) > 1
+                if (nFrmPh(iPh) > 1) && any(obj.iMov.vPhase(iPh) == 1:2)
                     obj.calcImageBGEst(IL{iPh},iPh);
                     obj.recalcFlyPos(IL{iPh},iPh);
                     
@@ -490,20 +496,22 @@ classdef SingleTrackInit < SingleTrack
             end
             
             % determines the overall minimum sub-region flags
-            obj.setupOverallStatusFlags();
+            obj.setupOverallStatusFlags();                   
             
             % ----------------------------------- %
             % --- UNTRACKABLE PHASE DETECTION --- %
-            % ----------------------------------- %
+            % ----------------------------------- %            
             
             % interpolates the locations for untrackable phases
             for i = find(obj.iMov.vPhase(:)' == 3)
-                % analyses the phase
+                % analyses phase and calculates global coordinates
                 obj.analyseUntrackablePhase(i);
-                
-                % calculates the global coordinates
                 obj.calcGlobalCoords(i);
-            end
+            end                           
+            
+            % ------------------------------- %
+            % --- HOUSE-KEEPING EXERCISES --- %
+            % ------------------------------- %            
             
             % performs the final region check (non-batch processing only)
             if obj.calcOK && ~obj.isBatch
@@ -1020,7 +1028,7 @@ classdef SingleTrackInit < SingleTrack
             
             % parameters
             DTol = 0.5;
-            okPh = obj.iMov.vPhase < 3;
+            okPh = obj.getFeasPhase(1:2);
             sFlagTM = zeros(obj.nPhase,1);
             
             % retrieves the status flag (for the given region/sub-region)
@@ -1089,7 +1097,7 @@ classdef SingleTrackInit < SingleTrack
                 % case is the object is stationary over the whole video
                 
                 % determines the static group indices
-                okPh = obj.iMov.vPhase < 3;
+                okPh = obj.getFeasPhase(1:2);
                 fPosPT = cellfun(@(x)(x{1,iT}),obj.fPosP(okPh,iApp),'un',0);
                 
                 if any(cellfun('isempty',fPosPT))
@@ -1138,7 +1146,7 @@ classdef SingleTrackInit < SingleTrack
         function appendAmbigPos(obj,fPosPT,iApp,iT)
             
             % reformats the positional coordinates
-            okPh = find(obj.iMov.vPhase < 3);
+            okPh = find(obj.getFeasPhase());
             A = num2cell(cell2cell(fPosPT,0),2);
             fPosAmT = cellfun(@(x)(cellfun(@(y)(cell2mat(y(:))),...
                 num2cell(cell2cell(x,0),2),'un',0)),A,'un',0);
@@ -1155,7 +1163,7 @@ classdef SingleTrackInit < SingleTrack
             
             % memory allocation
             nG = length(indG);
-            okPh = obj.iMov.vPhase < 3;
+            okPh = obj.getFeasPhase(1:2);
             [fPosPT,yPosPT] = deal(cell(nG,1),zeros(sum(okPh),nG));
             fP0 = cellfun(@(x)(x(:,iT)),obj.fPosP(okPh,iApp),'un',0);
             yP0 = cellfun(@(x)(x{iT}),obj.yPosP(okPh,iApp),'un',0);
@@ -1169,6 +1177,232 @@ classdef SingleTrackInit < SingleTrack
             end
             
         end
+
+        % ------------------------------------------- %
+        % --- OTHER PHASE TYPE TRACKING FUNCTIONS --- %
+        % ------------------------------------------- %        
+        
+        % --- analyses the special phase, iPh
+        function analyseSpecialPhase(obj,iPh)
+           
+            % parameters and field retrieval
+            nFrmPh = length(obj.Img{iPh});
+            [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);
+            
+            % retrieves the previous phase 
+            if (iPh > 1) && any(obj.iMov.vPhase(iPh-1) == [1,2])
+                % case is there are position values available
+                fPosPr0 = obj.fPosL{iPh-1}(:,end);
+            else
+                % otherwise, set empty arrays
+                fPosPr0 = cell(length(iR),1);
+            end
+            
+            % 
+            for iApp = find(obj.iMov.ok(:)')
+                % retrieves the sub-region image stack
+                IL = cellfun(@(x)...
+                    (x(iR{iApp},iC{iApp})),obj.Img{iPh},'un',0);
+                                
+                % 
+                for iFrm = 1:nFrmPh
+                    % calculates the max residual over all frames
+                    ii = 1:length(IL) ~= iFrm;
+                    ILmx = calcImageStackFcn(cellfun(@(x)...
+                        (max(0,x-IL{iFrm})),IL(ii),'un',0),'max');
+                    
+                    % sets the previous location coordinates
+                    if iFrm == 1
+                        % case is the first frame
+                        fPosPr = fPosPr0{iApp};
+                    else
+                        % case is the other frames
+                        fPosPr = obj.fPosL{iPh}{iApp,iFrm-1};
+                    end
+                    
+                    % calculates the combined metric mask
+                    Q = ILmx./(1 + IL{iFrm});
+                    obj.calcSpecialBlobPos(Q,fPosPr,iPh,iApp,iFrm);                            
+                end
+            end
+            
+        end        
+        
+        % --- calculates the locations of the special phase blobs 
+        function calcSpecialBlobPos(obj,Q,fPosPr,iPh,iApp,iFrm)
+            
+            % parameters
+            DTol = 10;
+            pTolMx = 0.75;
+            
+            % field retrieval and memory allocation
+            iRT = obj.iMov.iRT{iApp};
+            fPosNw = NaN(length(iRT),2);
+            QL = cellfun(@(x)(Q(x,:)),iRT,'un',0);
+            szL = cellfun(@size,QL,'un',0);
+            
+            % calculates the positions for each sub-region
+            for i = find(obj.iMov.flyok(:,iApp)')
+                %
+                iMx = find(imregionalmax(QL{i}));
+                [Qmx,iS] = sort(QL{i}(iMx),'descend');
+                iMx = iMx(iS);
+                
+                % determines how dominance of the most likely blob
+                isTol = Qmx/Qmx(1) > pTolMx;
+                if sum(isTol) == 1
+                    % case is frame has a dominant blob
+                    iSel = 1;
+                    
+                else
+                    % case is frame has ambiguous blobs
+                    [yMxT,xMxT] = ind2sub(szL{i},iMx(isTol));
+                    if isempty(fPosPr)
+                        % case is there is no previous data points
+                        a = 1;
+                        
+                    elseif isnan(fPosPr(i,1))
+                        %
+                        iSel = NaN;
+                        
+                    else
+                        % otherwise, determine the distance between the
+                        % previous blob location
+                        DMx = pdist2([xMxT,yMxT],fPosPr(i,:));                        
+                        iDmx = argMin(DMx);                        
+                        if DMx(iDmx) < DTol
+                            iSel = iDmx;
+                        else
+                            iSel = NaN;
+                        end
+                    end
+                end
+                
+                % calculates the final coordinates
+                if ~isnan(iSel)
+                    [yMx,xMx] = ind2sub(szL{i},iMx(iSel));
+                    fPosNw(i,:) = [xMx,yMx];
+                end
+            end
+                
+            % updates the position array
+            obj.fPosL{iPh}{iApp,iFrm} = fPosNw;
+            
+        end
+        
+        % --- analyses the untrackable phase, iPh
+        function analyseUntrackablePhase(obj,iPh)
+            
+            % parameters
+            prTol = 0.75;
+            ILim = [10,250];
+            
+            % memory allocation
+            fP0 = cell(obj.nApp,2);
+            iFrmPh = obj.iMov.iPhase(iPh,:);
+            Dscale = obj.iMov.szObj(1)/2;
+            [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);
+            
+            % determines if any of the images in the phase are completely
+            % untrackable (either too dark or too bright)
+            ImgMd = cellfun(@(x)(median(x(:),'omitnan')),obj.Img{iPh});
+            if any(ImgMd <= ILim(1)) || any(ImgMd >= ILim(2))
+                % resets the coordinates for each sub-region to NaNs
+                for i = 1:length(obj.fPosL{iPh})
+                    obj.fPosL{iPh}{i}(:) = NaN;
+                end
+                
+                % exits the function
+                return
+            end
+            
+            % determines if the surrounding phases is feasible
+            okPh = obj.getFeasPhase();
+            isOK = [(iPh > 1) && okPh(iPh-1),...
+                (iPh < obj.nPhase) && okPh(iPh+1)];
+            
+            % sets the lower phase index (if feasible)
+            for i = find(isOK)
+                iPhS = iPh + 2*(i-1.5);
+                if i == 1
+                    fP0(:,i) = obj.fPosL{iPhS}(:,end);
+                else
+                    fP0(:,i) = obj.fPosL{iPhS}(:,1);
+                end
+            end
+            
+            % determines if the phase is surrounded by feasible phases. if
+            % so, then interpolate the coordinates from these frames
+            if all(isOK)
+                % sets the interpolation indices
+                xiP = iFrmPh([1,end]) + [-1,1];
+                
+                % interpolates over all regions/sub-regions
+                for i = 1:obj.nApp
+                    % retrieves the interpolation coordinates
+                    xI = cell2mat(cellfun(@(x)(x(:,1)),fP0(i,:),'un',0));
+                    yI = cell2mat(cellfun(@(x)(x(:,2)),fP0(i,:),'un',0));
+                    
+                    for k = 1:getSRCount(obj.iMov,i)
+                        % calculates the interpolated x/y-coordinates
+                        xInw = interp1(xiP,xI(k,:),iFrmPh,'linear');
+                        yInw = interp1(xiP,yI(k,:),iFrmPh,'linear');
+                        
+                        % sets the new positional values
+                        for j = 1:length(iFrmPh)
+                            obj.fPosL{iPh}{i,j}(k,:) = [xInw(j),yInw(j)];
+                        end
+                    end
+                end
+                
+                % exits the function
+                return
+            end
+            
+            % calculates the hm filtered image stack
+            Ihm = cellfun(@(x)(applyHMFilter(x)),obj.Img{iPh},'un',0);
+            for i = find(obj.iMov.ok)
+                % sets up the cross-correlation images
+                IL = cellfun(@(y)(y(iR{i},iC{i})),Ihm,'un',0);
+                
+                % calculates the mean surrounding locations
+                fPmn = roundP(calcImageStackFcn(fP0(i,:)));
+                
+                % estimates the location of the points over all frames
+                for j = 1:obj.nTube(i)
+                    % retrieves the local x-correlation images
+                    iRT = obj.iMov.iRT{i}{j};
+                    ILS = cellfun(@(x)(1-normImg(x(iRT,:))),IL,'un',0);
+                    fPmnS = fPmn(j,:) - [1,iRT(1)]-1;
+                    
+                    % sets up the distance mask
+                    sz0 = size(ILS{1});
+                    Dw = bwdist(setGroup(min(max(1,fPmnS),flip(sz0)),sz0));
+                    Qw = (1./max(0.5,Dw/Dscale)).^2;
+                    
+                    % calculates the likely coords and updates within the
+                    % storage arrays
+                    for k = 1:length(ILS)
+                        % determines the most significant local blobs
+                        ILSQ = ILS{k}.*Qw;
+                        iP = find(imregionalmax(ILS{k}));
+                        [ILSS,iS] = sort(ILSQ(iP),'descend');
+                        ii = ILSS/ILSS(1) > prTol;
+                        
+                        % determines the blob closest to the estimate
+                        if any(ii)
+                            iPR = iP(iS(ii));
+                            iNw = argMin(Dw(iPR));
+                            [yNw,xNw] = ind2sub(size(Qw),iPR(iNw));
+                            
+                            % sets the coordinates into storage
+                            obj.fPosL{iPh}{i,k}(j,:) = [xNw,yNw];
+                        end
+                    end
+                end
+            end
+            
+        end                
         
         % --------------------------- %
         % --- OLD CLASS FUNCTIONS --- %
@@ -1192,7 +1426,7 @@ classdef SingleTrackInit < SingleTrack
             end
             
             % calculates the overall sub-region status flags
-            okPh = find(obj.iMov.vPhase < 3);
+            okPh = find(obj.getFeasPhase());
             [iTube,iApp] = find((obj.sFlagMax == 1) & obj.iMov.flyok);
             
             % loops through each of stationary objects determining if the
@@ -1297,121 +1531,7 @@ classdef SingleTrackInit < SingleTrack
                 end
             end
             
-        end
-        
-        % --- analyses the untrackable phase
-        function analyseUntrackablePhase(obj,iPh)
-            
-            % parameters
-            prTol = 0.75;
-            ILim = [10,250];
-            
-            % memory allocation
-            fP0 = cell(obj.nApp,2);
-            iFrmPh = obj.iMov.iPhase(iPh,:);
-            Dscale = obj.iMov.szObj(1)/2;
-            [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);
-            
-            % determines if any of the images in the phase are completely
-            % untrackable (either too dark or too bright)
-            ImgMd = cellfun(@(x)(median(x(:),'omitnan')),obj.Img{iPh});
-            if any(ImgMd <= ILim(1)) || any(ImgMd >= ILim(2))
-                % resets the coordinates for each sub-region to NaNs
-                for i = 1:length(obj.fPosL{iPh})
-                    obj.fPosL{iPh}{i}(:) = NaN;
-                end
-                
-                % exits the function
-                return
-            end
-            
-            % determines if the surrounding phases is feasible
-            okPh = obj.iMov.vPhase < 3;
-            isOK = [(iPh > 1) && okPh(iPh-1),...
-                (iPh < obj.nPhase) && okPh(iPh+1)];
-            
-            % sets the lower phase index (if feasible)
-            for i = find(isOK)
-                iPhS = iPh + 2*(i-1.5);
-                if i == 1
-                    fP0(:,i) = obj.fPosL{iPhS}(:,end);
-                else
-                    fP0(:,i) = obj.fPosL{iPhS}(:,1);
-                end
-            end
-            
-            % determines if the phase is surrounded by feasible phases. if
-            % so, then interpolate the coordinates from these frames
-            if all(isOK)
-                % sets the interpolation indices
-                xiP = iFrmPh([1,end]) + [-1,1];
-                
-                % interpolates over all regions/sub-regions
-                for i = 1:obj.nApp
-                    % retrieves the interpolation coordinates
-                    xI = cell2mat(cellfun(@(x)(x(:,1)),fP0(i,:),'un',0));
-                    yI = cell2mat(cellfun(@(x)(x(:,2)),fP0(i,:),'un',0));
-                    
-                    for k = 1:getSRCount(obj.iMov,i)
-                        % calculates the interpolated x/y-coordinates
-                        xInw = interp1(xiP,xI(k,:),iFrmPh,'linear');
-                        yInw = interp1(xiP,yI(k,:),iFrmPh,'linear');
-                        
-                        % sets the new positional values
-                        for j = 1:length(iFrmPh)
-                            obj.fPosL{iPh}{i,j}(k,:) = [xInw(j),yInw(j)];
-                        end
-                    end
-                end
-                
-                % exits the function
-                return
-            end
-            
-            % calculates the hm filtered image stack
-            Ihm = cellfun(@(x)(applyHMFilter(x)),obj.Img{iPh},'un',0);
-            for i = find(obj.iMov.ok)
-                % sets up the cross-correlation images
-                IL = cellfun(@(y)(y(iR{i},iC{i})),Ihm,'un',0);
-                
-                % calculates the mean surrounding locations
-                fPmn = roundP(calcImageStackFcn(fP0(i,:)));
-                
-                % estimates the location of the points over all frames
-                for j = 1:obj.nTube(i)
-                    % retrieves the local x-correlation images
-                    iRT = obj.iMov.iRT{i}{j};
-                    ILS = cellfun(@(x)(1-normImg(x(iRT,:))),IL,'un',0);
-                    fPmnS = fPmn(j,:) - [1,iRT(1)]-1;
-                    
-                    % sets up the distance mask
-                    sz0 = size(ILS{1});
-                    Dw = bwdist(setGroup(min(max(1,fPmnS),flip(sz0)),sz0));
-                    Qw = (1./max(0.5,Dw/Dscale)).^2;
-                    
-                    % calculates the likely coords and updates within the
-                    % storage arrays
-                    for k = 1:length(ILS)
-                        % determines the most significant local blobs
-                        ILSQ = ILS{k}.*Qw;
-                        iP = find(imregionalmax(ILS{k}));
-                        [ILSS,iS] = sort(ILSQ(iP),'descend');
-                        ii = ILSS/ILSS(1) > prTol;
-                        
-                        % determines the blob closest to the estimate
-                        if any(ii)
-                            iPR = iP(iS(ii));
-                            iNw = argMin(Dw(iPR));
-                            [yNw,xNw] = ind2sub(size(Qw),iPR(iNw));
-                            
-                            % sets the coordinates into storage
-                            obj.fPosL{iPh}{i,k}(j,:) = [xNw,yNw];
-                        end
-                    end
-                end
-            end
-            
-        end
+        end        
         
         % --- analyses the stationary blobs for the phase, iPh
         function analyseStationaryBlobs(obj,IL0,iPh)
@@ -1731,7 +1851,7 @@ classdef SingleTrackInit < SingleTrack
             fDir = {'last','first'};
             
             % determines the feasible
-            okPh = obj.iMov.vPhase < 3;
+            okPh = obj.getFeasPhase();
             okPh(iPh) = false;
             
             % sets up the status flag for the blob over all feasible phases
@@ -2740,7 +2860,7 @@ classdef SingleTrackInit < SingleTrack
             
             % initialisations
             nPh = obj.nPhase;
-            okPh = obj.iMov.vPhase < 3;
+            okPh = obj.getFeasPhase(1:2);
             
             % updates the progressbar
             wStrNw = 'Calculating Quality Metrics...';

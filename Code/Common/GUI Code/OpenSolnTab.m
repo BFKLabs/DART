@@ -36,15 +36,18 @@ classdef OpenSolnTab < handle
         fObj            % file loading class object
         fcnObj          % function compatibility object
         mltObj          % multi-experiment class object
+        exitFcn
         
         % scalar fields
         sType
         nExp
         isChange = false;
-    end
+    
+    end    
     
     % class methods
     methods
+    
         % --- class constructor
         function obj = OpenSolnTab(hFig,sType)
            
@@ -57,6 +60,7 @@ classdef OpenSolnTab < handle
             obj.hFigM = getappdata(hFig,'hFigM');
             obj.sInfo = getappdata(obj.hFigM,'sInfo');
             obj.iProg = getappdata(obj.hFigM,'iProg');
+            obj.exitFcn = getappdata(hFig,'menuExit_Callback');
             
             % sets up the gui based on 
             switch sType
@@ -282,7 +286,8 @@ classdef OpenSolnTab < handle
             setObjEnable(obj.hGUI.menuCombExpt,iTab==1)
             setObjEnable(obj.hGUI.menuScaleFactor,iTab==1)
             
-        end        
+        end
+        
     end
     
     % state class methods

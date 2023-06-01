@@ -37,6 +37,8 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         nFile
         nRetry = 5;
         TwaitEnd = 10;
+        ivPhRej = 5;
+        ivPhFeas = [1,2,4];
         
         % initial data objects
         iMov0
@@ -778,6 +780,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                     % if the user cancelled, then exit
                     sFlag = 1;
                     return
+                    
                 elseif all(obj.iMov.vPhase == 3)
                     % if the video is untrackable, then update the tracking
                     % flag and exit the function
@@ -817,15 +820,15 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 % ensures the sub-region data struct reflects the previous 
                 % solution file
                 if iFile > 1
-                    obj.bData(iDir).movOK(iFile) = ...
-                                        1 - 2*any(obj.iMov.vPhase == 4);  
+                    mFlag = 1 - 2*any(obj.iMov.vPhase == obj.ivPhRej);
+                    obj.bData(iDir).movOK(iFile) = mFlag;  
                     obj.realignSubRegionData();
                 end
                 
             else
                 % otherwise, set the status flag for the video
-                notOK = obj.iMov.vPhase == 4;
-                obj.bData(iDir).movOK(iFile) = 1-all(notOK)-2*any(notOK);                                                
+                notOK = obj.iMov.vPhase == obj.ivPhRej;
+                obj.bData(iDir).movOK(iFile) = 1-all(notOK)-2*any(notOK);
             end
             
             % initialises the plot markers to their current status

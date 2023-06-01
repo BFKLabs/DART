@@ -87,7 +87,7 @@ classdef TrackFull < Track
             
             % determines the phase order (low-variance phases to be
             % segmented first)
-            validPh = obj.iMov.vPhase < 4;                        
+            validPh = obj.iMov.vPhase < obj.ivPhRej;
             
             % ensures the progressbar is visible
             obj.hProg.setVisibility('on');
@@ -118,13 +118,11 @@ classdef TrackFull < Track
                 
                 % resets the progress struct
                 switch obj.iMov.vPhase(j)
-                    case (1)
-                        % case is a low-variance phase
+                    case {1,4}
+                        % case is a low-variance/special phase
                         
-                        % resets the progress data struct
+                        % resets progress data and segments phase
                         obj.resetProgressStruct(j);  
-                        
-                        % segments the current phase
                         obj.segVideoPhase(j);
                         
                     case (2)
@@ -132,12 +130,10 @@ classdef TrackFull < Track
                         
                         % only analyse if the phase is large
                         if diff(obj.iMov.iPhase(j,:)) > obj.dFrmMax
-                            % resets the progress data struct
-                            obj.resetProgressStruct(j);  
-                        
-                            % segments the current phase
+                            % resets progress data and segments phase
+                            obj.resetProgressStruct(j);                          
                             obj.segVideoPhase(j);
-                        end                        
+                        end
                 end                
                       
                 % post-phase segmentation operations
@@ -156,12 +152,12 @@ classdef TrackFull < Track
             
         end  
         
-        % --- segements all the frames for the video phase, iPhase
+        % --- segments all the frames for the video phase, iPhase
         function segVideoPhase(obj,iPhase)
             
             % ------------------------------------------- %
             % --- INITIALISATIONS & MEMORY ALLOCATION --- %
-            % ------------------------------------------- %              
+            % ------------------------------------------- %
             
             % other flag initialisation
             nStack = length(obj.sProg.iFrmR);
@@ -278,6 +274,19 @@ classdef TrackFull < Track
             % --- FLY LOCATION DETECTION --- %
             % ------------------------------ %            
             
+            % sets the first/last frames
+            if obj.fObj{iPhase}.isHT1
+                %
+                iFrmS0 = [obj.sProg.iFrmR{1}(1),obj.sProg.iFrmR{end}(end)];
+                I0 = obj.getImageStack(iFrmS0);
+                
+                %
+                xi = 1:obj.nApp;
+                obj.fObj{iPhase}.ImgSL0 = cell(obj.nApp,1);
+                obj.fObj{iPhase}.ImgS0 = arrayfun(@(x)...
+                    (getRegionImgStack(obj.iMov,I0,iFrmS0,x,0)),xi,'un',0);
+            end
+            
             % loops through each image stacks segmenting fly locations
             for i = max(1,obj.pData.nCount(iPhase)):nStack                                
                 % updates the progressbar (if one is available)
@@ -322,7 +331,7 @@ classdef TrackFull < Track
                 % updates the solution tracking GUI  
                 obj.updateTrackingGUI(i);                           
             end           
-        end        
+        end
         
         % -------------------------------------------- %
         % ---- TRACKING SOLUTION UPDATE FUNCTIONS ---- %

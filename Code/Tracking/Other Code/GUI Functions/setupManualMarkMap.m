@@ -3,12 +3,11 @@ function [Imap,pMn] = setupManualMarkMap(obj)
 % memory allocation
 dTol = 10;
 pMn = cell(max(obj.nTube),obj.nApp);
-hG = fspecial('gaussian',5,2);
+% hG = fspecial('gaussian',5,2);
 
 % retrieves the image from the main gui
 hImg = findobj(obj.hGUI.imgAxes,'Type','image');
-I0 = imfiltersym(double(get(hImg,'CData')),hG);
-I = applyHMFilter(I0);
+I = double(get(hImg,'CData'));
 
 % other memory allocations
 sz = size(I);
@@ -26,10 +25,10 @@ iMn = find(Bw.*imregionalmin(I));
 [yMx,xMx] = ind2sub(sz,iMn);
 
 % sets up the full marker map
-for i = 1:obj.nApp
+for i = find(obj.iMov.ok(:)')
     % sets the column indices for the region
     iC = obj.iMov.iC{i};
-    for j = 1:obj.nTube(i)
+    for j = find(obj.iMov.flyok(:,i)')
         % sets the row indices of the sub-region
         iR = obj.iMov.iR{i}(obj.iMov.iRT{i}{j});  
         pOfs = [iC(1),iR(1)]-1;
@@ -40,7 +39,7 @@ for i = 1:obj.nApp
         
         % creates the sub-region map from the remaining points
         szL = [length(iR),length(iC)];
-        pMn{j,i} = [xMx(isIn),yMx(isIn)];
+        pMn{j,i} = [xMx(isIn),yMx(isIn)];        
         Imap(iR,iC) = setSubRegionMap(pMn{j,i},pOfs,szL,dTol);
     end
 end

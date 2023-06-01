@@ -127,7 +127,7 @@ feval('runExternPackage','VideoCalibObj',handles);
 h.StatusMessage = 'Starting Video Preview...';
 
 % updates the DAC adaptor name strings
-iExpt = initExptStruct(infoObj.exType,infoObj.objIMAQ);
+iExpt = initExptStruct(infoObj.exType,infoObj.objIMAQ,infoObj.objDAQ);
 setappdata(hObject,'iExpt',iExpt);
 
 % initialises the GUI properties
@@ -290,7 +290,7 @@ end
 % ------------------------------------------ %
 
 % initialises the experiment struct
-iExpt = initExptStruct(infoObj.iStim,infoObj.objIMAQ,infoObj.exType);
+iExpt = initExptStruct(hFig);
 setappdata(hFig,'iExpt',iExpt);
 
 % sets the GUI properties based on whether testing or not

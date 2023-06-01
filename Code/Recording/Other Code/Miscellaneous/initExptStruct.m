@@ -6,13 +6,15 @@ tStartH = 8;
 tNow = datevec(now());
 tOfs = tNow(4) >= tStartH;
 
-% 
+% retrieves the device details
 if isa(varargin{1},'matlab.ui.Figure')
     hFig = varargin{1};
     infoObj = getappdata(hFig,'infoObj');
-    [exptType,objIMAQ] = deal(infoObj.exType,infoObj.objIMAQ);
+
+    exptType = infoObj.exType;
+    [objIMAQ,objDAQ] = deal(infoObj.objIMAQ,infoObj.objDAQ);
 else
-    [exptType,objIMAQ] = deal(varargin{1},varargin{2});
+    [exptType,objIMAQ,objDAQ] = deal(varargin{1},varargin{2},varargin{3});
 end
 
 % initialises the information field
@@ -41,13 +43,13 @@ if Timing.T0(3) > dMax
         Timing.T0(2) = 1;
     end
 end
-    
 
 % initialises the video field
 Video = struct('nCount',[],'Ts',[],'Tf',[],'FPS',5,...
                'Dmax',[0,30,0],'Type',3,'vCompress','Motion JPEG AVI');
+Device = struct('IMAQ',[],'DAQ',[]);
 
-% sets the sub-struct fields
+% sets the image acquisition related sub-struct fields
 if ~isempty(objIMAQ) && ~isa(objIMAQ,'DummyVideo')
     % sets the camera frame rate
     if isWebCam
@@ -64,7 +66,15 @@ if ~isempty(objIMAQ) && ~isa(objIMAQ,'DummyVideo')
         case {'Logitech Webcam Pro 9000','USB Video Device'}
             Timing.Tp = 10;
     end
+
+    % sets the image acquisition device name
+    Device.IMAQ = objIMAQ.Name;
 end 
+
+% sets the external stimuli related sub-struct fields
+if ~strcmp(exptType,'RecordOnly') && ~isempty(objDAQ)
+    Device.DAQ = objDAQ.BoardNames;
+end
            
 % final struct initialisation
-iExpt = struct('Info',Info,'Timing',Timing,'Video',Video);
+iExpt = struct('Info',Info,'Timing',Timing,'Video',Video,'Device',Device);
