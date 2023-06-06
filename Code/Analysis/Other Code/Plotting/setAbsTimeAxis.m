@@ -4,19 +4,15 @@ function setAbsTimeAxis(hAx,T,snTot,tStep)
 % global variables
 global tDay
 
-% sets the time vector
-tVec = sec2vec(T(end));
-tVec(2) = 24*tVec(1) + tVec(2);
-
 % allowable time steps
-tMin = [6,5,-1];
+tMin = [6*60^2,5*60,-1];
 tStr = {'hrs','min','sec'};
 tDayH = convertTime(tDay,'hrs','sec');
 [lMax,dumT,xL,iStep] = deal(8,clock,get(hAx,'xlim'),1);
 xStep = {[1,2,4,6,12],[1,2,5,10,15,20,30,60],[1,2,5,10,15,20,30,60]};
 
 % determines the experiment duration index
-iMin = find(tVec(2:end) >= tMin,1,'first');
+iMin = find(T(end) >= tMin,1,'first');
 
 % sets the time step (based on the duration of the experiment)
 if nargin < 4

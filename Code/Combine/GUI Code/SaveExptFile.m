@@ -56,9 +56,9 @@ initExplorerTree(handles);
 initFileInfo(handles);
 initExptInfo(handles);
 
-% updates the solution time object properties
-set(handles.checkSolnTime,'value',0)
-checkSolnTime_Callback(handles.checkSolnTime, [], handles)
+% % updates the solution time object properties
+% set(handles.checkSolnTime,'value',0)
+% checkSolnTime_Callback(handles.checkSolnTime, [], handles)
 
 % updates the object properties
 updateObjectProps(handles)
@@ -174,6 +174,11 @@ pFld = get(hCheck,'UserData');
 oPara(iExp) = setStructField(oPara(iExp),pFld,get(hCheck,'Value'));
 setappdata(hFig,'oPara',oPara)
 setappdata(hFig,'isChange',true)
+
+% runs the time split checkbox callback function 
+if strcmp(get(hCheck,'Tag'),'checkSolnTime')
+    checkSolnTime_Callback(hCheck, [], handles)
+end
 
 % --- Executes on button press in checkSolnTime.
 function checkSolnTime_Callback(hObject, eventdata, handles)
@@ -740,11 +745,8 @@ for i = 1:nExp
 
         case {'.csv','.txt'}
             % case is an ascii type file (csv or txt)
-            a = 1;
-            
-            % outputs the csv/text file to disk
             isCSV = strcmp(fExtn{i},'.csv');
-            outputASCIIFile(handles,snTot,oPara(i),isCSV,hProg)
+            outputASCIIFile(handles,snTot,fNameFull,oPara(i),isCSV,hProg)
     end
     
     if i < nExp
@@ -895,14 +897,12 @@ hProg.Update(2,'Matlab Solution File Output Complete',1);
 pause(0.05);
 
 % --- outputs the CSV combined solution file --- %
-function outputASCIIFile(handles,snTot,oPara,isCSV,hProg)
+function outputASCIIFile(handles,snTot,fNameFull,oPara,isCSV,hProg)
 
 % retrieves the apparatus data and solution file struct
 iPara = getappdata(handles.figExptSave,'iParaOut');
-nApp = sum(snTot.iMov.ok);
 
 % sets the output file name/directory
-fDir = getappdata(handles.figExptSave,'fDir');
 fName = getappdata(handles.figExptSave,'fName');
 setappdata(handles.figExptSave,'snTotOut',snTot)
 
@@ -926,7 +926,7 @@ if ~ok
     return
 else
     % sets the number of files to output (for each apparatus)
-    nFile = length(T);
+    [nFile,nApp] = deal(length(T),length(Pos));
     
     % loops through each of the apparatus
     for i = 1:nApp
@@ -943,13 +943,13 @@ else
             % opens a new data file
             DataNw = [Hstr{i};num2cell([T{j} Pos{i}{j}])];
             if isCSV
-                fNameEnd = sprintf('%s (%s).csv',fName{j},fNameSuf{i}{j});
+                fNameNw = sprintf('%s (%s).csv',fNameFull,fNameSuf{i}{j});
             else
-                fNameEnd = sprintf('%s (%s).txt',fName{j},fNameSuf{i}{j});
+                fNameNw = sprintf('%s (%s).txt',fNameFull,fNameSuf{i}{j});
             end
             
             % opens the file
-            fNameNw = fullfile(fDir{j},fNameEnd);
+%             fNameNw = fullfile(fDir{j},fNameEnd);
             fid = fopen(fNameNw,'w');
             
             % updates the waitbar figure
@@ -964,7 +964,7 @@ else
                     if hProg.Update(3,sprintf('%s (Row %i of %i)',...
                                     hProg.wStr{3},iRow,nRow),iRow/nRow)
                         % if the user cancelled, then exit the function
-                        try; fclose(fid); end
+                        try fclose(fid); catch; end
                         return
                     end
                 end
@@ -1023,9 +1023,9 @@ if oPara.outStim
     % sets the stimuli data
     stimData = setupStimData(snTot);
     if isCSV
-        fNameStim = fullfile(fDir,sprintf('%s (Stim Data).csv',fName));
+        fNameStim = [fNameFull,' (Stim Data).csv'];
     else
-        fNameStim = fullfile(fDir,sprintf('%s (Stim Data).txt',fName));
+        fNameStim = [fNameFull,' (Stim Data).txt'];
     end
     
     % writes the stimuli data to file
@@ -1037,9 +1037,9 @@ if oPara.outExpt
     % retrieves the experiment info and the file name
     exptData = setupExptData(snTot,iPara);
     if isCSV
-        fNameExpt = fullfile(fDir,sprintf('%s (Expt Data).csv',fName));
+        fNameExpt = [fNameFull,' (Expt Data).csv'];
     else
-        fNameExpt = fullfile(fDir,sprintf('%s (Expt Data).txt',fName));
+        fNameExpt = [fNameFull,' (Expt Data).txt'];
     end
     
     % writes the stimuli data to file
@@ -1064,9 +1064,46 @@ isSplit = get(handles.checkSolnTime,'value');
 flyok = snTot.iMov.flyok;
 indOut = find(snTot.iMov.ok);
 gName = snTot.iMov.pInfo.gName;
-[nApp,ok] = deal(length(indOut),true);
+
+% determines the data groups
+if detMltTrkStatus(snTot.iMov)
+    % FINISH ME!
+    a = 1;
+    
+elseif snTot.iMov.is2D
+    % FINISH ME!
+    a = 1;
+    
+else
+    % case is 1D expt
+    
+    % initialisations
+    cIDT = cell2mat(snTot.cID);
+    szR = [snTot.iMov.nCol,snTot.iMov.nRow];    
+    iApp = sub2ind(szR,cIDT(:,2),cIDT(:,1));
+    A = [iApp,cIDT(:,3)];    
+    
+    % determines the unique grouping names
+    [gName,~,iC] = unique(snTot.iMov.pInfo.gName(indOut));
+    indC = arrayfun(@(x)(indOut(iC==x)),1:length(gName),'un',0);    
+    
+    % sets the final group indices    
+    fokR = flyok(sub2ind(size(flyok),cIDT(:,3),iApp));    
+    indG0 = cellfun(@(x)(find(ismember(iApp,x))),indC,'un',0);
+    indG = cellfun(@(x)(x(fokR(x))),indG0,'un',0);    
+    
+    % sets the final x-position group data
+    PxG = cellfun(@(x)(cell2mat(arrayfun(@(y,z)...
+        (snTot.Px{y}(:,z)),A(x,1),A(x,2),'un',0)')),indG,'un',0);
+    if oPara.outY
+        % sets the final y-position group data (if required)
+        PyG = cellfun(@(x)(cell2mat(arrayfun(@(y,z)...
+            (snTot.Py{y}(:,z)),A(x,1),A(x,2),'un',0)')),indG,'un',0);        
+    end
+end
 
 % memory allocation
+[nApp,ok] = deal(length(gName),true);
 [Pos,fNameSuf,Hstr] = deal(cell(1,nApp));
 
 % ------------------------- %
@@ -1128,17 +1165,16 @@ for i = 1:nApp
         return
     end
     
-    % sets the apparatus index and ok flags
-    [iApp,okNw] = deal(indOut(i),find(flyok(:,indOut(i))));
-    Hstr{i} = cell(1,1+(1+double(oPara.outY))*length(okNw));
-    
     % retrieves the fly x-coordinates
-    Px = snTot.Px{i}(indNw,okNw);
+    Px = PxG{i}(indNw,:);    
+    
+    % sets the apparatus index and ok flags
+    Hstr{i} = cell(1,1+(1+double(oPara.outY))*size(Px,2));    
     
     % sets the position array based on whether outputting the y-coords
     if oPara.outY
         % output y-location as well
-        Py = snTot.Py{i}(indNw,okNw);
+        Py = PyG{i}(indNw,:);
         [PxC,PyC] = deal(num2cell(Px,1),num2cell(Py,1));
         Pos{i} = cell2mat(cellfun(@(x,y)([x y]),PxC,PyC,'un',0));
         
@@ -1157,7 +1193,7 @@ for i = 1:nApp
         % if more than one file, then set the file-names based on the
         % file period
         Pos{i} = cellfun(@(x)(Pos{i}(x,:)),indGrp,'un',0);
-        fNameSuf{i} = cellfun(@(x)(sprintf('%s - H%i-%i',gName{iApp},...
+        fNameSuf{i} = cellfun(@(x)(sprintf('%s - H%i-%i',gName{i},...
             (x-1)*tSplitH,x*tSplitH)),...
             num2cell(1:size(indGrp,1))','un',0);
         
@@ -1167,7 +1203,7 @@ for i = 1:nApp
         end
     else
         % otherwise, set the suffix name to be the apparatus name
-        [Pos{i},fNameSuf{i}] = deal(Pos(i),gName(iApp));
+        [Pos{i},fNameSuf{i}] = deal(Pos(i),gName(i));
         if (i == 1)
             T = {T};
         end
@@ -1178,10 +1214,11 @@ for i = 1:nApp
         case {'csv','txt'}
             % sets the header string based on whether outputting y-data
             Hstr{i}{1} = 'Time';
-            H1 = arrayfun(@(x)(sprintf('X%i',x)),okNw,'un',0);
+            xiH = 1:size(Pos{i}{1},2);
+            H1 = arrayfun(@(x)(sprintf('X%i',x)),xiH,'un',0);
             if oPara.outY
                 % case is outputting both x and y data
-                H2 = [H1 arrayfun(@(x)(sprintf('Y%i',x)),okNw,'un',0)];
+                H2 = [H1 arrayfun(@(x)(sprintf('Y%i',x)),xiH,'un',0)];
                 Hstr{i}(2:end) = reshape(H2',[1 numel(H2)]);
             else
                 % case is outputting both x data
@@ -1989,8 +2026,7 @@ setPanelProps(handles.panelOtherPara,tabDataEx{iExp,2})
 switch fExtn{iExp}
     case {'.ssol','.mat'} % case is the DART Solution File
         [isOut,isTime] = deal(false);
-        set(handles.checkSolnTime,'value',0)
-        checkSolnTime_Callback(handles.checkSolnTime, [], handles)
+        set(handles.checkSolnTime,'value',0)        
         
     case ('.txt') % case is the ASCII text file
         isCSV = true;
@@ -2001,12 +2037,15 @@ if tabDataEx{iExp,2}
     % updates the check-box properties
     setObjEnable(handles.checkUseComma,isCSV)
     setObjEnable(handles.checkSolnTime,isTime)
-    setObjEnable(handles.checkOutputY,~sInfo{iExp}.snTot.iMov.is2D)
-
+    setObjEnable(handles.checkOutputY,sInfo{iExp}.snTot.iMov.is2D)
+    
     % sets the output checkbox enabled properties
     setObjEnable(handles.checkOutputExpt,isOut)
     setObjEnable(handles.checkOutputStim,isOut && hasStim)
 end
+
+% runs the split experiment checkbox callback function
+checkSolnTime_Callback(handles.checkSolnTime, [], handles)
 
 % updates the checkbox values
 pFld = fieldnames(oPara(iExp));
@@ -2050,7 +2089,7 @@ for i = 1:length(dirRemove)
     dirData = dir(dirRemove{i});
     if ~any(arrayfun(@(x)(x.bytes),dirData) > 0)
         % if the directory is empty, then remove it
-        try; rmdir(dirRemove{i}); end
+        try rmdir(dirRemove{i}); catch; end
     end
 end
 

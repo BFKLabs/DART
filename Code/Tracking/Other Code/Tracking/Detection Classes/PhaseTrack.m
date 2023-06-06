@@ -1029,7 +1029,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             nFrmSL = length(ImgSL0);
             ImgSR = cell(nFrmSL,1);
 
-            % 
+            % filters the images
             hS = fspecial('gaussian');            
             ImgSL = cellfun(@(x)(Bw.*applyHMFilter(x)),ImgSL0,'un',0);
             ImgSL = cellfun(@(x)(min(0,imfilter(x,hS))),ImgSL,'un',0);

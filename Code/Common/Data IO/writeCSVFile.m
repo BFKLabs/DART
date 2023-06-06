@@ -50,10 +50,17 @@ for i = 1:m
 
         % prints the carriage return
         fprintf(fid,'\n');
-    catch ME
-        try fclose(fid); end
-        if hasWait; try; close(h); end; end
-        ok = false; 
+        
+    catch
+        % closes the file ID
+        try fclose(fid); catch; end
+        
+        % closes the waitbar figure
+        if hasWait
+            try close(h); catch; end 
+        end
+        
+        ok = false;
         return
     end
 end

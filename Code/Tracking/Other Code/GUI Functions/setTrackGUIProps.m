@@ -564,7 +564,7 @@ switch (typeStr)
                 end
                 
                 %
-                hasPos = ~isnan(pData.fPos{j0}{i0}(iData.cFrm,1));                
+                hasPos = ~isnan(pData.fPos{j0}{i0}(cFrm,1));                
                 setObjEnable(handles.checkShowMark,hasPos)                                                                 
                 
                 %

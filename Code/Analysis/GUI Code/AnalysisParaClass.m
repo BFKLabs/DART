@@ -1599,13 +1599,13 @@ classdef AnalysisParaClass < handle
             isShow = ~get(hPB,'Minimized');
             snTotT = getappdata(obj.hFigM,'snTot');
             
+            % retrieves the experiment/scope indices
+            [eInd,~,pInd] = getSelectedIndices(obj.hGUI);            
+            
             % determines if the experiments can be combined
             canComb = (~obj.pData.hasSP || obj.pData.hasSR) && ...
-                      ((obj.pData.nApp > 1) && ~strcmp(p.Para,'appName'));    
-            if canComb
-                % retrieves the experiment/scope indices
-                [eInd,~,pInd] = getSelectedIndices(obj.hGUI);
-                
+                      ((obj.pData.nApp > 1) && ~strcmp(p.Para,'appName'));
+            if canComb                
                 % retrieves the currently selected solution file
                 snTot = getappdata(obj.hFigM,'snTot');
                 if (pInd == 3)

@@ -21,11 +21,11 @@ end
 % End initialization code - DO NOT EDIT
 
 % --- Executes just before FlyCombine is made visible.
-function FlyCombine_OpeningFcn(hObject, eventdata, handles, varargin)
+function FlyCombine_OpeningFcn(hObject, ~, handles, varargin)
 
 % global variables
-global isAnalysis initDock updateFlag regSz 
-[isAnalysis,initDock] = deal(false,true);
+global isAnalysis isUpdating initDock updateFlag regSz 
+[isAnalysis,isUpdating,initDock] = deal(false,false,true);
 updateFlag = 2; pause(0.01); 
 
 % retrieves the regular size of the GUI
@@ -57,6 +57,7 @@ setObjVisibility(hFigM,'off')
 % sets the input arguments
 setappdata(hObject,'iTab',1);
 setappdata(hObject,'sInfo',[]);
+setappdata(hObject,'pltObj',[]);
 setappdata(hObject,'hUndock',[]);
 setappdata(hObject,'hGUIInfo',[]);
 setappdata(hObject,'hDART',hFigM);
@@ -67,11 +68,13 @@ sDirO = {ProgDefNew.DirSoln,ProgDefNew.DirComb,ProgDefNew.DirComb}';
 setappdata(hObject,'sDirO',sDirO);
 
 % sets the function handles into the GUI
-setappdata(hObject,'updatePlot',@updatePosPlot)
 setappdata(hObject,'postSolnLoadFunc',@postSolnLoadFunc)
 setappdata(hObject,'postSolnSaveFunc',@postSolnSaveFunc)
 setappdata(hObject,'getInfoFcn',@getCurrentExptInfo); 
 setappdata(hObject,'updateInfoFcn',@updateCurrentExptInfo)
+setappdata(hObject,'updateViewMenu',@updateViewMenu)
+setappdata(hObject,'resetPopupFields',@resetPopupFields)
+setappdata(hObject,'getCurrentExptDur',@getCurrentExptDur)
 
 % clears the image axis
 cla(handles.axesImg); 
@@ -91,7 +94,7 @@ handles = initObjProps(handles);
 centreFigPosition(hObject);
 
 % closes the loadbar
-try; delete(h); end
+try delete(h); catch; end
 
 % Choose default command line output for FlyCombine
 handles.output = hObject;
@@ -117,7 +120,7 @@ guidata(hObject, handles);
 % uiwait(handles.figFlyCombine);
 
 % --- Outputs from this function are returned to the command line.
-function varargout = FlyCombine_OutputFcn(hObject, eventdata, handles) 
+function varargout = FlyCombine_OutputFcn(~, ~, ~) 
 
 % Get default command line output from handles structure
 varargout{1} = [];
@@ -131,7 +134,7 @@ varargout{1} = [];
 % ------------------ %
 
 % -------------------------------------------------------------------------
-function menuLoadExpt_Callback(hObject, eventdata, handles)
+function menuLoadExpt_Callback(~, ~, handles)
 
 % initialisations
 hFig = handles.figFlyCombine;
@@ -148,13 +151,13 @@ OpenSolnFile(hFig);
 warning(wState)
 
 % --------------------------------------------------------------------
-function menuSaveSingle_Callback(hObject, eventdata, handles)
+function menuSaveSingle_Callback(~, ~, handles)
 
 % runs the save single experiment file gui
 SaveExptFile(handles.figFlyCombine)
 
 % --------------------------------------------------------------------
-function menuSaveMulti_Callback(hObject, eventdata, handles)
+function menuSaveMulti_Callback(~, ~, handles)
 
 % runs the save multi experiment file gui
 SaveMultiExptFile(handles.figFlyCombine)
@@ -164,13 +167,13 @@ SaveMultiExptFile(handles.figFlyCombine)
 % ------------------- %
 
 % -------------------------------------------------------------------------
-function menuLoadExtnData_Callback(hObject, eventdata, handles)
+function menuLoadExtnData_Callback(~, ~, handles)
 
 % runs the video parameter reset dialog
 ExtnData(handles.figFlyCombine);
 
 % -------------------------------------------------------------------------
-function menuClearData_Callback(hObject, eventdata, handles)
+function menuClearData_Callback(~, ~, handles)
 
 % prompts the user if they really want to clear all the data
 qStr = 'Are you sure you want to clear all the loaded data?';
@@ -184,13 +187,13 @@ end
 resetCombineGUI(handles)
 
 % -------------------------------------------------------------------------
-function menuProgPara_Callback(hObject, eventdata, handles)
+function menuProgPara_Callback(~, ~, handles)
 
 % runs the program default GUI
 ProgDefaultDef(handles.figFlyCombine,'Combine');
 
 % -------------------------------------------------------------------------
-function menuExit_Callback(hObject, eventdata, handles)
+function menuExit_Callback(~, ~, handles)
 
 % object handles
 hFig = handles.figFlyCombine;
@@ -222,37 +225,37 @@ end
 % -------------------------------- %
 
 % -------------------------------------------------------------------------
-function menuViewXData_Callback(hObject, eventdata, handles)
+function menuViewXData_Callback(hObject, ~, handles)
 
 % updates the view menu properties and the viewing axes
 updateViewMenu(handles,hObject)
 
 % -------------------------------------------------------------------------
-function menuViewYData_Callback(hObject, eventdata, handles)
+function menuViewYData_Callback(hObject, ~, handles)
 
 % updates the view menu properties and the viewing axes
 updateViewMenu(handles,hObject)
 
 % -------------------------------------------------------------------------
-function menuViewXYData_Callback(hObject, eventdata, handles)
+function menuViewXYData_Callback(hObject, ~, handles)
 
 % updates the view menu properties and the viewing axes
 updateViewMenu(handles,hObject)
 
 % -------------------------------------------------------------------------
-function menuOrientAngle_Callback(hObject, eventdata, handles)
+function menuOrientAngle_Callback(hObject, ~, handles)
 
 % updates the view menu properties and the viewing axes
 updateViewMenu(handles,hObject)
 
 % -------------------------------------------------------------------------
-function menuAvgSpeedIndiv_Callback(hObject, eventdata, handles)
+function menuAvgSpeedIndiv_Callback(hObject, ~, handles)
 
 % updates the view menu properties and the viewing axes
 updateViewMenu(handles,hObject)
 
 % -------------------------------------------------------------------------
-function menuAvgSpeedGroup_Callback(hObject, eventdata, handles)
+function menuAvgSpeedGroup_Callback(hObject, ~, handles)
 
 % updates the view menu properties and the viewing axes
 updateViewMenu(handles,hObject)
@@ -262,7 +265,7 @@ updateViewMenu(handles,hObject)
 %-------------------------------------------------------------------------%
 
 % -------------------------------------------------------------------------
-function toggleZoom_ClickedCallback(hObject, eventdata, handles)
+function toggleZoom_ClickedCallback(hObject, ~, ~)
 
 %
 if (strcmp(get(hObject,'State'),'on'))
@@ -280,7 +283,7 @@ end
 % ----------------------------- %
 
 % --- Executes when figFlyCombine is resized.
-function figFlyCombine_ResizeFcn(hObject, eventdata, handles)
+function figFlyCombine_ResizeFcn(hObject, ~, handles)
 
 % global variables
 global updateFlag uTime
@@ -331,6 +334,7 @@ if isUpdating; return; end
 
 % object retrieval
 hFig = handles.figFlyCombine;
+pObj = getappdata(hFig,'pltObj');
 sInfo0 = getappdata(hFig,'sInfo');
 hGUIInfo = getappdata(hFig,'hGUIInfo');
 
@@ -369,25 +373,35 @@ end
 % resets the outer panel parent
 set(handles.panelOuter,'Parent',hObj)
 
-% creates a variable region information GUI
-sInfo = getCurrentExptInfo(hFig);
-if detMltTrkStatus(sInfo.snTot.iMov)
-    hGUIInfo = MultiFlyCheckTrack(hFig,sInfo.snTot); 
+% initialises/updates the plot objects (based on the class object state)
+if isempty(pObj)
+    % case is plot object has yet to be initialises
+    pObj = DataCombPlotObj(handles);
+    setappdata(hFig,'pltObj',pObj);
 else
-    hGUIInfo = FlyInfoGUI(handles,sInfo.snTot,[],false);   
+    % case is plot object has been initialised
+    pObj.resetExptPlotObjects();
+end
+
+% creates a variable region information GUI
+if detMltTrkStatus(pObj.sInfo.snTot.iMov)
+    hGUIInfo = MultiFlyCheckTrack(hFig,pObj.sInfo.snTot); 
+else
+    hGUIInfo = FlyInfoGUI(handles,pObj.sInfo.snTot,[],false);   
 end
 
 % updates the information gui field in the main gui
 setappdata(hFig,'hGUIInfo',hGUIInfo)
 
-if isempty(eventdata)
-    resetPlotObjects(handles)
-end
-    
+% % resets the plot objects (if calling function directly)
+% if isempty(eventdata)
+%     pObj.resetExptPlotObjects()
+% end    
+
 % resets the experiment information fields
-updateExptInfoFields(handles,sInfo)
-updatePlotObjects(handles,sInfo)
-updateGroupInfo(handles,sInfo)
+updateExptInfoFields(handles,pObj.sInfo)
+pObj.updatePlotObjects()
+updateGroupInfo(handles,pObj.sInfo)
 
 % resets the marker
 hPanelF = handles.panelFinishTime;
@@ -400,14 +414,14 @@ figFlyCombine_ResizeFcn(hFig,[],handles)
 pause(0.05);
 
 % closes the loadbar
-try; delete(h); end
+try delete(h); catch; end
 
 % sets the gui visibility
 uistack(hGUIInfo.hFig,'top')
 setObjVisibility(hGUIInfo.hFig,'on');
 
 % --- executes on update editSolnDir
-function editSolnDir_Callback(hObject, eventdata, handles)
+function editSolnDir_Callback(hObject, ~, handles)
 
 % object retrieval
 hFig = handles.figFlyCombine;
@@ -427,325 +441,17 @@ else
     set(hObject,'String',sInfo{iExp}.expFile)
 end
 
-% --- resets the plot objects
-function updatePlotObjects(handles,sInfo)
-
-% global variables
-global xLimTot yLimTot pStep
-
-% field retrieval
-snTot = sInfo.snTot;
-hFig = handles.figFlyCombine;
-[hAx,iMov] = deal(handles.axesImg,snTot.iMov);
-[~,lblSize] = detCombineFontSizes(handles);
-
-% pauses to update the GUI
-pause(0.05);
-
-% sets the time multiplier
-calcPhi = isfield(snTot,'Phi');
-Tmlt = getTimeScale(snTot.T{end}(end));
-nFrm = sum(cellfun('length',snTot.T));
-isMltTrk = detMltTrkStatus(iMov);
-use2D = iMov.is2D || isMltTrk;
-
-% sets up the popup menu strings
-if isMltTrk
-    % case is multi-tracking;    
-
-    % sets the fly indices for each region
-    hGUIInfo = getappdata(hFig,'hGUIInfo');
-    iFlyF = hGUIInfo.setupMultiTrackIndices(iMov);
-    
-    popStr0 = cell(length(iMov.pInfo.nFly),1);
-    for i = 1:length(popStr0)
-        popStr0{i} = cellfun(@(x)(sprintf('Region %i (Fly %i-%i)',...
-                            i,x(1),x(end))),iFlyF{i},'un',0);
-    end
-    
-    % converts the array to a straight cell array
-    popStr = cell2cell(popStr0,1);
-    
-elseif iMov.is2D
-    % case is the 2D experimental setup
-    xiC = 1:iMov.pInfo.nCol;
-    popStr = arrayfun(@(x)(sprintf('Column #%i',x)),xiC(:),'un',0);
-else
-    % case is the 1D experimental setup
-    popStr = setup1DRegionNames(iMov.pInfo,1);
-end
-
-% recalculates the global variables
-nFly = getMaxPlotObjCount(iMov);
-xLimTot = [snTot.T{1}(1) snTot.T{end}(end)]*Tmlt;
-yLimTot = [1 nFly]+0.5*[-1 1];
-pStep = 10^max(floor(log10(nFrm))-3,0);
-
-% initialises the popup menu
-set(handles.popupAppPlot,'string',popStr,'value',1)
-
-% sets the bin indices
-ii = 1:pStep:nFrm;
-T = cell2mat(snTot.T); T = T(ii);
-% isDay = cell2mat(snTot.isDay'); 
-% snTot.isDay = {isDay(ii)};
-
-% updates the axis x-limits
-Tfin = min(vec2sec(getCurrentExptDur(sInfo.iPara)),T(end));
-xLim0 = Tmlt*[0 Tfin];
-xLim = xLim0 + 0.001*diff(xLim0)*[-1 1];
-set(hAx,'xlim',xLim)
-
-% resets the horizontal limits of the plot objects
-tStr = {'hPos','hPos2','hGrpFill','hSep'};
-for i = 1:length(tStr)
-    hObjAx = findall(hAx,'tag',tStr{i});
-    if ~isempty(hObjAx)
-        switch tStr{i}
-            case 'hGrpFill'
-                ix = [1,1,2,2,1];
-                arrayfun(@(x)(set(x,'XData',xLim(ix))),hObjAx);
-            case 'hSep'
-                arrayfun(@(x)(set(x,'XData',xLim)),hObjAx);
-            otherwise
-                arrayfun(@(x)(set(x,'XData',NaN,'YData',NaN)),hObjAx);
-        end
-    end
-end
-
-% sets the scale factor (newer versions will have this value)
-if isfield(snTot.sgP,'sFac')
-    % scale factor is present, so use it
-    sFac = snTot.sgP.sFac;
-else
-    % otherwise, use a value of unity
-    sFac = 1;
-end
-
-% memory allocation
-[Px,Py,V] = deal(cell(1,length(snTot.Px)));
-if calcPhi; Phi = Px; end
-
-% sets the acceptance flags (dependent on expt setup type)
-if isMltTrk
-    % case is multi-tracking
-    fok = combineNumericCells(iMov.flyok);
-else
-    % case is single tracking
-    fok = iMov.flyok;
-end
-    
-% determines which regions are feasible
-if use2D
-    % case is a 2D/multi-tracking setup
-    isOK = any(fok,1);
-else
-    % case is a 1D setup
-    isOK = ~strcmp(sInfo.gName,'* REJECTED *');
-end
-
-% sets the fly time/x-coordinate arrays
-for i = 1:length(Px)
-    if isOK(i)
-        Px{i} = snTot.Px{i}(ii,:)/sFac; 
-        if use2D
-            % if 2D analysis, then set the y-locations as well
-            Py{i} = snTot.Py{i}(ii,:)/sFac; 
-            if i == 1; T = T(1:(end-1)); end        
-        end
-
-        % calculates the population speed
-        V{i} = calcPopVel(T,Px{i},Py{i},fok(:,i));
-
-        % sets the orientation angles (if calculated)
-        if calcPhi; Phi{i} = snTot.Phi{i}(ii,:); end
-    end
-end
-
-% if the total number of flies is low, then remove 
-setObjEnable(handles.popupAppPlot,'on')
-
-% sets the plot time/locations into the main GUI
-setappdata(hFig,'T',T)
-setappdata(hFig,'Px',Px)
-setappdata(hFig,'Py',Py)
-setappdata(hFig,'V',V)
-
-% sets the orientation angles (if they were calculated)
-if calcPhi; setappdata(hFig,'Phi',Phi); end
-
-% sets the absolute time values on the time scale
-setAbsTimeAxis(hAx,T,snTot)
-
-if isMltTrk
-    lblStr = 'Fly Index';
-elseif iMov.is2D
-    lblStr = 'Grid Row Number';
-else
-    lblStr = 'Sub-Region Index';
-end
-
-% resets the axis properties
-set(hAx,'ytick',(1:nFly)','yLim',[1 nFly] + 0.5*[-1 1],'linewidth',1.5)
-resetXTickMarkers(hAx);
-
-% updates the axis/label properties
-hLbl = ylabel(hAx,lblStr,'FontUnits','pixels','tag','hYLbl');
-set(hLbl,'fontweight','bold','fontsize',lblSize,'UserData',lblStr)
-axis(hAx,'ij')
-
-% sets the axes units to normalised
-set(hAx,'Units','Normalized')
-axis(hAx,'on')
-
-% updates the menu properties
-setObjEnable(handles.menuPlotData,'on')
-updateViewMenu(handles,handles.menuViewXData,1)
-setObjEnable(handles.menuViewYData,use2D)
-setObjEnable(handles.menuViewXYData,use2D)
-
-% updates the position plot
-updatePosPlot(handles,1)
-
-% initialises/resets the limit markers
-updateLimitMarkers(handles)
-
-% adds in the stimuli axes panels (if stimuli are present)
-addStimAxesPanels(handles,snTot.stimP,snTot.sTrainEx,T([1 end]));
-
-% --- resets the experiment information fields
-function updateExptInfoFields(handles,sInfo)
-
-% updates the experiment/solution file information
-exFld = fieldnames(sInfo.expInfo);
-for i = 1:length(exFld)
-    hTxt = findall(handles.panelOuter,'tag',sprintf('text%s',exFld{i}));
-    if ~isempty(hTxt)
-        set(hTxt,'String',getStructField(sInfo.expInfo,exFld{i}));
-    end
-end
-
-% sets the solution directory tooltip string
-set(handles.editSolnDir,'String',sInfo.expFile)
-
-% updates 
-if sInfo.iTab == 1
-    % case is data was loaded from video solution files
-    set(handles.editSolnDirL,'string','Data Directory: ')
-    set(handles.textSolnType,'string','Video Solution File Directory')    
-else
-    % case is data was loaded from a single/multi-experiment solution file
-    set(handles.editSolnDirL,'string','Data File: ')
-    set(handles.textSolnType,'string','Experiment Solution File')    
-end
-
-% sets the visibility of the orientation angle menu item
-setObjVisibility(handles.menuOrientAngle,isfield(sInfo.snTot,'Phi'))
-
-% enables all the expt information panels
-setPanelProps(handles.panelSolnData,'on');
-setPanelProps(handles.panelExptInfo,'on');
-setPanelProps(handles.panelExptDur,'on');
-
-% --- updates the apparatus name table panel --- %
-function updateGroupInfo(handles,sInfo)
-
-% parameters and other initialisations
-nAppMx = 9;
-[X0,Y0] = deal(10,10);
-snTot = sInfo.snTot;
-hFig = handles.figFlyCombine;
-hTabGrp = getappdata(hFig,'hTabGrp');
-isMltTrk = detMltTrkStatus(snTot.iMov);
-
-% sets the group name strings
-if isMltTrk
-    [cHdr0,gStr] = deal('Region Grouping Names','Region');
-elseif snTot.iMov.is2D
-    [cHdr0,gStr] = deal('2D Arena Grouping Names','Column');
-else
-    [cHdr0,gStr] = deal('1D Region Grouping Names','Region');
-end
-
-% sets the table information
-iok = snTot.iMov.ok(:);
-Data = [sInfo.gName(:) num2cell(iok)];
-
-% sets the table row headers
-if snTot.iMov.is2D || isMltTrk
-    lblStr = 'Group Name: ';
-    rowName = cellfun(@(x)(sprintf('%s #%i',gStr,x)),...
-                            num2cell(1:size(Data,1)),'un',0);  
-else
-    lblStr = 'Region Location: ';
-    rowName = setup1DRegionNames(snTot.iMov.pInfo,2);
-end
-
-% sets the initial time location properties
-initTimeLocationProps(handles,handles.panelStartTime,sInfo.iPara.Ts)
-initTimeLocationProps(handles,handles.panelFinishTime,sInfo.iPara.Tf)
-initExptDurProps(handles,handles.panelExptDur,sInfo);
-
-% retrieves the height of the popup object
-pApp = get(handles.popupAppPlot,'position'); 
-pPosD = get(handles.panelExptDur,'position');
-pPosT = get(handles.panelAppInfo,'position');
-
-% updates the group name table information
-cHdr = {cHdr0,'Include?'};
-bgCol = getTableBGColours(handles,sInfo);
-setObjEnable(handles.tableAppInfo,~isempty(snTot))
-set(handles.tableAppInfo,'RowName',rowName,'ColumnName',cHdr,...
-                         'Data',Data,'BackgroundColor',bgCol)                                         
-             
-% updates the table information
-evnt = struct('Indices',[1,1],'NewData',Data{1,1});
-tableAppInfo_CellEditCallback(handles.tableAppInfo, evnt, handles)                    
-
-% resets the panel/panel object positions  
-nAppF = min(size(Data,1),nAppMx);
-[tPos,Hpop] = deal(setTableDimensions(handles,nAppF,0),pApp(4));
-
-% sets the final table/panel position vectors
-pAppF = [X0 0 (tPos(3)+2*X0) (tPos(4)+4*Y0+Hpop)];
-pAppF(2) = pPosD(2) - (pAppF(4) + Y0);
-set(handles.panelAppInfo,'Position',pAppF)
-
-% moves the apparatus text/popup objects
-set(handles.textAppPlot,'String',lblStr)
-resetObjPos(handles.textAppPlot,'bottom',2*Y0+tPos(4))
-resetObjPos(handles.popupAppPlot,'bottom',2*Y0+tPos(4)-3)
-
-% resets all the panel bottom locations
-dH = (pPosT(4)-pAppF(4));
-hPanel = [findobj(handles.panelOuter,'type','uipanel');...
-          findobj(handles.panelOuter,'type','uibuttongroup')];
-resetObjPos(handles.panelOuter,'height',-dH,1)
-for i = 1:length(hPanel)
-    if strcmp(get(hPanel(i),'tag'),'panelOuter')
-        resetObjPos(hPanel(i),'bottom',dH,1)        
-    else
-        resetObjPos(hPanel(i),'bottom',-dH,1)
-    end
-end
-
-% resets the dimensions of the objects
-resetObjPos(hTabGrp,'Height',-dH,1)
-resetObjPos(handles.panelOuter,'Bottom',-dH,1);
-resetObjPos(handles.panelExptOuter,'Height',-dH,1);
-resetObjPos(handles.panelExptOuter,'Bottom',dH,1);
-resetObjPos(hFig,'Height',-dH,1);
-
 % --------------------------------------------- %
 % --- POSITION PLOT MARKER OBJECT CALLBACKS --- %
 % --------------------------------------------- %
 
 % --- Executes on selection change in popupAppPlot.
-function popupAppPlot_Callback(hObject, eventdata, handles)
+function popupAppPlot_Callback(hObject, ~, handles)
 
 % updates the axis plot (if there are suitable apparatus set)
 if ~isempty(get(hObject,'string'))
-    updatePosPlot(handles)
+    pObj = getappdata(handles.figFlyCombine,'pltObj');
+    pObj.updatePosPlot()
 end
     
 % --------------------------------------------- %
@@ -757,7 +463,7 @@ function tableAppInfo_CellEditCallback(hObject, eventdata, handles)
 
 % retrieves the cell indices
 hFig = handles.figFlyCombine;
-sInfo = getCurrentExptInfo(hFig);
+pObj = getappdata(hFig,'pltObj');
 hGUIInfo = getappdata(hFig,'hGUIInfo');
 
 % other initialisations
@@ -787,7 +493,7 @@ end
 % determines if the region is reject. if so, then revert back to the
 % previous data (while outputting a message to screen)
 if isRejected
-    if sInfo.snTot.iMov.is2D
+    if pObj.sInfo.snTot.iMov.is2D
         gStr = 'group';
     else
         gStr = 'region';
@@ -809,8 +515,8 @@ switch indNw(2)
         % case is the group name string
         if ~strContains(nwData,',')
             % updates the group name and background colours
-            sInfo.gName{indNw(1)} = nwData; 
-            updateCurrentExptInfo(hFig,sInfo);           
+            pObj.sInfo.gName{indNw(1)} = nwData; 
+            pObj.updateCurrentExptInfo();           
             
         else
             % apparatus name is invalid so output an error
@@ -818,7 +524,7 @@ switch indNw(2)
             waitfor(errordlg(eStr,'Region Naming Error','modal'))
             
             % resets the table values
-            Data{indNw(1),indNw(2)} = sInfo.gName{indNw(1)};
+            Data{indNw(1),indNw(2)} = pObj.sInfo.gName{indNw(1)};
             set(hObject,'Data',Data);
             return
         end
@@ -827,16 +533,15 @@ switch indNw(2)
         % case is the inclusion flag
                 
         % updates the apparatus data struct
-        sInfo.snTot.iMov.ok(indNw(1)) = nwData;        
-        updateCurrentExptInfo(hFig,sInfo);
+        pObj.sInfo.snTot.iMov.ok(indNw(1)) = nwData;        
+        pObj.updateCurrentExptInfo();
         
         % updates the position plot axes
-%         updatePosPlot(handles)   
         updateGroupColours(handles,indNw,nwData)
 end
 
 % resets the table background colours
-bgCol = getTableBGColours(handles,sInfo);
+bgCol = getTableBGColours(pObj.sInfo);
 set(hObject,'BackgroundColor',bgCol)
 
 % determines if the individual fly info gui is open            
@@ -848,12 +553,12 @@ if ~isempty(hGUIInfo) && isa(hGUIInfo,'FlyInfoGUI')
         nwCol = getJavaColour(bgCol(j,:));
 
         % updates the colours                
-        if sInfo.snTot.iMov.is2D
+        if pObj.sInfo.snTot.iMov.is2D
             % case is a 2D experiment setup
-            if isfield(sInfo.snTot.iMov,'pInfo')
-                [iRow,iCol] = find(sInfo.snTot.iMov.pInfo.iGrp == j);
+            if isfield(pObj.sInfo.snTot.iMov,'pInfo')
+                [iRow,iCol] = find(pObj.sInfo.snTot.iMov.pInfo.iGrp == j);
             else
-                iRow = 1:size(sInfo.snTot.iMov.flyok);
+                iRow = 1:size(pObj.sInfo.snTot.iMov.flyok);
                 iCol = j*ones(size(iRow));
             end
 
@@ -864,7 +569,7 @@ if ~isempty(hGUIInfo) && isa(hGUIInfo,'FlyInfoGUI')
 
         else
             % case is a 1D experiment setup
-            for i = 1:size(sInfo.snTot.iMov.flyok,1)
+            for i = find(pObj.sInfo.snTot.iMov.flyok(:,j))'
                 jT.SetBGColourCell(i-1,j-1,nwCol);
             end
         end
@@ -875,77 +580,78 @@ if ~isempty(hGUIInfo) && isa(hGUIInfo,'FlyInfoGUI')
 end
 
 % updates the location/speed plots
-updatePosPlot(handles)
+pObj.updatePosPlot()
 
 % ----------------------------------------- %
 % --- START/FINISH TIME POINT CALLBACKS --- %
 % ----------------------------------------- %
 
 % --- Executes on button press in buttonStartReset.
-function buttonStartReset_Callback(hObject, eventdata, handles)
-
-% global variables
-global xLimTot
+function buttonStartReset_Callback(~, ~, handles)
 
 % retrieves the currently selected solution file data
 hFig = handles.figFlyCombine;
-sInfo = getCurrentExptInfo(hFig);
+pObj = getappdata(hFig,'pltObj');
 
 % retrieves the parameter struct
-[sInfo.iPara.Ts,sInfo.iPara.indS] = deal(sInfo.iPara.Ts0,[1 1]);
-txtStart = datestr(sInfo.iPara.Ts0,'mmm dd, YYYY HH:MM AM');
-updateCurrentExptInfo(hFig,sInfo);
+pObj.sInfo.iPara.indS = [1,1];
+pObj.sInfo.iPara.Ts = pObj.sInfo.iPara.Ts0;
+pObj.updateCurrentExptInfo();
 
-% resets to the start time string
-resetPopupFields(handles.panelStartTime,sInfo.iPara.Ts)
-resetLimitMarker(handles.axesImg,xLimTot(1)*[1 1],'Start')
+% resets the start time object fields
+resetPopupFields(handles.panelStartTime,pObj.sInfo.iPara.Ts)
+pObj.resetLimitMarker(pObj.xLimT(1)*[1 1],'Start')
+pObj.resetExptDurFields();
+
+% updates the start time string
+txtStart = datestr(pObj.sInfo.iPara.Ts0,'mmm dd, YYYY HH:MM AM');
 set(handles.textStartTime,'string',txtStart)
 
 % --- Executes on button press in buttonFinishReset.
-function buttonFinishReset_Callback(hObject, eventdata, handles)
-
-% global variables
-global xLimTot
+function buttonFinishReset_Callback(~, ~, handles)
 
 % retrieves the parameter struct
 hFig = handles.figFlyCombine;
-sInfo = getCurrentExptInfo(hFig);
+pObj = getappdata(hFig,'pltObj');
+indF = [length(pObj.sInfo.snTot.T) length(pObj.sInfo.snTot.T{end})];
 
 % updates the end flag values
-sInfo.iPara.Tf = sInfo.iPara.Ts0;
-sInfo.iPara.indF = [length(sInfo.snTot.T) length(sInfo.snTot.T{end})];
-updateCurrentExptInfo(hFig,sInfo)
+pObj.sInfo.iPara.Tf = pObj.sInfo.iPara.Tf0;
+pObj.sInfo.iPara.indF = indF;
+pObj.updateCurrentExptInfo()
 
-% resets to the finish time
-txtFinish = datestr(sInfo.iPara.Tf0,'mmm dd, YYYY HH:MM AM');
-resetPopupFields(handles.panelFinishTime,sInfo.iPara.Tf)
-resetLimitMarker(handles.axesImg,xLimTot(2)*[1 1],'Finish')
+% resets the finish time object fields
+resetPopupFields(handles.panelFinishTime,pObj.sInfo.iPara.Tf)
+pObj.resetLimitMarker(pObj.xLimT(2)*[1 1],'Finish')
+pObj.resetExptDurFields();
+
+% updates the finish time string
+txtFinish = datestr(pObj.sInfo.iPara.Tf0,'mmm dd, YYYY HH:MM AM');
 set(handles.textFinishTime,'string',txtFinish)
 
 % --- Executes on selection change in popupStartDay.
-function popupTimeVal(hObject, eventdata, handles)
+function popupTimeVal(hObject, ~, handles)
 
 % retrieves the index of the month that was selected
 hFig = handles.figFlyCombine;
 iSel = get(hObject,'Value');
 iType = get(hObject,'UserData');
 hPanel = get(hObject,'parent');
-sInfo = getCurrentExptInfo(hFig);
-
-% calculates the time scale multiplier
-Tmlt = getTimeScale(sInfo.snTot.T{end}(end));
+pObj = getappdata(hFig,'pltObj');
 
 % sets the initial start time
-Tv0 = cellfun(@(x)(x(1)),sInfo.snTot.T)*Tmlt;
+Tv0 = cellfun(@(x)(x(1)),pObj.sInfo.snTot.T)*pObj.Tmlt;
 if strcmp(get(get(hObject,'parent'),'tag'),'panelStartTime')
-    T0 = sInfo.iPara.Ts;
+    T0 = pObj.sInfo.iPara.Ts;
 else
-    T0 = sInfo.iPara.Tf;
+    T0 = pObj.sInfo.iPara.Tf;
 end
 
 % sets the start time vector
 switch iType
-    case (2) % case is the month was selected
+    case (2) 
+        % case is the month was selected
+        
         % gets the day popup handle
         hDay = findobj(hPanel,'UserData',3,'Style','PopupMenu');
         
@@ -962,20 +668,23 @@ switch iType
         end
         
         % sets the day strings
-        a = num2cell((1:9)');
-        dStr = [cellfun(@(x)(sprintf('0%i',x)),a,'un',false);...
-                cellfun(@num2str,num2cell(10:dMax)','un',false)];
+        dStr = [arrayfun(@(x)(sprintf('0%i',x)),(1:9)','un',0);...
+                arrayfun(@num2str,(10:dMax)','un',0)];
         
         % ensures the day is at most the maximum value, and resets the day
         % popup menu string list/value
         [T0(3),T0(iType)] = deal(min(T0(3),dMax),iSel);    
         set(handles.popupStartDay,'string',dStr,'Value',T0(3));            
         
-    case (3) % case is the day was selected
+    case (3) 
+        % case is the day was selected
+        
         % updates the value
         T0(iType) = iSel;
         
-    case (4) % case is the hours was selected
+    case (4) 
+        % case is the hours was selected
+        
         % recalculates the hour
         hAMPM = findobj(hPanel,'UserData',1,'Style','PopupMenu');
         if iSel == 12
@@ -984,11 +693,15 @@ switch iType
             T0(iType) = 12*(get(hAMPM,'Value')-1) + iSel;
         end
                 
-    case (5) % case is the minutes was selected
+    case (5) 
+        % case is the minutes was selected
+        
         % updates the value
         T0(iType) = iSel - 1;        
         
-    otherwise % case is the AM/PM popup
+    otherwise
+        % case is the AM/PM popup
+        
         % resets the hour value based on the AM/PM popup                
         hHour = findobj(hPanel,'UserData',4,'Style','PopupMenu');
         hVal = get(hHour,'Value');
@@ -1002,65 +715,67 @@ switch iType
 end
 
 % resets the panel marker
-[dTS,dTS0] = deal(calcTimeDifference(T0,sInfo.iPara.Ts0));
+[dTS,dTS0] = deal(calcTimeDifference(T0,pObj.sInfo.iPara.Ts0));
 if strcmp(get(get(hObject,'parent'),'tag'),'panelStartTime')
     % calculates the time difference between the new time location and the
     % limit markers    
-    dTF = calcTimeDifference(sInfo.iPara.Tf,T0);
+    dTF = calcTimeDifference(pObj.sInfo.iPara.Tf,T0);
     
     % checks to see if the new time is valid
     if (dTS < 0) || (dTF < 0)
         % if not, then reset to the previous valid value
         eStr = 'Error! Start time is not valid.';
         waitfor(errordlg(eStr,'Start Time Error','modal'))
-        resetPopupFields(handles.panelStartTime,sInfo.iPara.Ts)        
+        pObj.resetPopupFields(handles.panelStartTime,pObj.sInfo.iPara.Ts)
+        
     else
         % otherwise, update the start time/index
-        sInfo.iPara.Ts = T0;
-        sInfo.iPara.indS(1) = find(Tv0 <= dTS0,1,'last');                
-        sInfo.iPara.indS(2) = find(sInfo.snTot.T...
-                            {sInfo.iPara.indS(1)}*Tmlt <= dTS0,1,'last');        
-        updateCurrentExptInfo(hFig,sInfo);
+        pObj.sInfo.iPara.Ts = T0;
+        pObj.sInfo.iPara.indS(1) = find(Tv0 <= dTS0,1,'last');                
+        pObj.sInfo.iPara.indS(2) = find(pObj.sInfo.snTot.T...
+                    {pObj.sInfo.iPara.indS(1)}*pObj.Tmlt <= dTS0,1,'last');        
+        pObj.updateCurrentExptInfo();
         
         % resets the limit markers
-        resetLimitMarker(handles.axesImg,dTS*[1 1]*Tmlt,'Start')
+        pObj.resetLimitMarker(dTS*[1 1]*pObj.Tmlt,'Start')
+        pObj.resetExptDurFields();
     end
 else
-    % calculates the time difference between the new time location and the
-    % limit markers    
-    dTS = calcTimeDifference(T0,sInfo.iPara.Ts);
-    dTF = calcTimeDifference(sInfo.iPara.Tf0,T0);
+    % calculates time difference between new time location & limit markers
+    dTS = calcTimeDifference(T0,pObj.sInfo.iPara.Ts);
+    dTF = calcTimeDifference(pObj.sInfo.iPara.Tf0,T0);
     
     % checks to see if the new time is valid
     if (dTS < 0) || (dTF < 0)
         % if not, then reset to the previous valid value
         eStr = 'Error! Finish time is not valid.';
         waitfor(errordlg(eStr,'Finish Time Error','modal'))        
-        resetPopupFields(handles.panelFinishTime,sInfo.iPara.Tf)
+        pObj.resetPopupFields(handles.panelFinishTime,pObj.sInfo.iPara.Tf)
+
     else
         % otherwise, update the finish time/index
-        sInfo.iPara.Tf = T0;
-        sInfo.iPara.indF(1) = find(Tv0 <= dTS0,1,'last');                
-        sInfo.iPara.indF(2) = find(sInfo.snTot.T{...
-                            sInfo.iPara.indF(1)}*Tmlt <= dTS0,1,'last');         
-        updateCurrentExptInfo(hFig,sInfo)      
+        pObj.sInfo.iPara.Tf = T0;
+        pObj.sInfo.iPara.indF(1) = find(Tv0 <= dTS0,1,'last');                
+        pObj.sInfo.iPara.indF(2) = find(pObj.sInfo.snTot.T{...
+                    pObj.sInfo.iPara.indF(1)}*pObj.Tmlt <= dTS0,1,'last');
+        pObj.updateCurrentExptInfo()      
         
         % resets the limit markers
-        resetLimitMarker(handles.axesImg,dTS0*[1 1]*Tmlt,'Finish')
-        resetExptDurFields(handles.panelExptDur,sInfo);
+        pObj.resetLimitMarker(dTS0*[1 1]*pObj.Tmlt,'Finish')
+        pObj.resetExptDurFields();
     end
 end
 
 % --- Executes on editing the experiment duration editboxes
-function editExptDur(hObject, eventdata, handles)
+function editExptDur(hObject, ~, handles)
 
 % retrieves the currently selected solution file data
 hFig = handles.figFlyCombine;
 hPanelS = handles.panelStartTime;
 hPanelF = handles.panelFinishTime;
 iType = get(hObject,'UserData');
-sInfo = getCurrentExptInfo(hFig);
-iPara = sInfo.iPara;
+pObj = getappdata(hFig,'pltObj');
+iPara = pObj.sInfo.iPara;
 
 % sets the parameter limits
 switch iType
@@ -1083,16 +798,16 @@ if ok
     [iParaNw,updateStart,ok] = updateFinalTimeVec(handles,iPara);
     if ok
         % updates the data struct with the new value and exits
-        sInfo.iPara = iParaNw;
-        updateCurrentExptInfo(hFig,sInfo)
+        pObj.sInfo.iPara = iParaNw;
+        pObj.updateCurrentExptInfo()
         
         % updates the final experiment time and plot markers        
-        resetPopupFields(hPanelF,sInfo.iPara.Tf)          
+        pObj.resetPopupFields(hPanelF,pObj.sInfo.iPara.Tf)          
         hPopup = findall(hPanelF,'Style','popupmenu','UserData',1);
         popupTimeVal(hPopup, [], handles)
         
         % updates the start experiment time and plot markers
-        resetPopupFields(hPanelS,sInfo.iPara.Ts)  
+        pObj.resetPopupFields(hPanelS,pObj.sInfo.iPara.Ts)  
         if updateStart
             hPopup = findall(hPanelS,'Style','popupmenu','UserData',1);
             popupTimeVal(hPopup, [], handles)            
@@ -1115,152 +830,8 @@ end
 waitfor(msgbox(eStr,'Invalid Experiment Duration','modal'))
 
 % otherwise, reset to the previous value
-tExpt0 = getCurrentExptDur(sInfo.iPara);
+tExpt0 = getCurrentExptDur(pObj.sInfo.iPara);
 set(hObject,'string',num2str(tExpt0(iType)));
-
-% --- start/finish limit marker callback function --- %
-function moveLimitMarker(varargin)
-
-% global variables
-global xLimTot isUpdating
-
-% if updating the marker elsewhere, then exit
-if isUpdating
-    return
-end
-
-% retrieves the object handle and the index of the line
-switch length(varargin)
-    case 1
-        % case is the older version interactive objects
-        pNew = varargin{1};
-        Type = get(get(gco,'parent'),'UserData');        
-
-    case 2
-        % case is the newer version interactive objects
-        pNew = varargin{2}.CurrentPosition;
-        Type = varargin{1}.UserData;
-end
-
-% retrieves the figure handle
-hFig = findall(0,'tag','figFlyCombine');
-handles = guidata(hFig);
-
-% initialisations
-pDel = 1e-4;
-sInfo = getCurrentExptInfo(hFig);
-T0 = sInfo.snTot.iExpt(1).Timing.T0;
-[hAx,xNew] = deal(handles.axesImg,pNew(1,1));
-
-% sets the video start times
-Tmlt = getTimeScale(sInfo.snTot.T{end}(end));
-Tv0 = cellfun(@(x)(x(1)),sInfo.snTot.T)*Tmlt;
-
-% updates the 
-switch Type
-    case ('Start')
-        % retrieves the finish marker x-location
-        hFinish = findobj(hAx,'UserData','Finish');
-        pF0 = getIntObjPos(hFinish);
-        pF = pF0(:,1);
-        
-        % if the start marker exceeds the finish, then reset
-        if xNew >= (pF(1) - pDel)
-%             % sets the time vector to be below that of the finish
-%             TvecNw = sInfo.iPara.Tf;
-%             TvecNw(5) = TvecNw(5) - 1;            
-%             
-            % resets the limit marker
-%             xNew = calcTimeDifference(TvecNw,sInfo.iPara.Ts0)*Tmlt;
-            xNew = pF(1) - pDel;
-        end                
-        
-        % determines the new marker index value  
-        if xNew <= Tv0(1)
-            sInfo.iPara.indS = ones(1,2);
-        else
-            sInfo.iPara.indS(1) = find([Tv0;1e10] <= xNew,1,'last');                
-            sInfo.iPara.indS(2) = find([sInfo.snTot.T{...
-                        sInfo.iPara.indS(1)}*Tmlt;1e10] <= xNew,1,'last'); 
-        end
-        
-        if (sInfo.iPara.indS(1)*sInfo.iPara.indS(2)) == 1
-            % if the first point, set the the original marker point
-            sInfo.iPara.Ts = sInfo.iPara.Ts0;            
-        else
-            % otherwise, calculate the new time string
-            TT = sInfo.snTot.T{sInfo.iPara.indS(1)}(sInfo.iPara.indS(2));
-            sInfo.iPara.Ts = calcTimeString(T0,TT);
-        end
-        
-        % updates the solution file info
-        updateCurrentExptInfo(hFig,sInfo);
-        
-        % re-calculates the finish marker lower limit
-        TvecNw = sInfo.iPara.Ts; 
-        TvecNw(5) = TvecNw(5) + 1;
-        Ts0 = sInfo.snTot.iExpt.Timing.T0;
-        xLimNew = (calcTimeDifference(TvecNw,sInfo.iPara.Ts0) + ...
-                   calcTimeDifference(sInfo.iPara.Ts0,Ts0))*Tmlt;        
-        
-        % resets the popup-values
-        resetLimitMarkerRegion(hAx,[xLimNew xLimTot(2)],'Finish')
-        resetPopupFields(handles.panelStartTime,sInfo.iPara.Ts)
-        
-    case ('Finish')
-        % retrieves the start marker x-location
-        hStart = findobj(hAx,'UserData','Start');
-        pS0 = getIntObjPos(hStart);
-        pS = pS0(:,1);        
-               
-        % if the start marker exceeds the finish, then reset
-        if xNew <= (pS(1) + pDel)
-            xNew = pS(1) + pDel;
-%             % sets the time vector to be below that of the finish
-%             TvecNw = sInfo.iPara.Ts;
-%             TvecNw(5) = TvecNw(5) + 1;            
-%             
-%             % resets the limit marker
-%             xNew = calcTimeDifference(TvecNw,sInfo.iPara.Ts0)*Tmlt;
-%             resetLimitMarker(hAx,xNew*[1 1],Type)            
-        end          
-
-        % sets the final marker index and the final time string 
-        sInfo.iPara.indF(1) = find([Tv0;1e10] <= xNew,1,'last');
-        sInfo.iPara.indF(2) = find([sInfo.snTot.T{...
-                    sInfo.iPara.indF(1)}*Tmlt;1e10] <= xNew,1,'last');                
-        sInfo.iPara.Tf = calcTimeString(T0,sInfo.snTot.T{...
-                    sInfo.iPara.indF(1)}(sInfo.iPara.indF(2)));        
-        updateCurrentExptInfo(hFig,sInfo)
-        
-        
-        % re-calculates the finish marker lower limit
-        TvecNw = sInfo.iPara.Tf; 
-        TvecNw(5) = TvecNw(5) - 1;
-        Ts0 = sInfo.snTot.iExpt.Timing.T0;        
-        xLim0 = calcTimeDifference(sInfo.iPara.Ts0,Ts0)*Tmlt;
-        xLimNew = calcTimeDifference(TvecNw,sInfo.iPara.Ts0)*Tmlt + xLim0;           
-        
-        % resets the popup-values
-        resetLimitMarkerRegion(hAx,[xLim0 xLimNew],'Start')
-        resetPopupFields(handles.panelFinishTime,sInfo.iPara.Tf)
-end
-
-% updates the experiment duration
-resetExptDurFields(handles.panelExptDur,sInfo);
-
-% --- resets the experiment duration fields
-function resetExptDurFields(hPanelD,sInfo)
-
-% calculates the experiment duration
-tExpt = getCurrentExptDur(sInfo.iPara);
-
-% sets the properties for each of the editboxes
-for i = 1:length(tExpt)       
-    % sets the callback function
-    hEdit = findall(hPanelD,'UserData',i,'Style','Edit');
-    set(hEdit,'String',num2str(tExpt(i))) 
-end
 
 % --- resets the popup field values --- %
 function resetPopupFields(hPanel,Tvec)
@@ -1271,133 +842,6 @@ set(findobj(hPanel,'UserData',2),'value',Tvec(2))
 set(findobj(hPanel,'UserData',3),'value',Tvec(3))
 set(findobj(hPanel,'UserData',4),'value',mod(Tvec(4)-1,12)+1)
 set(findobj(hPanel,'UserData',5),'value',Tvec(5)+1)
-
-% --- resets the limit marers
-function resetLimitMarker(hAx,xNew,Type)
-
-% global variables
-global yLimTot isUpdating
-
-% updates the update flag
-isUpdating = true;
-pause(0.01)
-hObj = findobj(hAx,'UserData',Type);
-
-% REMOVE ME?
-if length(hObj) > 1
-    delete(hObj(2:end))
-    hObj = hObj(1);
-end
-
-setIntObjPos(hObj,[xNew(:),yLimTot(:)]);
-
-% resets the update flag
-isUpdating = false;
-
-% --- resets the limit marker regions
-function resetLimitMarkerRegion(hAx,xLimNew,Type)
-
-% global variables
-global yLimTot
-
-% sets the constraint/position callback functions
-isOld = isOldIntObjVer();
-hObj = findobj(hAx,'UserData',Type);
-setConstraintRegion(hObj,xLimNew,yLimTot,isOld,'line');
-
-% --- re-initialises the plot objects
-function resetPlotObjects(handles)
-
-% initialisations
-hAx = handles.axesImg;
-hFig = handles.figFlyCombine;
-[ix,iy,fAlpha] = deal([1,1,2,2,1],[1,2,2,1,1],0.1);
-axSize = detCombineFontSizes(handles);
-
-% retrieves the experiment information
-sInfo = getappdata(hFig,'sInfo');
-nExpt = length(sInfo);
-
-% calculates the max row count over all loaded experiments
-nRowMx = zeros(nExpt,1);
-for i = 1:nExpt
-    nRowMx(i) = getMaxPlotObjCount(sInfo{i}.snTot.iMov);    
-end
-
-% determines the overall max row count
-nRowMxT = max(nRowMx);
-
-% ------------------------------------ %
-% --- PLOTTING AXES INITIALISATION --- %
-% ------------------------------------ %
-
-% creates the grouping colour fill objects
-xLim = [0,1];
-hPos = findall(hAx,'tag','hPos');
-has2D = any(cellfun(@(x)(x.is2D),sInfo));
-hasMT = any(cellfun(@(x)(detMltTrkStatus(x.snTot.iMov)),sInfo));
-
-% removes/adds any excess/missing group objects
-if length(hPos) > nRowMxT
-    % case is there are excess plot markers
-    for i = (nRowMxT+1):length(hPos)
-        % deletes the 1st position marker
-        delete(hPos(i));        
-        
-        % deletes the 2nd position marker (if it exists)
-        hPos2 = findall(hAx,'tag','hPos2','UserData',i);
-        if ~isempty(hPos2); delete(hPos2); end        
-        
-        % deletes the fill object (if it exists)
-        hGrpFill = findall(hAx,'tag','hGrpFill','UserData',i);
-        if ~isempty(hGrpFill); delete(hGrpFill); end        
-        
-        %
-        if i < length(hPos)
-            hSep = findall(hAx,'tag','hSep','UserData',i);
-            delete(hSep);
-        end
-    end
-
-elseif length(hPos) < nRowMxT
-    % case is plot objects need to be created
-    
-    % turns the axes hold on
-    hold(hAx,'on');
-    
-    % adds in the missing plot objects
-    for i = (length(hPos)+1):nRowMxT
-        % initialises the plot traces
-        plot(hAx,NaN,NaN,'color','b','tag','hPos','UserData',i,...
-                'LineWidth',0.5,'visible','off');
-
-        % initialises the plot trace for the 2nd plot lines (if 2D)
-        if has2D || hasMT             
-            % plots the trace
-            plot(hAx,NaN,NaN,'color','r','tag','hPos2','UserData',i,...
-                'LineWidth',0.5,'visible','off');                        
-        end
-
-        % creates the fill objects
-        yy = (i-0.5)+[0,1];
-        patch(xLim(ix),yy(iy),'k','FaceAlpha',fAlpha,'tag','hGrpFill',...
-                              'UserData',i,'Parent',hAx,'Visible','off');    
-
-        % sets seperation line (if not the last sub-region)
-        if i ~= nRowMxT
-            plot(hAx,[0,0],(i+0.5)*[1 1],'k','linewidth',1,...
-                 'tag','hSep','UserData',i)
-        end
-    end    
-
-    % releases the hold on the axes
-    hold(hAx,'off')
-end
-
-% resets the axis properties
-dLim = 0.5*[-1 1];
-set(hAx,'fontweight','bold','fontsize',axSize,'box','on',...
-        'TickLength',[0 0],'linewidth',1.5,'ylim',[1 nRowMxT]+dLim)
 
 % ---------------------------------------------- %
 % --- POST SOLUTION FILE LOAD/SAVE FUNCTIONS --- %
@@ -1658,323 +1102,6 @@ end
 % enables all the panel properties
 setPanelProps(hPanel,'on')   
 
-% ------------------------------------ %
-% --- PLOT MARKER UPDATE FUNCTIONS --- %
-% ------------------------------------ %
-
-% --- resets the tick markers so they match the y-axis limit
-function resetXTickMarkers(hAx)
-
-% retrieves the xtick marker labels and the y-axis limits
-[hTick0,yLim] = deal(findall(hAx,'tag','hXTick'),get(hAx,'ylim'));
-
-% removes any previous tick markers
-if ~isempty(hTick0); delete(hTick0); end
-
-% sets the marker coordinates
-xTick = get(hAx,'xtick');
-xPlt = repmat(xTick,2,1);
-yPlt = repmat(yLim',1,length(xTick));
-
-% creates the marker lines
-hold(hAx,'on')        
-plot(hAx,xPlt,yPlt,'k--','tag','hXTick')
-hold(hAx,'on')
-
-% --- creates the line objects that will server as the limit markers -- %
-function updateLimitMarkers(handles)
-
-% global variables
-global xLimTot
-
-% sets the axis limits
-hAx = handles.axesImg;
-yLim = get(hAx,'yLim');
-
-% turns the axis hold on
-hold(hAx,'on');
-
-% creates/resets the start marker
-hStart = findall(hAx,'tag','Start');
-if ~isempty(hStart); delete(hStart); end
-createNewMarker(hAx,xLimTot(1)*[1 1],yLim,'Start')
-
-% creates/resets the finish marker
-hFinish = findall(hAx,'tag','Finish');
-if ~isempty(hFinish); delete(hFinish); end
-createNewMarker(hAx,xLimTot(2)*[1 1],yLim,'Finish')
-
-% turns the axis hold on
-hold(hAx,'off');
-
-% --- creates the new experiment start/finish limit markers --- %
-function createNewMarker(hAx,xPos,yPos,Type)
-
-% global variables
-global xLimTot yLimTot
-[mSizeM,lWidL] = deal(5,2);
-
-% creates a new line object
-hLineS = InteractObj('line',hAx,{xPos,yPos});
-hLineS.setFields('Userdata',Type,'Tag','hMark')
-hLineS.setColour('r')
-
-hLineS.setLineProps('LineWidth',lWidL,'MarkerSize',mSizeM);
-hLineS.setConstraintRegion(xLimTot,yLimTot);
-hLineS.setObjMoveCallback(@moveLimitMarker);
-
-% --- updates the position plot --- %
-function updatePosPlot(handles,varargin)
-
-% data struct/object handle retrieval
-hAx = handles.axesImg;
-hFig = handles.figFlyCombine;
-T = getappdata(hFig,'T');
-Px = getappdata(hFig,'Px');
-Py = getappdata(hFig,'Py');
-hGUIInfo = getappdata(hFig,'hGUIInfo');
-sInfo = getCurrentExptInfo(hFig);
-
-% other initialisations
-snTot = sInfo.snTot;
-iMov = snTot.iMov;
-nFly = getMaxPlotObjCount(iMov);
-isMltTrk = detMltTrkStatus(iMov);
-
-% updates the region popup indices
-if isMltTrk
-    % retrieves the currently selected region
-    [iApp,iBlk] = hGUIInfo.getMultiTrackSelection(iMov);
-
-    % sets the visibility flags    
-    ok = hGUIInfo.ok{iApp};
-else
-    % retrieves the currently selected region
-    iApp = get(handles.popupAppPlot,'value');
-    if isempty(Px{iApp}) && (nargin == 2)
-        iApp = find(~cellfun('isempty',Px),1,'first');
-        set(handles.popupAppPlot,'Value',iApp)    
-    end
-    
-    % sets the visibility flags
-    ok = hGUIInfo.ok;
-end
-
-% other initialisations/parameters
-avgPlot = false;
-nMeanRatioMax = 10;
-[eStr,ii] = deal({'off','on'},1:length(T));
-[hPos,hPos2] = deal(findobj(hAx,'tag','hPos'),findobj(hAx,'tag','hPos2'));    
-
-% ---------------------------------- %
-% --- PLOTTING DATA CALCULATIONS --- %
-% ---------------------------------- %
-
-% sets the plot data based on the selected menu type
-hMenu = findobj(handles.menuPlotData,'checked','on');
-switch get(hMenu,'tag')
-    case ('menuViewXData') 
-        % case is the x-locations only
-        [xPlt,yPlt] = deal(setupPlotValues(hFig,sInfo,Px,'X',iApp),[]);
-        
-    case ('menuViewYData') 
-        % case is the y-locations only
-        [xPlt,yPlt] = deal([],setupPlotValues(hFig,sInfo,Py,'Y',iApp));
-        
-    case ('menuViewXYData') 
-        % case is both the x/y-locations 
-        xPlt = setupPlotValues(hFig,sInfo,Px,'X',iApp);
-        yPlt = setupPlotValues(hFig,sInfo,Py,'Y',iApp);
-        
-    case ('menuOrientAngle') 
-        % case is the orientation angles
-        Phi = getappdata(hFig,'Phi');
-        [xPlt,yPlt] = deal(setupPlotValues(hFig,sInfo,Phi,'Phi',iApp),[]);
-        
-    case ('menuAvgSpeedIndiv') 
-        % case is the avg. speed (individual fly)
-        V = getappdata(hFig,'V');
-        [xPlt,yPlt] = deal(setupPlotValues(hFig,sInfo,V,'V',iApp),[]);
-        
-    case ('menuAvgSpeedGroup') 
-        % case is the avg. speed (group average) 
-        avgPlot = true;
-        V = getappdata(hFig,'V');
-        
-        nFly = length(unique(sInfo.gName));        
-        [xPlt,yPlt] = deal(setupPlotValues(hFig,sInfo,V,'Vavg',iApp),[]);
-        ok = any(~isnan(xPlt),1);
-        
-end
-        
-% includes a gap in the graph if there is a major gap in the data
-[T,Tmlt] = deal(arr2vec(T(ii)'),getTimeScale(T(end)));
-dT = diff(T); jj = find(dT > nMeanRatioMax*mean(diff(T)));
-if ~isempty(jj)
-    for i = length(jj):-1:1
-        % removes the gaps from the time signal
-        T = [T(1:jj(i));T(jj(i)+(0:1)');T((jj(i)+1):end)];
-        
-        % removes the gaps from the x-plot values
-        if ~isempty(xPlt)
-            xGap = NaN(2,size(xPlt,2));
-            xPlt = [xPlt(1:jj(i),:);xGap;xPlt((jj(i)+1):end,:)];
-        end
-        % removes the gaps from the y-plot values
-        if ~isempty(yPlt)
-            yGap = NaN(2,size(yPlt,2));
-            yPlt = [yPlt(1:jj(i),:);yGap;yPlt((jj(i)+1):end,:)];
-        end        
-    end
-end
-
-% ensures all plot arrays are of the correct length
-kk = 1:min(max(size(xPlt,1),size(yPlt,1)),length(T)); T = T(kk);
-if ~isempty(xPlt); xPlt = xPlt(kk,:); end
-if ~isempty(yPlt); yPlt = yPlt(kk,:); end
-
-% ------------------------------- %
-% --- PATCH BACKGROUND UPDATE --- %
-% ------------------------------- %
-
-% retrieves the group background fill objects
-hGrpF = findall(hAx,'tag','hGrpFill');
-if ~isempty(hGrpF)
-    % if they exist, then update their colours
-    if avgPlot
-        [iGrp,isVis] = deal((1:nFly)',num2cell(iMov.ok));
-        hGrpF = arrayfun(@(x)(findall(hGrpF,'UserData',x)),iGrp,'un',0);
-    else
-        iGrp = getRegionGroupIndices(iMov,sInfo.gName,iApp); 
-        if isMltTrk
-            iPlt = hGUIInfo.getMultiTrackPlotIndices(iMov);
-            isVis = num2cell(ok(iPlt));
-        else
-            isVis = num2cell(ok(:,iApp));
-        end
-            
-        hGrpF = num2cell(hGrpF);
-    end
-    
-    if isMltTrk && ~avgPlot
-        iiG = (1:length(iPlt))';
-        iGrp = iGrp*ones(size(iiG));
-    else
-        iiG = (1:length(iGrp))';
-    end
-    
-    % sorts the fields in descending order    
-    [~,iS] = sort(cellfun(@(x)(get(x,'UserData')),hGrpF));
-    hGrpF = hGrpF(iS);        
-    
-    % updates the face colours of the fill objects
-    tCol = getAllGroupColours(length(unique(sInfo.gName)));
-    cellfun(@(h,i,isV)(set(setObjVisibility(h,isV),'FaceColor',...
-              tCol(i+1,:))),hGrpF(iiG),num2cell(iGrp),arr2vec(isVis(iiG)));
-end
-
-% resets the apparatus ok flags so that they match up correctly
-if avgPlot
-    %
-    aok = ok;
-elseif iscell(Px)
-    if length(Px) ~= length(iMov.ok)
-        aok = iMov.ok(iMov.ok);
-    else
-        aok = iMov.ok;    
-    end
-else
-    aok = iMov.ok;        
-end
-
-% -------------------------------------- %
-% --- PLOTTING TRACE PROPERTY UPDATE --- %
-% -------------------------------------- %
-
-
-% retrieves the handles from the image panel
-hAx = handles.axesImg;
-hObjImg = findall(hAx);   
-
-% determines 
-if avgPlot
-    canPlot = true;
-elseif isMltTrk
-    canPlot = any(hGUIInfo.ok{iApp});
-elseif iMov.is2D
-    canPlot = any(hGUIInfo.ok(:,iApp));
-else
-    canPlot = aok(iApp);
-end
-
-% otherwise, plot the data by apparatus
-if canPlot
-    % if apparatus is accepted, then turn on the image axis
-    setAxisObjVisibility(hObjImg,'on')
-
-    % sets the trace plots for each fly within the apparatus
-    nFlyF = min([nFly,max([size(xPlt,2),size(yPlt,2)])]);
-    for i = 1:nFlyF
-        % sets the acceptance flags
-        if avgPlot
-            okNw = ok(i);
-
-            % updates the fill object visibility field
-            hGrpF = findall(hAx,'UserData',i,'tag','hGrpFill');
-            setObjVisibility(hGrpF,okNw);  
-        elseif isMltTrk
-            okNw = ok(iPlt(i));
-        else
-            okNw = ok(i,iApp);
-        end
-
-        % updates the plot properties for the first trace type
-        hPosNw = findobj(hPos,'UserData',i);                
-        if ~isempty(xPlt)                    
-            % updates the plot data
-            yNw = (i + 0.5) - xPlt(:,i)';
-            set(hPosNw,'LineWidth',0.5,'color','b','XData',...
-                        T*Tmlt,'YData',yNw,'visible',eStr{1+okNw});
-        else
-            % otherwise, make the line invisible
-            setObjVisibility(hPosNw,'off');                    
-        end
-
-        % updates the plot properties for the second trace type
-        hPos2Nw = findobj(hPos2,'UserData',i);                
-        if ~isempty(yPlt)                   
-            % updates the plot data
-            yNw = (i + 0.5) - yPlt(:,i)';
-            set(hPos2Nw,'LineWidth',0.5,'color','r','XData',...
-                        T*Tmlt,'YData',yNw,'visible',eStr{1+okNw});
-        else
-            % otherwise, make the line invisible
-            setObjVisibility(hPos2Nw,'off');                    
-        end                
-    end          
-    
-    % sets the y-tick label indices
-    if isMltTrk && ~avgPlot
-        iFlyF = hGUIInfo.setupMultiTrackIndices(iMov);
-        yTickInd = iFlyF{iApp}{iBlk};
-    else
-        yTickInd = 1:nFlyF;
-    end
-    
-    % updates the axis limits
-    yLim = [1 nFlyF]+0.5*[-1.002 1];
-    yTickLbl = arrayfun(@num2str,yTickInd(:),'un',0);
-    set(hAx,'yLim',yLim,'yTickLabel',yTickLbl);
-
-    % updates the line height
-    resetMarkerHeight(hAx,yLim);    
-else
-    % if apparatus is rejected, turn off the image axis
-    setAxisObjVisibility(hObjImg,'off')
-    setObjVisibility(hPos,'off')
-    setObjVisibility(hPos2,'off')
-end
-
 % ------------------------------------- %
 % --- OTHER OBJECT UPDATE FUNCTIONS --- %
 % ------------------------------------- %
@@ -2068,9 +1195,11 @@ setObjEnable(handles.menuPlotData,'off');
 function resetFigSize(h,fPos)
 
 % sets the overall width/height of the figure
+hFig = h.figFlyCombine;
 [W0,H0,dY,dX] = deal(fPos(3),fPos(4),10,10);
 showStim = strcmp(get(h.panelStim,'Visible'),'on');
-pPosO = get(h.panelExptOuter,'position');
+pPosO = get(h.panelExptOuter,'Position');
+pObj = getappdata(hFig,'pltObj');
 
 % sets the panel stimuli height (depending on whether being displayed)
 if showStim
@@ -2101,19 +1230,8 @@ resetObjPos(h.panelExptOuter,'bottom',H0 - (pPosO(4)+dY));
 
 % resets the axis/label fontsizes
 hAx = findall(h.panelImg,'type','axes');
-[axSize,lblSize] = detCombineFontSizes(h);
-set(hAx,'FontSize',axSize)
-set(get(hAx,'yLabel'),'FontSize',lblSize)
-
-% --- sets the axis visibility flags
-function setAxisObjVisibility(hObjImg,state)
-
-if strcmp(state,'on')
-    hGrpFill = findall(hObjImg,'tag','hGrpFill');
-    setObjVisibility(setxor(hObjImg,hGrpFill),'on');
-else
-    setObjVisibility(hObjImg,'off')
-end
+set(hAx,'FontSize',pObj.axSize)
+set(get(hAx,'yLabel'),'FontSize',pObj.lblSize)
 
 % update function for the position data menu items
 function updateViewMenu(handles,hMenu,varargin)
@@ -2145,8 +1263,138 @@ end
 
 % updates the position plot
 if nargin == 2
-    updatePosPlot(handles)
+    pObj = getappdata(handles.figFlyCombine,'pltObj');
+    pObj.updatePosPlot()
 end
+
+% --- resets the experiment information fields
+function updateExptInfoFields(handles,sInfo)
+
+% updates the experiment/solution file information
+exFld = fieldnames(sInfo.expInfo);
+for i = 1:length(exFld)
+    hTxt = findall(handles.panelOuter,'tag',sprintf('text%s',exFld{i}));
+    if ~isempty(hTxt)
+        set(hTxt,'String',getStructField(sInfo.expInfo,exFld{i}));
+    end
+end
+
+% sets the solution directory tooltip string
+set(handles.editSolnDir,'String',sInfo.expFile)
+
+% updates 
+if sInfo.iTab == 1
+    % case is data was loaded from video solution files
+    set(handles.editSolnDirL,'string','Data Directory: ')
+    set(handles.textSolnType,'string','Video Solution File Directory')    
+else
+    % case is data was loaded from a single/multi-experiment solution file
+    set(handles.editSolnDirL,'string','Data File: ')
+    set(handles.textSolnType,'string','Experiment Solution File')    
+end
+
+% sets the visibility of the orientation angle menu item
+setObjVisibility(handles.menuOrientAngle,isfield(sInfo.snTot,'Phi'))
+
+% enables all the expt information panels
+setPanelProps(handles.panelSolnData,'on');
+setPanelProps(handles.panelExptInfo,'on');
+setPanelProps(handles.panelExptDur,'on');
+
+% --- updates the apparatus name table panel --- %
+function updateGroupInfo(handles,sInfo)
+
+% parameters and other initialisations
+nAppMx = 9;
+eStr = {'off','on'};
+[X0,Y0] = deal(10,10);
+snTot = sInfo.snTot;
+hFig = handles.figFlyCombine;
+hTabGrp = getappdata(hFig,'hTabGrp');
+isMltTrk = detMltTrkStatus(snTot.iMov);
+
+% HACK FIX FOR MISSING GROUP INFORMATION TABLE?!
+if ~isfield(handles,'tableAppInfo')
+    handles = guidata(hFig);
+end
+
+% sets the group name strings
+if isMltTrk
+    [cHdr0,gStr] = deal('Region Grouping Names','Region');
+elseif snTot.iMov.is2D
+    [cHdr0,gStr] = deal('2D Arena Grouping Names','Column');
+else
+    [cHdr0,gStr] = deal('1D Region Grouping Names','Region');
+end
+
+% sets the table information
+iok = snTot.iMov.ok(:);
+Data = [sInfo.gName(:) num2cell(iok)];
+
+% sets the table row headers
+if snTot.iMov.is2D || isMltTrk
+    lblStr = 'Group Name: ';
+    rowName = cellfun(@(x)(sprintf('%s #%i',gStr,x)),...
+                            num2cell(1:size(Data,1)),'un',0);  
+else
+    lblStr = 'Region Location: ';
+    rowName = setup1DRegionNames(snTot.iMov.pInfo,2);
+end
+
+% sets the initial time location properties
+initTimeLocationProps(handles,handles.panelStartTime,sInfo.iPara.Ts)
+initTimeLocationProps(handles,handles.panelFinishTime,sInfo.iPara.Tf)
+initExptDurProps(handles,handles.panelExptDur,sInfo);
+
+% retrieves the height of the popup object
+pApp = get(handles.popupAppPlot,'position'); 
+pPosD = get(handles.panelExptDur,'position');
+pPosT = get(handles.panelAppInfo,'position');
+
+% updates the group name table information
+cHdr = {cHdr0,'Include?'};
+bgCol = getTableBGColours(sInfo);
+set(handles.tableAppInfo,'RowName',rowName,'ColumnName',cHdr,...
+              'Data',Data,'BackgroundColor',bgCol,...
+              'Enable',eStr{~isempty(snTot)+1})                                         
+             
+% updates the table information
+evnt = struct('Indices',[1,1],'NewData',Data{1,1});
+tableAppInfo_CellEditCallback(handles.tableAppInfo, evnt, handles)                    
+
+% resets the panel/panel object positions  
+nAppF = min(size(Data,1),nAppMx);
+[tPos,Hpop] = deal(setTableDimensions(handles,nAppF,0),pApp(4));
+
+% sets the final table/panel position vectors
+pAppF = [X0 0 (tPos(3)+2*X0) (tPos(4)+4*Y0+Hpop)];
+pAppF(2) = pPosD(2) - (pAppF(4) + Y0);
+set(handles.panelAppInfo,'Position',pAppF)
+
+% moves the apparatus text/popup objects
+set(handles.textAppPlot,'String',lblStr)
+resetObjPos(handles.textAppPlot,'bottom',2*Y0+tPos(4))
+resetObjPos(handles.popupAppPlot,'bottom',2*Y0+tPos(4)-3)
+
+% resets all the panel bottom locations
+dH = (pPosT(4)-pAppF(4));
+hPanel = [findobj(handles.panelOuter,'type','uipanel');...
+          findobj(handles.panelOuter,'type','uibuttongroup')];
+resetObjPos(handles.panelOuter,'height',-dH,1)
+for i = 1:length(hPanel)
+    if strcmp(get(hPanel(i),'tag'),'panelOuter')
+        resetObjPos(hPanel(i),'bottom',dH,1)        
+    else
+        resetObjPos(hPanel(i),'bottom',-dH,1)
+    end
+end
+
+% resets the dimensions of the objects
+resetObjPos(hTabGrp,'Height',-dH,1)
+resetObjPos(handles.panelOuter,'Bottom',-dH,1);
+resetObjPos(handles.panelExptOuter,'Height',-dH,1);
+resetObjPos(handles.panelExptOuter,'Bottom',dH,1);
+resetObjPos(hFig,'Height',-dH,1);
 
 % ------------------------------------- %
 % --- EXPERIMENT DATA I/O FUNCTIONS --- %
@@ -2175,179 +1423,12 @@ iTab = get(get(hTabGrp,'SelectedTab'),'UserData');
 sInfo0{iTab} = sInfo;
 setappdata(hFig,'sInfo',sInfo0)
 
-% ----------------------------- %
-% --- PLOT DATA VALUE SETUP --- %
-% ----------------------------- %
-
-% --- calculates the population velocity (for a given apparatus)
-function Vplt = calcPopVel(T,Px,Py,fok)
-
-% parameters
-[tBin,nFrm] = deal(5,length(T));    
-Vplt = NaN(nFrm,size(Px,2)); 
-iVel = (1+tBin):(nFrm-tBin);
-
-% sets the time-stepvectors
-dT = cellfun(@(x)(diff(T([(x-tBin) (x+tBin)]))),num2cell(iVel));
-
-% calculates the inter-frame displacement
-a = zeros(1,size(Px,2));
-if isempty(Py)
-    % if only 1D, then calculate the inter-frame displacement from x-values
-    D = [a;abs(diff(Px,[],1))];
-else    
-    % if only 2D, then calculate the inter-frame euclidean displacement
-    D = [a;sqrt(diff(Px,[],1).^2 + diff(Py,[],1).^2)];    
-end
-
-% calculates the distance travelled and the time steps
-for i = 1:size(Vplt,2)
-    if fok(i)
-        dD = cellfun(@(x)(sum(D((x-tBin):(x+tBin),i))),num2cell(iVel));
-        Vplt(iVel,i) = dD./dT;
-    end
-end
-
-% --- calculates the x/y location data for the plots
-function Z = setupPlotValues(hFig,sInfo,Pz,type,iApp)
-
-% parameters
-pW = 1.05;
-snTot = sInfo.snTot;
-iMov = snTot.iMov;
-isMltTrk = detMltTrkStatus(iMov);
-
-% if the region is rejected, then exit with a NaN value
-if isempty(Pz{iApp})
-    Z = [];
-    return
-end
-
-% sets the plot indices
-if isMltTrk
-    % retrieves the current region selection information
-    hGUIInfo = getappdata(hFig,'hGUIInfo');
-    iPlt = hGUIInfo.getMultiTrackPlotIndices(iMov);        
-else
-    iPlt = 1:size(Pz{iApp},2);
-end
-
-% sets the extremum values (used for normalising the signals
-switch type
-    case ('X') 
-        % case is the x-location data 
-        if iscell(iMov.iC{iApp})
-            % determines the min/max range of the tube regions
-            zMin = cellfun(@(x)(x(1)-1),iMov.iC{iApp});
-            zMax = cellfun(@(x)(x(end)-1),iMov.iC{iApp});
-            zH = 0.5*(zMin + zMax);
-            
-            % determines the min/max range of the actual points, and
-            % determines which group these values belong to
-            [Zmn,Zmx] = deal(min(Pz{iApp},[],1),max(Pz{iApp},[],1));
-            iX = cellfun(@(x)(argMin(abs(x-zH))),num2cell(0.5*(Zmn+Zmx)));
-            
-            % calculates the normalized position values
-            Z = zeros(size(Pz{iApp}));
-            for i = 1:length(zMin)
-                ii = iX == i;
-                Z(:,ii) = (Pz{iApp}(:,ii)-zMin(i))/(zMax(i)-zMin(i));
-            end
-        else
-            if iMov.is2D || isMltTrk
-                % case is 2D analysis
-                [zMin,zMax] = deal(iMov.iC{iApp}(1)-1,iMov.iC{iApp}(end)-1);                      
-            else
-                % case is 1D analysis (old files are missing scale factor)
-                [zMin,zMax] = deal(iMov.iC{iApp}(1)-1,iMov.iC{iApp}(end)-1);  
-            end    
-            
-            % calculates the normalised location
-            Z = (Pz{iApp}(:,iPlt) - zMin)/(zMax - zMin);            
-        end
-        
-    case ('Y') 
-        % case is the y-location data
-        if iscell(iMov.iC{iApp})                       
-            % determines the min/max range of the tube regions
-            zMin = cellfun(@(x)(x(1)-1),iMov.iR{iApp});
-            zMax = cellfun(@(x)(x(end)-1),iMov.iR{iApp});
-            zH = 0.5*(zMin + zMax);
-            
-            % determines the min/max range of the actual points, and
-            % determines which group these values belong to
-            [Zmn,Zmx] = deal(min(Pz{iApp},[],1),max(Pz{iApp},[],1));
-            iX = cellfun(@(x)(argMin(abs(x-zH))),num2cell(0.5*(Zmn+Zmx)));
-            
-            % calculates the normalized position values
-            Z = zeros(size(Pz{iApp}));
-            for i = 1:length(zMin)
-                ii = iX == i;
-                Z(:,ii) = (Pz{iApp}(:,ii)-zMin(i))/(zMax(i)-zMin(i));
-            end                        
-        else
-            yOfs = iMov.iR{iApp}(1)-1;
-            zMin = repmat(iMov.yTube{iApp}(:,1)',size(Pz{iApp},1),1);
-            zMax = repmat(iMov.yTube{iApp}(:,2)',size(Pz{iApp},1),1);        
-            
-            % calculates the normalised location
-            Z = (Pz{iApp}(:,iPlt) - (zMin+yOfs))./(zMax - zMin);            
-        end
-        
-    case ('V') 
-        % case is average speed
-        pV = 1/(pW*max(Pz{iApp}(:),[],'omitnan'));
-        Z = pV*Pz{iApp}(:,iPlt); 
-            
-    case ('Phi') 
-        % case is orientation angle
-        Z = (Pz{iApp}(:,iPlt) + 180)/360;            
-        
-    case ('Vavg')
-        % case is the grouped average speed
-        hFig = findall(0,'tag','figFlyCombine');
-        hGUIInfo = getappdata(hFig,'hGUIInfo');
-        
-        % retrieves the region acceptance flag and grouping indices 
-        if isa(hGUIInfo,'MultiFlyCheckTrack')
-            flyok = combineNumericCells(hGUIInfo.ok);
-        else
-            flyok = hGUIInfo.ok;
-        end
-       
-        % determnes the unique groupings comprising the expt
-        iGrp = getRegionGroupIndices(iMov,sInfo.gName);
-        iGrpU = unique(iGrp(iGrp>0),'stable');        
-        
-        % calculates the avg. velocity based on the grouping type  
-        Zgrp = cell(1,length(iGrpU));
-        [jGrp,okGrp] = deal(num2cell(iGrp,1),num2cell(flyok,1));
-        for i = 1:length(Zgrp)
-            Zgrp{i} = cell2mat(cellfun(@(x,j,ok)...
-                        (x(:,(j==iGrpU(i)) & ok)),Pz,jGrp,okGrp,'un',0));
-            if isempty(Zgrp{i})
-                Zgrp{i} = NaN(size(Pz{1},1),1);
-            else
-                Zgrp{i} = mean(Zgrp{i},2,'omitnan');
-            end
-        end                        
-
-        % normalises the signals to the maximum
-        Z = cell2mat(Zgrp);            
-        Z = Z/(pW*max(Z(:),[],'omitnan'));
-end
-
 % ------------------------------------------- %
 % --- GROUP NAME TABLE PROPERTY FUNCTIONS --- %
 % ------------------------------------------- %
 
 % --- retrieves the table background colours
-function [bgCol,iGrpNw] = getTableBGColours(handles,sInfo)
-
-% sets the default input arguments (if not provided)
-if ~exist('sInfo','var')
-    sInfo = getCurrentExptInfo(handles.figFlyCombine);
-end
+function [bgCol,iGrpNw] = getTableBGColours(sInfo)
 
 % retrieves the unique group names from the list
 grayCol = 0.81;
@@ -2413,14 +1494,14 @@ global tableUpdating
 
 % retrieves the cell indices
 hFig = handles.figFlyCombine;  
-sInfo = getCurrentExptInfo(hFig); 
+pObj = getappdata(hFig,'pltObj');
 hGUIInfo = getappdata(hFig,'hGUIInfo');
 
 % updates the information table
 if ~isempty(hGUIInfo)
     % initialisations
     jT = hGUIInfo.jTable;
-    snTot = sInfo.snTot;
+    snTot = pObj.sInfo.snTot;
     iMov = snTot.iMov;
     flyok = iMov.flyok;
 
@@ -2454,9 +1535,11 @@ if ~isempty(hGUIInfo)
         % sets the check values for each fly
         if nwData
             % case is the region is accepted
-            noData = all(isnan(snTot.Px{indNw(1)}),1);            
-            chkVal = num2cell(flyok(:,indNw(1)));
-            chkVal(noData) = {[]};                    
+            chkVal = hGUIInfo.Data(:,indNw(1));
+            
+%             noData = all(isnan(snTot.Px{indNw(1)}),1);            
+%             chkVal = num2cell(flyok(:,indNw(1)));
+%             chkVal(noData) = {[]};                    
         else
             % case is the region is rejected
             chkVal = cell(size(flyok,1),1);
@@ -2527,69 +1610,7 @@ end
 % --- MISCELLANEOUS FUNCTIONS --- %
 % ------------------------------- %
 
-% --- retrieves the combine GUI font sizes
-function [axSize,lblSize] = detCombineFontSizes(handles)
-
-% global variables
-global regSz
-
-% determines the font ratio
-newSz = get(handles.panelImg,'position');
-fR = min(newSz(3:4)./regSz(3:4))*get(0,'ScreenPixelsPerInch')/72;
-
-% sets the font size based on the OS type
-if (ismac)
-    % case is using a Mac
-    [axSize,lblSize] = deal(20*fR,26*fR);
-else
-    % case is using a PC
-    [axSize,lblSize] = deal(12*fR,18*fR);    
-end   
-
-% --- calculates the maximum plot object count (for a given expt)
-function nRowMx = getMaxPlotObjCount(iMov)
-
-if detMltTrkStatus(iMov)
-    % case is the multi-tracking
-    hFig = findall(0,'tag','figFlyCombine');
-    hGUIInfo = getappdata(hFig,'hGUIInfo');          
-    
-    iFlyF = hGUIInfo.setupMultiTrackIndices(iMov);
-    nRowMx = max(cellfun(@(x)(max(cellfun('length',x))),iFlyF));
-    
-elseif iMov.is2D
-    % case is a 2D experiment
-    szGrp = size(iMov.pInfo.iGrp);
-    nRowMx = max(max(szGrp),max(iMov.pInfo.iGrp(:)));
-else
-    % case is a 1D experiment
-    nRowMx = max(numel(iMov.pInfo.iGrp),size(iMov.flyok,1));
-end
-
 % --- retrieves the current experiment duration
 function tExpt = getCurrentExptDur(iPara)
 
 tExpt = sec2vec(etime(iPara.Tf,iPara.Ts));
-
-% --- resets the marker heights
-function resetMarkerHeight(hAx,yLim)
-
-% retrieves the marker line objects
-hMark = findall(hAx,'tag','hMark');    
-
-if isOldIntObjVer()
-    % updates the marker line y-location
-    x = findall(hMark,'tag','top line');        
-    set(x,'ydata',yLim);        
-
-    % updates the end marker y-location
-    y = findall(hMark,'tag','end point 2');
-    set(y,'ydata',yLim(2));            
-else
-    % updates the end marker y-location
-    for i = 1:length(hMark)
-        fPos = getIntObjPos(hMark(i),false);
-        fPos(:,2) = yLim;
-        setIntObjPos(hMark(i),fPos,false);
-    end
-end

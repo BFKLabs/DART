@@ -9,7 +9,12 @@ if iscell(hObj)
     if isempty(hObj)
         isOK = false;
     else
-        isOK = cellfun(@isvalid,hObj);
+        try
+            isOK = cellfun(@isvalid,hObj);
+        catch
+            isOK = cellfun(@(x)(isprop(x,'UserData')),hObj);
+            if ~any(isOK); return; end
+        end
     end
     
     if all(isOK)
@@ -26,7 +31,12 @@ else
     if isempty(hObj)
         isOK = false;
     else
-        isOK = isvalid(hObj);
+        try
+            isOK = isvalid(hObj);
+        catch
+            isOK = isprop(hObj,'UserData');
+            if ~isOK; return; end
+        end
     end
     
     if all(isOK)

@@ -274,13 +274,13 @@ classdef TrackFull < Track
             % --- FLY LOCATION DETECTION --- %
             % ------------------------------ %            
             
-            % sets the first/last frames
+            % sets the first/last frames of the HT1 phase (if present)
             if obj.fObj{iPhase}.isHT1
-                %
+                % retrieves the first/last frame of the phase
                 iFrmS0 = [obj.sProg.iFrmR{1}(1),obj.sProg.iFrmR{end}(end)];
                 I0 = obj.getImageStack(iFrmS0);
                 
-                %
+                % retrieves the sub-region image stacks
                 xi = 1:obj.nApp;
                 obj.fObj{iPhase}.ImgSL0 = cell(obj.nApp,1);
                 obj.fObj{iPhase}.ImgS0 = arrayfun(@(x)...
@@ -439,7 +439,7 @@ classdef TrackFull < Track
             end
             
             % updates the frame selection properties
-            setTrackGUIProps(obj.hGUI,'UpdateFrameSelection')            
+            setTrackGUIProps(obj.hGUI,'UpdateFrameSelection',nwFrm)            
             
         end
         

@@ -230,8 +230,13 @@ Tfinal = T(end)*Tmlt;
 
 %
 chN = arrayfun(@(x)(x.chName),sTrain.blkInfo,'un',0);
-if strcmp(chName,'Ch')
-    iMatch = find(strContains(chN,'Ch #'));
+if startsWith(chName,'Ch')
+    if strContains(chN,'#')
+        iMatch = find(strContains(chN,'Ch #'));
+    else
+        chN = cellfun(@(x)(strrep(x,' #','')),chN,'un',0);
+        iMatch = find(strcmp(chN,chName));
+    end
 else
     iMatch = find(strcmp(chN,chName));
 end
@@ -288,7 +293,7 @@ end
 % --- creates the stimuli patch object
 function createPatchObject(hAx,x,y,c)
 
-patch(hAx,x,y,c,'LineWidth',1,'FaceAlpha',0.5);
+patch(hAx,x,y,c,'LineWidth',0.5,'FaceAlpha',0.5);
 
 % --- 
 function ySF = detExactSignalValue(xS,yS,x0)

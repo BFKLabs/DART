@@ -42,8 +42,16 @@ classdef FileTreeExplorer < handle
             obj.sFileT = obj.findFileAll(obj.sDir);
             if ~isempty(bObj.sInfo)
                 % removes any previously loaded files from the search
-                sFile0 = cell2cell(cellfun(@(x)(cell2cell...
-                    (field2cell(x.snTot,'sName'))),bObj.sInfo,'un',0));
+                if bObj.iTab == 1
+                    % case is the video solution files tab
+                    sFile0 = cell2cell(cellfun(@(x)(cell2cell...
+                        (field2cell(x.snTot,'sName'))),bObj.sInfo,'un',0));
+                else
+                    % case is the other file tabs
+                    sFile0 = cellfun(@(x)(x.sFile),bObj.sInfo,'un',0);
+                end
+                   
+                % determines the 
                 obj.sFileT = setdiff(obj.sFileT,sFile0);
             end
             

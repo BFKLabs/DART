@@ -1737,6 +1737,7 @@ DataNw = cellstr(DataNw);
 nRC = nRow*nCol;
 if nRC < blkSz
     % if so, then write the file as one block
+    DataNw = convertStringCells(DataNw);
     writeXLSData(fFile,DataNw,sName,0);
     
 else
@@ -1759,7 +1760,7 @@ else
         
         % sets the new data block for output. resets any columns that
         % have non-cell columns
-        nwBlk = DataNw(indBlk,:);
+        nwBlk = convertStringCells(DataNw(indBlk,:));
         ii = cellfun(@(x)(all(cellfun(@ischar,x))),num2cell(nwBlk,1));
         if any(ii)
             nwBlk(:,ii) = cellfun(@(x)({str2double(x)}),nwBlk(:,ii));
@@ -2584,3 +2585,13 @@ setObjEnable(hCheck,isOn)
 if ~isOn
     set(hCheck,'Value',false)
 end
+ 
+% --- converts the strings from the cell array into numerical values
+function dBlk = convertStringCells(dBlk)
+
+% converts the data block from strings to numerical values
+dBlkN = cellfun(@str2double,dBlk);
+
+% sets the numerical valus into the data block
+isN = ~isnan(dBlkN);
+dBlk(isN) = num2cell(dBlkN(isN));

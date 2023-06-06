@@ -2,6 +2,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
     
     % class properties
     properties
+        
         % other class fields
         sDir
         sDir0
@@ -200,7 +201,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             set(obj.hTabGrp,'SelectedTab',obj.hTab{obj.iTab});      
             
             % closes the loadbar
-            try; close(h); end            
+            try close(h); catch; end
             
         end                         
         
@@ -289,6 +290,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
 
                 % waits for update
                 pause(0.05)
+            catch
             end
             
             % resets the table update flag
@@ -786,8 +788,6 @@ classdef OpenSolnFileTab < dynamicprops & handle
 
             % object/array retrieval
             sInfo0 = obj.sInfo;                        
-
-            % other initialisations
             tDir = obj.iProg.TempFile;
 
             % sets the full names of the selected files
@@ -1493,8 +1493,9 @@ classdef OpenSolnFileTab < dynamicprops & handle
                         bStr = sprintf('%s.Dir(%i)',bStr,ii);
                     end
                 end
-            end        
-        end        
+            end
+            
+        end
         
         % --- finds all the finds 
         function fName = findFileAll(obj,snDir,fExtn)
