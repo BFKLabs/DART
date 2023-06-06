@@ -439,7 +439,11 @@ classdef TrackFull < Track
             end
             
             % updates the frame selection properties
-            setTrackGUIProps(obj.hGUI,'UpdateFrameSelection',nwFrm)            
+            if exist('nwFrm','var')
+                setTrackGUIProps(obj.hGUI,'UpdateFrameSelection',nwFrm)
+            else
+                setTrackGUIProps(obj.hGUI,'UpdateFrameSelection')                
+            end
             
         end
         

@@ -676,7 +676,7 @@ classdef VideoPhase < handle
             % determines the
             X = cell2mat(cellfun(@(x)(cell2cell(x)),iGrpC,'un',0));
             if isempty(X)
-                indG = iFrmC([1,end]);
+                indG = arr2vec(iFrmC([1,end]))';
             else
                 indG = [[iFrmC(1);X(:,2)],[X(:,1);iFrmC(end)]];
             end
