@@ -650,8 +650,9 @@ classdef FilterResObj < handle
                 % retrieves the fly sub-image stack (for all known points)
                 Isub = cell(obj.nFrm,sum(obj.okS));
                 for i = 1:obj.nFrm
+                    fTmp = obj.downsampleCoords(fPosT{i});
                     Isub(i,:) = cellfun(@(x,y)(obj.getPointSubImage...
-                         (y,x,N)),num2cell(fPosT{i},2)',dIRL(i,:),'un',0);
+                         (y,x,N)),num2cell(fTmp,2)',dIRL(i,:),'un',0);
                 end
                 
                 % calculates the 

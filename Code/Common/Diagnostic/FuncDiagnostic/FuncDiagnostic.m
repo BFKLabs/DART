@@ -484,10 +484,26 @@ classdef FuncDiagnostic < handle
             [hObjL,hObjR] = deal(hObj{1},hObj{2});
             
         end            
+
+        % ----------------------------------------- %
+        % --- CONTROL BUTTON CALLBACK FUNCTIONS --- %
+        % ----------------------------------------- %
         
-        % --------------------------------- %
-        % --- OBJECT CALLBACK FUNCTIONS --- %
-        % --------------------------------- %
+        % --- start diagnostic button callback function
+        function startDiagnostic(obj,hObj,evnt)
+            
+            
+        end
+        
+        % --- cancel diagnostic button callback function
+        function cancelDiagnostic(obj,hObj,evnt)
+            
+            
+        end                
+        
+        % --------------------------------------- %
+        % --- OTHER OBJECT CALLBACK FUNCTIONS --- %
+        % --------------------------------------- %
         
         % --- the function filter toggle button callback
         function toggleFilter(obj, hObj, ~)
@@ -563,22 +579,10 @@ classdef FuncDiagnostic < handle
             % resets the table data
             set(hTable,'Data',Data);            
             
-        end        
-        
-        % --- start diagnostic button callback function
-        function startDiagnostic(obj,hObj,evnt)
-            
-            
-        end
-        
-        % --- cancel diagnostic button callback function
-        function cancelDiagnostic(obj,hObj,evnt)
-            
-            
-        end        
+        end                
         
         % --- exit menu item callback function
-        function menuExit(obj,hObj,evnt)
+        function menuExit(obj,~,~)
             
             delete(obj.hFig)
             

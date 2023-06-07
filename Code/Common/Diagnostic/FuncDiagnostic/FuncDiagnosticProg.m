@@ -100,14 +100,16 @@ classdef FuncDiagnosticProg < handle
                 
                 % sets up the left position of the axes object
                 if i == 1
-                    lPosAx = sum(tPos([1,3]));
+                    lPosAx = sum(tPos([1,3]))+1;
                 end
                 
                 % creates the axes objects                
                 axPos = [lPosAx,yPos,obj.widAx,obj.hghtAx];
                 obj.hAx{i} = createUIObj...
                     ('axes',obj.hPanel,'Position',axPos);
-                set(obj.hAx{i},'InnerPosition',axPos);
+                if isprop(obj.hAx{i},'InnerPosition')
+                    set(obj.hAx{i},'InnerPosition',axPos);
+                end
                 
                 % sets up the image objects
                 obj.hImg{i} = image(obj.wImg,'parent',obj.hAx{i});                
