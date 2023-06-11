@@ -104,7 +104,7 @@ centreFigPosition(hObject);
 updateFlag = 0; pause(0.01);
 
 % closes the loadbar
-try; delete(h); end
+try delete(h); catch; end
 
 % Update handles structure
 guidata(hObject, handles);
@@ -234,7 +234,7 @@ h = ProgressLoadbar('Loading Temporary Data From File...');
 % loads the data file and closes the load bar
 wState = warning('off','all');
 [A,eStr] = deal(importdata(tName,'-mat'),[]);
-try; close(h); end
+try close(h); catch; end
 warning(wState);
 
 % retrieves the original data structs
@@ -452,7 +452,7 @@ A = struct('plotD',plotD,'pData',pData,'gPara',gPara,...
 save(tName,'-struct','A');
 
 % closes the loadbar
-try; close(h); end
+try close(h); catch; end
 
 % ------------------- %
 % --- OTHER ITEMS --- %
@@ -541,16 +541,18 @@ end
 try
     hPara = getappdata(handles.figFlyAnalysis,'hPara');
     if ~isempty(hPara)
-        try; delete(hPara); end
+        try delete(hPara); catch; end
     end
+catch    
 end
 
 % deletes the parameter GUI
 try
     hUndock = getappdata(handles.figFlyAnalysis,'hUndock');
     if ~isempty(hUndock)
-        try; delete(hUndock); end
+        try delete(hUndock); catch; end
     end
+catch    
 end
 
 % makes the main gui visible again
@@ -2219,7 +2221,6 @@ for i = 1:length(Imap)
             nodeStr0 = getNodeString(fStr{i},fVal{Imap(i)});
             nodeStr = setHTMLColourString('kb',nodeStr0,1);
         catch
-            a = 1;
         end
         
         % creates the new node
@@ -2726,9 +2727,9 @@ if isdeployed
     end
 else
     % retrieves all potential analysis function directories
-    mtDir = feval('runExternPackage','MultiTrack',handles,'InitAnalysis');
-    rtDir = feval('runExternPackage','RTTrack',handles,'InitAnalysis');
-    afDir = feval('runExternPackage','AnalysisFunc',handles,'InitAnalysis');
+    mtDir = runExternPackage('MultiTrack',handles,'InitAnalysis');
+    rtDir = runExternPackage('RTTrack',handles,'InitAnalysis');
+    afDir = runExternPackage('AnalysisFunc',handles,'InitAnalysis');
     dDir = [{dDir;mtDir;rtDir};afDir(:)];
     
     % sets the partial/full file names
@@ -2774,6 +2775,7 @@ for i = 1:length(fName)
                 eval(sprintf('%s(end+1) = a;',typeStr))
             end
         end
+    catch    
     end
 end
 
@@ -3014,7 +3016,7 @@ switch Type
             save(tFile,'sInfo','snTot');
             
             % closes the loadbar
-            try; delete(h); end
+            try delete(h); catch; end
         end
         
     case ('reload') % case is reloading the data
@@ -3027,7 +3029,7 @@ switch Type
             delete(tFile);
             
             % closes the loadbar
-            try delete(h); end
+            try delete(h); catch; end
             
             % removes the sub-region and solution file data struct
             setappdata(hFig,'sInfo',a.sInfo);
@@ -3152,7 +3154,7 @@ setObjEnable(handles.menuSaveStim,hasStim)
 setObjVisibility(hFig,'on');
 
 % attempts to close the loadbar
-try; close(h); end
+try close(h); catch; end
 
 % --- function filter class update callback
 function updateFuncFilter()

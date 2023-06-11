@@ -473,7 +473,7 @@ classdef VideoPara < handle
                 
                 % determines if camera properties match that from file
                 A = fldNames(~cellfun(@(x)(strcmp(x,'Parent')),fldNames));
-                if ~isequal(A,vprData.fldNames)
+                if ~isequal(sort(A),sort(vprData.fldNames))
                     % if not, then exit with an error
                     tStr = 'Invalid Camera Presets';
                     eStr = 'Camera presets do not match video properties.';

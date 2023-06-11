@@ -755,11 +755,11 @@ classdef FilterResObj < handle
         % --- downsamples the image stack 
         function downsampleImageStack(obj)
             
-            if obj.nI == 0
-                obj.IL = obj.IL0;
-            else
+            if (obj.nI > 0) || obj.iMov.is2D
                 iRT = cell2mat(obj.iRI(:)');
                 obj.IL = cellfun(@(x,y)(x(iRT,obj.iCI)),obj.IL0,'un',0);
+            else
+                obj.IL = obj.IL0;                
             end
             
         end                
@@ -1126,7 +1126,7 @@ classdef FilterResObj < handle
             szL = size(obj.IRs{1});
             obj.Bexc = getExclusionBin(obj.iMov,szL,obj.iApp);
             
-            if obj.iMov.is2D
+            if obj.iMov.is2D || (obj.nI > 0)
                 iRT = cell2mat(obj.iRI(:)');
                 obj.Bexc = obj.Bexc(iRT,obj.iCI);
             end

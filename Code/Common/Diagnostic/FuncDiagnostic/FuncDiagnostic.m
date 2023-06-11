@@ -5,8 +5,10 @@ classdef FuncDiagnostic < handle
         
         % main class fields
         hFigM
+        pData
         pDataT
         snTot
+        gPara
         
         % sub-class objects
         ffObj
@@ -21,17 +23,20 @@ classdef FuncDiagnostic < handle
         ImapU
         sNode
         hEditL
-        hasData
-        useScope
+        hSliderL
         logStr
+        fExpt
+        errData
         
         % class object handles fields
+        hAx
         hFig
         hTreeF
         hPanelO
         hPanelI
         hPanelF
         hPanelD
+        hPanelLO
         hPanelL
         hPanelP
         hPanelFcn
@@ -43,14 +48,14 @@ classdef FuncDiagnostic < handle
         hButC
         hTxtP
         hMenu
-        hTableD
+        hTableD        
         
         % fixed object dimensions        
-        dX = 10;
+        dX = 10;        
         widPanelL = 400;
-        widPanelR = 355;        
+        widPanelR = 450;        
         widPanelFilt = 290; 
-        hghtPanelO = 550;
+        hghtPanelO = 535;
         hghtPanelI = 130;
         hghtPanelP = 190;        
         hghtPanelFilt = 180; 
@@ -73,35 +78,62 @@ classdef FuncDiagnostic < handle
         hghtPanelD
         hghtPanelL
         hghtPanelFcn         
-        hghtTableD        
+        hghtTableD     
         
-        % other scalar/string fields        
+        %
+        fInd
+        eInd
+        pInd
+        fStrS
+        iSelS
+        iScopeS
+        pPosLI
+        
+        % boolean flag fields
+        hasData
+        useScope
+        runDiag = false;
+        
+        % fixes scalar/string fields        
+        nExp
         nColD
-        nRowD = 3;
+        logY0 = 6;
         hSz = 12;
         tSz = 10;
         nBut = 2;
-        tLong = 12;       
+        nRowD = 3;
+        nRowMx = 15;        
+        tLong = 12;
+        logSz = 13;
+        widScr = 17;
+        hghtLog = 212;
+        tabStr = '  ';
+        arrStr = char(8594);
         tDurS = {'Short','Long'};
         tagStr = 'figFuncDiagnostic';
         isOldVer = verLessThan('matlab','9.10');
         
+        % function handles
+        initAxes
+                        
     end
     
     % class methods
     methods
         
         % --- class constructor
-        function obj = FuncDiagnostic(hFigM,snTot,pDataT)
+        function obj = FuncDiagnostic(hFigM)
             
             % sets the input arguments
             obj.hFigM = hFigM;
-            obj.snTot = snTot;
-            obj.pDataT = pDataT;
+            obj.snTot = getappdata(hFigM,'snTot');
+            obj.pData = getappdata(hFigM,'pData');
+            obj.pDataT = getappdata(hFigM,'pDataT');
+            obj.gPara = getappdata(hFigM,'gPara');
             
             % initialises the class fields
             obj.initClassFields();
-            obj.initObjProps();
+            obj.initObjProps();            
             
         end
         
@@ -114,7 +146,8 @@ classdef FuncDiagnostic < handle
             
             % memory allocation
             obj.logStr = '';
-            A = [true(1,obj.nRowD-1),length(obj.snTot)>1];
+            obj.nExp = length(obj.snTot);
+            A = [true(1,obj.nRowD-1),obj.nExp>1];
             [obj.useScope,obj.hasData] = deal(A);
             
             % calculates the panel dimensions
@@ -145,6 +178,9 @@ classdef FuncDiagnostic < handle
                 obj.rowHght = 18;
             end
             
+            % function handle retrieval
+            obj.initAxes = getappdata(obj.hFigM,'initAxesObject');
+            
         end
         
         % --- initialises the class objects
@@ -153,6 +189,10 @@ classdef FuncDiagnostic < handle
             % deletes any previous GUIs
             hPrev = findall(0,'tag',obj.tagStr);
             if ~isempty(hPrev); delete(hPrev); end                       
+            
+            % creates the loadbar
+            lStr = 'Initialising Function Diagnostic Program...';
+            h = ProgressLoadbar(lStr);                        
             
             % --------------------------- %
             % --- MAIN FIGURE OBJECTS --- %
@@ -304,7 +344,8 @@ classdef FuncDiagnostic < handle
                         tFldP,tFld,'HorizontalAlignment','Left');                
                 else
                     % disables the popup menu (if only one expt)
-                    setObjEnable(obj.hTxtI{i},length(tFld) > 1)
+                    obj.fExpt = tFld;                    
+                    setObjEnable(obj.hTxtI{i},obj.nExp > 1)
                     
                     % sets the other properties
                     if obj.isOldVer
@@ -346,7 +387,7 @@ classdef FuncDiagnostic < handle
             set(obj.hPanelP,'Position',pPosP);
             
             % creates the control button objects
-            for i = 1:obj.nBut                
+            for i = 1:obj.nBut
                 lPosB = obj.dX + (i-1)*(obj.widButC + obj.dX);
                 bPosPC = [lPosB,obj.dX,obj.widButC,obj.hghtBut];
                 obj.hButC{i} = createUIObj('pushbutton',obj.hPanelPC,...
@@ -366,13 +407,22 @@ classdef FuncDiagnostic < handle
             % creates the experiment combining data panel
             yPosL = sum(pPosP([2,4])) + obj.dX/2;
             pPosL = [lPosP,yPosL,obj.widPanelR,obj.hghtPanelL];
-            obj.hPanelL = uipanel(obj.hPanelO,'Title',tStrL,'Units',...
+            obj.hPanelLO = uipanel(obj.hPanelO,'Title',tStrL,'Units',...
                         'Pixels','FontUnits','Pixels','Position',pPosL,...
-                        'FontSize',obj.hSz,'FontWeight','bold');  
+                        'FontSize',obj.hSz,'FontWeight','bold',...
+                        'Scrollable','on');  
+
+            % creates the inner panel object
+            obj.pPosLI = [0,0,pPosL(3:4)-[1,2*obj.dX]];
+            obj.hPanelL = uipanel(obj.hPanelLO,'Units','Pixels',...
+                        'Position',obj.pPosLI,'Scrollable','on');
                     
-            % creates the log
-            lPosL = [obj.dX*[1,1],pPosL(3:4)-obj.dX*[2,4]];
-            obj.hEditL = createUIObj('edit',obj.hPanelL,'Position',lPosL);            
+            % creates the log editbox
+            obj.hEditL = annotation(obj.hPanelL,'Textbox','Position',...
+                        [0,0,1,1],'BackgroundColor',[1,1,1],...
+                        'LineStyle','None','FontName','Courier',...
+                        'FontUnits','Pixels','FontSize',10,...
+                        'Units','Pixels','FaceAlpha',0.8);
             
             % -------------------------------- %
             % --- SOLUTION FILE DATA PANEL --- %
@@ -390,7 +440,7 @@ classdef FuncDiagnostic < handle
                         'FontSize',obj.hSz,'FontWeight','bold');                    
                     
             % creates the table object
-            cWid = {70,65,70,56};            
+            cWid = {90,90,95,81};
             cbFcnD = @obj.tableCellEdit;
             cEdit = [true,false,false,false];
             cForm = {'logical','char','char','char'};
@@ -422,8 +472,11 @@ classdef FuncDiagnostic < handle
             % --- HOUSE-KEEPING EXERCISES --- %
             % ------------------------------- %                          
             
+            % closes the loadbar
+            delete(h.Control)            
+            
             % pause for update
-            pause(0.05);
+            pause(0.05);                        
             
             % centers the figure and makes it visible
             centreFigPosition(obj.hFig,2);
@@ -490,16 +543,217 @@ classdef FuncDiagnostic < handle
         % ----------------------------------------- %
         
         % --- start diagnostic button callback function
-        function startDiagnostic(obj,hObj,evnt)
+        function startDiagnostic(obj,hObj,~)
+
+            % initialisations
+            obj.errData = [];
+            obj.prObj.nExp = obj.nExp;
+            fldStr = fieldnames(obj.pDataT);
+            prStr0 = 'Starting Function Diagnostic Analysis...';
+            prStrF = 'Function Diagnostic Analysis Complete!';
+            prStrEx = 'Function Diagnostic Analysis Cancelled...';
+            [obj.fStrS,obj.iSelS] = obj.fTreeObj.getCurrentSelectedNodes();             
             
+            
+            % resets the diagnostic run flag
+            obj.runDiag = true;  
+            setObjEnable(hObj,0);
+            setObjEnable(obj.hButC{2},1);
+            
+            % retrieves the currently selected functions
+            obj.iScopeS = find(~cellfun(@isempty,obj.iSelS));
+            obj.prObj.nPr(1) = double(obj.iScopeS(end) == 3) + ...
+                           obj.nExp*length(intersect(obj.iScopeS,1:2));
+            obj.prObj.iScope = obj.iScopeS;            
+            obj.hTableD.Data(obj.iScopeS,3:4) = {0};
+            
+            % clears the progress log 
+            obj.clearProgressLog();                        
+            obj.updateProgressLog(prStr0)
+            obj.updateProgressLog('Gap',0,'w')                                    
+
+            % runs the analysis diagnostic for each analysis scope
+            for i = 1:length(obj.iScopeS)
+                % if the user has cancelled, then exit
+                if ~obj.runDiag
+                    obj.updateProgressLog(prStrEx,0,'r')
+                    return
+                end
+                
+                % updates the progress log string
+                iScope = obj.iScopeS(i);
+                pStr = obj.getScopeString(fldStr{iScope});
+                obj.updateProgressLog(pStr);
+                obj.prObj.resetProgressFields(2:3);                
+                obj.prObj.nPr(2) = obj.getExpCount(iScope);
+                
+                % runs the analysis diagnostic for each experiment
+                for iExp = 1:obj.prObj.nPr(2)
+                    % updates the progress log
+                    pStrExp = obj.getExptString(obj.fExpt{iExp});
+                    obj.updateProgressLog(pStrExp,1)
+                    obj.prObj.resetProgressFields(3);
+                    
+                    % retrieves the plot data struct for the current scope                    
+                    pDataS = obj.getPlotDataFields(iScope,iExp);
+                    
+                    % runs each analysis function
+                    obj.prObj.nPr(3) = length(obj.iSelS{iScope});
+                    for iFcn = 1:obj.prObj.nPr(3)
+                        % if the user has cancelled, then exit
+                        if ~obj.runDiag
+                            obj.updateProgressLog('Gap',0,'w')
+                            obj.updateProgressLog(prStrEx,0,'r')
+                            return
+                        end                        
+                        
+                        % updates the function name string
+                        snTotF = obj.getSolnDataStruct(iScope,iExp);                        
+                        pDataF = pDataS{obj.iSelS{iScope}(iFcn)};
+                        pStrF = obj.getFuncString(pDataF.Name);
+                        obj.updateProgressLog(pStrF,2);                        
+                        
+                        % updates all progressbar fields
+                        indSF = [iExp,iScope,iFcn];
+                        obj.prObj.updateAllFields(indSF);
+                        
+                        % runs the analysis function calculation/plotting
+                        obj.runAnalysisFunc(pDataF,snTotF,indSF);                        
+                    end
+                    
+                    % creates a gap between log strings
+                    obj.updateProgressLog('Gap',0,'w')
+                end
+            end
+            
+            % sets the final progress log string
+            obj.updateProgressLog(prStrF,0,'g')
+            obj.cancelDiagnostic(obj.hButC{2});
+            
+        end        
+        
+        % --- cancel diagnostic button callback function
+        function cancelDiagnostic(obj,hObj,~)
+            
+            % resets the diagnostic run flag
+            obj.runDiag = false;
+            setObjEnable(hObj,0);
+            setObjEnable(obj.hButC{1},1);            
+            
+        end                
+                
+        % runs the analysis function calculation/plotting
+        function runAnalysisFunc(obj,pDataF,snTotF,indSF)
+
+            % initialises the plot axes
+            obj.hAx = obj.initAxes(guidata(obj.hFigM));            
+            
+            % -------------------------------------- %
+            % --- ANALYSIS FUNCTION CALCULATIONS --- %
+            % -------------------------------------- %                                    
+            
+            % runs the analysis function calculations
+            obj.updateProgressLog('Running Calculations...',3)
+            
+            try
+                % runs the analysis function calculations
+                pltDC = feval(pDataF.cFcn,snTotF,pDataF,obj.gPara);
+            catch ME
+                % error was detected during the calculation process
+                obj.updateProgressLog('Calculation Error Detected!!',4,'r')
+                obj.appendErrorData(ME,pDataF,indSF,true);
+                obj.deleteProgBar();
+                
+                % retrieves the progressbar and deletes it
+                return
+            end
+            
+            % retrieves the progressbar status
+            if ~obj.runDiag
+               return
+            else
+                % resets the current figure/axes objects
+                set(0,'CurrentFigure',obj.hFigM)
+                set(obj.hFigM,'CurrentAxes',obj.hAx);
+            end
+                        
+            % ---------------------------------- %
+            % --- ANALYSIS FUNCTION PLOTTING --- %
+            % ---------------------------------- %
+            
+            % plots the calculated results
+            obj.updateProgressLog('Plotting Results...',3)                        
+            
+            %
+            try
+                pDataNw = feval(pDataF.pFcn,snTotF,pDataF,{pltDC});
+            catch ME
+                % error was detected during the calculation process
+                obj.updateProgressLog('Plotting Error Detected!!',4,'r')
+                obj.appendErrorData(ME,pDataF,indSF,false);
+                return
+            end                                    
+            
+            % REMOVE ME!
+            pause(1);
             
         end
         
-        % --- cancel diagnostic button callback function
-        function cancelDiagnostic(obj,hObj,evnt)
+        % ------------------------------------- %
+        % --- PROGRESS LOG UPDATE FUNCTIONS --- %
+        % ------------------------------------- %        
+        
+        % --- updates the progress log panel
+        function updateProgressLog(obj,nwStr0,nTab,sCol)
             
+            % sets the string colour
+            if ~exist('nTab','var'); nTab = 0; end
+            if ~exist('sCol','var'); sCol = 'k'; end
             
-        end                
+            % appends the new string to the array
+            baseStr = obj.setBaseString(nTab,sCol);
+            obj.logStr{end+1} = sprintf('%s%s',baseStr,nwStr0);
+            
+            % updates the log string and the 
+            set(obj.hEditL,'String',obj.logStr);
+            obj.setProgressLogProps();
+            pause(0.01);
+            
+        end
+        
+        % --- clears the progress log panel
+        function clearProgressLog(obj)
+            
+            % clears the log strings
+            obj.logStr = [];
+            set(obj.hEditL,'String','');
+            obj.setProgressLogProps();
+            
+            % creates the progressbar fields
+            obj.prObj.resetProgressFields();
+            
+        end        
+        
+        % --- sets the progress log object position properties
+        function setProgressLogProps(obj)
+            
+            % initialisations
+            nRow = length(obj.hEditL.String);
+            
+            % sets the position vector (based on the row count)
+            if nRow <= obj.nRowMx
+                pPos = obj.pPosLI;
+            else
+                hghtPos = roundP(nRow*obj.logSz) + obj.logY0;
+                pPos = [0,0,obj.pPosLI(3)-obj.widScr,hghtPos];
+            end
+        
+            % sets the panel/textbox positions
+            set(obj.hPanelL,'Position',pPos);
+            set(obj.hEditL,'Position',[1,1,pPos(3:4)-2]);                        
+            scroll(obj.hPanelLO,'bottom')
+            
+        end
         
         % --------------------------------------- %
         % --- OTHER OBJECT CALLBACK FUNCTIONS --- %
@@ -587,6 +841,79 @@ classdef FuncDiagnostic < handle
             delete(obj.hFig)
             
         end        
+        
+        % --------------------------------------- %
+        % --- PROGRESS STRING SETUP FUNCTIONS --- %
+        % --------------------------------------- %
+        
+        % --- sets the base string for the progress log panel
+        function bStr = setBaseString(obj,nTab,sCol)
+            
+            % sets up the tab string
+            tStr = '';            
+            if nTab > 0
+                tStr0 = repmat(obj.tabStr,1,nTab);
+                tStr = sprintf('%s%s ',tStr0,obj.arrStr);
+            end
+            
+            % sets up the combined colour/tab string
+            bStr = [obj.getColString(sCol),tStr];
+            
+        end        
+        
+        % --- retrieves the experiment count based on the scope type
+        function nExpS = getExpCount(obj,iScope)
+            
+            switch iScope
+                case 3
+                    % case is the multi-expt functions
+                    nExpS = 1;
+                    
+                otherwise
+                    % case is the individual fly/single expt functions
+                    nExpS = obj.nExp;
+            end
+            
+        end
+        
+        % --- retrieves the plot data fields for given scope/experiment
+        function pDataS = getPlotDataFields(obj,iScope,iExp)
+            
+            switch iScope
+                case 3
+                    % case is the multi-expt functions
+                    pDataS = obj.pData{iScope};
+                    
+                otherwise
+                    % case is the individual fly/single expt functions
+                    pDataS = obj.pData{iScope}(:,iExp);
+            end
+                    
+        end        
+        
+        % --- retrieves the solution data fields for given scope/experiment
+        function snTotF = getSolnDataStruct(obj,iScope,iExp)
+            
+            switch iScope
+                case 3
+                    % case is the multi-expt functions
+                    snTotF = obj.snTot;
+                    
+                otherwise
+                    % case is the individual fly/single expt functions
+                    snTotF = reduceSolnStruct(obj.snTot(iExp));
+            end            
+            
+        end
+        
+        % --- appends the error data struct fields
+        function appendErrorData(obj,ME,pDataF,indSF,isCalc)
+            
+            obj.errData{end+1} = struct('ME',ME,'pDataF',pDataF,...
+                                        'indSF',indSF,'isCalc',isCalc);        
+            obj.hTableD.Data{indSF(2),4} = obj.hTableD.Data{indSF(2),4}+1;
+                                    
+        end
         
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %
@@ -768,8 +1095,77 @@ classdef FuncDiagnostic < handle
                     
             end
             
-        end
+        end                    
+        
+        % --- sets the latex colour string (based on the value of sCol)
+        function cStr = getColString(sCol)
             
+            switch sCol
+                case 'w'
+                    % case is black
+                    cStr = '\color{white}';
+                
+                case 'k'
+                    % case is black
+                    cStr = '\color{black}';
+                    
+                case 'r'
+                    % case is red
+                    cStr = '\color[rgb]{0.75,0.0,0.0}';
+                    
+                case 'g'
+                    % case is green
+                    cStr = '\color[rgb]{0.0,0.75,0.0}';
+            end
+            
+        end
+        
+        % --- sets up the scope string
+        function sStr = getScopeString(fStr)
+            
+            % sets the base string
+            switch fStr
+                case 'Indiv'
+                    % case is individual analysis
+                    bStr = 'Individual Fly';
+                    
+                case 'Pop'
+                    % case is single experiment
+                    bStr = 'Single Experiment';
+                    
+                case 'Multi'
+                    % case is multi-experiment
+                    bStr = 'Multi-Experiment';
+                
+            end
+            
+            % sets the scope string
+            sStr = sprintf(' * Analysing %s Functions',bStr);
+            
+        end        
+        
+        % --- sets up the experiment string
+        function exStr = getExptString(fName)
+            
+            fName = strrep(fName,'_',' ');
+            exStr = sprintf('Analysing Experiment: "%s"',fName);
+            
+        end
+        
+        % --- sets up the function name strings
+        function pStrF = getFuncString(pNameF)
+           
+            pStrF = sprintf('Running "%s"...',pNameF);
+            
+        end
+        
+        function deleteProgBar()
+            
+            hProg = findall(0,'type','figure','tag','ProgBar');
+            delete(hProg);
+            
+        end
+                
     end
     
 end
