@@ -200,6 +200,9 @@ else
     end
 end
 
+% sets up the data conversion 
+dObj = runExternPackage('ConvertOutputObj',iData);
+
 % creates a loadbar figure
 wStr = sprintf('Outputting %s Data File',fStr{fIndex});
 h = ProgressLoadbar(wStr); pause(0.05);
@@ -228,8 +231,21 @@ for i = 1:iData.nTab
     % only output if the data sheet is not empty
     iSel = iData.tData.iSel(i);
     if ~isempty(iData.tData.Data{i}{iSel})
-        % resets all numeric strings to numerical values
-        DataNw = iData.tData.Data{i}{iSel};
+        % resets all numeric strings to numerical values        
+        if isempty(dObj)
+            DataNw = iData.tData.Data{i}{iSel};
+        else
+            % otherwise, convert the data array
+            dObj.convertData(i,iSel);
+            if dObj.hasErr
+                % if there was an error, then exit the loop
+                close(h.Control)
+                break
+            else
+                % otherwise, retrieve the converted data
+                DataNw = dObj.Data;
+            end
+        end
         
         % updates the loadbar
         wStrNw = sprintf('%s (%s %i of %i)',wStr,sType{fIndex},i,iData.nTab);

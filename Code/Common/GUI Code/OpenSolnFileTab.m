@@ -1005,8 +1005,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
             setObjVisibility(handles.tableGroupNames,0)
             setObjEnable(handles.buttonClearAll,obj.nExp>0)
             obj.setContinueProps(obj.nExp>0)
-            setObjEnable(handles.menuScaleFactor,0);
-            setObjEnable(handles.menuCombExpt,obj.nExp>1);            
+            setObjEnable(handles.menuScaleFactor,0);            
+            setObjEnable(handles.menuCombExpt,obj.nExp>1);
             set(setObjEnable(hText,1),'string',num2str(obj.nExp))
 
             % reduces down the solution file information
@@ -1106,7 +1106,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             setObjEnable(handles.buttonClearAll,0)
             setObjEnable(handles.buttonClearExpt,0)
             setObjEnable(handles.buttonShowProtocol,0)                     
-            setObjEnable(handles.menuScaleFactor,0);
+            setObjEnable(handles.menuScaleFactor,0);            
             setObjEnable(handles.menuCombExpt,0);
             setObjEnable(handles.menuLoadExtnData,0);
             obj.setContinueProps(0)
@@ -1181,8 +1181,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % runs the video parameter reset dialog
             ResetVideoPara(obj);
             
-        end                
-    
+        end    
+        
         % ---- callback function for the combine experiment menu item
         function menuCombExptCB(obj, ~, ~)
             
@@ -1190,6 +1190,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
             ConcatExptClass(obj);
             
         end
+        
+      
         
         % ---- callback function for the setting external data fields
         function menuLoadExtnDataCB(obj, ~, ~)

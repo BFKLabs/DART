@@ -1,5 +1,5 @@
 function varargout = FlyAnalysis(varargin)
-% Last Modified by GUIDE v2.5 12-Jul-2022 05:15:21
+% Last Modified by GUIDE v2.5 12-Jun-2023 11:46:36
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -91,6 +91,7 @@ setappdata(hObject,'clearAxesObject',@clearAxesObject)
 setappdata(hObject,'postSolnLoadFunc',@postSolnLoadFunc)
 setappdata(hObject,'setSelectedNode',@setSelectedNode)
 setappdata(hObject,'resetPlotPanelCoords',@resetPlotPanelCoords)
+setappdata(hObject,'resetPlotDataStructs',@resetPlotDataStructs)
 setappdata(hObject,'menuSubPlot',@menuSubPlot);
 
 % updates the figure click callback function
@@ -706,6 +707,21 @@ end
 
 % deletes the loadbar
 delete(h);
+
+% --------------------------------------------------------------------
+function menuFuncDiagnostic_Callback(~, ~, handles)
+   
+%
+setSelectedNode(handles)
+
+%
+hPara = findall(0,'tag','figAnalysisPara');
+if ~isempty(hPara)
+    setObjVisibility(hPara,0)
+end
+
+% runs the video parameter reset dialog
+FuncDiagnostic(handles.figFlyAnalysis);
 
 % -------------------------------------------------------------------------
 function menuUndock_Callback(~, ~, handles)

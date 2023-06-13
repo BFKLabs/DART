@@ -32,6 +32,12 @@ end
 % creates/runs the package initialisation functions (based on type)
 if isOK
     switch pFile
+        case 'ConvertOutputObj'
+            try
+                tData = varargin{1};
+                pkgObj = feval('ConvertOutputObj',tData);
+            end
+        
         case 'CustomSignal' 
             % case is the custom signal object
             try

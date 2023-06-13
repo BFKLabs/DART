@@ -192,7 +192,8 @@ if ~infoObj0.isTest
     % retrives the device/property info field names    
     if infoObj0.isWebCam
         % case is a webcam device
-        fldNames = getWebCamProps(infoObj0.objIMAQ);
+        sObj = infoObj0.objIMAQ;
+        fldNames = getWebCamProps(sObj);
                 
     else
         % case is a videoinput device

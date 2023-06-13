@@ -3,9 +3,12 @@ classdef FuncDiagnostic < handle
     % class properties
     properties
         
+        % figure handle fields        
+        hFigM        
+        
         % main class fields
-        hFigM
-        pData
+        plotD
+        pData        
         pDataT
         snTot
         gPara
@@ -102,7 +105,8 @@ classdef FuncDiagnostic < handle
         tSz = 10;
         nBut = 2;
         nRowD = 3;
-        nRowMx = 15;        
+        nRowMx = 15;  
+        tPause = 1.0;
         tLong = 12;
         logSz = 13;
         widScr = 17;
@@ -122,14 +126,17 @@ classdef FuncDiagnostic < handle
     methods
         
         % --- class constructor
-        function obj = FuncDiagnostic(hFigM)
+        function obj = FuncDiagnostic(hFigM)            
             
             % sets the input arguments
-            obj.hFigM = hFigM;
-            obj.snTot = getappdata(hFigM,'snTot');
-            obj.pData = getappdata(hFigM,'pData');
-            obj.pDataT = getappdata(hFigM,'pDataT');
-            obj.gPara = getappdata(hFigM,'gPara');
+            obj.hFigM = hFigM;            
+            
+            % sets the input arguments
+            obj.snTot = getappdata(obj.hFigM,'snTot');
+            obj.plotD = getappdata(obj.hFigM,'plotD');            
+            obj.pData = getappdata(obj.hFigM,'pData');
+            obj.pDataT = getappdata(obj.hFigM,'pDataT');
+            obj.gPara = getappdata(obj.hFigM,'gPara');
             
             % initialises the class fields
             obj.initClassFields();
@@ -188,7 +195,7 @@ classdef FuncDiagnostic < handle
             
             % deletes any previous GUIs
             hPrev = findall(0,'tag',obj.tagStr);
-            if ~isempty(hPrev); delete(hPrev); end                       
+            if ~isempty(hPrev); delete(hPrev); end                                   
             
             % creates the loadbar
             lStr = 'Initialising Function Diagnostic Program...';
@@ -212,6 +219,9 @@ classdef FuncDiagnostic < handle
             pPos = [obj.dX*[1,1],obj.widPanelO,obj.hghtPanelO];
             obj.hPanelO = createUIObj...
                 ('panel',obj.hFig,'Title','','Position',pPos);
+            
+            % sets the object into the figure
+            setappdata(obj.hFig,'fObj',obj)            
             
             % ------------------------------- %
             % --- ANALYSIS FUNCTION PANEL --- %
@@ -479,9 +489,18 @@ classdef FuncDiagnostic < handle
             pause(0.05);                        
             
             % centers the figure and makes it visible
-            centreFigPosition(obj.hFig,2);
-            setObjVisibility(obj.hFig,1);                          
-                          
+            scrSz = get(0,'ScreenSize');            
+
+            % resets the main gui position
+            fPosM0 = get(obj.hFigM,'Position');
+            fPosM = [scrSz(3)-fPosM0(3),41,fPosM0(3:4)];
+            set(obj.hFigM,'Position',fPosM,'Visible','on');            
+            
+            % resets the position of the diagnostic window
+            fPos0 = get(obj.hFig,'Position');            
+            fPos = [1,scrSz(4)-(45+fPos0(4)),fPos0(3:4)];
+            set(obj.hFig,'Position',fPos,'Visible','on');           
+            
         end
         
         % --- creates the object pairs
@@ -554,11 +573,14 @@ classdef FuncDiagnostic < handle
             prStrEx = 'Function Diagnostic Analysis Cancelled...';
             [obj.fStrS,obj.iSelS] = obj.fTreeObj.getCurrentSelectedNodes();             
             
-            
             % resets the diagnostic run flag
             obj.runDiag = true;  
             setObjEnable(hObj,0);
             setObjEnable(obj.hButC{2},1);
+            
+            % makes the parameter GUI invisible
+            hPara = findall(0,'tag','figAnalysisPara');
+            setObjVisibility(hPara,0);            
             
             % retrieves the currently selected functions
             obj.iScopeS = find(~cellfun(@isempty,obj.iSelS));
@@ -567,16 +589,21 @@ classdef FuncDiagnostic < handle
             obj.prObj.iScope = obj.iScopeS;            
             obj.hTableD.Data(obj.iScopeS,3:4) = {0};
             
+            % resets the table style
+            s = uistyle('BackgroundColor','w','FontWeight','Normal');
+            addStyle(obj.hTableD,s,'row',obj.iScopeS)               
+            
             % clears the progress log 
             obj.clearProgressLog();                        
             obj.updateProgressLog(prStr0)
-            obj.updateProgressLog('Gap',0,'w')                                    
+            obj.updateProgressLog('Gap',0,'w')              
 
             % runs the analysis diagnostic for each analysis scope
             for i = 1:length(obj.iScopeS)
                 % if the user has cancelled, then exit
                 if ~obj.runDiag
                     obj.updateProgressLog(prStrEx,0,'r')
+                    obj.cancelDiagnostic(obj.hButC{2});
                     return
                 end
                 
@@ -604,6 +631,7 @@ classdef FuncDiagnostic < handle
                         if ~obj.runDiag
                             obj.updateProgressLog('Gap',0,'w')
                             obj.updateProgressLog(prStrEx,0,'r')
+                            obj.cancelDiagnostic(obj.hButC{2});
                             return
                         end                        
                         
@@ -629,6 +657,7 @@ classdef FuncDiagnostic < handle
             % sets the final progress log string
             obj.updateProgressLog(prStrF,0,'g')
             obj.cancelDiagnostic(obj.hButC{2});
+            warning ON VERBOSE            
             
         end        
         
@@ -646,7 +675,9 @@ classdef FuncDiagnostic < handle
         function runAnalysisFunc(obj,pDataF,snTotF,indSF)
 
             % initialises the plot axes
-            obj.hAx = obj.initAxes(guidata(obj.hFigM));            
+            lastwarn('');
+            warning OFF VERBOSE
+            obj.hAx = obj.initAxes(guidata(obj.hFigM));                     
             
             % -------------------------------------- %
             % --- ANALYSIS FUNCTION CALCULATIONS --- %
@@ -658,25 +689,36 @@ classdef FuncDiagnostic < handle
             try
                 % runs the analysis function calculations
                 pltDC = feval(pDataF.cFcn,snTotF,pDataF,obj.gPara);
+                
             catch ME
                 % error was detected during the calculation process
-                obj.updateProgressLog('Calculation Error Detected!!',4,'r')
-                obj.appendErrorData(ME,pDataF,indSF,true);
+                obj.updateProgressLog('Calculation Error Detected!!',4,'rb')
+                obj.appendErrorData(ME,pDataF,indSF,true,true);
                 obj.deleteProgBar();
                 
                 % retrieves the progressbar and deletes it
                 return
-            end
+            end            
             
             % retrieves the progressbar status
-            if ~obj.runDiag
-               return
+            if isempty(pltDC)
+                obj.runDiag = false;
+                return
+
             else
                 % resets the current figure/axes objects
                 set(0,'CurrentFigure',obj.hFigM)
                 set(obj.hFigM,'CurrentAxes',obj.hAx);
             end
-                        
+            
+            % appends a warning (if one has been generated)
+            [wMsg, wID] = lastwarn();            
+            if ~isempty(wMsg)
+                obj.updateProgressLog('Calculation Warning Detected!!',4,'rb')
+                obj.appendErrorData({wMsg,wID},pDataF,indSF,true,false);
+                lastwarn('');
+            end
+            
             % ---------------------------------- %
             % --- ANALYSIS FUNCTION PLOTTING --- %
             % ---------------------------------- %
@@ -684,18 +726,31 @@ classdef FuncDiagnostic < handle
             % plots the calculated results
             obj.updateProgressLog('Plotting Results...',3)                        
             
-            %
             try
+                % runs the plotting function
                 pDataNw = feval(pDataF.pFcn,snTotF,pDataF,{pltDC});
+            
             catch ME
                 % error was detected during the calculation process
-                obj.updateProgressLog('Plotting Error Detected!!',4,'r')
-                obj.appendErrorData(ME,pDataF,indSF,false);
+                obj.updateProgressLog('Plotting Error Detected!!',4,'rb')
+                obj.appendErrorData(ME,pDataF,indSF,false,true);
                 return
-            end                                    
+            end 
             
-            % REMOVE ME!
-            pause(1);
+            % pauses to view the plot
+            pause(obj.tPause);            
+            
+            % appends a warning (if one has been generated)
+            [wMsg, wID] = lastwarn();            
+            if ~isempty(wMsg)
+                obj.updateProgressLog('Plotting Warning Detected!!',4,'rb')
+                obj.appendErrorData({wMsg,wID},pDataF,indSF,false,false);
+                
+            else
+                % updates the plot data struct
+                iFcn = obj.iSelS{indSF(2)}(indSF(3));
+                obj.plotD{indSF(2)}{iFcn,indSF(1)} = {pltDC};
+            end                        
             
         end
         
@@ -838,7 +893,8 @@ classdef FuncDiagnostic < handle
         % --- exit menu item callback function
         function menuExit(obj,~,~)
             
-            delete(obj.hFig)
+            % deletes the diagnostic window
+            delete(obj.hFig)              
             
         end        
         
@@ -907,13 +963,36 @@ classdef FuncDiagnostic < handle
         end
         
         % --- appends the error data struct fields
-        function appendErrorData(obj,ME,pDataF,indSF,isCalc)
+        function appendErrorData(obj,ME,pDataF,iSF,isCalc,isErr)
             
-            obj.errData{end+1} = struct('ME',ME,'pDataF',pDataF,...
-                                        'indSF',indSF,'isCalc',isCalc);        
-            obj.hTableD.Data{indSF(2),4} = obj.hTableD.Data{indSF(2),4}+1;
+            % updates the error log
+            obj.errData{end+1} = ...
+                FuncErrorLog(obj.fExpt,ME,pDataF,iSF,isCalc,isErr);        
+            
+            % updates the table
+            iC = 3 + double(isErr);
+            obj.hTableD.Data{iSF(2),iC} = obj.hTableD.Data{iSF(2),iC} + 1;
+            
+            s = uistyle('BackgroundColor','r','FontWeight','Bold');
+            addStyle(obj.hTableD,s,'cell',[iSF(2),iC])
                                     
         end
+        
+        % --- outputs all the errors to screen
+        function outputAllErrors(obj)
+            
+            % if there are no errors then exit
+            if isempty(obj.errData)
+                return
+            end
+            
+            % outputs all the messages
+            clc
+            cellfun(@(x)(x.outputErrorDetails),obj.errData);
+            
+            
+        end
+        
         
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %
@@ -1100,14 +1179,14 @@ classdef FuncDiagnostic < handle
         % --- sets the latex colour string (based on the value of sCol)
         function cStr = getColString(sCol)
             
-            switch sCol
+            switch sCol(1)
                 case 'w'
                     % case is black
                     cStr = '\color{white}';
                 
                 case 'k'
                     % case is black
-                    cStr = '\color{black}';
+                    cStr = '\color{black}';                    
                     
                 case 'r'
                     % case is red
@@ -1116,6 +1195,15 @@ classdef FuncDiagnostic < handle
                 case 'g'
                     % case is green
                     cStr = '\color[rgb]{0.0,0.75,0.0}';
+            end
+            
+            if length(sCol) == 1
+                cStr = [cStr,' \rm'];
+            else
+                switch sCol(2)
+                    case 'b'
+                        cStr = [cStr,' \bf'];
+                end
             end
             
         end
