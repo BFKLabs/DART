@@ -419,13 +419,18 @@ classdef FuncDiagnostic < handle
             pPosL = [lPosP,yPosL,obj.widPanelR,obj.hghtPanelL];
             obj.hPanelLO = uipanel(obj.hPanelO,'Title',tStrL,'Units',...
                         'Pixels','FontUnits','Pixels','Position',pPosL,...
-                        'FontSize',obj.hSz,'FontWeight','bold',...
-                        'Scrollable','on');  
+                        'FontSize',obj.hSz,'FontWeight','bold');
 
             % creates the inner panel object
             obj.pPosLI = [0,0,pPosL(3:4)-[1,2*obj.dX]];
             obj.hPanelL = uipanel(obj.hPanelLO,'Units','Pixels',...
-                        'Position',obj.pPosLI,'Scrollable','on');
+                        'Position',obj.pPosLI);
+               
+            % sets the panel scrolling to on (new version only)                    
+            if ~obj.isOldVer
+                set(obj.hPanelLO,'Scrollable','on');
+                set(obj.hPanelL,'Scrollable','on');
+            end                    
                     
             % creates the log editbox
             obj.hEditL = annotation(obj.hPanelL,'Textbox','Position',...
@@ -468,6 +473,12 @@ classdef FuncDiagnostic < handle
             % updates the table data
             obj.nColD = length(cName);
             obj.updateTableData();
+            
+            %
+            if obj.isOldVer
+                set(obj.hTableD,'FontSize',14)
+                autoResizeTableColumns(obj.hTableD)
+            end
             
             % ------------------------- %
             % --- MENU ITEM OBJECTS --- %
@@ -590,8 +601,14 @@ classdef FuncDiagnostic < handle
             obj.hTableD.Data(obj.iScopeS,3:4) = {0};
             
             % resets the table style
-            s = uistyle('BackgroundColor','w','FontWeight','Normal');
-            addStyle(obj.hTableD,s,'row',obj.iScopeS)               
+            if obj.isOldVer
+                bgCol = get(obj.hTableD,'BackgroundColor');
+                bgCol(obj.iScopeS,:) = 1;
+                set(obj.hTableD,'BackgroundColor',bgCol)
+            else
+                s = uistyle('BackgroundColor','w','FontWeight','Normal');
+                addStyle(obj.hTableD,s,'row',obj.iScopeS)               
+            end
             
             % clears the progress log 
             obj.clearProgressLog();                        
@@ -805,8 +822,13 @@ classdef FuncDiagnostic < handle
         
             % sets the panel/textbox positions
             set(obj.hPanelL,'Position',pPos);
-            set(obj.hEditL,'Position',[1,1,pPos(3:4)-2]);                        
-            scroll(obj.hPanelLO,'bottom')
+            set(obj.hEditL,'Position',[1,1,pPos(3:4)-2]);   
+            
+            if obj.isOldVer
+                a = 1;
+            else
+                scroll(obj.hPanelLO,'bottom')
+            end
             
         end
         
@@ -973,8 +995,12 @@ classdef FuncDiagnostic < handle
             iC = 3 + double(isErr);
             obj.hTableD.Data{iSF(2),iC} = obj.hTableD.Data{iSF(2),iC} + 1;
             
-            s = uistyle('BackgroundColor','r','FontWeight','Bold');
-            addStyle(obj.hTableD,s,'cell',[iSF(2),iC])
+            if obj.isOldVer
+                a = 1;
+            else
+                s = uistyle('BackgroundColor','r','FontWeight','Bold');
+                addStyle(obj.hTableD,s,'cell',[iSF(2),iC])
+            end
                                     
         end
         

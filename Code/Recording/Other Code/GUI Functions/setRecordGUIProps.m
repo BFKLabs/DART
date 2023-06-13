@@ -70,14 +70,14 @@ switch (typeStr)
         end
         
         % determines if there are any  
-        hasDev = dType > 0;
-        if any(hasDev)
+        iDev = find(dType > 0);
+        if ~isempty(iDev)
             % IR string
-            dType = dType(hasDev);
+            dType = dType(iDev);
+            hDev = objDAQ.Control(iDev);            
             sStr = {sprintf('4,%f\n',100),'3,000,000,000,000,050\n'};
 
             % loops through each opto device turning on the IR lights
-            hDev = objDAQ.Control(hasDev);
             for i = 1:length(hDev)
                 % if the device is closed, then open it
                 if strcmp(get(hDev{i},'Status'),'closed')
@@ -92,6 +92,14 @@ switch (typeStr)
             set(handles.menuToggleIR,'Checked','On');
             setObjVisibility(handles.menuToggleWhite,any(dType==2))
             setObjVisibility(handles.menuOpto,'on');
+
+            % runs a test pulse (HT1 controllers only)
+            isHT1 = dType == 1;            
+            if any(isHT1)
+                objHT1 = setupHT1TestPulse(objDAQ,iDev(isHT1));
+                runOutputDevices(objHT1,1:length(objHT1));
+            end
+
         else
             % makes the opto menu item invisible
             setObjVisibility(handles.menuOpto,'off');

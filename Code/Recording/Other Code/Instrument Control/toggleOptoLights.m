@@ -21,7 +21,8 @@ else
 end
 
 % sets the light properties based on the checked state of the menu item
-if strcmp(get(hObject,'Checked'),'off')
+isOn = strcmp(get(hObject,'Checked'),'off');
+if isOn
     % turns on the lights
     if isIR
 %         sStr = {sprintf('4,%f\n',2*str2double(yAmp)),...
@@ -54,4 +55,11 @@ if ~isempty(hDev)
             writeSerialString(hDev{i},sStr{iDev(i)});
         end
     end
+end
+
+% runs a test pulse (HT1 controllers only)
+isHT1 = dType == 1;            
+if any(isHT1) && isOn
+    objHT1 = setupHT1TestPulse(objDAQ);
+    runOutputDevices(objHT1,1:length(objHT1));
 end
