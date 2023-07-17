@@ -2139,7 +2139,7 @@ classdef AnalysisParaClass < handle
                     % then update the enabled properties of the objects
                     if iscell(pInd)
                         % retrieves the current parameter value
-                        if (strcmp(p(i).Type,'List'))
+                        if strcmp(p(i).Type,'List')
                             % case is a list parameter
                             Value = p(i).Value{1};
                         else

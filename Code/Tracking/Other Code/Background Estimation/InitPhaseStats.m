@@ -118,7 +118,7 @@ classdef InitPhaseStats < handle
             pInfo = obj.phInfo;
             pCol = {0.5*ones(1,3)};
             [ii,jj] = deal([1,1,2,2,1],[1,2,2,1,1]);
-            isFeas = any(vPhase < 3);            
+            isFeas = any(vPhase == [1,2,4]);            
             
             % other memory allocation            
             obj.Imu = cell(1,3);

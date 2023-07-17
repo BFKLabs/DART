@@ -61,12 +61,12 @@ classdef VideoPhase < handle
         dHistTol = 20;
         pOfsMin = 0.4;
         
-        % other fixed parameters
-        Dtol
+        % other fixed parameters        
         isHT1
         nPhMax        
         tOfs = 1;
         sFlag = 0;
+        Dtol = 100;
         nPhaseMx = 50;
         nFrm0 = 15;
         szDS = 800;
@@ -127,6 +127,7 @@ classdef VideoPhase < handle
             obj.sFlag = 0;
             [obj.rOpt,obj.rMet] = imregconfig('monomodal');
             obj.rOpt.MaximumIterations = 250;
+            obj.nFrm0 = min(obj.iData.nFrm,(1+obj.isHT1)*obj.nFrm0);
             
             % sets the maximum phase count
             if ~isfield(obj.iMov.bgP.pPhase,'nPhMax')
@@ -172,12 +173,12 @@ classdef VideoPhase < handle
                 obj.iC0{iApp} = ceil(pP(1))+(0:floor(pP(3)));
             end
             
-            % SPECIAL CASE - for HT1 controllers, the phases where
-            % stimuli events occur must be treated separately than
-            % other phase types
-            if obj.isHT1 && ~isempty(obj.iData.stimP)
-                obj.setupHT1StimIndices();
-            end
+%             % SPECIAL CASE - for HT1 controllers, the phases where
+%             % stimuli events occur must be treated separately than
+%             % other phase types
+%             if obj.isHT1 && ~isempty(obj.iData.stimP)
+%                 obj.setupHT1StimIndices();
+%             end
             
         end
         
@@ -209,55 +210,12 @@ classdef VideoPhase < handle
                 
                 % calculates the region information
                 [IL,obj.ILF(:,iApp)] = obj.setupRegionInfoStack(iApp);
-                obj.Dimg(obj.iFrm0,iApp) = obj.calcAvgImgIntensity(IL,iApp);
-                
-                % manually flags the frames as being checked
-                if ~isempty(obj.indH1S)
-                    obj.Dimg(obj.indH1S,iApp) = -1;
-                    obj.isCheck(obj.indH1S) = true;
-                end
+                obj.Dimg(obj.iFrm0,iApp) = obj.calcAvgImgIntensity(IL,iApp);                
             end
             
             % optimises the frame group limits
             iGrpF = obj.optFrameGroupLimits();
             obj.checkFinalFrameGroups(iGrpF);
-
-            % manually flags the frames as being checked
-            NT = length(obj.indH1S);                            
-            if (NT > 0) && (NT < obj.NTmx) && obj.autoDetect
-                % sets up 
-                N = 25;                                 
-                xiN = 1:ceil(NT/N);
-                indF = arrayfun(@(x)(((x-1)*N+1):min(NT,x*N)),xiN,'un',0);
-                
-                % updates the progressbar
-                wStr0 = 'Calculating Average Image Intensities';
-                obj.updateProgField(wStr0,11/12);                
-                
-                % calculates the missing average image intensities
-                nGrpF = length(indF);                
-                for i = 1:nGrpF
-                    % updates the progressbar
-                    wStrNw = sprintf(['Analysing Image Stack ',...
-                        '(Stack %i of %i)'],i,nGrpF);
-                    if obj.updateSubProgField(wStrNw,i/nGrpF)
-                        % if the user cancelled, then exit
-                        obj.calcOK = false;
-                        return
-                    end                    
-                    
-                    % reads the image stack
-                    indNw = obj.indH1S(indF{i});
-                    Img = arrayfun(@(x)...
-                            (obj.getImageFrame(x)),indNw,'un',0);                    
-                    for iApp = 1:obj.nApp
-                        % calculates the average image intensities
-                        IL = obj.setupRegionInfoStack(iApp,Img);
-                        obj.Dimg(indNw,iApp) = ...
-                                    obj.calcAvgImgIntensity(IL,iApp);
-                    end                                       
-                end                    
-            end
             
             % closes the progressbar (if required)
             if obj.closePB
@@ -274,6 +232,7 @@ classdef VideoPhase < handle
             
             % retrieves the phase tracking parameters
             obj.phsP = getTrackingPara(obj.iMov.bgP,'pPhase');
+            obj.hasT = false(1,obj.nApp);
             
             % creates the progress bar (if not provided)
             if initPB
@@ -303,7 +262,9 @@ classdef VideoPhase < handle
             end
             
             % determines the video properties
-            obj.detVideoProps();
+            if ~obj.isHT1
+                obj.detVideoProps();
+            end
             
         end
         
@@ -360,10 +321,7 @@ classdef VideoPhase < handle
             
             % updates the progress bar
             obj.updateProgField('Initialising Property Detection',2/6);
-            obj.updateSubProgField('Determining Video Properties',0);
-            
-            % calculates the offset between the last/first frame
-            obj.hasT = false(1,obj.nApp);
+            obj.updateSubProgField('Determining Video Properties',0);            
             
             % determines the frames which are feasible
             isOK = any((obj.Imu > obj.phsP.pTolLo) & ...
@@ -380,7 +338,7 @@ classdef VideoPhase < handle
             if any(abs(pOfs0) > obj.pOfsMin)
                 obj.hasT(:) = true;
             end
-            %
+            
             %                 [p0,pW] = deal(0.25,0.5);
             %                 for i = 1:obj.nApp
             %                     % updates the progress bar
@@ -479,6 +437,20 @@ classdef VideoPhase < handle
                 ILT = IL;
             end
             
+            %
+            if obj.isHT1
+                % performs the histogram matching
+                IRef = uint8(calcImageStackFcn(IL));
+                IL = calcHistMatchStack(IL,IRef);
+                
+                % sets the translated images (if required)
+                if obj.hasT(iApp)
+                    ILT = calcHistMatchStack(ILT,IRef);
+                else
+                    ILT = IL;
+                end
+            end
+            
         end
         
         % --- optimises the frame grouping limits
@@ -502,7 +474,7 @@ classdef VideoPhase < handle
             % determines if the video has high fluctuation
             if obj.hasF
                 % if so, then video only has one phase
-                iGrpF = iFrmC([1,end]);
+                iGrpF = arr2vec(iFrmC([1,end]))';
                 
                 % updates the progressbar
                 obj.updateSubProgField('Frame Group Limit Detection',1);
@@ -899,7 +871,7 @@ classdef VideoPhase < handle
                 
                 % determines if the frame range is too low for tracking
                 DimgF{i} = obj.getDimg(iFrmG);
-                if any(DimgF{i} < 0)
+                if obj.isHT1
                     % SPECIAL CASE - HT1 Controller
                     vPhaseF(i) = 4;
                     
@@ -1331,7 +1303,7 @@ classdef VideoPhase < handle
             [Img,sImg] = deal(cell(nPhase,1));
             
             % sets the frame indices
-            nImgR = obj.phsP.nImgR;
+            nImgR = obj.phsP.nImgR*(1+obj.isHT1);
             [obj.iMov.vPhase,obj.iMov.iPhase] = deal(obj.vPhase,obj.iPhase);
             iFrmR = getPhaseFrameIndices(obj.iMov,nImgR,obj.iPhase);
             
@@ -1668,7 +1640,7 @@ classdef VideoPhase < handle
             Ihm = applyHMFilter(I,hF);
             Ihm = 255*normImg(Ihm - min(Ihm(:)));
             
-        end
+        end    
         
     end
     

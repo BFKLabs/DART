@@ -52,7 +52,6 @@ classdef FilterResObj < handle
         pW0 = 0.1;
         pW1 = 0.4;   
         pWS = 2.5;
-        pTolBB = 0.1;    
         dTol0 = 7.5;
         ZTolR = 5;
         
@@ -188,7 +187,7 @@ classdef FilterResObj < handle
                     imfiltersym(x-IRTmn,obj.hG))),obj.IRs,'un',0);
             
             % calculates the image stack statistics
-            obj.calcImageStackStats(obj.dIRs);
+            obj.pStats = obj.calcImageStackStats(obj.dIRs);
             
         end                        
         
@@ -250,7 +249,7 @@ classdef FilterResObj < handle
                     % determine the blob's locations
                     [sFlagT,uData] = obj.detSubRegionStatus...
                                 (IRL{iT},dIRL{iT},ZIRL(:,iT),BexcT{iT});
-                end                                
+                end
                 
                 switch sFlagT
                     case {1,2}
@@ -291,7 +290,7 @@ classdef FilterResObj < handle
             % locations known with reasonable accuracy
             if isempty(obj.hC{obj.iApp})
                 if any(obj.okS)
-                    obj.setupFlyTemplate(dIRL)
+                    obj.setupFlyTemplate(dIRL);
                 else
                     return
                 end
@@ -373,15 +372,19 @@ classdef FilterResObj < handle
                 [sFlagT,uData] = deal(1,fPMx);
                 return       
                           
-            elseif (mean(isU) >= pUniqMin) && (mean(ZIRL(isU)) > obj.ZTolR)
+            elseif ((sum(isU) > 1) && (mean(ZIRL(isU)) > 2*obj.ZTolR)) || ...
+                   (mean(isU) >= pUniqMin) && (mean(ZIRL(isU)) > obj.ZTolR)                
                 % if there are signifiant number of unique frames, and the
                 % mean of the unique frames is high, then probably moving
                 
                 % calculates the combine residual images
-                Q = cellfun(@(x,y)...
-                        (max(0,x).*max(0,y)),dIRL(~isU),IRL(~isU),'un',0);
+%                 Q = cellfun(@(x,y)...
+%                         (max(0,x).*max(0,y)),dIRL(~isU),IRL(~isU),'un',0);
+%                 jMx(~isU) = cellfun(@(x)...
+%                         (obj.detAmbigFlyPos(x,Bexc)),Q,'un',0);
                 jMx(~isU) = cellfun(@(x)...
-                        (obj.detAmbigFlyPos(x,Bexc)),Q,'un',0);
+                        (obj.detAmbigFlyPos(x,Bexc)),dIRL(~isU),'un',0);
+
 
                 % calculates the peak coordintes and returns a moving flag
                 fPMx = cellfun(@(x,y)(obj.calcCoords(x,y)),IRL,jMx,'un',0);
@@ -623,75 +626,14 @@ classdef FilterResObj < handle
         
         % --- calculates the fly template image (for the current region) 
         function setupFlyTemplate(obj,dIRL)
-
-            % sets the sub-region size
-            N = ceil(obj.dTol);
-            if obj.nI > 0
-                N = (1+obj.nI)*N + 1;         
-            end
                 
             % sets the known fly location coordinates/linear indices
             dIRL = cell2cell(dIRL(obj.okS),0);
-            fPosT = cellfun(@(x)(x(obj.okS,:)),obj.fPos,'un',0);                     
-            
-            % calculates the residual image stacks
-%             IR0 = cellfun(@(y)(cellfun(@(h)(...
-%                     (imfiltersym(y,h)-y)),obj.hS,'un',0)),obj.IL0,'un',0);
-%             IR0s = cellfun(@(x)(calcImageStackFcn(x,'mean')),IR0,'un',0);
-            
-%             IR0 = cellfun(@(y)(cellfun(@(h)(...
-%                     (imfiltersym(y,h))),obj.hS,'un',0)),obj.IL0,'un',0);                
-%             IR0s = cellfun(@(x)(255*(1-normImg(x))),obj.IL0,'un',0);
-%             IR0s = dIRL;
-
-            % keep looping until the filtered binary mask no-longer touches
-            % the edge of the sub-region frame
-            while 1
-                % retrieves the fly sub-image stack (for all known points)
-                Isub = cell(obj.nFrm,sum(obj.okS));
-                for i = 1:obj.nFrm
-                    fTmp = obj.downsampleCoords(fPosT{i});
-                    Isub(i,:) = cellfun(@(x,y)(obj.getPointSubImage...
-                         (y,x,N)),num2cell(fTmp,2)',dIRL(i,:),'un',0);
-                end
-                
-                % calculates the 
-                pOfs = (size(Isub{1})+1)/2;
-                Bsub = cellfun(@(x)(detLargestBinary(-x,pOfs)),Isub,'un',0);
-
-                % calculates the sub-image stack mean image
-                Q = cellfun(@(x,y)(x.*y),Isub,Bsub,'un',0);
-                IsubMn = calcImageStackFcn(Q(:),'mean');
-                
-                % sets up the binary mask
-                nH = (size(IsubMn,1)-1)/2;
-                B0 = setGroup((nH+1)*[1,1],(2*nH+1)*[1,1]);
-                
-                % sets up template image
-                hC0 = max(0,IsubMn - mean(IsubMn(:),'omitnan'));
-                [~,B] = detGroupOverlap(hC0>0,B0);
-                
-                %
-                hCF = hC0.*B;
-                ii = obj.getTemplateInterpIndices(hCF);                
-                [obj.hC{obj.iApp},B] = deal(hCF(ii,ii),B(ii,ii));
-
-                % thresholds the filtered sub-image
-                Brmv = B & (normImg(obj.hC{obj.iApp}) > obj.pTolBB);   
-                if all(Brmv(bwmorph(true(size(Brmv)),'remove')))
-                    N = N + (1+obj.nI);
-                    obj.dTol = obj.dTol + 1;                    
-                else
-                    break
-                end
-            end
-            
-            % determines the approx blob size (if not already set)
-            if ~isfield(obj.iMov,'szObj') || isempty(obj.iMov.szObj)
-                BrmvD = sum(Brmv(logical(eye(size(Brmv)))));                                
-                obj.iMov.szObj = BrmvD*[1,1];
-                obj.dTol = obj.calcDistTol();                
-            end
+            fPosT = cellfun(@(x)(x(obj.okS,:)),obj.fPos,'un',0);             
+        
+            % sets up and runs the template optimisation object
+            tObj = FlyTemplate(obj,obj.iApp);
+            tObj.setupFlyTemplate(dIRL,fPosT);            
             
         end
         
@@ -742,15 +684,6 @@ classdef FilterResObj < handle
             end
             
         end
-
-        % --- downsamples the image coordinates
-        function fP = downsampleCoords(obj,fP)
-            
-            if obj.nI > 0
-                fP = roundP(((fP-1)/obj.nI - 1)/2 + 1);
-            end
-                
-        end          
         
         % --- downsamples the image stack 
         function downsampleImageStack(obj)
@@ -1126,9 +1059,11 @@ classdef FilterResObj < handle
             szL = size(obj.IRs{1});
             obj.Bexc = getExclusionBin(obj.iMov,szL,obj.iApp);
             
-            if obj.iMov.is2D || (obj.nI > 0)
+            if obj.iMov.is2D && (obj.nI > 0)
                 iRT = cell2mat(obj.iRI(:)');
-                obj.Bexc = obj.Bexc(iRT,obj.iCI);
+                if iRT(end) <= size(obj.Bexc,1)
+                    obj.Bexc = obj.Bexc(iRT,obj.iCI);
+                end
             end
             
         end      
@@ -1207,25 +1142,7 @@ classdef FilterResObj < handle
                 kMx(i) = kMx0(argMax(I(kMx0)./D));
             end
 
-        end                
-        
-        % --- calculates the image stack statistics
-        function P = calcImageStackStats(obj,I)
-            
-            % calculates the frame stack mean/std dev values
-            B = cellfun(@(x)(x>0),I,'un',0);
-%             B = cellfun(@(x)(trie),I,'un',0);
-            
-            if nargout == 1
-                P = struct('Imu',[],'Isd',[]);
-                P.Imu = cellfun(@(x,y)(mean(x(y))),I,B);
-                P.Isd = cellfun(@(x,y)(std(x(y))),I,B);
-            else
-                obj.pStats.Imu = cellfun(@(x,y)(mean(x(y))),I,B);
-                obj.pStats.Isd = cellfun(@(x,y)(std(x(y))),I,B);
-            end
-                        
-        end                
+        end                        
         
         % --- calculates the distance tolerance value
         function dTolT = calcDistTol(obj)
@@ -1241,35 +1158,12 @@ classdef FilterResObj < handle
                 end
             end
             
-        end        
+        end
         
     end
     
     % static class methods
-    methods (Static)
-        
-        % --- retrieves the point sub-image
-        function IsubS = getPointSubImage(I,fP,N,ok)
-
-            % sets the default input argument
-            if ~exist('ok','var'); ok = true; end                
-
-            % memory allocation
-            IsubS = NaN(2*N+1);
-            if any(isnan(fP)) || ~ok; return; end
-
-            % determines the row/column coordinates
-            iCS = (fP(1)-N):(fP(1)+N);
-            iRS = (fP(2)-N):(fP(2)+N);
-
-            % determines the feasible points
-            jj = (iCS > 0) & (iCS <= size(I,2));
-            ii = (iRS > 0) & (iRS <= size(I,1));
-
-            % sets the feasible sub-image pixels
-            IsubS(ii,jj) = I(iRS(ii),iCS(jj));
-
-        end               
+    methods (Static)        
         
         % --- offsets the y-coordinates in fPos by yOfs
         function fPos = offsetYCoords(fPos,yOfs)
@@ -1416,18 +1310,18 @@ classdef FilterResObj < handle
             % calculates the z-scores of the sub-image maxima
             Zmx = (Imx - pI.Imu)./pI.Isd;
 
-        end        
+        end                
         
-        % --- 
-        function indI = getTemplateInterpIndices(B)
+        % --- calculates the image stack statistics
+        function P = calcImageStackStats(I)
             
-            %
-            xiF = 1:2:size(B,2);
-            ii = any(B(:,xiF),1) | any(B(xiF,:),2)';
+            % calculates the frame stack mean/std dev values
+            B = cellfun(@(x)(x>0),I,'un',0);
             
-            %
-            N = min(find(ii,1,'first'),(length(ii)+1)-find(ii,1,'last'));
-            indI = xiF(N):xiF(end-(N-1));
+            % calculates the mean/std values
+            P = struct('Imu',[],'Isd',[]);
+            P.Imu = cellfun(@(x,y)(mean(x(y))),I,B);
+            P.Isd = cellfun(@(x,y)(std(x(y))),I,B);              
             
         end        
         

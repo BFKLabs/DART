@@ -18,10 +18,16 @@ classdef PhaseTrack < matlab.mixin.SetGet
         iPh
         vPh        
         is2D
-        iFrm
+        iFrm        
         calcInit  
         wOfs = 0;      
         calcOK = true;         
+
+        % temporary tracking fields
+        fPrNw
+        iPmx
+        Pmx
+        isStat
         
         % dimensioning veriables
         nApp        
@@ -229,6 +235,8 @@ classdef PhaseTrack < matlab.mixin.SetGet
             
             % sets up the special image stack
             if obj.isHT1
+                IRef = obj.iMov.IbgR{iApp};
+                ImgL = calcHistMatchStack(ImgL,IRef);
                 ImgSegS = obj.setupSpecialImgStack(ImgL,iRT,iCT,iApp,fok);
             end
             
@@ -246,6 +254,11 @@ classdef PhaseTrack < matlab.mixin.SetGet
                     % case is another phase type
                     ImgBGL = ImgBG(iRT{iTube},iCT);
                     ImgSeg = obj.setupResidualStack(ImgSR,ImgBGL);
+                end           
+                
+                %
+                if (iApp == 2) && (iTube == 14)
+                    a = 1;
                 end
                 
                 % segments the image stack
@@ -294,12 +307,11 @@ classdef PhaseTrack < matlab.mixin.SetGet
         function [fP,IP] = segmentSubRegion(obj,Img,fPr0,IPr0,indR)
             
             % parameters
-            pTolW = 0.6;
+            pTolPmx = 2/3;
             
             % memory allocation   
             IPr = IPr0;
-            nFrm = length(Img);                        
-            iPmx = cell(nFrm,1);  
+            nFrm = length(Img);   
             [fP,IP] = deal(NaN(nFrm,2),zeros(nFrm,1)); 
             isMove = obj.iMov.Status{indR(1)}(indR(2)) == 1;
             
@@ -314,6 +326,9 @@ classdef PhaseTrack < matlab.mixin.SetGet
             dTolL = obj.iMov.szObj(1);
             xL = obj.xLim{indR(1)}(indR(2),:);
             yL = obj.yLim{indR(1)}(indR(2),:);            
+
+            % sets the stationary movement flag
+            obj.isStat = obj.iMov.Status{indR(1)}(indR(2)) == 2;            
             
             % determines the feasible analysis frames
             isOK = ~cellfun(@(x)(all(isnan(x(:)))),Img);
@@ -332,72 +347,114 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 
                 % sets the previous coordinate array
                 if obj.iFrmR(i) < 5
-                    fPrNw = fP(obj.iPr1{i},:);
+                    obj.fPrNw = fP(obj.iPr1{i},:);
                 else
-                    fPrNw = [fPr0(obj.iPr0{i},:);fP(obj.iPr1{i},:)];
+                    obj.fPrNw = [fPr0(obj.iPr0{i},:);fP(obj.iPr1{i},:)];
                 end
                                 
                 % sorts the maxima in descending order
                 szL = size(Img{i});
-                iPmx{i} = find(imregionalmax(Img{i}));
-                [Pmx,iS] = sort(Img{i}(iPmx{i}),'descend');
+                obj.iPmx = find(imregionalmax(Img{i}));
+                [obj.Pmx,iS] = sort(Img{i}(obj.iPmx),'descend');
+                obj.iPmx = obj.iPmx(iS);
 
                 % sets the frame pixel intensity tolerance
                 if isnan(pTol0)
-                    pTolB = pTolW*Pmx(1);
+                    pTolB = floor(pTolPmx*obj.Pmx(1));
                 else
                     pTolB = pTol0;
                 end
                 
+                % determines which maxima exceed the threshold
+                ii = obj.Pmx >= pTolB;
+                if sum(ii) > 1
+                    % if there is more than one, then reduce down the
+                    % maxima so each thresholded blob only has one maxima
+                    
+                    % thresholds the image and gets the blob properties
+                    BB = Img{i} >= pTolB;
+                    iGrp = getGroupIndex(BB);
+
+                    % if there is a mismatch between counts, then determine
+                    % the peak maxima from each blob
+                    if length(iGrp) < sum(ii)
+                        % determines maxima that overlaps each blob & sets
+                        % the peak with the highest value for each blob
+                        jj = cellfun(@(x)...
+                            (intersect(x,obj.iPmx(ii))),iGrp,'un',0);
+                        kk = cellfun(@(x)(x(argMax(Img{i}(x)))),jj);
+                        
+                        % removes the non-peak maxima from each blob
+                        [~,iB] = setdiff(obj.iPmx(ii),kk);
+                        ii(iB) = false;
+                    end
+                    
+                    % sets the final maxima values
+                    iGrpMx = cellfun(@(x)(x(argMax(Img{i}(x)))),iGrp);
+                    pC = obj.calcCoords(szL,iGrpMx);
+
+                end
+                
                 % determines how many prominent objects are in the frame
-                ii = Pmx >= pTolB;
-                if sum(ii) == 0
+                if ~any(ii)
                     % case is there are no prominent objects
-                    if isempty(fPrNw)     
-                        if length(Pmx) == 1
-                            iPnw = iPmx{i}(1);
+                    if isempty(obj.fPrNw)     
+                        if length(obj.Pmx) == 1
+                            iPnw = obj.iPmx(1);
                             [fP(i,2),fP(i,1)] = ind2sub(szL,iPnw);
-                        elseif Pmx(2)/Pmx(1) < obj.trkP.rPmxTol
-                            iPnw = iPmx{i}(iS(1));
+                        elseif obj.Pmx(2)/obj.Pmx(1) < obj.trkP.rPmxTol
+                            iPnw = obj.iPmx(iS(1));
                             [fP(i,2),fP(i,1)] = ind2sub(szL,iPnw);
                         end
                     else
                         % if there is previous data, then estimate where
                         % the blob is most likely to be
-                        fPest0 = extrapBlobPosition(fPrNw);
+                        fPest0 = extrapBlobPosition(obj.fPrNw);
                         fPest = roundP(max(1,min(fPest0,flip(szL))));
                         Dest = bwdist(setGroup(fPest,szL));
                         
                         % calculates the objective function for all points
                         % detected from above
-                        iPmxS = iPmx{i}(iS);
-                        DpC = Dest(iPmxS)/obj.dTol;
+                        DpC = Dest(obj.iPmx)/obj.dTol;
                         Dw = 1./max(0.25,DpC);                        
                         
                         % determines the most likely blob and sets the
                         % coordinates for the current frame
-                        iMx = argMax(Dw.*Pmx);
-                        [fP(i,2),fP(i,1)] = ind2sub(szL,iPmxS(iMx));
+                        iMx = argMax(Dw.*obj.Pmx);
+                        [fP(i,2),fP(i,1)] = ind2sub(szL,obj.iPmx(iMx));
                     end
                     
                 elseif sum(ii) == 1
                     % case is there is only 1 prominent object
-                    iPnw = iPmx{i}(iS(1));
+                    iPnw = obj.iPmx(1);
                     [yP,xP] = ind2sub(szL,iPnw);
                     
                     % calculates the distance covered from the previous
                     % frame to the new positions                    
-                    if isempty(fPrNw) || isnan(fPrNw(end,1))
+                    if isempty(obj.fPrNw) || isnan(obj.fPrNw(end,1))
                         % no previous data, so accept unconditionally
                         [pdPrNw,pdTolMax] = deal(0,1);
+                        
                     else
-                        %
-                        fPrE = fPrNw(end,:);
+                        % otherwise, set the weights for the distance check
+                        % (based on the previous blob location)
+                        fPrE = obj.fPrNw(end,:);
                         if any(obj.cFlag == [0,1])
                             % case is no distance check
 
                             % calculates the inter-frame distance
-                            pdPrNw = pdist2([xP,yP],fPrE)/obj.dTol;
+                            if obj.iMov.is2D
+                                % case is a 2D setup
+                                pdPrNw = pdist2([xP,yP],fPrE)/obj.dTol;
+
+                            else
+                                % case is a 1D setup (more weight is given 
+                                % to the x-direction than the y-direction)
+                                pdPrNw = (pdist2(xP,fPrE(1)) + ...
+                                          pdist2(yP,fPrE(2))/2)/obj.dTol;                                
+                            end
+                            
+                            % retrieves the distance tolerance value
                             pdTolMax = obj.getPDTol(indR,fPrE,1);                                  
                                 
                         else
@@ -413,116 +470,32 @@ classdef PhaseTrack < matlab.mixin.SetGet
                     if pdPrNw < pdTolMax
                         % case is the blob has moved a feasible distance
                         [fP(i,:),IP(i)] = deal([xP,yP],Img{i}(iPnw));
+                        
                     else
                         % case is the blob has moved an infeasible distance
-                        fP(i,:) = fPrNw(end,:);
+                        fP(i,:) = obj.fPrNw(end,:);
                         fPR = min(max(1,roundP(fP(i,:))),flip(szL));
                         IP(i) = Img{i}(sub2ind(szL,fPR(2),fPR(1)));
                     end
-                else
-                    % case is there are more than one prominent object
-                    [iGrp,pC] = getGroupIndex(Img{i}>=pTolB,'Centroid');
-                    switch length(iGrp)
-                        case 0
-                            % do nothing...
-                            iMx = NaN;
-                            
-                        otherwise
-                            % case is there are multiple peaks
-                            
-                            % calculates the centroid linear indices
-                            pCR = roundP(pC);
-                            ipC = sub2ind(szL,pCR(:,2),pCR(:,1));                            
-                            
-                            % sets the previous data points (for estimating 
-                            % the location of the blob on this frame)
-                            if isempty(fPrNw) || isnan(fPrNw(end,1))
-                                % case is there is no previous data
-                                dTolMax = 1e10;
-                                DpC = ones(size(ipC));
-                            else
-                                % if there is previous data, then use this
-                                % to determine the location of the blob
-                                fPest0 = extrapBlobPosition(fPrNw);
-                                fPest = max(1,min(fPest0,flip(szL)));
-                                DPr = max(sqrt(sum(diff(fPrNw,[],1).^2,2)));
-
-                                % sets up the distance estimate mask
-                                if any(obj.cFlag == [0,1])
-                                    % sets the distance tolerance
-                                    dTolMax = obj.getPDTol(indR,fPest,2);
-                                    if DPr/obj.dTol > dTolMax
-                                        % if there is a large jump in
-                                        % the previous position data, then
-                                        % use the last known point
-                                        fPest = min(flip(szL),...
-                                                    max(1,fPrNw(end,:)));
-                                    end
-                                    
-                                    % calculates the estimate/candidate
-                                    % points (scale to dTol)                        
-                                    Best = setGroup(roundP(fPest),szL);
-                                    Dest = bwdist(Best);
-                                    DpC = Dest(ipC)/obj.dTol;   
-                                else
-                                    % sets the distance tolerance                                    
-                                    dTolMax = obj.getPDTol(indR,fPest,2,1);                                     
-                                    if DPr/obj.dTol > dTolMax
-                                        % if there is a large jump in
-                                        % the previous position data, then
-                                        % use the last known point                                        
-                                        fPest = fPrNw(end,:);
-                                    end                                    
-                                    
-                                    % calculates the estimate/candidate
-                                    % points (scale to dTol)
-                                    D = obj.calcUniDirDist(pC(:,1),fPest(1));
-                                    DpC = D/obj.dTol;                                                                        
-                                end
-                            end                                                       
-                            
-                            % determines if any points are within the
-                            % distance tolerance
-                            inDistTol = DpC < dTolMax;
-                            if any(inDistTol)
-                                % calculates the distance weighting
-                                if isempty(fPrNw)
-                                    Dw = ones(size(DpC));
-                                else
-                                    Dw = 1./max(0.25,DpC);
-                                end
-
-                                % determines the brightest group that is
-                                % closest to the estimated location
-                                Z = cellfun(@(x)(mean(Img{i}(x))),iGrp).^2;
-                                Z(~inDistTol) = 0;
-                                iMx = argMax(Z.*Dw); 
-                            else
-                                % case is there are no blob maxima within a
-                                % small distance of the estimate. in this
-                                % case, use the previous/estimate position
-                                if isempty(fPrNw) || ...
-                                        any(range(fPrNw,1) > obj.dTol/2)                                    
-                                    % if the step size is too large, or
-                                    % there is no prevsious data, then use
-                                    % the estimated values
-                                    fP(i,:) = fPest;
-                                else
-                                    % otherwise, use previous location
-                                    fP(i,:) = fPrNw(end,:);                                    
-                                end
-                                
-                                fPR = min(max(1,roundP(fP(i,:))),flip(szL));
-                                iPEst = sub2ind(szL,fPR(2),fPR(1));
-                                [IP(i),iMx] = deal(Img{i}(iPEst),NaN);
-                            end
-                    end
                     
-                    % if a valid solution was found, then update the
-                    % location and pixel intensity data
-                    if ~isnan(iMx)                        
-                        fP(i,:) = max(1,roundP(pC(iMx,:)));
-                        IP(i) = max(Img{i}(iGrp{iMx}));                        
+                else
+                    % case is there is not a prominient blob amoungst the
+                    % candidates. performs a more through search of the
+                    % candidates to determine the likely blob
+                    if length(iGrp) > 1
+                        % if there are multiple blobs, then search for the
+                        % most likely blob 
+                        [iMx,fPnw,IPnw] = ...
+                            obj.detLikelyAmbigBlob(Img{i},iGrp,pC,indR);
+                    
+                        % if a valid solution was found, then update the
+                        % location and pixel intensity data
+                        if isnan(iMx)
+                            [fP(i,:),IP(i)] = deal(fPnw,IPnw);
+                        else
+                            fP(i,:) = max(1,roundP(pC(iMx,:)));
+                            IP(i) = max(Img{i}(iGrp{iMx}));
+                        end
                     end
                     
                 end
@@ -609,7 +582,152 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 D = max(0,xNw-xPr);
             end
             
-        end       
+        end    
+        
+        % --- determines the likely blob (when there is no clear
+        %     prominent blob residual maxima)
+        function [iMx,fPnw,IPnw] = detLikelyAmbigBlob(obj,Img,iGrp,pC,indR)                        
+            
+            % calculates the centroid linear indices
+            [fPnw,IPnw] = deal(NaN);
+            [szL,pCR] = deal(size(Img),roundP(pC));
+            ipC = sub2ind(szL,pCR(:,2),pCR(:,1));
+                        
+            % ------------------------------------------ %
+            % --- PREVIOUS LOCATION WEIGHTING FACTOR --- %
+            % ------------------------------------------ %            
+            
+            % parameters
+            Dmin = 0.5;
+            dTolMax = obj.getDistTol();            
+            
+            % sets the previous data points (for estimating
+            % the location of the blob on this frame)
+            if isempty(obj.fPrNw) || isnan(obj.fPrNw(end,1))
+                % case is there is no previous data
+                dTolMax = 1e10;
+                QD = ones(size(ipC));                
+                
+            else
+                % if there is previous data, then calculate the weighting
+                % factor of the maxima from the estimate location
+                if size(obj.fPrNw,1) == 1
+                    % case is there is only one previous point
+                    fPest = obj.fPrNw;
+
+                else
+                    % otherwise, extrapolate the blobs location
+                    fPest0 = extrapBlobPosition(obj.fPrNw);
+                    fPest = max(1,min(fPest0,flip(szL)));
+                end
+                
+                % sets up the distance estimate mask
+                if any(obj.cFlag == [0,1])
+                    % calculates the estimate/candidate
+                    % points (scale to dTol)
+                    if obj.iMov.is2D
+                        % case is a 2D setup
+                        Dest = pdist2(pCR,fPest);
+
+                    else
+                        % case is a 1D setup (more weight is given to the
+                        % x-direction than the y-direction)
+                        Dest = pdist2(pCR(:,1),fPest(:,1)) + ...
+                               pdist2(pCR(:,2),fPest(:,2));
+                    end
+                    
+                    QD = max(Dmin,Dest/obj.dTol);
+                    
+                else
+                    % calculates the estimate/candidate
+                    % points (scale to dTol)
+                    D = obj.calcUniDirDist(pC(:,1),fPest(1));
+                    QD = max(Dmin,D/obj.dTol);
+                end
+            end            
+            
+            % --------------------------------- %
+            % --- LOCATION WEIGHTING FACTOR --- %
+            % --------------------------------- %
+            
+            % parameters
+            pRmin = 1/5;
+            QRmax = 1.25;
+            
+            % sets the likelihood weighting factor 
+            if isfield(obj.iMov,'pB')
+                % removes any points which have extremely low values (that
+                % are not extremely close to the previous point)
+                IpC = Img(ipC);
+                isRmv = (IpC < pRmin*obj.iMov.pB{indR(1)}.A) & (QD > Dmin);
+                QD(isRmv) = 2*dTolMax;
+                
+                % case is there is a residual/x-location distribution
+                %  - given the location of the maxima, the residual at that
+                %    location should match
+                [~,xPmx] = ind2sub(szL,ipC);
+                QR = min(QRmax,...
+                    IpC./calcBimodalBoltz(obj.iMov.pB{indR(1)},xPmx));
+                
+            else
+                % case is there is no weighting distribution
+                QR = normImg(cellfun(@(x)(mean(Img(x))),iGrp).^2,1);
+            end
+            
+            % ------------------------------------- %
+            % --- LIKELY CANDIDATE CALCULATIONS --- %
+            % ------------------------------------- %            
+            
+            % parameters
+            QTolMin = 0.2;
+            
+            % if stationary, then penalise the distance weighting
+            if obj.isStat
+                QD = QD.^2;
+            end
+            
+            % calculates the combined 
+            QRD = QR./QD;
+            
+            % determines if any points are within the distance tolerance
+            inDistTol = (QD < dTolMax) & (QRD > QTolMin);
+            switch sum(inDistTol)
+                case 0
+                    % case is there are no blob maxima within a
+                    % small distance of the estimate. in this
+                    % case, use the previous/estimate position
+                    if isempty(obj.fPrNw) || ...
+                            any(range(obj.fPrNw,1) > obj.dTol)
+                        % if the step size is too large, or
+                        % there is no prevsious data, then use
+                        % the estimated values
+                        fPnw = fPest;
+                    else
+                        % otherwise, use previous location
+                        fPnw = obj.fPrNw(end,:);
+                    end
+                    
+                    % seets the estimate value
+                    fPR = min(max(1,roundP(fPnw)),flip(szL));
+                    iPEst = sub2ind(szL,fPR(2),fPR(1));
+                    [IPnw,iMx] = deal(Img(iPEst),NaN);
+                    
+                case 1
+                    % case is there is only one feasible point
+                    iMx = find(inDistTol);                    
+                    
+                otherwise                    
+                    % sets the blob size weight factor
+                    Qsz = cellfun(@length,iGrp).^0.5;
+                                        
+                    % determines the group with the highest
+                    % location/residual weighting that is closest to the
+                    % estimate location
+                    iMx = argMax((Qsz.*QRD).*inDistTol);
+                    
+            end            
+                    
+        end
 
         % --- retrieves the proportional distance limit check value
         function pdTol = getPDTol(obj,indR,fPr,Type,cFlag0)
@@ -635,34 +753,13 @@ classdef PhaseTrack < matlab.mixin.SetGet
                             % case is a 1D setup
                             if obj.withinEdge(indR,fPr)
                                 % point is close to the edge
-                                pdTol = 3;
+                                pdTol = 1 + ~obj.isStat*2;
                             else
                                 % point is not at the region edge
-                                pdTol = 5;
-                            end
-                        end
-                    end
-
-                case 2
-                    
-                    % determines where the estimated location 
-                    % is in relation to the region limits
-                    if cFlag0 > 0
-                        if obj.iMov.is2D
-                            % case is 2D setups
-                            pdTol = 1;
-                        else
-                            % case is 1D setups
-                            if obj.withinEdge(indR,fPr)
-                                % case is within edge
-                                pdTol = 0.5;
-                            else
-                                % case is not near the edge
-                                pdTol = 2;
+                                pdTol = 2 + ~obj.isStat*3;
                             end
                         end
                     end                    
-                    
             end
                     
         end        
@@ -842,33 +939,18 @@ classdef PhaseTrack < matlab.mixin.SetGet
         function ImgSegS = setupSpecialImgStack(obj,ImgL,iRT,iCT,iApp,fok)
             
             % memory allocation
-            initSL0 = false;
-            ImgSegS = cell(size(fok));  
-            
-            % allocates memory for the edge images (if not already set)
-            if isempty(obj.ImgSL0{iApp})
-                [obj.ImgSL0{iApp},initSL0] = deal(ImgSegS,true);
-            end
+            ImgSegS = cell(size(fok));
+            ImgBG = obj.iMov.Ibg{obj.iPh}{iApp};
             
             % sets up the image stack for all sub-regions
             for iT = find(fok(:)')
                 % retrieves the image stack for the sub-region
                 ImgSL = cellfun(@(x)(x(iRT{iT},iCT)),ImgL,'un',0);
-                Bw = getExclusionBin(obj.iMov,size(ImgSL{1}),[]);
-                
-                %
-                if initSL0
-                    I0 = cellfun(@(x)...
-                            (x(iRT{iT},iCT)),obj.ImgS0{iApp},'un',0);
-                    I1 = cellfun(@(x)...
-                            (min(0,Bw.*applyHMFilter(x))),I0,'un',0);
-                    obj.ImgSL0{iApp}{iT} = ...
-                            cellfun(@(x)(imfilter(x,obj.hS)),I1,'un',0);
-                end
+                Bw = getExclusionBin(obj.iMov,size(ImgSL{1}),[]);                
                 
                 % sets up the special residual image stack
-                ImgSegS{iT} = obj.calcSpecialResidualImages...
-                                        (ImgSL,Bw,obj.ImgSL0{iApp}{iT});
+                IbgSL = ImgBG(iRT{iT},:);
+                ImgSegS{iT} = cellfun(@(x)(Bw.*max(0,IbgSL-x)),ImgSL,'un',0);
             end
             
         end        
@@ -1008,47 +1090,62 @@ classdef PhaseTrack < matlab.mixin.SetGet
             if obj.iMov.is2D
                 % don't consider for 2D...
                 isIn = false;
+                
             else
                 % otherwise, determine if the blob is close to the limits
                 % of the locations it has already taken
-                dxLim = abs(obj.xLim{indR(1)}(indR(2),:) - fPest(1));
+                xHi = obj.iMov.iCT{indR(1)}(end) - obj.dTol;
+                xLT = min(max(obj.xLim{indR(1)}(indR(2),:),obj.dTol),xHi);
+                xEst = min(max(fPest(1),obj.dTol),xHi);                
+                
+                dxLim = abs(xLT - xEst);
                 isIn = any(dxLim < obj.dTol/2);
             end
+            
+        end        
+        
+        % --- calculates the distance tolerance
+        function dTolMax = getDistTol(obj)
+            
+            dTolMax = 1.5*(1 + ~obj.isStat);
             
         end        
         
     end
     
     % static class methods
-    methods (Static)
+    methods (Static)        
         
-        % --- calculates the special phase residual image stack
-        function ImgSR = calcSpecialResidualImages(ImgSL0,Bw,I0)
+        % --- calculates the coordinates of the linear indices, ind
+        function fP = calcCoords(sz,ind)
             
-            % parameters            
-            nFrmSL = length(ImgSL0);
-            ImgSR = cell(nFrmSL,1);
+            [yP,xP] = ind2sub(sz,ind);
+            fP = [xP(:),yP(:)];
+            
+        end
+        
+%         % --- calculates the special phase residual image stack
+%         function ImgSR = calcSpecialResidualImages(ImgSL0,Bw,I0)
+%             
+%             % parameters            
+%             nFrmSL = length(ImgSL0);
+%             ImgSR = cell(nFrmSL,1);
+%             
+%             % sets up the residual images for all frames
+%             xiF = 1:nFrmSL;
+%             for i = xiF
+%                 % sets up the surrounding frame indices
+%                 xiSL = xiF ~= i;
+%                 
+%                 % calculates the residual image mask
+%                 Inw = [ImgSL(xiSL),I0];
+%                 Itmp = cellfun(@(x)(max(0,x-ImgSL{i})),Inw,'un',0);
+%                 ImgSR{i} = calcImageStackFcn(Itmp,'max');
+% %                 ImgSR{i} = calcImageStackFcn(Itmp,'max')./(1 + ImgSL0{i});
+%             end
+%             
+%         end               
 
-            % filters the images
-            hS = fspecial('gaussian');            
-            ImgSL = cellfun(@(x)(Bw.*applyHMFilter(x)),ImgSL0,'un',0);
-            ImgSL = cellfun(@(x)(min(0,imfilter(x,hS))),ImgSL,'un',0);
-            
-            % sets up the residual images for all frames
-            xiF = 1:nFrmSL;
-            for i = xiF
-                % sets up the surrounding frame indices
-                xiSL = xiF ~= i;
-                
-                % calculates the residual image mask
-                Inw = [ImgSL(xiSL),I0];
-                Itmp = cellfun(@(x)(max(0,x-ImgSL{i})),Inw,'un',0);
-                ImgSR{i} = calcImageStackFcn(Itmp,'max');
-%                 ImgSR{i} = calcImageStackFcn(Itmp,'max')./(1 + ImgSL0{i});
-            end
-            
-        end        
-        
-    end
+    end    
     
 end

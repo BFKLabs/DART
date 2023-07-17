@@ -67,8 +67,7 @@ classdef FuncDiagnostic < handle
         hghtBut = 21;
         hghtTxt = 16;    
         widTxtI = 155;
-        hdrHght = 29;
-        rowHght = 20;        
+        hdrHght = 29;                
         
         % variable object dimensions
         widFig
@@ -110,6 +109,7 @@ classdef FuncDiagnostic < handle
         tLong = 12;
         logSz = 13;
         widScr = 17;
+        rowHght = 20;
         hghtLog = 212;
         tabStr = '  ';
         arrStr = char(8594);
@@ -126,7 +126,7 @@ classdef FuncDiagnostic < handle
     methods
         
         % --- class constructor
-        function obj = FuncDiagnostic(hFigM)            
+        function obj = FuncDiagnostic(hFigM)
             
             % sets the input arguments
             obj.hFigM = hFigM;            
@@ -156,6 +156,14 @@ classdef FuncDiagnostic < handle
             obj.nExp = length(obj.snTot);
             A = [true(1,obj.nRowD-1),obj.nExp>1];
             [obj.useScope,obj.hasData] = deal(A);
+
+            % resets the font sizes (old version only)
+            if obj.isOldVer
+                obj.hSz = 13;
+                obj.tSz = 12;                
+                obj.hdrHght = 22;
+                obj.rowHght = 18;
+            end            
             
             % calculates the panel dimensions
             obj.widPanelFcn = obj.widPanelL - 2*obj.dX;
@@ -175,15 +183,7 @@ classdef FuncDiagnostic < handle
             
             % calculates the figure dimensions
             obj.widFig = obj.widPanelO + 2*obj.dX;
-            obj.hghtFig = obj.hghtPanelO + 2*obj.dX;                        
-            
-            % resets the font sizes (old version only)
-            if obj.isOldVer
-                obj.hSz = 13;
-                obj.tSz = 12;                
-                obj.hdrHght = 22;
-                obj.rowHght = 18;
-            end
+            obj.hghtFig = obj.hghtPanelO + 2*obj.dX;                                    
             
             % function handle retrieval
             obj.initAxes = getappdata(obj.hFigM,'initAxesObject');
@@ -476,7 +476,7 @@ classdef FuncDiagnostic < handle
             
             %
             if obj.isOldVer
-                set(obj.hTableD,'FontSize',14)
+                set(obj.hTableD,'FontSize',12)
                 autoResizeTableColumns(obj.hTableD)
             end
             
@@ -1018,8 +1018,7 @@ classdef FuncDiagnostic < handle
             
             
         end
-        
-        
+                
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %
         % ------------------------------- %
@@ -1030,6 +1029,7 @@ classdef FuncDiagnostic < handle
             % updates the function compatibility
             set(0,'CurrentFigure',obj.hFig);            
             obj.fTreeObj.setupExplorerTree(obj.useScope);
+            obj.updateTableData();
             
         end
             

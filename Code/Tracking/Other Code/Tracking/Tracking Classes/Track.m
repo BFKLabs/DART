@@ -68,7 +68,7 @@ classdef Track < matlab.mixin.SetGet
             % retrieves the image stack
             nFrm = length(iFrm);            
             Img = arrayfun(@(x)(obj.getNewImage...
-                                    (x,iFrm(x),nFrm)),1:nFrm,'un',0);                             
+                (x,iFrm(x),nFrm,length(varargin)<2)),1:nFrm,'un',0);
             
             % determines which frames are feasible (only if required)
             if nargout == 2
@@ -92,18 +92,23 @@ classdef Track < matlab.mixin.SetGet
             end
                               
             % if requested, return the first cell array element
-            if nargin == 3; Img = Img{1}; end
+            if nargin >= 3; Img = Img{1}; end
             
         end   
         
         % --- retrieves the new image
-        function Img = getNewImage(obj,iFrm,iFrmG,nFrm)
+        function Img = getNewImage(obj,iFrm,iFrmG,nFrm,updateProg)
+            
+            % sets the progress bar update flag
+            if ~exist('updateProg','var'); updateProg = true; end
             
             % updates the progressbar
-            pW = 0.5*(1+(obj.isMulti && obj.isBGCalc));
-            wStr = sprintf('Sub-Image Stack Reading (Frame %i of %i)',...
-                           iFrm,nFrm);
-            obj.hProg.Update(3+obj.wOfsL,wStr,pW*iFrm/nFrm);
+            if updateProg
+                pW = 0.5*(1+(obj.isMulti && obj.isBGCalc));
+                wStr = sprintf(['Sub-Image Stack Reading ',...
+                                '(Frame %i of %i)'],iFrm,nFrm);
+                obj.hProg.Update(3+obj.wOfsL,wStr,pW*iFrm/nFrm);
+            end
                         
             % retrieves the images for all frames in the array, iFrm
             Img = double(getDispImage(obj.iData,obj.iMov,iFrmG,0));             
@@ -165,8 +170,8 @@ classdef Track < matlab.mixin.SetGet
                 end
             end     
             
-        end        
-        
+        end              
+            
     end
         
 end

@@ -68,7 +68,8 @@ classdef CalcBG < handle
         mSz
         Ibg
         pBG
-        fPos 
+        fPos
+        IPos
         indFrm
         BgrpT        
         axPosX 
@@ -271,7 +272,7 @@ classdef CalcBG < handle
 
             % removes the information GUI (if showing)
             if ~isempty(obj.hInfo) 
-                try; delete(obj.hInfo); end
+                try delete(obj.hInfo); catch; end
                 obj.hInfo = [];
             end        
             
@@ -795,14 +796,16 @@ classdef CalcBG < handle
             cPh = obj.iPara.cPhase;            
             hPopup = obj.hGUI.popupImgType;
             popStr = {'Raw Image';'Smoothed Image'};
+            isSpecial = obj.iMov.vPhase(cPh) == 4;
             
             % case is the background has been calculated
             if ~isempty(obj.iMov.Ibg)
                 if ~isempty(obj.iMov.Ibg{cPh})
-                    if (obj.iMov.vPhase(cPh) == 4)
-                        popStrNw = {'Cross-Correlation'};                    
+                    if isSpecial
+                        popStrNw = {'Residual (Filtered)'};
+                    
                     elseif ~isfield(obj.trkObj,'IbgT0') || ...
-                        isempty(obj.trkObj.IbgT0)
+                            isempty(obj.trkObj.IbgT0)
                         popStrNw = {'Background';...
                                     'Residual (Filtered)';...
                                     'Cross-Correlation'};
@@ -926,7 +929,7 @@ classdef CalcBG < handle
                 Img0 = obj.ImgC{1}{ipara.cFrm};
             else
                 iFrmS = obj.indFrm{iPhase}(ipara.cFrm);
-                Img0 = double(getDispImage(idata,obj.iMov,iFrmS,false,[],1));
+                Img0 = double(getDispImage(idata,obj.iMov,iFrmS,false,[],1));                                
             end
             
             % sets the image            
@@ -1117,16 +1120,24 @@ classdef CalcBG < handle
         % --- sets up the region residual image stack
         function Inw = setupResidualImage(obj,Img0,iPhase,iFrmS,iok)
 
-            % initialisations
+            % initialisations            
             frmSz = getCurrentImageDim(obj.hGUI);
             isHV = obj.iMov.vPhase(iPhase) == 2;
-
+            isSpecial = obj.iMov.vPhase(iPhase);            
+            
             % sets up the image stack
             ILs = cell(1,obj.nApp);
             ILs(iok) = arrayfun(@(x)(getRegionImgStack...
                   (obj.iMov,Img0,iFrmS,x,isHV)),find(iok),'un',0);
             ILs(iok) = cellfun(@(x)(x{1}),ILs(iok),'un',0);
 
+            % calculates the histogram matched images (special phase only)
+            if isSpecial
+                ILs(iok) = cellfun(@(x,y)(double(imhistmatch...
+                    (uint8(x),y,'method','uniform'))),ILs(iok),...
+                    obj.iMov.IbgR(iok),'un',0);
+            end            
+            
             % sets the background image based on the detection type
             if strcmp(getDetectionType(obj.iMov),'GeneralR')
                 % retrieves the background image array
@@ -1411,7 +1422,7 @@ classdef CalcBG < handle
                 set(hObject,'checked','off')
 
                 % removes the information GUI         
-                try; delete(obj.hInfo.hFig); end
+                try delete(obj.hInfo.hFig); catch; end
                 obj.hInfo = [];
                 
             else
@@ -1646,8 +1657,8 @@ classdef CalcBG < handle
             obj.checkFlyMarkers(hgui.checkFlyMarkers, [])
 
             % updates the image frame and the program data struct
-            obj.fPos = [];   
-            obj.iData = idata;                
+            obj.iData = idata;            
+            [obj.fPos,obj.IPos] = deal([]);   
             obj.iPara.nFrm = length(obj.indFrm{obj.iPara.cPhase});
 
             % resets the video translation menu item   
@@ -2150,7 +2161,7 @@ classdef CalcBG < handle
                 obj.iMov = imov;
                 obj.ok0 = imov.flyok;                              
                 obj.Ibg = cell(length(imov.vPhase),1);
-                obj.iMov.hFilt = calcImageStackFcn(obj.trkObj.frObj.hC);     
+                obj.iMov.hFilt = calcImageStackFcn(obj.trkObj.hCQ);     
                 obj.vPhase0 = obj.iMov.vPhase;
                 obj.indFrm = obj.trkObj.indFrm;
                 
@@ -2159,6 +2170,7 @@ classdef CalcBG < handle
                 
                 % likely/potential object locations
                 obj.fPos = obj.trkObj.fPosG;
+                obj.IPos = obj.trkObj.IPos;
                 obj.pStats = obj.trkObj.pStats;
                 
                 % updates the list box properties but clears the list
@@ -2404,10 +2416,18 @@ classdef CalcBG < handle
             I0 = obj.trkObj.getImageStack(obj.indFrm{iPh}(uListG(:,2)));
             if obj.trkObj.useFilt
                 I0 = cellfun(@(x)(imfiltersym(x,obj.trkObj.hS)),I0,'un',0);                
-            end                        
+            end          
             
             % retrieves the sub-region image stack (over all phase frames)
-            IL0 = cellfun(@(x)(x(iR(iRT),iC)),I0,'un',0);
+            if obj.iMov.vPhase(1) == 4
+                % case is a special phase
+                ILT = cellfun(@(x)(x(iR,iC)),I0,'un',0);
+                ILT = calcHistMatchStack(ILT,obj.iMov.IbgR{iApp});
+                IL0 = cellfun(@(x)(x(iRT,:)),ILT,'un',0);
+            else
+                % case is 
+                IL0 = cellfun(@(x)(x(iR(iRT),iC)),I0,'un',0);
+            end                
             
             % sets the marker x/y coordinates            
             hM = obj.hManual(iRowM);
@@ -2513,6 +2533,11 @@ classdef CalcBG < handle
                 % retrieves the final region image stack
                 IL0(i) = getRegionImgStack(obj.iMov,...
                             obj.ImgM{iPh}{iFrmR(i)},iFrmG,iApp,isHV);
+            end
+            
+            % calculates the histogram match (special phase only)
+            if obj.iMov.vPhase(1) == 4
+                IL0 = calcHistMatchStack(IL0,obj.iMov.IbgR{iApp});
             end
             
             % retrieves the local images

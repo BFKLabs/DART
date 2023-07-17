@@ -128,11 +128,10 @@ set(hText,'Position',tPos,'HorizontalAlignment','left')
 set(hAx,'Position',axPos)
 
 % retrieves the question image filename
-imgFile = fullfile(matlabroot,'toolbox','stats','mlearnapp',...
-                   '+mlearnapp','+internal','resources','question_32.png');
-if exist(imgFile,'file')
-    % reads the image from file
-    Img = imread(imgFile);
+A = load('ButtonCData.mat');
+if isfield(A.cDataStr,'IinfoBig')
+    % retrieves the image (if it exists)
+    Img = A.cDataStr.IinfoBig;
     sz = size(Img);
 
     % removes any dark spots within the image and replaces with white

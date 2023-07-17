@@ -133,17 +133,17 @@ classdef ProgBar < matlab.mixin.SetGet
                                       'xticklabel',[],'yticklabel',[],...
                                       'xcolor','k','ycolor','k','box','on')    
 
-                % fixes a small bug in the new release where the box line 
-                % on the upper limit is missing for the last waitbar axes
-                if i == 1
-                    % retrieves the axes limits
-                    xL = get(obj.hObj(j).wAxes,'xlim');
-                    yL = get(obj.hObj(j).wAxes,'ylim');
-                    
-                    % plots the outer line
-                    hold(obj.hObj(j).wAxes,'on')
-                    plot(obj.hObj(j).wAxes,xL,yL(1)*[1 1],'k','linewidth',2)
-                end
+%                 % fixes a small bug in the new release where the box line 
+%                 % on the upper limit is missing for the last waitbar axes
+%                 if i == 1
+%                     % retrieves the axes limits
+%                     xL = get(obj.hObj(j).wAxes,'xlim');
+%                     yL = get(obj.hObj(j).wAxes,'ylim');
+%                     
+%                     % plots the outer line
+%                     hold(obj.hObj(j).wAxes,'on')
+%                     plot(obj.hObj(j).wAxes,xL,yL(1)*[1 1],'k','linewidth',2)
+%                 end
 
                 % updates the dialog window handles
                 guidata(obj.hFig,obj.hObj(j))

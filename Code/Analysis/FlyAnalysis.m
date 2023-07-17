@@ -1,5 +1,5 @@
 function varargout = FlyAnalysis(varargin)
-% Last Modified by GUIDE v2.5 12-Jun-2023 11:46:36
+% Last Modified by GUIDE v2.5 10-Jul-2023 03:18:31
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -1509,6 +1509,12 @@ updateListColourStrings(handles,'func')
 % reset the selection flag
 canSelect = true;
 
+% --- Executes on button press in buttonFuncInfo.
+function buttonFuncInfo_Callback(hObject, eventdata, handles)
+
+% FINISH ME!
+waitfor(msgbox('Finish Me!','','modal'))
+
 %-------------------------------------------------------------------------%
 %                             OTHER FUNCTIONS                             %
 %-------------------------------------------------------------------------%
@@ -1677,6 +1683,9 @@ if ~isempty(hGG); delete(hGG); end
 % --- initialises the object properties within the GUI
 function initGUIObjects(handles)
 
+% loads the button cdata file
+A = load('ButtonCData.mat');
+
 % disables all the panels
 setPanelProps(handles.panelSolnData,'off')
 setPanelProps(handles.panelExptInfo,'off')
@@ -1686,6 +1695,7 @@ setPanelProps(handles.panelFuncDesc,'off')
 % makes the panel description object invisible
 setObjVisibility(handles.textFuncDesc,'off')
 setObjVisibility(handles.textFuncDescBack,'off')
+set(handles.buttonFuncInfo,'CData',A.cDataStr.Iinfo/255,'Visible','off');
 
 % disables the save menu item
 setObjEnable(handles.menuOpenTempData,'off')
@@ -1931,6 +1941,7 @@ rootStr = setHTMLColourString('kb','Function List',1);
 [gCol,hButton] = deal((240/255)*[1 1 1],handles.buttonUpdateFigure);
 set(setObjEnable(hButton,'off'),'BackgroundColor',gCol)
 set(handles.textFuncDesc,'String','')
+set(handles.buttonFuncInfo,'Visible','off')
 
 % deletes any previous explorer trees
 hTree0 = findall(hPanel,'type','hgjavacomponent');
@@ -2015,9 +2026,11 @@ if all([pInd,fIndNw,eInd] > 0)
     % sets the required object handles/data structs
     set(handles.textFuncDesc,'enable','on',...
         'string',pData{pInd}{fIndNw,eInd}.fDesc);
+    setObjVisibility(handles.buttonFuncInfo,1)
 else
     % non-function field is not selected
     set(handles.textFuncDesc,'string','');
+    setObjVisibility(handles.buttonFuncInfo,0)
     if nReg == 1
         setObjEnable(handles.menuUndock,'off')
     end
@@ -2681,7 +2694,9 @@ end
 setappdata(handles.figFlyAnalysis,'pIndex',length(lName))
 set(handles.popupPlotType,'string',lName,'value',length(lName))
 set(handles.textFuncDesc,'string','','visible','on')
+set(handles.buttonFuncInfo,'Enable','on','visible','off')
 set(handles.textFuncDescBack,'visible','on','backgroundcolor','k')
+
 
 % --- scans the plotting function directory for valid functions and places
 function scanPlotFuncDir(handles)

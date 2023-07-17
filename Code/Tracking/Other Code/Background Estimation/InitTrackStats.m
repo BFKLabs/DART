@@ -732,8 +732,9 @@ classdef InitTrackStats < handle
         function indOK = getValidFrames(obj)
 
             % determines the feasible (low/hi-variance) phases
+            iAcc = [1,2,4];
             [iFrm,vPh] = deal(obj.bgObj.indFrm,obj.bgObj.iMov.vPhase);
-            indOK = logical(cell2mat(cellfun(@(x,y)((y<3)*ones...
+            indOK = logical(cell2mat(cellfun(@(x,y)((any(y==iAcc))*ones...
                         (length(x),1)),iFrm,num2cell(vPh),'un',0)));            
             
         end

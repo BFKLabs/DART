@@ -304,9 +304,11 @@ classdef FuncDiagnosticTree < handle
         % -------------------------------- %                     
         
         % --- tree update callback function
-        function treeSelectChng(obj, ~, evnt)
+        function treeSelectChng(obj, hTree, evnt)
             
-            if ~obj.isOldVer
+            if obj.isOldVer
+                obj.hNodeLS = getSelectedTreeNodes(obj.hRoot);
+            else
                 obj.hNodeLS = evnt.LeafCheckedNodes;
             end
             
@@ -392,6 +394,8 @@ classdef FuncDiagnosticTree < handle
             if ~any(isSel)
                 % if nothing is selected then exit the function
                 return
+            else
+                hNodeC = hNodeC(isSel);
             end
             
             % retrieves the indices of the selected files
@@ -405,11 +409,11 @@ classdef FuncDiagnosticTree < handle
             end
             
             % determines if any directory nodes have been selected
-            iSelD = find(isSel & isDir);
+            iSelD = find(isDir);
             if ~isempty(iSelD)            
                 % if so, then retrieve the indices of the selected nodes
                 % from each of the selected nodes
-                fStrNw = cell(size(isSel));                        
+                fStrNw = cell(size(isDir));                        
                 for i = iSelD(:)'
                     uD = [iLvl,i];
                     fStrNw{i} = obj.getBranchSelectedNodes(hNodeC{i},uD);

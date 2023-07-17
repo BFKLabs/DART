@@ -157,9 +157,13 @@ if isnan(iMov.Status{iApp}(iTube))
     end
 end  
 
+%
+if ~exist('indF','var'); indF = [1,2,4]; end
+okPh = arrayfun(@(x)(any(indF==x)),obj.iMov.vPhase);
+
 % determines the nan frames
 ii = double(any(isnan(fPosNw),2));
-for i = find(iMov.vPhase >= 3)'
+for i = find(~okPh(:)')
     % removes any high-variance or invalid phases
     ii(iMov.iPhase(i,1):iMov.iPhase(i,2)) = -1;
 end

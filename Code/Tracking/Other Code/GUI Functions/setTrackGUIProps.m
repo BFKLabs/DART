@@ -32,6 +32,7 @@ checkShowMark_Callback = get(hFig,'checkShowMark_Callback');
 FirstButtonCallback = get(hFig,'FirstButtonCallback');
 
 % other initialisations
+indFV = [1,2,4];
 eStr = {'off','on'};
     
 % sets the object properties based on the type string
@@ -260,7 +261,7 @@ switch (typeStr)
             if ~isempty(pData)
                 % can view everything
                 iData.Status = 2;
-                if any(iMov.vPhase < 3)
+                if any(iMov.vPhase == indFV)
                     setDetectEnable(handles,'on')                                
                     if ~iMov.calcPhi
                         setDetectEnable(handles,'off',3); 
@@ -357,8 +358,8 @@ switch (typeStr)
                 else
                     setDetectEnable(handles,'on',[1 4:5])      
                 end
-            else
-                isFeas = any(iMov.vPhase < 3);
+            else                
+                isFeas = any(iMov.vPhase == indFV);
                 setDetectEnable(handles,'on',[1 4])
                 setDetectEnable(handles,eStr{1+isFeas},5)
             end

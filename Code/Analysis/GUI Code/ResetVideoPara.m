@@ -136,7 +136,7 @@ classdef ResetVideoPara < handle
             
             % --------------------------- %
             % --- MAIN FIGURE OBJECTS --- %
-            % --------------------------- %            
+            % --------------------------- %
             
             % creates the figure object
             fPos = [100,100,obj.widFig,obj.hghtFig];

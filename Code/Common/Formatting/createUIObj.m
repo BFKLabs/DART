@@ -25,6 +25,15 @@ if isOldVer
         case 'axes'
             % case is an axes object
             hObj = axes(varargin{1},'FontUnits','Pixels');
+                        
+        case 'tabgroup'
+            % case is a tab group object
+            hObj = createTabGroup();
+            set(hObj,'Parent',varargin{1},'Units','pixels');
+            
+        case 'tab'
+            % case is a tab object
+            hObj = createNewTab(varargin{1});            
             
         otherwise
             % case is the other object types
@@ -49,7 +58,7 @@ else
             
         case 'panel'
             % case is the panel objects
-            hObj = uipanel(varargin{1});
+            hObj = uipanel(varargin{1},'AutoResizeChildren','off');
             
         case 'text'
             % case is a text label
@@ -82,6 +91,24 @@ else
         case 'listbox'
             % case is a listbox
             hObj = uilistbox(varargin{1});
+
+        case 'tabgroup'
+            % case is a tab group object
+            hObj = uitabgroup(varargin{1},'Units','pixels');
+            drawnow
+            pause(0.05);
+            
+        case 'tab'
+            % case is a tab object            
+            hObj = uitab(varargin{1},'Units','pixels');
+            
+        case 'uitextarea'
+            % case is an axes object
+            hObj = uitextarea(varargin{1});            
+            
+        case 'uihtml'
+            % case is an axes object
+            hObj = uihtml(varargin{1});            
             
         otherwise
             % REMOVE ME
@@ -104,26 +131,39 @@ for i = 1:nProp
         case 'string'
             % case is the string field
             if ~isOldVer
-                pFld = 'Text';
+                % case is using an older version of matlab
+                switch lower(fType)
+                    case 'edit'
+                        pFld = 'Value';
+                   
+                    otherwise
+                        pFld = 'Text';
+                end                                                
             end
             
         case 'text'
             % case is the string field
             if isOldVer
                 pFld = 'String';
+            end
+            
+        case 'cdata'
+            % case is button cData field
+            if ~isOldVer
+                pFld = 'Icon';
+            end                        
+            
+        case 'items'
+            % case are listbox/popupmenu items
+            if isOldVer
+                pFld = 'String';
             end            
             
         case {'valuechangedfcn','buttonpushedfcn'}
-            %
+            % case are certain object callback functions
             if isOldVer
                 pFld = 'Callback';
-            end      
-            
-        case 'items'
-            %
-            if isOldVer
-                pFld = 'String';
-            end
+            end                  
     end
 
     % case is the other property types
