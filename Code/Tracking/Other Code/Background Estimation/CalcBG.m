@@ -2592,6 +2592,17 @@ classdef CalcBG < handle
                 obj.fPos{iPh}{iApp,k}(iTube,:) = [(xP+xOfs),(yP+yOfs)];
             end
             
+            % determines if the 
+            fPosT = cell2mat(cellfun...
+                (@(x)(x(iTube,:)),obj.fPos{iPh}(iApp,:)','un',0));
+            DPosT = max(fPosT,[],1) - min(fPosT,[],1);
+            sFlagT = 2 - double(any(DPosT > 1.5*obj.iMov.szObj));
+            
+            % resets the status flags for the current tube region
+            obj.iMov.StatusF{iPh}(iTube,iApp) = sFlagT;
+            obj.iMov.Status = num2cell(...
+                calcImageStackFcn(obj.iMov.StatusF,'min'),1);
+            
         end
         
         % ------------------------------- %

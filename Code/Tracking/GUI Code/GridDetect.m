@@ -577,7 +577,9 @@ classdef GridDetect < matlab.mixin.SetGet
         function setRegionHighlight(obj,state)
             
             % if there is no selection then exit
-            if isempty(obj.hSelS); return; end
+            if isempty(obj.hSelS) || ~isvalid(obj.hSelS)
+                return 
+            end
             
             % sets the highlight size
             switch state

@@ -416,7 +416,7 @@ classdef FlyInfoGUI < handle
             else
                 % updates the sub-region data struct
                 [cbObj,hGUIM] = deal(obj.hGUI,obj.hGUI.hGUI);
-                cbObj.iMov.flyok = obj.ok;    
+                [cbObj.iMov.flyok,cbObj.isChange] = deal(obj.ok,true);    
                 cbObj.iMov.ok(iNw(2)) = any(cbObj.iMov.flyok(:,iNw(2)));   
 
                 % retrieves the tube show check callback function

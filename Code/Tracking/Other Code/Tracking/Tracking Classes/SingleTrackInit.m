@@ -81,6 +81,7 @@ classdef SingleTrackInit < SingleTrack
         isHiV
         isSpecial
         usePTol
+        dXB = 5;
         pWofs = 4;
         nMet = 3;
         pTolQ = 5;
@@ -231,6 +232,7 @@ classdef SingleTrackInit < SingleTrack
             % memory allocation
             obj.iMov.pB = cell(obj.nApp,1);
             
+%             % REMOVE ME!
 %             figure;
             
             %
@@ -248,16 +250,17 @@ classdef SingleTrackInit < SingleTrack
                 [X,~,iC] = unique(fP(:,1));                 
                 Y = arrayfun(@(x)(mean(IP(iC==x))),1:max(iC));
                 
-                %                
-                XX = [0;X(:);length(obj.iMov.iC{iApp})];
+                % sets up and fits the bimodal boltzmann equation
+                XX = [0;X(:);max(max(X)+obj.dXB,length(obj.iMov.iC{iApp}))];
                 obj.iMov.pB{iApp} = fitBimodalBoltz(XX,[0;Y(:);0]);
                 
-%                 subplot(2,1,iApp); hold on;
+%                 % REMOVE ME!
+%                 subplot(3,2,iApp); hold on;
 %                 plot(X,Y,'g.');
 %                 plot(XX,calcBimodalBoltz(obj.iMov.pB{iApp},XX));
-            end
+            end            
             
-        end        
+        end
         
         % ----------------------------------------- %
         % --- INITIAL OBJECT ESTIMATE FUNCTIONS --- %
@@ -488,6 +491,11 @@ classdef SingleTrackInit < SingleTrack
                         
             % determines if the phase is a special phase
             if obj.isSpecial
+                % 
+                if ~obj.isBatch
+                    obj.iMov.szObj = [];
+                end
+                
                 % creates and runs the HT1 controller 
                 objHT1 = SingleTrackInitHT1(obj);
                 objHT1.analysePhase();                
@@ -495,6 +503,7 @@ classdef SingleTrackInit < SingleTrack
                 % sets the background/reference image fields
                 obj.iMov.IbgR = obj.IbgR;
                 obj.Ibg = obj.iMov.Ibg;
+                obj.iMov.szObj = mean(objHT1.szObjHT1,1,'omitnan');
                 
             else
                 % case is there are no special phases
@@ -1729,6 +1738,33 @@ classdef SingleTrackInit < SingleTrack
             end
             
         end
+        
+        % --- get the pixel values the coordinates, fP
+        function IP = getPixelValue(obj,I,fP,isMax)
+
+            % sets the default input arguments
+            if ~exist('isMax','var'); isMax = true; end
+
+            % sets the neighbourhood size
+            if ~isfield(obj.iMov,'szObj') || any(isnan(obj.iMov.szObj))
+                N = 5;
+            else
+                N = max(2,min(floor(obj.iMov.szObj/(2*(1+obj.nI)))));
+            end
+
+            % memory allocation
+            isOK = ~isnan(fP(:,1));
+            IsubS = cellfun(@(x)(obj.getPointSubImage(I,x,N)),...
+                num2cell(fP(isOK,:),2),'un',0);
+
+            % determines the min/max values surrounding the point
+            IP = NaN(size(fP,1),1);
+            if isMax
+                IP(isOK) = cellfun(@(x)(max(x(:),[],'omitnan')),IsubS);
+            else
+                IP(isOK) = cellfun(@(x)(min(x(:),[],'omitnan')),IsubS);
+            end
+        end        
         
     end
     

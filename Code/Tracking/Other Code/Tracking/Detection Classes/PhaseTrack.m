@@ -256,10 +256,10 @@ classdef PhaseTrack < matlab.mixin.SetGet
                     ImgSeg = obj.setupResidualStack(ImgSR,ImgBGL);
                 end           
                 
-                %
-                if (iApp == 2) && (iTube == 14)
-                    a = 1;
-                end
+%                 %
+%                 if (iApp == 2) && (iTube == 14)
+%                     a = 1;
+%                 end
                 
                 % segments the image stack
                 [fP0nw,IP0nw] = obj.segmentSubRegion...

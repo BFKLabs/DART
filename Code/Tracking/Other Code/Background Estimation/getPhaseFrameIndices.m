@@ -6,20 +6,25 @@ if ~exist('iP','var'); iP = iMov.iPhase; end
 
 % memory allocation
 nFrm = NaN(size(iP,1),1);
+isSpecial = iMov.vPhase(1) == 4;
 
-% initialisations
-dFrm = 300;
-nFrmSmall = 25;
-nFrmPh = diff(iP,[],2) + 1;
-
-% sets the frame counts for the single frame/small phases
-isSingle = nFrmPh == 1;
-isSmall = (nFrmPh <= nFrmSmall) & ~isSingle;
-[nFrm(isSingle),nFrm(isSmall)] = deal(1,2);
-
-% sets the frame counts for the other phases
-isOther = ~(isSmall | isSingle);
-nFrm(isOther) = min(nFrmR,2+ceil(nFrmPh(isOther)/dFrm));
+if isSpecial
+    nFrm = nFrmR;
+else
+    % initialisations
+    dFrm = 150;
+    nFrmSmall = 25;
+    nFrmPh = diff(iP,[],2) + 1;
+    
+    % sets the frame counts for the single frame/small phases
+    isSingle = nFrmPh == 1;
+    isSmall = (nFrmPh <= nFrmSmall) & ~isSingle;
+    [nFrm(isSingle),nFrm(isSmall)] = deal(1,2);
+    
+    % sets the frame counts for the other phases
+    isOther = ~(isSmall | isSingle);
+    nFrm(isOther) = min(nFrmR,2+ceil(nFrmPh(isOther)/dFrm));
+end
 
 % sets the final frame index arrays for each phase
 iFrm = cell(length(nFrm),1);

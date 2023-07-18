@@ -18,6 +18,7 @@ classdef SingleTrackInitHT1 < handle
         IRef
         pStats
         isAmbig
+        szObjHT1
         
         % tolerances
         pLo = 100;        
@@ -52,7 +53,7 @@ classdef SingleTrackInitHT1 < handle
             obj.wOfsL = trObj.wOfsL;
             obj.nApp = trObj.nApp;            
             obj.iMov = trObj.iMov;
-            obj.nI = trObj.nI;
+            obj.nI = trObj.nI;            
             
             % resets the distance tolerance field
             obj.dTol = obj.calcDistTol();
@@ -76,8 +77,9 @@ classdef SingleTrackInitHT1 < handle
             
             % field retrieval
             obj.hC = cell(obj.nApp,1);
+            obj.szObjHT1 = NaN(obj.nApp,2);
             nFrmPh = length(obj.trObj.Img{1});            
-            [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);            
+            [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);  
             
             % determines the 
             for iApp = find(obj.iMov.ok(:)')
@@ -194,8 +196,11 @@ classdef SingleTrackInitHT1 < handle
                 obj.trObj.Is{obj.iPh,iApp} = {obj.IR,obj.IR};
                 
                 % 
-                sz = size(obj.IR{j});
-                fOK0 = obj.iMov.flyok(:,iApp);
+                sz = size(obj.IR{1});
+                xiF = 1:getSRCount(obj.iMov,iApp);
+                
+                %
+                fOK0 = obj.iMov.flyok(xiF,iApp);
                 fPT0 = obj.trObj.fPosL{obj.iPh}(iApp,:);
                 yOfs = cellfun(@(x)(x(1)-1),obj.iMov.iRT{iApp});
                 
@@ -244,7 +249,10 @@ classdef SingleTrackInitHT1 < handle
             
             % sets up and runs the template optimisation object
             tObj = FlyTemplate(obj,iApp);
-            tObj.setupFlyTemplate(IRL,fPosT);            
+            tObj.setupFlyTemplate(IRL,fPosT);             
+            
+            % sets 
+            obj.szObjHT1(iApp,:) = obj.iMov.szObj;
             
         end        
         
