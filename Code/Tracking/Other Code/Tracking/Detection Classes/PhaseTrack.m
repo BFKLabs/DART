@@ -403,7 +403,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                             iPnw = obj.iPmx(1);
                             [fP(i,2),fP(i,1)] = ind2sub(szL,iPnw);
                         elseif obj.Pmx(2)/obj.Pmx(1) < obj.trkP.rPmxTol
-                            iPnw = obj.iPmx(iS(1));
+                            iPnw = obj.iPmx(1);
                             [fP(i,2),fP(i,1)] = ind2sub(szL,iPnw);
                         end
                     else

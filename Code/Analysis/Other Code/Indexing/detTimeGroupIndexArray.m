@@ -20,17 +20,18 @@ if ((TfD-T0D) < 0.5) && (nDay == 1)
 else
     % memory allocation
     isN = ~isnan(T); T = T(isN);
-    indD = NaN(roundP(convertTime(1,'day','sec')/dT),nDay);                
+    indD = NaN(roundP(convertTime(1,'day','sec')/dT),nDay);
+    
+    % calculates the day index offset (if the first index is not 1 or a NaN
+    % then offset the day index by 1)
+    iOfs = indD0{1}(1) > 1;
     
     % sets the day binned indices wrt to the start of the day
     for i = 1:nDay
         % determines the index of the time points wrt the start of the day
-%         if (i == 1)
-%             dTT = convertTime(roundP(T(indD0{i}),dT),'sec','day');
-%         else
-            dTT = convertTime(roundP(T(indD0{i})-(i-1)*tDay,dT),'sec','day');
-%         end
-%         
+        dtDay = ((i+iOfs)-1)*tDay;
+        dTT = convertTime(roundP(T(indD0{i})-dtDay,dT),'sec','day');
+
         %
         iTT = roundP(convertTime(dTT,'day','sec')/dT) + 1; 
         for j = find(diff(iTT(:)') == 0)

@@ -2,6 +2,7 @@ classdef ProgBar < matlab.mixin.SetGet
     
     % class properties
     properties
+        
         % main object properties
         hFig
         wStr

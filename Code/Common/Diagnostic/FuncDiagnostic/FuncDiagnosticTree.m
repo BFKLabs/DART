@@ -191,11 +191,11 @@ classdef FuncDiagnosticTree < handle
                 
                 % sets the tree structure mouse click callback function 
                 set(jTreeCB,'MouseClickedCallback',@obj.treeSelectChng);
+                
             else                
                 obj.hTreeF.CheckedNodes = obj.hRoot;
                 expand(obj.hTreeF,'All');
-                uistack(obj.hPanelF,'top')
-                
+                uistack(obj.hPanelF,'top')                
                 set(obj.hTreeF,'CheckedNodesChangedFcn',@obj.treeSelectChng)
             end
             

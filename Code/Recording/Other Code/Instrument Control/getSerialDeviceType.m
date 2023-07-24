@@ -38,18 +38,34 @@ switch sStr
         
         % opens the controller and determines what type it is
         [~,sTypeTmp] = detValidSerialContollerV1(hS);
-        switch (sTypeTmp)
+        switch sTypeTmp
             case ('LightCycle')
+                % case is a light cycle device (obsolete?)
                 sType = 'Light Cycle';
+                
             case ('Motor')
+                % case is a motor controller
                 sType = 'Motor';
+                
             case ('Opto')
+                % case is an optogenetics device
                 sType = 'Optogenetics';
+                
             case ('HTControllerV1')
+                % case is a HT controller (version 1)
                 sType = 'HTControllerV1';
+                
+            case ('HT ControllerV2','HTControllerV2')
+                % case is a HT controller (version 2)
+                sType = 'HTControllerV2';
+                
             case ('InUse')
+                % current device is currently in use
                 sType = [];
+                
             otherwise
+                % otherwise, there was an issue initially loading the
+                % device. close and reopent the device and try again...
                 if (nargin == 2)
                     % deletes the serial controller 
                     fclose(hS);
@@ -61,7 +77,10 @@ switch sStr
 
                     % retries retrieving the serial device type
                     sType = getSerialDeviceType(pStr,sStr,vpStr,1);
+                    
                 else
+                    % if retrying didn't work then flag the device as not
+                    % being usable within DART
                     sType = 'Not Applicable';
                 end
         end        

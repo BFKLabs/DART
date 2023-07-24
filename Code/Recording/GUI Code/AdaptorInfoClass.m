@@ -52,7 +52,7 @@ classdef AdaptorInfoClass < handle
         hasDAQ
         hasIMAQ = true; 
         onlyDAQ        
-        vStr = {'Motor','Opto','HTControllerV1'};
+        vStr = {'Motor','Opto','HTControllerV1','HTControllerV2'};
         testFile = '';
         popStr
         iProg
@@ -473,7 +473,7 @@ classdef AdaptorInfoClass < handle
             if obj.onlyDAQ
                 % updates the list selection value
                 set(handles.listDACObj,'value',obj.vSelDAQ)
-                isHT = strcmp(obj.objDAQ.sType,'HTControllerV1');
+                isHT = strContains(obj.objDAQ.sType,'HTController');
                 
                 for i = 1:length(obj.vSelDAQ)
                     j = obj.vSelDAQ(i);
@@ -515,10 +515,10 @@ classdef AdaptorInfoClass < handle
                             set(hObjNw,'string','N/A')
                             obj.nCh(i) = NaN;
                             
-                        case 'HTControllerV1'
-                            % case is the HT ControllerV1 device
+                        case {'HTControllerV1','HT ControllerV2'}
+                            % case is the HT Controller device
                             set(hObjNw,'string','1')
-                            obj.nCh(i) = 1;                            
+                            obj.nCh(i) = 1;                                                              
                     end
                 end
 
@@ -728,7 +728,7 @@ classdef AdaptorInfoClass < handle
             handles = obj.hGUI;
             obj.vSelDAQ = get(hObject,'Value');
             isOpto = strcmp(obj.objDAQ.sType,'Opto');
-            isHT = strcmp(obj.objDAQ.sType,'HTControllerV1');
+            isHT = strContains(obj.objDAQ.sType,'HTController');
             stimOnly = strcmp(obj.exType,'StimOnly');
 
             % sets the flags of the edit boxes that need to be updated
@@ -1153,6 +1153,7 @@ classdef AdaptorInfoClass < handle
         function sType = convertStimTypes(sType)
 
             sType(strcmp(sType,'HTControllerV1')) = {'Motor'};
+            sType(strcmp(sType,'HTControllerV2')) = {'Motor'};
 
         end
 

@@ -12,7 +12,7 @@ if isempty(objDAQ)
     return
 else
     % determines if there are any opto devices connected
-    dType = strcmp(objDAQ.sType,'HTControllerV1') + ...
+    dType = strContains(objDAQ.sType,'HTController') + ...
             2*strcmp(objDAQ.sType,'Opto');
     if ~any(dType > 0)
         % if there are no connected opto devices, then exit

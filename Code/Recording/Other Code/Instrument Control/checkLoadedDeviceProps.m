@@ -61,6 +61,7 @@ else
 
     % special case - converting controllers to other types
     devType(strcmp(devType,'HTControllerV1')) = {'Motor'};
+    devType(strcmp(devType,'HTControllerV2')) = {'Motor'};
 
     % retrieves the channel/device counts
     nCh = objDAQ0.nChannel(1:length(devType));

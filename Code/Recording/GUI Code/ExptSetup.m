@@ -8487,6 +8487,7 @@ function devType = resetDevType(devType)
 
 % converts 'HT ControllerV1' to 'Motor'
 devType(strcmp(devType,'HTControllerV1')) = {'Motor'};
+devType(strcmp(devType,'HTControllerV2')) = {'Motor'};
 
 % --- sets up the custom video resolution objects
 function setupCustResObjects(handles)

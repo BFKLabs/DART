@@ -58,14 +58,15 @@ switch (typeStr)
         % outputs the handles struct
         varargout{1} = handles;                           
             
-    case 'InitOptoMenuItems' % case is initialiseing the GUI for full case
+    case 'InitOptoMenuItems' 
+        % case is initialiseing the GUI for full case
         
         if isempty(objDAQ)
             % no devices are loaded
             dType = 0;
         else
             % determines if any of the loaded devices are opto
-            dType = strcmp(objDAQ.sType,'HTControllerV1') + ...
+            dType = strContains(objDAQ.sType,'HTController') + ...
                     2*strcmp(objDAQ.sType,'Opto');
         end
         
