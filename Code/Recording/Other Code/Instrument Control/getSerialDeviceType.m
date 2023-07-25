@@ -55,7 +55,7 @@ switch sStr
                 % case is a HT controller (version 1)
                 sType = 'HTControllerV1';
                 
-            case ('HT ControllerV2','HTControllerV2')
+            case {'HT ControllerV2','HTControllerV2'}
                 % case is a HT controller (version 2)
                 sType = 'HTControllerV2';
                 

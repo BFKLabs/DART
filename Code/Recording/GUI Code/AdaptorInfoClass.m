@@ -728,7 +728,7 @@ classdef AdaptorInfoClass < handle
             handles = obj.hGUI;
             obj.vSelDAQ = get(hObject,'Value');
             isOpto = strcmp(obj.objDAQ.sType,'Opto');
-            isHT = strContains(obj.objDAQ.sType,'HTController');
+            isHT = strcmp(obj.objDAQ.sType,'HTControllerV1');
             stimOnly = strcmp(obj.exType,'StimOnly');
 
             % sets the flags of the edit boxes that need to be updated
