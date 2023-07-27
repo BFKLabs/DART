@@ -109,7 +109,9 @@ classdef VideoPhase < handle
         function initClassFields(obj)
             
             % field retrieval
-            if isfield(obj.iData.iExpt,'Device')
+            if ~isfield(obj.iData,'iExpt')
+                obj.isHT1 = false;
+            elseif isfield(obj.iData.iExpt,'Device')
                 Device = obj.iData.iExpt.Device;
                 obj.isHT1 = any(strContains(Device.DAQ,'HTControllerV1'));
             else

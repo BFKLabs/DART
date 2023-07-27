@@ -204,7 +204,7 @@ switch (typeStr)
         % sets the image data panel text strings   
         setImgData(handles,iData,iMov,1); 
         
-        % resets the image zoom
+        % resets the image zoom        
         [m,n] = deal(iData.sz(1),iData.sz(2));
         set(handles.imgAxes,'xlim',[1 n],'ylim',[1 m],'visible','on')   
         
@@ -214,8 +214,9 @@ switch (typeStr)
         setDetectEnable(handles,'off')
         setTrackGUIProps(handles,'UpdateFrameSelection')
         setMenuEnable(handles,'on',8)
-        setMenuEnable(handles,'off',[2,7])
-                
+        setMenuEnable(handles,'off',[2,7])                
+        updateHMMenu(handles,iData);
+        
         % resets the status flag 
         iData.Status = 0;        
         set(handles.output,'iData',iData,'pData',[]);
@@ -293,6 +294,7 @@ switch (typeStr)
         
         % updates the translation correction menu item
         updateCTMenu(handles,iMov);     
+        updateHMMenu(handles,iData);
         
         % sets the frame/movie count
         if ishandle(handles.frmCountEdit)
@@ -370,7 +372,7 @@ switch (typeStr)
             set(handles.frmCountEdit,'string',num2str(iData.cFrm))   
             
             % sets the image correction menu flag
-            updateCTMenu(handles,iMov);
+            updateCTMenu(handles,iMov);            
         end                           
         
     case ('PreFlyDetect') % case is after detecting the fly locations 
@@ -976,7 +978,7 @@ function setMenuEnable(handles,state,ind)
 objStr = {'menuSaveMovie','menuSaveSoln','menuViewProgress',...
           'menuWinsplit','menuVideoFeed','menuBatchProcess',...
           'menuManualReseg','menuSplitVideo','menuCorrectTrans',...
-          'menuUseGray'};
+          'menuUseGray','menuHistMatch'};
 
 % sets all the indices (if none are provided)
 if (nargin == 2)
@@ -1261,3 +1263,19 @@ end
 % updates the translation correction menu flag
 hMenuCT = handles.menuCorrectTrans;
 set(setObjEnable(hMenuCT,hasTrans),'Checked',chkStr{1+hasTrans})
+
+% --- menu histogram matching visibility
+function updateHMMenu(handles,iData)
+
+% initialisations
+isHT1 = false;
+
+%
+if isfield(iData.iExpt,'Device')
+    Device = iData.iExpt.Device;
+    isHT1 = any(strContains(Device.DAQ,'HTControllerV1'));
+end
+
+% sets the visibility flag based on whether it s
+setObjVisibility(handles.menuHistMatch,isHT1);
+

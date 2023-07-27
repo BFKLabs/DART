@@ -1264,7 +1264,7 @@ end
 % updates the image
 dispImage(handles);
 
-% --------------------------------------------------------------------
+% -------------------------------------------------------------------------
 function menuUseGray_Callback(hObject, ~, handles)
 
 % toggles the check item
@@ -1282,6 +1282,19 @@ else
     % updates the image
     dispImage(handles)    
 end
+
+% -------------------------------------------------------------------------
+function menuHistMatch_Callback(hObject, ~, handles)
+
+% toggles the check item
+toggleMenuCheck(hObject);
+
+% updates the RBG flag
+hFig = handles.output;
+hFig.iData.useHM = strcmp(get(hObject,'Checked'),'on');
+
+% updates the image
+dispImage(handles)
 
 % -------------------------------------------------------------------------
 function menuOptSize_Callback(~, ~, handles)
@@ -2322,6 +2335,7 @@ hAx = handles.imgAxes;
 hFig = handles.output;
 iMov = get(hFig,'iMov');
 iData = get(hFig,'iData');
+isSub = get(handles.checkLocalView,'value');
 
 % updates the frame selection object properties
 if ishandle(handles.frmCountEdit)
@@ -2366,10 +2380,15 @@ switch nargin
 end
 
 % applies the image correction (if required)
-if strcmp(get(handles.menuCorrectTrans,'Checked'),'on')
+if detIfUseHM(iData) && ~isSub
+    % sets up the histogram matched image stack
+    ImgNw = setupHistMatchImage(ImgNw,iMov,cFrm);
+
+elseif strcmp(get(handles.menuCorrectTrans,'Checked'),'on')
+    %
     ImgNw = applyImgOffset(ImgNw,iMov,cFrm);
-end
-        
+end        
+
 % updates the frame selection properties
 if ~(isCalib || isBatch || isBGCalc)
     setTrackGUIProps(handles,'UpdateFrameSelection',cFrm)
@@ -2800,8 +2819,9 @@ function iData = initDataStruct(handles,ProgDefNew)
 % creates the data struct
 iData = struct('cFrm',1,'cMov',1,'cStep',1,'Status',0,...
            'nFrmMax',50,'nFrm',0,'nMov',0,'Frm0',NaN,...
-           'isSave',false,'isOpen',false,'isLoad',false,'ProgDef',[],...
-           'exP',[],'sgP',[],'stimP',[],'fData',[],'sfData',[]);     
+           'isSave',false,'isOpen',false,'isLoad',false,'useHM',false,...
+           'exP',[],'sgP',[],'stimP',[],'fData',[],'sfData',[],...
+           'ProgDef',[]);     
        
 % sets the sub-fields        
 if isempty(ProgDefNew)
