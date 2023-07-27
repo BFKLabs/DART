@@ -1123,7 +1123,7 @@ classdef CalcBG < handle
             % initialisations            
             frmSz = getCurrentImageDim(obj.hGUI);
             isHV = obj.iMov.vPhase(iPhase) == 2;
-            isSpecial = obj.iMov.vPhase(iPhase);            
+            isSpecial = obj.iMov.vPhase(iPhase) == 4;            
             
             % sets up the image stack
             ILs = cell(1,obj.nApp);

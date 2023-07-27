@@ -1271,9 +1271,11 @@ function updateHMMenu(handles,iData)
 isHT1 = false;
 
 %
-if isfield(iData.iExpt,'Device')
-    Device = iData.iExpt.Device;
-    isHT1 = any(strContains(Device.DAQ,'HTControllerV1'));
+if isfield(iData,'iExpt')
+    if isfield(iData.iExpt,'Device')
+        Device = iData.iExpt.Device;
+        isHT1 = any(strContains(Device.DAQ,'HTControllerV1'));
+    end
 end
 
 % sets the visibility flag based on whether it s
