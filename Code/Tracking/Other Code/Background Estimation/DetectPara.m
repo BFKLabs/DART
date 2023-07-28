@@ -101,20 +101,43 @@ classdef DetectPara
         end
 
         % --- initialises the background parameter struct
-        function bgP = initDetectParaStruct(fType)
+        function bgP = initDetectParaStruct(fType)                        
 
             switch fType
                 case 'All' % case is initialising all parameter fields
 
+                    %
+                    A = load(getParaFileName('ProgPara.mat'));
+                    
                     % initialisations
                     bgP = struct();
+                    bgP0 = A.bgP;
                     fStr = {'algoType','pPhase','pInit',...
                             'pTrack','pSingle','pMulti'};
 
                     % sets all the sub-fields for the parameter struct
                     for i = 1:length(fStr)
-                        eval(sprintf('bgP.%s = DetectPara.%s(''%s'');',...
-                            fStr{i},'initDetectParaStruct',fStr{i}));
+                        % retrieves the sub-struct values
+                        bgPnw = DetectPara.initDetectParaStruct(fStr{i});
+                        switch fStr{i}
+                            case 'algoType'
+                                % case is the algorithm string
+                                bgP.(fStr{i}) = bgPnw;
+                                
+                            otherwise
+                                % case is the other sub-struct
+                                fldNw = fieldnames(bgPnw);
+                                fldNw0 = fieldnames(bgP0.(fStr{i}));
+                                
+                                % if there is a mismatch between parameter
+                                % structs, then use the original (otherwise
+                                % use the saved values).
+                                if isequal(fldNw,fldNw0)
+                                    bgP.(fStr{i}) = bgP0.(fStr{i});
+                                else
+                                    bgP.(fStr{i}) = bgPnw;
+                                end
+                        end
                     end
 
                 case 'algoType' 

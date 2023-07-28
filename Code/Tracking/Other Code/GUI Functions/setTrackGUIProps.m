@@ -190,17 +190,23 @@ switch (typeStr)
     % --- PRE/POST FILE I/O --- %
     % ------------------------- %        
         
-    case ('PreMovieLoad') % case is before opening a movie file        
+    case ('PreMovieLoad') 
+        % case is before opening a movie file        
+        
         % disables buttons and option boxes, and clears all text labels
         cla
         setImgEnable(handles,'off');
         pause(0.01);                
         
-    case ('PostImageLoadBatch') % case is the successful movie load
+    case ('PostImageLoadBatch') 
+        % case is the successful movie load (for batch processing)
+        
         % sets the image data panel text strings   
         setImgData(handles,iData,iMov,1);        
         
-    case ('PostImageLoad') % case is the successful movie load
+    case ('PostImageLoad') 
+        % case is the successful movie load
+        
         % sets the image data panel text strings   
         setImgData(handles,iData,iMov,1); 
         
@@ -461,7 +467,9 @@ switch (typeStr)
 %         ImgNw = getDispImage(iData,iMov,cFrm,isSub,handles); 
 %         dispImage(handles,ImgNw,1)    
         
-    case ('PostWindowSplit') % case is after splitting the window        
+    case ('PostWindowSplit') 
+        % case is after splitting the window        
+        
         % enables the movie selection buttons
         setSubMovEnable(handles);    
         setMovEnable(handles,'on');
@@ -508,13 +516,16 @@ switch (typeStr)
         setAxesProps(handles,'majorgrid');
         setAxesProps(handles,'minorgrid');
         
-    case ('MajorGridCheck') % case is altering the major grid checkbox
+    case ('MajorGridCheck') 
+        % case is altering the major grid checkbox
         setAxesProps(handles,'majorgrid');
         
-    case ('MinorGridCheck') % case is altering the minor grid checkbox
+    case ('MinorGridCheck') 
+        % case is altering the minor grid checkbox
         setAxesProps(handles,'minorgrid');        
 
-    case ('SetAllAxesProps') % case is setting all the axes properties
+    case ('SetAllAxesProps') 
+        % case is setting all the axes properties
         setAxesProps(handles,'label');
         setAxesProps(handles,'majorgrid');
         setAxesProps(handles,'minorgrid');                
@@ -522,14 +533,18 @@ switch (typeStr)
     % --- FRAME/MOVIE CHANGES --- %
     % --------------------------- %
         
-    case ('PlayMovie') % case is playing the movie
+    case ('PlayMovie') 
+        % case is playing the movie
+        
         % sets the visibility statuses of the play/stop buttons
         set(handles.toggleVideo,'String','Stop');
 
         % disables the frame index/mesh data buttons
         setFrmEnable(handles,'off',1:5)
         
-    case ('StopMovie') % case is stopping the movie
+    case ('StopMovie') 
+        % case is stopping the movie
+        
         % sets the visibility statuses of the play/stop buttons
         set(handles.toggleVideo,'String','Play');
         
@@ -537,7 +552,8 @@ switch (typeStr)
         setFrmEnable(handles,'on',5:6)
         setTrackGUIProps(handles,'UpdateFrameSelection')
 
-    case ('UpdateFrameSelection') % case is updating the frame selection buttons
+    case ('UpdateFrameSelection') 
+        % case is updating the frame selection buttons
         
         % retrieves the current frame from the frame counter edit box
         if isempty(varargin)

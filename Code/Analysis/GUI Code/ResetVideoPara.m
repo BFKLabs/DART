@@ -210,7 +210,7 @@ classdef ResetVideoPara < handle
                             
                         % creates the scale factor toggle button
                         cbFcnB = {@obj.buttonScaleFac};
-x                        bStr = 'Reset Scale Factor';
+                        bStr = 'Reset Scale Factor';
                         pBut = [obj.dX*[0.5,0.8],obj.widBut,obj.hghtBut];
                         obj.hBut = uicontrol(obj.hPanelEx{i},'Units',...
                                 'Pixels','String',bStr,'FontUnits','Pixels',...

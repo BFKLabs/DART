@@ -55,6 +55,7 @@ classdef DetectParaDialog < handle
     
     % class methods
     methods
+        
         % --- class constructor
         function obj = DetectParaDialog(sObj)
             
@@ -293,18 +294,16 @@ classdef DetectParaDialog < handle
         end
         
         % --- callback function for updating the detection parameters
-        function updatePara(obj,~,event)
+        function updatePara(obj,~,~)
             
             % prompts the user if they wish to update the struct
-            if ~isempty(event)
-                qtStr = 'Reset Default Parameters?';
-                qStr = ['Are sure you want to use the update ',...
-                        'tracking parameters?'];
-                uChoice = questdlg(qStr,qtStr,'Yes','No','Yes');            
-                if ~strcmp(uChoice,'Yes')
-                    % if the user cancelled, then exit the function
-                    return
-                end
+            qStr = ['Do you want to make a temporary or ',...
+                    'permanent update?'];
+            uChoice = questdlg(qStr,'Parameter Update Type',...
+                'Temporary','Permanent','Cancel','Temporary');
+            if isempty(uChoice) || strcmp(uChoice,'Cancel')
+                % if the user cancelled, then exit the function
+                return
             end
             
             % updates the parameter struct into the main object            
@@ -313,11 +312,22 @@ classdef DetectParaDialog < handle
                 obj.sObj.isChange = true;
             end
                 
+            % updates the parameter struct permanently (if required)
+            if strcmp(uChoice,'Permanent')
+                % retrieves the parameter file name
+                pFile = getParaFileName('ProgPara.mat');  
+                
+                % updates the file with the new parameters
+                A = load(pFile);
+                A.bgP = obj.bgP;
+                save(pFile,'-struct','A')                
+            end
+            
             % resets the update button enabled properties
             setObjEnable(obj.hButC{1},0)                
             
         end
-        
+        s
         % --- callback function for resetting the default parameters
         function useDefaultPara(obj,~,~)
             
