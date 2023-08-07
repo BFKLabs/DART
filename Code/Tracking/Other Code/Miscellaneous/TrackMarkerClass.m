@@ -190,9 +190,9 @@ classdef TrackMarkerClass < handle
                             'Marker',pMark,'MarkerSize',mSz,'Parent',...
                             obj.hAx,'Visible','off','LineWidth',obj.lWid,...
                             'UserData',[i,j],'tag',hMStr);
-                    obj.hDir{i}{j} = patch(NaN,NaN,pCol,'tag',hDStr,...
+                    obj.hDir{i}{j} = patch(NaN,NaN,'r','tag',hDStr,...
                             'Parent',obj.hAx,'UserData',[10,0.33],...
-                            'Visible','off');
+                            'Visible','off','LineWidth',2,'EdgeColor','r');
                 end
             end
 
@@ -322,7 +322,7 @@ classdef TrackMarkerClass < handle
                         obj.initTrackMarkers(1)
                     end
                     
-                    % updates the plot tracking/angle marker objects
+                    % updates the plot tracking/angle marker objects                    
                     obj.pltLocT = pltLocT0 && obj.iMov.ok(i);                    
                     obj.pltAngT = pltAngT0 && obj.iMov.ok(i);
                     
@@ -455,7 +455,12 @@ classdef TrackMarkerClass < handle
             % updates the mark visibility
             obj.updateMarkerVisibility({hMarkS},showMark)            
             if hasPhi
-                obj.updateMarkerVisibility({hDirS},obj.pltAngT)  
+                showDir = obj.pltAngT;
+                if pltLV
+                    showDir = showDir && (ind == cMov);
+                end
+                
+                obj.updateMarkerVisibility({hDirS},showDir)  
             end
             
             for i = 1:nFly                
@@ -883,17 +888,38 @@ classdef TrackMarkerClass < handle
             
             % initialisations
             isOn = get(obj.hChkD,'Value');
+            isLV = get(obj.hChkLV,'Value');
+            
+            if isLV
+                cMov = str2double(get(obj.hEditM,'string'));
+                lvReg = setGroup(cMov,size(obj.iMov.ok));
+            end
             
             try
                 % attempts to update the marker visibility
-                cellfun(@(x)(cellfun(@(y)...
-                            (setObjVisibility(y,isOn)),x)),obj.hDir)
+                if isLV
+                    cellfun(@(x)(cellfun(@(y)...
+                        (setObjVisibility(y,isOn)),x)),obj.hDir(lvReg))
+                    cellfun(@(x)(cellfun(@(y)...
+                        (setObjVisibility(y,0)),x)),obj.hDir(~lvReg))                    
+                else
+                    cellfun(@(x)(cellfun(@(y)...
+                        (setObjVisibility(y,isOn)),x)),obj.hDir)
+                end
             catch
                 % if there was an error, recreate the markers and set their
                 % visibility
                 obj.initTrackMarkers();
-                cellfun(@(x)(cellfun(@(y)...
+                
+                if isLV
+                    cellfun(@(x)(cellfun(@(y)...
+                        (setObjVisibility(y,isOn)),x)),obj.hDir(lvReg))
+                    cellfun(@(x)(cellfun(@(y)...
+                        (setObjVisibility(y,0)),x)),obj.hDir(~lvReg))                     
+                else
+                    cellfun(@(x)(cellfun(@(y)...
                             (setObjVisibility(y,isOn)),x)),obj.hDir)
+                end
             end            
             
         end

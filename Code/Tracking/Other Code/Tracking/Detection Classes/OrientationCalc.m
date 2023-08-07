@@ -112,14 +112,15 @@ classdef OrientationCalc < handle
         % --- calculates the local image orientation angle
         function phi = calcLocalImageAngle(obj,IL)
 
-            % sets the x/y meshgrid values        
-            nPts = ceil(obj.N/2);
-            [xx,yy] = meshgrid((1:obj.szL)-(1+floor(obj.szL(1)/2)));
+            % sets the x/y meshgrid values  
+            sz = size(IL);
+            nPts = 2*ceil(obj.N);
+            [xx,yy] = meshgrid((1:sz(1))-(1+floor(sz(1)/2)));
 
             % determines the most likely points from the image
             BPos = IL > 0;
             iMx = detTopNPoints(IL(:),nPts,0,1);
-            B0 = setGroup(iMx,obj.szL*[1,1]) & BPos;
+            B0 = setGroup(iMx,sz) & BPos;
             
             % thresholds the sub-image and determines the overlapping
             [~,Bnw] = detGroupOverlap(B0,obj.fPosL);
@@ -182,8 +183,9 @@ classdef OrientationCalc < handle
             if any(isnan(fPos)); return; end
             
             % sets the row/column indices
-            iR = (fPos(2)-obj.del):(fPos(2)+obj.del);
-            iC = (fPos(1)-obj.del):(fPos(1)+obj.del);
+            delF = round(1.5*obj.del);
+            iR = (fPos(2)-delF):(fPos(2)+delF);
+            iC = (fPos(1)-delF):(fPos(1)+delF);
             
             % determines the feasible row/column indices
             ii = (iR >= 1) & (iR <= size(I,1));

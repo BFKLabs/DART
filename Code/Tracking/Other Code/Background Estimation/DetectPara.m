@@ -127,7 +127,11 @@ classdef DetectPara
                             otherwise
                                 % case is the other sub-struct
                                 fldNw = fieldnames(bgPnw);
-                                fldNw0 = fieldnames(bgP0.(fStr{i}));
+                                if isfield(bgP0,fStr{i})
+                                    fldNw0 = fieldnames(bgP0.(fStr{i}));
+                                else
+                                    fldNw0 = '';
+                                end
                                 
                                 % if there is a mismatch between parameter
                                 % structs, then use the original (otherwise
