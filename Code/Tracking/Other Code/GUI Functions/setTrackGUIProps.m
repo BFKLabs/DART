@@ -268,7 +268,7 @@ switch (typeStr)
             if ~isempty(pData)
                 % can view everything
                 iData.Status = 2;
-                if any(iMov.vPhase == indFV)
+                if any(arrayfun(@(x)(any(x == indFV)),iMov.vPhase))
                     setDetectEnable(handles,'on')                                
                     if ~iMov.calcPhi
                         setDetectEnable(handles,'off',3); 
@@ -367,7 +367,7 @@ switch (typeStr)
                     setDetectEnable(handles,'on',[1 4:5])      
                 end
             else                
-                isFeas = any(iMov.vPhase == indFV);
+                isFeas = any(arrayfun(@(x)(any(x == indFV)),iMov.vPhase));
                 setDetectEnable(handles,'on',[1 4])
                 setDetectEnable(handles,eStr{1+isFeas},5)
             end
