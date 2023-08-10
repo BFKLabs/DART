@@ -345,7 +345,9 @@ classdef SingleTrackInitHT1 < handle
             obj.dScl = length(iRT)/2;
             
             % search in reverse direction if first frame is ambiguous
-            if iFrm(1) == 1
+            if length(iFrm) == length(iFrmG)
+                return
+            elseif iFrm(1) == 1
                 [iFrm,iDir] = deal(flip(iFrm),1); 
             end            
 
@@ -374,7 +376,7 @@ classdef SingleTrackInitHT1 < handle
                 if isInit
                     % reduces step size (if greater than limit size)
                     if diFrm <= dnFrm
-                        dnFrm = ceil(dnFrm/2);
+                        dnFrm = 2^(nextpow2(diFrm)-1);
                     end
                     
                     % calculates the new frame index
