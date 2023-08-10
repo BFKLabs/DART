@@ -115,7 +115,8 @@ classdef OrientationCalc < handle
             % sets the x/y meshgrid values  
             sz = size(IL);
             nPts = 2*ceil(obj.N);
-            [xx,yy] = meshgrid((1:sz(1))-(1+floor(sz(1)/2)));
+            dsz = (1+floor(sz/2));
+            [xx,yy] = meshgrid((1:sz(2))-dsz(2),(1:sz(1))-dsz(1));
 
             % determines the most likely points from the image
             BPos = IL > 0;
@@ -127,13 +128,17 @@ classdef OrientationCalc < handle
             if ~any(Bnw(:))
                 % if there is no overlapping group, then determine the 
                 % groups from the initial binary image
-                [iGrp,pCent] = getGroupIndex(B0,'Centroid');
+                iGrp = getGroupIndex(B0);
                 if length(iGrp) > 1
                     % if there is more than one group, then determine the 
                     % group that is closest to the centre of the sub-image
-                    [~,imn] = min(sqrt(sum((pCent - ...
-                                repmat(obj.fPosL,size(pCent,1),1)).^2,2)));
-                    iGrp = iGrp(imn);
+                    DB0 = bwdist(setGroup(obj.fPosL,sz));
+                    IGrpUQ = normImg(cellfun(@(x)...
+                        (prctile(IL(x),75)),iGrp),1);
+                    DGrp = cellfun(@(x)...
+                        (min(DB0(x))),iGrp)/obj.iMov.szObj(1);                    
+                    imx = argMax(IGrpUQ./DGrp);
+                    iGrp = iGrp(imx);
                 end
                 
             else
@@ -149,8 +154,8 @@ classdef OrientationCalc < handle
                 ILZ = obj.pZ*((IL - ILmn)/(ILmx - ILmn)).^obj.hZ;                
 
                 % sets up and calculate the PCA 
-                z = cell2mat(cellfun(@(x)(repmat([xx(x),yy(x)],...
-                            floor(ILZ(x)),1)),num2cell(iGrp{1}),'un',0)); 
+                z = cell2mat(arrayfun(@(x)(repmat([xx(x),yy(x)],...
+                    max(1,floor(ILZ(x))),1)),iGrp{1},'un',0)); 
                 [coef,~,eVal] = pca(z); 
             else
                 % if there are insufficient points, then return NaN values

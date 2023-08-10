@@ -906,7 +906,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             
             % calculates the background/local images from the stack    
             if obj.isHT1
-                ImgBG = [];
+                ImgBG = obj.iMov.Ibg{obj.iPh}{iApp}; 
                 
             else
                 ImgBG = obj.iMov.Ibg{obj.iPh}{iApp};             
