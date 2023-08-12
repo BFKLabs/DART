@@ -47,13 +47,18 @@ for i = find(iMov.ok(:)')
         % calculates inter-frame distance travelled by the object
         switch dStatus
             case 1
-                %
+                % case is the fly is moving
                 iMov.Status{i}(j) = 1;
                 [pData,ok] = frameDistCheck(obj,pData,iMov,i,j);
                 
             case 2
-                % 
-                [pData,ok] = framePosCheck(obj,pData,iMov,i,j);                    
+                % case is the fly is static
+                [pData,ok] = framePosCheck(obj,pData,iMov,i,j); 
+
+            otherwise
+                % otherwise, flag the region as rejected
+                iMov.flyok(j,i) = false;
+                pData.fPos{i}{j}(:) = NaN;
         end
 
         % if the user cancelled, then exit
@@ -65,6 +70,7 @@ end
 function dStatus = getDistCheckStatus(obj,pData,iMov,iApp,iTube)
 
 % parameters
+dStatus = 3;
 pTolMn = 1.5;
 
 % determines the status flag depending on the movement type
@@ -114,11 +120,7 @@ switch iMov.Status{iApp}(iTube)
                 % otherwise, flag that the object is still stationary, but
                 % a position check is required
                 dStatus = 2;
-            end
-            
-        else
-            % if not, then flag that a position check is not required
-            dStatus = 3;
+            end 
         end
 end
 

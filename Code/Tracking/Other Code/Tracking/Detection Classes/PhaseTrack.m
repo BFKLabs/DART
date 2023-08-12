@@ -701,16 +701,24 @@ classdef PhaseTrack < matlab.mixin.SetGet
                         % if the step size is too large, or
                         % there is no prevsious data, then use
                         % the estimated values
-                        fPnw = fPest;
+                        if exist('fPest','var')
+                            fPnw = fPest;
+                        else
+                            fPnw = NaN(1,2);
+                        end
                     else
                         % otherwise, use previous location
                         fPnw = obj.fPrNw(end,:);
                     end
                     
                     % seets the estimate value
-                    fPR = min(max(1,roundP(fPnw)),flip(szL));
-                    iPEst = sub2ind(szL,fPR(2),fPR(1));
-                    [IPnw,iMx] = deal(Img(iPEst),NaN);
+                    if any(isnan(fPnw))
+                        [IPnw,iMx] = deal(NaN);
+                    else
+                        fPR = min(max(1,roundP(fPnw)),flip(szL));
+                        iPEst = sub2ind(szL,fPR(2),fPR(1));
+                        [IPnw,iMx] = deal(Img(iPEst),NaN);
+                    end
                     
                 case 1
                     % case is there is only one feasible point

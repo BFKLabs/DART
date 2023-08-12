@@ -10,6 +10,7 @@ classdef EmptyCheck < handle
         isAnom
         isEmpty
         showMark
+        hasPos
         
         % object properties
         hFig        
@@ -40,9 +41,12 @@ classdef EmptyCheck < handle
             
             % sets the table fields            
             [obj.iTube,obj.iApp] = find(isAnom);
-            obj.showMark = true(length(obj.iApp),1);
             obj.isEmpty = true(length(obj.iApp),1);
             
+            % determines the region position flags
+            obj.hasPos = obj.detRegionPosFlags();
+            obj.showMark = obj.hasPos;
+
             % initialises the gui objects
             obj.initObjects();
             
@@ -96,6 +100,10 @@ classdef EmptyCheck < handle
             fHght = sum(pPosT([2,4]))+obj.dY;
             fPos = [500,500,pPosB(3)+2*obj.dY,fHght];
             
+            % sets up the table background colours
+            bgCol = ones(size(tData,1),3);
+            bgCol(~obj.hasPos,:) = 0.8;
+
             % creates the figure object
             obj.hFig = figure('Unit','Pixels',...
                               'Position',fPos,...
@@ -114,14 +122,11 @@ classdef EmptyCheck < handle
                                   'Units','Pixels',...
                                   'Position',pPosB);
             
-            % creates the table 
-            obj.hTable = uitable(obj.hPanelT,'Units','Pixels',...
-                                             'Position',tPos,...
-                                             'ColumnName',cHdr,...
-                                             'ColumnEditable',cEdit,...
-                                             'ColumnFormat',cForm,...
-                                             'Data',tData,...
-                                             'CellEditCallback',cbFcnT);
+            % creates the table             
+            obj.hTable = uitable(obj.hPanelT,'Units','Pixels', ...
+                'Position',tPos,'ColumnName',cHdr,'Data',tData,...
+                'ColumnEditable',cEdit,'ColumnFormat',cForm,...
+                'CellEditCallback',cbFcnT,'BackgroundColor',bgCol);
                                   
             % creates the control button objects
             obj.hButC = cell(obj.nBut,1);
@@ -139,6 +144,7 @@ classdef EmptyCheck < handle
             
             % disables the add all button 
             setObjEnable(obj.hButC{1},0)
+            setObjEnable(obj.hButC{2},any(obj.hasPos))
                                 
             % retrieves the main axes image handle
             hPanelP = findall(obj.hFigM,'tag','panelImg');
@@ -165,23 +171,53 @@ classdef EmptyCheck < handle
                                 
         end        
         
+        % --- determines the region position flags
+        function hasP = detRegionPosFlags(obj)
+
+            % memory allocation
+            hasP = true(length(obj.iApp),1);
+
+            % determines if each "empty" region has registered any
+            % positional values (if not, they can't be selected)
+            for i = 1:length(obj.iApp)
+                [iT,iA] = deal(obj.iTube(i),obj.iApp(i));
+                fPT = cell2mat(cellfun(@(z)(cell2mat(cellfun...
+                    (@(x)(x(iT,:)),z(iA,:)','un',0))),obj.fP,'un',0));
+                hasP(i) = ~all(isnan(fPT(:)));
+            end
+
+        end
+
         % --------------------------------- %
         % --- OBJECT CALLBACK FUNCTIONS --- %
         % --------------------------------- %
         
         % --- callback function for editing the table
-        function tableEditCallback(obj,~,evnt)
+        function tableEditCallback(obj,hTable,evnt)
             
             % updates the empty flag
             [iRow,iCol] = deal(evnt.Indices(1),evnt.Indices(2));
             
             switch iCol
                 case 3
-                    obj.showMark(iRow) = evnt.NewData;
-                    obj.updatePlotMarkers()                    
+                    if obj.hasPos(iRow)
+                        obj.showMark(iRow) = evnt.NewData;
+                        obj.updatePlotMarkers()                    
+                    else
+                        hTable.Data{iRow,iCol} = false;
+                    end
+
                 case 4
-                    obj.isEmpty(iRow) = evnt.NewData;
-                    obj.updateTubeColour(iRow)
+                    if obj.hasPos(iRow)
+                        obj.isEmpty(iRow) = evnt.NewData;
+                        obj.updateTubeColour(iRow)
+
+                        hP = obj.hasPos;
+                        setObjEnable(obj.hButC{1},any(~obj.isEmpty & hP))
+                        setObjEnable(obj.hButC{2},any(obj.isEmpty & hP))
+                    else
+                        hTable.Data{iRow,iCol} = true;
+                    end
             end
             
         end
@@ -201,7 +237,8 @@ classdef EmptyCheck < handle
         function buttonAddAll(obj,hObj,~)
             
             % updates the marker flags
-            [obj.showMark(:),obj.isEmpty(:)] = deal(true);
+            hP = obj.hasPos;
+            [obj.showMark(hP),obj.isEmpty(hP)] = deal(true);
             
             % updates the plot markers and tube colours
             obj.updatePlotMarkers()
@@ -209,7 +246,7 @@ classdef EmptyCheck < handle
             
             % updates the table data
             Data = get(obj.hTable,'Data');
-            Data(:,3:4) = {true};
+            Data(:,3:4) = num2cell([obj.showMark,obj.isEmpty]);
             set(obj.hTable,'Data',Data)
             
             % updates the button enabled properties
@@ -221,12 +258,13 @@ classdef EmptyCheck < handle
         % --- callback function for clicking the remove all button
         function buttonRemoveAll(obj,hObj,~)
             
-            % updates the marker flags            
-            [obj.showMark(:),obj.isEmpty(:)] = deal(false);
+            % updates the marker flags   
+            hP = obj.hasPos;
+            [obj.showMark(hP),obj.isEmpty(hP)] = deal(false);
                 
             % updates the table data
             Data = get(obj.hTable,'Data');
-            Data(:,3:4) = {false};
+            Data(:,3:4) = num2cell([obj.showMark,obj.isEmpty]);
             set(obj.hTable,'Data',Data)            
             
             % updates the plot markers and tube colours
