@@ -179,6 +179,17 @@ classdef VideoPreview < handle
             % sets the video calibration start time
             if ~isempty(obj.vcObj)
                 obj.vcObj.resetTraceFields();
+
+                % retrieves the current/full video resolution
+                if obj.isWebCam
+                    rPos = obj.objIMAQ.pROI;                
+                else
+                    rPos = get(obj.objIMAQ,'ROIPosition');
+                end
+    
+                % sets the ROI row/column indices
+                obj.vcObj.iCI = rPos(1) + (1:rPos(3));
+                obj.vcObj.iRI = rPos(2) + (1:rPos(4));                
             end            
             
             % initialises the preview image

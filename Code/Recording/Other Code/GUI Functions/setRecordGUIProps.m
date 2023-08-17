@@ -92,6 +92,7 @@ switch (typeStr)
             % sets the toggle IR menu check
             set(handles.menuToggleIR,'Checked','On');
             setObjVisibility(handles.menuToggleWhite,any(dType==2))
+            setObjVisibility(handles.menuStimTest,any(dType==1))
             setObjVisibility(handles.menuOpto,'on');
 
             % runs a test pulse (HT1 controllers only)
@@ -99,6 +100,7 @@ switch (typeStr)
             if any(isHT1)
                 objHT1 = setupHT1TestPulse(objDAQ,iDev(isHT1));
                 runOutputDevices(objHT1,1:length(objHT1));
+                setappdata(hFig,'stimObj',TestStimPulse(infoObj,'StimOnly'))
             end
 
         else

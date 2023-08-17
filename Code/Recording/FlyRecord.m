@@ -1,5 +1,5 @@
 function varargout = FlyRecord(varargin)
-% Last Modified by GUIDE v2.5 24-Nov-2021 19:53:50
+% Last Modified by GUIDE v2.5 17-Aug-2023 08:32:49
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -573,6 +573,12 @@ function menuToggleWhite_Callback(hObject, eventdata, handles)
 
 % toggles the white lights
 toggleOptoLights(handles,hObject,false)
+
+% -------------------------------------------------------------------------
+function menuStimTest_Callback(hObject, eventdata, handles)
+
+stimObj = getappdata(handles.figFlyRecord,'stimObj');
+stimObj.runDevice();
 
 %-------------------------------------------------------------------------%
 %                        FIGURE CALLBACK FUNCTIONS                        %

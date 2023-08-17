@@ -53,6 +53,10 @@ classdef VideoCalibObj < handle
         nStp
         hMark
         hTrace
+
+        % image row/column indices
+        iRI
+        iCI
         
         % other objects
         iPara        
@@ -403,11 +407,14 @@ classdef VideoCalibObj < handle
                 % increment the step counter
                 obj.iStp = obj.iStp + 1;
             end            
-                                    
+                    
+            % sets the sub-image
+            Inw = eData.Data(obj.iRI,obj.iCI);
+
             % updates the time/avg. intensity values  
             Tnw = datevec(eData.Timestamp);
             obj.Tt(obj.iStp) = etime(Tnw,obj.T0);            
-            obj.Yt(obj.iStp) = mean(double(eData.Data(:)),'omitnan');            
+            obj.Yt(obj.iStp) = mean(double(Inw(:)),'omitnan');            
             
             % updates the plot axes
             obj.updateTraceAxes();

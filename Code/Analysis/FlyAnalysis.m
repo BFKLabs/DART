@@ -80,6 +80,10 @@ setappdata(hObject,'gPara',gPara)
 setappdata(hObject,'iProg',iData.ProgDef)
 setappdata(hObject,'objDim0',getInitObjDim(hObject))
 
+
+setappdata(hObject,'fDocD',[])
+setappdata(hObject,'fDocObj',[]);
+
 % sets the default input opening files
 sDir = {iData.ProgDef.DirSoln;iData.ProgDef.DirComb;iData.ProgDef.DirComb};
 setappdata(hObject,'sDirO',sDir);
@@ -1510,10 +1514,19 @@ updateListColourStrings(handles,'func')
 canSelect = true;
 
 % --- Executes on button press in buttonFuncInfo.
-function buttonFuncInfo_Callback(hObject, eventdata, handles)
+function buttonFuncInfo_Callback(~, ~, handles)
 
-% FINISH ME!
-waitfor(msgbox('Finish Me!','','modal'))
+% retrieves the documentation file path
+hFig = handles.figFlyAnalysis;
+fDocD = getappdata(hFig,'fDocD');
+fDoc = fullfile(fDocD,[getFileName(fDocD),'.ddoc']);
+
+% retrieves the analysis function documentation file info
+fInfo = importdata(fDoc);
+fInfo.htmlObj.imgDir = fDocD;
+
+% runs the analysis function info 
+setappdata(hFig,'fDocObj',AnalysisFuncInfo(fInfo));
 
 %-------------------------------------------------------------------------%
 %                             OTHER FUNCTIONS                             %
@@ -2026,7 +2039,11 @@ if all([pInd,fIndNw,eInd] > 0)
     % sets the required object handles/data structs
     set(handles.textFuncDesc,'enable','on',...
         'string',pData{pInd}{fIndNw,eInd}.fDesc);
-    setObjVisibility(handles.buttonFuncInfo,1)
+    
+    % retrieves the analysis function documentation file
+    fDocD = getAnalysisFuncDoc(pData{pInd}{fIndNw,eInd}.Name);
+    setObjVisibility(handles.buttonFuncInfo,~isempty(fDocD))
+    setappdata(hFig,'fDocD',fDocD)
 else
     % non-function field is not selected
     set(handles.textFuncDesc,'string','');
@@ -2696,7 +2713,6 @@ set(handles.popupPlotType,'string',lName,'value',length(lName))
 set(handles.textFuncDesc,'string','','visible','on')
 set(handles.buttonFuncInfo,'Enable','on','visible','off')
 set(handles.textFuncDescBack,'visible','on','backgroundcolor','k')
-
 
 % --- scans the plotting function directory for valid functions and places
 function scanPlotFuncDir(handles)

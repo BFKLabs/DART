@@ -223,12 +223,12 @@ end
 % --- sets up the train signal
 function [xS,yS] = setupTrainSignal(sTrain,T,Ts,chName,iLvl)
 
-%
+% initialisations
 Tmlt = 1/60;
 tUnits = 'm';
 Tfinal = T(end)*Tmlt;
 
-%
+% retrieves the stimuli channel names
 chN = arrayfun(@(x)(x.chName),sTrain.blkInfo,'un',0);
 if startsWith(chName,'Ch')
     if strContains(chN,'#')
@@ -265,29 +265,37 @@ for i = 1:length(iMatch)
     if xS{i}(1) < 0
         % determines the feasible time points
         ii = xS{i} > 0;
-        ySFnw = detExactSignalValue(xS{i},yS{i},0);
-        
-        % resets the new values so they fit within the video
-        xS{i} = [0;0;xS{i}(ii)];
-        yS{i} = [(y0+1);ySFnw;yS{i}(ii)];
+        if any(ii)                        
+            % resets the new values so they fit within the video
+            ySFnw = detExactSignalValue(xS{i},yS{i},0);
+            xS{i} = [0;0;xS{i}(ii)];
+            yS{i} = [(y0+1);ySFnw;yS{i}(ii)];
+        else
+            [xS{i},yS{i}] = deal([]);
+        end
     end
     
     % resets the upper limit of the stimuli if > T(end)
-    if xS{i}(end) > Tfinal
+    if ~isempty(xS{i}) && xS{i}(end) > Tfinal
         % determines the feasible time points
         ii = xS{i} < Tfinal;
-        if any(ii)
+        if any(ii)        
+            % resets the new values so they fit within the video
             ySFnw = detExactSignalValue(xS{i},yS{i},Tfinal);
         
             % resets the new values so they fit within the video
             xS{i} = [xS{i}(ii);Tfinal;Tfinal];
             yS{i} = [yS{i}(ii);ySFnw;(y0+1)];
+        else
+            [xS{i},yS{i}] = deal([]);            
         end
     end
     
     % resets the coordinates arrays for the patch objects
-    xS{i} = xS{i}([1:end,1]);
-    yS{i} = yS{i}([1:end,1]);
+    if ~isempty(xS{i})
+        xS{i} = xS{i}([1:end,1]);
+        yS{i} = yS{i}([1:end,1]);
+    end
 end
 
 % --- creates the stimuli patch object

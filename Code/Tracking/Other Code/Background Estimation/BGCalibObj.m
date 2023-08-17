@@ -39,6 +39,8 @@ classdef BGCalibObj < handle
         yOfs
         
         % initial detection tracking fields
+        iRI
+        iCI
         Imu
         Imax
         Imin
@@ -631,7 +633,7 @@ classdef BGCalibObj < handle
 
                 % resets the dummy video object
                 obj.prObj.objIMAQ.iFrmT = 1;
-                obj.prObj.objIMAQ.previewUpdateFcn = @obj.newCalibFrame;                
+                obj.prObj.objIMAQ.previewUpdateFcn = @obj.newCalibFrame;
                 
                 % sets the initial time
                 [obj.T0,obj.T0S] = deal(obj.getStartTime());                                
@@ -644,6 +646,21 @@ classdef BGCalibObj < handle
                 [obj.T0,obj.T0S] = deal(obj.getStartTime());
             end              
             
+            % ---------------------------------- %
+            % --- VIDEO ROI ROW/COLUMN SETUP --- %
+            % ---------------------------------- %
+
+            % retrieves the current/full video resolution
+            if isa(obj.prObj.objIMAQ,'webcam')
+                rPos = obj.prObj.objIMAQ.pROI;                
+            else
+                rPos = get(obj.prObj.objIMAQ,'ROIPosition');
+            end
+
+            % sets the ROI row/column indices
+            obj.iCI = rPos(1) + (1:rPos(3));
+            obj.iRI = rPos(2) + (1:rPos(4));
+
             % -------------------------------------- %
             % --- PRE-CALIBRATION INITIALIATIONS --- %
             % -------------------------------------- %                                    
@@ -724,7 +741,7 @@ classdef BGCalibObj < handle
             
             % calculates the new time/frame value
             Tnw = datevec(eData.Timestamp);
-            ImgNw = double(eData.Data);
+            ImgNw = double(eData.Data(obj.iRI,obj.iCI));
             obj.Tt(obj.iStp) = etime(Tnw,obj.T0);
             obj.Imu(obj.iStp) = mean(ImgNw(:),'omitnan');
             
