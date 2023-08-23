@@ -268,7 +268,7 @@ classdef ScaleFactor < handle
             switch obj.hType
                 case 'FlyTrack'
                     % updates the scale factor
-                    obj.iData.exP.sFac = sFac;
+                    obj.hFigM.iData.exP.sFac = sFac;
 
                     % updates the scale factor for the real-time tracking 
                     if isCalib

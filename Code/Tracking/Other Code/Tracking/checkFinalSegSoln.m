@@ -121,6 +121,9 @@ switch iMov.Status{iApp}(iTube)
                 % a position check is required
                 dStatus = 2;
             end 
+        else
+            % case is there is no major movement
+            dStatus = 2;
         end
 end
 
