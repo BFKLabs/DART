@@ -699,18 +699,21 @@ classdef DataCombPlotObj < handle
             
             % turns the axis hold on
             hold(obj.hAx,'on');
+            Ttot = obj.sInfo.snTot.T;
+            indS = obj.sInfo.iPara.indS;
+            indF = obj.sInfo.iPara.indF;
             
             % creates/resets the start marker
             hStartPr = findall(obj.hAx,'tag','hMark','UserData','Start');
-            if ~isempty(hStartPr); delete(hStartPr); end
+            if ~isempty(hStartPr); delete(hStartPr); end             
             obj.hStart = obj.createNewMarker...
-                (obj.xLimT(1)*[1 1],obj.yLim,'Start');
+                (Ttot{indS(1)}(indS(2))*[1 1]*obj.Tmlt,obj.yLim,'Start');
             
             % creates/resets the finish marker
             hFinishPr = findall(obj.hAx,'tag','hMark','UserData','Finish');
             if ~isempty(hFinishPr); delete(hFinishPr); end
             obj.hFinish = obj.createNewMarker...
-                (obj.xLimT(2)*[1 1],obj.yLim,'Finish');
+                (Ttot{indF(1)}(indF(2))*[1 1]*obj.Tmlt,obj.yLim,'Finish');
             
             % turns the axis hold on
             hold(obj.hAx,'off');

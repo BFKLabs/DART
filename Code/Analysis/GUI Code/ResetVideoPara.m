@@ -370,7 +370,7 @@ classdef ResetVideoPara < handle
         function buttonScaleFac(obj,~,~)
            
             % runs the scale factor sub-GUI
-            ScaleFactor(obj.hFig,'FlyAnalysis')
+            ScaleFactor(obj.hFig,'FlyAnalysis');
             
         end
         

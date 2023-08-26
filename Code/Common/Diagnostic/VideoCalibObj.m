@@ -58,6 +58,10 @@ classdef VideoCalibObj < handle
         iRI
         iCI
         
+        % boolean flags
+        isOpen = false;
+        isOldVer = verLessThan('matlab','9.10');
+
         % other objects
         iPara        
         dY = 2;
@@ -70,7 +74,6 @@ classdef VideoCalibObj < handle
         Tmin = 10;  
         Tmax = 300;  
         lWid = 2;
-        isOpen = false;
         
     end
     
@@ -187,6 +190,12 @@ classdef VideoCalibObj < handle
             obj.hTitle = title(obj.hAx,tStr,'FontWeight','Bold',...
                                             'FontSize',obj.tSz);
             
+            % disables the axis interactivity
+            if ~obj.isOldVer
+                disableDefaultInteractivity(obj.hAx)
+                obj.hAx.Toolbar.Visible = 'off';
+            end
+
             % ------------------------------------- %
             % --- TRACE PARAMETER PANEL OBJECTS --- %
             % ------------------------------------- %

@@ -16,8 +16,8 @@ switch (typeStr)
         
         % clears the preview axes
         cla(handles.axesPreview); 
-        axis(handles.axesPreview,'off')        
-                
+        axis(handles.axesPreview,'off')  
+
         % centres the figure
         centreFigPosition(hFig);        
         

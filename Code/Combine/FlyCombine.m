@@ -731,9 +731,9 @@ if strcmp(get(get(hObject,'parent'),'tag'),'panelStartTime')
     else
         % otherwise, update the start time/index
         pObj.sInfo.iPara.Ts = T0;
-        pObj.sInfo.iPara.indS(1) = find(Tv0 <= dTS0,1,'last');                
+        pObj.sInfo.iPara.indS(1) = find(Tv0 <= dTS0*pObj.Tmlt,1,'last');                
         pObj.sInfo.iPara.indS(2) = find(pObj.sInfo.snTot.T...
-                    {pObj.sInfo.iPara.indS(1)}*pObj.Tmlt <= dTS0,1,'last');        
+                    {pObj.sInfo.iPara.indS(1)} <= dTS0,1,'last');        
         pObj.updateCurrentExptInfo();
         
         % resets the limit markers
@@ -755,9 +755,9 @@ else
     else
         % otherwise, update the finish time/index
         pObj.sInfo.iPara.Tf = T0;
-        pObj.sInfo.iPara.indF(1) = find(Tv0 <= dTS0,1,'last');                
+        pObj.sInfo.iPara.indF(1) = find(Tv0 <= dTS0*pObj.Tmlt,1,'last');                
         pObj.sInfo.iPara.indF(2) = find(pObj.sInfo.snTot.T{...
-                    pObj.sInfo.iPara.indF(1)}*pObj.Tmlt <= dTS0,1,'last');
+                    pObj.sInfo.iPara.indF(1)} <= dTS0,1,'last');
         pObj.updateCurrentExptInfo()      
         
         % resets the limit markers
@@ -1202,7 +1202,10 @@ pPosO = get(h.panelExptOuter,'Position');
 pObj = getappdata(hFig,'pltObj');
 
 % sets the panel stimuli height (depending on whether being displayed)
-if showStim
+if isempty(pObj)
+    % exits if there is no plotting object
+    return
+elseif showStim
     % stimuli panel is being displayed
     pPosS = get(h.panelStim,'position');
     axHghtS = pPosS(4);

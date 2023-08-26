@@ -60,6 +60,7 @@ classdef VideoPhase < handle
         xi2Tol = 0.15;
         dHistTol = 20;
         pOfsMin = 0.4;
+        pTile = 25;
         
         % other fixed parameters        
         isHT1
@@ -1476,11 +1477,11 @@ classdef VideoPhase < handle
             % calculates the average image intensity (based on type)
             if obj.hasSR
                 % case is there is sub-region data set
-                D = cell2mat(cellfun(@(y)(cellfun(@(x)(mean(x(y),...
-                    'omitnan')),I)),obj.iGrpSR{iApp}(:),'un',0))';
+                D = cell2mat(cellfun(@(y)(cellfun(@(x)(prctile(x(y),...
+                    obj.pTile)),I)),obj.iGrpSR{iApp}(:),'un',0))';
             else
                 % case is there is no sub-region setup (single region)
-                D = cellfun(@(x)(mean(x(:),'omitnan')),I)';
+                D = cellfun(@(x)(prctile(x(:),obj.pTile)),I)';
             end
             
         end

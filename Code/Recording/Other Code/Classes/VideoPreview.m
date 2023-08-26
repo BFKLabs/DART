@@ -202,7 +202,7 @@ classdef VideoPreview < handle
                 if obj.isOn
                     set(obj.hGUI.editVideoStatus,'string','Running',...
                                                  'BackgroundColor','g')
-                end                
+                end                   
                 
             else
                 % updates the video status
@@ -361,6 +361,12 @@ classdef VideoPreview < handle
             set(obj.hAx,'xtick',[],'ytick',[],'xticklabel',[],...
                         'yticklabel',[],'xLim',xL,'yLim',yL) 
             colormap(obj.hAx,'gray');
+
+            % disables the axis interactivity
+            if ~verLessThan('matlab','9.10')
+                disableDefaultInteractivity(obj.hAx)
+                obj.hAx.Toolbar.Visible = 'off';
+            end             
         
             % if the sub-regions have been set then recreate the markers
             if obj.initMarkers
@@ -451,7 +457,7 @@ classdef VideoPreview < handle
             if obj.updateVC               
                 % updates the calibration axes
                 p = struct('Timestamp',now,...
-                    'Data',Img,'FrameRate',1/hObj.Period); 
+                    'Data',Img,'FrameRate',1/hObj.Period);
                 obj.vcObj.newCalibFrame(p,false);
             end
             

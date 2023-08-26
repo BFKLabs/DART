@@ -432,6 +432,13 @@ if strcmp(selection,'Yes')
     mObj = getappdata(hDART,'mObj');
     mObj.hFigSub = [];        
     
+    % deletes any timer objects
+    hTimerPr = timerfindall();
+    if ~isempty(hTimerPr)
+        stop(hTimerPr)
+        delete(hTimerPr)
+    end
+
     % deletes the figure and makes the main DART GUI visible again
     delete(hFig)                
     setObjVisibility(hDART,'on');    
