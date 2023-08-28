@@ -620,11 +620,6 @@ classdef VideoPhase < handle
                 if diff(frm0) == 0
                     iGrpC{i} = {frm0};
                 else
-                    %
-                    if i == 1
-                        a = 1;
-                    end
-                    
                     % otherwise, determine the existence of any sub-phases
                     % within the coarse phase group
                     iGrpC{i} = obj.detCoarsePhaseLimits(frm0);
@@ -1481,7 +1476,7 @@ classdef VideoPhase < handle
                     obj.pTile)),I)),obj.iGrpSR{iApp}(:),'un',0))';
             else
                 % case is there is no sub-region setup (single region)
-                D = cellfun(@(x)(prctile(x(:),obj.pTile)),I)';
+                D = cellfun(@(x)(prctile(x(x>0),obj.pTile)),I)';
             end
             
         end

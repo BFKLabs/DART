@@ -114,6 +114,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 try
                     obj.checkShowTube(obj.hGUI.checkShowTube,1,obj.hGUI)
                     obj.checkShowMark(obj.hGUI.checkShowMark,1,obj.hGUI)
+                catch
                 end
             else
                 % otherwise, check the record status of the video

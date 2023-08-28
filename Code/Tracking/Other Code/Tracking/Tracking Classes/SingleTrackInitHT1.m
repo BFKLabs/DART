@@ -24,7 +24,8 @@ classdef SingleTrackInitHT1 < handle
         pLo = 100;        
         dZTol = 2;
         dTol0 = 7.5;
-        
+        pQmxTol = 1/3;
+
         % scalar class fields
         nI        
         nApp
@@ -35,7 +36,7 @@ classdef SingleTrackInitHT1 < handle
         QmxTol        
         iPh = 1;
         pT = 100;
-        nFrmAdd = 20;
+        nFrmAdd = 50;
         
     end
     
@@ -108,17 +109,18 @@ classdef SingleTrackInitHT1 < handle
                 
                 % calculates the background reference image
                 IL0 = cellfun(@(x)...
-                    (x(iR{iApp},iC{iApp})),obj.trObj.Img{obj.iPh},'un',0); 
-                obj.IRef = uint8(calcImageStackFcn(IL0));
+                    (x(iR{iApp},iC{iApp})),obj.trObj.Img{obj.iPh},'un',0);
+                obj.IRef = obj.calcWeightedRefImage(IL0);
                 obj.trObj.IbgR{obj.iPh,iApp} = obj.IRef;
                 
                 % retrieves the sub-region image stack
-                obj.IL = calcHistMatchStack(IL0,obj.IRef);
-                clear IL0
+                obj.IL = calcHistMatchStack(IL0,obj.IRef);                
                 
                 % sets the background image estimate
-                obj.IbgT = calcImageStackFcn(obj.IL,'ptile',obj.pT);
+                obj.IbgT = calcHistMatchStack(...
+                    calcImageStackFcn(IL0,'max'),obj.IRef);
                 obj.trObj.iMov.Ibg{obj.iPh}{iApp} = obj.IbgT;
+                clear IL0
                                 
                 % calculates the residual image stack
                 obj.IR = obj.calcImageResidual(obj.IL,obj.IbgT);
@@ -166,7 +168,10 @@ classdef SingleTrackInitHT1 < handle
                 % determines if there are any ambiguous locations
                 % (residuals which are outliers relative to the population)
                 obj.QmxTol = prctile(QmxF(:),25) - 1.25*iqr(QmxF(:));
-                obj.isAmbig = QmxF < obj.QmxTol;   
+                obj.QmxTol = max(obj.QmxTol,obj.pQmxTol*max(QmxF(:)));
+
+                % determines if there are any ambiguous locations
+                obj.isAmbig = QmxF < obj.QmxTol; 
                 obj.isAmbig(obj.trObj.sFlagT{obj.iPh,iApp} == 2,:) = false;                
                 
                 % determines if there are any "ambiguous" locations
@@ -411,15 +416,17 @@ classdef SingleTrackInitHT1 < handle
                 end
             end
             
-            % sets the new/current coordinates and 
+            % sets the new/current coordinates and calculates the distance
+            % between the these two points
             if isempty(pNw); pNw = getMaxCoord(ImgR); end
             pPr = obj.trObj.fPosL{obj.iPh}{iApp,iFrm(1)}(iRow,:);
             if pdist2(pNw,pPr) > obj.dScl            
                 % if the distance between the points is large, then
                 % reassign the points (find the point with the highest
                 % residual/raw image ratio)
-                pPr = obj.resetFramePos(ImgL0{1},ImgR0{1},pNw,iApp,iRow);
-                obj.trObj.fPosL{obj.iPh}{iApp,iFrm(1)}(iRow,:) = pPr;
+%                 pPr = obj.resetFramePos(ImgL0{1},ImgR0{1},pNw,iApp,iRow);
+%                 obj.trObj.fPosL{obj.iPh}{iApp,iFrm(1)}(iRow,:) = pPr;
+                obj.trObj.fPosL{obj.iPh}{iApp,iFrm(1)}(iRow,:) = pNw;
             end
                 
             % exits the function (if only one frame is ambiguous)
@@ -433,18 +440,19 @@ classdef SingleTrackInitHT1 < handle
             for i = 2:length(iFrm) 
                 % current frame object position
                 j = iFrm(i);
-                pNw = obj.trObj.fPosL{obj.iPh}{iApp,j}(iRow,:);                
+                pPr = obj.trObj.fPosL{obj.iPh}{iApp,j}(iRow,:);                
                 
                 % if the distance between the points is high, then
                 % determine the most likely point closest to the previous
                 if pdist2(pNw,pPr) > obj.dScl                    
-                    [ILnw,IRnw] = deal(obj.IL{j}(iRT,:),obj.IR{j}(iRT,:));
-                    pPr = obj.resetFramePos(ILnw,IRnw,pNw,iApp,iRow);
-                    obj.trObj.fPosL{obj.iPh}{iApp,j}(iRow,:) = pPr;                    
+%                     [ILnw,IRnw] = deal(obj.IL{j}(iRT,:),obj.IR{j}(iRT,:));
+%                     pPr = obj.resetFramePos(ILnw,IRnw,pNw,iApp,iRow);
+%                     obj.trObj.fPosL{obj.iPh}{iApp,j}(iRow,:) = pPr; 
+                    obj.trObj.fPosL{obj.iPh}{iApp,j}(iRow,:) = pNw; 
                 end
                 
-                % resets the previous 
-                pPr = pNw;
+%                 % resets the previous 
+%                 pPr = pNw;
             end
             
         end  
@@ -597,7 +605,23 @@ classdef SingleTrackInitHT1 < handle
             P.Imu = cellfun(@(x,y)(mean(x(y))),I,B);
             P.Isd = cellfun(@(x,y)(std(x(y))),I,B);            
             
-        end                
+        end       
+
+        % --- 
+        function [IRef,W] = calcWeightedRefImage(IL0)
+
+            %
+            IL0mn = cellfun(@(x)(mean(x(:))),IL0);
+
+            %
+            Z = (IL0mn - mean(IL0mn))/std(IL0mn);
+            W0 = normpdf(Z);
+            W = W0/sum(W0);
+
+            % calculates the weighted mean reference image
+            IRef = uint8(calcImageStackFcn(IL0,'weighted-sum',W));
+
+        end
         
     end
     

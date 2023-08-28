@@ -321,7 +321,7 @@ classdef DataCombPlotObj < handle
             % sets the time array
             T0 = cell2mat(snTot.T);
             obj.T = T0(obj.iStep);
-            Tfin = min(vec2sec(obj.getCurrentExptDur(iPara)),obj.T(end));
+            Tfin = obj.T(end);
             
             % sets the plot x-axis limits
             xLim0 = obj.Tmlt*[0 Tfin];

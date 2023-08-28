@@ -1405,7 +1405,7 @@ classdef SingleTrackInit < SingleTrack
             
         end
         
-        % --- plots the
+        % --- plots the subregion image + coordinates
         function plotSubRegionPos(obj,iApp,varargin)
             
             % deletes any previous figures
