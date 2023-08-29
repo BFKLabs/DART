@@ -262,10 +262,8 @@ sFormat = infoObj.sFormat;
 vSelIMAQ = infoObj.vSelIMAQ;
 vIndIMAQ = infoObj.vIndIMAQ;
 objIMAQDev = infoObj.objIMAQDev;
-
-% retrieves the selected video input object index
 iSelV = get(handles.listIMAQObj,'Value');   
-infoObj.isWebCam = isCamUVC(objIMAQDev{iSelV}.DeviceName);
+[vType,vSel] = deal(vIndIMAQ(vSelIMAQ,1),vIndIMAQ(vSelIMAQ,2));
 
 % deletes any previous camera objects
 prImaqObj = imaqfind;
@@ -273,23 +271,22 @@ if ~isempty(prImaqObj)
     delete(prImaqObj)
 end
 
+% retrieves the selected video input object index
 % otherwise, set the video object to the user selection
-try
-    vConStr = objIMAQDev{vIndIMAQ(vSelIMAQ,1)}...
-                   (vIndIMAQ(vSelIMAQ,2)).VideoInputConstructor;
+try    
+    vConStr = objIMAQDev{vType}(vSel).VideoInputConstructor;    
 catch
     try
-        vConStr = objIMAQDev{iSelV}...
-                    (vIndIMAQ(vSelIMAQ,2)).VideoInputConstructor;
+        vConStr = objIMAQDev{iSelV}(vSel).VideoInputConstructor;
     catch
-        vConStr = objIMAQDev{iSelV}...
-                        (vIndIMAQ(vSelIMAQ,2)).ObjectConstructor;
+        vConStr = objIMAQDev{iSelV}(vSel).ObjectConstructor;
     end
 end
 
 % creates the video object constructor object string
+infoObj.isWebCam = isCamUVC(objIMAQDev{vType}(vSel).DeviceName);
 sFormatF = sFormat{vSelIMAQ}{infoObj.sInd(vSelIMAQ)};
-dName = objIMAQDev{vIndIMAQ(vSelIMAQ,1)}(vIndIMAQ(vSelIMAQ,2)).DeviceName;
+dName = objIMAQDev{vType}(vSel).DeviceName;
 
 vStr = sprintf('%s, ''%s'')',vConStr(1:end-1),sFormatF);
 try
