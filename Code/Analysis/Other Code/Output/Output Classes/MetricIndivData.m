@@ -17,6 +17,7 @@ classdef MetricIndivData < DataOutputArray
         mStrD
         iFly
         nFly
+        iFlyH
         appName        
         
         % scalar fields
@@ -88,12 +89,19 @@ classdef MetricIndivData < DataOutputArray
             end                                
             
             % sets the output fly indices/counts
-            [obj.iFly,obj.nFly] = deal(cell(obj.nApp,length(obj.nGrpU)));
+            A = cell(obj.nApp,length(obj.nGrpU));
+            snTotF = arr2vec(obj.snTot(obj.expOut))';            
+            [obj.iFly,obj.iFlyH,obj.nFly] = deal(A);
             for i = 1:obj.nApp
                 for j = 1:length(obj.nGrpU)                                        
                     iOK0 = cellfun(@(x)(repmat...
                         (x{i},obj.nGrpG,1)),fok(obj.expOut),'un',0);                    
                     obj.iFly{i,j} = repmat(iOK0,obj.nGrpU(j),1);                    
+                    
+                    iFly0 = arrayfun(@(x)(...
+                        obj.setGroupFlyIndices(x,i)),snTotF,'un',0);
+                    obj.iFlyH{i,j} = repmat(iFly0,obj.nGrpU(j),1);                    
+                    
                     obj.nFly{i,j} = cellfun(@(x)...
                         (length(x)/obj.nGrpG),obj.iFly{i,j},'un',0);
                 end
@@ -406,7 +414,7 @@ classdef MetricIndivData < DataOutputArray
                     
                     case 2
                         % case is the fly separation
-                        xiF = 1:nP(2);
+                        xiF = obj.iFlyH{iApp}{1,iExp}(:)';
                         if obj.numGrp
                             mStr0{iLvl} = arrayfun(@num2str,xiF,'un',0);
                         else
@@ -456,6 +464,27 @@ classdef MetricIndivData < DataOutputArray
             indG = sub2ind(size(x),y,x);
             
         end
+        
+        % --- sets up the global group fly indices
+        function iFlyG = setGroupFlyIndices(snTot,iApp)
+            
+            % field retrieval
+            cID = snTot.cID{iApp};
+            
+            % calculates the index offset
+            nFlyG = arr2vec(getSRCount(snTot.iMov)');
+            iOfs = cumsum([0;nFlyG(1:end-1)]);
+            
+            % determines the unique row/column indices
+            [iA,~,iC] = unique(cID(:,1:2),'rows');
+            indC = arrayfun(@(x)(find(iC==x)),1:max(iC),'un',0)';
+            
+            % determines the global fly
+            indGT = (iA(:,1)-1)*snTot.iMov.nCol + iA(:,2);
+            iFlyG = cell2mat(cellfun(@(x,y)(...
+                cID(x,3)+y),indC,num2cell(iOfs(indGT)),'un',0));
+            
+        end        
             
     end
     

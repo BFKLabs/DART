@@ -234,8 +234,9 @@ classdef SigIndivData < DataOutputArray
                     
             else    
                 % sets the fly count/genotype group counts
-                obj.nFly = num2cell(num2cell(cellfun('length',obj.iFly)),2)'; 
-                [obj.iFly,obj.nGrp] = deal(num2cell(obj.iFly,2)',1);    
+                obj.nFly = num2cell(num2cell(cellfun('length',obj.iFly)),1);
+%                 obj.nFly = num2cell(num2cell(cellfun('length',obj.iFly)),2)';
+                [obj.iFly,obj.nGrp] = deal(num2cell(obj.iFly,1),1);    
 
 %                 % sets the fly index title strings    
 %                 obj.mStrF = cellfun(@(x)(arrayfun(@(xx)([obj.tSp,...
@@ -315,15 +316,15 @@ classdef SigIndivData < DataOutputArray
             
             % determines the feasible
             nDayT = obj.sepDay*(obj.nDay(iExp)-1) + 1;
-            nP = [obj.nFly{iApp}{iExp},nDayT,obj.nGrp,false];
-            isKeep = nP > [0,1,1,1];            
+            nP = [nDayT,obj.nGrp,false];
+            isKeep = [true,nP>1];            
             
             % sets the header string based on the level
             for iLvl = find(isKeep)
                 switch iLvl
                     case 1
                         % case is the fly separation
-                        xiE = 1:nP(1);
+                        xiE = obj.iFly{iApp}{iExp}(:)';
                         if obj.numGrp
                             mStr0{iLvl} = arrayfun(@num2str,xiE,'un',0);
                         else
@@ -333,12 +334,12 @@ classdef SigIndivData < DataOutputArray
                         
                     case 2
                         % case is the day separation
-                        xiD = 1:nP(2);
+                        xiD = 1:nP(1);
                         if obj.numGrp
                             mStr0{iLvl} = arrayfun(@num2str,xiD,'un',0);
                         else
                             mStr0{iLvl} = arrayfun(@(x)...
-                                (sprintf('Day #%i',x)),1:nP(2),'un',0);
+                                (sprintf('Day #%i',x)),1:nP(1),'un',0);
                         end
                             
                     case {3,4}
@@ -587,7 +588,15 @@ classdef SigIndivData < DataOutputArray
             appOutF = obj.appOut & setGroup(iOut,size(hasF));            
             obj.appName = obj.iData.appName(iOut);
             [obj.nApp,nFlyT] = deal(sum(appOutF),nFlyT(iOut,:));            
-            obj.iFly = arrayfun(@(x)(1:x),nFlyT,'un',0);                        
+            
+            % sets the global fly indices
+            if obj.snTot(1).iMov.is2D
+                obj.iFly = arrayfun(@(x)(1:x),nFlyT,'un',0);
+            else
+                iFly0 = cell2cell(arrayfun(@(x)(...
+                    obj.setGlobalFlyIndices(x)),obj.snTot,'un',0));
+                obj.iFly = iFly0(iOut,:);
+            end
             
             % resets the metrics to the specified genotype groups
             Ynw = obj.Y{obj.iOrder(obj.iMet),obj.outType}(obj.appOut);  
@@ -596,7 +605,7 @@ classdef SigIndivData < DataOutputArray
             % sets the final data values
             obj.YR = Ynw;  
             
-        end
+        end        
         
         % --- retrieves the number format string
         function frmStr = getFormatString(obj)
@@ -680,6 +689,32 @@ classdef SigIndivData < DataOutputArray
             end
             
         end                            
+   
+        % --- sets up the global fly indices
+        function iFly = setGlobalFlyIndices(snTot)
+            
+            % field retrieval
+            cID = snTot.cID;
+            
+            % calculates the index offset
+            nFlyG = arr2vec(getSRCount(snTot.iMov)');
+            iOfs = cumsum([0;nFlyG(1:end-1)]);
+            
+            % sets the global fly indices
+            iFly = cell(1,length(cID));
+            for i = 1:length(cID)
+                % determines the unique row/column indices
+                [iA,~,iC] = unique(cID{i}(:,1:2),'rows');
+                indC = arrayfun(@(x)(find(iC==x)),1:max(iC),'un',0)';                
+                
+                % determines the global fly 
+                indGT = (iA(:,1)-1)*snTot.iMov.nCol + iA(:,2);
+                iFly{i} = cell2mat(cellfun(@(x,y)(...
+                    cID{i}(x,3)+y),indC,num2cell(iOfs(indGT)),'un',0));
+            end
+            
+        end        
         
     end
+    
 end

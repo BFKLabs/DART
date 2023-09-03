@@ -419,7 +419,7 @@ classdef DataOutputTable < dynamicprops & handle
             enableDisableFig(obj.hFig,'off');            
             
             % determine if there is sufficient memory to display the data
-            try; jheapcl; end
+            try jheapcl; catch; end
 
             % updates the table data
             obj.hTable{obj.cTab}.updateTableData(DataT);

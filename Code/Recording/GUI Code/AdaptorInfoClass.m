@@ -1119,21 +1119,7 @@ classdef AdaptorInfoClass < handle
             % sets the connect button enabled properties
             setObjEnable(obj.hGUI.buttonConnect,canConnect)
             
-        end        
-        
-        % --- determines the maximum video dimensions (based on device)
-        function [WmaxF,HmaxF] = detMaxVideoDim(obj,devName)
-
-            switch devName
-                case 'UV155xLE-C_3500006372'
-                    [WmaxF,HmaxF] = deal(800,600);
-
-                otherwise
-                    [WmaxF,HmaxF] = deal(obj.Wmax,obj.Hmax);
-
-            end
-
-        end
+        end                
 
     end
     
@@ -1157,6 +1143,20 @@ classdef AdaptorInfoClass < handle
 
         end
 
+        % --- determines the maximum video dimensions (based on device)
+        function [WmaxF,HmaxF] = detMaxVideoDim(devName)
+
+            switch devName
+                case 'UV155xLE-C_3500006372'
+                    [WmaxF,HmaxF] = deal(800,600);
+
+                otherwise
+                    [WmaxF,HmaxF] = deal(1e10,1e10);
+
+            end
+
+        end        
+        
     end
     
 end
