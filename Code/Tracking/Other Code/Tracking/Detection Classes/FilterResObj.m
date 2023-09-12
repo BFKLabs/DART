@@ -659,8 +659,9 @@ classdef FilterResObj < handle
             
             % sets up the region mapping indices
             N = cellfun('length',iRT);
+            iOfs = cellfun(@(x)(x(1)-1),iRT);
 %             iOfs = cellfun(@(x)(x(1)-1),obj.iRI);
-            iOfs = [0;cumsum(N(1:end-1))];             % REQUIRED FOR 2D ANALYSIS OR (nI > 0)
+%             iOfs = [0;cumsum(N(1:end-1))];             % REQUIRED FOR 2D ANALYSIS OR (nI > 0)
             obj.iRM = arrayfun(@(n,i)(i+(1:n)'),N,iOfs,'un',0);
             
         end

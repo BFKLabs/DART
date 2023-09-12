@@ -3279,7 +3279,7 @@ switch (iType)
         
     case (4) % case is the hours was selected
         % recalculates the hour
-        isPM = get(handles.popupStartAMPMEx,'Value');
+        isPM = (get(handles.popupStartAMPMEx,'Value')-1);
         iExpt.Timing.T0(iType) = 12*isPM + iSel;
                 
     case (5) % case is the minutes was selected

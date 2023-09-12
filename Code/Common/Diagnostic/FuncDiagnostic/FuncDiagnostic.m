@@ -199,7 +199,7 @@ classdef FuncDiagnostic < handle
             
             % creates the loadbar
             lStr = 'Initialising Function Diagnostic Program...';
-            h = ProgressLoadbar(lStr);                        
+            h = ProgressLoadbar(lStr);
             
             % --------------------------- %
             % --- MAIN FIGURE OBJECTS --- %

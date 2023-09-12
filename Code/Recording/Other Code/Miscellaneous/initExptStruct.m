@@ -62,9 +62,16 @@ if ~isempty(objIMAQ) && ~isa(objIMAQ,'DummyVideo')
     end
     
     % sets the camera specific properties
-    switch get(objIMAQ,'Name')
-        case {'Logitech Webcam Pro 9000','USB Video Device'}
-            Timing.Tp = 10;
+    devName = get(objIMAQ,'Name');
+    if strContains(devName,'Basler GenICam Source')
+        % case is a basler genicam type
+        Timing.Tp = 10;
+    else
+        % case are other specific cameras
+        switch devName
+            case {'Logitech Webcam Pro 9000','USB Video Device'}
+                Timing.Tp = 10;
+        end
     end
 
     % sets the image acquisition device name
