@@ -20,9 +20,18 @@ if nargin > 2
     if isnumeric(varargin{1})
         % if so, flag that the panel is not to be updated
         updatePanel = false;
-    elseif ishandle(varargin{1})
-        % otherwise, these are the handles to ignore
-        nonHandle = num2cell(varargin{1});        
+        
+    elseif iscell(varargin{1})
+        % otherwise, these are the handles to ignore        
+        if ishandle(varargin{1}{1})
+            nonHandle = varargin{1};
+        end
+        
+    else
+        % otherwise, these are the handles to ignore        
+        if ishandle(varargin{1})
+            nonHandle = num2cell(varargin{1});
+        end        
     end
 else
     updatePanel = ~strcmp(get(hPanel,'type'),'uitab');

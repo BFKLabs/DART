@@ -437,6 +437,7 @@ function menuOpenProto_Callback(~, ~, handles)
 resetStimTrain = true;
 hFig = handles.figExptSetup;  
 iProg = getappdata(hFig,'iProg');
+iExpt0 = getappdata(hFig,'iExpt');
 infoObj = getappdata(hFig,'infoObj');
 
 % retrieves the default directory
@@ -513,6 +514,9 @@ if datenum(iExpt.Timing.T0) < now
     T0new = addtodate(datenum(iExpt.Timing.T0),1,'day');
     iExpt.Timing.T0 = datevec(T0new);
 end
+
+% resets the original inter-video pause time
+iExpt.Timing.Tp = iExpt0.Timing.Tp;
 
 % determines if the currently loaded device properties are sufficient
 % to run this experiment

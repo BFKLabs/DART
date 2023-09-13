@@ -1607,8 +1607,12 @@ classdef SingleTrackInit < SingleTrack
             if isempty(Iref0)
                 return;
             else                
-                Iref = normImg(obj.frObj.downsampleImage(Iref0));
-                N = ceil((size(Iref,1) - 1)/2);
+                Iref = normImg(obj.frObj.downsampleImage(Iref0),1);
+                if mod(size(Iref,1),2) == 0
+                    Iref = min(1,max(0,imresize(Iref,size(Iref)+1)));
+                end
+
+                N = (size(Iref,1) - 1)/2;
             end
             
             % loops through each of the phases/regions calculating the

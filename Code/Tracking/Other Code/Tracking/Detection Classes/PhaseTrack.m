@@ -957,7 +957,11 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 Bw = getExclusionBin(obj.iMov,size(ImgSL{1}),[]);                
                 
                 % sets up the special residual image stack
-                IbgSL = ImgBG(iRT{iT},:);
+                if obj.nI > 0
+                    IbgSL = ImgBG(iRT{iT},iCT);
+                else
+                    IbgSL = ImgBG(iRT{iT},:);
+                end
                 ImgSegS{iT} = cellfun(@(x)(Bw.*max(0,IbgSL-x)),ImgSL,'un',0);
             end
             

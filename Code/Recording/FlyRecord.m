@@ -1,5 +1,5 @@
 function varargout = FlyRecord(varargin)
-% Last Modified by GUIDE v2.5 17-Aug-2023 08:32:49
+% Last Modified by GUIDE v2.5 13-Sep-2023 23:40:45
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -350,6 +350,11 @@ function menuSyncSummary_Callback(hObject, eventdata, handles)
 
 % runs the summary sychronisation file GUI
 SyncSummary(handles.figFlyRecord)
+
+% -------------------------------------------------------------------------
+function menuDownsampleVideo_Callback(hObject, eventdata, handles)
+
+ConvertVideo(handles.figFlyRecord);
 
 % -------------------------------------------------------------------------
 function menuProgDef_Callback(hObject, eventdata, handles)

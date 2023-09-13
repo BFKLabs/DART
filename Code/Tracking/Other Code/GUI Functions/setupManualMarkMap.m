@@ -3,7 +3,7 @@ function [Imap,pMn] = setupManualMarkMap(obj)
 % memory allocation
 dTol = 10;
 pMn = cell(max(obj.nTube),obj.nApp);
-% hG = fspecial('gaussian',5,2);
+hG = fspecial('gaussian',5,2);
 
 % retrieves the image from the main gui
 hImg = findobj(obj.hGUI.imgAxes,'Type','image');
@@ -21,7 +21,7 @@ for i = 1:obj.nApp
 end
 
 % retrieves the indices
-iMn = find(Bw.*imregionalmin(I));
+iMn = find(Bw.*imregionalmin(imfilter(I,hG)));
 [yMx,xMx] = ind2sub(sz,iMn);
 
 % sets up the full marker map
@@ -37,9 +37,12 @@ for i = find(obj.iMov.ok(:)')
         isIn = find((yMx >= iR(1)) & (yMx <= iR(end)) & ...
                     (xMx >= iC(1)) & (xMx <= iC(end)));
         
+        % removes the insignificant points
+        ii = I(iMn(isIn))/max(I(iMn(isIn))) < 0.5;
+
         % creates the sub-region map from the remaining points
         szL = [length(iR),length(iC)];
-        pMn{j,i} = [xMx(isIn),yMx(isIn)];        
+        pMn{j,i} = [xMx(isIn(ii)),yMx(isIn(ii))];        
         Imap(iR,iC) = setSubRegionMap(pMn{j,i},pOfs,szL,dTol);
     end
 end
@@ -48,15 +51,24 @@ end
 function ImapL = setSubRegionMap(pMn,pOfs,szL,dTol)
 
 % memory allocation
-D = zeros([szL,size(pMn,1)]);
+ImapL = zeros(szL);
+Dmin = dTol*ones([szL,2]);
+
+% sets the 
+DB = bwdist(setGroup((dTol+1)*[1,1],(2*dTol+1)*[1,1]));
 
 % sets up the distance map for each point
 for i = 1:size(pMn,1)
+    % determines the valid row/column indices
     dP = roundP(pMn(i,:)-pOfs);
-    Dnw = bwdist(setGroup(dP,szL));
-    D(:,:,i) = Dnw;
-end
+    iR = (dP(2)-dTol):(dP(2)+dTol);
+    iC = (dP(1)-dTol):(dP(1)+dTol);
+    [ii,jj] = deal((iR>0) & (iR<=szL(1)),(iC>0) & (iC<=szL(2)));
 
-% sets the final map values (remove any large distance points
-[Dmin,ImapL] = min(D,[],3,'omitnan');
-ImapL(Dmin>dTol) = 0;
+    % determines the closest overall points
+    Dmin(iR(ii),iC(jj),2) = DB(ii,jj);
+    [Dmin(iR(ii),iC(jj),1),iMnNw] = min(Dmin(iR(ii),iC(jj),:),[],3,'omitnan');
+
+    % updates the sub-region map
+    ImapL(iR(ii),iC(jj)) = i*(iMnNw == 2);
+end

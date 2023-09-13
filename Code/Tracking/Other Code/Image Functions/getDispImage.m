@@ -174,5 +174,3 @@ if isSub && ~isempty(Img)
     % retrieves the sub-image
     Img = setSubImage(handles,Img);
 end
-
-a = 1;

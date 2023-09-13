@@ -937,7 +937,7 @@ try close(h); catch; end
 function menuConvertVideo_Callback(~, ~, handles)
 
 % runs the video conversion GUI
-ConvertVideo(handles.output.iData.ProgDef);
+ConvertVideo(handles.output);
 
 % -------------------------------------------------------------------------
 function menuProgPara_Callback(~, ~, handles)
