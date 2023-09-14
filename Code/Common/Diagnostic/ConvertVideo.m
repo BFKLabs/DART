@@ -51,7 +51,7 @@ classdef ConvertVideo < handle
         % fixed object dimensions
         dX = 10;
         widFig = 515;
-        hghtFig = 310;
+        hghtFig = 290;
         hghtBut = 25;
         hghtButS = 20;
         hghtTxt = 16;
@@ -262,10 +262,9 @@ classdef ConvertVideo < handle
 
             % initialisations
             tStrT = 'TEMPORAL CONVERSION';
-            uData = {'fRate','',''};            
-            fTypeT = {'edit','text','text'};
-            fStrT = {'Final','Estimated','Rated',...
-                     'Use Temporal Downsampling'};            
+            uData = {'fRate',''};            
+            fTypeT = {'edit','text'};
+            fStrT = {'Final','Estimated','Use Temporal Downsampling'};
             
             % creates the panel object
             pPosT = [obj.dX*[1,1]/2,obj.widPanelTS,obj.hghtPanelTS];
@@ -302,7 +301,8 @@ classdef ConvertVideo < handle
             end
             
             % creates the checkbox object
-            pPosChkT = [obj.dX*[1,7],obj.widPanelTS-2*obj.dX,obj.hghtChk];
+            nR = 2*length(fTypeT) + 1;
+            pPosChkT = [obj.dX*[1,nR],obj.widPanelTS-2*obj.dX,obj.hghtChk];
             obj.hObjT{end} = createUIObj('checkbox',obj.hPanelT,...
                 'Position',pPosChkT,'FontSize',obj.fSz,...
                 'FontWeight','Bold','String',fStrT{end},...
@@ -317,10 +317,10 @@ classdef ConvertVideo < handle
 
             % initialisations
             tStrS = 'SPATIAL CONVERSION';
-            fTypeS = {'edit','edit','text'};
-            uData = {'frmHght','frmWid',''};
+            fTypeS = {'edit','edit'};
+            uData = {'frmHght','frmWid'};
             fStrS = {'Final Frame Height: ','Final Frame Width: ',...
-                     'Original Frame Size: ','Use Spatial Downsampling'};
+                     'Use Spatial Downsampling'};
             
             % creates the panel object
             lPosS = sum(pPosT([1,3])) + obj.dX/2;
@@ -357,7 +357,8 @@ classdef ConvertVideo < handle
             end       
             
             % creates the checkbox object
-            pPosChkS = [obj.dX*[1,7],obj.widPanelTS-2*obj.dX,obj.hghtChk];
+            nR = 2*length(fTypeS) + 1;            
+            pPosChkS = [obj.dX*[1,nR],obj.widPanelTS-2*obj.dX,obj.hghtChk];
             obj.hObjS{end} = createUIObj('checkbox',obj.hPanelS,...
                 'Position',pPosChkS,'FontSize',obj.fSz,...
                 'FontWeight','Bold','String',fStrS{end},...
@@ -753,12 +754,10 @@ classdef ConvertVideo < handle
             % sets the temporal conversion fields
             set(obj.hObjT{1},'Value',num2str(obj.fRate));
             set(obj.hObjT{2},'Text',sprintf('%.2f',obj.fRateEst));
-            set(obj.hObjT{3},'Text',num2str(obj.fRateR));
             
             % sets the spatial conversion fields
             set(obj.hObjS{1},'Value',num2str(obj.frmHght));            
             set(obj.hObjS{2},'Value',num2str(obj.frmWid));
-            set(obj.hObjS{3},'Text',frmSz);
             
             % sets the other object properties
             obj.hTxtC.Text = '0';            
