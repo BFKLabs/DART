@@ -718,7 +718,10 @@ classdef ConvertVideo < handle
                 return                
             else
                 % sets the objects to ignore
-                hObjIgn = {obj.hButS{1},obj.hButC{1},obj.hButC{2}};
+                hObjIgn = {obj.hButS{1},obj.hButC{1},obj.hButC{2}};                
+
+                % checks the time stamps and calculates the frame rate
+                obj.checkTimeStamps();
                 fRateE = cellfun(@(x)...
                     (mean(1./diff(x),'omitnan')),obj.sData.tStampV);
             end
@@ -774,6 +777,39 @@ classdef ConvertVideo < handle
             setObjEnable(obj.hButS{1},canConv);
             
         end
+
+        % --- checks on the video time stamps
+        function checkTimeStamps(obj)
+
+            %
+            for i = 1:length(obj.sData.tStampV)
+                % determines the gaps within the time vector
+                T = obj.sData.tStampV{i};
+                iGrpT = getGroupIndex(T == 0);
+
+                % fills in any gaps within the time vector
+                for j = 1:length(iGrpT)
+                    if iGrpT{j}(1) == 1
+                        % case is group encompasses the first point
+                        xiE = iGrpT{j}(end);
+                        T(iGrpT{j}) = interp1([0;xiE],[0;T(xiE)],iGrpT{j});
+
+                    elseif iGrpT{j}(end) == length(T)
+                        % case is group encompasses the last point
+                        a = 1;  % FINISH ME!
+
+                    else
+                        % case is another group
+                        xiE = arr2vec(iGrpT{j}([1,end])) + [-1;1];
+                        T(iGrpT{j}) = interp1(xiE,T(xiE),iGrpT{j});
+                    end
+                end
+
+                % resets the time vector
+                obj.sData.tStampV{i} = T;
+            end
+
+        end
                 
     end
 
@@ -788,7 +824,7 @@ classdef ConvertVideo < handle
                     % case is the mj2 video type
                     vExtn = '*.mj2';
                     
-                case ''
+                case 'MPEG-4'
                     % case is the MPEG-4 video type
                     vExtn = '*.mp4';
                     
