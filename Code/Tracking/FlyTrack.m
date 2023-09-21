@@ -88,6 +88,7 @@ handles = initObjProps(handles);
 
 % initialisations
 cType = 0;
+hAx = handles.imgAxes;
 
 % sets the DART object handles (if provided) and the program directory
 switch length(varargin) 
@@ -299,8 +300,8 @@ set(hObject,'ResizeFcn',{@figFlyTrack_ResizeFcn,handles})
 centreFigPosition(hObject);
 
 % clears the main axis
-cla(handles.imgAxes)
-axis(handles.imgAxes,'off')
+cla(hAx)
+axis(hAx,'off')
 
 % if calibrating, then start the video timer object
 if isCalib             
@@ -684,6 +685,13 @@ if loadImgData(handles, ldData.name, ldData.dir, setMovie, isSolnLoad)
     % recalculates the axes global coordinates
     calcAxesGlobalCoords(handles)    
     
+    % initialises the axis properties
+    hAx = handles.imgAxes;
+    if isprop(hAx,'MinorGridColor')
+        set(hAx,'GridColor',[1,0,0],'GridAlpha',0.5)
+        set(hAx,'MinorGridColor',[1,0,0],'MinorGridAlpha',0.5)
+    end
+
 else
     % if the user cancelled loading, then set the load flag to false
     ok = false;

@@ -470,8 +470,12 @@ classdef ConvertVideo < handle
             
             % sets the output video file names
             outDir = fullfile(obj.fDir,'Converted');            
-            vFile = cellfun(@(x)(fullfile(outDir,x)),obj.fName,'un',0);            
-            
+            vFile = cellfun(@(x)(fullfile(outDir,x)),obj.fName,'un',0);
+
+            % retrieves the video file compression string
+            fExtn = getFileExtn(obj.fName{1});
+            vComp = obj.getVideoFileCompression(fExtn);
+
             % determines if any of the output files already exist
             hasV = cellfun(@(x)(exist(x,'file') > 0),vFile);            
             if any(hasV)
@@ -506,7 +510,7 @@ classdef ConvertVideo < handle
                 % creates the video reader/writer object
                 k = iFileC(i);                
                 vObjR = VideoReader(obj.fFile{k});                                
-                vObjW = VideoWriter(vFile{k});                
+                vObjW = VideoWriter(vFile{k},vComp);                
                 
                 % determines if there is any temporal downsampling                
                 if obj.hObjT{end}.Value
@@ -834,7 +838,26 @@ classdef ConvertVideo < handle
             end
                     
         end
-        
+
+        % --- retrieves the video file extension
+        function vComp = getVideoFileCompression(vExtn)
+            
+            switch vExtn
+                case '.mj2'
+                    % case is the mj2 video type
+                    vComp = 'Motion JPEG 2000';
+                    
+                case '.mp4'
+                    % case is the MPEG-4 video type
+                    vComp = 'MPEG-4';
+                    
+                otherwise
+                    % case is the other video file type
+                    vComp = 'Motion JPEG AVI';
+            end
+                    
+        end
+
         % --- sets the panel properties (local wrapper)
         function setPanelProps(hCheck,isOn)
             

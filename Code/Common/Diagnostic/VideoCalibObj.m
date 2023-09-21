@@ -418,7 +418,11 @@ classdef VideoCalibObj < handle
             end            
                     
             % sets the sub-image
-            Inw = eData.Data(obj.iRI,obj.iCI);
+            try
+                Inw = eData.Data(obj.iRI,obj.iCI);
+            catch
+                Inw = eData.Data;
+            end
 
             % updates the time/avg. intensity values  
             Tnw = datevec(eData.Timestamp);

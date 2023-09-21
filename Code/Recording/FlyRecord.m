@@ -917,8 +917,7 @@ end
 
 % retrieves the greatest common denominator
 sz = vRes([2 1]);
-D = gcd(sz(1),sz(2));
-N = ceil(min(20*D./sz))*(sz/D);
+N = roundP(20*sz./max(sz));
 
 % calculates the marker locations
 [Y,X] = deal(linspace(0,sz(1),N(1)),linspace(0,sz(2),N(2)));
@@ -926,12 +925,12 @@ N = ceil(min(20*D./sz))*(sz/D);
 % plots the y-grid lines
 hold(hAx,'on');
 for i = 2:(N(1)-1)
-    plot(hAx,[0 sz(2)],Y(i)*[1 1],'r:','linewidth',1,'tag','hGrid');
+    plot(hAx,[0 sz(2)],Y(i)*[1 1],'r:','linewidth',2,'tag','hGrid');
 end
 
 % plots the x-grid lines
 for i = 2:(N(2)-1)
-    plot(hAx,X(i)*[1 1],[0 sz(1)],'r:','linewidth',1,'tag','hGrid');
+    plot(hAx,X(i)*[1 1],[0 sz(1)],'r:','linewidth',2,'tag','hGrid');
 end
 hold(hAx,'off');
 
