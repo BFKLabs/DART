@@ -151,7 +151,7 @@ classdef AdaptorInfoClass < handle
             end       
             
             % sets the test mode menu item
-            devName = {'DESKTOP-94RD45L'};
+            devName = {'DESKTOP-94RD45L','DESKTOP-NLLEH0V'};
             [~,hName] = system('hostname');            
             isDev = any(strContains(devName,hName(1:end-1)));
             setObjVisibility(obj.hGUI.menuTestMode,isDev);

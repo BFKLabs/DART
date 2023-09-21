@@ -414,7 +414,12 @@ classdef MetricIndivData < DataOutputArray
                     
                     case 2
                         % case is the fly separation
-                        xiF = obj.iFlyH{iApp}{1,iExp}(:)';
+                        if obj.useGlob
+                            xiF = obj.iFlyH{iApp}{1,iExp}(:)';
+                        else
+                            xiF = 1:nP(2);                            
+                        end
+                            
                         if obj.numGrp
                             mStr0{iLvl} = arrayfun(@num2str,xiF,'un',0);
                         else
@@ -469,7 +474,12 @@ classdef MetricIndivData < DataOutputArray
         function iFlyG = setGroupFlyIndices(snTot,iApp)
             
             % field retrieval
-            cID = snTot.cID{iApp};
+            if snTot.iMov.ok(iApp)
+                cID = snTot.cID{iApp};
+            else
+                iFlyG = [];
+                return
+            end
             
             % calculates the index offset
             nFlyG = arr2vec(getSRCount(snTot.iMov)');

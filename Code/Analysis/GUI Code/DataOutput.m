@@ -1,5 +1,5 @@
 function varargout = DataOutput(varargin)
-% Last Modified by GUIDE v2.5 12-Nov-2022 09:40:13
+% Last Modified by GUIDE v2.5 21-Sep-2023 02:56:25
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -2449,12 +2449,15 @@ end
 % retrieves the group count
 eData = getappdata(hFig,'eData');
 iData = getappdata(hFig,'iData');
+snTot = getappdata(hFig,'snTot');
 
 % determines the group/experiment counts
 nApp = sum(iData.getAppOut());
 nExp = sum(iData.getExpOut());
+has2D = any(arrayfun(@(x)(is2DCheck(x.iMov)),snTot));
 
 % retrieves the base experimental data fields
+useGlob = false;
 useDay = eData.mltDay;
 useApp = eData.mltApp & (nApp > 1);
 [useExp1,useExp2] = deal(eData.mltExp & (nExp > 1),true);
@@ -2471,10 +2474,12 @@ switch iSelT
         
     case {4,7}
         % case is the individual metrics
+        useGlob = ~has2D;
         [useExp2,useApp] = deal(false);
         
     case 6
         % case is the individual signals
+        useGlob = ~has2D;
         [useExp2,useApp] = deal(false);
         
 end
@@ -2504,6 +2509,7 @@ end
 setCheckProps(handles.checkSepByApp,useApp)
 setCheckProps(handles.checkSepByExpt,useExp)
 setCheckProps(handles.checkSepByDay,useDay)
+setCheckProps(handles.checkGlobalIndex,useGlob)
 updateNumGroupCheck(handles,iSelT)
 
 % --- updates the data alignment panel properites

@@ -1000,7 +1000,7 @@ pause(0.05);
 nRow = 4;
 cWid = {255,55};
 tPos = [10,10,400,94];
-cEdit = [false,true];
+cEdit = [true,true];
 cForm = {'char','logical'};
 cName = {'Sub-Region Group Name','Include'};
 eFcn = {@tableAppInfo_CellEditCallback,handles};

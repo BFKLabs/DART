@@ -234,9 +234,15 @@ classdef SigIndivData < DataOutputArray
                     
             else    
                 % sets the fly count/genotype group counts
-                obj.nFly = num2cell(num2cell(cellfun('length',obj.iFly)),1);
-%                 obj.nFly = num2cell(num2cell(cellfun('length',obj.iFly)),2)';
-                [obj.iFly,obj.nGrp] = deal(num2cell(obj.iFly,1),1);    
+                if obj.useGlob
+                    obj.nFly = num2cell(...
+                        num2cell(cellfun('length',obj.iFly)),1);
+                    [obj.iFly,obj.nGrp] = deal(num2cell(obj.iFly,1),1);    
+                else                
+                    obj.nFly = num2cell(...
+                        num2cell(cellfun('length',obj.iFly)),2)';          
+                    [obj.iFly,obj.nGrp] = deal(num2cell(obj.iFly,2)',1);    
+                end
 
 %                 % sets the fly index title strings    
 %                 obj.mStrF = cellfun(@(x)(arrayfun(@(xx)([obj.tSp,...
@@ -324,7 +330,12 @@ classdef SigIndivData < DataOutputArray
                 switch iLvl
                     case 1
                         % case is the fly separation
-                        xiE = obj.iFly{iApp}{iExp}(:)';
+                        if obj.useGlob
+                            xiE = obj.iFly{iApp}{iExp}(:)';
+                        else
+                            xiE = 1:obj.nFly{iApp}{iExp};
+                        end
+                            
                         if obj.numGrp
                             mStr0{iLvl} = arrayfun(@num2str,xiE,'un',0);
                         else
@@ -590,12 +601,12 @@ classdef SigIndivData < DataOutputArray
             [obj.nApp,nFlyT] = deal(sum(appOutF),nFlyT(iOut,:));            
             
             % sets the global fly indices
-            if obj.snTot(1).iMov.is2D
-                obj.iFly = arrayfun(@(x)(1:x),nFlyT,'un',0);
-            else
+            if obj.useGlob
                 iFly0 = cell2cell(arrayfun(@(x)(...
                     obj.setGlobalFlyIndices(x)),obj.snTot,'un',0));
                 obj.iFly = iFly0(iOut,:);
+            else
+                obj.iFly = arrayfun(@(x)(1:x),nFlyT,'un',0);                
             end
             
             % resets the metrics to the specified genotype groups

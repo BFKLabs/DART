@@ -31,6 +31,7 @@ classdef DataOutputArray < handle
         sepGrp
         sepDay
         numGrp
+        useGlob
         isHorz
         
         % other scalar fields
@@ -88,6 +89,7 @@ classdef DataOutputArray < handle
             obj.sepExp = getCheckValue(obj.hFigH.checkSepByExpt);
             obj.sepDay = getCheckValue(obj.hFigH.checkSepByDay);            
             obj.numGrp = getCheckValue(obj.hFigH.checkNumGroups);
+            obj.useGlob = getCheckValue(obj.hFigH.checkGlobalIndex);
             obj.isHorz = get(obj.hFigH.radioAlignHorz,'value');
             
             % sets the other scalar fields

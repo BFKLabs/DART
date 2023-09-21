@@ -6,7 +6,7 @@ function uType = getUserType()
 
 % sets the user type/token key string based on the computer
 switch hName(1:end-1)
-    case {'DESKTOP-94RD45L'} 
+    case {'DESKTOP-94RD45L','DESKTOP-NLLEH0V'} 
         % case is a developer
         uType = 0;
 

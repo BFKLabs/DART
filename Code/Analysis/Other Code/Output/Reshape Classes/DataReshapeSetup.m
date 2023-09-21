@@ -187,7 +187,7 @@ classdef DataReshapeSetup < handle
     end
     
     % static class methods
-    methods (Static)        
+    methods (Static)
         
         % --- retrieves the reshape function based on type
         function rFcn = getReshapeFunc(iType)
