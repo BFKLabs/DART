@@ -537,6 +537,7 @@ switch indNw(2)
         % case is the inclusion flag
                 
         % updates the apparatus data struct
+        pObj.sInfo = sInfo0{iExp};
         pObj.sInfo.snTot.iMov.ok(indNw(1)) = nwData;        
         pObj.updateCurrentExptInfo();
         
