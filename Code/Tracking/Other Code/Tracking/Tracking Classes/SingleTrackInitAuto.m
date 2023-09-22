@@ -525,7 +525,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
             xiP = -dtPerL:floor(nR-yL(end)+dtPerL);             
             
             % keep looping until a feasible solution is achieved
-            while 1
+            while ~isempty(xiP)
                 % reduces down the close peaks
                 tPkTF = obj.removeClosePeaks(tPkT,yPkT,dtPerF);
             

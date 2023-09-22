@@ -1094,7 +1094,7 @@ classdef DART < handle
             % determines the                    
             dList0 = dir(fullfile(pDir, '**\*.*'));
             dList0 = dList0([dList0.isdir]);
-            dList = unique(arrayfun(@(x)(x.folder),dList0,'un',0));            
+            dList = unique(arrayfun(@(x)(x.folder),dList0,'un',0));
             
             % removes the non-feasible folders
             isOK = ~(obj.strContains(dList,'Executable Only') | ...

@@ -2492,6 +2492,15 @@ classdef CalcBG < handle
                 % case is the blob is stationary
                 iFrmR = 1:length(obj.indFrm{iPh});
             end
+
+            % determines if the region has been rejected
+            if ~obj.iMov.flyok(iTube,iApp)
+                % if so, update the flag value
+                obj.iMov.flyok(iTube,iApp) = true;
+
+                % resets the info table dialog
+                obj.hInfo.jTable.setValueAt(true,iTube-1,iApp-1)
+            end
             
             % retrieves the image filter
             bgP = obj.getTrackingPara();
