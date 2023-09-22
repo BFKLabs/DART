@@ -38,7 +38,7 @@ for i = find(obj.iMov.ok(:)')
                     (xMx >= iC(1)) & (xMx <= iC(end)));
         
         % removes the insignificant points
-        ii = I(iMn(isIn))/max(I(iMn(isIn))) < 0.5;
+        ii = I(iMn(isIn))/max(I(iMn(isIn))) < 1;
 
         % creates the sub-region map from the remaining points
         szL = [length(iR),length(iC)];

@@ -287,14 +287,16 @@ classdef FlyInfoGUI < handle
             resetObjPos(obj.hFig,'height',2*obj.dX,1)  
             
             %
-            if obj.snTot.iMov.is2D
-
-            else
-                % removes any rejected groups from the table
-                xiR = 1:obj.jTable.getRowCount;
-                for i = find(~obj.snTot.iMov.ok(:)')
-                    arrayfun(@(x)(obj.jTable.setValueAt([],x-1,i-1)),xiR)
-                    obj.jTable.repaint;
+            if ~isempty(obj.snTot)
+                if obj.snTot.iMov.is2D
+    
+                else
+                    % removes any rejected groups from the table
+                    xiR = 1:obj.jTable.getRowCount;
+                    for i = find(~obj.snTot.iMov.ok(:)')
+                        arrayfun(@(x)(obj.jTable.setValueAt([],x-1,i-1)),xiR)
+                        obj.jTable.repaint;
+                    end
                 end
             end
 
