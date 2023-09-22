@@ -464,7 +464,10 @@ function tableAppInfo_CellEditCallback(hObject, eventdata, handles)
 % retrieves the cell indices
 hFig = handles.figFlyCombine;
 pObj = getappdata(hFig,'pltObj');
+sInfo0 = getappdata(hFig,'sInfo');
 hGUIInfo = getappdata(hFig,'hGUIInfo');
+hTabGrp = getappdata(hFig,'hTabGrp');
+iExp = get(get(hTabGrp,'SelectedTab'),'UserData');
 
 % other initialisations
 Data = get(hObject,'Data');
@@ -515,6 +518,7 @@ switch indNw(2)
         % case is the group name string
         if ~strContains(nwData,',')
             % updates the group name and background colours
+            pObj.sInfo = sInfo0{iExp};
             pObj.sInfo.gName{indNw(1)} = nwData; 
             pObj.updateCurrentExptInfo();           
             

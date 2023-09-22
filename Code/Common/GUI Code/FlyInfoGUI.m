@@ -16,7 +16,8 @@ classdef FlyInfoGUI < handle
         hPanelV
         hPopup
         jTable
-        rTable        
+        rTable
+        hTick
         
         % other fields           
         isVis
@@ -174,6 +175,9 @@ classdef FlyInfoGUI < handle
                 obj.cHdr = setup1DRegionNames(obj.iMov.pInfo,3);
             end
             
+            % sets the timer object
+            obj.hTick = tic;
+
         end
         
         % --- sets up the data array (removes any missing/none regions)
@@ -282,6 +286,18 @@ classdef FlyInfoGUI < handle
             resetObjPos(obj.hFig,'width',2*obj.dX,1)
             resetObjPos(obj.hFig,'height',2*obj.dX,1)  
             
+            %
+            if obj.snTot.iMov.is2D
+
+            else
+                % removes any rejected groups from the table
+                xiR = 1:obj.jTable.getRowCount;
+                for i = find(~obj.snTot.iMov.ok(:)')
+                    arrayfun(@(x)(obj.jTable.setValueAt([],x-1,i-1)),xiR)
+                    obj.jTable.repaint;
+                end
+            end
+
         end
         
         % --- creates the check table 
@@ -370,6 +386,10 @@ classdef FlyInfoGUI < handle
             global tableUpdating
             tableUpdating = true;
 
+            % determines the timer difference between last update
+            hTimeNw = toc(obj.hTick);
+            obj.hTick = tic;
+
             % sets the cell selection callback function (non background estimate)
             iNw = [evnt.getFirstRow+1,evnt.getColumn+1];
 
@@ -384,8 +404,10 @@ classdef FlyInfoGUI < handle
                 grpCheck = get(obj.hGUI.menuAvgSpeedGroup,'Checked');
                 if strcmp(grpCheck,'on')
                     % if so, then update the main trace again
-                    updateFcn = getappdata(obj.hFigMain,'updatePlot');
-                    updateFcn(obj.hGUI);
+                    if hTimeNw > 0.1                    
+                        pObj = getappdata(obj.hFigMain,'pltObj');
+                        pObj.updatePosPlot();                    
+                    end
 
                 else 
                     % case is updating non-group trace fields

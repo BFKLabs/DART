@@ -533,6 +533,9 @@ classdef DataCombPlotObj < handle
                         isVis = num2cell(ok(:,iApp));
                     end
                 end
+
+                % sets up the patch colours
+                tCol = getAllGroupColours(length(unique(obj.sInfo.gName)));
                 
                 % sets the grouping indices
                 if obj.isMltTrk && ~avgPlot
@@ -547,10 +550,17 @@ classdef DataCombPlotObj < handle
                 hGrpP = obj.hGrpF(iS);
                 
                 % updates the face colours of the fill objects
-                tCol = getAllGroupColours(length(unique(obj.sInfo.gName)));
-                arrayfun(@(h,i,isV)(set(setObjVisibility(h,isV),...
-                    'FaceColor',tCol(i+1,:))),hGrpP(iiG),iGrp,...
-                    cell2mat(arr2vec(isVis(iiG))));
+                isVisF = cell2mat(arr2vec(isVis(iiG)));
+                if avgPlot
+                    indV = find(isVisF);
+                    xiH = 1:length(indV);
+
+                    arrayfun(@(h,i)(set(setObjVisibility(h,1),...
+                        'FaceColor',tCol(i+1,:))),hGrpP(xiH),iGrp(indV));
+                else
+                    arrayfun(@(h,i,isV)(set(setObjVisibility(h,isV),...
+                        'FaceColor',tCol(i+1,:))),hGrpP(iiG),iGrp,isVisF);
+                end
             end
             
             % resets region acceptance flags so they match up correctly
@@ -666,6 +676,10 @@ classdef DataCombPlotObj < handle
             % resets all the marker regions
             obj.updateLimitMarkers();
             
+            % sets the limit marker visibility
+            setObjVisibility(obj.hStart.hObj,canPlot)
+            setObjVisibility(obj.hFinish.hObj,canPlot)
+
         end
         
         % ------------------------------------ %
@@ -676,7 +690,8 @@ classdef DataCombPlotObj < handle
         function resetXTickMarkers(obj)
             
             % retrieves the xtick marker labels and the y-axis limits
-            yLimC = get(obj.hAx,'ylim');
+            nFlyMx = obj.getMaxPlotObjCount(obj.sInfo.snTot.iMov);
+            yLimC = [0,nFlyMx] + 0.5;
             hTick0 = findall(obj.hAx,'tag','hXTick');
             
             % removes any previous tick markers

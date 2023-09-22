@@ -179,7 +179,7 @@ if exist(smFile,'file')
                         (iExpt.Timing.T0),floor(tStampV{1}(1)),'second'));
     if xi(1) ~= 0
         [iExpt.Timing.T0,tOfs] = deal(T0,tStampV{1}(1));
-%         tStampV = cellfun(@(x)(x-tOfs),tStampV,'un',0);
+        tStampV = cellfun(@(x)(x-tOfs),tStampV,'un',0);
     end  
     
     % sets the experiment flag (if not set)
