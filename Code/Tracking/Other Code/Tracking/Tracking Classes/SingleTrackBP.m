@@ -1022,6 +1022,8 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             
             % parameters
             pTolDiff = 10;
+            dMuTolDiff = 30;
+            dpImg = zeros(1,2);                        
             
             % retrieves the 
             Img0 = obj.bData(iDir).Img0;
@@ -1031,18 +1033,24 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             ImgNw = obj.getFeasComparisonImage(fStr); 
             if isempty(ImgNw)
                 % if one doesn't exist, then return a zero offset
-                dpImg = zeros(1,2);
                 return
             end
+
+            % retrieves the new image
+            if mean(abs(Img0(:) - ImgNw(:))) > dMuTolDiff
+                % the abs difference between frames is too large so ignore
+                return
+            else
+                % if the difference between the candidate/comparison images 
+                % is too large, then perform a histogram match                
+                if abs(mean2(Img0) - mean2(ImgNw)) > pTolDiff
+                    % hisogram matches images (if difference is too large)
+                    ImgNw = double(imhistmatch(uint8(ImgNw),uint8(Img0),256));
+                end
                 
-            % if the difference between the candidate/comparison images is
-            % too large, then perform a histogram match
-            if abs(mean2(Img0) - mean2(ImgNw)) > pTolDiff                
-                ImgNw = double(imhistmatch(uint8(ImgNw),uint8(Img0),256));                
+                % calculates video offset between the new/candidate frames
+                dpImg = flip(roundP(fastreg(ImgNw,Img0)));
             end
-            
-            % calculates the image offset
-            dpImg = flip(roundP(fastreg(ImgNw,Img0)));
             
         end
             

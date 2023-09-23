@@ -158,6 +158,7 @@ function menuCalcShift_Callback(hObject, eventdata, handles)
 
 % parameters
 pTolDiff = 10;
+dMuTolDiff = 30;
 
 % retrieves the currently selected experiment information
 hFig = handles.output;
@@ -180,14 +181,19 @@ for i = find(isnan(bpS.dpImg(1:nFile,1))')
     end
     
     % retrieves the new image
-    ImgNw = bpObj.getFeasComparisonImage(bpS.mName{i}); 
-    if abs(mean2(bpS.Img0) - mean2(ImgNw)) > pTolDiff
-        % hisogram matches the images (if difference is too large)
-        ImgNw = double(imhistmatch(uint8(ImgNw),uint8(bpS.Img0),256));
-    end    
-    
-    % calculates the video offset between the new/candidate frames
-    bpS.dpImg(i,:) = flip(roundP(fastreg(ImgNw,bpS.Img0)));    
+    ImgNw = bpObj.getFeasComparisonImage(bpS.mName{i});
+    if mean(abs(bpS.Img0(:) - ImgNw(:))) > dMuTolDiff
+        % the difference between frames is too large so ignore
+        bpS.dpImg(i,:) = 0;        
+    else
+        if abs(mean2(bpS.Img0) - mean2(ImgNw)) > pTolDiff
+            % hisogram matches the images (if difference is too large)
+            ImgNw = double(imhistmatch(uint8(ImgNw),uint8(bpS.Img0),256));
+        end    
+
+        % calculates the video offset between the new/candidate frames
+        bpS.dpImg(i,:) = flip(roundP(fastreg(ImgNw,bpS.Img0)));    
+    end   
 end
 
 % updates the values within the batch processing data struct field

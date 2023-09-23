@@ -60,11 +60,16 @@ dmn=[m+M0,n+N0];
 
 function [m,n,im]=regsurf(standimage,compimage)
 
-s=fft2(standimage);
-c=ifft2(compimage);
-sc=s.*c;
-im=abs(fftshift(ifft2(sc)));
+im = setupcombinedmask(standimage,compimage);
 [M0,N0]=find(im==max(im(:)));
 
 m=round(mean(M0));
 n=round(mean(N0));
+
+function im = setupcombinedmask(standimage,compimage)
+
+s=fft2(standimage);
+c=ifft2(compimage);
+sc=s.*c;
+
+im=abs(fftshift(ifft2(sc)));
