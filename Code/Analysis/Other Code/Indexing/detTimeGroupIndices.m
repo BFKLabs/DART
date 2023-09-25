@@ -7,7 +7,7 @@ function [indGrp,indD] = detTimeGroupIndices(T,Texpt0,nGrp,Tgrp0,isDaySep)
 global tDay
 
 % parameters
-pTolMin = 0.1;
+pTolMin = 0.01;
 
 % sets the day seperation to false (if not provided)
 if (nargin < 4); Tgrp0 = tDay; end

@@ -95,7 +95,12 @@ classdef ResetVideoPara < handle
                 [xL,yL] = deal([min(iCT),max(iCT)],[min(iRT),max(iRT)]);                                
                 
                 % sets the final 
-                obj.Ibg{i} = NaN(diff(yL)+1,diff(xL)+1);
+                if isfield(iMov{i},'vPhase')
+                    Ibg0 = iMov{i}.Ibg{argMin(iMov{i}.vPhase)};
+                else
+                    Ibg0 = iMov{i}.Ibg(1,:);
+                end
+                
                 Ibg0 = iMov{i}.Ibg{argMin(iMov{i}.vPhase)};                
                 for j = 1:length(Ibg0)
                     if detMltTrkStatus(iMov{i})

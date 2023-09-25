@@ -2,6 +2,7 @@ classdef AboutDARTClass < handle
     
     % class properties
     properties
+        
         % main class properties
         hFig
         hPanelO
@@ -265,7 +266,10 @@ classdef AboutDARTClass < handle
                 % updates the other object fields
                 obj.hTxtC{i} = hjLabel;
                 setappdata(obj.hTxtC{i},'UserData',tStr{i,2})
-            end          
+            end    
+            
+            % centres the figure
+            centerfig(obj.hFig);
             
         end
         

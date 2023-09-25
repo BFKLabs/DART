@@ -198,7 +198,7 @@ classdef ExeUpdate < handle
             
             % makes the GUI object visible
             setObjVisibility(obj.hFig,1)
-            centreFigPosition(obj.hFig,2);
+            centerfig(obj.hFig);
             
         end
         

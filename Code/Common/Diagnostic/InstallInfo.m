@@ -173,8 +173,11 @@ else
     
 end
 
-% 
+% resets the figure properties
 resetObjPos(hFig,'Height',-dHght,1)
 resetObjPos(handles.panelReqdToolboxes,'Bottom',-dHght,1)
 resetObjPos(handles.panelPackInstall,'Bottom',dX)
 resetObjPos(handles.panelPackInstall,'Height',-dHght,1)
+
+% centres the figure
+centerfig(hFig)
