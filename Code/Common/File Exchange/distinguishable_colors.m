@@ -108,14 +108,36 @@ function colors = distinguishable_colors(n_colors,bg,func)
   % already-picked color
   colors = zeros(n_colors,3);
   lastlab = bglab(end,:);   % initialize by making the "previous" color equal to background
-  for i = 1:n_colors
+  
+  i = 1;
+  while i <= n_colors
     dX = bsxfun(@minus,lab,lastlab); % displacement of last from all colors on list
     dist2 = sum(dX.^2,2);  % square distance
     mindist2 = min(dist2,mindist2);  % dist2 to closest previously-chosen color
     [~,index] = max(mindist2);  % find the entry farthest from all previously-chosen colors
-    colors(i,:) = rgb(index,:);  % save for output
+    
+    rgb_new = rgb(index,:);
+    if sum(bg) == 0
+        if use_black_col(rgb_new)
+            [colors(i,:),i] = deal(rgb_new,i+1);  % save for output
+        end
+        
+    elseif sum(bg) == 1
+        if ~use_black_col(rgb_new)
+            [colors(i,:),i] = deal(rgb_new,i+1);  % save for output            
+        end
+        
+    else    
+        [colors(i,:),i] = deal(rgb_new,i+1);  % save for output
+    end
+        
     lastlab = lab(index,:);  % prepare for next iteration
   end
+end
+
+function use_blk = use_black_col(rgb)
+  [Q,s_lim] = deal([0.299,0.587,0.114],186/255);
+  use_blk = Q*rgb(:) > s_lim;  
 end
 
 function c = parsecolor(s)

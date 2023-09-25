@@ -859,6 +859,20 @@ classdef DART < handle
         % --- PROGRAM DEFAULT FUNCTIONS --- %
         % --------------------------------- %
         
+        % --- 
+        function progDef0 = getDefaultDirStruct(obj)
+            
+            progDef0 = obj.progDef;
+            
+        end
+        
+        % --- 
+        function setDefaultDirStruct(obj,progDefNw)
+           
+            obj.progDef = progDefNw;
+            
+        end
+        
         % --- checks that all default directories paths exist
         function ProgDef = checkAllDefaultDir(obj,defFile)
             
@@ -959,7 +973,7 @@ classdef DART < handle
             strAnl.TempData = {'Analysis','3 - Temporary Data'};
             
             % creates the new data directories from the structs listed above
-            dataDir = getProgFileNameDART('Data');
+            dataDir = obj.getProgFileName('Data');
             ProgDef.DART = obj.createDataDir(strDART,dataDir);
             ProgDef.Recording = obj.createDataDir(strRec,dataDir);
             ProgDef.Tracking = obj.createDataDir(strTrk,dataDir);
@@ -969,40 +983,7 @@ classdef DART < handle
             % saves the program default file
             save(defFile,'ProgDef');
             
-        end
-        
-        % --- creates the data directories (if not already created)
-        function strComb = createDataDir(strData,dataDir)
-            
-            % initialises the output data struct
-            strNw = struct('fldData',strData);
-            
-            % creates the new default directories (if they do not exist)
-            b = fieldnames(strData);
-            for i = 1:length(b)
-                % retrieves the new field information cell array
-                nwCell = getStructField(strData,b{i});
-                
-                % sets the parent directory. create if it doesn't exist
-                topDir = fullfile(dataDir,nwCell{1});
-                if ~exist(topDir,'dir')
-                    mkdir(topDir);
-                end
-                
-                % sets the new directory name and adds to the struct
-                nwDir = fullfile(topDir,nwCell{2});
-                strNw = strStructField(strNw,b{i},nwDir);
-                
-                % if the directory does not exist, then create it
-                if ~exist(nwDir,'dir')
-                    mkdir(nwDir)
-                end
-            end
-            
-            % sets the combined struct
-            strComb = strNw;
-            
-        end
+        end        
         
         % --- retrieves the sub-field, pFldS, from the program defaults
         function ProgDefNew = getProgDefField(obj,pFldS)
@@ -1221,6 +1202,39 @@ classdef DART < handle
             
         end                        
    
+        % --- creates the data directories (if not already created)
+        function strComb = createDataDir(strData,dataDir)
+            
+            % initialises the output data struct
+            strNw = struct('fldData',strData);
+            
+            % creates the new default directories (if they do not exist)
+            b = fieldnames(strData);
+            for i = 1:length(b)
+                % retrieves the new field information cell array
+                nwCell = getStructField(strData,b{i});
+                
+                % sets the parent directory. create if it doesn't exist
+                topDir = fullfile(dataDir,nwCell{1});
+                if ~exist(topDir,'dir')
+                    mkdir(topDir);
+                end
+                
+                % sets the new directory name and adds to the struct
+                nwDir = fullfile(topDir,nwCell{2});
+                strNw = setStructField(strNw,b{i},nwDir);
+                
+                % if the directory does not exist, then create it
+                if ~exist(nwDir,'dir')
+                    mkdir(nwDir)
+                end
+            end
+            
+            % sets the combined struct
+            strComb = strNw;
+            
+        end          
+        
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %
         % ------------------------------- %                        
@@ -1241,7 +1255,7 @@ classdef DART < handle
                 set(hMenu,'Separator',strcmp(mSep,'on'))
             end                
                 
-        end
+        end              
         
     end
     

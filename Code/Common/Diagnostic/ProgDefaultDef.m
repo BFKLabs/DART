@@ -2,6 +2,7 @@ classdef ProgDefaultDef < handle
     
     % class properties
     properties
+        
         % main object handles        
         hFig 
         hFigM
@@ -54,6 +55,7 @@ classdef ProgDefaultDef < handle
     
     % class methods
     methods
+        
         % --- class constructor
         function obj = ProgDefaultDef(hFigM,dType,defDir0)
             
@@ -306,20 +308,20 @@ classdef ProgDefaultDef < handle
             
             % determines if the program defaults have been set
             pFile = getParaFileName('ProgDef.mat');
-            hDART = findall(0,'tag','figDART');
+            objH = getappdata(findall(0,'tag','figDART'),'mObj');
             
             % updates the main gui button userdata properties
             if ~strcmp(obj.dType,'DART')
-                hButD = findall(hDART,'Style','PushButton');
+                hButD = findall(objH.hFig,'Style','PushButton');
                 tStr = arrayfun(@(x)(get(x,'tag')),hButD,'un',0);
                 isB = strContains(tStr,obj.dType(1:(end-3)));
                 set(hButD(isB),'UserData',obj.ProgDef);
             end
             
             % updates the default directory defaults file
-            ProgDef0 = getappdata(hDART,'ProgDef'); 
+            ProgDef0 = objH.getDefaultDirStruct(); 
             ProgDef0 = setStructField(ProgDef0,obj.dType,obj.ProgDef);
-            setappdata(hDART,'ProgDef',ProgDef0)
+            objH.setDefaultDirStruct(ProgDef0);
             
             % re-saves the program default data struct file 
             ProgDef = ProgDef0;
