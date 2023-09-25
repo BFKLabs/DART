@@ -427,6 +427,7 @@ ok = 1;
 
 % loads the data struct
 hFig = handles.output;
+hAx = handles.imgAxes;
 [iData0,iData] = deal(get(hFig,'iData'));
 [iMov,vidTimer] = deal(get(hFig,'iMov'),get(hFig,'vidTimer'));
 hProp0 = getHandleSnapshot(handles);
@@ -615,7 +616,8 @@ end
 
 % clears and turns off the axis
 if ~isBatch
-    axis off; cla        
+    axis(hAx,'off'); 
+    cla(hAx);
 end    
 
 % % resets the snapshot data struct

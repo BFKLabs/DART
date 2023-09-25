@@ -463,8 +463,13 @@ classdef SigIndivData < DataOutputArray
                 for j = find(iok(:)')
                     % converts the time numerical values to strings
                     if obj.hasTime(obj.iMet)
-                        % case is metric is time dependent                        
-                        dT = tData{i}{j} - tData{i}{j}(1);
+                        % case is metric is time dependent     
+                        if obj.nonZeroTime
+                            dT = tData{i}{j} - diff(tData{i}{j}(1:2))/2;
+                        else
+                            dT = tData{i}{j} - tData{i}{j}(1);
+                        end
+                        
                         tData{i}{j} = string(roundP(dT*obj.tMlt,obj.tRnd));
                         
                     else

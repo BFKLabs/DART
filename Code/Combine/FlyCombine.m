@@ -470,8 +470,13 @@ hTabGrp = getappdata(hFig,'hTabGrp');
 iExp = get(get(hTabGrp,'SelectedTab'),'UserData');
 
 % other initialisations
+ok = hGUIInfo.ok;
 Data = get(hObject,'Data');
 [indNw,nwData] = deal(eventdata.Indices,eventdata.NewData);
+
+% updates the solution info
+sInfoNw = sInfo0{iExp};
+sInfoNw.snTot.iMov.flyok = ok;
 
 % removes the selection highlight
 wState = warning('off','all');
@@ -518,7 +523,7 @@ switch indNw(2)
         % case is the group name string
         if ~strContains(nwData,',')
             % updates the group name and background colours
-            pObj.sInfo = sInfo0{iExp};
+            pObj.sInfo = sInfoNw;            
             pObj.sInfo.gName{indNw(1)} = nwData; 
             pObj.updateCurrentExptInfo();           
             
@@ -537,7 +542,7 @@ switch indNw(2)
         % case is the inclusion flag
                 
         % updates the apparatus data struct
-        pObj.sInfo = sInfo0{iExp};
+        pObj.sInfo = sInfoNw;
         pObj.sInfo.snTot.iMov.ok(indNw(1)) = nwData;        
         pObj.updateCurrentExptInfo();
         

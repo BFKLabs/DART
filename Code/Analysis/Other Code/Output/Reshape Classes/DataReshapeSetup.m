@@ -81,7 +81,7 @@ classdef DataReshapeSetup < handle
             % determines number of other formatting checkbox objects
             hFigH = guidata(obj.hFig);
             hChk = findall(hFigH.panelManualData,'style','checkbox');
-            obj.nChk = length(hChk);            
+            obj.nChk = length(hChk) + 1;
             
             % initialisations
             oP = pData.oP;

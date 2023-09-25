@@ -1204,7 +1204,8 @@ iData = getappdata(handles.figDataOutput,'iData');
 iSel = iData.tData.iSel(iData.cTab);
 
 % updates the numeral grouping flags
-iData.tData.altChk{iData.cTab}{iSel}(iType) = get(hObject,'value');
+nwVal = get(hObject,'Value');
+iData.tData.altChk{iData.cTab}{iSel}(iType) = nwVal;
 setappdata(handles.figDataOutput,'iData',iData)
 
 % updates the alignment radio buttons
@@ -1214,7 +1215,17 @@ switch get(hObject,'tag')
         updateAlignPanelProps(handles)
         
     case 'checkSepByExpt'
-        resetExptTabProps(handles,iData,get(hObject,'Value')>0)
+        resetExptTabProps(handles,nwVal>0)
+        
+    case 'checkSepByDay'
+        setObjEnable(handles.checkZeroTime,~nwVal)
+        
+        if nwVal
+            % if separating by day, then disable the zero-time flag 
+            set(handles.checkZeroTime,'Value',false);            
+            iTypeZ = get(handles.checkZeroTime,'UserData');            
+            iData.tData.altChk{iData.cTab}{iSel}(iTypeZ) = false;
+        end
 end
 
 % updates the sheet data
@@ -1979,12 +1990,12 @@ if any(any(metType(:,4:5)))
         
         % sets the final list string and userdata tag
         [lStr,uData] = deal(lStr(1:(5-find(any(Texp>=1,1),1,'first'))),'Time');
-        set(handles.textUnits,'String','Time Vector Units:');
+        set(handles.textUnits,'String','Time Units:');
         
     elseif any(strcmp(field2cell(iData.xVar,'Type'),'Distance'))
         % sets the final list string and userdata tag
         [lStr,uData] = deal({'Millimetres','Centimetres','Metres'},'Dist');
-        set(handles.textUnits,'String','Distance Vector Units:');
+        set(handles.textUnits,'String','Distance Units:');
         
     else
         lStr = [];
@@ -2100,6 +2111,9 @@ hCheck = findall(handles.panelManualData,'style','checkbox');
 for i = 1:length(hCheck)
     set(hCheck(i),'Callback',{@checkOtherFormat});
 end
+
+% sets the other checkbox callback function
+set(handles.checkZeroTime,'Callback',{@checkOtherFormat});
 
 % removes the background edit boxes
 delete(handles.editTabBack)
@@ -2272,7 +2286,8 @@ if ~exist('iData','var')
 end
 
 % retrieves the checkbox handles
-hCheck = findall(handles.panelOtherFormats,'style','checkbox');
+hCheck = [findall(handles.panelOtherFormats,'style','checkbox');...
+          handles.checkZeroTime];
 chkVal = iData.tData.altChk{iData.cTab}{iData.tData.iSel(iData.cTab)};
 
 % updates the checkbox values
@@ -2431,7 +2446,8 @@ end
 % if the parameter tab is selected then disable all checkboxes and exit
 if iSelT == iData.nMetG
     % disables all the checkboxes
-    hCheck = findall(handles.panelOtherFormats,'Style','Checkbox');
+    hCheck = [findall(handles.panelOtherFormats,'style','checkbox');...
+              handles.checkZeroTime];
     arrayfun(@(x)(set(setObjEnable(x,0),'Value',0)),hCheck)
     
     % disables the
@@ -2487,6 +2503,13 @@ end
 % sets the final experiment flag
 useExp = useExp1 && useExp2;
 
+% sets up the non-zeroing time flag
+iSel = iData.tData.iSel(iData.cTab);
+iTypeD = get(handles.checkSepByDay,'UserData');
+nonZeroTime = useDay && any(iSelT == [4,6,7]) && ...
+    ~iData.tData.altChk{iData.cTab}{iSel}(iTypeD) && ...
+    strcmp(get(handles.popupUnits,'Enable'),'on');
+
 % updates the experiment info tab (based on the experiment separation flag)
 if ~isempty(jTabG)
     jTabG.setEnabledAt(0,1);
@@ -2510,6 +2533,7 @@ setCheckProps(handles.checkSepByApp,useApp)
 setCheckProps(handles.checkSepByExpt,useExp)
 setCheckProps(handles.checkSepByDay,useDay)
 setCheckProps(handles.checkGlobalIndex,useGlob)
+setCheckProps(handles.checkZeroTime,nonZeroTime)
 updateNumGroupCheck(handles,iSelT)
 
 % --- updates the data alignment panel properites

@@ -31,8 +31,9 @@ classdef DataOutputArray < handle
         sepGrp
         sepDay
         numGrp
+        isHorz        
         useGlob
-        isHorz
+        nonZeroTime
         
         % other scalar fields
         cTab
@@ -90,6 +91,7 @@ classdef DataOutputArray < handle
             obj.sepDay = getCheckValue(obj.hFigH.checkSepByDay);            
             obj.numGrp = getCheckValue(obj.hFigH.checkNumGroups);
             obj.useGlob = getCheckValue(obj.hFigH.checkGlobalIndex);
+            obj.nonZeroTime = getCheckValue(obj.hFigH.checkZeroTime);
             obj.isHorz = get(obj.hFigH.radioAlignHorz,'value');
             
             % sets the other scalar fields
