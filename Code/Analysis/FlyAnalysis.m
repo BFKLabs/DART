@@ -243,17 +243,10 @@ try close(h); catch; end
 warning(wState);
 
 % retrieves the original data structs
-fName0 = getFinalDirString(getappdata(hFig,'fNameFull'));
 sName0 = getappdata(hFig,'sName');
 
 % check that the loaded data matches the solution file
-if ~strcmp(fName0,A.sData.fName)
-    % experimental solution file name does not match
-    eStr = 'The loaded solution file and temporary dataset do not match';
-    eStr = sprintf('%s\n\n => Loaded Solution File = "%s"\n',eStr,fName0);
-    eStr = sprintf('%s => Temporary Data File = "%s"\n',eStr,A.sData.fName);
-    eStr = sprintf('%s\nYou will need to load the matching solution file.',eStr);
-elseif ~isequal(sName0,A.sData.sName)
+if ~isequal(sName0,A.sData.sName)
     % individual solution file names do not match
     eStr = ['The solution files comprising the multi-experiment ',...
         'solution file do not match. You will need to load the',...
@@ -292,7 +285,6 @@ end
 
 % resets the fields with the loaded data
 setappdata(hFig,'sName',A.sData.sName)
-setappdata(hFig,'fName',A.sData.fName)
 setappdata(hFig,'gPara',A.gPara)
 setappdata(hFig,'sPara',A.sPara)
 setappdata(hFig,'plotD',plotD)
@@ -444,16 +436,16 @@ gPara = getappdata(hFig,'gPara');
 sPara = getappdata(hFig,'sPara');
 
 % retrieves the solution file data string
-sData = struct('fName',[],'sName',[]);
-sData.fName = getFinalDirString(getappdata(hFig,'fNameFull'));
+sData = struct('sName',[]);
 sData.sName = getappdata(hFig,'sName');
 
 % creates the load bar
 h = ProgressLoadbar('Outputting Temporarily Calculated Data To File...');
 
 % saves the data to file
-A = struct('plotD',plotD,'pData',pData,'gPara',gPara,...
-    'sPara',sPara,'sData',sData);
+A = struct('plotD',[],'pData',[],'gPara',gPara,...
+           'sPara',sPara,'sData',sData);
+[A.plotD,A.pData] = deal(plotD,pData);
 save(tName,'-struct','A');
 
 % closes the loadbar
@@ -614,6 +606,10 @@ resetToolbarObj(handles)
 % % resets the plot type
 % popupPlotType_Callback(handles.popupPlotType, '1', handles)
 
+% updates the menu item enabled properties
+setObjEnable(handles.menuSaveData,'off');
+setObjEnable(handles.menuSaveTempData,'off');
+
 % deletes the parameter GUI
 hPara = getappdata(handles.figFlyAnalysis,'hPara');
 if ~isempty(hPara)
@@ -697,6 +693,8 @@ popupPlotType_Callback(handles.popupPlotType, '1', handles)
 
 % disables the listboxes
 setObjProps(handles,'on')
+setObjEnable(handles.menuSaveTempData,'off');
+setObjEnable(handles.menuSaveData,'off');
 setObjEnable(handles.menuSaveTempData,'off');
 
 % deletes the parameter GUI

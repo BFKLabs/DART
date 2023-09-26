@@ -1068,7 +1068,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             obj.pathUpdate = false;
             for i = obj.getResetIndexArray()
                 obj.iTab = i;
-                obj.createFileExplorerTree();
+                obj.createFileExplorerTree(obj.sDir{i});
                 pause(0.05);
             end
             
@@ -1123,7 +1123,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             obj.pathUpdate = false;
             for i = obj.getResetIndexArray()
                 obj.iTab = i;
-                obj.createFileExplorerTree();
+                obj.createFileExplorerTree(obj.sDir{i});
                 pause(0.05);
             end
 
@@ -1321,7 +1321,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             obj.resetFullTabProps();            
 
             % recreates the explorer tree
-            obj.createFileExplorerTree()
+            obj.createFileExplorerTree(obj.sDir{obj.iTab})
             if ~hasFile; return; end
 
             % if loading files through the analysis gui, then update the

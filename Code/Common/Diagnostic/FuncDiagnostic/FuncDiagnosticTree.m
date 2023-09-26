@@ -76,7 +76,7 @@ classdef FuncDiagnosticTree < handle
                 
                 % sets the indices of the 
                 N = cellfun(@length,obj.useF);
-                NT = cumsum([0,N(1:2)]);
+                NT = cumsum([0,N(1:(end-1))]);
                 obj.iRowF = arrayfun(@(x,y)(y+(1:x)),N,NT,'un',0);
                 
                 obj.isInit = false;
