@@ -411,7 +411,7 @@ classdef AnalysisParaClass < handle
                 % case is the data table
                 nwData = event.NewData;
                 [iRow,iCol] = deal(event.Indices(1),event.Indices(2));
-
+                
                 % updates the plot values                
                 switch iCol
                     case (2) % case is setting the fit plotting flag
@@ -540,7 +540,7 @@ classdef AnalysisParaClass < handle
                         obj.pData.sP(3).Lim.plotTrace = pSelT;                        
                         
                         % resets the table data
-                        Data = [lStr(:),num2cell(pSelT)];
+                        Data = [lStr(:),num2cell([pSelT,pSelF])];
                         if strcmp(p(uData{1}).Para,'nBin')
                             Data = [Data,num2cell(pSelF)];
                         end

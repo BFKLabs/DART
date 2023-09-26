@@ -505,6 +505,10 @@ for i = 1:length(hPanel)
     setPanelProps(hPanel(i),'off')
 end
 
+% deletes the function explorer tree
+hTree = findall(handles.panelFuncList,'type','hgjavacomponent');
+delete(hTree)
+
 % deletes the analysis parameter gui (if it exists)
 hPara = findall(0,'tag','figAnalysisPara');
 if ~isempty(hPara)
@@ -604,11 +608,11 @@ setObjEnable(hObject,'off')
 
 % updates the listbox/popup menu colour strings
 resetExptListStrings(handles)
-updateListColourStrings(handles,'func')
+updateListColourStrings(handles,'func','k')
 resetToolbarObj(handles)
 
-% resets the plot type
-popupPlotType_Callback(handles.popupPlotType, '1', handles)
+% % resets the plot type
+% popupPlotType_Callback(handles.popupPlotType, '1', handles)
 
 % deletes the parameter GUI
 hPara = getappdata(handles.figFlyAnalysis,'hPara');
@@ -706,6 +710,10 @@ if ~isempty(hPara)
         pObj.updatePlotData(pData{pInd}{fInd,eInd});
     else
         resetRecalcObjProps(handles,'No')
+        setObjVisibility(hPara,0);
+        
+        % makes the parameter GUI
+        setappdata(hFig,'fIndex',0)        
     end
 end
 
@@ -715,10 +723,10 @@ delete(h);
 % --------------------------------------------------------------------
 function menuFuncDiagnostic_Callback(~, ~, handles)
    
-%
+% sets the selected nodes
 setSelectedNode(handles)
 
-%
+% hide the parameter window
 hPara = findall(0,'tag','figAnalysisPara');
 if ~isempty(hPara)
     setObjVisibility(hPara,0)
@@ -914,6 +922,7 @@ end
 
 % resizes the figure
 figFlyAnalysis_ResizeFcn(hFig, [], handles)
+hFig.Position = hFig.Position + [1,1,0,0];
 
 % -------------------------------------------------------------------------
 function menuMaxSize_Callback(~, ~, handles)
@@ -2922,7 +2931,7 @@ if ~any([eInd,fInd,pInd] == 0)
 end
 
 % --- updates the list string, specified by type
-function updateListColourStrings(handles,type)
+function updateListColourStrings(handles,type,nCol)
 
 % global variables
 global isUpdating
@@ -2931,6 +2940,9 @@ global isUpdating
 switch type
     case 'func'
         % case is for the analysis function list
+        
+        % sets the input arguments
+        if ~exist('nCol','var'); nCol = 'r'; end
         
         % field initialisation
         hFig = handles.figFlyAnalysis;
@@ -2941,8 +2953,8 @@ switch type
         if isempty(hNodeS); return; end
         
         % resets the node name
-        nodeStr = hNodeS(1).getName;
-        nodeStrNw = setHTMLColourString('r',nodeStr,1);
+        nodeStr = retHTMLColouredStrings(char(hNodeS(1).getName));
+        nodeStrNw = setHTMLColourString(nCol,nodeStr,1);
         hNodeS(1).setName(nodeStrNw);
         
         % updates the experiment name

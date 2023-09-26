@@ -112,6 +112,11 @@ else
     iTs = cell2mat(iTs(ii));
 end
     
+% [wMsg, wID] = lastwarn();
+% if ~isempty(wMsg)
+%     a = 1;
+% end
+
 % sets the index band array
 indB = num2cell([[1;(iTs(1:end-1)+1)],iTs],2);
 indG = detTimeGroupIndices(Ttot(iTs),[0 0 T0],1+cP.sepDN,cP.Tgrp0,true);
@@ -150,6 +155,11 @@ for i = 1:nApp
     % of the stimuli events
     [tImmob,isReact] = calcFlyImmobilityTimes(Ttot,Px,Py,Ts,cP,indB);      
 
+%     [wMsg, wID] = lastwarn();
+%     if ~isempty(wMsg)
+%         a = 1;
+%     end
+    
     % groups the immobile time/reaction flags
     if ~isempty(tImmob)
         tImmobG = cellfun(@(x)(tImmob(x,:)),indG,'un',0);
@@ -174,6 +184,8 @@ for i = 1:nApp
                 end                                 
             end            
         end    
+        
+          
 
         % retrieves the signals and bins them into the time groups
         if nargout > 2
@@ -185,7 +197,7 @@ for i = 1:nApp
                     indSnw = indS{j}(1):indS{j}(2);
                     iYnw{j} = ceil(tImmob(j,jj)/nBin);
                     iRnw{j} = double(isReact(j,jj));                
-
+                    
                     % calculates the binned x-values (if they are present)
                     if ~isempty(Px)
                         Xnw{j} = setBinnedSignals(...
@@ -196,10 +208,10 @@ for i = 1:nApp
                     if ~isempty(Py)
                         Ynw{j} = setBinnedSignals(...
                                             Py(indSnw,jj),Tsig{j},nSig);
-                    end                
+                    end                    
                 end
-            end
-
+            end                           
+            
             % sets the x-values (if they present)
             if ~isempty(Px)
                 XbinT = cellfun(@(x)(cell2mat(Xnw(x)')),indG,'un',0);

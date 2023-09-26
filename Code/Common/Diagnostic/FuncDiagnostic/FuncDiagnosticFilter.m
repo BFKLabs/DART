@@ -130,7 +130,7 @@ classdef FuncDiagnosticFilter < matlab.mixin.SetGet
                 % experiment shape string
                 obj.fcnInfo{iExp,2} = expStr{1+iMov{iExp}.is2D};
                 if isfield(iMov{iExp},'autoP') && ...
-                        ~isempty(iMov{iExp}.autoP.X0)
+                        ~isempty(iMov{iExp}.autoP)
                     obj.fcnInfo{iExp,2} = sprintf('%s (%s)',...
                         obj.fcnInfo{iExp,2},iMov{iExp}.autoP.Type);
                 end

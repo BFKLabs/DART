@@ -193,7 +193,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
 
                 % determines if a tree was created
                 hasTree(i) = obj.ftObj{i}.ok;
-                obj.jTabGrp.setEnabledAt(i-1,hasTree(i))
+%                 obj.jTabGrp.setEnabledAt(i-1,hasTree(i))
             end
 
             % sets the first valid tab
@@ -726,14 +726,17 @@ classdef OpenSolnFileTab < dynamicprops & handle
             obj.ftObj{obj.iTab} = FileTreeExplorer(obj,sDirNw);
             
             % if there were matches, then update the information fields
+            mTreeNw = obj.ftObj{obj.iTab}.mTree;
             if obj.ftObj{obj.iTab}.ok
                 % updates the table information
                 obj.sDir{obj.iTab} = sDirNw;
                 obj.sFile{obj.iTab} = obj.ftObj{obj.iTab}.sFileT;
                 
-                % updates the table information
-                mTreeNw = obj.ftObj{obj.iTab}.mTree;
+                % updates the table information                
                 set(mTreeNw,'MouseClickedCallback',{@obj.tableUpdateSel});
+            else
+                % disables the tree
+                mTreeNw.Enabled = false;
             end
             
             % disables the add button

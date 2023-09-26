@@ -876,9 +876,13 @@ classdef FuncDiagnostic < handle
             iLvl = evnt.Indices(1);            
             Data = get(hTable,'Data');
             bgCol = get(hTable,'BackgroundColor');
-            
-            % determines if the scope is feasible
-            if obj.hasData(iLvl)
+
+            % determines if the scope is feasible            
+            if ~any(cell2mat(Data(:,1)))
+                % otherwise, reset the field value
+                Data{iLvl,1} = evnt.PreviousData;            
+
+            elseif obj.hasData(iLvl)
                 % if so, update the tables background colour
                 obj.useScope(iLvl) = evnt.NewData;
                 bgCol(iLvl,:) = 0.94 + 0.06*evnt.NewData;

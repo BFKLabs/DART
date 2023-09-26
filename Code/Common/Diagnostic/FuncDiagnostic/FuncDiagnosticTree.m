@@ -26,6 +26,12 @@ classdef FuncDiagnosticTree < handle
         Imap
         ImapU
         
+        % selected function fields
+        iFcn
+        useF
+        iRowF
+        fData0
+        
         % position vector/other cell array fields
         tPos
         pPos
@@ -60,9 +66,19 @@ classdef FuncDiagnosticTree < handle
             % initialises the class fields and explorer tree
             obj.initClassFields();
             
-            % initialises the explorer tree
             if obj.isInit
+                % initialises the explorer tree                
                 obj.setupExplorerTree();
+    
+                % sets up the selected node indices
+                [obj.fData0,obj.iFcn] = obj.getCurrentSelectedNodes();
+                obj.useF = cellfun(@(x)(true(length(x),1)),obj.iFcn,'un',0);
+                
+                % sets the indices of the 
+                N = cellfun(@length,obj.useF);
+                NT = cumsum([0,N(1:2)]);
+                obj.iRowF = arrayfun(@(x,y)(y+(1:x)),N,NT,'un',0);
+                
                 obj.isInit = false;
             end
             
@@ -159,7 +175,7 @@ classdef FuncDiagnosticTree < handle
             end
             
             % creates the tree root node
-            for pInd = pIndT                              
+            for pInd = pIndT
                 % determines the experiment compatibility
                 obj.ffObj.detExptCompatibility(obj.sScope{pInd});
                 obj.setupMappingIndices(pInd);
@@ -192,8 +208,37 @@ classdef FuncDiagnosticTree < handle
                 % sets the tree structure mouse click callback function 
                 set(jTreeCB,'MouseClickedCallback',@obj.treeSelectChng);
                 
-            else                
-                obj.hTreeF.CheckedNodes = obj.hRoot;
+            else           
+                if obj.isInit
+                    obj.hTreeF.CheckedNodes = obj.hRoot;
+                else
+                    hNodeS = [];
+                    for i = 1:length(pIndT)
+                        % retrieves the parent node of the group type
+                        j = pIndT(i);
+                        tStrP = sprintf('Function Scope = %s',obj.sType{j});
+                        hNodeSP = findall(obj.hTreeF,'Text',tStrP);
+
+                        % determines if there are nodes for the indices
+                        iFcnNw = obj.iFcn{j}(obj.useF{j});
+                        hNode0 = arrayfun(@(x)(findall(hNodeSP,...
+                                        'UserData',x)),iFcnNw,'un',0);
+                        
+                        % if there are valid nodes, then add them to the 
+                        % selected node list            
+                        isNode = cellfun(@(x)(isa(x,...
+                            'matlab.ui.container.TreeNode')),hNode0);
+                        if any(isNode)
+                            hNodeNw = arrayfun(@(x)(findall(...
+                                hNodeSP,'UserData',x)),iFcnNw(isNode));                        
+                            hNodeS = [hNodeS;hNodeNw(:)];
+                        end
+                    end
+                    
+                    % sets the nodes
+                    obj.hTreeF.CheckedNodes = hNodeS(:);
+                end
+                    
                 expand(obj.hTreeF,'All');
                 uistack(obj.hPanelF,'top')                
                 set(obj.hTreeF,'CheckedNodesChangedFcn',@obj.treeSelectChng)
@@ -226,12 +271,12 @@ classdef FuncDiagnosticTree < handle
                 for j = 1:length(indC)
                     % retrieves the function name/index
                     fcnNameNw = obj.fcnName{pInd}{indC(j)};
-                    iFcn = obj.ffObj.Imap(obj.indS{pInd}(indC(j)),pInd);
+                    iFcnM = obj.ffObj.Imap(obj.indS{pInd}(indC(j)),pInd);
 
                     % creates the new tree node
                     hNodeNw = obj.createTreeNode(hNodeP,fcnNameNw);
                     if ~obj.isOldVer
-                        hNodeNw.UserData = iFcn;
+                        hNodeNw.UserData = iFcnM;
                     end
                 end
             end           
@@ -304,12 +349,22 @@ classdef FuncDiagnosticTree < handle
         % -------------------------------- %                     
         
         % --- tree update callback function
-        function treeSelectChng(obj, hTree, evnt)
+        function treeSelectChng(obj, ~, evnt)
             
             if obj.isOldVer
                 obj.hNodeLS = getSelectedTreeNodes(obj.hRoot);
             else
-                obj.hNodeLS = evnt.LeafCheckedNodes;
+                obj.hNodeLS = evnt.LeafCheckedNodes;                 
+            end
+
+            % determines the currently selected nodes
+            [~,iSelN] = obj.getCurrentSelectedNodes();
+            
+            % resets the selection flags
+            obj.useF = cell(1,length(iSelN));
+            for i = 1:length(obj.useF)
+                [~,iA] = intersect(obj.iFcn{i},iSelN{i});
+                obj.useF{i} = setGroup(iA,[length(obj.iFcn{i}),1]);
             end
             
             if ~isempty(obj.extnSelectFcn)
@@ -474,7 +529,7 @@ classdef FuncDiagnosticTree < handle
             if obj.isOldVer
                 % checkbox tree import
                 import com.mathworks.mwswing.checkboxtree.*                                
-                hNode = DefaultCheckBoxNode(pStr);
+                hNode = DefaultCheckBoxNode(pStr);                                
                 hNode.setSelectionState(SelectionState.SELECTED);
                 
                 if ~isempty(hP)

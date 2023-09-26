@@ -55,13 +55,8 @@ classdef FileTreeExplorer < handle
                 obj.sFileT = setdiff(obj.sFileT,sFile0);
             end
             
-            % finds all the files within the parent directory with the 
-            % specified file extension                        
-            if isempty(obj.sFileT)
-                % if there are no files found, then exit 
-                obj.ok = false;
-                return
-            end                        
+            % determines if there are any matches within the directory
+            obj.ok = ~isempty(obj.sFileT);
 
             % initialises the class fields and create the tree object            
             obj.createFileStructure();   
@@ -76,14 +71,17 @@ classdef FileTreeExplorer < handle
         % --- creates the file directory tree structure
         function createFileStructure(obj)
             
-            % splits the paths into their constituent folders
-            nS = length(obj.sDir) + 2;
-            sFileSp = cell2cell(cellfun(@(x)...
+            % only continue if there are files in the folder
+            if obj.ok
+                % splits the paths into their constituent folders
+                nS = length(obj.sDir) + 2;
+                sFileSp = cell2cell(cellfun(@(x)...
                        (strsplit(x(nS:end),filesep)),obj.sFileT,'un',0),1);
-            
-            % determines the file path directory structure
-            obj.sFileD = obj.createDirStructure(sFileSp,'');
-            obj.sFileD.isSet = true;    
+                   
+                % determines the file path directory structure
+                obj.sFileD = obj.createDirStructure(sFileSp,'');
+                obj.sFileD.isSet = true;                       
+            end            
             
         end
         
@@ -148,12 +146,12 @@ classdef FileTreeExplorer < handle
             if ~isempty(jTreePr); delete(jTreePr); end            
             
             % sets up the directory trees structure
-            sDirF = getFileName(obj.sDir);
+            sDirF = getFileName(obj.sDir);            
             obj.jRoot = DefaultCheckBoxNode(sDirF);
-            
+
             % creates the root branch
-            obj.addTreeBranch(obj.jRoot,obj.sFileD);
-            
+            obj.addTreeBranch(obj.jRoot,obj.sFileD);            
+                        
             % creates the final tree explorer object
             obj.jTree = com.mathworks.mwswing.MJTree(obj.jRoot);
             obj.mTree = handle(CheckBoxTree...
@@ -182,8 +180,14 @@ classdef FileTreeExplorer < handle
             % initialisations
             isChng = false;
             nNodeP = jNodeP.getChildCount;
-            [nD,nF] = deal(length(sFileL.sFileD),length(sFileL.fName));                        
-            sStateP = jNodeP.getSelectionState();
+            sStateP = jNodeP.getSelectionState();            
+            
+            if obj.ok
+                nF = length(sFileL.fName);
+                nD = length(sFileL.sFileD);
+            else
+                [nD,nF] = deal(0,1);
+            end
             
             % if there are already existing nodes, then check that the node
             % count matches the required count            
@@ -238,10 +242,16 @@ classdef FileTreeExplorer < handle
                 obj.addDummyNode(jNodeNw);
             end
             
-            % creates the directory nodes
-            for i = 1:length(sFileL.fName)                
-                % sets up the directory node object
-                fileName = sFileL.fName{i};                                 
+            % creates the file nodes
+            for i = 1:nF              
+                % sets up the node filename
+                if obj.ok
+                    fileName = sFileL.fName{i};
+                else
+                    fileName = 'No File Matches!';
+                end
+                    
+                % sets up the file node objec                
                 if hasDummy
                     hasDummy = false;
                     jNodeNw = jNodeP.getChildAt(0);

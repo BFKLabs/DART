@@ -14,7 +14,7 @@ dPmax = 10;
 
 % from the non-empty groups, calculate the distance travelled over each
 % time group (divided by the time for each time group)
-iS = cellfun(@(x)(find(iT == x)),num2cell(xi),'un',0);
+iS = arrayfun(@(x)(find(iT == x)),xi,'un',0);
 nM = mode(cellfun('length',iS));
 jj = cellfun('length',iS) >= min(max(1,nM),max(1,nM/2));
 
@@ -35,15 +35,17 @@ for i = 1:nC
         for j = 1:length(iGrp)
             if ((iGrp{j}(1) > 1) && (iGrp{j}(end) < nSig))        
                 % linearly interpolates the missing signal points
-                iiG = iGrp{j};
-                Ys(iiG,i) = interp1(find(~ii),Ys(~ii,i),iiG,'pchip','extrap');
-
+                iiG = iGrp{j};                                
+                Ys(iiG,i) = interp1(...
+                    find(~ii),Ys(~ii,i),iiG,'pchip','extrap');         
+                
                 % determines if there is a large change in the signal
                 kk = abs(diff([Ys(1,i);Ys(:,i)])) > dPmax;
                 if (any(kk))
                     kkI = ~kk & ~ii;
-                    Ys(kk,i) = interp1(find(kkI),Ys(kkI,i),find(kk),'linear');    
-                end             
+                    Ys(kk,i) = interp1(...
+                        find(kkI),Ys(kkI,i),find(kk),'linear','extrap');    
+                end                 
             end
         end
     end

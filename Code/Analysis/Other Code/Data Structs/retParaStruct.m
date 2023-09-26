@@ -44,7 +44,12 @@ for i = 1:length(fVal)
                     p.pT = pStr(i).Lim.plotTrace;            
                     p.pF = pStr(i).Lim.plotFit;
                 end
+            elseif pStr(i).Lim == 0
+                % case is function diagnostic test
+                p.pInd = 1;
+                
             else
+                % other case
                 p.pInd = pStr(i).Lim;
             end
                        
