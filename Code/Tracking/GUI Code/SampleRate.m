@@ -117,7 +117,7 @@ delete(handles.figSampleRate);
 %-------------------------------------------------------------------------%
 
 % --- sets all the field strings --- %
-function setFieldStrings(handles,iData,sRate)
+function setFieldStrings(handles)
 
 % retrieves the data values
 iData = getappdata(handles.figSampleRate,'iData');
@@ -126,7 +126,7 @@ frm0 = getappdata(handles.figSampleRate,'frm0');
 
 % sets the p;d frame count and frame time step fields
 set(handles.textOldFrames,'string',num2str(iData.nFrmT));
-set(handles.textOldTime,'string',sprintf('%.2f sec',1/iData.exP.FPS));
+set(handles.textOldTime,'string',sprintf('%.2f sec',1/iData.exP.FPSest));
 set(handles.editSampleRate,'string',num2str(sRate));
 set(handles.editStartFrame,'string',num2str(frm0));
 
@@ -146,4 +146,4 @@ nFrmT = floor(iData.nFrmT/sRate) - (frm0-1);
 
 % sets the new frame count and frame time step fields
 set(handles.textNewFrames,'string',num2str(nFrmT));
-set(handles.textNewTime,'string',sprintf('%.2f sec',(sRate/iData.exP.FPS)));
+set(handles.textNewTime,'string',sprintf('%.2f sec',sRate/iData.exP.FPSest));

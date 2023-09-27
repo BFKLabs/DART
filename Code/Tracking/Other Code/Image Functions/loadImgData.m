@@ -45,8 +45,9 @@ switch fExtn
     case {'.mj2','.mov','.mp4'}
         % case is an .mj2, .mov or .mp4 files
         hFig.mObj = mObj;
-        iData.sz = [mObj.Height mObj.Width];        
-        iData.exP.FPS = calcFrameRateEst(iData,mObj.FrameRate);           
+        iData.sz = [mObj.Height mObj.Width];     
+        iData.exP.FPS = mObj.FrameRate;
+        iData.exP.FPSest = calcFrameRateEst(iData,mObj.FrameRate);           
         
     case '.mkv'
         % case is .mkv files
@@ -60,13 +61,14 @@ switch fExtn
         
         % sets the image dimensions/video frame rate
         iData.sz = size(ITmp);
-        iData.exP.FPS = 1000/(mean(diff(tTmp)));                                  
+        [iData.exP.FPS,iData.exP.FPSest] = deal(1000/(mean(diff(tTmp))));
         
     otherwise        
         % case is .avi files
         isVidObj = false;        
-        iData.sz = [vObj.height,vObj.width]; 
-        iData.exP.FPS = calcFrameRateEst(iData,vObj.rate);        
+        iData.sz = [vObj.height,vObj.width];
+        iData.exP.FPS = vObj.rate;
+        iData.exP.FPSest = calcFrameRateEst(iData,vObj.rate);        
         
         % sets the time-span for the frame and reads it from file
         iFrm0 = roundP(iData.nFrmT/2);

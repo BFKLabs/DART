@@ -2392,7 +2392,28 @@ end
 % applies the image correction (if required)
 if detIfUseHM(iData) && ~isSub
     % sets up the histogram matched image stack
-    ImgNw = setupHistMatchImage(ImgNw,iMov,cFrm);
+    if isfield(iMov,'IbgR')
+        % case is the background reference image has been set
+        ImgNw = setupHistMatchImage(ImgNw,iMov,cFrm);
+    else
+        % otherwise, use the temporary reference images
+        Iref = getappdata(hFig,'IrefTmp');
+        if isempty(Iref)
+            % sets up the reference images (if not already set)
+            xiF = roundP(linspace(1,iData.nFrm,20));
+            Img0 = arrayfun(@(x)(getDispImage(...
+                iData,iMov,x,isSub,handles,1)),xiF,'un',0);
+
+            IL0 = cellfun(@(x,y)(cellfun(@(z)(...
+                z(x,y)),Img0,'un',0)),iMov.iR,iMov.iC,'un',0);
+            Iref = cellfun(@(x)(calcImageStackFcn(x,'median')),IL0,'un',0);
+
+            setappdata(hFig,'IrefTmp',Iref)
+        end
+
+        % sets up the histogram matched image
+        ImgNw = setupHistMatchImage(ImgNw,iMov,cFrm,Iref);
+    end
 
 elseif strcmp(get(handles.menuCorrectTrans,'Checked'),'on')
     %
@@ -2854,7 +2875,7 @@ function exP = setExpPara(handles,exP)
 
 % initialises the struct
 if nargin == 1
-    exP = struct('FPS',NaN,'sFac',1);    
+    exP = struct('FPS',NaN,'FPSest',NaN,'sFac',1);    
 end
 
 % loops through all the fields updating the 

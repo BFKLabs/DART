@@ -234,12 +234,12 @@ switch (typeStr)
         % sets the other object properties
         set(handles.checkFixRatio,'value',1)                
     	set(setObjEnable(handles.frmCountEdit,'on'),...
-                            'string',num2str(iData.cFrm)); 
+                        'string',num2str(iData.cFrm)); 
     	set(setObjEnable(handles.editFrameRate,'inactive'),...
-                            'string',num2str(roundP(iData.exP.FPS,0.01)))
+                        'string',num2str(roundP(iData.exP.FPSest,0.01)))
     	set(handles.frmCountEdit,'string','1');                         
     	set(setObjEnable(handles.editFrameStep,'on'),...
-                            'string',num2str(iData.cStp))
+                        'string',num2str(iData.cStp))
         set(setObjEnable(handles.menuCorrectTrans,'off'),'checked','off')
     	setObjEnable(handles.textFrameStep,'on')
         setObjEnable(handles.menuWinsplit,'on')

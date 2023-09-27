@@ -2499,7 +2499,9 @@ classdef CalcBG < handle
                 obj.iMov.flyok(iTube,iApp) = true;
 
                 % resets the info table dialog
-                obj.hInfo.jTable.setValueAt(true,iTube-1,iApp-1)
+                if ~isempty(obj.hInfo)
+                    obj.hInfo.jTable.setValueAt(true,iTube-1,iApp-1)
+                end
             end
             
             % retrieves the image filter
