@@ -49,7 +49,14 @@ if isempty(chType)
         % removes any duplicate entries
         [Ts,iA,~] = unique(Ts,'stable');
         Tf = Tf(iA);        
-    else
+    elseif isfield(pMotor,'Ch1')
+        % case is all motors are the same
+        [Ts,Tf] = deal(pMotor.Ch1.Ts,pMotor.Ch1.Tf);
+        
+        % removes any duplicate entries
+        [Ts,iA,~] = unique(Ts,'stable');
+        Tf = Tf(iA);        
+    else        
         % determines the names of the channels that were used
         pFld = fieldnames(pMotor);
         [Ts,Tf] = deal(cell(length(pFld),1));
