@@ -24,8 +24,8 @@ end
 function FlyCombine_OpeningFcn(hObject, ~, handles, varargin)
 
 % global variables
-global isAnalysis isUpdating initDock updateFlag regSz 
-[isAnalysis,isUpdating,initDock] = deal(false,false,true);
+global isAnalysis isUpdating updateFlag regSz 
+[isAnalysis,isUpdating] = deal(false);
 updateFlag = 2; pause(0.01); 
 
 % retrieves the regular size of the GUI

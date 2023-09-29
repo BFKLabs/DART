@@ -4,7 +4,26 @@ function hObj = createUIObj(fType,varargin)
 % parameters
 hObj = [];
 p = varargin(2:end);
-isOldVer = verLessThan('matlab','9.10');
+
+if strcmpi(fType,'figure')
+    % case is creating a figure
+    isOldVer = verLessThan('matlab','9.10');
+
+elseif isa(varargin{1},'matlab.ui.Figure')
+    % case is the parent object is a figure
+    isOldVer = ~matlab.ui.internal.isUIFigure(varargin{1});
+
+else
+    % case is the other objects
+    hObj = varargin{1};
+    while 1
+        hObj = get(hObj,'Parent');
+        if isa(hObj,'matlab.ui.Figure')
+            isOldVer = ~matlab.ui.internal.isUIFigure(hObj);
+            break
+        end
+    end
+end
 
 % creates the object based on matlab version type
 if isOldVer

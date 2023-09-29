@@ -100,8 +100,7 @@ classdef ResetVideoPara < handle
                 else
                     Ibg0 = iMov{i}.Ibg(1,:);
                 end
-                
-                Ibg0 = iMov{i}.Ibg{argMin(iMov{i}.vPhase)};                
+                               
                 for j = 1:length(Ibg0)
                     if detMltTrkStatus(iMov{i})
                         obj.Ibg{i} = Ibg0;

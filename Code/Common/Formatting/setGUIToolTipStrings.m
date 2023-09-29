@@ -55,10 +55,7 @@ switch get(hFig,'tag')
          % case is the ?? GUI   
          
     case 'figStatTest'
-         % case is the ?? GUI   
-         
-    case 'figUndockPlot'
-         % case is the ?? GUI   
+         % case is the ?? GUI            
          
     % ------------------------------ %
     % --- DATA COMBINING FIGURES --- %

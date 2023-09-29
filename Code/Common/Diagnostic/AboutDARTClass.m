@@ -269,7 +269,7 @@ classdef AboutDARTClass < handle
             end    
             
             % centres the figure
-            centerfig(obj.hFig);
+            centerfig(obj.hFig);            
             
         end
         

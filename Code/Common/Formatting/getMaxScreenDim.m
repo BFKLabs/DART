@@ -2,13 +2,13 @@
 function [figPos,figPosMx] = getMaxScreenDim(pPos)
 
 % sets the screen dimensions and offset
-[del,scrSz] = deal(50,getPanelPosPix(0,'Pixels','ScreenSize'));    
+[del,scrSz] = deal(30,getPanelPosPix(0,'Pixels','ScreenSize'));    
 if ispc
     % case is OS is PC
-    figPos = [scrSz(1) del scrSz(3) (scrSz(4)-3*del)];
+    figPos = [scrSz(1) del scrSz(3) (scrSz(4)-2.5*del)];
 else
     % case is OS is Mac
-    figPos = [scrSz(1) del scrSz(3) (scrSz(4)-2*del)];
+    figPos = [scrSz(1) del scrSz(3) (scrSz(4)-del)];
 end
 
 % makes a copy of the absolute max position

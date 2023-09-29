@@ -8,6 +8,11 @@ iMov = snTot.iMov;
 pInfo = iMov.pInfo;
 isMT = detMltTrkStatus(iMov);
 
+% sets any missing flags
+if ~isfield(iMov,'calcPhi')
+    [snTot.iMov.calcPhi,iMov.calcPhi] = deal(false);
+end
+
 % determines the number of frames
 i0 = find(~cellfun('isempty',snTot.Px),1,'first');
 if isempty(i0)

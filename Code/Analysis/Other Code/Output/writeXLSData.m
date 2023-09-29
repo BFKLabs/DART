@@ -8,8 +8,10 @@ nwFunc = exist('writecell','file');
 if nwFunc
     % case is using the new function format
     wMode = {'overwritesheet','append'};
-    
+    if isApp; DataNw = DataNw(:,2:end); end    
+
     if iscell(DataNw)
+
         writecell(DataNw,fFile,'Sheet',sName,'WriteMode',wMode{1+isApp});
     else
         writematrix(DataNw,fFile,'Sheet',sName,'WriteMode',wMode{1+isApp});

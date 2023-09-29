@@ -2,7 +2,7 @@
 function [hObj,hFig] = getCurrentAxesProp(pStr)
 
 % determines if the figure is valid
-validFig = {'figOutputPlot','figUndockPlot','figFlyAnalysis'};
+validFig = {'figPlotFigure','figFlyAnalysis'};
 
 % ensures the current figure is the analysis figure
 for i = 1:length(validFig)

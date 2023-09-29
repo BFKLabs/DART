@@ -1014,7 +1014,7 @@ classdef AnalysisOpt < handle
                 switch uChoice
                     case ('Yes') 
                         % case is the user chose to update the parameters
-                        obj.updateButton();
+                        obj.updateButton(obj.hButC{1});
                         buttonUpdate_Callback(handles.buttonUpdate, '1', handles) 
 
                     case ('No') 

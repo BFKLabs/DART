@@ -183,7 +183,7 @@ classdef FuncDiagnosticTree < handle
                 
             % creates the root tree node
             obj.ImapU(~useScope) = {[]};
-            obj.hRoot = obj.createTreeNode(obj.hTreeF,obj.rootStr);            
+            obj.hRoot = obj.createTreeNode(obj.hTreeF,obj.rootStr);
             for pInd = find(~cellfun(@isempty,obj.ImapU)')       
                 % creates the function scope root node
                 obj.setupScopeBranch(pInd)

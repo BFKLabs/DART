@@ -1,5 +1,5 @@
 function varargout = FlyAnalysis(varargin)
-% Last Modified by GUIDE v2.5 10-Jul-2023 03:18:31
+% Last Modified by GUIDE v2.5 28-Sep-2023 18:52:27
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -24,9 +24,9 @@ end
 function FlyAnalysis_OpeningFcn(hObject, ~, handles, varargin)
 
 % global variables
-global isDocked initDock regSz
+global isDocked regSz
 global updateFlag canSelect isAnalysis isUpdating
-[isDocked,initDock,canSelect,isAnalysis] = deal(true);
+[isDocked,canSelect,isAnalysis] = deal(true);
 [isUpdating,updateFlag] = deal(false,2);
 
 % Choose default command line output for FlyAnalysis
@@ -79,8 +79,6 @@ setappdata(hObject,'iData',iData)
 setappdata(hObject,'gPara',gPara)
 setappdata(hObject,'iProg',iData.ProgDef)
 setappdata(hObject,'objDim0',getInitObjDim(hObject))
-
-
 setappdata(hObject,'fDocD',[])
 setappdata(hObject,'fDocObj',[]);
 
@@ -96,6 +94,7 @@ setappdata(hObject,'postSolnLoadFunc',@postSolnLoadFunc)
 setappdata(hObject,'setSelectedNode',@setSelectedNode)
 setappdata(hObject,'resetPlotPanelCoords',@resetPlotPanelCoords)
 setappdata(hObject,'resetPlotDataStructs',@resetPlotDataStructs)
+setappdata(hObject,'popupPlotType',@popupPlotType_Callback)
 setappdata(hObject,'menuSubPlot',@menuSubPlot);
 
 % updates the figure click callback function
@@ -385,6 +384,12 @@ switch fExtn
         % saves the csv stimuli data to file
         saveCSVStimData(fFile,Ts,Tf,exptName,blkInfo,ChN);
 end
+
+% -------------------------------------------------------------------------
+function menuSaveFigure_Callback(hObject, eventdata, handles)
+
+% runs the save figure dialog
+SaveFigure(handles.figFlyAnalysis);
 
 % -------------------------------------------------------------------------
 function menuSaveSubConfig_Callback(~, ~, handles)
@@ -678,6 +683,7 @@ end
 if resetAll
     setappdata(hFig,'pData',resetPlotDataStructs(handles,1))
     setappdata(hFig,'plotD',resetPlotDataStructs(handles))
+    setappdata(hFig,'pImg',resetPlotDataStructs(handles))
 else
     % clears the plot data for the multi-experiments
     plotD = getappdata(hFig,'plotD'); plotD{3}(:) = {[]};
@@ -734,10 +740,15 @@ end
 FuncDiagnostic(handles.figFlyAnalysis);
 
 % -------------------------------------------------------------------------
-function menuUndock_Callback(~, ~, handles)
+function menuUndock_Callback(~, ~, ~)
 
-% runs the plotting GUI
-UndockPlot(handles)
+% outputs a message to screen
+mStr = ['This feature has been removed from DART. To save plot ',...
+        'figures, use the menu item "File => Save => Plot Figures...".'];
+waitfor(msgbox(mStr,'Feature Removed','modal'));
+    
+% % runs the plotting GUI
+% UndockPlot(handles)
 
 % -------------------------------------------------------------------------
 function menuSplitPlot_Callback(~, ~, handles)
@@ -852,6 +863,7 @@ if ~isempty(sPara.pData{sInd}) && ~any(isnan(sPara.ind(sInd,:)))
     % if so, then update the popup menu/list value
     setObjEnable(handles.menuUndock,'on')
     setObjEnable(handles.menuSaveData,'on')
+    setObjEnable(handles.menuSaveFigure,'on')    
     setObjEnable(handles.buttonUpdateFigure,'on')
     set(handles.popupExptIndex,'value',sPara.ind(sInd,1))
     set(handles.popupPlotType,'value',sPara.ind(sInd,3))
@@ -880,8 +892,10 @@ else
     % enables the undocking menu item
     if size(sPara.pos,1) == 1
         setObjEnable(handles.menuUndock,'off')
+        setObjEnable(handles.menuSaveFigure,'off')
     else
         setObjEnable(handles.menuUndock,any(~isnan(sPara.ind(:))))
+        setObjEnable(handles.menuSaveFigure,any(~isnan(sPara.ind(:))))
     end
     
     % disables the update button
@@ -1342,6 +1356,7 @@ setObjProps(handles,'inactive')
 hFig = handles.figFlyAnalysis;
 gPara = getappdata(hFig,'gPara');
 sPara = getappdata(hFig,'sPara');
+pImg = getappdata(hFig,'pImg');
 plotD = getappdata(hFig,'plotD');
 pData = getappdata(hFig,'pData');
 pDataT = getappdata(hFig,'pDataT');
@@ -1489,6 +1504,10 @@ if nReg > 1
     setappdata(hFig,'sPara',sPara);
 end
 
+% updates the plot image
+pImg{pInd}{fInd,eInd} = screencapture(handles.panelPlot);
+setappdata(hFig,'pImg',pImg);
+
 % updates the new parameter data struct into the total struct
 pData{pInd}{fInd,eInd} = pDataNw;
 setappdata(hFig,'pData',pData);
@@ -1498,6 +1517,7 @@ setObjEnable(handles.menuUndock,'on')
 setObjEnable(handles.menuClearPlot,'on')
 setObjEnable(handles.menuResetData,'on');
 setObjEnable(handles.menuSaveTempData,'on');
+setObjEnable(handles.menuSaveFigure,'on')
 
 % sets the save data menu item
 isOn = ~(isempty(pDataNw.oP) || isempty(pDataNw.oP.yVar));
@@ -1727,6 +1747,7 @@ setObjEnable(handles.menuClearPlot,'off')
 setObjEnable(handles.menuUndock,'off')
 setObjEnable(handles.menuResetData,'off')
 setObjEnable(handles.menuSplitPlot,'off')
+setObjEnable(handles.menuSaveFigure,'off')
 
 % calculates the global axes coordinates
 resetPlotPanelCoords(handles)
@@ -2057,6 +2078,7 @@ else
     setObjVisibility(handles.buttonFuncInfo,0)
     if nReg == 1
         setObjEnable(handles.menuUndock,'off')
+        setObjEnable(handles.menuSaveFigure,'off')
     end
 end
 
@@ -2179,6 +2201,7 @@ if all([eInd,fInd,pInd] > 0)
         setObjEnable(handles.menuClearPlot,'on')
         setObjEnable(handles.menuZoom,'on')
         setObjEnable(handles.menuDataCursor,'on')
+        setObjEnable(handles.menuSaveFigure,'on')        
         if isShowPara; setObjVisibility(hPara,'on'); end
         
         % if there are output data parameters, then enable the save menu
@@ -2203,12 +2226,14 @@ if all([eInd,fInd,pInd] > 0)
         % enables the undocking menu item
         if nReg == 1
             setObjEnable(handles.menuUndock,'off')
+            setObjEnable(handles.menuSaveFigure,'off')
         end
     end
 else
     % enables the undocking menu item
     if nReg == 1
         setObjEnable(handles.menuUndock,'off')
+        setObjEnable(handles.menuSaveFigure,'off')
     end
 end
 
@@ -2225,6 +2250,7 @@ if nReg > 1
     
     % updates the sub-plot data struct
     setObjEnable(handles.menuUndock,any(~isnan(sPara.ind(:))))
+    setObjEnable(handles.menuSaveFigure,any(~isnan(sPara.ind(:))))
     setappdata(hFig,'sPara',sPara);
 end
 
@@ -2591,6 +2617,7 @@ setappdata(hFig,'fIndex',0)
 % resets the plot data structs
 setappdata(hFig,'pData',resetPlotDataStructs(handles,1))
 setappdata(hFig,'plotD',resetPlotDataStructs(handles))
+setappdata(hFig,'pImg',resetPlotDataStructs(handles))
 
 % resets the popup menu items
 sName = getappdata(hFig,'sName');
