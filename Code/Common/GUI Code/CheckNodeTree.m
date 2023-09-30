@@ -15,6 +15,7 @@ classdef CheckNodeTree < handle
         % other class fields
         Iicon
         widImg
+        postToggleFcn
         
         % fixed scalar/string fields
         dX = 10;
@@ -42,16 +43,20 @@ classdef CheckNodeTree < handle
         function initClassFields(obj)
                         
             % memory allocation
-            obj.Iicon = cell(length(obj.iType),1);
+            obj.Iicon = cell(length(obj.iType),2);
             for i = 1:length(obj.iType)
                 [I,Imap] = obj.getIconArray(obj.iType{i});
                 if ~isempty(I)
                     % creates the icon image
-                    obj.Iicon{i} = im2java(I,Imap);
+                    obj.Iicon{i,1} = im2java(I,Imap);
+                    
+                    % sets up the parent node icon
+                    Imap(2,:) = [0.93,0.69,0.13];
+                    obj.Iicon{i,2} = im2java(I,Imap);
                     
                     % sets the image width (if not set)
                     if isempty(obj.widImg)
-                       obj.widImg = obj.Iicon{i}.getWidth;
+                       obj.widImg = obj.Iicon{i,1}.getWidth;
                     end
                 end
             end
@@ -60,6 +65,9 @@ classdef CheckNodeTree < handle
         
         % --- initialises the class objects
         function initClassObjects(obj)
+            
+            % parameters
+            N = 2.5;
             
             % java import
             import javax.swing.*
@@ -78,8 +86,9 @@ classdef CheckNodeTree < handle
             obj.jTree = handle(obj.hTree.getTree,'CallbackProperties');
             set(obj.jTree,'MousePressedCallback',@obj.updateIcon);            
             
-            % sets the container properties
-            tPos = [0,0,obj.hPanelP.Position(3:4)] + [1,1,-2,-3]*obj.dX;            
+            % sets the container properties            
+            dtPos = [1,(1+N),-2,-(3+N)]*obj.dX;
+            tPos = [0,0,obj.hPanelP.Position(3:4)] + dtPos;            
             set(hC,'Parent',obj.hPanelP,'Position',tPos);            
             
         end        
@@ -148,22 +157,34 @@ classdef CheckNodeTree < handle
                 end
             end
             
+            % sets the row/column indices
+            iRow = strcmp(obj.iType,chkState);
+            iCol = 1 + hNode.getParent.isRoot;
+            
             % updates the icon
             hNode.setValue(chkState);
-            hNode.setIcon(obj.Iicon{strcmp(obj.iType,chkState)});
+            hNode.setIcon(obj.Iicon{iRow,iCol});
             obj.jTree.treeDidChange();            
             
+            % runs the post toggle function (if it exists)
+            if ~isempty(obj.postToggleFcn)
+                obj.postToggleFcn();
+            end
+                
         end
 
         % --- creates the children nodes
         function createChildNodes(obj,hNodeP,fTreeP)
+            
+            % sets the column index
+            iCol = 1 + hNodeP.isRoot;
             
             % creates the children nodes
             for i = 1:length(fTreeP.Child)
                 % creates the new node
                 nTxt = fTreeP.Child{i}.Text;
                 hNodeC = uitreenode('v0','Checked',nTxt, [], 0);
-                hNodeC.setIcon(obj.Iicon{3});
+                hNodeC.setIcon(obj.Iicon{3,iCol});
                 
                 % adds the new node to the parent node
                 hNodeP.add(hNodeC);

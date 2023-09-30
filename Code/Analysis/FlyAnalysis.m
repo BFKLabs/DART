@@ -24,9 +24,8 @@ end
 function FlyAnalysis_OpeningFcn(hObject, ~, handles, varargin)
 
 % global variables
-global isDocked regSz
-global updateFlag canSelect isAnalysis isUpdating
-[isDocked,canSelect,isAnalysis] = deal(true);
+global regSz updateFlag canSelect isAnalysis isUpdating
+[canSelect,isAnalysis] = deal(true);
 [isUpdating,updateFlag] = deal(false,2);
 
 % Choose default command line output for FlyAnalysis
@@ -73,7 +72,6 @@ setappdata(hObject,'LoadSuccess',false);
 % initialises the structs
 setappdata(hObject,'sInd',1)
 setappdata(hObject,'hPara',[])
-setappdata(hObject,'hUndock',[])
 setappdata(hObject,'hDART',hFigM)
 setappdata(hObject,'iData',iData)
 setappdata(hObject,'gPara',gPara)
@@ -552,15 +550,6 @@ try
 catch    
 end
 
-% deletes the parameter GUI
-try
-    hUndock = getappdata(handles.figFlyAnalysis,'hUndock');
-    if ~isempty(hUndock)
-        try delete(hUndock); catch; end
-    end
-catch    
-end
-
 % makes the main gui visible again
 hDART = findall(0,'tag','figDART','type','figure');
 if ~isempty(hDART)
@@ -744,11 +733,8 @@ function menuUndock_Callback(~, ~, ~)
 
 % outputs a message to screen
 mStr = ['This feature has been removed from DART. To save plot ',...
-        'figures, use the menu item "File => Save => Plot Figures...".'];
-waitfor(msgbox(mStr,'Feature Removed','modal'));
-    
-% % runs the plotting GUI
-% UndockPlot(handles)
+        'figures, use the menu item "File => Save => Plot Figure...".'];
+waitfor(msgbox(mStr,'Feature Removed','modal'));    
 
 % -------------------------------------------------------------------------
 function menuSplitPlot_Callback(~, ~, handles)
@@ -1611,29 +1597,20 @@ end
 function hAx = initAxesObject(handles)
 
 % global variables
-global isDocked newSz
+global newSz
 
 % retrieves the sub-plot parameter struct
 cbFcn = [];
 uStr = 'pixels';
 hFig0 = handles.figFlyAnalysis;
-sInd = getappdata(hFig0,'sInd');
-sPara = getappdata(hFig0,'sPara');
 
 % resets the toolbar objects
 resetToolbarObj(handles)
 
-% sets the units string/axis handles for setting up the figure
-if isDocked
-    % retrieves the sub-plot parameter struct
-    [h,hFig] = deal(handles,hFig0);
-    sInd = getappdata(hFig,'sInd');
-    sPara = getappdata(hFig,'sPara');
-else
-    % if the plot axis is undocked, then use normalized coordinates
-    hFig = getappdata(hFig0,'hUndock');
-    h = guidata(hFig);
-end
+% retrieves the sub-plot parameter struct
+[h,hFig] = deal(handles,hFig0);
+sInd = getappdata(hFig,'sInd');
+sPara = getappdata(hFig,'sPara');
 
 % makes the GUI invisible and deletes all previous axes objects
 clearAxesObject(handles)
@@ -1671,22 +1648,14 @@ cla(hAx); rotate3d(hAx,'off');
 % --- initialises the plotting image axis
 function clearAxesObject(handles,varargin)
 
-% global variables
-global isDocked
-
 % retrieves the sub-plot parameter struct
 sPara = getappdata(handles.figFlyAnalysis,'sPara');
 nReg = size(sPara.pos,1);
 
 % deletes all the axis objects
 if nReg == 1
-    if isDocked
-        h = handles.figFlyAnalysis;
-        hAx = findall(handles.panelPlot,'type','axes');
-    else
-        h = getappdata(handles.figFlyAnalysis,'hUndock');
-        hAx = findall(h,'type','axes');
-    end
+    h = handles.figFlyAnalysis;
+    hAx = findall(handles.panelPlot,'type','axes');
     
     % deletes the axis objects (if they exist)
     if ~isempty(hAx); delete(hAx); end
@@ -1700,15 +1669,9 @@ else
     
     % retrieves the axis objects for all the selected indices
     for i = sInd
-        if isDocked
-            % case is the figure is docked
-            h = handles.figFlyAnalysis;
-            hP = findall(handles.panelPlot,'tag','subPanel','UserData',i);
-        else
-            % case is the figure is undocked
-            h = getappdata(handles.figFlyAnalysis,'hUndock');
-            hP = findall(h,'tag','subPanel','UserData',i);
-        end
+        % case is the figure is docked
+        h = handles.figFlyAnalysis;
+        hP = findall(handles.panelPlot,'tag','subPanel','UserData',i);
         
         % retrieves the axis object
         hAx = findall(hP,'type','axes');

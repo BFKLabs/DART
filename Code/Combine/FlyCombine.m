@@ -58,7 +58,6 @@ setObjVisibility(hFigM,'off')
 setappdata(hObject,'iTab',1);
 setappdata(hObject,'sInfo',[]);
 setappdata(hObject,'pltObj',[]);
-setappdata(hObject,'hUndock',[]);
 setappdata(hObject,'hGUIInfo',[]);
 setappdata(hObject,'hDART',hFigM);
 setappdata(hObject,'iProg',ProgDefNew);

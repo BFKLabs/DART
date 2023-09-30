@@ -72,9 +72,12 @@ classdef SaveFigure < handle
         
         % function explorer panel objects
         hPanelE
+        hTxtE
         hTree
         hRoot
-        
+        widTxtE        
+        widTxtEL = 180;
+                
         % image preview axes panel objects
         hPanelAx
         hAx
@@ -183,6 +186,7 @@ classdef SaveFigure < handle
             % function explorer objects
             dHghtE = (obj.hghtPanelF + obj.hghtPanelD + obj.hghtPanelI);
             obj.hghtPanelE = obj.hghtPanel - (dHghtE + 3*obj.dX);
+            obj.widTxtE = obj.widPanel - (2*obj.dX + obj.widTxtEL);
             
             % image preview object dimensions
             obj.widPanelAx = ceil(obj.iPara.rAR*obj.hghtFig);            
@@ -265,6 +269,7 @@ classdef SaveFigure < handle
             
             % initialisations
             pStrE = 'FUNCTION LIST';
+            tStrEL = 'Selected Output Figure Count: ';
             
             % creates the panel object
             pPosE = [obj.dX*[1,1],obj.widPanel,obj.hghtPanelE];
@@ -272,8 +277,25 @@ classdef SaveFigure < handle
                 'Pixels','FontUnits','Pixels','Position',pPosE,...
                 'FontSize',obj.hSz,'FontWeight','bold');
             
+            % creates
+            pPosEL = [obj.dX*[1,1],obj.widTxtEL,obj.hghtTxt];
+            createUIObj('text',obj.hPanelE,'Position',pPosEL,...
+                'String',tStrEL,'HorizontalAlignment','right',...
+                'FontWeight','Bold','FontSize',obj.fSz);
+             
+            % creates the text object
+            lPosE = sum(pPosEL([1,3]));
+            pPosTE = [lPosE,obj.dX,obj.widTxtE,obj.hghtTxt];
+            obj.hTxtE = createUIObj('text',obj.hPanelE,'Position',pPosTE,...
+                'String','0','HorizontalAlignment','left',...
+                'FontWeight','Bold','FontSize',obj.fSz);            
+            
             % creates the function checkbox tree
             obj.createCheckBoxTree();            
+            
+            % updates the count
+            iSelNw = obj.getCurrentSelectedNodes();
+            obj.hTxtE.String = num2str(length(cell2mat(iSelNw)));            
             
             % -------------------------------------- %
             % --- IMAGE DIMENSIONS PANEL OBJECTS --- %
@@ -455,9 +477,13 @@ classdef SaveFigure < handle
         % --- creates the checkbox tree object
         function createCheckBoxTree(obj)
                         
+            % parameters
+            N = 2.5;
+            
             % retrieves the function dependency
-            obj.indFcn = obj.setFuncExptDep();
-            tPos = [0,0,obj.hPanelE.Position(3:4)] + [1,1,-2,-4]*obj.dX;
+            obj.indFcn = obj.setFuncExptDep();            
+            dtPos = [1,(1+N),-2,-(4+N)]*obj.dX;
+            tPos = [0,0,obj.hPanelE.Position(3:4)] + dtPos;
             
             % deletes any previous explorer trees
             hTreePr = findall(obj.hPanelE,'Type','uicheckboxtree');
@@ -477,6 +503,7 @@ classdef SaveFigure < handle
                 % sets the class fields
                 obj.hTree = objT.hTree;
                 obj.hRoot = objT.hRoot;
+                objT.postToggleFcn = @obj.postToggleFcn;
                 
                 % expands all the top rows
                 objT.jTree.expandRow(0);            
@@ -572,6 +599,15 @@ classdef SaveFigure < handle
             
         end        
         
+        % --- checkbox tree post toggle function
+        function postToggleFcn(obj)
+            
+            % updates the count
+            iSelNw = obj.getCurrentSelectedNodes();
+            obj.hTxtE.String = num2str(length(cell2mat(iSelNw)));            
+            
+        end
+        
         % ---------------------------------------- %
         % --- NODE SELECTION CALLBACK FUNCTION --- %
         % ---------------------------------------- %                
@@ -596,7 +632,7 @@ classdef SaveFigure < handle
                 % case is not a leaf node 
                 obj.updatePlotImage();
             end
-            
+                        
         end        
         
         % --- retrieves the indices of the selected node

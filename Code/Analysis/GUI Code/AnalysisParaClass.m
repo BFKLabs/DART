@@ -618,9 +618,6 @@ classdef AnalysisParaClass < handle
         
         % --- updates the main figure after a parameter change
         function postParaChange(obj,pDataNw)
-
-            % global parameters
-            global isDocked
             
             % sets the default input arguments
             if ~exist('pDataNw','var'); pDataNw = obj.pData; end                       
@@ -645,15 +642,6 @@ classdef AnalysisParaClass < handle
             obj.pData = updatePlotFigure(obj.hFig,pDataNw);
             warning(wState);
             
-            if ~isempty(obj.pData)
-                if ~isDocked                    
-                    % updates the plot data struct
-                    pData0 = getappdata(obj.hFigM,'pData');
-                    pData0{pInd}{fInd,eInd} = obj.pData;
-                    setappdata(obj.hFigM,'pData',pData0)
-                end
-            end
-
             % disables the listboxes
             setObjEnable(obj.hGUI.popupPlotType,'on'); 
             setObjEnable(obj.hGUI.popupExptIndex,'on'); 
