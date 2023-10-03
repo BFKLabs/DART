@@ -6,6 +6,7 @@ classdef CheckNodeTree < handle
         % inputs arguments
         fTree
         hPanelP
+        initVal
         
         % java object handles
         hTree
@@ -14,11 +15,12 @@ classdef CheckNodeTree < handle
         
         % other class fields
         Iicon
-        widImg
+        widImg        
         postToggleFcn
         
         % fixed scalar/string fields
         dX = 10;
+        chkStr = {'Unchecked','Checked'};
         iType = {'Unchecked','Mixed','Checked'};
         
     end
@@ -27,11 +29,15 @@ classdef CheckNodeTree < handle
     methods
        
         % --- class constructor
-        function obj = CheckNodeTree(hPanelP,fTree)
+        function obj = CheckNodeTree(hPanelP,fTree,iVal)
+            
+            % sets the default input arguments
+            if ~exist('iVal','var'); iVal = true; end
             
             % sets the input arguments
             obj.fTree = fTree;
             obj.hPanelP = hPanelP;
+            obj.initVal = obj.chkStr{1+iVal};
             
             % initialises the class fields/objects
             obj.initClassFields();
@@ -43,7 +49,7 @@ classdef CheckNodeTree < handle
         function initClassFields(obj)
                         
             % memory allocation
-            obj.Iicon = cell(length(obj.iType),2);
+            obj.Iicon = cell(length(obj.iType),3);
             for i = 1:length(obj.iType)
                 [I,Imap] = obj.getIconArray(obj.iType{i});
                 if ~isempty(I)
@@ -53,6 +59,10 @@ classdef CheckNodeTree < handle
                     % sets up the parent node icon
                     Imap(2,:) = [0.93,0.69,0.13];
                     obj.Iicon{i,2} = im2java(I,Imap);
+                    
+                    % sets up the parent node icon
+                    Imap(2,:) = [0.81,0.55,0.55];
+                    obj.Iicon{i,3} = im2java(I,Imap);
                     
                     % sets the image width (if not set)
                     if isempty(obj.widImg)
@@ -84,7 +94,7 @@ classdef CheckNodeTree < handle
             
             % creates the tree object
             obj.jTree = handle(obj.hTree.getTree,'CallbackProperties');
-            set(obj.jTree,'MousePressedCallback',@obj.updateIcon);            
+            set(obj.jTree,'MousePressedCallback',@obj.nodeSelFcn);            
             
             % sets the container properties            
             dtPos = [1,(1+N),-2,-(3+N)]*obj.dX;
@@ -94,7 +104,7 @@ classdef CheckNodeTree < handle
         end        
         
         % --- mouse click callback function
-        function updateIcon(obj,~,evnt)
+        function nodeSelFcn(obj,~,evnt)
             
             % retrieves the current path
             [pX,pY] = deal(evnt.getX,evnt.getY);
@@ -114,30 +124,64 @@ classdef CheckNodeTree < handle
             if hNode.isRoot
                 % ignore the root node
                 return
+            end
             
-            elseif hNode.isLeaf
-                % if a leaf node, then 
-                hNodeP = hNode.getParent;
-                hNodeC = obj.getChildNodes(hNodeP);
-                
-                % toggles the node icon/values
+            % updates the parent/children nodes
+            obj.updateChildNodeIcons(hNode);
+            obj.updateParentNodeIcons(hNode,hNode.isLeaf);            
+        end
+        
+        % --- updates the node icons that are parents of hNode
+        function updateChildNodeIcons(obj,hNode,chkStateNw)
+           
+            % if this is a root node then exit            
+            if hNode.isLeaf
+                return
+            end
+            
+            % otherwise, set the child icon values
+            if ~exist('chkStateNw','var')
+                chkStateNw = obj.toggleNodeValue(hNode);
+            end
+            
+            % toggles the checkbox values            
+            hNodeC = obj.getChildNodes(hNode);            
+            cellfun(@(x)(obj.toggleNodeValue(x,chkStateNw)),hNodeC,'un',0);            
+            cellfun(@(x)(obj.updateChildNodeIcons(x,chkStateNw)),hNodeC)
+            
+        end
+            
+        % --- updates the node icons that are childen of hNode
+        function updateParentNodeIcons(obj,hNode,useToggle)
+            
+            % if the parent node is the root then exit
+            hNodeP = hNode.getParent;            
+            if hNodeP.isRoot
+                return
+            end
+            
+            % if a leaf node, then check all siblings
+            hNodeC = obj.getChildNodes(hNodeP);
+
+            % toggles the node icon/values
+            if useToggle
                 obj.toggleNodeValue(hNode);
-                
-                % 
-                nVal = cellfun(@(x)(x.getValue),hNodeC,'un',0);
+            end
+
+            % updates the toggle value of the parent node 
+            nVal = cellfun(@(x)(x.getValue),hNodeC,'un',0);
+            if any(strcmp(nVal,'Mixed'))
+                % if any children are mixed, then set as mixed
+                obj.toggleNodeValue(hNodeP,obj.iType{2});
+            else
+                % otherwise, 
                 isM = strcmp(nVal,'Checked');
                 indM = find(sum(isM) >= [0,1,length(nVal)],1,'last');
                 obj.toggleNodeValue(hNodeP,obj.iType{indM});
+            end
                 
-            else
-                % otherwise, set the child icon values
-                hNodeC = obj.getChildNodes(hNode);
-                
-                % toggles the checkbox values
-                chkStateNw = obj.toggleNodeValue(hNode);
-                cellfun(@(x)(...
-                    obj.toggleNodeValue(x,chkStateNw)),hNodeC,'un',0);
-            end            
+            % updates the parent nodes
+            obj.updateParentNodeIcons(hNodeP,0);
             
         end
         
@@ -159,8 +203,15 @@ classdef CheckNodeTree < handle
             
             % sets the row/column indices
             iRow = strcmp(obj.iType,chkState);
-            iCol = 1 + hNode.getParent.isRoot;
             
+            % sets the column index
+            iLvl = hNode.getLevel;
+            if mod(hNode.getLevel,2) == 0
+                iCol = 1;
+            else
+                iCol = (iLvl+1)/2 + 1;                                
+            end
+                        
             % updates the icon
             hNode.setValue(chkState);
             hNode.setIcon(obj.Iicon{iRow,iCol});
@@ -176,18 +227,43 @@ classdef CheckNodeTree < handle
         % --- creates the children nodes
         function createChildNodes(obj,hNodeP,fTreeP)
             
+            % field retrieval
+            rStr = 'Region Groupings';
+            iLvl = hNodeP.getLevel + 1;                        
+            
+            % sets the icon image index
+            if hNodeP.isRoot
+                iImg = 3;
+                nStrP = obj.initVal;
+            else
+                nStrP = hNodeP.getValue;
+                iImg = strcmp(obj.iType,nStrP);            
+            end
+            
             % sets the column index
-            iCol = 1 + hNodeP.isRoot;
+            if mod(iLvl,2) == 1
+                iCol = (iLvl+1)/2 + 1;
+            else
+                iCol = 1;
+            end
             
             % creates the children nodes
             for i = 1:length(fTreeP.Child)
                 % creates the new node
                 nTxt = fTreeP.Child{i}.Text;
-                hNodeC = uitreenode('v0','Checked',nTxt, [], 0);
-                hNodeC.setIcon(obj.Iicon{3,iCol});
+                hNodeC = uitreenode('v0',nStrP,nTxt, [], 0);                
+                hNodeC.setIcon(obj.Iicon{iImg,iCol});
                 
                 % adds the new node to the parent node
-                hNodeP.add(hNodeC);
+                if (hNodeP.getLevel == 2) && strcmp(nTxt,rStr)
+                    if hNodeP.getChildCount > 0
+                        hNodeP.insert(hNodeC,0);    
+                    else
+                        hNodeP.add(hNodeC);                        
+                    end
+                else
+                    hNodeP.add(hNodeC);
+                end
                 
                 % creates the children nodes
                 if ~isempty(fTreeP.Child{i}.Child)

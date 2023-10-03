@@ -796,7 +796,13 @@ classdef CalcBG < handle
             cPh = obj.iPara.cPhase;            
             hPopup = obj.hGUI.popupImgType;
             popStr = {'Raw Image';'Smoothed Image'};
-            isSpecial = obj.iMov.vPhase(cPh) == 4;
+            
+            % sets up the special analysis flag
+            if isfield(obj.iMov,'vPhase')
+                isSpecial = obj.iMov.vPhase(cPh) == 4;
+            else
+                isSpecial = false;
+            end
             
             % case is the background has been calculated
             if ~isempty(obj.iMov.Ibg)

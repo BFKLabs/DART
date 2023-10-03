@@ -21,7 +21,7 @@ end
 % End initialization code - DO NOT EDIT
 
 % --- Executes just before AnalysisPara is made visible.
-function AnalysisPara_OpeningFcn(hObject, eventdata, handles, varargin)
+function AnalysisPara_OpeningFcn(hObject, ~, handles, varargin)
 
 % Choose default command line output for AnalysisPara
 setObjVisibility(hObject,'off'); 

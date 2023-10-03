@@ -1,5 +1,5 @@
 function varargout = FlyAnalysis(varargin)
-% Last Modified by GUIDE v2.5 28-Sep-2023 18:52:27
+% Last Modified by GUIDE v2.5 03-Oct-2023 22:41:28
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -93,6 +93,8 @@ setappdata(hObject,'setSelectedNode',@setSelectedNode)
 setappdata(hObject,'resetPlotPanelCoords',@resetPlotPanelCoords)
 setappdata(hObject,'resetPlotDataStructs',@resetPlotDataStructs)
 setappdata(hObject,'popupPlotType',@popupPlotType_Callback)
+setappdata(hObject,'popupExptIndex',@popupExptIndex_Callback)
+setappdata(hObject,'treeSelectChng',@treeSelectChng)
 setappdata(hObject,'menuSubPlot',@menuSubPlot);
 
 % updates the figure click callback function
@@ -387,7 +389,8 @@ end
 function menuSaveFigure_Callback(hObject, eventdata, handles)
 
 % runs the save figure dialog
-SaveFigure(handles.figFlyAnalysis);
+hFig = handles.figFlyAnalysis;
+setappdata(hFig,'sfObj',SaveFigure(hFig));
 
 % -------------------------------------------------------------------------
 function menuSaveSubConfig_Callback(~, ~, handles)
@@ -1197,7 +1200,7 @@ eIndex = getappdata(hFig,'eIndex');
 
 % check to see if the new experiment
 if (eIndex ~= get(hObject,'value')) || isa(eventdata,'char')
-    if ~isempty(hPara)
+    if ~isempty(hPara) && ~isa(eventdata,'double')
         % updates the parameter struct in the overall array
         [~,fInd,pInd] = getSelectedIndices(handles);
         
@@ -1242,6 +1245,7 @@ hPara = getappdata(hFig,'hPara');
 snTot = getappdata(hFig,'snTot');
 
 % check to see if the new selection is unique
+% check to see if the new experiment
 if ~isa(eventdata,'char')
     if pIndex ~= get(hObject,'value')
         if ~isempty(hPara)
@@ -1330,9 +1334,15 @@ function buttonUpdateFigure_Callback(~, ~, handles)
 % global variables
 global canSelect
 
-% retrieves the experiment/function plot index
-canSelect = false;
-pause(0.05)
+% determines if the calculations can update
+if canSelect
+    % if so, then 
+    canSelect = false;
+    pause(0.05)
+else
+    % otherwise, exit the function
+    return
+end
 
 % disables the listboxes
 [eInd,fInd,pInd] = getSelectedIndices(handles);
@@ -1417,6 +1427,9 @@ catch err
         'Read the error message associated with this issue.'};
     waitfor(errordlg(eStr,'Analysis Function Calculation Error','modal'))
     
+    % resets the selection flag
+    canSelect = true;
+    
     % enables the listboxes again
     setObjVisibility(hPara,'on')
     setObjProps(handles,'on')
@@ -1448,6 +1461,9 @@ try
     set(0,'CurrentFigure',hFig)
     set(hFig,'CurrentAxes',hAx);
 catch
+    % resets the selection flag
+    canSelect = true;    
+    
     % if there was an error then output an error and exit the function
     eStr = 'Error in initialising axes objects. Try recalculating.';
     waitfor(errordlg(eStr,'Plotting Axes Initialisation Error','modal'))
@@ -1462,6 +1478,9 @@ catch err
     eStr = {'Error! There was an issue with the plotting function. '...
         'Read the error message associated with this issue'};
     waitfor(errordlg(eStr,'Analysis Function Plotting Error','modal'))
+    
+    % resets the selection flag
+    canSelect = true;    
     
     % enables the listboxes again
     setObjVisibility(hPara,'on')
@@ -1491,6 +1510,7 @@ if nReg > 1
 end
 
 % updates the plot image
+pause(0.05);
 pImg{pInd}{fInd,eInd} = screencapture(handles.panelPlot);
 setappdata(hFig,'pImg',pImg);
 
@@ -2000,17 +2020,38 @@ uistack(handles.panelFuncFilter,'top')
 function treeSelectChng(~, eventdata, handles)
 
 % global variables
-global updateFlag isUpdating
+global updateFlag isUpdating canSelect
 
-% determines if the
+% other initialisations
+hFig = handles.figFlyAnalysis;
+
+% determines if the    
 if isUpdating
+    % if currently updating, then exit
     return
+    
+elseif ~canSelect
+    % if currently running the function, then revert back to the original
+    % and exit the function
+    setSelectedNode(handles,getappdata(hFig,'fIndex'))    
+ 
+    % retrieves the progressbar figure handle
+    hProg = findall(0,'tag','ProgBar');
+    if isempty(hProg(1))
+        canSelect = true;
+    else
+        figure(hProg(1));
+    end
+       
+    % exit the function
+    return    
+    
 else
+    % otherwise, reset the update flag value
     updateFlag = 1;
 end
 
 % field retrieval
-hFig = handles.figFlyAnalysis;
 sPara = getappdata(hFig,'sPara');
 plotD = getappdata(hFig,'plotD');
 pData = getappdata(hFig,'pData');
@@ -3252,7 +3293,7 @@ if get(hToggle,'Value')
     toggleFuncFilter_Callback(hToggle, [], handles)
 end
 
-
+% --- removes the data cursor object from the plot axes
 function deleteDataCursorObj(hObj)
 
 if ~isempty(hObj)

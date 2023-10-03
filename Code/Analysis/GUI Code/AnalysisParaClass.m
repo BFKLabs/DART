@@ -1,4 +1,5 @@
 classdef AnalysisParaClass < handle
+    
     % class properties
     properties
         
@@ -49,6 +50,7 @@ classdef AnalysisParaClass < handle
     
     % class methods
     methods
+
         % --- object constructor
         function obj = AnalysisParaClass(hFig,hGUI)
             

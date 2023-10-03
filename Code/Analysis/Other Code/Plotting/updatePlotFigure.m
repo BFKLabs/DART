@@ -12,6 +12,7 @@ end
 
 % field retrieval
 hFigM = findall(0,'tag','figFlyAnalysis');
+pImg = getappdata(hFigM,'pImg'); 
 sPara = getappdata(hFigM,'sPara');
 snTot = getappdata(hFigM,'snTot');
 hPara = getappdata(hFigM,'hPara'); 
@@ -100,7 +101,13 @@ else
         pDataNw = feval(pDataNw.pFcn,snTotNw,pDataNw,plotDNw,iPlot);            
     else
         pDataNw = feval(pDataNw.pFcn,snTotNw,pDataNw,plotDNw);            
-    end        
+    end     
+    
+    % updates the plot image
+    pause(0.05);
+    hPanel = findall(hFigM,'tag','panelPlot');
+    pImg{pInd}{fInd,eInd} = screencapture(hPanel);
+    setappdata(hFigM,'pImg',pImg);
 end
 
 % redisplays the parameter GUI (is displaying the GUI output)
