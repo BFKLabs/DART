@@ -639,6 +639,10 @@ classdef AnalysisParaClass < handle
             setObjEnable(obj.hGUI.popupPlotType,'inactive'); 
             setObjEnable(obj.hGUI.popupExptIndex,'inactive'); 
 
+%             % resets the toolbar
+%             resetFcn = getappdata(obj.hFigM,'resetToolbarObj'); 
+%             resetFcn(obj.hGUI)
+
             % updates the figure
             wState = warning('off','all');
             obj.pData = updatePlotFigure(obj.hFig,pDataNw);

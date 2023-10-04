@@ -25,8 +25,10 @@ if isBar
         
         % reduces down the arrays (if required)
         if exist('xiP','var')
-            YY{i} = cellfun(@(x)(x(xiP)),YY{i},'un',0);
-            YYs{i} = cellfun(@(x)(x(xiP)),YYs{i},'un',0);
+%             YY{i} = cellfun(@(x)(x(xiP)),YY{i},'un',0);
+%             YYs{i} = cellfun(@(x)(x(xiP)),YYs{i},'un',0);
+            YY{i} = YY{i}(xiP);
+            YYs{i} = YYs{i}(xiP);            
         end
     end
         

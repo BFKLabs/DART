@@ -35,8 +35,9 @@ classdef DataCursorObj < handle
         tDay0
         
         % other scalar fields
-        hAx
+        hAx        
         tmpStr        
+        mIndex
         iBoxOfs = 7;
         useXGrp = false;
         combFig = false;
@@ -133,6 +134,10 @@ classdef DataCursorObj < handle
                     % case is a fitted trace/line plot is selected
                     obj.setupFittedTraceString(isMulti);
                                         
+                case 'Marker'
+                    % case is a plot marker is selected
+                    obj.setupMarkerString();
+                    
                 otherwise
                     % FINISH ME!
                     a = 1;
@@ -391,6 +396,24 @@ classdef DataCursorObj < handle
             
         end
                 
+        % --- sets up the plot marker string
+        function setupMarkerString(obj)
+            
+            % initialisations
+            pPos = obj.evnt.Position;
+            uD = obj.evnt.Target.UserData;                       
+            
+            % case is a short signal type
+            xLbl = {'Y-Value','X-Value','Fly Index','Marker Index'};
+            xTxt = arrayfun(@num2str,[flip(pPos),uD,obj.mIndex],'un',0);            
+            
+            % combines the header and metric strings
+            xStr = obj.combineTextArrays(xLbl,xTxt);            
+            hdrStr = obj.setupTraceTextBlockHeader();
+            obj.tmpStr = sprintf('%s\n\n%s',hdrStr,xStr);            
+            
+        end
+        
         % ----------------------------------------- %
         % --- HEADER TEXT BLOCK SETUP FUNCTIONS --- %
         % ----------------------------------------- %

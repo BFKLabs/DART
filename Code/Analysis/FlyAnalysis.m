@@ -92,6 +92,7 @@ setappdata(hObject,'postSolnLoadFunc',@postSolnLoadFunc)
 setappdata(hObject,'setSelectedNode',@setSelectedNode)
 setappdata(hObject,'resetPlotPanelCoords',@resetPlotPanelCoords)
 setappdata(hObject,'resetPlotDataStructs',@resetPlotDataStructs)
+setappdata(hObject,'resetToolbarObj',@resetToolbarObj)
 setappdata(hObject,'popupPlotType',@popupPlotType_Callback)
 setappdata(hObject,'popupExptIndex',@popupExptIndex_Callback)
 setappdata(hObject,'treeSelectChng',@treeSelectChng)
@@ -135,6 +136,7 @@ function loadExptSoln_Callback(~, ~, handles)
 
 % field retrieval
 hFig = handles.figFlyAnalysis;
+setObjVisibility(hFig,0);
 
 % if the parameter gui is present, then make it visible
 hPara = findall(0,'tag','figAnalysisPara');
@@ -386,7 +388,7 @@ switch fExtn
 end
 
 % -------------------------------------------------------------------------
-function menuSaveFigure_Callback(hObject, eventdata, handles)
+function menuSaveFigure_Callback(~, ~, handles)
 
 % runs the save figure dialog
 hFig = handles.figFlyAnalysis;
@@ -982,7 +984,7 @@ end
 function menuDataCursor_ClickedCallback(hObject, ~, ~)
 
 % initialisations
-hFig = gcf;
+hFig = findall(0,'tag','figFlyAnalysis');
 dcObj = getappdata(hFig,'dcObj');
 
 % toggles the data cursor based on the button state
@@ -1001,7 +1003,7 @@ elseif ~isempty(dcObj)
     % turns off the data cursor mode
     dcObj.closeObject()
 end
-
+    
 % % updates the window motion callback function
 % set(hFig,'WindowButtonMotionFcn',cbFcn);
 
@@ -2037,7 +2039,7 @@ elseif ~canSelect
  
     % retrieves the progressbar figure handle
     hProg = findall(0,'tag','ProgBar');
-    if isempty(hProg(1))
+    if isempty(hProg)
         canSelect = true;
     else
         figure(hProg(1));
