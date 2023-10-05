@@ -288,6 +288,7 @@ end
 setappdata(hFig,'sName',A.sData.sName)
 setappdata(hFig,'gPara',A.gPara)
 setappdata(hFig,'sPara',A.sPara)
+setappdata(hFig,'pImg',A.pImg)
 setappdata(hFig,'plotD',plotD)
 setappdata(hFig,'pData',pData)
 
@@ -438,6 +439,7 @@ end
 
 % loads the plot/analysis function data structs
 hFig = handles.figFlyAnalysis;
+pImg = getappdata(hFig,'pImg');
 plotD = getappdata(hFig,'plotD');
 pData = getappdata(hFig,'pData');
 gPara = getappdata(hFig,'gPara');
@@ -451,9 +453,9 @@ sData.sName = getappdata(hFig,'sName');
 h = ProgressLoadbar('Outputting Temporarily Calculated Data To File...');
 
 % saves the data to file
-A = struct('plotD',[],'pData',[],'gPara',gPara,...
+A = struct('pImg',[],'plotD',[],'pData',[],'gPara',gPara,...
            'sPara',sPara,'sData',sData);
-[A.plotD,A.pData] = deal(plotD,pData);
+[A.pImg,A.plotD,A.pData] = deal(pImg,plotD,pData);
 save(tName,'-struct','A');
 
 % closes the loadbar

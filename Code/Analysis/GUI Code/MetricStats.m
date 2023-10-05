@@ -21,7 +21,7 @@ end
 % End initialization code - DO NOT EDIT
 
 % --- Executes just before MetricStats is made visible.
-function MetricStats_OpeningFcn(hObject, eventdata, handles, varargin)
+function MetricStats_OpeningFcn(hObject, ~, handles, varargin)
 
 % global variables
 global isChange
@@ -49,7 +49,7 @@ initObjProps(handles)
 uiwait(handles.figStatMet);
 
 % --- Outputs from this function are returned to the command line.
-function varargout = MetricStats_OutputFcn(hObject, eventdata, handles) 
+function varargout = MetricStats_OutputFcn(~, ~, ~) 
 
 % global variables
 global metInd isChange
@@ -67,7 +67,7 @@ varargout{2} = isChange;
 % ------------------------------ %
 
 % --- Executes on button press in buttonUpdate.
-function buttonUpdate_Callback(hObject, eventdata, handles)
+function buttonUpdate_Callback(~, ~, handles)
 
 % global variables
 global metInd isChange
@@ -80,7 +80,7 @@ metInd = getappdata(handles.figStatMet,'metInd');
 delete(handles.figStatMet)
 
 % --- Executes on button press in buttonClose.
-function buttonClose_Callback(hObject, eventdata, handles)
+function buttonClose_Callback(~, ~, handles)
 
 % global variables
 global metInd isChange 
@@ -113,7 +113,7 @@ delete(handles.figStatMet)
 % ----------------------------------- %
 
 % --- callback function for the statistical metric checkboxes
-function statMetricCallback(hObject, eventdata)
+function statMetricCallback(hObject, ~)
 
 % global variables
 global isChange

@@ -1078,7 +1078,8 @@ updateGroupTableProps(handles,1,bgCol);
 function updateGroupTableProps(handles,iType,varargin)
 
 % field retrieval
-hTableG = handles.tableGroupInc;
+hFig = handles.figDataOutput;
+hTableG = findall(hFig,'tag','tableGroupInc');
 
 % retrieves the current table location
 jTabH = getJavaTable(hTableG);
@@ -1215,7 +1216,7 @@ switch get(hObject,'tag')
         updateAlignPanelProps(handles)
         
     case 'checkSepByExpt'
-        resetExptTabProps(handles,nwVal>0)
+        resetExptTabProps(handles,iData,nwVal>0)
         
     case 'checkSepByDay'
         setObjEnable(handles.checkZeroTime,~nwVal)

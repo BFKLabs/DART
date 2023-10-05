@@ -522,6 +522,396 @@ classdef SaveFigure < handle
             
         end
         
+        % ------------------------------------ %
+        % --- MENU ITEM CALLBACK FUNCTIONS --- %
+        % ------------------------------------ %
+        
+        % --- save figure menu item callback function
+        function menuSave(obj,~,~)
+            
+            % retrieves the currently selected node indices
+            obj.iSel = obj.getCurrentSelectedNodes();
+            if all(cell2mat(obj.iSel(:,1)) == 0)
+                % if there are none, output an error message to screen
+                eStr = 'At least one figure must be selected for output.';
+                waitfor(msgbox(eStr,'Selection Error','Modal'))
+                
+                % exits the function
+                return
+            end
+            
+            % expands all the nodes
+            obj.expandSelectedNodes();
+            
+            % sets up the image file paths
+            if obj.setupImagePaths()
+                % sets up the output plot data values
+                obj.setupOutputPlotData();
+            else
+                % if there was an issue then exit the function
+                return
+            end
+            
+            % creates the loadbar figure
+            obj.hProgO = ProgressLoadbar(obj.wStr0);
+            pause(0.01);
+            
+            % other initialisations
+            obj.hImg.CData(:) = 255;
+            hGUIM = guidata(obj.hFigM);
+            
+            % outputs all the figures
+            for iFig = 1:obj.nFigO
+                try
+                    % updates the loadbar string
+                    wStrNw = sprintf(...
+                        '%s (Image %i of %i)',obj.wStr0,iFig,obj.nFigO);
+                    obj.hProgO.StatusMessage = wStrNw;
+                catch
+                    % if there was an error then exit the loop
+                    break
+                end
+                
+                % runs the plot type callback if the indices don't match
+                if obj.getPopupValue(obj.hPopupP) ~= obj.pIndO(iFig)
+                    obj.setPopupValue(obj.hPopupP,obj.pIndO(iFig));
+                    obj.ppFcn(obj.hPopupP,'1',guidata(obj.hFigM));
+                end
+                
+                % runs the plot type callback if the indices don't match
+                if obj.getPopupValue(obj.hPopupE) ~= obj.eIndO(iFig)
+                    obj.setPopupValue(obj.hPopupE,obj.eIndO(iFig));
+                    obj.exFcn(obj.hPopupE,1,guidata(obj.hFigM));
+                end
+                
+                % runs the function selection update
+                obj.selFcn(hGUIM,obj.fIndO(iFig));
+                
+                % sets the figure to file
+                obj.savePlotFig(iFig);
+            end
+            
+            % closes the loadbar and deletes the temporary figure
+            obj.hProgO.delete();
+            
+            % resets focus to the current figure
+            set(0,'CurrentFigure',obj.hFig)
+            
+        end
+        
+        % --- close window menu item callback function
+        function menuExit(obj,~,~)
+            
+            % resets the sub-panel highlight (if one exists)
+            if obj.useSP && ~isempty(obj.hPS)
+                set(obj.hPS,'HighlightColor',[1,0,0])
+            end
+            
+            % resets the experiment index (if required)
+            if obj.getPopupValue(obj.hPopupE) ~= obj.eInd0
+                obj.setPopupValue(obj.hPopupE,obj.eInd0);
+                obj.exFcn(obj.hPopupE,1,guidata(obj.hFigM));
+            end
+            
+            % resets the scope index (if required)
+            if obj.getPopupValue(obj.hPopupP) ~= obj.pInd0
+                obj.setPopupValue(obj.hPopupP,obj.pInd0);
+                obj.ppFcn(obj.hPopupP,'1',guidata(obj.hFigM));
+            end
+            
+            % runs the function reselection function
+            obj.selFcn(guidata(obj.hFigM),obj.fInd0);
+            
+            % closes the windows
+            obj.pltObj.closePlotObject();
+            delete(obj.hFig);
+            
+            % updates the plot axes
+            hLoad = ProgressLoadbar('Updating Main Analysis Window...');
+            obj.chngFcn([],'1',guidata(obj.hFigM))
+            pause(0.05);
+            
+            % sets the main GUI to be invisible
+            setObjVisibility(obj.hFigM,1);
+            setObjVisibility(obj.hPara,1);
+            hLoad.delete();
+            
+        end
+        
+        % --- output plot type menu iteam callback function
+        function menuOutput(obj,hMenu,~)
+            
+            % toggles the menu checkmark
+            toggleMenuCheck(hMenu);
+            
+            % updates the parameter value
+            uD = get(hMenu,'UserData');
+            obj.(uD) = strcmp(get(hMenu,'Checked'),'on');
+            
+            % resets the tree explorer
+            obj.createCheckBoxTree();
+            obj.updatePlotImage();
+            
+        end
+        
+        % --- tree explorer menu item callback function
+        function menuNodeSel(obj,hMenu,~)
+                        
+            % updates the tree based on the selection
+            switch get(hMenu,'UserData')
+                case 1
+                    % case is expanding all nodes
+                    obj.resetTreeExpansion(4)
+                    
+                case 2
+                    % case is expanding function nodes only
+                    obj.resetTreeExpansion(1)
+                    
+                case 3
+                    % case is expanding function + expt nodes
+                    obj.resetTreeExpansion(2)
+                    
+            end
+            
+        end
+        
+        % --- tree explorer menu item callback function
+        function menuAddAll(obj,~,~)
+
+            hLoad = ProgressLoadbar('Updating Figure Explorer Tree...');            
+            obj.objT.updateChildNodeIcons(obj.hRoot,'Checked')
+            hLoad.delete();
+            
+        end
+        
+        % --- tree explorer menu item callback function
+        function menuRemoveAll(obj,~,~)
+            
+            hLoad = ProgressLoadbar('Updating Figure Explorer Tree...');
+            obj.objT.updateChildNodeIcons(obj.hRoot,'Unchecked')
+            hLoad.delete();
+            
+        end
+        
+        % --------------------------------- %
+        % --- OBJECT CALLBACK FUNCTIONS --- %
+        % --------------------------------- %
+        
+        % --- sub-directory checkbox callback function
+        function checkSubDir(obj,hObj,~)
+            
+            if hObj.Value
+                % determine if the full file path already exists
+                if exist(fullfile(obj.fDir,obj.fDirS),'dir')
+                    % if so, prompt the user if they wish to reset
+                    tStr = 'Output Folder Already Exists';
+                    bStr = {'Reset Folder Name','Reset Checkbox'};
+                    qStr = ['The specified output folder already ',...
+                        'exists. Do you want to reset the sub-folder ',...
+                        'name, or reset the checkbox selection?'];
+                    
+                    % prompts the user
+                    uChoice = questdlg(qStr,tStr,bStr{1},bStr{2},bStr{1});
+                    if strcmp(uChoice,bStr{1})
+                        % case is resetting the folder name
+                        obj.resetSubFolderName();
+                        obj.setEditString(obj.hEditF{1},obj.fDirS);
+                    else
+                        % case is resetting the checkbox
+                        hObj.Value = false;
+                        return
+                    end
+                end
+            end
+            
+            % updates the editbox enabled properties
+            obj.useSubF = hObj.Value;
+            setObjEnable(obj.hEditF{1},obj.useSubF);
+            
+        end
+        
+        % --- sub-directory name editbox callback function
+        function editSubDir(obj,hObj,~)
+            
+            % retrieves the new folder name
+            nwDirS = obj.getEditString(hObj);
+            
+            % determines if the new string is feasible
+            [ok,eStr] = chkDirString(nwDirS);
+            if ok
+                % if so, then check if the folder exists
+                fDirNw = fullfile(obj.fDir,nwDirS);
+                if exist(fDirNw,'dir')
+                    % if the folder exists, flag an error
+                    eStr = 'Specified folder path already exists!';
+                else
+                    % otherwise, update the sub-directory string
+                    obj.fDirS = nwDirS;
+                end
+            end
+            
+            % if there was an error then output it to screen
+            if ~isempty(eStr)
+                % outputs the error to screen
+                tStr = 'Sub-Folder Naming Error';
+                waitfor(msgbox(eStr,tStr,'modal'));
+                
+                % resets the previous folder name
+                obj.setEditString(hObj,obj.fDirS);
+            end
+            
+        end
+        
+        % --- main directory set
+        function buttonSetDir(obj,~,~)
+            
+            % prompts the user for the new default directory
+            tStr = 'Set The Base Figure Output Directory';
+            dirName = uigetdir(obj.fDir,tStr);
+            figure(obj.hFig);
+            
+            if dirName
+                if exist(fullfile(dirName,obj.fDirS),'dir') && obj.useSubF
+                    % if the folder exists (and using sub-folder) then
+                    % output an error message to screen
+                    eStr = ['The full output path already exists! ',...
+                        'Either choose another parent folder, or ',...
+                        'alter the sub-folder parameters'];
+                    waitfor(msgbox(eStr,'Parent Folder Error','modal'));
+                else
+                    % resets the base directory editbox string
+                    obj.fDir = dirName;
+                    obj.setEditString(obj.hEditF{2},['  ',obj.fDir])
+                end
+            end
+            
+        end
+        
+        % --- image type popupmenu callback function
+        function popupImageType(obj,hObj,~)
+            
+            % determines the popup list selected index
+            if obj.isOldVer
+                iSelP = hObj.Value;
+            else
+                iSelP = strcmp(hObj.Items,hObj.Value);
+            end
+            
+            % updates the description/type fields
+            obj.iDesc = obj.imgType{iSelP,1};
+            obj.fExtn = obj.imgType{iSelP,2};
+            obj.isPaint = strcmp(obj.fExtn,'.epsp');
+            
+            % sets the figure resolution (based on figure extension type)
+            if strcmp(obj.fExtn,'.pdf')
+                obj.fRes = '-r0';
+            else
+                obj.fRes = '-r150';
+            end
+            
+        end
+        %
+        % --- dimension editbox change callback function
+        function editDimChange(obj,hObj,~)
+            
+            % field retrieval
+            uD = get(hObj,'UserData');
+            nwVal = str2double(obj.getEditString(hObj));
+            
+            % sets the limits
+            switch uD
+                case 'W'
+                    % case is the width
+                    if obj.fixAR
+                        nwLim = [1,obj.iPara.WmaxAR];
+                    else
+                        nwLim = [1,obj.iPara.Wmax];
+                    end
+                    
+                case 'H'
+                    % case is the height
+                    if obj.fixAR
+                        nwLim = [1,obj.iPara.HmaxAR];
+                    else
+                        nwLim = [1,obj.iPara.Hmax];
+                    end
+            end
+            
+            % determines if the new value is valid
+            if chkEditValue(nwVal,nwLim,1)
+                % if so, the update the parameters
+                obj.iPara.(uD) = nwVal;
+                
+                % if fixing aspect ratio, then reset the other dimension
+                if obj.fixAR
+                    obj.resetOtherDimensions(uD);
+                end
+                
+                % resizes the plot figure
+                obj.pltObj.resetFigurePos(obj.iPara.W,obj.iPara.H);
+                
+            else
+                % otherwise, reset to the previous valid value
+                obj.setEditString(hObj,num2str(obj.iPara.(uD)))
+            end
+            
+        end
+        
+        % --- aspect ratio checkbox callback function
+        function checkKeepAR(obj,hObj,~)
+            
+            % updates the fixed aspect ratio
+            obj.fixAR = hObj.Value;
+            
+            % resets the other dimensions
+            if obj.fixAR
+                % resets the other dimensions
+                if obj.iPara.H == obj.iPara.HmaxAR
+                    obj.resetOtherDimensions('H');
+                else
+                    obj.resetOtherDimensions('W');
+                end
+                
+                % disables the other
+                obj.useFull = false;
+                obj.hChkD{2}.Value = false;
+                
+                % resizes the plot figure
+                obj.pltObj.resetFigurePos(obj.iPara.W,obj.iPara.H);
+                
+                % enables the editboxes
+                cellfun(@(x)(setObjEnable(x,obj.fixAR)),obj.hEditD);
+            end
+            
+        end
+        
+        % --- full screen checkbox callback function
+        function checkFullScreen(obj,hObj,~)
+            
+            % updates the fixed aspect ratio
+            obj.useFull = hObj.Value;
+            
+            % resets the other dimensions
+            if obj.useFull
+                % resets the other dimensions
+                obj.iPara.W = obj.iPara.Wmax;
+                obj.iPara.H = obj.iPara.Hmax;
+                
+                % resizes the plot figure
+                obj.pltObj.resetFigurePos(obj.iPara.W,obj.iPara.H);
+                
+                % disables the other
+                obj.fixAR = false;
+                obj.hChkD{1}.Value = false;
+                obj.setEditString(obj.hEditD{1},num2str(obj.iPara.W))
+                obj.setEditString(obj.hEditD{2},num2str(obj.iPara.H))
+            end
+            
+            % sets the editbox properties
+            cellfun(@(x)(setObjEnable(x,~obj.useFull)),obj.hEditD);
+            
+        end        
+        
         % ------------------------------------- %
         % --- EXPLORER TREE SETUP FUNCTIONS --- %
         % ------------------------------------- %
@@ -1151,395 +1541,7 @@ classdef SaveFigure < handle
                 end
             end
             
-        end
-        
-        % ------------------------------------ %
-        % --- MENU ITEM CALLBACK FUNCTIONS --- %
-        % ------------------------------------ %
-        
-        % --- save figure menu item callback function
-        function menuSave(obj,~,~)
-            
-            % retrieves the currently selected node indices
-            obj.iSel = obj.getCurrentSelectedNodes();
-            if all(cell2mat(obj.iSel(:,1)) == 0)
-                % if there are none, output an error message to screen
-                eStr = 'At least one figure must be selected for output.';
-                waitfor(msgbox(eStr,'Selection Error','Modal'))
-                
-                % exits the function
-                return
-            end
-            
-            % expands all the nodes
-            obj.expandSelectedNodes();
-            
-            % sets up the image file paths
-            if obj.setupImagePaths()
-                % sets up the output plot data values
-                obj.setupOutputPlotData();
-            else
-                % if there was an issue then exit the function
-                return
-            end
-            
-            % creates the loadbar figure
-            obj.hProgO = ProgressLoadbar(obj.wStr0);
-            pause(0.01);
-            
-            % other initialisations
-            obj.hImg.CData(:) = 255;
-            hGUIM = guidata(obj.hFigM);
-            
-            % outputs all the figures
-            for iFig = 1:obj.nFigO
-                try
-                    % updates the loadbar string
-                    wStrNw = sprintf(...
-                        '%s (Image %i of %i)',obj.wStr0,iFig,obj.nFigO);
-                    obj.hProgO.StatusMessage = wStrNw;
-                catch
-                    % if there was an error then exit the loop
-                    break
-                end
-                
-                % runs the plot type callback if the indices don't match
-                if obj.getPopupValue(obj.hPopupP) ~= obj.pIndO(iFig)
-                    obj.setPopupValue(obj.hPopupP,obj.pIndO(iFig));
-                    obj.ppFcn(obj.hPopupP,'1',guidata(obj.hFigM));
-                end
-                
-                % runs the plot type callback if the indices don't match
-                if obj.getPopupValue(obj.hPopupE) ~= obj.eIndO(iFig)
-                    obj.setPopupValue(obj.hPopupE,obj.eIndO(iFig));
-                    obj.exFcn(obj.hPopupE,1,guidata(obj.hFigM));
-                end
-                
-                % runs the function selection update
-                obj.selFcn(hGUIM,obj.fIndO(iFig));
-                
-                % sets the figure to file
-                obj.savePlotFig(iFig);
-            end
-            
-            % closes the loadbar and deletes the temporary figure
-            obj.hProgO.delete();
-            
-            % resets focus to the current figure
-            set(0,'CurrentFigure',obj.hFig)
-            
-        end
-        
-        % --- close window menu item callback function
-        function menuExit(obj,~,~)
-            
-            % resets the sub-panel highlight (if one exists)
-            if obj.useSP && ~isempty(obj.hPS)
-                set(obj.hPS,'HighlightColor',[1,0,0])
-            end
-            
-            % resets the experiment index (if required)
-            if obj.getPopupValue(obj.hPopupE) ~= obj.eInd0
-                obj.setPopupValue(obj.hPopupE,obj.eInd0);
-                obj.exFcn(obj.hPopupE,1,guidata(obj.hFigM));
-            end
-            
-            % resets the scope index (if required)
-            if obj.getPopupValue(obj.hPopupP) ~= obj.pInd0
-                obj.setPopupValue(obj.hPopupP,obj.pInd0);
-                obj.ppFcn(obj.hPopupP,'1',guidata(obj.hFigM));
-            end
-            
-            % runs the function reselection function
-            obj.selFcn(guidata(obj.hFigM),obj.fInd0);
-            
-            % closes the windows
-            obj.pltObj.closePlotObject();
-            delete(obj.hFig);
-            
-            % updates the plot axes
-            obj.chngFcn([],'1',guidata(obj.hFigM))
-            pause(0.05);
-            
-            % sets the main GUI to be invisible
-            setObjVisibility(obj.hFigM,1);
-            setObjVisibility(obj.hPara,1);
-            
-        end
-        
-        % --- output plot type menu iteam callback function
-        function menuOutput(obj,hMenu,~)
-            
-            % toggles the menu checkmark
-            toggleMenuCheck(hMenu);
-            
-            % updates the parameter value
-            uD = get(hMenu,'UserData');
-            obj.(uD) = strcmp(get(hMenu,'Checked'),'on');
-            
-            % resets the tree explorer
-            obj.createCheckBoxTree();
-            obj.updatePlotImage();
-            
-        end
-        
-        % --- tree explorer menu item callback function
-        function menuNodeSel(obj,hMenu,~)
-                        
-            % updates the tree based on the selection
-            switch get(hMenu,'UserData')
-                case 1
-                    % case is expanding all nodes
-                    obj.resetTreeExpansion(4)
-                    
-                case 2
-                    % case is expanding function nodes only
-                    obj.resetTreeExpansion(1)
-                    
-                case 3
-                    % case is expanding function + expt nodes
-                    obj.resetTreeExpansion(2)
-                    
-            end
-            
-        end
-        
-        % --- tree explorer menu item callback function
-        function menuAddAll(obj,~,~)
-
-            hLoad = ProgressLoadbar('Updating Figure Explorer Tree...');            
-            obj.objT.updateChildNodeIcons(obj.hRoot,'Checked')
-            hLoad.delete();
-            
-        end
-        
-        % --- tree explorer menu item callback function
-        function menuRemoveAll(obj,~,~)
-            
-            hLoad = ProgressLoadbar('Updating Figure Explorer Tree...');
-            obj.objT.updateChildNodeIcons(obj.hRoot,'Unchecked')
-            hLoad.delete();
-            
-        end
-        
-        % --------------------------------- %
-        % --- OBJECT CALLBACK FUNCTIONS --- %
-        % --------------------------------- %
-        
-        % --- sub-directory checkbox callback function
-        function checkSubDir(obj,hObj,~)
-            
-            if hObj.Value
-                % determine if the full file path already exists
-                if exist(fullfile(obj.fDir,obj.fDirS),'dir')
-                    % if so, prompt the user if they wish to reset
-                    tStr = 'Output Folder Already Exists';
-                    bStr = {'Reset Folder Name','Reset Checkbox'};
-                    qStr = ['The specified output folder already ',...
-                        'exists. Do you want to reset the sub-folder ',...
-                        'name, or reset the checkbox selection?'];
-                    
-                    % prompts the user
-                    uChoice = questdlg(qStr,tStr,bStr{1},bStr{2},bStr{1});
-                    if strcmp(uChoice,bStr{1})
-                        % case is resetting the folder name
-                        obj.resetSubFolderName();
-                        obj.setEditString(obj.hEditF{1},obj.fDirS);
-                    else
-                        % case is resetting the checkbox
-                        hObj.Value = false;
-                        return
-                    end
-                end
-            end
-            
-            % updates the editbox enabled properties
-            obj.useSubF = hObj.Value;
-            setObjEnable(obj.hEditF{1},obj.useSubF);
-            
-        end
-        
-        % --- sub-directory name editbox callback function
-        function editSubDir(obj,hObj,~)
-            
-            % retrieves the new folder name
-            nwDirS = obj.getEditString(hObj);
-            
-            % determines if the new string is feasible
-            [ok,eStr] = chkDirString(nwDirS);
-            if ok
-                % if so, then check if the folder exists
-                fDirNw = fullfile(obj.fDir,nwDirS);
-                if exist(fDirNw,'dir')
-                    % if the folder exists, flag an error
-                    eStr = 'Specified folder path already exists!';
-                else
-                    % otherwise, update the sub-directory string
-                    obj.fDirS = nwDirS;
-                end
-            end
-            
-            % if there was an error then output it to screen
-            if ~isempty(eStr)
-                % outputs the error to screen
-                tStr = 'Sub-Folder Naming Error';
-                waitfor(msgbox(eStr,tStr,'modal'));
-                
-                % resets the previous folder name
-                obj.setEditString(hObj,obj.fDirS);
-            end
-            
-        end
-        
-        % --- main directory set
-        function buttonSetDir(obj,~,~)
-            
-            % prompts the user for the new default directory
-            tStr = 'Set The Base Figure Output Directory';
-            dirName = uigetdir(obj.fDir,tStr);
-            figure(obj.hFig);
-            
-            if dirName
-                if exist(fullfile(dirName,obj.fDirS),'dir') && obj.useSubF
-                    % if the folder exists (and using sub-folder) then
-                    % output an error message to screen
-                    eStr = ['The full output path already exists! ',...
-                        'Either choose another parent folder, or ',...
-                        'alter the sub-folder parameters'];
-                    waitfor(msgbox(eStr,'Parent Folder Error','modal'));
-                else
-                    % resets the base directory editbox string
-                    obj.fDir = dirName;
-                    obj.setEditString(obj.hEditF{2},['  ',obj.fDir])
-                end
-            end
-            
-        end
-        
-        % --- image type popupmenu callback function
-        function popupImageType(obj,hObj,~)
-            
-            % determines the popup list selected index
-            if obj.isOldVer
-                iSelP = hObj.Value;
-            else
-                iSelP = strcmp(hObj.Items,hObj.Value);
-            end
-            
-            % updates the description/type fields
-            obj.iDesc = obj.imgType{iSelP,1};
-            obj.fExtn = obj.imgType{iSelP,2};
-            obj.isPaint = strcmp(obj.fExtn,'.epsp');
-            
-            % sets the figure resolution (based on figure extension type)
-            if strcmp(obj.fExtn,'.pdf')
-                obj.fRes = '-r0';
-            else
-                obj.fRes = '-r150';
-            end
-            
-        end
-        %
-        % --- dimension editbox change callback function
-        function editDimChange(obj,hObj,~)
-            
-            % field retrieval
-            uD = get(hObj,'UserData');
-            nwVal = str2double(obj.getEditString(hObj));
-            
-            % sets the limits
-            switch uD
-                case 'W'
-                    % case is the width
-                    if obj.fixAR
-                        nwLim = [1,obj.iPara.WmaxAR];
-                    else
-                        nwLim = [1,obj.iPara.Wmax];
-                    end
-                    
-                case 'H'
-                    % case is the height
-                    if obj.fixAR
-                        nwLim = [1,obj.iPara.HmaxAR];
-                    else
-                        nwLim = [1,obj.iPara.Hmax];
-                    end
-            end
-            
-            % determines if the new value is valid
-            if chkEditValue(nwVal,nwLim,1)
-                % if so, the update the parameters
-                obj.iPara.(uD) = nwVal;
-                
-                % if fixing aspect ratio, then reset the other dimension
-                if obj.fixAR
-                    obj.resetOtherDimensions(uD);
-                end
-                
-                % resizes the plot figure
-                obj.pltObj.resetFigurePos(obj.iPara.W,obj.iPara.H);
-                
-            else
-                % otherwise, reset to the previous valid value
-                obj.setEditString(hObj,num2str(obj.iPara.(uD)))
-            end
-            
-        end
-        
-        % --- aspect ratio checkbox callback function
-        function checkKeepAR(obj,hObj,~)
-            
-            % updates the fixed aspect ratio
-            obj.fixAR = hObj.Value;
-            
-            % resets the other dimensions
-            if obj.fixAR
-                % resets the other dimensions
-                if obj.iPara.H == obj.iPara.HmaxAR
-                    obj.resetOtherDimensions('H');
-                else
-                    obj.resetOtherDimensions('W');
-                end
-                
-                % disables the other
-                obj.useFull = false;
-                obj.hChkD{2}.Value = false;
-                
-                % resizes the plot figure
-                obj.pltObj.resetFigurePos(obj.iPara.W,obj.iPara.H);
-                
-                % enables the editboxes
-                cellfun(@(x)(setObjEnable(x,obj.fixAR)),obj.hEditD);
-            end
-            
-        end
-        
-        % --- full screen checkbox callback function
-        function checkFullScreen(obj,hObj,~)
-            
-            % updates the fixed aspect ratio
-            obj.useFull = hObj.Value;
-            
-            % resets the other dimensions
-            if obj.useFull
-                % resets the other dimensions
-                obj.iPara.W = obj.iPara.Wmax;
-                obj.iPara.H = obj.iPara.Hmax;
-                
-                % resizes the plot figure
-                obj.pltObj.resetFigurePos(obj.iPara.W,obj.iPara.H);
-                
-                % disables the other
-                obj.fixAR = false;
-                obj.hChkD{1}.Value = false;
-                obj.setEditString(obj.hEditD{1},num2str(obj.iPara.W))
-                obj.setEditString(obj.hEditD{2},num2str(obj.iPara.H))
-            end
-            
-            % sets the editbox properties
-            cellfun(@(x)(setObjEnable(x,~obj.useFull)),obj.hEditD);
-            
-        end
+        end       
         
         % ------------------------------- %
         % --- FIGURE OUTPUT FUNCTIONS --- %

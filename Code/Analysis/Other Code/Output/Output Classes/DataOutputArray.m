@@ -31,7 +31,7 @@ classdef DataOutputArray < handle
         sepGrp
         sepDay
         numGrp
-        isHorz        
+        isHorz
         useGlob
         nonZeroTime
         

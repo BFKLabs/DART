@@ -70,8 +70,8 @@ for i = 1:numel(Y)
                 isN = isnan(Ymet{i}(1,:,:)) | isnan(Ymet{i}(2,:,:));
                 A1 = string(reshape(roundP(Ymet{i}(1,:,:),0.01),sz{i}));
                 A2 = string(reshape(roundP(Ymet{i}(2,:,:),0.01),sz{i}));
-                YmetNw = cellfun(@(x,y)(...
-                            sprintf('%s-%s',x,y)),A1,A2,'un',0);
+                YmetNw = cell2cell(cellfun(@(x,y)(...
+                        string(sprintf('%s-%s',x,y))),A1,A2,'un',0),0);
                         
             case ('N') 
                 % case is the N-values

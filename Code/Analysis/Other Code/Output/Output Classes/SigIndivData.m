@@ -139,7 +139,12 @@ classdef SigIndivData < DataOutputArray
             
             % sets up the header/data values for the output array
             obj.setupAllGroupHeaders(); 
+            
+            try
             obj.setupMetricData(); 
+            catch
+                a = 1;
+            end
             
             % combines the final output data array
             obj.setupFinalDataArray(); 
@@ -198,7 +203,7 @@ classdef SigIndivData < DataOutputArray
             obj.tSp = obj.tSp0((~obj.hasTSP+1):end);                                    
             
             % sets the reduces data array and non-empty data arrays
-            obj.reduceDataArray();            
+            obj.reduceDataArray();                        
             obj.isOK = cellfun(@(x)(~cellfun('isempty',x)),obj.YR,'un',0);                        
             
             % determines the number of flies for each genotype/experiment
@@ -215,6 +220,7 @@ classdef SigIndivData < DataOutputArray
 
                 % sets the fly counts for each sub-region
                 obj.nFly = num2cell(cellfun('length',obj.iFly));
+                obj.nFly = num2cell(obj.nFly,2);                
 
 %                 % sets the fly header column strings                        
 %                 gStrF = cellfun(@(x)...
@@ -230,7 +236,7 @@ classdef SigIndivData < DataOutputArray
 %                         tStrF,'un',0);   
                 
                 %
-                obj.nFly = num2cell(obj.nFly,2);
+
                     
             else    
                 % sets the fly count/genotype group counts
@@ -608,8 +614,9 @@ classdef SigIndivData < DataOutputArray
             % sets the global fly indices
             if obj.useGlob
                 iFly0 = cell2cell(arrayfun(@(x)(...
-                    obj.setGlobalFlyIndices(x)),obj.snTot,'un',0));
-                obj.iFly = iFly0(iOut,:);
+                    obj.setGlobalFlyIndices(x)),...
+                    obj.snTot(obj.expOut),'un',0));
+                obj.iFly = iFly0(:,iOut);
             else
                 obj.iFly = arrayfun(@(x)(1:x),nFlyT,'un',0);                
             end

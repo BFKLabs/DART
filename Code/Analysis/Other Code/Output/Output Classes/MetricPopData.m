@@ -163,7 +163,12 @@ classdef MetricPopData < DataOutputArray
             % sets up the header/data values for the output array
             obj.setupGroupHeaders();
             obj.setupTableData();
+            
+            try
             obj.setupMetricData();
+            catch
+                a = 1;
+            end
             
             % combines the final output data array
             obj.setupFinalDataArray();
