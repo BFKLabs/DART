@@ -263,7 +263,7 @@ classdef DataOutputTable < dynamicprops & handle
             end
             
             % updates the metric
-            obj.updateTabSelection(obj.hTabGrpM,obj.mSel(obj.cTab))
+            obj.updateTabSelection(obj.hTabGrpM,obj.cTab)
             
             % sets the worksheet information and data
             obj.updateSheetInfo()

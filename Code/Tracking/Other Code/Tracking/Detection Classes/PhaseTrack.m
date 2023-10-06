@@ -25,9 +25,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
 
         % temporary tracking fields
         fPrNw
-        iPmx
-        Pmx
-        isStat
+        isStat        
         
         % dimensioning veriables
         nApp        
@@ -312,6 +310,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             % memory allocation   
             IPr = IPr0;
             nFrm = length(Img);   
+            szL = size(Img{1});                        
             [fP,IP] = deal(NaN(nFrm,2),zeros(nFrm,1)); 
             isMove = obj.iMov.Status{indR(1)}(indR(2)) == 1;
             
@@ -351,60 +350,47 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 else
                     obj.fPrNw = [fPr0(obj.iPr0{i},:);fP(obj.iPr1{i},:)];
                 end
-                                
+                
                 % sorts the maxima in descending order
-                szL = size(Img{i});
-                obj.iPmx = find(imregionalmax(Img{i}));
-                [obj.Pmx,iS] = sort(Img{i}(obj.iPmx),'descend');
-                obj.iPmx = obj.iPmx(iS);
-
+                iPmx = find(imregionalmax(Img{i}));
+                [Pmx,iS] = sort(Img{i}(iPmx),'descend');
+                iPmx = iPmx(iS);
+                
                 % sets the frame pixel intensity tolerance
                 if isnan(pTol0)
-                    pTolB = floor(pTolPmx*obj.Pmx(1));
+                    pTolB = floor(pTolPmx*Pmx(1));
                 else
                     pTolB = pTol0;
                 end
                 
-                % determines which maxima exceed the threshold
-                ii = obj.Pmx >= pTolB;
-                if sum(ii) > 1
-                    % if there is more than one, then reduce down the
-                    % maxima so each thresholded blob only has one maxima
-                    
-                    % thresholds the image and gets the blob properties
-                    BB = Img{i} >= pTolB;
-                    iGrp = getGroupIndex(BB);
-
-                    % if there is a mismatch between counts, then determine
-                    % the peak maxima from each blob
-                    if length(iGrp) < sum(ii)
-                        % determines maxima that overlaps each blob & sets
-                        % the peak with the highest value for each blob
-                        jj = cellfun(@(x)...
-                            (intersect(x,obj.iPmx(ii))),iGrp,'un',0);
-                        kk = cellfun(@(x)(x(argMax(Img{i}(x)))),jj);
-                        
-                        % removes the non-peak maxima from each blob
-                        [~,iB] = setdiff(obj.iPmx(ii),kk);
-                        ii(iB) = false;
-                    end
-                    
-                    % sets the final maxima values
-                    iGrpMx = cellfun(@(x)(x(argMax(Img{i}(x)))),iGrp);
-                    pC = obj.calcCoords(szL,iGrpMx);
-
+                % determines the binary groups which meet threshold
+                BB = Img{i} >= pTolB;
+                iGrp = getGroupIndex(BB);
+                nGrp = length(iGrp);                
+                
+                % ensures the blob and maxima count are equal
+                if nGrp > 0
+                    iiPmx = BB(iPmx);
+                    if sum(iiPmx) == nGrp
+                        % case is the peak count matches
+                        [iPmx,Pmx] = deal(iPmx(iiPmx),Pmx(iiPmx));
+                    else
+                        % otherwise
+                        iPmxT = iPmx(iiPmx);
+                        jj = cellfun(@(x)(intersect(x,iPmxT)),iGrp,'un',0);
+                        iPmx = cellfun(@(x)(x(argMax(Img{i}(x)))),jj);
+                        Pmx = Img{i}(iPmx);
+                    end                      
                 end
                 
                 % determines how many prominent objects are in the frame
-                if ~any(ii)
+                if nGrp == 0
                     % case is there are no prominent objects
                     if isempty(obj.fPrNw)     
-                        if length(obj.Pmx) == 1
-                            iPnw = obj.iPmx(1);
-                            [fP(i,2),fP(i,1)] = ind2sub(szL,iPnw);
-                        elseif obj.Pmx(2)/obj.Pmx(1) < obj.trkP.rPmxTol
-                            iPnw = obj.iPmx(1);
-                            [fP(i,2),fP(i,1)] = ind2sub(szL,iPnw);
+                        if length(Pmx) == 1
+                            [fP(i,2),fP(i,1)] = ind2sub(szL,iPmx(1));
+                        elseif Pmx(2)/Pmx(1) < obj.trkP.rPmxTol
+                            [fP(i,2),fP(i,1)] = ind2sub(szL,iPmx(1));
                         end
                     else
                         % if there is previous data, then estimate where
@@ -415,19 +401,21 @@ classdef PhaseTrack < matlab.mixin.SetGet
                         
                         % calculates the objective function for all points
                         % detected from above
-                        DpC = Dest(obj.iPmx)/obj.dTol;
+                        DpC = Dest(iPmx)/obj.dTol;
                         Dw = 1./max(0.25,DpC);                        
                         
                         % determines the most likely blob and sets the
                         % coordinates for the current frame
-                        iMx = argMax(Dw.*obj.Pmx);
-                        [fP(i,2),fP(i,1)] = ind2sub(szL,obj.iPmx(iMx));
+                        iMx = argMax(Dw.*Pmx);
+                        [fP(i,2),fP(i,1)] = ind2sub(szL,iPmx(iMx));
                     end
                     
-                elseif sum(ii) == 1
+                elseif nGrp == 1
                     % case is there is only 1 prominent object
-                    iPnw = obj.iPmx(1);
-                    [yP,xP] = ind2sub(szL,iPnw);
+                    [xP,yP] = obj.calcCOM(Img{i},iGrp{1});
+
+%                     iPnw = ;
+%                     [yP,xP] = ind2sub(szL,iPnw);
                     
                     % calculates the distance covered from the previous
                     % frame to the new positions                    
@@ -469,7 +457,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                     % sets the final positional/intensity values
                     if pdPrNw < pdTolMax
                         % case is the blob has moved a feasible distance
-                        [fP(i,:),IP(i)] = deal([xP,yP],Img{i}(iPnw));
+                        [fP(i,:),IP(i)] = deal([xP,yP],Img{i}(iPmx(1)));
                         
                     else
                         % case is the blob has moved an infeasible distance
@@ -482,7 +470,13 @@ classdef PhaseTrack < matlab.mixin.SetGet
                     % case is there is not a prominient blob amoungst the
                     % candidates. performs a more through search of the
                     % candidates to determine the likely blob
-                    if length(iGrp) > 1
+                    if nGrp > 1
+                        % 
+                        pC = cell2mat(cellfun(@(x)(...
+                            obj.calcCOM(Img{i},x)),iGrp,'un',0));
+%                         iGrpMx = cellfun(@(x)(x(argMax(Img{i}(x)))),iGrp);
+%                         pC = obj.calcCoords(szL,iGrpMx);
+                        
                         % if there are multiple blobs, then search for the
                         % most likely blob 
                         [iMx,fPnw,IPnw] = ...
@@ -569,7 +563,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             obj.xLim{indR(1)}(indR(2),:) = xL;
             obj.yLim{indR(1)}(indR(2),:) = yL;
             
-        end        
+        end                
         
         % --- calculates the unidirectional distance
         function D = calcUniDirDist(obj,xNw,xPr)
@@ -1135,6 +1129,20 @@ classdef PhaseTrack < matlab.mixin.SetGet
             fP = [xP(:),yP(:)];
             
         end
+        
+        % --- calculates the COM of the blob given by, indB
+        function varargout = calcCOM(I,indB)
+            
+            [yB,xB] = ind2sub(size(I),indB);
+            [xCOM,yCOM] = deal(mean(xB),mean(yB));
+            
+            if nargout == 1
+                varargout = {[xCOM,yCOM]};
+            else
+                varargout = {xCOM,yCOM};
+            end
+            
+        end        
         
 %         % --- calculates the special phase residual image stack
 %         function ImgSR = calcSpecialResidualImages(ImgSL0,Bw,I0)
