@@ -2354,16 +2354,6 @@ figure(hFig)
 % --- initialises the automatic detection algorithm values
 function [iMov,hGUI,I] = initAutoDetect(handles)
 
-% prompts the user that the smart region placement only works for circular
-% regions (this may change in the future...)
-qStr = {'Note that the automatically detected regions are fixed.';...
-        'Do you still wish to continue?'};
-uChoice = questdlg(qStr,'Automatic Circle Detection','Yes','No','Yes');
-if ~strcmp(uChoice,'Yes')
-    [iMov,hGUI,I] = deal([]);
-    return    
-end        
-
 % retrieves the original sub-region data struct
 hFig = handles.output;
 hGUI = get(hFig,'hGUI');

@@ -818,6 +818,7 @@ classdef TrackRegionClass < handle
                     % calculates the vertical tube region coordinates
                     xiN = num2cell(1:nTubeNw)';
                     widPos = sum(rPosS{i}([2,4]));
+                    col = distinguishable_colors(pInfo.nGrp,'k');
                     yTube0 = linspace(rPosS{i}(2),widPos,nTubeNw+1)';
                     yTubeS = num2cell([yTube0(1:end-1),yTube0(2:end)],2);
 
@@ -864,7 +865,8 @@ classdef TrackRegionClass < handle
                     % if moveable, then set the position callback function
                     for j = 1:length(obj.hROI{i})
                         % sets main object properties/callback functions
-                        obj.hROI{i}{j}.setColour(col(indCol));
+                        indF = pInfo.iGrp(j,i);
+                        obj.hROI{i}{j}.setColour(col(indF,:));
                         obj.hROI{i}{j}.setObjMoveCallback(cbFcnR);
                         
                         if obj.isMltTrk

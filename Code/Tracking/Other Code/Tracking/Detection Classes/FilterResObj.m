@@ -659,11 +659,7 @@ classdef FilterResObj < handle
             
             % sets up the region mapping indices
             N = cellfun('length',iRT);
-            if obj.iMov.is2D
-                iOfs = cellfun(@(x)(x(1)-1),iRT);
-            else
-                iOfs = [0;cumsum(N(1:end-1))];           
-            end
+            iOfs = [0;cumsum(N(1:end-1))]; 
 
             % sets the interpolation array
             obj.iRM = arrayfun(@(n,i)(i+(1:n)'),N,iOfs,'un',0);  
@@ -1064,7 +1060,7 @@ classdef FilterResObj < handle
             szL = size(obj.IRs{1});
             obj.Bexc = getExclusionBin(obj.iMov,szL,obj.iApp);
             
-            if obj.iMov.is2D && (obj.nI > 0)
+            if obj.iMov.is2D || (obj.nI > 0)
                 iRT = cell2mat(obj.iRI(:)');
                 if iRT(end) <= size(obj.Bexc,1)
                     obj.Bexc = obj.Bexc(iRT,obj.iCI);
