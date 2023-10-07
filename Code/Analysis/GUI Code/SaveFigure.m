@@ -266,7 +266,11 @@ classdef SaveFigure < handle
             obj.pltObj = PlotFigure(obj.iPara.W,obj.iPara.H);
             
             % sets the version flag
-            obj.isOldVer = ~matlab.ui.internal.isUIFigure(obj.hFig);
+            try
+                obj.isOldVer = ~matlab.ui.internal.isUIFigure(obj.hFig);
+            catch
+                obj.isOldVer = true;
+            end
             
             % ------------------------- %
             % --- MENU ITEM OBJECTS --- %

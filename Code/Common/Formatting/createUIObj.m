@@ -11,7 +11,11 @@ if strcmpi(fType,'figure')
 
 elseif isa(varargin{1},'matlab.ui.Figure')
     % case is the parent object is a figure
-    isOldVer = ~matlab.ui.internal.isUIFigure(varargin{1});
+    try
+        isOldVer = ~matlab.ui.internal.isUIFigure(varargin{1});
+    catch
+        isOldVer = true;
+    end
 
 else
     % case is the other objects
@@ -19,7 +23,12 @@ else
     while 1
         hObj = get(hObj,'Parent');
         if isa(hObj,'matlab.ui.Figure')
-            isOldVer = ~matlab.ui.internal.isUIFigure(hObj);
+            try
+                isOldVer = ~matlab.ui.internal.isUIFigure(hObj);
+            catch
+                isOldVer = true;
+            end
+                
             break
         end
     end

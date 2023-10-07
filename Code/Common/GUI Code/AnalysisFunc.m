@@ -137,11 +137,17 @@ isSel = cell2mat(fcnData(:,2));
 [fName,isDef,fDir] = deal(fcnData(isSel,1),isDef0(isSel),fDir0(isSel));
 
 % retrieves the package name data
-pkgName0 = pkgData(cell2mat(pkgData(:,2)),1);
-if isempty(pkgName0)
+if isempty(pkgData)
+    % case is no packages were detected
     pkgName = [];
 else
-    pkgName = cellfun(@(x)(fullfile(pkgDir,x)),pkgName0,'un',0);
+    % otherwise, determine the selected packages
+    pkgName0 = pkgData(cell2mat(pkgData(:,2)),1);
+    if isempty(pkgName0)
+        pkgName = [];
+    else
+        pkgName = cellfun(@(x)(fullfile(pkgDir,x)),pkgName0,'un',0);
+    end
 end
 
 % deletes the GUI
