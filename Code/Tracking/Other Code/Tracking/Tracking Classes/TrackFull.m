@@ -861,7 +861,7 @@ classdef TrackFull < Track
             if resetData
                 % updates the angle orientation calculation flag
                 A = load(getParaFileName('ProgPara.mat'));
-                obj.iMov.calcPhi = A.trkP.calcPhi; % && is2DCheck(obj.iMov);
+                obj.iMov.calcPhi = A.trkP.calcPhi && is2DCheck(obj.iMov);
 
                 % sets the fly location data struct
                 obj.setupPosDataStructFull();
