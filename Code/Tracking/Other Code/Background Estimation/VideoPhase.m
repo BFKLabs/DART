@@ -59,7 +59,7 @@ classdef VideoPhase < handle
         vCosTol = 0.95;
         xi2Tol = 0.15;
         dHistTol = 20;
-        pOfsMin = 0.4;
+        pOfsMin = 0.49;
         pTile = 25;
         
         % other fixed parameters        

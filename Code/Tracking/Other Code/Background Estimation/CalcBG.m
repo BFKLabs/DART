@@ -1463,9 +1463,17 @@ classdef CalcBG < handle
                 tStr = 'Update Background Estimate Image?';
                 uChoice = questdlg(['Do you want to update the ',...
                                     'background estimate changes?'],...
-                                    tStr,'Yes','No','Yes');
-                if ~strcmp(uChoice,'Yes')
-                    obj.isChange = false;
+                                    tStr,'Yes','No','Cancel','Yes');
+                switch uChoice
+                    case 'Cancel'
+                       % user cancelled
+                       return
+                       
+                    otherwise
+                        % case is the other choices
+                        if ~strcmp(uChoice,'Yes')
+                            obj.isChange = false;
+                        end
                 end
             end        
             
