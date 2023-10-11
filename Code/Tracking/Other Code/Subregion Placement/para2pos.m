@@ -35,4 +35,22 @@ switch Para.Type
             % sets the positional vector
             pPos{i} = [xL(1),yL(1),diff(xL),diff(yL)];
         end
+        
+    case 'GeneralR'
+        % case is a general repeating region
+        
+        % memory allocation
+        pPos = cell(size(Para.X0));
+                
+        % calculates the positional vector for each sub-region
+        for i = 1:numel(Para.X0)
+            % calculates the limits of the circular region
+            xTmp = Para.X0(i) + Para.XC;
+            yTmp = Para.Y0(i) + Para.YC;
+            [xL,yL] = deal([min(xTmp),max(xTmp)],[min(yTmp),max(yTmp)]);
+            
+            % sets the positional vector
+            pPos{i} = [xL(1),yL(1),diff(xL),diff(yL)];
+        end        
+        
 end

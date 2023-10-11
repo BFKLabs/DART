@@ -155,7 +155,7 @@ end
 
 % calculates the dimension ratios of several objects
 pCirc = P^2/(4*A*pi);               % Circle - Perimeter/Area ratio
-pSquare = (P/4)^2/A;                % Square - Perimeter/Area ratio
+pSquare = BB(3)./BB(4);             % Square - Perimeter/Area ratio
 pRect = A/prod(BB(3:4)-1);          % Rectangle - Area/BB ratio
 pObj = reciprocalFcn([pCirc,pSquare,pRect]);
 
@@ -629,50 +629,91 @@ ok = true(szF);
 IxcP = max(w0,reshape(Ixc(sub2ind(sz,pMax(:,2),pMax(:,1))),szF));
 [xP0,yP0] = deal(reshape(pMax(:,1),szF),reshape(pMax(:,2),szF));
 
-% fits the sub-region centroids in the horizontal direction
-for j = 1:szF(1)
-    yPF(j,:) = calcPolyFitValues(xP0(j,:),yP0(j,:),IxcP(j,:),dLim);
-end
-
-% fits the sub-region centroids in the vertical direction
-for j = 1:size(xP0,2)
-    xPF(:,j) = calcPolyFitValues(yP0(:,j),xP0(:,j),IxcP(:,j),dLim); 
-end
-
-% keep looping until all regions are either within distance tolerance or
-% have been re-aligned
-D = sqrt((xP0-xPF).^2 + (yP0-yPF).^2);
-while 1
-    % determines the centroid furtherest from the estimate
-    iMx = argMax(D(:));
-    if D(iMx) > dLim
-        % if above tolerance, then determine the coordinates of the
-        % offending sub-region
-        [yMx,xMx] = ind2sub(size(D),iMx);
+%
+[D,indN] = deal(cell(szF));
+for i = 1:szF(1)
+    for j = 1:szF(2)
+        indN{i,j} = getNeighbourPoints(i,j,szF);
         
-        % resets the initial coordinates to the estimated value
-        ok(yMx,xMx) = false;
-        xP0(yMx,xMx) = xPF(yMx,xMx);
-        yP0(yMx,xMx) = yPF(yMx,xMx);
-        
-        % re-calculates the centroids of the sub-regions in the row/column
-        yPF(yMx,:) = calcPolyFitValues(...
-                        xP0(yMx,:),yP0(yMx,:),IxcP(yMx,:),dLim,ok(yMx,:));
-        xPF(:,xMx) = calcPolyFitValues(...
-                        yP0(:,xMx),xP0(:,xMx),IxcP(:,xMx),dLim,ok(:,xMx)); 
-        
-        % re-calculates the distances (removing the contribution from any
-        % re-aligned sub-regions)
-        D = sqrt((xP0-xPF).^2 + (yP0-yPF).^2);
-        D(~ok) = 0;
-    else
-        % otherwise exit the loop
-        break
+        p0 = [xP0(i,j),yP0(i,j)];
+        D{i,j} = pdist2([xP0(indN{i,j}),yP0(indN{i,j})],p0);
     end
 end
 
+%
+okP = true(size(D));
+
+% eliminates any points which have a range greater than the dist tolerance
+while true
+    % determines which 
+    Dmd = mean(cell2mat(D(:)));
+    dD = cellfun(@(x)(abs(x-Dmd)),D,'un',0);
+    indT = cellfun(@(x)(any(x > 2*dLim)),dD) & okP;             
+    
+    % determines the index of the next search point
+    if ~any(indT(:))
+        % if all points are within tolerance, then exit
+        break
+    else
+        % otherwise, determine the next candidate point
+        iMx = find(indT,1,'first');
+        jMx = argMax(dD{iMx});
+    end
+    
+    % if the other point has a less x-corr value, then remove that point 
+    % from the search
+    if IxcP(iMx) > IxcP(indN{iMx}(jMx))
+        iMx = indN{iMx}(jMx);
+    end
+    
+    % removes the index flag
+    okP(iMx) = false;
+    [D{iMx},indN{iMx}] = deal([]);
+    
+    % REMOVE ME LATER
+    [iy,ix] = ind2sub(size(D),iMx);
+    fprintf('Row = %i, Col = %i\n',iy,ix);
+    if (iy == 1) && (ix == 3)
+        a = 1;
+    end        
+    
+    % removes the point from the neighbours and recalculates range
+    indS = find(cellfun(@(x)(any(x==iMx)),indN));
+    for i = 1:length(indS)
+        ii = indN{indS(i)} ~= iMx;
+        D{indS(i)} = D{indS(i)}(ii);
+        indN{indS(i)} = indN{indS(i)}(ii);
+    end  
+end
+
+% if there are any problematic points, then interpolate them
+if any(~okP(:))
+    % sets up the grid coordinates
+    [X,Y] = meshgrid(1:szF(2),1:szF(1));
+
+    % interpolates the missing x-coordinates
+    Fx = scatteredInterpolant(X(okP),Y(okP),xP0(okP));
+    xP0(~okP) = Fx(X(~okP),Y(~okP));
+    
+    % interpolates the missing y-coordinates
+    Fy = scatteredInterpolant(X(okP),Y(okP),yP0(okP));
+    yP0(~okP) = Fy(X(~okP),Y(~okP));
+end
+
 % ensures the centroid coordinates are integers
-[xPF,yPF] = deal(roundP(xPF),roundP(yPF));
+[xPF,yPF] = deal(roundP(xP0),roundP(yP0));
+
+% --- gets the indices of the neighbouring points
+function indN = getNeighbourPoints(i,j,sz)
+
+% determines the feasible surrounding points
+[iy,ix] = deal(i+[-1;1],j+[-1;1]);
+iy = iy((iy > 0) & (iy <= sz(1)));
+ix = ix((ix > 0) & (ix <= sz(1)));
+
+% sets the linear indices
+indN = [sub2ind(sz,iy,j*ones(size(iy)));...
+        sub2ind(sz,i*ones(size(ix)),ix)];
 
 % --- calculates the weighted-fit polynomial values
 function yF = calcPolyFitValues(x0,y0,W,dLim,ok)

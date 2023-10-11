@@ -116,7 +116,7 @@ classdef ExptCompObj < handle
                 crData0{i,1} = setupStr{1+sInfo{i}.is2D+isMT};    
                 crData0{i,2} = regStr;    
                 crData0{i,3} = stimStr; 
-                crData0{i,4} = sInfo{i}.snTot.sTrainEx;
+                crData0{i,4} = obj.getStimInfo(sInfo{i}.snTot.sTrainEx);
                 crData0{i,5} = sInfo{i}.tDur;
             end
             
@@ -134,7 +134,7 @@ classdef ExptCompObj < handle
                 end
             end
             
-        end
+        end       
         
         % --- calculates the compatibility flags
         function calcCompatibilityFlags(obj,indCr)
@@ -154,12 +154,12 @@ classdef ExptCompObj < handle
             if any(indCr == iColStim)
                 % determines the experiments with stimuli
                 hasStim = ~cellfun('isempty',obj.crData(:,iColStim));
-                [sTrain,sParaEx] = deal(cell(length(hasStim),1));
+                [sTrain,tStim] = deal(cell(length(hasStim),1));
                 
                 % for the expts with stimuli, retrieve the train/expt data
                 crD = obj.crData(hasStim,iColStim);                
                 sTrain(hasStim) = cellfun(@(x)(x.sTrain),crD,'un',0);
-                sParaEx(hasStim) = cellfun(@(x)(x.sParaEx),crD,'un',0);
+                tStim(hasStim) = cellfun(@(x)(x.tStim),crD,'un',0);
             end
 
             % loops through each criteria index updating the compatibility
@@ -172,7 +172,7 @@ classdef ExptCompObj < handle
                             isEq1 = cellfun(@(x)(isequaln(x,...
                                         sTrain{iExp})),sTrain);
                             isEq2 = cellfun(@(x)(isequaln(x,...
-                                        sParaEx{iExp})),sParaEx);
+                                        tStim{iExp})),tStim);
                             isEq = isEq1 & isEq2;
                                     
                         case 5
@@ -339,6 +339,23 @@ classdef ExptCompObj < handle
             
             % sets the final string
             durStr = strjoin(durStr0,':');
+            
+        end
+        
+        % --- retrieves the stimuli train info for an expt
+        function sTrainEx = getStimInfo(sTrainEx)
+            
+            % if no stimuli data then exit
+            if isempty(sTrainEx)
+                return
+            end
+            
+            % retrieves the inter-stimuli duration field
+            tStim = sTrainEx.sParaEx.tStim;
+            
+            % removes the expt para field, but add in the stimuli duration
+            sTrainEx = rmfield(sTrainEx,'sParaEx');
+            sTrainEx.tStim = tStim;
             
         end        
         

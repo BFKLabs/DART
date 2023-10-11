@@ -609,10 +609,23 @@ classdef TrackRegionClass < handle
             end
             
             % sets the output region data struct
-            iMov = obj.iMov;
-
+            iMov = obj.iMov;   
+            
+            % creates a loadbar (if there are lots of regions to set up)
+            if obj.iMov.is2D || obj.isMltTrk
+                if numel(iMov.pInfo.pPos) > 20
+                    lStr = 'Setting Up Separate Regions...';
+                    hProg = ProgressLoadbar(lStr);
+                end
+            end
+            
             % removes any previous markers and updates
             obj.createRegionConfig();            
+            
+            % deletes the progress bar
+            if exist('hProg','var')
+                hProg.delete
+            end
             
         end
         

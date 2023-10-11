@@ -283,7 +283,7 @@ if isMouseDown
     iC = min(p0(1),mP(1)):max(p0(1),mP(1));
     iR = min(p0(2),mP(2)):max(p0(2),mP(2));
     
-    % updates the 
+    % updates the data struct with the new group index
     pInfo = getDataSubStruct(handles);
     pInfo.iGrp(iR,iC) = iSel - 1;
     setDataSubStruct(handles,pInfo);
@@ -292,7 +292,7 @@ if isMouseDown
     selectionPatchFunc(hFig,hAx,'delete')
     
     % resets the configuration axes
-    resetConfigAxes(handles)   
+    resetConfigAxes(handles,false)
 end
 
 % resets the mouse-down flag
@@ -639,7 +639,7 @@ else
 end
 
 % performs the post automatic detection updates
-postAutoDetectUpdate(handles,iMov,iMovNw,~isempty(iMovNw));
+postAutoDetectUpdate(handles,iMov,iMovNw);
 
 % -------------------------------------------------------------------------
 function menuDetRect_Callback(hObject, eventdata, handles)
@@ -657,7 +657,7 @@ if isempty(iMov); return; end
 I = getRegionEstImageStack(handles,hGUI,iMov); 
 
 % performs the post automatic detection updates
-postAutoDetectUpdate(handles,iMov,iMovNw,~isempty(iMovNw));
+postAutoDetectUpdate(handles,iMov,iMovNw);
 
 % -------------------------------------------------------------------------
 function menuDetGeneral_Callback(hObject, eventdata, handles)
@@ -685,7 +685,7 @@ catch
 end
 
 % performs the post automatic detection updates
-postAutoDetectUpdate(handles,iMov,iMovNw,~isempty(iMovNw));
+postAutoDetectUpdate(handles,iMov,iMovNw);
 
 % -------------------------------------------------------------------------
 function menuDetGeneralCust_Callback(hObject, eventdata, handles)
@@ -1449,7 +1449,7 @@ for i = 1:length(tStr)
     end
     
     % initialises the popup objects for the panel
-    if iData.is2D || isMltTrk
+    if strContains(tStr{i},'2D') || isMltTrk
         hPopup = findall(hPanel{i},'style','popupmenu');
         for j = 1:length(hPopup)
             % updates the editbox parameter value (if values exist)
@@ -1779,7 +1779,7 @@ cmObj.updateMenuCheck(0)
 
 % updates the data struct and resets the configuration axes
 setDataSubStruct(handles,pInfo,1)
-resetConfigAxes(handles)
+resetConfigAxes(handles,false)
 
 % resets the open menu flag
 isMenuOpen = false;
@@ -1840,7 +1840,10 @@ setObjEnable(handles.buttonSetRegions,canSet)
 % ------------------------------- %
 
 % --- resets the configuration axes with the new information
-function resetConfigAxes(handles)
+function resetConfigAxes(handles,resetAxes)
+
+% sets the default input arguments
+if ~exist('resetAxes','var'); resetAxes = true; end
 
 % initialisations
 hAx = handles.axesConfig;
@@ -1854,7 +1857,7 @@ isMTrk = detMltTrkStatus(iMov);
 hAxM = hGUI.imgAxes;
 
 % memory allocation and parameters
-[hP,iGrp] = deal(zeros(pInfo.nRow,pInfo.nCol),pInfo.iGrp);
+iGrp = pInfo.iGrp;
 [ii,jj,fAlpha] = deal([1,1,2,2,1],[1,2,2,1,1],0.4);
 plWid = 0.5/(1+iData.is2D);
 
@@ -1863,42 +1866,58 @@ xLim = [0,pInfo.nCol];
 yLim = [0,pInfo.nRow];
 
 % sets up the region axes
-cla(hAx)
-axis(hAx,'ij');
-set(hAx,'xticklabel',[],'yticklabel',[],'xlim',xLim,...
-        'ylim',yLim,'box','on','xcolor','w',...
-        'ycolor','w','ticklength',[0,0]);
+if resetAxes
+    % clears the axis 
+    cla(hAx)
+    axis(hAx,'ij');
+    set(hAx,'xticklabel',[],'yticklabel',[],'xlim',xLim,'ylim',yLim,...
+        'box','on','xcolor','w','ycolor','w','ticklength',[0,0]);
 
-% turns the axis hold on
-hold(hAx,'on')  
+    % turns the axis hold on
+    hold(hAx,'on')  
+    
+    % creates the outer region markers
+    addOuterRegions(hAx,pInfo,xLim,yLim,iData.is2D)
 
-% creates the outer region markers
-addOuterRegions(hAx,pInfo,xLim,yLim,iData.is2D)        
+    % creates the group patches for each row/column region
+    for i = 1:pInfo.nRow
+        for j = 1:pInfo.nCol
+            % creates the region patch
+            pColNw = pCol(iGrp(i,j)+1,:);
+            [xx,yy,uD] = deal((j-1)+[0,1],(i-1)+[0,1],[i,j]);
+            patch(xx(ii),yy(jj),pColNw,'linewidth',plWid,'UserData',uD,...
+                    'facealpha',fAlpha,'parent',hAx,'tag','hRegion');
 
-% creates the group patches for each row/column region
-for i = 1:pInfo.nRow
-    for j = 1:pInfo.nCol
-        % creates the region patch
-        [xx,yy] = deal((j-1)+[0,1],(i-1)+[0,1]);
-        pColNw = pCol(iGrp(i,j)+1,:);
-        hP(i,j) = patch(xx(ii),yy(jj),pColNw,'linewidth',plWid,...
-                    'UserData',[i,j],'facealpha',fAlpha,'parent',hAx,...
-                    'tag','hRegion');
+            % creates the sub-region markers (1D only)
+            if ~(iData.is2D || isMTrk)
+                dY = 1/pInfo.nFly(i,j);
+                for k = 1:(pInfo.nFly(i,j)-1)
+                    % sets the patch properties/coordinates
+                    plot(hAx,xx,((i-1)+dY*k)*[1,1],'k','linewidth',0.5);
+                end
+            end
 
-        % creates the sub-region markers (1D only)
-        if ~(iData.is2D || isMTrk)
-            dY = 1/pInfo.nFly(i,j);
-            for k = 1:(pInfo.nFly(i,j)-1)
-                % sets the patch properties/coordinates
-                plot(hAx,xx,((i-1)+dY*k)*[1,1],'k','linewidth',0.5);
+            % updates the patch objects on the main axes (if it exists)
+            hOuter = findall(hAxM,'tag','hOuter','UserData',[j,i]);
+            if ~isempty(hOuter)
+                set(hOuter,'FaceColor',pColNw)
             end
         end
-        
-        % updates the patch objects on the main axes (if it exists)
-        hOuter = findall(hAxM,'tag','hOuter','UserData',[j,i]);
-        if ~isempty(hOuter)
-            set(hOuter,'FaceColor',pColNw)
-        end
+    end
+else
+    % determines the grouping indices
+    xiG = min(iGrp(:)):max(iGrp(:));
+    jGrp = arrayfun(@(x)(find(iGrp==x)),xiG,'un',0);
+    
+    % findall the region objects
+    hP0 = findall(hAx,'tag','hRegion');    
+    hold(hAx,'on')      
+    
+    % resets the face colours within each group
+    for i = 1:length(jGrp)
+        [iy,ix] = ind2sub([pInfo.nRow,pInfo.nCol],jGrp{i}); 
+        hPR = arrayfun(@(x,y)(findobj(hP0,'UserData',[y,x])),ix,iy); 
+        set(hPR,'FaceColor',pCol(i,:)); 
     end
 end
 
@@ -1924,7 +1943,7 @@ hAx = handles.axesConfig;
 pInfo = getDataSubStruct(handles);
 isGrid = get(handles.radioGridGroup,'Value');
 
-%
+% sets the group colours
 iGrp = pInfo.iGrp;
 pCol = getAllGroupColours(length(pInfo.gName));
 
@@ -1951,15 +1970,21 @@ if isGrid
             [xx,yy] = deal(dX*(j+[-1,0]),dY*(i+[-1,0]));
             pColNw = pCol(pInfo.iGrp(yy(2),xx(2))+1,:);
             fill(xx(ii),yy(jj),pColNw,'Parent',hAx,'tag','hGroup',...
-                                       'LineWidth',lWid,'FaceAlpha',0);
+                   'LineWidth',lWid,'FaceAlpha',0);
         end
     end
 else
-    %
-    szG = size(iGrp);
+    % initialisations
+    [szG,uDG] = deal(size(iGrp),[]);
+    
+    % removes the original groupings
+    hG = findall(hAx,'tag','hGroup');
+    if ~isempty(hG)
+        uDG = cell2mat(arrayfun(@(x)(x.UserData),hG,'un',0));
+    end
     
     %
-    for i = unique(iGrp(iGrp>0))'
+    for i = unique(iGrp)'
         % determines the groups for the current 
         CC = bwconncomp(iGrp == i,4);
         jGrp = CC.PixelIdxList;
@@ -1979,8 +2004,20 @@ else
             
             % creates the patch object
             ii = [(1:size(Pc,1)),1];
-            fill(Pc(ii,2),Pc(ii,1),pCol(i,:),'Parent',hAx,'tag',...
-                                'hGroup','LineWidth',lWid,'FaceAlpha',0);
+            if isempty(uDG)
+                jj = false;
+            else
+                jj = all(uDG == [i+1,j],2);
+            end
+
+            if isempty(jj) || ~any(jj)
+                fill(Pc(ii,2),Pc(ii,1),pCol(i+1,:),'Parent',hAx,'tag',...
+                    'hGroup','LineWidth',lWid,'FaceAlpha',0,...
+                    'UserData',[i,j]);
+            else
+                set(hG(jj),'XData',Pc(ii,2),'YData',Pc(ii,1),...
+                    'FaceColor',pCol(i+1,:));
+            end
         end
     end
 end
@@ -2314,6 +2351,9 @@ global isChange
 
 % initialisation
 hFig = handles.output;
+
+% sets the input arguments
+if ~exist('isUpdate','var'); isUpdate = ~isempty(iMovNw); end
 
 % determines if the user decided to update or not
 if isUpdate

@@ -45,7 +45,7 @@ cleaner = onCleanup(@()rng(rngseed));
 %% Build directory and file name
 % 'latex' directory in tempdir
 dirname = fullfile(tempdir,'latex');
-if ~isfolder(dirname)    
+if ~eixst(dirname,'dir')    
     mkdir(dirname)
 end
 % Random filename

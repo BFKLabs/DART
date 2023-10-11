@@ -2,7 +2,7 @@
 function dirSuf = getDirSuffix(dirFull)
 
 % determines if the path is actually a directory path
-if isfolder(dirFull)
+if exist(dirFull,'dir')
     % if so, retrieve the directory suffix
     dirSuf = [];    
     while isempty(dirSuf)
