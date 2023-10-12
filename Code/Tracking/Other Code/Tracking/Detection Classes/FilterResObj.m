@@ -180,10 +180,16 @@ classdef FilterResObj < handle
             
             % removes the excluded regions
             obj.IRs = cellfun(@(x)(obj.Bexc.*x),obj.IRs,'un',0);
+            IRTmn = calcImageStackFcn(obj.IRs,'min');
             
             % calculates the residual difference image stack
-            IRTmn = calcImageStackFcn(obj.IRs,'min');
-            Bs = IRTmn > prctile(IRTmn(:),25);
+            if obj.iMov.is2D
+                Bs = true(size(IRTmn));
+            else
+                Bs = IRTmn > prctile(IRTmn(:),10);
+            end
+            
+            % calculates the residual image stack
             obj.dIRs = cellfun(@(x)(Bs.*max(0,...
                     imfiltersym(x-IRTmn,obj.hG))),obj.IRs,'un',0);
             

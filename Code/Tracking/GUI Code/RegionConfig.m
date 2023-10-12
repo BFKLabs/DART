@@ -866,7 +866,7 @@ if chkEditValue(nwVal,nwLim,true,'exactVal',eVal,'exactMlt',pMlt)
         if iData.is2D
             % updates the panel properties
             hPanelI = handles.panelRegionInfo2D;
-            setPanelProps(hPanelI,nwVal>1)
+            setPanelProps(hPanelI,nwVal>0)
             setPanelProps(handles.panelGridGrouping,'off')
             setPanelProps(handles.panelCustomGrouping,'off')                          
         end
@@ -1796,21 +1796,17 @@ hPanelI = handles.panelRegionInfo2D;
 hPanelGG = handles.panelGridGrouping;
 hPanelCG = handles.panelCustomGrouping;
 
-% updates the 2D info panel properties (if required)
-if pInfo.nGrp == 1
-    setPanelProps(hPanelI,'off')
-    setPanelProps(hPanelGG,'off')
-    setPanelProps(hPanelCG,'off')
-    return
-end
+% sets the sub-panel enabled flags
+useCG = (pInfo.gType==2) && multiGrp;
+useGG = (pInfo.gType==1) && (pInfo.nGrp>1) && multiGrp;
 
 % updates the grid grouping panel object's enabled properties
 setPanelProps(hPanelI,'on')
-setPanelProps(hPanelGG,pInfo.gType==1 && multiGrp);
-setPanelProps(hPanelCG,pInfo.gType==2 && multiGrp);
+setPanelProps(hPanelGG,useGG);
+setPanelProps(hPanelCG,useCG);
 
 % updates the row/grid objects (if grid grouping is chosen & multi-group)
-if pInfo.gType==1 && multiGrp
+if useGG
     setObjEnable(findall(hPanelGG,'UserData','nRowG'),pInfo.nRow>1)
     setObjEnable(findall(hPanelGG,'UserData','nColG'),pInfo.nCol>1)
 end
@@ -1917,7 +1913,7 @@ else
     for i = 1:length(jGrp)
         [iy,ix] = ind2sub([pInfo.nRow,pInfo.nCol],jGrp{i}); 
         hPR = arrayfun(@(x,y)(findobj(hP0,'UserData',[y,x])),ix,iy); 
-        set(hPR,'FaceColor',pCol(i,:)); 
+        set(hPR,'FaceColor',pCol(xiG(i)+1,:)); 
     end
 end
 
@@ -1980,6 +1976,7 @@ else
     % removes the original groupings
     hG = findall(hAx,'tag','hGroup');
     if ~isempty(hG)
+        isUse = false(size(hG));
         uDG = cell2mat(arrayfun(@(x)(x.UserData),hG,'un',0));
     end
     
@@ -1998,7 +1995,7 @@ else
             P = imfill(boundarymask(padarray(B,[1,1])),'holes');
             Pc0 = bwboundaries(P);
             
-            %
+            % sets the outline coordinates
             Pc = roundP(Pc0{1}/4);
             Pc = Pc(sum(abs(diff([-[1,1];Pc],[],1)),2)>0,:);
             
@@ -2007,7 +2004,7 @@ else
             if isempty(uDG)
                 jj = false;
             else
-                jj = all(uDG == [i+1,j],2);
+                jj = all(uDG == [i,j],2);
             end
 
             if isempty(jj) || ~any(jj)
@@ -2015,10 +2012,23 @@ else
                     'hGroup','LineWidth',lWid,'FaceAlpha',0,...
                     'UserData',[i,j]);
             else
+                if sum(jj) > 1
+                    % if more than one match, then delete any replicates
+                    jj = find(jj,1,'first');
+                end
+                
+                isUse(jj) = true;
                 set(hG(jj),'XData',Pc(ii,2),'YData',Pc(ii,1),...
                     'FaceColor',pCol(i+1,:));
             end
         end
+    end
+
+    % deletes any extraneous regions
+    if exist('isUse','var')
+        if any(~isUse)
+            delete(hG(~isUse));
+        end    
     end
 end
 

@@ -252,12 +252,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                     % case is another phase type
                     ImgBGL = ImgBG(iRT{iTube},iCT);
                     ImgSeg = obj.setupResidualStack(ImgSR,ImgBGL);
-                end           
-                
-%                 %
-%                 if (iApp == 2) && (iTube == 14)
-%                     a = 1;
-%                 end
+                end                           
                 
                 % segments the image stack
                 [fP0nw,IP0nw] = obj.segmentSubRegion...
@@ -750,7 +745,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                         % case is a bi-directional check
                         if obj.iMov.is2D
                             % case is a 2D setup
-                            pdTol = 6;
+                            pdTol = 9;
                         else
                             % case is a 1D setup
                             if obj.withinEdge(indR,fPr)

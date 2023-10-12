@@ -1054,10 +1054,11 @@ switch uData(1)
         
         % updates the plot lines for all tubes
         for i = 1:nFly
-            % sets the plot indices and updates the plot data                                   
+            % sets the plot indices and updates the plot data
+            hLineX = findobj(hAx,'tag','hLineInd','UserData',i);
+            setObjVisibility(hLineX,vType(1));
             if vType(1)
-                ii = 1:min(length(T),length(XpltN{i})); 
-                hLineX = findobj(hAx,'tag','hLineInd','UserData',i);            
+                ii = 1:min(length(T),length(XpltN{i}));                 
                 set(hLineX,'xdata',T(ii)*Tmlt,'yData',...
                                 yDel+(1-2*yDel)*(1-XpltN{i}(ii))+(i-0.5))
             end
