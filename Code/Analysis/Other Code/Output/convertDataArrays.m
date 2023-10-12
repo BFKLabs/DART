@@ -76,7 +76,11 @@ for i = 1:length(pFld)
                     % regions within this grouping)
                     [iAppU,~,iC] = unique(iApp,'stable'); 
                     nFlyU = arrayfun(@(x)(max(cID{j}(iApp==x,3))),iAppU); 
-                    nFlyU = max(nFlyU(:),arr2vec(pInfo.nFly(iAppU)));                                        
+                    if length(pInfo.nFly) == 1
+                        nFlyU = max(nFlyU(:),arr2vec(pInfo.nFly));
+                    else
+                        nFlyU = max(nFlyU(:),arr2vec(pInfo.nFly(iAppU)));
+                    end
                     
                     % memory allocation
                     nFlyT = sum(nFlyU);
