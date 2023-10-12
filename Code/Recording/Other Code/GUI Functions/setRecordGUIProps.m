@@ -98,8 +98,8 @@ switch (typeStr)
             % runs a test pulse (HT1 controllers only)
             isHT1 = dType == 1;            
             if any(isHT1)
-                objHT1 = setupHT1TestPulse(objDAQ,iDev(isHT1));
-                runOutputDevices(objHT1,1:length(objHT1));
+%                 objHT1 = setupHT1TestPulse(objDAQ,iDev(isHT1));
+%                 runOutputDevices(objHT1,1:length(objHT1));
                 setappdata(hFig,'stimObj',TestStimPulse(infoObj,'StimOnly'))
             end
 

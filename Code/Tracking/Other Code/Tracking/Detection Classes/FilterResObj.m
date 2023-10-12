@@ -183,7 +183,8 @@ classdef FilterResObj < handle
             
             % calculates the residual difference image stack
             IRTmn = calcImageStackFcn(obj.IRs,'min');
-            obj.dIRs = cellfun(@(x)(max(0,...
+            Bs = IRTmn > prctile(IRTmn(:),25);
+            obj.dIRs = cellfun(@(x)(Bs.*max(0,...
                     imfiltersym(x-IRTmn,obj.hG))),obj.IRs,'un',0);
             
             % calculates the image stack statistics
