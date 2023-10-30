@@ -42,7 +42,7 @@ end
 % opens the movie file object
 [wState,isVidObj] = deal(warning('off','all'),true);
 switch fExtn
-    case {'.mj2','.mov','.mp4'}
+    case {'.mj2','.mov','.mp4','.avi'}
         % case is an .mj2, .mov or .mp4 files
         hFig.mObj = mObj;
         iData.sz = [mObj.Height mObj.Width];     

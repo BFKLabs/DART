@@ -10,7 +10,7 @@ if exist(vidFile,'file')
     try
         % uses the later version of the function 
         switch fExtn
-            case {'.mj2', '.mov','.mp4'}
+            case {'.mj2', '.mov','.mp4','.avi'}
                 mObj = VideoReader(vidFile);
             case '.mkv'
                 mObj = ffmsReader();

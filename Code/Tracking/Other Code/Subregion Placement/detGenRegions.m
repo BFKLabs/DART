@@ -668,14 +668,7 @@ while true
     
     % removes the index flag
     okP(iMx) = false;
-    [D{iMx},indN{iMx}] = deal([]);
-    
-    % REMOVE ME LATER
-    [iy,ix] = ind2sub(size(D),iMx);
-    fprintf('Row = %i, Col = %i\n',iy,ix);
-    if (iy == 1) && (ix == 3)
-        a = 1;
-    end        
+    [D{iMx},indN{iMx}] = deal([]);    
     
     % removes the point from the neighbours and recalculates range
     indS = find(cellfun(@(x)(any(x==iMx)),indN));

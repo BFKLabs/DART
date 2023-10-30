@@ -3,7 +3,7 @@ function nFrmT = getVideoFrameCount(mObj,vObj,fExtn)
 
 % opens the movie file object
 switch fExtn
-    case {'.mj2','.mov','.mp4'}
+    case {'.mj2','.mov','.mp4','.avi'}
         
         % determines the final frame count (some frames at the
         % end of videos sometimes are dodgy...)        
