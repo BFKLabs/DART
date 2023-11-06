@@ -1202,19 +1202,33 @@ end
 if chkEditValue(nwVal,fpsLim,0)   
     % converts the value to a character (if required)
     if ischar(class(get(srcObj,fpsFld)))
+        % retrieves the constraint values
         fpsInfo = propinfo(srcObj,fpsFld);
-        cVal = cellfun(@str2double,sort(fpsInfo.ConstraintValue));
+        cVal0 = sort(fpsInfo.ConstraintValue);
+        if iscell(cVal0)
+            % retrieves the list values
+            cVal = cellfun(@str2double,cVal0);
 
-        % determines if the value matches
-        ii = cVal == nwVal;       
-        if ~any(ii)
-            ii = argMin(abs(cVal - nwVal));
-            nwVal = cVal(ii);
-            set(hObject,'String',nwVal)
+            % determines if the value matches
+            ii = cVal == nwVal;       
+            if ~any(ii)
+                % if no match, then set the closest value
+                ii = argMin(abs(cVal - nwVal));
+                nwVal = cVal(ii);
+                set(hObject,'String',nwVal)
+            end
+
+            % sets the final source value
+            srcVal = fpsLim0{ii};
+        else
+            % sets the source object update values
+            srcVal = nwVal;
         end
         
-        set(srcObj,fpsFld,fpsLim0{ii});
+        % updates the source object
+        set(srcObj,fpsFld,srcVal);
     else
+        % case is the other types
         set(srcObj,fpsFld,nwVal);
     end
     

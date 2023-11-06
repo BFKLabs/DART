@@ -3,7 +3,7 @@ function nFly = getSRCount(iMov,varargin)
 
 % determines if multi-tracking
 if detMltTrkStatus(iMov)
-    nFly = 1;
+    nFly = iMov.pInfo.nRow;
     return
 end
 
