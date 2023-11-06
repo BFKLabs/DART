@@ -28,7 +28,7 @@ iMn = find(Bw.*imregionalmin(imfilter(I,hG)));
 for i = find(obj.iMov.ok(:)')
     % sets the column indices for the region
     iC = obj.iMov.iC{i};
-    for j = 1:size(obj.iMov.flyok)
+    for j = 1:length(obj.iMov.iRT{i})
         % sets the row indices of the sub-region
         iR = obj.iMov.iR{i}(obj.iMov.iRT{i}{j});  
         pOfs = [iC(1),iR(1)]-1;

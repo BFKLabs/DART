@@ -631,7 +631,7 @@ classdef SingleTrackInit < SingleTrack
             end
             
             % determines if any region didn't have a template image
-            noTemp = cellfun(@isempty,obj.frObj.hC);
+            noTemp = cellfun(@isempty,obj.frObj.hC) & obj.iMov.ok(:);
             if any(noTemp)                
                 % retrieves and resizes the known template images
                 hCT0 = obj.frObj.hC(~noTemp);                
