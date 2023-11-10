@@ -35,7 +35,8 @@ classdef ProgBar < matlab.mixin.SetGet
     
     % class methods
     methods
-        % class constructor
+        
+        % --- class constructor
         function obj = ProgBar(wStr,tStr,pType)
            
             % ensures the field strings are stored in a cell array
@@ -286,4 +287,5 @@ classdef ProgBar < matlab.mixin.SetGet
     methods (Static)
         
     end
+    
 end

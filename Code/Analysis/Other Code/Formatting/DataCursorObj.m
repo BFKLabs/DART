@@ -118,6 +118,10 @@ classdef DataCursorObj < handle
                     % case is a boxplot is selected
                     obj.setupBoxplotString(isMulti);                    
                     
+                case 'FilledBoxplot'
+                    % case is a boxplot is selected
+                    obj.setupFilledBoxplotString();
+                    
                 case 'Scatterplot'
                     % case is a scatterplot is selected
                     obj.setupScatterplotString();
@@ -137,6 +141,10 @@ classdef DataCursorObj < handle
                 case 'Marker'
                     % case is a plot marker is selected
                     obj.setupMarkerString();
+                    
+                case 'Heatmap'
+                    % case is the heatmap
+                    obj.setupHeatmapString();
                     
                 otherwise
                     % FINISH ME!
@@ -223,11 +231,11 @@ classdef DataCursorObj < handle
                         case 'Lower Whisker'
                             % case is the lower quartile
                             valTxt{i} = num2str(max(hBoxC(ii).YData));
-                            
+
                         case 'Upper Whisker'
                             % case is the lower quartile
                             valTxt{i} = num2str(min(hBoxC(ii).YData));
-                            
+
                         otherwise
                             % case is the other markers
                             valTxt{i} = num2str(hBoxC(ii).YData(1));
@@ -254,6 +262,52 @@ classdef DataCursorObj < handle
             xStr = obj.combineTextArrays(xLbl,xTxt);
             valStr = obj.combineTextArrays(valLbl,valTxt);
             obj.tmpStr = sprintf('%s\n\n%s\n\n%s',hdrStr,xStr,valStr);
+            
+        end
+        
+        % --- sets up the filled boxplot data-cursor string
+        function setupFilledBoxplotString(obj)
+            
+            % determines objects that belong to the selected boxplot
+            hBoxP = get(obj.evnt.Target,'Parent');
+            xDataC = arrayfun(@(x)(mean(x.XData)),hBoxP.Children);
+            iiC = xDataC == obj.evnt.Position(1);
+            hBoxC = hBoxP.Children(iiC);
+            tagStr = arrayfun(@(x)(x.Tag),hBoxC,'un',0);            
+            
+            % retrieves the corresponding object values
+            valLbl = obj.boxStrF;
+            valTxt = cell(size(valLbl));
+            for i = 1:length(obj.boxStr)
+                % determines the matching object index
+                ii = strcmp(tagStr,obj.boxStr{i});
+
+                % sets the text value
+                yD = hBoxC(ii).YData;
+                switch obj.boxStr{i}
+                    case 'Box'
+                        % case is the lower quartile
+                        valTxt([2,4]) = arrayfun(@num2str,yD,'un',0);
+
+                    case 'Whisker'
+                        % case is the lower quartile
+                        valTxt([1,5]) = arrayfun(@num2str,yD,'un',0);
+
+                    otherwise
+                        % case is the other markers
+                        valTxt{3} = num2str(yD(1));
+                end
+            end            
+            
+            % sets up the header block string
+            xLbl = {'X-Value'};
+            xTxt = {obj.setupXValString()};
+            hdrStr = obj.setupTextBlockHeader();
+            
+            % sets up the text block header string
+            xStr = obj.combineTextArrays(xLbl,xTxt);
+            valStr = obj.combineTextArrays(valLbl,valTxt);
+            obj.tmpStr = sprintf('%s\n\n%s\n\n%s',hdrStr,xStr,valStr);            
             
         end
         
@@ -414,6 +468,24 @@ classdef DataCursorObj < handle
             
         end
         
+        % --- sets up the heatmap string
+        function setupHeatmapString(obj)
+            
+            % field retrieval
+            pP = obj.evnt.Position;
+            
+            % sets up the header block string
+            valLbl = {'X-Value','Y-Value','Heatmap Value'};
+            valTxt = {obj.setupXValString(),obj.yGrp{pP(2)},...
+                      obj.setupYValString()};
+            hdrStr = obj.setupTextBlockHeader();            
+            
+            % case is a short signal type
+            valStr = obj.combineTextArrays(valLbl,valTxt);
+            obj.tmpStr = sprintf('%s\n\n%s',hdrStr,valStr);                        
+            
+        end
+        
         % ----------------------------------------- %
         % --- HEADER TEXT BLOCK SETUP FUNCTIONS --- %
         % ----------------------------------------- %
@@ -515,7 +587,8 @@ classdef DataCursorObj < handle
                 % case is the other plot types
                 switch obj.pType
                     case {'Bar Graph','Multi-Bar Graph',...
-                          'Boxplot','Stacked Bar Graph'}
+                          'Boxplot','Stacked Bar Graph',...
+                          'FilledBoxplot','Heatmap'}
                         % case are bar-graphs
                         if iscell(obj.xGrp)
                             xStr = obj.xGrp{roundP(x0)};
@@ -612,6 +685,9 @@ classdef DataCursorObj < handle
         % --- sets up the y-axis value string
         function yStr = setupYValString(obj)
 
+            % field retrieval
+            pP = obj.evnt.Position;
+            
             switch obj.pType
                 case 'Polar'
                     % case is the polar plot
@@ -625,7 +701,12 @@ classdef DataCursorObj < handle
                 case 'Stacked Bar Graph'
                     % case is a stacked bar graph
                     yD = get(obj.evnt.Target,'YData');
-                    yStr = num2str(yD(obj.evnt.Position(1)));
+                    yStr = num2str(yD(pP(1)));
+                    
+                case 'Heatmap'
+                    % case is a heatmap
+                    yD = get(obj.evnt.Target,'CData');
+                    yStr = num2str(yD(pP(2),pP(1)));
                     
                 otherwise                
                     % case is the other metrics

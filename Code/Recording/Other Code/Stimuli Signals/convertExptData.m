@@ -22,8 +22,8 @@ else
 end
 
 % updates the timing sub-struct fields
-iExpt.Timing.Texp = iExpt0.Timing.Texp;
 iExpt.Timing.Tp = iExpt0.Timing.Tp;
+iExpt.Timing.Texp = iExpt0.Timing.Texp;
 iExpt.Timing.fixedT0 = sign(iExpt0.Timing.T0(1)) > 0;
 [~,iExpt.Timing.TexpU] = vec2time(iExpt.Timing.Texp);
 
@@ -42,7 +42,11 @@ end
 for i = 1:nTrain
     % sets the stimuli type
     sType = split(sTrainS.sName);
-    ii = str2double(regexp(sTrainS.chName{1},'\d','match','once'));
+    if strcmp(sTrainS.chName{1},'All Ch')
+        ii = 1;
+    else
+        ii = str2double(regexp(sTrainS.chName{1},'\d','match','once'));
+    end
     
     % sets the description/parameters
     sTrainEx.sName{i} = sTrainS.sName;

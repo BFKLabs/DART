@@ -21,6 +21,7 @@ if useSolnForm
     % retrieves the parameter structs (converts from cell to struct array)
     iPara0 = field2cell(fData.iExpt.Stim,'sigPara');
     iPara = cellfun(@(x)(cell2mat(x)),iPara0,'un',0);
+    chName = getMotorChannelNames(nCh,1);
     
 else
     % determines if this is a record-only experiment
@@ -31,11 +32,18 @@ else
     end    
     
     % case is not loading data from the solution file
-    iStim = fData.iStim;
-    
-    nCount = iStim.nCount;
+    iStim = fData.iStim;    
+    [nCount,iPara] = deal(iStim.nCount,iStim.iPara);
     [nDev,nCh] = deal(length(iStim.nChannel),iStim.nChannel);
-    [nBlkInfo,iPara] = deal(sum(iStim.nCount),iStim.iPara);
+    isEq = cellfun(@(x)(isequal(x,iStim.iPara{1})),iStim.iPara);
+
+    if all(isEq)
+        [nBlkInfo,nCh] = deal(iStim.nCount(1),1);
+        chName = {'All Ch'};
+    else
+        nBlkInfo = sum(iStim.nCount);
+        chName = getMotorChannelNames(nCh,1);
+    end
 end
 
 % other initialisations
@@ -54,8 +62,8 @@ sTrainS = struct('sName',[],'chName',[],'tDur',0,...
                  'tDurU','s','blkInfo',[],'devType',[]);
 
 % sets the signal train header fields information
+sTrainS.chName = chName;
 sTrainS.sName = 'Short-Term Train #1';
-sTrainS.chName = getMotorChannelNames(nCh,1);
 sTrainS.blkInfo = repmat(blkInfo,nBlkInfo,1);
 sTrainS.devType = reshape(devType(iType),size(sTrainS.chName));
 

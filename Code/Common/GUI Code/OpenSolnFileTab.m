@@ -1192,9 +1192,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % runs the experiment concatenation dialog
             ConcatExptClass(obj);
             
-        end
-        
-      
+        end              
         
         % ---- callback function for the setting external data fields
         function menuLoadExtnDataCB(obj, ~, ~)
