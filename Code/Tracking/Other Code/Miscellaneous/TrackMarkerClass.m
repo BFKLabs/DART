@@ -94,9 +94,14 @@ classdef TrackMarkerClass < handle
         % --- marker plot initialisation function
         function initTrackMarkers(obj,varargin)
             
-            % if the sub-regions haven't been set then exit
-            obj.iMov = get(obj.hFig,'iMov');
-            if isempty(obj.iMov.yTube); return; end
+            if isprop(obj.hFig,'iMov')
+                % if the sub-regions haven't been set then exit
+                obj.iMov = get(obj.hFig,'iMov');
+                if isempty(obj.iMov.yTube); return; end
+            else
+                % case is the sub-region data struct isn't set
+                return
+            end
             
             % initialises the class fields
             obj.Type = getDetectionType(obj.iMov);            
@@ -145,7 +150,6 @@ classdef TrackMarkerClass < handle
 
                     otherwise
                         [iFlyR,iCol] = deal(1:length(obj.hMark{i}),NaN);
-
                 end
 
                 for j = iFlyR(:)'
@@ -153,15 +157,14 @@ classdef TrackMarkerClass < handle
                     hDStr = sprintf('hDir%i',i);
 
                     % sets the plot colour for the tubes
-                    [pCol,fAlpha,eCol,pMark,mSz] = ...
-                                        obj.getMarkerProps(i,j);        
+                    [pCol,fAlpha,eCol,pMark,mSz] = obj.getMarkerProps(i,j);        
 
                     % sets the x/y coordinates of the tube regions (either 
                     % for single tracking, or multi-tracking for the first 
                     % iteration)
                     if (j == 1) || ~obj.isMltTrk
                         % sets up the sub-region coordinates
-                        obj.setSubRegionCoords(i,j,iCol);                    
+                        obj.setSubRegionCoords(i,j,iCol);
 
                         % creates the tube region patch
                         obj.hTube{i}{j} = fill(obj.xTube{i}{j},...
@@ -209,60 +212,6 @@ classdef TrackMarkerClass < handle
         
             % updates the set flags
             obj.isSet = true;
-            
-        end
-        
-        % --- sets up the x/y coordinates for a specific sub-region
-        function setSubRegionCoords(obj,iApp,iFly,iCol)
-            
-            switch obj.Type
-                case 'Circle'
-                    %
-                    if numel(obj.iMov.autoP.R) == 1
-                        RC = obj.iMov.autoP.R;
-                    else
-                        RC = obj.iMov.autoP.R(iFly,iCol);
-                    end
-                    
-                    % case is an automatic shape region
-                    obj.xTube{iApp}{iFly} = RC*obj.iMov.autoP.XC + ...
-                            obj.iMov.autoP.X0(iFly,iCol);
-                    obj.yTube{iApp}{iFly} = RC*obj.iMov.autoP.YC + ...
-                            obj.iMov.autoP.Y0(iFly,iCol);
-                
-                case 'GeneralR'
-                    % case is an automatic shape region
-                    obj.xTube{iApp}{iFly} = obj.iMov.autoP.XC + ...
-                            obj.iMov.autoP.X0(iFly,iCol);
-                    obj.yTube{iApp}{iFly} = obj.iMov.autoP.YC + ...
-                            obj.iMov.autoP.Y0(iFly,iCol);
-
-                case 'Rectangle'
-                    % case is a rectangular region
-                    xTube0 = [0,obj.iMov.autoP.W(iFly,iApp)] + ...
-                            obj.iMov.autoP.X0(iFly,iApp);
-                    obj.xTube{iApp}{iFly} = xTube0(obj.ix);
-                        
-                    yTube0 = [0,obj.iMov.autoP.H(iFly,iApp)] + ...
-                            obj.iMov.autoP.Y0(iFly,iApp);                        
-                    obj.yTube{iApp}{iFly} = yTube0(obj.iy);
-                        
-                otherwise
-                    % otherwise, case is another region type
-                    if obj.isCG
-                        x = obj.iMov.xTube{iApp}(iFly,:) + obj.xOfs;
-                        y = obj.iMov.yTube{iApp} + obj.yOfs + ...
-                                obj.yDelG*[1,-1];             
-                    else
-                        x = obj.iMov.xTube{iApp} + obj.xOfs;
-                        y = obj.iMov.yTube{iApp}(iFly,:) + obj.yOfs + ...
-                                obj.yDelG*[1,-1];                              
-                    end
-
-                    % sets the final tube outline coordinates
-                    obj.xTube{iApp}{iFly} = x(obj.ix);
-                    obj.yTube{iApp}{iFly} = y(obj.iy);
-            end  
             
         end
         
@@ -341,6 +290,81 @@ classdef TrackMarkerClass < handle
             end
 
         end
+        
+        % --- deletes all the tracking markers
+        function deleteTrackMarkers(obj)
+            
+            % resets the set flag
+            obj.isSet = false;
+            
+            % if there are no markers, then exit the function
+            if isempty(obj.hMark); return; end
+            
+            % deletes the tube/marker objects
+            for i = 1:length(obj.hTube)
+                cellfun(@delete,obj.hTube{i});
+                cellfun(@delete,obj.hMark{i});
+                cellfun(@delete,obj.hDir{i});
+            end
+            
+            % resets the tube/marker handle arrays            
+            [obj.hMark,obj.hTube,obj.hDir] = deal([]);
+            
+        end                                
+        
+        % --- sets up the x/y coordinates for a specific sub-region
+        function setSubRegionCoords(obj,iApp,iFly,iCol)
+            
+            switch obj.Type
+                case 'Circle'
+                    %
+                    if numel(obj.iMov.autoP.R) == 1
+                        RC = obj.iMov.autoP.R;
+                    else
+                        RC = obj.iMov.autoP.R(iFly,iCol);
+                    end
+                    
+                    % case is an automatic shape region
+                    obj.xTube{iApp}{iFly} = RC*obj.iMov.autoP.XC + ...
+                            obj.iMov.autoP.X0(iFly,iCol);
+                    obj.yTube{iApp}{iFly} = RC*obj.iMov.autoP.YC + ...
+                            obj.iMov.autoP.Y0(iFly,iCol);
+                
+                case 'GeneralR'
+                    % case is an automatic shape region
+                    obj.xTube{iApp}{iFly} = obj.iMov.autoP.XC + ...
+                            obj.iMov.autoP.X0(iFly,iCol);
+                    obj.yTube{iApp}{iFly} = obj.iMov.autoP.YC + ...
+                            obj.iMov.autoP.Y0(iFly,iCol);
+
+                case 'Rectangle'
+                    % case is a rectangular region
+                    xTube0 = [0,obj.iMov.autoP.W(iFly,iApp)] + ...
+                            obj.iMov.autoP.X0(iFly,iApp);
+                    obj.xTube{iApp}{iFly} = xTube0(obj.ix);
+                        
+                    yTube0 = [0,obj.iMov.autoP.H(iFly,iApp)] + ...
+                            obj.iMov.autoP.Y0(iFly,iApp);                        
+                    obj.yTube{iApp}{iFly} = yTube0(obj.iy);
+                        
+                otherwise
+                    % otherwise, case is another region type
+                    if obj.isCG
+                        x = obj.iMov.xTube{iApp}(iFly,:) + obj.xOfs;
+                        y = obj.iMov.yTube{iApp} + obj.yOfs + ...
+                                obj.yDelG*[1,-1];             
+                    else
+                        x = obj.iMov.xTube{iApp} + obj.xOfs;
+                        y = obj.iMov.yTube{iApp}(iFly,:) + obj.yOfs + ...
+                                obj.yDelG*[1,-1];                              
+                    end
+
+                    % sets the final tube outline coordinates
+                    obj.xTube{iApp}{iFly} = x(obj.ix);
+                    obj.yTube{iApp}{iFly} = y(obj.iy);
+            end  
+            
+        end                
         
         % --- updates a signal marker
         function updateRegionMarkers(obj,ind)
@@ -463,7 +487,7 @@ classdef TrackMarkerClass < handle
                 obj.updateMarkerVisibility({hDirS},showDir)  
             end
             
-            for i = 1:nFly                
+            for i = 1:nFly
                 % determines if the local view is being plotted
                 if pltLV  
                     % sets the local fly coordinates'    
@@ -583,28 +607,7 @@ classdef TrackMarkerClass < handle
             fPosL = cellfun(@(x,p,dp)...
                             (x+p+dp),fPosL,pOfs',dpOfs','un',0);            
             
-        end
-        
-        % --- deletes all the tracking markers
-        function deleteTrackMarkers(obj)
-            
-            % resets the set flag
-            obj.isSet = false;
-            
-            % if there are no markers, then exit the function
-            if isempty(obj.hMark); return; end
-            
-            % deletes the tube/marker objects
-            for i = 1:length(obj.hTube)
-                cellfun(@delete,obj.hTube{i});
-                cellfun(@delete,obj.hMark{i});
-                cellfun(@delete,obj.hDir{i});
-            end
-            
-            % resets the tube/marker handle arrays            
-            [obj.hMark,obj.hTube,obj.hDir] = deal([]);
-            
-        end                        
+        end        
         
         % --- sets the visibility field for the marker given by Type
         function setMarkerVis(obj,Type,iApp,state)
@@ -804,7 +807,7 @@ classdef TrackMarkerClass < handle
                                     'EdgeColor',eCol,'FaceColor',pCol);
                         catch
                             % if there was an error, reinitalise
-                            obj.initTrackMarkers(handles,1)
+                            obj.initTrackMarkers(1)
 
                             % updates the tube location
                             set(obj.hTube{i}{j},'xdata',xT,'ydata',...
@@ -825,7 +828,7 @@ classdef TrackMarkerClass < handle
                 cellfun(@(x)(setObjVisibility(x,isShow)),obj.hTube{i})
             end
             
-        end        
+        end
         
         % --- show marker checkbox callback function
         function checkShowMark(obj)

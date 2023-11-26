@@ -667,6 +667,9 @@ classdef FilterResObj < handle
             % sets up the region mapping indices
             N = cellfun('length',iRT);
             iOfs = [0;cumsum(N(1:end-1))]; 
+            if iRT{end}(end) < (iOfs(end) + N(end))
+                iOfs = cellfun(@(x)(x(1)),iRT) - 1;
+            end
 
             % sets the interpolation array
             obj.iRM = arrayfun(@(n,i)(i+(1:n)'),N,iOfs,'un',0);  

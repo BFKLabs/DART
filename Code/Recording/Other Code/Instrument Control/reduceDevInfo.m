@@ -49,9 +49,11 @@ if ~isempty(objDAQ.vSelDAQ)
         set(objDAQ.Control{isS(i)},'UserData',sType)
         set(objDAQ0.Control{isS(i)},'UserData',sType)
 
-        % opens the device
-        if strcmp(get(objDAQ.Control{isS(i)},'status'),'closed')
-            fopen(objDAQ.Control{isS(i)});  
+        % opens the device  
+        if ~isa(objDAQ.Control{isS(i)},'DummyDevice')
+            if strcmp(get(objDAQ.Control{isS(i)},'status'),'closed')
+                fopen(objDAQ.Control{isS(i)});  
+            end
         end
     end
 end

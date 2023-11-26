@@ -25,11 +25,13 @@ classdef DummyVideo < handle
         iFrmT = 1;               
         FPS = 5;
         dFrm = 1;        
+        NumberOfBands = 3;
         
     end
     
     % class methods
     methods
+
         % --- class constructor
         function obj = DummyVideo(fName)
             
@@ -198,6 +200,5 @@ classdef DummyVideo < handle
             
         end
     end
-    
-    
+        
 end

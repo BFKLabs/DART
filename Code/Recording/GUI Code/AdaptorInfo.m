@@ -392,6 +392,11 @@ end
 nCh = infoObj.nCh;
 nCh(~setGroup(infoObj.vSelDAQ(:),size(nCh))) = 0;
 
+% resets the DAQ field (if running in test mode)
+if infoObj.isTest
+    infoObj.objDAQ = infoObj.objDAQTest;
+end
+
 % sets the DAC object information
 infoObj.objDAQ.iChannel = arrayfun(@(x)...
                 ((1:x)-1),infoObj.nCh(infoObj.vSelDAQ),'un',0)'; 

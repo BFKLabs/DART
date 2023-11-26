@@ -1,6 +1,8 @@
 classdef StimObj < handle
+    
     % class properties
     properties
+
         % object handles
         hS
         hTimer
@@ -45,7 +47,8 @@ classdef StimObj < handle
     
     % class methods
     methods
-        % class constructor
+
+        % --- class constructor
         function obj = StimObj(hS,xySig,dT,stType,sType,hasIMAQ,isExtnDAC)
             
             % sets the important fields
@@ -320,8 +323,8 @@ classdef StimObj < handle
             end              
             
             % parameters and other initialisations  
-            hasDev = ~isempty(obj.hS);
-            [tw0,tw1] = deal(5,0);            
+%             hasDev = ~isempty(obj.hS);
+            hasDev = ~isempty(obj.hS) && ~isa(obj.hS,'DummyDevice');
 
             while 1
                 try 

@@ -12,7 +12,8 @@ switch (typeStr)
     % --- OBJECT INITIALISATIONS --- %
     % ------------------------------ %
     
-    case ('InitGUI') % case is initialising the GUI (common to full & test)   
+    case ('InitGUI') 
+        % case is initialising the GUI (common to full & test)   
         
         % clears the preview axes
         cla(handles.axesPreview); 
@@ -22,7 +23,8 @@ switch (typeStr)
         centreFigPosition(hFig);        
         
         % sets the menu item enabled properties
-        setObjEnable(handles.menuExpt,~infoObj.isTest);
+        setObjEnable(handles.menuExpt,1);
+%         setObjEnable(handles.menuExpt,~infoObj.isTest);
         setObjEnable(handles.menuAdaptors,~infoObj.isTest);            
         
         % --------------------------------------------------- %
@@ -90,11 +92,19 @@ switch (typeStr)
             end
             
             % sets the toggle IR menu check
-            set(handles.menuToggleIR,'Checked','On');
-            setObjVisibility(handles.menuToggleWhite,any(dType==2))
-            setObjVisibility(handles.menuStimTest,any(dType==1))
-            setObjVisibility(handles.menuOpto,'on');
-
+            set(handles.menuToggleIR,'Checked','On'); 
+            setObjVisibility(handles.menuOpto,'on');            
+            
+            % sets the toggle white light menu item visibility
+            if isfield(handles,'menuToggleWhite')
+                setObjVisibility(handles.menuToggleWhite,any(dType==2))
+            end
+                
+            % sets the stimuli test menu item visibility            
+            if isfield(handles,'menuStimTest')            
+                setObjVisibility(handles.menuStimTest,any(dType==1))
+            end
+                
             % runs a test pulse (HT1 controllers only)
             isHT1 = dType == 1;            
             if any(isHT1)

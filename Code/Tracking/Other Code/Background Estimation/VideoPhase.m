@@ -176,13 +176,6 @@ classdef VideoPhase < handle
                 obj.iC0{iApp} = ceil(pP(1))+(0:floor(pP(3)));
             end
             
-%             % SPECIAL CASE - for HT1 controllers, the phases where
-%             % stimuli events occur must be treated separately than
-%             % other phase types
-%             if obj.isHT1 && ~isempty(obj.iData.stimP)
-%                 obj.setupHT1StimIndices();
-%             end
-            
         end
         
         % --------------------------------- %
@@ -341,31 +334,6 @@ classdef VideoPhase < handle
             if any(abs(pOfs0) > obj.pOfsMin)
                 obj.hasT(:) = true;
             end
-            
-            %                 [p0,pW] = deal(0.25,0.5);
-            %                 for i = 1:obj.nApp
-            %                     % updates the progress bar
-            %                     pNw = p0 + i*pW/(1+obj.nApp);
-            %                     wStrR = sprintf(['Calculating Region Translation ',...
-            %                                      '(Region %i of %i)'],i,obj.nApp);
-            %                     if obj.updateSubProgField(wStrR,pNw)
-            %                         % if the user cancelled, then exit
-            %                         obj.calcOK = false;
-            %                         return
-            %                     end
-            %
-            %                     % retrieves the local image stack
-            %                     [iR,iC] = deal(obj.iR0{i},obj.iC0{i});
-            %                     IL = cellfun(@(x)(x(iR,iC)),obj.Img0([1,end]),'un',0);
-            %                     IL = cellfun(@(x)(applyHMFilter(x)),IL,'un',0);
-            %
-            %                     % calculates offset between the first/last frames, and
-            %                     % from this determine if there is signficant movement
-            %                     pOfs0 = obj.estImgOffset(IL{1},IL{1});
-            %                     pOfs1 = obj.estImgOffset(IL{2},IL{1});
-            %                     obj.hasT(i) = any(abs(pOfs0-pOfs1) > 0.4);
-            %                 end
-            %             end
             
             % updates the progressbar
             wStr2 = 'Determining Lighting Fluctuations';

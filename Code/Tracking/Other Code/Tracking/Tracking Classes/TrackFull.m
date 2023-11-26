@@ -260,7 +260,8 @@ classdef TrackFull < Track
                         prDataPh = [];
                     else                                        
                         % otherwise, set up the previous phases data struct
-                        prDataPh = obj.sObj.setupPrevPhaseData(iFrmLast);
+                        prDataPh = ...
+                            obj.sObj.setupPrevPhaseData(iFrmLast,iPhase);
                     end
                 end
                 
@@ -268,7 +269,10 @@ classdef TrackFull < Track
             
             % sets the tracking object properties
             set(obj.fObj{iPhase},'iMov',obj.iMov,'wOfs',wOfsNw,...
-                                 'hProg',obj.hProg,'iPh',iPhase,'vPh',vPh);      
+                                 'hProg',obj.hProg,'iPh',iPhase,'vPh',vPh);
+            if obj.isMulti
+                set(obj.fObj{iPhase},'calcInit',false);
+            end
             
             % ------------------------------ %
             % --- FLY LOCATION DETECTION --- %
@@ -308,14 +312,16 @@ classdef TrackFull < Track
                 Img = obj.getImageStack(iFrmR);                
                 
                 % applies the image filter (if required)
-                if ~isempty(obj.hS) && ~obj.isMulti
+                if ~obj.isMulti && ~isempty(obj.hS)
                     Img = cellfun(@(x)(imfiltersym(x,obj.hS)),Img,'un',0);
                 end                
                 
                 % updates the tracking object class fields                
                 set(obj.fObj{iPhase},'Img',Img,'prData',prDataPh,...
-                                     'iFrmR',obj.sProg.iFrmR{i},...
-                                     'xLim',obj.xLim,'yLim',obj.yLim);
+                                     'iFrmR',obj.sProg.iFrmR{i});
+                if ~obj.isMulti
+                    set(obj.fObj{iPhase},'xLim',obj.xLim,'yLim',obj.yLim);
+                end
                                     
                 % runs the direct detection algorithm
                 obj.fObj{iPhase}.runDetectionAlgo();   
@@ -350,22 +356,47 @@ classdef TrackFull < Track
             nFrm = length(iFrmR);
             
             % retrieves the updated x/y limits
-            obj.xLim = get(fObjP,'xLim');
-            obj.yLim = get(fObjP,'yLim');
+            if obj.isMulti
+                % finds the valid region indices
+                indReg = find(arr2vec(obj.iMov.flyok')');
+                
+            else
+                % finds the valid region indices
+                indReg = find(obj.iMov.ok(:)');
+                
+                % updates the x/y coordinate limits
+                obj.xLim = get(fObjP,'xLim');
+                obj.yLim = get(fObjP,'yLim');
+            end
             
             % retrieves all values
-            for iApp = find(obj.iMov.ok(:)')
-                % calculates the offset
-                dX = obj.iMov.iC{iApp}(1) - 1;
-                dY = obj.isMulti*(obj.iMov.iR{iApp}(1) - 1);                
-                pOfs = repmat([dX,dY],nFrm,1);                                
-                for iFly = 1:obj.sObj.getSubRegionCount(iApp)
+            for iApp = indReg
+                % calculates the positional offset
+                if obj.isMulti
+                    [iCol,iRow] = ind2sub(size(obj.iMov.flyok),iApp);
+                    dX = obj.iMov.iC{iCol}(1) - 1;
+                    dY = obj.iMov.iR{iCol}(obj.iMov.iRT{iCol}{iRow}(1))-1;
+                    nFlyR = obj.iMov.pInfo.nFly(iRow,iCol);
+                    iReg = (iCol-1)*obj.iMov.pInfo.nRow + iRow;
+                    
+                else
+                    iReg = iApp;
+                    dX = obj.iMov.iC{iApp}(1) - 1;
+                    dY = obj.isMulti*(obj.iMov.iR{iApp}(1) - 1);
+                    nFlyR = obj.sObj.getSubRegionCount(iApp);
+                end
+                
+                % sets the positional offset array
+                pOfs = repmat([dX,dY],nFrm,1);      
+                
+                %
+                for iFly = 1:nFlyR
                     % sets the local/global position values
-                    obj.pData.fPos{iApp}{iFly}(iFrmR,:) = pOfs + ...
+                    obj.pData.fPos{iReg}{iFly}(iFrmR,:) = pOfs + ...
                         obj.getTrackFieldValues(fObjP.fPos,iApp,iFly);
                     if isprop(fObjP,'fPosL')
                         if ~isempty(fObjP.fPosL)
-                            obj.pData.fPosL{iApp}{iFly}(iFrmR,:) = ...
+                            obj.pData.fPosL{iReg}{iFly}(iFrmR,:) = ...
                                         obj.getTrackFieldValues...
                                         (fObjP.fPosL,iApp,iFly);
                         end
@@ -373,17 +404,17 @@ classdef TrackFull < Track
                     
                     % sets the position metric values
                     if isprop(fObjP,'IPos')
-                        obj.pData.IPos{iApp}{iFly}(iFrmR) = ...
+                        obj.pData.IPos{iReg}{iFly}(iFrmR) = ...
                              obj.getTrackFieldValues(fObjP.IPos,iApp,iFly);   
                     end
                                         
                     % sets the orientation angle (if required)
                     if obj.iMov.calcPhi
-                        obj.pData.Phi{iApp}{iFly}(iFrmR) = ...
+                        obj.pData.Phi{iReg}{iFly}(iFrmR) = ...
                             obj.getTrackFieldValues(fObjP.Phi,iApp,iFly);
-                        obj.pData.axR{iApp}{iFly}(iFrmR) = ...
+                        obj.pData.axR{iReg}{iFly}(iFrmR) = ...
                             obj.getTrackFieldValues(fObjP.axR,iApp,iFly); 
-                        obj.pData.NszB{iApp}{iFly}(iFrmR) = ...
+                        obj.pData.NszB{iReg}{iFly}(iFrmR) = ...
                             obj.getTrackFieldValues(fObjP.NszB,iApp,iFly);
                     end
                 end
@@ -625,11 +656,11 @@ classdef TrackFull < Track
             
             % sets the interpolation value
             iLV0 = find(obj.iMov.vPhase==1,1,'first');
-            if isempty(iLV0)
+%             if isempty(iLV0)
                 obj.nI = 0;
-            else
-                obj.nI = obj.fObj{iLV0}.nI;
-            end
+%             else
+%                 obj.nI = obj.fObj{iLV0}.nI;
+%             end
             
             % function handles
             obj.dispImage = get(obj.hFig,'dispImage');

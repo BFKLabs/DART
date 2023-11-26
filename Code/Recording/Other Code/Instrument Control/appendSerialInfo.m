@@ -1,5 +1,8 @@
 % --- appends the new Serial information to the data struct
-function [A,isOK] = appendSerialInfo(A,pStr,vStr)
+function [A,isOK] = appendSerialInfo(A,pStr,vStr,isTest)
+
+% sets the default input arguments
+if ~exist('isTest','var'); isTest = false; end
 
 % parameters
 bRate = 9600;
@@ -13,30 +16,47 @@ nStr = size(pStr,1);
 % creates the serial objects
 for i = 1:nStr
     % sets up the controller handle and boardname string
-    Control{i} = serial(pStr{i,1},'BaudRate',bRate,'Parity',...
-                                  'none','DataBits', 8,'StopBits', 1);    
+    if isTest
+        Control{i} = DummyDevice(pStr{i,1});        
+    else
+        Control{i} = serial(pStr{i,1},'BaudRate',bRate,'Parity',...
+                                      'none','DataBits', 8,'StopBits', 1);
+    end
+
+    % sets the controller boardname
     BoardNames{i} = pStr{i,2};    
     
     % opens the controller and determines what type it is
-    switch BoardNames{i}
-        case {'STMicroelectronics Virtual COM Port', 'USB Serial Device'}
-            [isOK(i),sTypeNw] = detValidSerialContollerV2(Control{i},vStr);
-            if isOK(i)
-                sType{i} = sprintf('%s%s',upper(sTypeNw(1)),lower(sTypeNw(2:end)));
-            end
-        otherwise
-            [isOK(i),sType{i}] = detValidSerialContollerV1(Control{i},vStr);
+    if isTest
+        % case is running in testing mode
+        sType{i} = 'Motor';        
+        
+    else
+        % case is running in 
+        switch BoardNames{i}
+            case {'STMicroelectronics Virtual COM Port', 'USB Serial Device'}
+                [isOK(i),sTypeNw] = ...
+                    detValidSerialContollerV2(Control{i},vStr);
+                if isOK(i)
+                    sType{i} = sprintf(...
+                        '%s%s',upper(sTypeNw(1)),lower(sTypeNw(2:end)));
+                end
+                
+            otherwise
+                [isOK(i),sType{i}] = ...
+                    detValidSerialContollerV1(Control{i},vStr);
+        end
     end
 end
 
 % if there are no valid serial controllers, then exit the loop
-if (~any(isOK))
+if ~any(isOK)
     cellfun(@(x)(delete(instrfind({'Port'},x(1)))),num2cell(pStr(~isOK,:),2))
     return; 
 end
 
 % appends the data to the overall data struct
-if (~isempty(A))    
+if ~isempty(A)
     % resets the serial count/name strings
     [nStrNw,pStr,sType] = deal(sum(isOK),pStr(isOK,:),sType(isOK));
     bName = cellfun(@(x,y)(sprintf('%s - %s',x,y)),BoardNames(isOK),sType,'un',0);

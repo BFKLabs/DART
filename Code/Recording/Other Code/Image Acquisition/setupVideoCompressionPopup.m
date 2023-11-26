@@ -1,6 +1,11 @@
 % --- sets up the video compression popup box --- %
 function setupVideoCompressionPopup(vObj,hPopup,varargin)
 
+%
+if ~isprop(vObj,'NumberOfBands')
+    vObj.NumberOfBands
+end
+
 % retrieves the video profiles names/file extensions
 vidProf = num2cell(VideoWriter.getProfiles());
 pStr = cellfun(@(x)(x.Name),vidProf,'un',0)';

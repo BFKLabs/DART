@@ -21,7 +21,7 @@ end
 % End initialization code - DO NOT EDIT
 
 % --- Executes just before FlyRecord is made visible.
-function FlyRecord_OpeningFcn(hObject, eventdata, handles, varargin)
+function FlyRecord_OpeningFcn(hObject, ~, handles, varargin)
 
 % turns off all warnings
 wState = warning('off','all');
@@ -156,7 +156,7 @@ initAxesProps(handles,[],handles.axesPreview)
 set(hObject,'CurrentAxes',handles.axesPreview)
 
 % turns on all warnings again
-try; close(h); end
+try close(h); catch; end
 warning(wState);
 
 % Update handles structure
@@ -166,7 +166,7 @@ guidata(hObject, handles);
 % uiwait(handles.figFlyRecord);
 
 % --- Outputs from this function are returned to the command line.
-function varargout = FlyRecord_OutputFcn(hObject, eventdata, handles)
+function varargout = FlyRecord_OutputFcn(~, ~, ~)
 
 % Get default command line output from handles structure
 varargout{1} = [];
@@ -180,7 +180,7 @@ varargout{1} = [];
 % ----------------------- %
 
 % -------------------------------------------------------------------------
-function menuNewExpt_Callback(hObject, eventdata, handles)
+function menuNewExpt_Callback(~, ~, handles)
 
 % global variables
 hFig = handles.figFlyRecord;
@@ -346,24 +346,24 @@ toggleVideoPreview_Callback(handles.toggleVideoPreview, '1', handles)
 setObjVisibility(hFig,'on');
 
 % -------------------------------------------------------------------------
-function menuSyncSummary_Callback(hObject, eventdata, handles)
+function menuSyncSummary_Callback(~, ~, handles)
 
 % runs the summary sychronisation file GUI
 SyncSummary(handles.figFlyRecord)
 
 % -------------------------------------------------------------------------
-function menuDownsampleVideo_Callback(hObject, eventdata, handles)
+function menuDownsampleVideo_Callback(~, ~, handles)
 
 ConvertVideo(handles.figFlyRecord);
 
 % -------------------------------------------------------------------------
-function menuProgDef_Callback(hObject, eventdata, handles)
+function menuProgDef_Callback(~, ~, handles)
 
 % runs the program default GUI
 ProgDefaultDef(handles.figFlyRecord,'Recording');
 
 % -------------------------------------------------------------------------
-function menuExit_Callback(hObject, eventdata, handles)
+function menuExit_Callback(~, ~, handles)
 
 % prompts the user if they wish to close the recording gui
 selection = questdlg('Are you sure you want to close the Recording GUI?',...
@@ -454,13 +454,13 @@ end
 % -------------------------- %
 
 % -------------------------------------------------------------------------
-function menuVideoProps_Callback(hObject, eventdata, handles)
+function menuVideoProps_Callback(~, ~, handles)
 
 % runs the video parameter sub-GUI
 VideoPara(handles);
 
 % -------------------------------------------------------------------------
-function menuTestRecord_Callback(hObject, eventdata, handles)
+function menuTestRecord_Callback(~, ~, handles)
 
 % retrieves the parameter data struct
 hFig = handles.figFlyRecord;
@@ -529,7 +529,7 @@ if ~isempty(vPara)
 end
 
 % -------------------------------------------------------------------------
-function menuVidROI_Callback(hObject, eventdata, handles)
+function menuVidROI_Callback(~, ~, handles)
 
 % runs the video ROI setting GUI
 wState = warning('off','all');
@@ -541,7 +541,7 @@ warning(wState);
 % ----------------------------- %
 
 % -------------------------------------------------------------------------
-function menuSetupExpt_Callback(hObject, eventdata, handles)
+function menuSetupExpt_Callback(~, ~, handles)
 
 % retrieves the test flag
 hFig = handles.figFlyRecord;
@@ -560,7 +560,7 @@ ExptSetup(hFig);
 % ------------------------------ %
 
 % -------------------------------------------------------------------------
-function menuCalibrateTrack_Callback(hObject, eventdata, handles)
+function menuCalibrateTrack_Callback(~, ~, handles)
 
 % retrieves the full DART program default struct directory
 hFig = handles.figFlyRecord;
@@ -575,19 +575,19 @@ FlyTrack(handles,1);
 % ------------------------------- %
 
 % -------------------------------------------------------------------------
-function menuToggleIR_Callback(hObject, eventdata, handles)
+function menuToggleIR_Callback(hObject, ~, handles)
 
 % toggles the IR lights
 toggleOptoLights(handles,hObject,true)
 
 % -------------------------------------------------------------------------
-function menuToggleWhite_Callback(hObject, eventdata, handles)
+function menuToggleWhite_Callback(hObject, ~, handles)
 
 % toggles the white lights
 toggleOptoLights(handles,hObject,false)
 
 % -------------------------------------------------------------------------
-function menuStimTest_Callback(hObject, eventdata, handles)
+function menuStimTest_Callback(~, ~, handles)
 
 stimObj = getappdata(handles.figFlyRecord,'stimObj');
 stimObj.runDevice();
@@ -601,7 +601,7 @@ stimObj.runDevice();
 % ----------------------------------- %
 
 % --- Executes on button press in toggleVideoPreview.
-function toggleVideoPreview_Callback(hObject, eventdata, handles)
+function toggleVideoPreview_Callback(hObject, ~, handles)
 
 % sets the eventdata flag (if not specifically set)
 prObj = getappdata(handles.figFlyRecord,'prObj');

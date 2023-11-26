@@ -232,7 +232,7 @@ handles = initObjProps(handles,true);
 guidata(hObject, handles);
 
 % closes the loadbar
-try; close(hLoad); end
+try close(hLoad); catch; end
 
 % centres the gui to the middle of the string
 optFigPosition([hFig,hObject])
@@ -1544,7 +1544,7 @@ updateMenuItemProps(handles);
 % --------------------------------- %
 
 % updates the table data
-if ~(iData.is2D || isMltTrk)
+if ~iData.is2D
     updateRegionInfoTable(handles); 
 end
 
@@ -2196,7 +2196,7 @@ hAx = hGUI.imgAxes;
 
 % sets the subplot variables (based on the inputs)
 [pG,del] = deal(iMov.posG,5);
-if iData.is2D
+if iData.is2D || hFig.isMTrk
     [nRow,nCol] = deal(1,size(pInfo.iGrp,2));
 else
     [nRow,nCol] = deal(pInfo.nRow,pInfo.nCol);
@@ -2243,7 +2243,7 @@ for i = 1:nRow
 end
 
 % sets up the sub-region acceptance flags
-if iMov.is2D || detMltTrkStatus(iMov)
+if iMov.is2D || hFig.isMTrk
     % case is a 2D expt setup
     
     % parameters

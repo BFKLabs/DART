@@ -987,8 +987,10 @@ classdef AnalysisOpt < handle
                 set(hChk{i},'value',strcmp(get(hChk{i},'enable'),'on'))
             end            
             
-            % deletes the existing tracking markers
-            obj.hFigM.mkObj.deleteTrackMarkers()
+            % deletes the tracking markers (if they exist)
+            if ~isempty(obj.hFigM.mkObj)
+                obj.hFigM.mkObj.deleteTrackMarkers()
+            end
             
             % creates the tracking marker class object
             if detMltTrkStatus(obj.iMov)

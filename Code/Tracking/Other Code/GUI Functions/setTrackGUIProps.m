@@ -669,7 +669,9 @@ switch (typeStr)
         cMov = iData.cMov;
         
         % updates the rejection button
-        setObjEnable(handles.checkReject,~isempty(iMov.pos{cMov}))
+        if ~detMltTrkStatus(iMov)
+            setObjEnable(handles.checkReject,~isempty(iMov.pos{cMov}))
+        end
 
         % check to see if any buttons need to be enabled/disabled
         if (cMov == iData.nMov)
@@ -881,8 +883,17 @@ if (iMov.isSet && (nargin == 1))
     % sets the sub-movie properties strings
     setObjEnable(handles.textRowCountL,'on')
     setObjEnable(handles.textColCountL,'on')        
-    set(setObjEnable(handles.textRowCount,1),'string',num2str(iMov.nRow))
-    set(setObjEnable(handles.textColCount,1),'string',num2str(iMov.nCol))
+    
+    % sets the row/column count
+    if detMltTrkStatus(iMov)
+        [nRow,nCol] = size(iMov.flyok);
+    else
+        [nRow,nCol] = deal(iMov.nRow,iMov.nCol);
+    end
+
+    % updates the text label strings
+    set(setObjEnable(handles.textRowCount,1),'string',num2str(nRow))
+    set(setObjEnable(handles.textColCount,1),'string',num2str(nCol))    
     
     % enables the check boxes/buttons in the frame
     setObjEnable(handles.checkSubRegions,'on')

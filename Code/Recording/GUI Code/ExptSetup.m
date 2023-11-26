@@ -161,6 +161,7 @@ global mType mpStrDef isInit
 
 % if initialising the axes, then exit
 if isInit; return; end
+if isempty(mType); mType = 0; end
 
 % ignore mouse clicjs on the experiment information tab
 hTabSel = get(getappdata(hFig,'hTabGrp'),'SelectedTab');
@@ -278,7 +279,8 @@ switch selType
                     setSelectedSignalProps(handles,'on')
                 end
                 
-            case 2 % case is a signal block is being placed
+            case 2 
+                % case is a signal block is being placed
                 
                 % resets the mouse hover type flag
                 mType = 0;
@@ -295,7 +297,8 @@ switch selType
                     setObjEnable(handles.buttonTestTrain,'on')
                 end                
                 
-            case {3,5} % case is a signal block has been selected and moved
+            case {3,5} 
+                % case is a signal block has been selected and moved
                 
                 % makes the distance line markers visible;
                 uData = get(hSigSel,'UserData');
@@ -1713,7 +1716,6 @@ global hSigSel
 
 % initialisations
 ok = true;
-eStr = {'off','on'};
 pStr = get(hObject,'UserData');
 
 % retrieves the important field values from the gui
@@ -1727,7 +1729,7 @@ hTab = getCurrentSignalParaTab(handles);
 % retrieves the signal sub-struct
 sParaStr = sprintf('sPara%s',dType);
 sPara = getappdata(hFig,sParaStr);
-sParaS = eval(sprintf('sPara.%s',sType));
+sParaS = getStructField(sPara,sType);
 
 % sets the parameter value limits
 isInt = 0;
@@ -1752,8 +1754,8 @@ end
 % retrieves the new value and determines if it is valid
 nwVal = str2double(get(hObject,'string'));
 if chkEditValue(nwVal,nwLim,isInt)
-    % if so, then update the parameter within the struct
-    eval(sprintf('sParaS.%s = nwVal;',pStr));
+    % if so, then update the parameter within the sub-struct
+    sParaS = setStructField(sParaS,pStr,nwVal);
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %%%%    SIGNAL DURATION/COUNT UPDATE    %%%%
@@ -1860,7 +1862,7 @@ if chkEditValue(nwVal,nwLim,isInt)
     [eState,tDurMin] = checkSignalDur(hFig,sParaS,sPara);
     if eState > 0
         % if so, then update the parameter struct
-        eval(sprintf('sPara.%s = sParaS;',sType));
+        sPara = setStructField(sPara,sType,sParaS);
         setappdata(hFig,sParaStr,sPara)        
         
         % enables the use minimum signal duration button
@@ -1888,12 +1890,9 @@ if chkEditValue(nwVal,nwLim,isInt)
         
         % updates the off-cycle duration objects (square-wave only)
         if isSW
-            set(findobj(hTab,'UserData','tDurOffL'),...
-                'enable',eStr{1+(sParaS.nCount>1)})
-            set(findobj(hTab,'UserData','tDurOff'),...
-                'enable',eStr{1+(sParaS.nCount>1)})
-            set(findobj(hTab,'UserData','tDurOffU'),...
-                'enable',eStr{1+(sParaS.nCount>1)})
+            tStr = {'tDurOffL','tDurOff','tDurOffU'};
+            cellfun(@(x)(setObjEnable(findobj...
+                (hTab,'UserData',x),1+(sParaS.nCount>1))),tStr);
         end
         
         % enables the reset parameter button
@@ -1910,8 +1909,193 @@ if chkEditValue(nwVal,nwLim,isInt)
 end
 
 % if there was an error, then reset to the original parameter value
-[ok,pStr] = deal(false,sprintf('sPara.%s.%s',sType,pStr));
-set(hObject,'string',num2str(eval(pStr)))
+[ok,pVal] = deal(false,getStructField(sPara,sType,pStr));
+set(hObject,'string',num2str(pVal))
+
+% --- updates on editing a random stimuli parameter editbox
+function ok = editRandomStimPara(hObject, ~, handles, dType)
+
+% global variables
+global hSigSel
+
+% initialisations
+ok = true;
+tMin = 0.01;
+sAmpMin = 0.1;
+pStr = get(hObject,'UserData');
+
+% retrieves the important field values from the gui
+hFig = handles.figExptSetup;
+sType = getappdata(hFig,'sType');
+
+% retrieves the selected signal type from the parameter tab
+hTab = getCurrentSignalParaTab(handles);
+
+% retrieves the signal sub-struct
+sParaStr = sprintf('sPara%s',dType);
+sPara = getappdata(hFig,sParaStr);
+sParaS = getStructField(sPara,sType);
+
+% retrieves the parameter value field
+pVal = getStructField(sParaS,pStr);
+[isRandPara,isRandCurr] = deal(length(pVal) == 3,false);
+
+% 
+if isRandPara
+    % determines the parameter array index value
+    if pVal(end) > 0
+        % case is the parameter is fixed
+        ipVal = 3;
+    else
+        % case is the parameter is random
+        isRandCurr = true;
+        ipVal = 1 + strcmp(get(hObject,'Tag'),'hEditMax');
+    end
+else
+    % case is a fixed value parameter
+    
+    % sets the fixed 
+    ipVal = 1;
+end
+
+% sets the parameter value limits
+switch pStr
+    case 'tOfs'
+        % case is the signal offset
+        nwLim = [0,inf];
+        
+    case 'tDur'
+        % case is the signal duration
+        nwLim = [tMin,inf];        
+        
+    case 'tDurOn'
+        % case is the cycle on duration
+        if isRandCurr
+            % case is the parameter value is random
+            if ipVal == 1
+                % case is the minimum value is being altered
+                nwLim = [tMin,pVal(2)];
+            else
+                % case is the maximum value is being altered
+                nwLim = [pVal(1),inf];
+            end
+        else
+            % case is the parameter value is fixed
+            nwLim = [tMin,inf];
+        end
+        
+    case 'tDurOff'
+        % case is the cycle off duration
+        if isRandCurr
+            % case is the parameter value is random
+            if ipVal == 1
+                % case is the minimum value is being altered
+                nwLim = [tMin,pVal(2)];
+            else
+                % case is the maximum value is being altered
+                nwLim = [pVal(1),inf];
+            end            
+        else
+            % case is the parameter value is fixed
+            nwLim = [tMin,inf];
+        end
+        
+    case 'sAmp'
+        % case is the signal amplitude
+        if isRandCurr
+            % case is the parameter value is random
+            if ipVal == 1
+                % case is the minimum value is being altered
+                nwLim = [sAmpMin,pVal(2)];
+            else
+                % case is the maximum value is being altered
+                nwLim = [pVal(1),100];
+            end            
+        else
+            % case is the parameter value is fixed
+            nwLim = [sAmpMin,100];
+        end
+end
+
+% retrieves the new value and determines if it is valid
+nwVal = str2double(get(hObject,'string'));
+if chkEditValue(nwVal,nwLim,0)
+    % if so, then update the parameter within the sub-struct
+    pVal(ipVal) = nwVal;
+    sParaS = setStructField(sParaS,pStr,pVal);    
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%    SIGNAL DURATION/COUNT UPDATE    %%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%        
+        
+    % checks the signal duration is valid
+    [eState,tDurMin] = checkSignalDur(hFig,sParaS,sPara);
+    if eState > 0                    
+        % if so, then update the parameter struct
+        sPara = setStructField(sPara,sType,sParaS);
+        setappdata(hFig,sParaStr,sPara)        
+        
+        % enables the use minimum signal duration button
+        switch eState
+            case 2
+                % runs the minimum duration selection button
+                hButton = getProtoObj(hFig,'buttonUseMinSig',dType);
+                buttonUseMinSig(hButton, '1', handles, tDurMin)
+        end
+        
+        % updates the other object properties
+        setObjEnableProps(hFig,'buttonUseMinSig',eState==1)        
+        if startsWith(pStr,'tD')
+            % case is the duration time parameters
+            sParaS.nCount = calcRandCountRange(sParaS);
+            updateRandCountFields(hTab,sParaS.nCount)            
+        end
+
+        % if there is a stimuli object selected, then update it
+        if ~isempty(hSigSel)
+            updateStimObjPara(hFig,sParaS);
+        end        
+    end    
+else
+    % if there was an error, then reset to the original parameter value
+    ok = false;
+    set(hObject,'string',num2str(pVal(ipVal)))
+end
+
+% --- updates on clicking the random stimuli parameter
+function checkRandomStimPara(hObject, ~, handles, dType)
+
+% global variables
+global hSigSel
+
+% retrieves the corresponding parameter values
+pStr = hObject.UserData;
+hFig = handles.figExptSetup;
+
+% object handle retrieval
+hTabR = getCurrentSignalParaTab(handles);
+
+% retrieves the signal sub-struct
+sPara = getParaStruct(hFig,dType);
+sParaS = sPara.Random;
+
+% updates the parameter fields
+pVal = getStructField(sParaS,pStr);
+pVal(end) = -pVal(end);
+updateRandParaFields(hTabR,pStr,pVal,0)
+
+% recalculates the signal count
+sParaS = setStructField(sParaS,pStr,pVal);
+sParaS.nCount = calcRandCountRange(sParaS);
+updateRandCountFields(hTabR,sParaS.nCount)
+
+% updates the struct within the GUI
+setParaStruct(hFig,dType,setStructField(sPara,'Random',sParaS));
+
+% if a signal block is selected, then update the properties
+if ~isempty(hSigSel)
+    updateStimObjPara(hFig,sParaS);
+end
 
 % --- updates on changing the stimuli duration units popupmenu
 function popupStimTimeUnits(hObject, ~, handles, ~)
@@ -1921,8 +2105,9 @@ global hSigSel
 
 % initialisations
 hFig = handles.figExptSetup;
-pStr = get(hObject,'UserData');
+pStrU = get(hObject,'UserData');
 sType = getappdata(handles.figExptSetup,'sType');
+pStr = pStrU(1:end-1);
 
 % retrieves the popupmenu
 [lStr,iSel] = deal(get(hObject,'string'),get(hObject,'value'));
@@ -1937,20 +2122,36 @@ sParaStr = sprintf('sPara%s',dType);
 [sPara,sPara0] = deal(getappdata(hFig,sParaStr));
 
 % converts the temporal duration to the new time units
-pStrD = sprintf('sPara.%s.%s',sType,pStr(1:end-1));
-tMlt = getTimeMultiplier(eval(sprintf('%sU',pStrD)),lStr{iSel});
-eval(sprintf('%s = %s/tMlt;',pStrD,pStrD));
+pValU = getStructField(sPara,sType,pStrU);
+tMlt = getTimeMultiplier(pValU,lStr{iSel});
+pVal = getStructField(sPara,sType,pStr)/tMlt;
+isRand = strcmp(sType,'Random') && (length(pVal) > 1);
 
 % updates the parameter struct with the new duration units
-eval(sprintf('sPara.%s.%s = lStr{iSel};',sType,pStr))
+sPara = setSubStructField(sPara,{sType,pStr},pVal);
+sPara = setSubStructField(sPara,{sType,pStrU},lStr{iSel});
 setappdata(hFig,sParaStr,sPara)
 
-% 
-hPara = findobj(hTab,'UserData',pStr(1:end-1));
-set(hPara,'string',getEditResetString(eval(pStrD)))
+% updates the parameter values
+if isRand
+    % initialisations
+    editUpdateOK = true;
+    updateRandParaFields(hTab,pStr,pVal,0)
+    
+else
+    % case is a non-random protocol type
+    hPara = findobj(hTab,'UserData',pStr);
+    set(hPara,'string',getEditResetString(pVal))
+    
+    if strcmp(sType,'Random')        
+        editUpdateOK = editRandomStimPara(hPara, [], handles, dType);
+    else
+        editUpdateOK = editSingleStimPara(hPara, [], handles, dType);
+    end
+end
 
 % updates the parameter field
-if editSingleStimPara(hPara, [], handles, dType)
+if editUpdateOK
     % if there is a stimuli train object selected, then update the
     % parameters for this object
     if ~isempty(hSigSel)
@@ -1961,14 +2162,14 @@ if editSingleStimPara(hPara, [], handles, dType)
     
 else
     % if the new values were not feasible, then reset the popupmenu
-    tUnits0 = eval(sprintf('sPara0.%s.%s;',sType,pStr));
-    tDur0 = eval(sprintf('sPara0.%s.%s;',sType,pStr(1:end-1)));
+    tUnits0 = getStructField(sPara0,sType,pStr);
+    tDur0 = getStructField(sPara0,sType,pStr(1:end-1));
     jSel = find(strcmp(lStr,tUnits0));
     set(hObject,'value',jSel)
     
     % updates the parameter struct into the GUI
     set(hPara,'string',getEditResetString(tDur0));
-    eval(sprintf('sPara.%s.%s = lStr{jSel};',sType,pStr))
+    sPara = setSubStructField(sPara,{sType,pStr},lStr{jSel});
     setappdata(hFig,sParaStr,sPara)
 end
 
@@ -1994,7 +2195,7 @@ dType = getProtoTypeStr(getappdata(hFig,'pType'));
 
 % retrieves the default parameter for the given duration/signal type
 sParaD = setupSingleStimPara(dType);
-sParaDS = eval(sprintf('sParaD.%s',sType));
+sParaDS = getStructField(sParaD,sType);
 
 % retrieves the currently selected signal parameter tab object
 hTab = getCurrentSignalParaTab(handles);
@@ -2003,12 +2204,11 @@ resetSignalPara(hTab,sParaDS)
 % updates the parameter struct with the default values
 updateParaSignalField(hFig,dType,sType,sParaDS)
 
-%
+% updates the selected signal block parameters
 if ~isempty(hSigSel)
     uData = get(hSigSel,'UserData');
     uData{indFcn('sPara')} = sParaDS;
-    set(hSigSel,'UserData',uData)
-    
+    set(hSigSel,'UserData',uData)    
     updateStimObjPara(hFig,sParaDS);    
 end
 
@@ -2535,41 +2735,6 @@ updateFeasFlag(handles,'checkProtoFeas',true)
 
 % updates the experiment tab properties
 setExptTabProps(hFig)
-
-% --- resets the stimuli offset time popup menus
-function resetStimOffsetTime(handles,sTrainC,dType)
-
-% initialisations
-hFig = handles.figExptSetup;
-hPanelP = getProtoObj(hFig,'panelStimInt',dType);
-tDurMax = calcMaxStimTrainDur(sTrainC);
-
-% if the duration of the stimuli offset time is less than the current
-% stimuli block, then update the offset
-if tDurMax > vec2sec(getPopupDurValues(hPanelP))
-    % updates the duration popup values
-    tStimNw = sec2vec(tDurMax);
-    setDurPopupValues(hPanelP,tStimNw)
-    
-    % updates the experimental stimuli offset time vector
-    sParaEx = getappdata(hFig,'sParaEx');
-    eval(sprintf('sParaEx.%s.tStim = tStimNw;',dType));
-    setappdata(hFig,'sParaEx',sParaEx)
-end
-
-% --- calculates the maximum duration of the signal blocks within a train
-function tDurMax = calcMaxStimTrainDur(sTrainC)
-
-% initialisations
-tDurMax = 0;
-sPara = field2cell(sTrainC.blkInfo,'sPara');
-
-% calculates the overall maximum time of all the signal blocks
-for i = 1:length(sPara)
-    tOfs = sPara{i}.tOfs*getTimeMultiplier('s',sPara{i}.tOfsU);
-    tDur = sPara{i}.tDur*getTimeMultiplier('s',sPara{i}.tDurU);
-    tDurMax = max(tDurMax,tOfs+tDur);
-end
 
 % --- Executes on button press in buttonSaveTrainS/L.
 function buttonDeleteTrain(hObject, ~, handles)
@@ -3133,7 +3298,7 @@ if chkEditValue(nwVal,nwLim,isInt)
         
         % if a signal block is selected, then update the properties
         if ~isempty(hSigSel)
-            updateExptObjPara(hFig,eval(sprintf('sPara.%s',dType)));           
+            updateExptObjPara(hFig,getStructField(sPara,dType));
         end
         
         % exits the function
@@ -3145,7 +3310,7 @@ end
 setappdata(hFig,'sParaEx',sPara0) 
 
 % otherwise, reset the editbox to the last valid value
-prevVal = eval(sprintf('sPara0.%s.%s;',dType,pStr));
+prevVal = getStructField(sPara0,dType,pStr);
 set(hObject,'string',getEditResetString(prevVal))
 
 % --- Executes when selected object is changed in panelInfoStartTime.
@@ -3333,30 +3498,31 @@ resetExptTimeAxes(handles,'Ex')
 % --- Executes on selection change for an experiment time unit popup
 function popupExptTimeUnits(hObject, ~, handles, dType)
 
-%
+% field/handle retrieval
 hFig = handles.figExptSetup;
 sParaEx = getappdata(hFig,'sParaEx');
 sPara = eval(sprintf('sParaEx.%s',dType));
 
 % retrieves the old/new units
-pStr = get(hObject,'UserData');
+pStrU = get(hObject,'UserData');
 [lStr,iSel] = deal(get(hObject,'string'),get(hObject,'value'));
-[tUnitsOld,tUnitsNw] = deal(eval(sprintf('sPara.%s',pStr)),lStr{iSel});
+[tUnitsOld,tUnitsNw] = deal(eval(sprintf('sPara.%s',pStrU)),lStr{iSel});
+pStr = pStrU(1:end-1);
 
 % calculates the new time (scaled to the new units)
 tMlt = getTimeMultiplier(tUnitsNw,tUnitsOld);
-nwTime = eval(sprintf('sPara.%s*tMlt',pStr(1:end-1)));
+nwTime = tMlt*getStructField(sPara,pStr);
 
-%
-eval(sprintf('sPara.%s = tUnitsNw;',pStr));
-eval(sprintf('sPara.%s = nwTime;',pStr(1:end-1)));
+% updates the struct fields
+sPara = setStructField(sPara,pStrU,tUnitsNw);
+sPara = setStructField(sPara,pStr,nwTime);
 
 % updates the associated
-hEdit = findobj(get(hObject,'Parent'),'UserData',pStr(1:end-1));
+hEdit = findobj(get(hObject,'Parent'),'UserData',pStr);
 set(hEdit,'string',getEditResetString(nwTime))
 
 % updates the parameter struct within the gui
-eval(sprintf('sParaEx.%s=sPara;',dType))
+sParaEx = setStructField(sParaEx,dType,sPara);
 setappdata(hFig,'sParaEx',sParaEx)
 
 % --- callback function for updating the experiment duration popup boxes.
@@ -3597,7 +3763,7 @@ end
 chCol = getChannelCol(devType,nCh(1:length(devType)));
 
 % sets the tab title strings
-tStrS = {'Square','Ramp','Triangle','SineWave'};
+tStrS = {'Square','Ramp','Triangle','SineWave','Random'};
 hPanel = {handles.panelFullExptInfo,...
           handles.panelProtoS,...
           handles.panelProtoL,...
@@ -3990,7 +4156,7 @@ if hasStim
     
     % sets the current axes to the short protocol axes
     set(hFig,'CurrentAxes',hAx{1})   
-    try; arrayfun(@(x)(jTab.setEnabledAt(x-1,1)),2:nProto-1); end
+    try arrayfun(@(x)(jTab.setEnabledAt(x-1,1)),2:nProto-1); catch; end
     setExptTabProps(hFig)          
     
 else
@@ -4547,15 +4713,16 @@ global nParaMax
 
 % initialisations/parameters
 tStr = get(hTabS,'Title');
-[eWid,eHght,lHght] = deal(60,20,16);
-[xGap,yGap,x0,xOfs] = deal(0,5,5,10);
 dtStr = {'s','m','h'};
 gapStr = '           ';
+isRand = strcmp(tStr,'Random');
+[eWid,eHght,lHght] = deal(60,20,16);
 popupStr = {'tDurOn','tDurOff','tCycle','tOfs'};
+[xGap,yGap,x0,xOfs,xOfsR,chkHght] = deal(0,5,5,10,30,20);
 
 % determines the dependent dimensions
 tPos = get(get(hTabS,'parent'),'position');
-lWid = tPos(3) - (x0+xGap+eWid+xOfs);
+lWid = tPos(3) - (x0 + xGap + eWid + xOfs + isRand*xOfsR);
 dyL = (eHght-lHght)/2;
 
 % sets the duration string based on protocol type
@@ -4577,62 +4744,77 @@ switch tStr
         lStr = {'Signal Amplitude (%)',...
                 sprintf('On Cycle Duration (%s)',dStr),...
                 sprintf('Off Cycle Duration (%s)',dStr),...
-                sprintf('Initial Signal Offset (%s)',dStr),...
                 'Signal Cycle Count',...                
+                sprintf('Initial Signal Offset (%s)',dStr),...
                 sprintf('Signal Train Duration (%s)',dStrT)};
-        pStr = {'sAmp','tDurOn','tDurOff','tOfs','nCount','tDur'};
+        pStr = {'sAmp','tDurOn','tDurOff','nCount','tOfs','tDur'};
         
     case 'Ramp'
         % case is a ramp
         lStr = {'Signal Start Amplitude (%)',...
                 'Signal Stop Amplitude (%)',...
                 sprintf('Cycle Duration (%s)',dStr),...
+                'Signal Cycle Count',...
                 sprintf('Initial Signal Offset (%s)',dStr),...
-                'Signal Cycle Count',...                
                 sprintf('Signal Train Duration (%s)',dStrT)};
-        pStr = {'sAmp0','sAmp1','tCycle','tOfs','nCount','tDur'};
+        pStr = {'sAmp0','sAmp1','tCycle','nCount','tOfs','tDur'};
         
     case 'Triangle'
         % case is a triangle wave
         lStr = {'Signal Start Amplitude (%)',...
                 'Signal Mid-Cycle Amplitude (%)',...
                 sprintf('Cycle Duration (%s)',dStr),...
-                sprintf('Initial Signal Offset (%s)',dStr),...
                 'Signal Cycle Count',...
+                sprintf('Initial Signal Offset (%s)',dStr),...
                 sprintf('Signal Train Duration (%s)',dStrT)};
-        pStr = {'sAmp0','sAmp1','tCycle','tOfs','nCount','tDur'};
+        pStr = {'sAmp0','sAmp1','tCycle','nCount','tOfs','tDur'};
         
     case 'SineWave'
         % case is a sinusoidal wave
         lStr = {'Signal Start Amplitude (%)',...
                 'Signal Mid-Cycle Amplitude (%)',...
                 sprintf('Cycle Duration (%s)',dStr),...
-                sprintf('Initial Signal Offset (%s)',dStr),...
                 'Signal Cycle Count',...
+                sprintf('Initial Signal Offset (%s)',dStr),...
                 sprintf('Signal Train Duration (%s)',dStrT)};
-        pStr = {'sAmp0','sAmp1','tCycle','tOfs','nCount','tDur'};
+        pStr = {'sAmp0','sAmp1','tCycle','nCount','tOfs','tDur'};
+        
+    case 'Random'
+        % case is a random square wave
+        lStr = {'Signal Amplitude (%)',...
+                sprintf('On Cycle Duration (%s)',dStr),...
+                sprintf('Off Cycle Duration (%s)',dStr),...
+                'Signal Cycle Count Range',...
+                sprintf('Initial Signal Offset (%s)',dStr),...
+                sprintf('Fixed Signal Duration (%s)',dStrT)};
+        pStr = {'sAmp','tDurOn','tDurOff','nCount','tOfs','tDur'};        
         
     otherwise
         % case is a custom signal type     
         lStr = {'Signal Start Amplitude (%)',...
                 'Maximum Amplitude (%)',...
                 sprintf('Cycle Duration (%s)',dStr),...
-                sprintf('Initial Signal Offset (%s)',dStr),...
                 'Signal Cycle Count',...
+                sprintf('Initial Signal Offset (%s)',dStr),...
                 sprintf('Signal Train Duration (%s)',dStrT)};
-        pStr = {'sAmp0','sAmp1','tCycle','tOfs','nCount','tDur'};        
-        
+        pStr = {'sAmp0','sAmp1','tCycle','nCount','tOfs','tDur'};        
+                        
 end
 
 % creates all the parameter objects for the current stimuli signal type
 for i = 1:length(lStr)
+    % retrieves the parameter value
+    pVal = getStructField(sPara,tStr,pStr{i});    
+    isRandPara = isRand && (length(pVal) > 1);
+    isRandCount = isRandPara && strcmp(pStr{i},'nCount');
+    
     % sets the object dimensions
+    pMlt = double(isRandPara && ~isRandCount);
     yPos = yGap + (nParaMax-i)*(yGap+eHght);
-    lPos = [x0,(yPos+dyL),lWid,lHght];
-    ePos = [(x0+lWid+xGap),yPos,eWid,eHght];
+    lPos = [x0,(yPos+dyL),lWid-pMlt*chkHght,lHght];        
     
     % sets the font colour
-    if strcmp(pStr{i},'tDur')
+    if strcmp(pStr{i},'tDur') && ~isRandCount
         % case is the total signal duration
         fCol = 'r';
     else
@@ -4647,16 +4829,75 @@ for i = 1:length(lStr)
         'FontWeight','bold','ForegroundColor',fCol,...
         'UserData',sprintf('%sL',pStr{i}));
     
-    % creates the editbox object
-    sParaS = num2str(eval(sprintf('sPara.%s.%s',tStr,pStr{i})));
-    hEdit = uicontrol('style','edit','string',sParaS,'position',ePos,...
-        'parent',hTabS,'userdata',pStr{i});
-    set(hEdit,'Callback',{@editSingleStimPara,handles,dType})
+    % creates the editbox object   
+    if isRandPara
+        % case is the random square wave signal
+
+        %
+        if isRandCount
+            % case is the parameter is the signal count
+            pPosChk = [sum(lPos([1,3])),yPos,[0,0]];
+            
+        else
+            % case is the other parameter 
+            lPosC = sum(lPos([1,3]));
+            pPosChk = [lPosC,yPos,chkHght*[1,1]];
+            hChkR = uicontrol('style','checkbox','string','',...
+                'value',pVal(end)<0,'position',pPosChk,'parent',hTabS,...
+                'userdata',pStr{i},'tag','hCheckR');
+            set(hChkR,'Callback',{@checkRandomStimPara,handles,dType})
+        end
+        
+        % creates the min editbox
+        eWidR = (eWid + xOfsR - x0)/2;
+        lPosE = sum(pPosChk([1,3]));
+        ePosMin = [lPosE,yPos,eWidR,eHght];
+        hEditMin = uicontrol('style','edit','string',num2str(pVal(1)),...
+            'position',ePosMin,'parent',hTabS,'userdata',pStr{i},...
+            'tag','hEditMin');            
+        set(hEditMin,'Callback',{@editRandomStimPara,handles,dType})        
+
+        % creates the max editbox
+        ePosMax = [sum(ePosMin([1,3]))+x0,yPos,eWidR,eHght];            
+        hEditMax = uicontrol('style','edit','string',num2str(pVal(2)),...
+            'position',ePosMax,'parent',hTabS,'userdata',pStr{i},...
+            'tag','hEditMax');            
+        set(hEditMax,'Callback',{@editRandomStimPara,handles,dType})            
+        
+        % resets the min edit box value (if parameter is set as fixed)
+        if ~isRandCount && (pVal(end) > 0)
+            set(hEditMin,'String',num2str(pVal(end)))
+        end        
+        
+        % sets the editbox enabled properties (based on type)
+        if isRandCount
+            % case is the signal count 
+            setObjEnable(hEditMin,'Inactive');
+            setObjEnable(hEditMax,'Inactive');
+        else
+            % case is the other random parameters
+            setObjEnable(hEditMax,pVal(end) < 0);
+        end
+        
+    else
+        % case is the other signal types
+        lPosE = x0+lWid+xGap;
+        ePos = [lPosE,yPos,(eWid+isRand*xOfsR),eHght];
+        hEdit = uicontrol('style','edit','string',num2str(pVal),...
+            'position',ePos,'parent',hTabS,'userdata',pStr{i});
+        
+        if isRand
+            set(hEdit,'Callback',{@editRandomStimPara,handles,dType})
+        else
+            set(hEdit,'Callback',{@editSingleStimPara,handles,dType})
+        end
+    end    
     
     % creates the duration dropdown box (long-term protocol duration only)
     if strcmp(dType,'L') && any(strcmp(popupStr,pStr{i}))
         % sets the duration object position vector
-        dPos = [ePos(1)-44,ePos(2)+1,32,eHght];
+        xOfs = 44 + 20*isRandPara;
+        dPos = [lPosE-xOfs,yPos+1,32,eHght];
         
         % creates the object and sets the callback function
         hUnits = uicontrol('style','popupmenu','string',dtStr(:),...
@@ -4673,7 +4914,7 @@ function setupExptProtoObj(handles,hTab,sPara,dType)
 gapStr = '           ';
 hFig = handles.figExptSetup;
 [x0,xOfs,eWid,eHght,lHght] = deal(5,0,50,20,16);
-sParaT = eval(sprintf('sPara.%s',dType));
+sParaT = getStructField(sPara,dType);
 dtStr = {'s','m','h','d'};
 
 % sets the panel parent 
@@ -4971,7 +5212,10 @@ Dmax = iExpt.Video.Dmax;
 if infoObj.hasIMAQ
     % retrieves the camera frame rate
     FPS = iExpt.Video.FPS;
-    if infoObj.isWebCam
+    if infoObj.isTest
+        % case is running in testing mode
+        [isVarFPS,fRate] = deal(false,num2str(FPS));
+    elseif infoObj.isWebCam
         % sets the frame rate values/selections
         isVarFPS = false;
         [~,fRate,~] = detWebcamFrameRate(infoObj.objIMAQ,FPS);
@@ -4983,7 +5227,6 @@ if infoObj.hasIMAQ
     end
         
     % sets up the camera frame rate objects
-%     isVarFPS = true;
     if isVarFPS
         % case is a variable frame rate camera
         initFrameRateSlider(hSlider,srcObj,iExpt.Video.FPS)
@@ -5144,7 +5387,7 @@ if addOffset; xS = xS + rPos(1); end
 hold(hAx,'on');
 
 % creates the new signal object
-if detIfUsePatch(hAx,xS,yS)
+if detIfUsePatch(hAx,xS,yS) || strcmp(sType,'Random')
     % if there are not too many cycle counts, then use a patch
     hSigObj = patch(hAx,xS([1:end,1]),yS([1:end,1]),chCol{iCh},...
                     'linewidth',1,'FaceAlpha',0.2,'EdgeColor',chCol{iCh});
@@ -5546,18 +5789,12 @@ if strcmp(dType,'Ex')
     iExpt = getappdata(hFig,'iExpt');
     sType = getStimuliTypeString(hFig,'Ex');    
     
-    %
-    tOfsU = lower(eval(sprintf('sParaF.%s.tOfsU(1)',sType(1))));
+    % resets the 
+    tOfsU = lower(getStructField(sParaF,sType(1),'tOfsU(1)'));
     tOfsNw = tOfs/getTimeMultiplier(iExpt.Timing.TexpU,tOfsU);
     
     % updates the time offset into the parameter struct
-    eval(sprintf('sParaF.%s.tOfs=tOfsNw;',sType(1)))
-    
-%     %
-%     iParaEx = indFcn('sParaEx');
-%     if length(uData) >= iParaEx
-%         uData{iParaEx} = eval(sprintf('sParaF.%s',sType(1)));
-%     end
+    sParaF = setSubStructField(sParaF,{sType(1),'tOfs'},tOfsNw);    
     
 else
     % case is for short/long-term stimuli blocks
@@ -5566,8 +5803,8 @@ else
     tOfsNw = tOfs*getTimeMultiplier(sPara.tOfsU,sPara.tDurU)/tMlt0;   
     
     % updates the parameter struct
-    eval('sPara.tOfs=tOfsNw;')
-    eval(sprintf('sParaF.%s = sPara;',sType))
+    sPara = setStructField(sPara,'tOfs',tOfsNw);
+    sParaF = setStructField(sParaF,sType,sPara);
 end
 
 % updates the editbox with the new value
@@ -6032,6 +6269,148 @@ switch ok
         waitfor(msgbox(eStr,tStr,'modal'))
 end
 
+% --- resets the stimuli offset time popup menus
+function resetStimOffsetTime(handles,sTrainC,dType)
+
+% initialisations
+hFig = handles.figExptSetup;
+hPanelP = getProtoObj(hFig,'panelStimInt',dType);
+tDurMax = calcMaxStimTrainDur(sTrainC);
+
+% if the duration of the stimuli offset time is less than the current
+% stimuli block, then update the offset
+if tDurMax > vec2sec(getPopupDurValues(hPanelP))
+    % updates the duration popup values
+    tStimNw = sec2vec(tDurMax);
+    setDurPopupValues(hPanelP,tStimNw)
+    
+    % updates the experimental stimuli offset time vector
+    sParaEx = getappdata(hFig,'sParaEx');
+    eval(sprintf('sParaEx.%s.tStim = tStimNw;',dType));
+    setappdata(hFig,'sParaEx',sParaEx)
+end
+
+% --- calculates the maximum duration of the signal blocks within a train
+function tDurMax = calcMaxStimTrainDur(sTrainC)
+
+% initialisations
+tDurMax = 0;
+sPara = field2cell(sTrainC.blkInfo,'sPara');
+
+% calculates the overall maximum time of all the signal blocks
+for i = 1:length(sPara)
+    tOfs = sPara{i}.tOfs*getTimeMultiplier('s',sPara{i}.tOfsU);
+    tDur = sPara{i}.tDur*getTimeMultiplier('s',sPara{i}.tDurU);
+    tDurMax = max(tDurMax,tOfs+tDur);
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%    RANDOM STIMULI FUNCTIONS    %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% --- calculates the stimuli count range (based on the random parameters)
+function nCount = calcRandCountRange(sP)
+
+% calculates the duration multiplies
+tMltOn = getTimeMultiplier(sP.tDurU,sP.tDurOnU);
+tMltOff = getTimeMultiplier(sP.tDurU,sP.tDurOffU);
+
+% retrieves the signal on durations
+if sP.tDurOn(3) > 0
+    tDurOn = tMltOn*sP.tDurOn(3);
+else
+    tDurOn = tMltOn*(sP.tDurOn(1) + [0,diff(sP.tDurOn(1:2))]);
+end
+
+% retrieves the signal off durations
+if sP.tDurOff(3) > 0
+    tDurOff = tMltOff*sP.tDurOff(3);
+else
+    tDurOff = tMltOff*(sP.tDurOff(1) + [0,diff(sP.tDurOff(1:2))]);
+end
+
+% calculates the count range
+nCount0 = flip((sP.tDur + tDurOff)./(tDurOff + tDurOn));
+if length(nCount0) == 1
+    nCount = floor(nCount0)*[1,1];
+else
+    nCount = [ceil(nCount0(1)),floor(nCount0(2))];
+end
+
+% --- updates the tandom signal count fields
+function updateRandCountFields(hTabR,nCount)
+
+% initialisations
+eStr = {'off','inactive'};
+isRand = abs(diff(nCount)) > 0;
+
+% retrieves the editbox object handles
+hCountMin = findall(hTabR,'UserData','nCount','Tag','hEditMin');
+hCountMax = findall(hTabR,'UserData','nCount','Tag','hEditMax');
+
+% updates the editbox fields
+set(hCountMin,'String',num2str(nCount(1)));
+set(hCountMax,'String',num2str(nCount(2)),'Enable',eStr{1+isRand});
+
+% --- resets the random signal parameters
+function resetRandSignalPara(hTab,pFld,pVal)
+
+% updates the fields based on type
+if strcmp(pFld,'nCount')
+    % case is the signal count
+    updateRandCountFields(hTab,pVal)
+    
+elseif length(pVal) > 1
+    % updates the random para editbox
+    updateRandParaFields(hTab,pFld,pVal)
+    
+else
+    % updates the parameter with the current value (if it exists)
+    hPara = findobj(hTab,'UserData',pFld);       
+    if ~isempty(hPara)        
+        switch get(hPara,'style')
+            case 'edit'
+                % case is the parameter is numeric
+                set(hPara,'string',num2str(pVal))
+
+            case 'popupmenu'
+                % case is the parameter is a popupmenu
+                iSel = find(strcmpi(get(hPara,'String'),pVal(1)));
+                set(hPara,'Value',iSel)
+
+        end
+    end    
+    
+end
+
+% --- updates the random parameter editbox fields
+function updateRandParaFields(hTabR,pStr,pVal,updateCheck)
+
+% sets the default input parameters
+if ~exist('updateCheck','var'); updateCheck = true; end
+
+% retrieves the editbox handles
+hEditMin = findall(hTabR,'UserData',pStr,'Tag','hEditMin');
+hEditMax = findall(hTabR,'UserData',pStr,'Tag','hEditMax');
+
+% updates the SD editbox enabled properties
+if pVal(end) < 0
+    % case is the parameter is random
+    set(hEditMin,'String',num2str(pVal(1)));
+    set(hEditMax,'String',num2str(pVal(2)),'Enable','on');
+    
+else
+    % case is the parameter is fixed
+    set(hEditMin,'String',num2str(pVal(end)));
+    set(hEditMax,'String','','Enable','off');
+end
+
+% updates the checkbox value (if required)
+if updateCheck
+    hCheckR = findall(hTabR,'UserData',pStr,'Tag','hCheckR');
+    set(hCheckR,'Value',pVal(end) < 0)
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%    SIGNAL PARAMETER FUNCTIONS    %%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -6181,17 +6560,18 @@ function sPara = setupSingleStimPara(pType)
 
 % initialisations based on the protocol type
 switch pType
-    case 'S' % case is a short-term protocol        
+    case 'S' 
+        % case is a short-term protocol        
         [sName,tUnits,tDur] = deal('Short-Term Signal #1','s',10);
         
-    case 'L' % case is a long-term protocol        
-        [sName,tUnits,tDur] = deal('Long-Term Signal #1','h',1);
-        
+    case 'L' 
+        % case is a long-term protocol        
+        [sName,tUnits,tDur] = deal('Long-Term Signal #1','h',1);        
 end
 
 % creates the parameter struct
 sPara = struct('Square',[],'Ramp',[],'Triangle',[],'SineWave',[],...
-               'tDur',tDur,'tDurU',tUnits,'sName',sName);
+               'Random',[],'tDur',tDur,'tDurU',tUnits,'sName',sName);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%    PARAMETER STRUCT FIELD INITIALISATION    %%%%
@@ -6202,6 +6582,7 @@ sPara = setupSignalPara(sPara,'Square',pType);
 sPara = setupSignalPara(sPara,'Ramp',pType);
 sPara = setupSignalPara(sPara,'Triangle',pType);
 sPara = setupSignalPara(sPara,'SineWave',pType);
+sPara = setupSignalPara(sPara,'Random',pType);
     
 % --- sets up the signal parameters (for the signal type, sType and
 %     protocol type, pType)
@@ -6222,16 +6603,26 @@ switch sType
     case 'Square'
         % case is the square wave
         sP = struct('sAmp',100,'tDurOn',tC,...
-                    'tDurOff',tC,'tOfs',0,'nCount',nC);        
+                    'tDurOff',tC,'nCount',nC,'tOfs',0);        
         sP.tDur = sP.tOfs + sP.tDurOn*sP.nCount + sP.tDurOff*(sP.nCount-1);
         
         % temporal units
-        [sP.tDurU,sP.tOfsU,sP.tDurOnU,sP.tDurOffU] = deal(tUnits);       
+        [sP.tDurU,sP.tOfsU,sP.tDurOnU,sP.tDurOffU] = deal(tUnits);
+
+    case 'Random'
+        % case is the random square wave
+        tDurC = tC*[0.25,1,-1];
+        sP = struct('sAmp',[25,100,-100],'tDurOn',tDurC,...
+                    'tDurOff',tDurC,'nCount',[0,0],'tOfs',0,...
+                    'tDur',7*tC);
+                
+        % temporal units
+        [sP.tDurU,sP.tOfsU,sP.tDurOnU,sP.tDurOffU] = deal(tUnits);
+        sP.nCount = calcRandCountRange(sP);        
         
     otherwise
         % case is the other signal types
-        sP = struct('sAmp0',0,'sAmp1',100,...
-                    'tCycle',tC,'tOfs',0,'nCount',nC);
+        sP = struct('sAmp0',0,'sAmp1',100,'tCycle',tC,'nCount',nC,'tOfs',0);
         sP.tDur = sP.tOfs + sP.tCycle*sP.nCount;
         
         % temporal units
@@ -6242,7 +6633,7 @@ end
 if ~isempty(sObj); sP.sObj = copyClassObj(sObj); end
 
 % appends the signal parameter sub-struct to the overall struct
-eval(sprintf('sPara.%s = sP;',sType));                 
+sPara = setStructField(sPara,sType,sP);
 
 % --- sets up the experiment protocol parameter data struct
 function sPara = setupExptProtoPara()
@@ -6259,14 +6650,19 @@ sPara.L.nCount = 1;
 % --- retrieves the parameter struct based on the type
 function sPara = getParaStruct(hFig,dType)
 
-%
 sPara = getappdata(hFig,sprintf('sPara%s',dType));
+
+% --- retrieves the parameter struct based on the type
+function setParaStruct(hFig,dType,sPara)
+
+setappdata(hFig,sprintf('sPara%s',dType),sPara);
 
 % --- resets the signal parameters for a given parameter tab, hTab
 function resetSignalPara(hTab,sPara)
 
 % retrieves the parameter struct fieldnames
 pFld = fieldnames(sPara);
+isRand = length(sPara.nCount) > 1;
 
 % resets the parameter objects to that given in sPara
 for i = 1:length(pFld)
@@ -6274,10 +6670,15 @@ for i = 1:length(pFld)
     sParaNw = eval(sprintf('sPara.%s',pFld{i}));
     
     % updates the parameter object(s) based on type
-    if length(sParaNw) > 1 && isnumeric(sParaNw)
+    if isRand
+        % case is a random parameter
+        resetRandSignalPara(hTab,pFld{i},sParaNw);
+        
+    elseif length(sParaNw) > 1 && isnumeric(sParaNw)
         % case is the stimuli interval duration 
         hPanelStim = findobj(hTab,'type','uipanel');
         setDurPopupValues(hPanelStim,sParaNw)
+    
     else
         % case is other paramter types        
         
@@ -6394,7 +6795,8 @@ dType = getProtoTypeStr(getappdata(hFig,'pType'));
 
 % updates the selection properties based on the selection state
 switch sState
-    case 'on' % case is turning on the selection properties
+    case 'on' 
+        % case is turning on the selection properties
         
         % resets the currently selected signal block and retrieves the
         % userdata for the block
@@ -6441,7 +6843,8 @@ switch sState
         % updates the mouse hover value
         mType = 1 + 2*(1 + iProto(nProto));
         
-    case 'off' % case is turning off the selection properties
+    case 'off' 
+        % case is turning off the selection properties
         
         % sets the signal block highlights
         hP = findobj(hSigSel,'tag','patch');
@@ -6515,11 +6918,21 @@ if iProto(nProto)
     % runs the experiment signal object callback function
     moveExptObj(hSigBlk.getPosition())
 else
+    % field retrieval
     sPara = uData{indFcn('sPara')};
-    resetSignalPara(hTab,sPara)
-    updateParaSignalField(hFig,dType,uData{indFcn('sType')},sPara)
+    sType = uData{indFcn('sType')};
+    
+%     % updates the signal parameter
+%     if strcmp(sType,'Random')
+%         % case is the random signal protocol
+%         resetRandSignalPara(hTab,sPara)
+%     else
+        % case is the other protocol types
+        resetSignalPara(hTab,sPara)
+%     end
 
     % runs the signal movement callback function
+    updateParaSignalField(hFig,dType,sType,sPara)
     moveSignalObj(hSigBlk.getPosition(),hFig)
 end 
 
@@ -6983,7 +7396,9 @@ N = 16;
 
 % sets the binary mask (based on the signal type)
 switch sType
-    case 'Square' % case is the squarewave signal
+    case 'Square' 
+        % case is the squarewave signal
+        
         % sets the points
         del = N/4 - 1;
         pX = [2,2+del,2+del,3+3*del,3+3*del,N-1];
@@ -6998,14 +7413,18 @@ switch sType
             end
         end
         
-    case 'Ramp' % case is the ramp
+    case 'Ramp' 
+        % case is the ramp
+        
         % sets the x/y data points
         x = roundP(linspace(N-1,2,2*N));
         
         % creates the binary mask
         mpCD(sub2ind(sz,(N+1)-x,x)) = true;
         
-    case 'Triangle' % case is the signal waveform
+    case 'Triangle' 
+        % case is the signal waveform
+        
         % sets the x/y data points
         x1 = linspace(1,N/2,2*N);
         x2 = linspace(N/2+1,N,2*N);
@@ -7015,7 +7434,9 @@ switch sType
         mpCD(sub2ind(sz,y1,roundP(x1))) = true;
         mpCD(sub2ind(sz,y1(end:-1:1),roundP(x2))) = true;
         
-    case 'SineWave' % case is the sinewave
+    case 'SineWave' 
+        % case is the sinewave
+        
         % sets the x/y data points
         x = linspace(0,2*pi,200);
         y = 1 + roundP((N-1) * 0.5 * (sin(x) + 1));
@@ -7585,6 +8006,7 @@ setSelectedSignalProps(handles,'off')
 
 % updates the signal block selection
 updateExptBlockSelection(hFig,hSigBlk)
+setSelectedSignalProps(handles,'on')
 
 % updates the stimuli train listbox (if required)
 hList = getProtoObj(hFig,'listStimTrain');
@@ -8537,7 +8959,9 @@ end
 function vRes = getRecordingResolution(infoObj)
 
 % retrieves the camera resolution
-if infoObj.isWebCam
+if infoObj.isTest
+    vRes = [1,1,infoObj.objIMAQ.szImg];
+elseif infoObj.isWebCam
     vRes = infoObj.objIMAQ.pROI(3:4);
 else
     vRes = infoObj.objIMAQ.VideoResolution;

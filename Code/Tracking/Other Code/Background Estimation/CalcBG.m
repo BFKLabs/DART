@@ -285,8 +285,8 @@ classdef CalcBG < handle
                 obj.hManual = [];
             end
             
-            % loops through all the apparatus 
-            for i = 1:length(obj.iMov.iR)
+            % loops through all the regions deleting the markers
+            for i = 1:length(obj.hMark)
                 % deletes any previous markers
                 hMarkPr = findobj(obj.hAx,'tag',sprintf('hFlyTmp%i',i));
                 if ~isempty(hMarkPr)
@@ -736,31 +736,46 @@ classdef CalcBG < handle
         
         % --- initialises the likely object markers
         function initLikelyPlotMarkers(obj)
-            
-            % memory allocation
-            obj.hMark = cell(1,obj.nApp);
 
             % sets focus to the main GUI axes
             set(obj.hGUI.figFlyTrack,'CurrentAxes',obj.hGUI.imgAxes)
+            
+            % sets up the region parameters (based on tracking type)
+            if obj.isMTrk
+                % case is multi-tracking
+                [nRw,nCl] = deal(obj.iMov.pInfo.nRow,obj.iMov.pInfo.nCol);
+                [nReg,nTubeR] = deal(nRw*nCl,obj.iMov.pInfo.nFly');
+                iReg = 1:nReg;
+            else
+                % case is single-tracking
+                nReg = length(obj.iMov.ok);
+                iReg = find(obj.iMov.ok(:)');
+                nTubeR = obj.nTube;
+            end
+            
+            % memory allocation
+            obj.hMark = cell(1,nReg);            
 
             % loops through all the sub-regions creating markers 
             hold on
-            for i = find(obj.iMov.ok(:)')
+            for i = iReg
                 % memory allocation
                 tStr = sprintf('hFlyTmp%i',i);
-                obj.hMark{i} = cell(obj.nTube(i),1);
+                obj.hMark{i} = cell(nTubeR(i),1);
 
                 % deletes any previous markers
                 hMarkPr = findobj(obj.hAx,'tag',tStr);
                 if ~isempty(hMarkPr); delete(hMarkPr); end    
 
                 % creates the markers for all the tubes
-                for j = 1:obj.nTube(i)
+                for j = 1:nTubeR(i)
                     obj.hMark{i}{j} = plot(NaN,NaN,'tag',tStr,...
                                         'linestyle','none','visible',...
                                         'off','UserData',[i,j]);
                 end
             end
+            
+            % turns the axes hold off
             hold off                  
             
         end                                   
@@ -1191,9 +1206,18 @@ classdef CalcBG < handle
             end
             
             % sets the marker properties            
-            if obj.isMTrk
-                [pMark,obj.mSz] = deal('.',12);
+            if obj.isMTrk               
+                % sets the region count
+                [nRow,nCol] = deal(obj.iMov.pInfo.nRow,obj.iMov.pInfo.nCol);
+                nReg = nRow*nCol;
+                
+                % sets the marker properties
+                [pMark,obj.mSz] = deal('.',12);                
             else
+                % sets the region count
+                nReg = length(obj.iMov.iR);
+                
+                % sets the marker properties
                 if ispc
                     [pMark,obj.mSz,mlWid] = deal('o',10,2);
                 else                
@@ -1208,50 +1232,51 @@ classdef CalcBG < handle
             showMark = get(obj.hGUI.checkFlyMarkers,'Value');
             
             % updates the fly markers for all apparatus
-            for iApp = 1:length(obj.iMov.iR)
+            for iReg = 1:nReg
                 % retrieves the position values
                 if obj.isMTrk
                     % if there is no location data, then exit
                     if ~isFeas; return; end
                     
                     % resets the markers (if they are invalid)
-                    if (iApp == 1) && ~isvalid(obj.hMark{iApp}{1})
+                    if (iReg == 1) && ~isvalid(obj.hMark{iReg}{1})
                         obj.initLikelyPlotMarkers();
                     end
                     
                     % updates the marker locations                    
-                    fPosNw = fpos{iApp,iFrmNw};
-                    set(obj.hMark{iApp}{1},'xdata',fPosNw(:,1),...
+                    fPosNw = fpos{iReg,iFrmNw};
+                    set(obj.hMark{iReg}{1},'xdata',fPosNw(:,1),...
                                            'ydata',fPosNw(:,2),...
                                            'Visible',vStr{1+showMark})
                                        
                     % updates the other properties
-                    if obj.iMov.flyok{iApp}
-                        set(obj.hMark{iApp}{1},'marker',pMark,...
+                    [iRow,iCol] = ind2sub([nRow,nCol],iReg);
+                    if obj.iMov.flyok(iRow,iCol)
+                        set(obj.hMark{iReg}{1},'marker',pMark,...
                                     'color',pCol,'markersize',obj.mSz,...
                                     'linewidth',lWid);                                
                     end
                     
                 else   
                     % retrieves the position coord (non-hi var phase only)
-                    if isFeas; fPosNw = fpos{iApp,iFrmNw}; end
+                    if isFeas; fPosNw = fpos{iReg,iFrmNw}; end
                     
-                    xiT = 1:getSRCount(obj.iMov,iApp);
-                    for iT = find(obj.iMov.flyok(xiT,iApp))'
+                    xiT = 1:getSRCount(obj.iMov,iReg);
+                    for iT = find(obj.iMov.flyok(xiT,iReg))'
                         % updates the marker locations
                         if ~isFeas
                             % case is a hi-variance phase
-                            set(obj.hMark{iApp}{iT},'xdata',NaN,...
+                            set(obj.hMark{iReg}{iT},'xdata',NaN,...
                                                     'ydata',NaN)                            
                         else                                                       
                             % case is a non hi-variance phase 
-                            set(obj.hMark{iApp}{iT},'xdata',fPosNw(iT,1),...
+                            set(obj.hMark{iReg}{iT},'xdata',fPosNw(iT,1),...
                                                     'ydata',fPosNw(iT,2))
                         end
 
                         % updates the other properties                        
-                        if obj.iMov.flyok(iT,iApp)
-                            set(obj.hMark{iApp}{iT},'marker',pMark,...
+                        if obj.iMov.flyok(iT,iReg)
+                            set(obj.hMark{iReg}{iT},'marker',pMark,...
                                         'color',pCol,'markersize',obj.mSz,...
                                         'linewidth',mlWid);                                
                         end
@@ -2063,17 +2088,25 @@ classdef CalcBG < handle
             isOK = get(hObject,'value');
             fok = obj.iMov.flyok;
 
+            %
+            if obj.isMTrk
+                fok = fok';
+                iReg = find(arr2vec(fok)');
+            else
+                iReg = find(obj.iMov.ok(:)');
+                nFly = arrayfun(@(x)(getSRCount(obj.iMov,x)),iReg);
+            end
+            
             % sets the panel properties
             obj.setManualDetectEnable()
             
             % sets the marker visibility for all apparatus
-            for i = find(obj.iMov.ok(:)')
-                indFly = 1:getSRCount(obj.iMov,i);
-                
-                if iscell(fok)
-                    cellfun(@(x,isOn)(setObjVisibility(x,isOn)),...
-                            obj.hMark{i},num2cell(isOK & fok{i}(indFly)))                    
+            for i = iReg
+                % sets                
+                if obj.isMTrk
+                    cellfun(@(x)(setObjVisibility(x,fok(i))),obj.hMark{i})
                 else
+                    indFly = 1:nFly(i);                    
                     cellfun(@(x,isOn)(setObjVisibility(x,isOn)),...
                             obj.hMark{i},num2cell(isOK & fok(indFly,i)))
                 end
@@ -2137,12 +2170,12 @@ classdef CalcBG < handle
                 obj.menuFlyAccRej(obj.hGUI.menuFlyAccRej, [])
             end            
             
-            % creates the waitbar figure
-            if obj.isMTrk
-                % case is tracking multiple objects                                
-                h = [];
-                
-            else
+%             % creates the waitbar figure
+%             if obj.isMTrk
+%                 % case is tracking multiple objects
+%                 h = [];
+%                 
+%             else
                 % case is tracking a single object    
                 
                 % progressbar strings
@@ -2152,7 +2185,8 @@ classdef CalcBG < handle
                 
                 % creates the progressbar figure            
                 h = ProgBar(wStr,'Single Object Background Estimation'); 
-                
+               
+            if isprop(obj.trkObj,'hFilt')
                 % calculates the initial location estimates
                 obj.trkObj.hFilt = [];                                
             end
@@ -2174,18 +2208,22 @@ classdef CalcBG < handle
                 % sub-image data struct
                 obj.iMov = imov;
                 obj.ok0 = imov.flyok;                              
-                obj.Ibg = cell(length(imov.vPhase),1);
-                obj.iMov.hFilt = calcImageStackFcn(obj.trkObj.hCQ);     
+                obj.Ibg = cell(length(imov.vPhase),1);                     
                 obj.vPhase0 = obj.iMov.vPhase;
-                obj.indFrm = obj.trkObj.indFrm;
+                obj.indFrm = obj.trkObj.indFrm;                
                 
                 % updates the sub-region data struct in the main gui
                 set(obj.hGUI.figFlyTrack,'iMov',imov)
                 
                 % likely/potential object locations
                 obj.fPos = obj.trkObj.fPosG;
-                obj.IPos = obj.trkObj.IPos;
-                obj.pStats = obj.trkObj.pStats;
+                
+                % sets the single-tracking specific fields
+                if ~obj.isMTrk
+                    obj.IPos = obj.trkObj.IPos;
+                    obj.pStats = obj.trkObj.pStats;
+                    obj.iMov.hFilt = calcImageStackFcn(obj.trkObj.hCQ);
+                end                
                 
                 % updates the list box properties but clears the list
                 set(obj.hGUI.tableFlyUpdate,'Data',[])

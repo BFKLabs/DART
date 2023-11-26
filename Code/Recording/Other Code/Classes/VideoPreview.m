@@ -181,7 +181,9 @@ classdef VideoPreview < handle
                 obj.vcObj.resetTraceFields();
 
                 % retrieves the current/full video resolution
-                if obj.isWebCam
+                if obj.isTest
+                    rPos = [1,1,obj.objIMAQ.szImg];
+                elseif obj.isWebCam
                     rPos = obj.objIMAQ.pROI;                
                 else
                     rPos = get(obj.objIMAQ,'ROIPosition');

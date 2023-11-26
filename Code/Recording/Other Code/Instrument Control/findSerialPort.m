@@ -23,7 +23,7 @@ if (nDev > 0)
     
     % removes any controllers that are currently being used
     [pStr,sType] = deal(pStr(~inUse,:),sType(~inUse,:));
-    if (isempty(pStr)); return; end
+    if isempty(pStr); return; end
     
     % maps the serial device driver letters (V1 serial controllers only)
     nDevNw = size(pStr,1);

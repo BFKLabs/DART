@@ -17,8 +17,9 @@ classdef AdaptorInfoClass < handle
         % device class objects
         iStim
         objDAQ
+        objDAQTest
         objIMAQ
-        objIMAQDev        
+        objIMAQDev
         exType
         
         % other data storage arrays
@@ -41,6 +42,12 @@ classdef AdaptorInfoClass < handle
         Hmax
         Wmax        
         
+        % device type strings
+        vStr = {'Motor',...
+                'Opto',...
+                'HTControllerV1',...
+                'HTControllerV2'};        
+        
         % other scalar/boolean fields
         ok = true;
         nDAQMin
@@ -52,7 +59,6 @@ classdef AdaptorInfoClass < handle
         hasDAQ
         hasIMAQ = true; 
         onlyDAQ        
-        vStr = {'Motor','Opto','HTControllerV1','HTControllerV2'};
         testFile = '';
         popStr
         iProg
@@ -402,97 +408,27 @@ classdef AdaptorInfoClass < handle
             
             % updates the loadbar string
             loadStr = 'Initialising Data Acquisition Devices...';
-            obj.hLoad.StatusMessage = loadStr;            
-            
-            % object retrieval
-            handles = obj.hGUI;
+            obj.hLoad.StatusMessage = loadStr;                        
             
             % determines the attached data acquisition objects
             [obj.objDAQ,obj.hasDAQ] = obj.detConnectedDevice();              
-            if ~obj.hasDAQ
-                % case is no external devices were detected
-                if obj.onlyDAQ
-                    % if running in DAC only mode, then prompt the user 
-                    % that they need to attach a device before continuing            
-                    eStr = sprintf(['Error! There are no external ',...
-                            'devices detected.\nYou must attach a ',...
-                            'device before trying again.']);
-                    waitfor(msgbox(eStr,'No Devices Attached?','modal'))
+            if ~obj.hasDAQ && obj.onlyDAQ
+                % if running in DAC only mode, then prompt the user 
+                % that they need to attach a device before continuing            
+                eStr = sprintf(['Error! There are no external ',...
+                        'devices detected.\nYou must attach a ',...
+                        'device before trying again.']);
+                waitfor(msgbox(eStr,'No Devices Attached?','modal'))
 
-                    % closes the adaptor information GUI 
-                    obj.ok = false;
-                end                
-                
+                % closes the adaptor information GUI 
+                obj.ok = false;
+
                 % exits the function
-                return 
-            end                
+                return          
+            end         
             
-            % if so, initialise the DAC/serial object listbox 
-            isS = strcmp(obj.objDAQ.dType,'Serial');
-            obj.nChMax = 2*(1+isS);
-            obj.vStrDAQ = cell(length(isS),1);
-
-            % determines the adaptor string names for the serial objects       
-            pStr = cellfun(@(x)(get(x,'Port')),obj.objDAQ.Control,'un',0);
-            if any(isS)
-                % sets the device name strings
-                obj.vStrDAQ(isS) = cellfun(@(x,y,z)...
-                    (sprintf('%i - %s (%s)',x,y,z)),...
-                    num2cell(find(isS(:))),obj.objDAQ.BoardNames(isS),...
-                    pStr(isS),'un',false);
-            end
-
-            % determines the adaptor string names for the daq objects
-            if any(~isS)
-                % sets the device name strings
-                indD = num2cell(find(~isS));
-                bName = obj.objDAQ.BoardNames(~isS);            
-                obj.vStrDAQ(~isS) = cellfun(@(x,y,z)...
-                           (sprintf('%i - %s (DAC %i)',x,y,z)),...
-                           indD(:),bName(:),num2cell(1:sum(~isS))','un',0);  
-
-                % determines if the objects are the new format. if so, 
-                % then set the maximum number of channels
-                if ~verLessThan('matlab','9.2')
-                    ii = find(~isS);
-                    a = obj.objDAQ.ObjectConstructorName(~isS,:);
-                    for i = 1:size(a,1)
-                        obj.nChMax(ii(i)) = length(a{i,3}.chName);
-                    end
-                end
-            end
-            
-            % initialises the device channel count editbox
-            obj.nDAQMax = min(obj.nDAQMax,length(obj.vStrDAQ));
-            obj.initChannelEdit();               
-
-            % sets the name strings within the list box
-            set(handles.listDACObj,'String',obj.vStrDAQ,'value',[])              
-            
-            % sets the list/channel values (if adaptors have been set)
-            if obj.onlyDAQ
-                % updates the list selection value
-                set(handles.listDACObj,'value',obj.vSelDAQ)
-                isHT = strContains(obj.objDAQ.sType,'HTController');
-                
-                for i = 1:length(obj.vSelDAQ)
-                    j = obj.vSelDAQ(i);
-                    hEdit = findobj(handles.panelDACObj,...
-                                            'style','edit','UserData',j);
-                    if isnan(obj.nCh(j)) || isHT(i)
-                        % if opto or ht-controller then set inactive cell
-                        obj.setEditProp(j,'opto')
-                        if isHT(i)
-                            set(hEdit,'String','1')
-                        end
-                    else
-                        % otherwise, set the cell to be active
-                        nChStr = num2str(obj.nCh(j));
-                        set(hEdit,'backgroundcolor','w','enable','on',...
-                                  'ForegroundColor','k','string',nChStr)
-                    end
-                end
-            end                 
+            % updates the DAQ list properties
+            obj.updateDAQListProps();            
             
         end                   
 
@@ -558,10 +494,8 @@ classdef AdaptorInfoClass < handle
                 return
             end                        
             
-            % sets the experiment radio buttons based
-            setObjEnable(handles.radioRecordStim,obj.hasDAQ && obj.hasIMAQ)
-            setObjEnable(handles.radioRecordOnly,obj.hasIMAQ)
-            setObjEnable(handles.radioStimOnly,obj.hasDAQ)   
+            % sets the experiment radio button enabled properties
+            obj.setRadioEnableProps();
             
             % runs the panel selection change update function
             if ~obj.onlyDAQ
@@ -588,17 +522,26 @@ classdef AdaptorInfoClass < handle
         function menuEnableTestCB(obj, hObject, ~)
         
             % popup menu item handle
+            hPanelEx = obj.hGUI.panelExptType;            
             hText = obj.hGUI.textVidResolution;
             hPopup = obj.hGUI.popupVidResolution;
+            hRadioRec = obj.hGUI.radioRecordOnly;
+            
             obj.isTest = strcmp(get(hObject,'Checked'),'off');
+            toggleMenuCheck(hObject);            
             
             % sets the test flag
             if obj.isTest
+                % sets up the test daq information
+                if isempty(obj.objDAQTest)
+                    obj.initTestDAQInfo();
+                end
+                
                 % disables the image acquisition panel 
                 setObjEnable(obj.hGUI.listIMAQObj,0)
+                set(obj.hGUI.listIMAQObj,'Value',[])
                 
                 % toggles the checkmark
-                set(hObject,'Checked','on');                                
                 set(hPopup,'ButtonDownFcn',{@obj.editVidResolutionCB},...
                            'Style','Edit','HorizontalAlignment','left',...
                            'String',obj.testFile,'Enable','Inactive',...
@@ -606,14 +549,13 @@ classdef AdaptorInfoClass < handle
                 set(hText,'String','Testing Video File: ');
                     
             else
-                % toggles the checkmark
-                set(hObject,'Checked','off');    
-                
                 % sets the popup string/values
                 if isempty(obj.popStr)
                     set(hPopup,'Value',1,'String',{''},'Max',2)
+                    set(obj.hGUI.listIMAQObj,'Value',[]);
                 else
                     set(hPopup,'String',obj.popStr,'Max',1)
+                    set(obj.hGUI.listIMAQObj,'Value',1);
                 end
                        
                 % sets the other popup menu properties
@@ -624,12 +566,23 @@ classdef AdaptorInfoClass < handle
                 % sets the object enabled properties
                 setObjEnable(obj.hGUI.listIMAQObj,1)
                 setObjEnable(hPopup,~isempty(obj.vSelIMAQ))
+                
+                if isempty(obj.objDAQ.Control) && ~hRadioRec.Value
+                    obj.hGUI.radioRecordOnly.Value = 1;
+                end
             end 
             
             % resets the popup menu item position
             dHght = 2*obj.isTest - 1;
             resetObjPos(hPopup,'Bottom',-dHght,1)
             resetObjPos(hPopup,'Height',dHght,1)
+            
+            % updates the panel experiment type
+            obj.panelExptTypeSC(hPanelEx, '1')
+            
+            % sets the experiment radio button enabled properties
+            obj.setRadioEnableProps();        
+            obj.updateDAQListProps();            
             
             % updates the connection button enabled properties
             obj.updateConnectEnable();
@@ -751,7 +704,11 @@ classdef AdaptorInfoClass < handle
                 notOK = isempty(obj.vSelDAQ);
                 if ~stimOnly
                     % case is a stimuli and recording expt
-                    notOK = notOK || isempty(obj.vSelIMAQ);
+                    if obj.isTest
+                        notOK = notOK || isempty(obj.testFile);
+                    else
+                        notOK = notOK || isempty(obj.vSelIMAQ);
+                    end
                 end
                 
                 if notOK
@@ -796,12 +753,17 @@ classdef AdaptorInfoClass < handle
                     % otherwise, check to see if the IMAQ object has been 
                     % set AND at least one channel has been provided for 
                     % each DAC device                    
-                    canConnect = ~any(obj.nCh(obj.vSelDAQ) == 0);
+                    canConn = ~any(obj.nCh(obj.vSelDAQ) == 0);
                     if obj.hasIMAQ 
-                        canConnect = canConnect && ~isempty(obj.vSelIMAQ);
+                        if obj.isTest
+                            canConn = canConn && ~isempty(obj.testFile);
+                        else
+                            canConn = canConn && ~isempty(obj.vSelIMAQ);
+                        end
                     end
                         
-                    setObjEnable(handles.buttonConnect,canConnect)
+                    % updates the enabled properties
+                    setObjEnable(handles.buttonConnect,canConn)
                 end
             else
                 % otherwise, revert back to the previous valid value
@@ -820,8 +782,9 @@ classdef AdaptorInfoClass < handle
             % initialisations
             handles = obj.hGUI;
             hPanel = handles.panelDACObj;
+            hText = obj.hGUI.textVidResolution;
             hPopup = handles.popupVidResolution;
-
+            
             % retrieves the experiment type
             if isa(eventdata,'char')
                 obj.exType = get(get(hObject,'SelectedObject'),'UserData');
@@ -831,10 +794,18 @@ classdef AdaptorInfoClass < handle
 
             % sets the DAC object panel enabled
             switch obj.exType
-                case ('RecordOnly') % case is recording only
+                case ('RecordOnly') 
+                    % case is recording only
+                    
                     % disables the DAQ panel
                     setPanelProps(handles.panelDACObj,'off')
-                    setPanelProps(handles.panelIMAQObj,'on',hPopup)
+                    
+                    if obj.isTest
+                        hObj = [hPopup;hText];                        
+                        setPanelProps(handles.panelIMAQObj,'off',hObj) 
+                    else
+                        setPanelProps(handles.panelIMAQObj,'on',hPopup)
+                    end
 
                     % clears the DAQ listbox/device selection lists
                     set(handles.listDACObj,'value',[])
@@ -844,7 +815,9 @@ classdef AdaptorInfoClass < handle
                     [obj.hasDAQ,obj.hasIMAQ] = deal(false,true);
                     obj.listIMAQObjCB(handles.listIMAQObj,'1')
 
-                case ('StimOnly') % case is stimuli only
+                case ('StimOnly') 
+                    % case is stimuli only
+                    
                     % disables the DAQ panel
                     setPanelProps(handles.panelDACObj,'on')
                     setPanelProps(handles.panelIMAQObj,'off')
@@ -860,10 +833,18 @@ classdef AdaptorInfoClass < handle
                     set(handles.listIMAQObj,'value',[])
                     obj.vSelIMAQ = deal([]);                    
 
-                otherwise % case is the other buttons
+                otherwise
+                    % case is the other buttons
+                    
                     % otherwise, disable the panel
                     setPanelProps(handles.panelDACObj,'on') 
-                    setPanelProps(handles.panelIMAQObj,'on',hPopup)
+
+                    if obj.isTest
+                        hObj = [hPopup;hText];
+                        setPanelProps(handles.panelIMAQObj,'off',hObj)
+                    else
+                        setPanelProps(handles.panelIMAQObj,'on',hPopup)
+                    end                    
 
                     % updates the camera/DAC object list properties
                     [obj.hasDAQ,obj.hasIMAQ] = deal(true);
@@ -997,6 +978,24 @@ classdef AdaptorInfoClass < handle
             
         end
         
+        % --- initialises the daq information (for testing purposes)
+        function initTestDAQInfo(obj)
+
+            % initialisations
+            comAvail = getSerialPortInfo();            
+            obj.objDAQTest = obj.initDAQInfoStruct();
+            
+            % sets the input information
+            pStr = cell(length(comAvail),2);
+            pStr(:,1) = num2cell(char(comAvail(:)),2);
+            pStr(:,2) = {'BFKLabs Serial Controller'};
+            
+            % if there are any valid devices then retrieve their details
+            obj.objDAQTest = ...
+                    appendSerialInfo(obj.objDAQTest,pStr,obj.vStr,1);
+                
+        end
+        
         % --- determines if there are any external devices connected
         function [daqInfo,hasDevice] = detConnectedDevice(obj)
             
@@ -1105,7 +1104,7 @@ classdef AdaptorInfoClass < handle
         function updateConnectEnable(obj)
             
             % determines if a valid video object has been selected
-            if strcmp(get(obj.hGUI.menuEnableTest,'Checked'),'on')
+            if obj.isTest
                 hasVidSel = ~isempty(obj.testFile);
             else
                 hasVidSel = ~isempty(obj.vSelIMAQ);
@@ -1121,6 +1120,124 @@ classdef AdaptorInfoClass < handle
             
         end                
 
+        % --- updates the radio button enabled properties
+        function setRadioEnableProps(obj)
+
+            % object retrieval
+            handles = obj.hGUI;                
+
+            % sets the radio button enabled properties
+            if obj.isTest
+                % case is running in test mode
+                setObjEnable(handles.radioRecordStim,1)
+                setObjEnable(handles.radioRecordOnly,1)
+                setObjEnable(handles.radioStimOnly,1)                       
+                                
+            else
+                % case is running is full mode
+                setObjEnable(handles.radioRecordStim,obj.hasDAQ && obj.hasIMAQ)
+                setObjEnable(handles.radioRecordOnly,obj.hasIMAQ)
+                setObjEnable(handles.radioStimOnly,obj.hasDAQ)   
+            end                    
+
+        end        
+        
+        % --- updates the DAQ list properties
+        function updateDAQListProps(obj)
+            
+            % object retrieval
+            handles = obj.hGUI;    
+            
+            % 
+            if obj.isTest
+                % case is running in test mode
+                objD = obj.objDAQTest;
+                
+            else
+                if ~obj.hasDAQ
+                    % clears the fields
+                    set(handles.listDACObj,'String',[],'value',[])
+
+                    %
+                    hEdit = findall(handles.panelDACObj,'Style','Edit');
+                    set(hEdit,'enable','off','string','')
+                    
+                    % exits the function
+                    return                
+                else
+                    % otherwise, set the DAQ info object
+                    objD = obj.objDAQ;
+                end
+            end
+            
+            % if so, initialise the DAC/serial object listbox
+            isS = strcmp(objD.dType,'Serial');
+            obj.nChMax = 2*(1+isS);
+            obj.vStrDAQ = cell(length(isS),1);
+            
+            % determines the adaptor string names for the serial objects
+            pStr = cellfun(@(x)(get(x,'Port')),objD.Control,'un',0);
+            if any(isS)
+                xiS = num2cell(find(isS(:)));
+                obj.vStrDAQ(isS) = cellfun(@(x,y,z)...
+                    (sprintf('%i - %s (%s)',x,y,z)),xiS,...
+                    objD.BoardNames(isS),pStr(isS),'un',0);
+            end
+            
+            % determines the adaptor string names for the daq objects
+            if any(~isS)
+                % sets the device name strings
+                indD = num2cell(find(~isS));
+                bName = objD.BoardNames(~isS);
+                obj.vStrDAQ(~isS) = cellfun(@(x,y,z)...
+                    (sprintf('%i - %s (DAC %i)',x,y,z)),...
+                    indD(:),bName(:),num2cell(1:sum(~isS))','un',0);
+                
+                % determines if the objects are the new format. if so,
+                % then set the maximum number of channels
+                if ~verLessThan('matlab','9.2')
+                    ii = find(~isS);
+                    a = objD.ObjectConstructorName(~isS,:);
+                    for i = 1:size(a,1)
+                        obj.nChMax(ii(i)) = length(a{i,3}.chName);
+                    end
+                end
+            end
+            
+            % initialises the device channel count editbox
+            obj.nDAQMax = min(obj.nDAQMax,length(obj.vStrDAQ));
+            obj.initChannelEdit();
+            
+            % sets the name strings within the list box
+            set(handles.listDACObj,'String',obj.vStrDAQ,'value',[])
+            
+            % sets the list/channel values (if adaptors have been set)
+            if obj.onlyDAQ
+                % updates the list selection value
+                set(handles.listDACObj,'value',obj.vSelDAQ)
+                isHT = strContains(objD.sType,'HTController');
+                
+                for i = 1:length(obj.vSelDAQ)
+                    j = obj.vSelDAQ(i);
+                    hEdit = findobj(handles.panelDACObj,...
+                        'style','edit','UserData',j);
+                    if isnan(obj.nCh(j)) || isHT(i)
+                        % if opto or ht-controller then set inactive cell
+                        obj.setEditProp(j,'opto')
+                        if isHT(i)
+                            set(hEdit,'String','1')
+                        end
+                    else
+                        % otherwise, set the cell to be active
+                        nChStr = num2str(obj.nCh(j));
+                        set(hEdit,'backgroundcolor','w','enable','on',...
+                            'ForegroundColor','k','string',nChStr)
+                    end
+                end
+            end
+            
+        end
+        
     end
     
     % static class methods

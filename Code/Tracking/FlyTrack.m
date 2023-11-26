@@ -818,8 +818,15 @@ setObjEnable(handles.menuStimInfo,detIfHasStim(iData.stimP))
 
 % updates the data struct fields
 iData.fData = solnData.fData;
-[iData.exP,iData.Frm0] = deal(solnData.exP,solnData.Frm0);
-[iData.cMov,iData.nMov] = deal(1,iMov.nRow*iMov.nCol);
+[iData.exP,iData.Frm0,iData.cMov] = deal(solnData.exP,solnData.Frm0,1);
+
+% sets the total sub-region count
+if detMltTrkStatus(iMov)
+    iData.nMov = iMov.pInfo.nRow*iMov.pInfo.nCol;
+else
+    iData.nMov = iMov.nRow*iMov.nCol;
+end
+
 set(handles.output,'iData',iData)
 
 % attempts to open the movie file
@@ -1770,7 +1777,7 @@ switch get(hObject,'UserData')
         
     case 'Sub' % case is the sub-movie
         [hObj,pStr] = deal(handles.movCountEdit,'cMov');
-        set(handles.checkReject,'value',~hFig.iMov.ok(1));        
+        setRejectProps(handles,hFig.iMov,1);
 end
 
 % updates the data struct with the new value
@@ -1823,8 +1830,7 @@ switch get(hObject,'UserData')
     case 'Sub' % case is the sub-movie
         hObj = handles.movCountEdit;        
         [nwVal,pStr] = deal(iData.nMov,'cMov');
-        set(handles.checkReject,'value',~hFig.iMov.ok(nwVal)); 
-                
+        setRejectProps(handles,hFig.iMov,nwVal);                        
 end
 
 % updates the data struct with the new value
@@ -1898,9 +1904,9 @@ if nwVal > 1
             setTrackGUIProps(handles,'UpdateFrameSelection',iData.cFrm)
             
         case 'Sub' % case is the sub-movie
-            set(handles.checkReject,'value',~hFig.iMov.ok(iData.cMov));            
             setTrackGUIProps(handles,'UpdateMovieSelection')
             checkShowTube_Callback(handles.checkShowTube,1,handles)
+            setRejectProps(handles,hFig.iMov,iData.cMov);
     end   
     
     % updates the edit box value and the image axis
@@ -1962,10 +1968,9 @@ if nwVal < mxVal
             setTrackGUIProps(varargin{1},'UpdateFrameSelection',iData.cFrm)
     
         case 'Sub' % case is the sub-movie
-            set(handles.checkReject,'value',~hFig.iMov.ok(iData.cMov));          
             setTrackGUIProps(handles,'UpdateMovieSelection')
             checkShowTube_Callback(handles.checkShowTube,1,handles)
-        
+            setRejectProps(handles,hFig.iMov,nwVal);            
     end
     
     % updates the edit box value and the image axis
@@ -2004,7 +2009,7 @@ switch get(hObject,'UserData')
 
     case 'Sub' % case is the sub-movie
         [pStr,nwLim] = deal('cMov',[1,iData.nMov]);
-        set(handles.checkReject,'value',~hFig.iMov.ok(iData.cMov));        
+        setRejectProps(handles,hFig.iMov,iData.cMov);
 end
 
 % updates the frame/sub-movie index
@@ -2373,11 +2378,7 @@ switch nargin
     case 2 % case is the movie is playing
         % retrieves new image from the image stack (loaded from movie show)
         [iNw,ImgS] = deal(varargin{1}{1},varargin{1}{2});   
-%         if size(ImgS{iNw},3) == 3
-%             ImgNw = rgb2gray(ImgS{iNw});
-%         else
-            ImgNw = ImgS{iNw};
-%         end
+        ImgNw = ImgS{iNw};
 
         % sets the sub-image (if required)
         if get(handles.checkLocalView,'value')
@@ -3029,25 +3030,35 @@ if isChange
     end         
     
     % reinitialises the background image array
-    nTube = getSRCountVec(iMov);
-    iMov.flyok = false(max(nTube),length(iMov.iR));
-    
-    % sets the individual acceptance flags for each group
-    for i = 1:length(nTube)
-        iMov.Status{i}(:) = 0;
-        if iMov.ok(i)
-            iMov.flyok(1:nTube(i),i) = true;
+    if detMltTrkStatus(iMov)
+        % multi-tracking
+        iMov.Status = num2cell(ones(size(iMov.flyok)));
+    else
+        % single-tracking
+        nTube = getSRCountVec(iMov);
+        iMov.flyok = false(max(nTube),length(iMov.iR));
+
+        % sets the individual acceptance flags for each group
+        for i = 1:length(nTube)
+            iMov.Status{i}(:) = 0;
+            if iMov.ok(i)
+                iMov.flyok(1:nTube(i),i) = true;
+            end
         end
     end
     
-    % initialises the stats/backgrounds arrays
+    % (re)-initialises the stats/backgrounds arrays
     iMov.nDS = 1;
     [iMov.pStats,iMov.Ibg] = deal([]);            
     if isfield(iMov,'Nsz'); iMov = rmfield(iMov,'Nsz'); end
     
     % updates the program data struct video
     [iData.initSoln,iData.status,iData.isSave] = deal(1,0,true);
-    iData.nMov = iMov.nRow*iMov.nCol;
+    if detMltTrkStatus(iMov)
+        iData.nMov = numel(iMov.flyok);        
+    else
+        iData.nMov = iMov.nRow*iMov.nCol;
+    end
             
     % updates the data structs within the GUI
     set(handles.output,'iMov',iMov,'iData',iData,'pData',[]);
@@ -3172,3 +3183,13 @@ end
 function Dmin = calcMinPointDist(x,y,mP)
 
 Dmin = min(sqrt((x-mP(1)).^2 + (y-mP(2)).^2));
+
+% --- sets the rejection checkbox properties
+function setRejectProps(handles,iMov,nwVal)
+
+if detMltTrkStatus(iMov)
+    [iC,iR] = ind2sub(size(iMov.flyok),nwVal);
+    set(handles.checkReject,'value',~iMov.flyok(iR,iC));
+else
+    set(handles.checkReject,'value',~iMov.ok(nwVal));
+end

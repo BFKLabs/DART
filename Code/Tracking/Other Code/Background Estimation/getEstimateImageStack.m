@@ -26,17 +26,17 @@ end
 % only grayscale is necessary for phase detection
 iMov.useGray = true;
 
-% creates the video phase class object
-if detMltTrkStatus(iMov)
-    % case is multi-tracking
-    phObj = VideoPhaseMulti(iData,iMov,h,1+iOfs);
-    phObj.nPhMax = 100;
-    phObj.runPhaseDetect();
-else
+% % creates the video phase class object
+% if detMltTrkStatus(iMov)
+%     % case is multi-tracking
+%     phObj = VideoPhaseMulti(iData,iMov,h,1+iOfs);
+%     phObj.nPhMax = 100;
+%     phObj.runPhaseDetect();
+% else
     % case is single-tracking
     phObj = VideoPhase(iData,iMov,h,1+iOfs);
     phObj.runPhaseDetect();
-end
+% end
 
 % updates the sub-image data struct with the phase information
 phObj.iMov.iPhase = phObj.iPhase;

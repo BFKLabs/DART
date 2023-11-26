@@ -2,7 +2,7 @@ function writeSerialString(hS,sStr)
 
 % initialisations
 tw = 5;
-hasDev = ~isempty(hS);
+hasDev = ~isempty(hS) && ~isa(hS,'DummyDevice');
 
 % prints the string to the device       
 if iscell(sStr)
