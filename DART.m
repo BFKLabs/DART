@@ -272,8 +272,8 @@ classdef DART < handle
             global tDay hDay
             
             % main field initialisation
-            obj.uType = getUserType();
-            obj.hasSep = (obj.uType == 0) && ~isdeployed;  
+            obj.uType = runDevFunc('isDev');
+            obj.hasSep = obj.uType && ~isdeployed;  
             
             % calculates the variable dimensions
             obj.widFig = obj.widPanel + 2*obj.dX;
@@ -495,7 +495,7 @@ classdef DART < handle
             GF0 = GitFunc();
             
             % if a developer, then exit the function
-            if GF0.uType == 0
+            if GF0.uType
                 return
             end
             

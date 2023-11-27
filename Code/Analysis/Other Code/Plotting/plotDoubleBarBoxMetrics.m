@@ -65,9 +65,9 @@ if isBar
 else    
     % retrieves the overall data values
     if N == 1
-        % sets the data into a single cell array
-        Y1 = cellfun(@(x)(x(:,xiP)),getStructField(p,pStr{1}),'un',0);
-        Y2 = cellfun(@(x)(x(:,xiP)),getStructField(p,pStr{2}),'un',0);
+        % sets the data into a single cell array        
+        Y1 = cellfun(@(x)(x(:,xiP)),getArrayValues(p,pStr{1}),'un',0);
+        Y2 = cellfun(@(x)(x(:,xiP)),getArrayValues(p,pStr{2}),'un',0);                
         
         % combines the data into a single array based on type
         [m1,n1] = size(Y1);
@@ -162,3 +162,9 @@ else
     delete(findall(hAx,'type','text'))
     set(hAx,'ticklength',[0 0],'box','on','UserData',uData0)      
 end
+
+% --- retrieves the array values (filling any empty elements with NaNs)
+function Y = getArrayValues(p,pStr)
+
+Y = getStructField(p,pStr);
+Y(cellfun(@isempty,Y)) = {NaN};

@@ -33,6 +33,10 @@ global t2sStatus updateList isInit
 [objOff,mpStrDef,hSigTmp,hSigSel,iSigObj] = deal(true,'arrow',[],[],0);
 [t2sStatus,updateList,isInit] = deal(-1,true,true);
 
+% ensures the gui is invisible
+setObjVisibility(hObject,'off')
+pause(0.05);
+
 % initialisations
 hProg = [];
 stimOnly = false;

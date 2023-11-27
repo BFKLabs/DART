@@ -258,8 +258,8 @@ if isempty(infoObj)
 else
     % sets the data structs into the GUI
     propStr = 'InitOptoMenuItems';
-    setappdata(hFig,'infoObj',infoObj);
-        
+    setappdata(hFig,'infoObj',infoObj);        
+    
     % updates the stimuli data struct and expt type
     setappdata(hFig,'iMov',[]);
     setappdata(hFig,'iStim',infoObj.iStim);
@@ -293,6 +293,7 @@ end
 % initialises the experiment struct
 iExpt = initExptStruct(hFig);
 setappdata(hFig,'iExpt',iExpt);
+setappdata(hFig,'sTrain',[]);
 
 % sets the GUI properties based on whether testing or not
 setRecordGUIProps(handles,'InitGUI',infoObj.exType);

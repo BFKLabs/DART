@@ -40,6 +40,7 @@ else
     if length(p) == 1
         % retrieves and reduces down the metric array
         Yc0 = getStructField(p,pStr);
+        Yc0(cellfun(@isempty,Yc0)) = {NaN};
         Yc = cellfun(@(x)(x(:,xiP)),Yc0,'un',0);
         
         % converts the data array to its final form

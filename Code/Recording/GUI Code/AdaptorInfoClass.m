@@ -70,7 +70,7 @@ classdef AdaptorInfoClass < handle
     % class methods
     methods
 
-        % class constructor
+        % --- class constructor
         function obj = AdaptorInfoClass(hFig,iType,reqdConfig)
             
             % sets the main object fields
@@ -157,11 +157,7 @@ classdef AdaptorInfoClass < handle
             end       
             
             % sets the test mode menu item
-            devName = {'DESKTOP-94RD45L','DESKTOP-NLLEH0V'};
-            [~,hName] = system('hostname');            
-            isDev = any(strContains(devName,hName(1:end-1)));
-            setObjVisibility(obj.hGUI.menuTestMode,isDev);
-            
+            runDevFunc('AdaptorTest',obj.hGUI);            
         end        
         
         % --- initialises the object properties
@@ -1104,17 +1100,25 @@ classdef AdaptorInfoClass < handle
         function updateConnectEnable(obj)
             
             % determines if a valid video object has been selected
-            if obj.isTest
-                hasVidSel = ~isempty(obj.testFile);
+            if obj.onlyDAQ
+                % case is a DAQ only expt
+                canConnect = true;
             else
-                hasVidSel = ~isempty(obj.vSelIMAQ);
+                % case is the experiment has recording
+                if obj.isTest
+                    canConnect = ~isempty(obj.testFile);
+                else
+                    canConnect = ~isempty(obj.vSelIMAQ);
+                end
             end
            
             % determines if it is feasible to connect 
-            canConnect = hasVidSel || ...
-                            (~(isempty(obj.vSelDAQ) || ...
-                             any(obj.nCh(obj.vSelDAQ) == 0)));            
-            
+            if obj.hasDAQ
+                canConnect = canConnect && ...
+                    (~(isempty(obj.vSelDAQ) || ...
+                       any(obj.nCh(obj.vSelDAQ) == 0)));            
+            end
+                   
             % sets the connect button enabled properties
             setObjEnable(obj.hGUI.buttonConnect,canConnect)
             
