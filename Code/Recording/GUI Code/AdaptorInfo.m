@@ -167,7 +167,14 @@ switch infoObj.iType
         
     case 3
         % case is checking the device configuration
-        outObj = infoObj.objDAQ;
+        if infoObj.isTest
+            outObj = infoObj.objDAQTest;
+            outObj.nChannel = infoObj.nCh;
+        else
+            outObj = infoObj.objDAQ;
+        end
+           
+        % sets the main gui visibility
         setObjVisibility(infoObj.hFigM,'on')
 end
 

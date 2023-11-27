@@ -101,7 +101,7 @@ if updateDev
         setappdata(hFigUpdate,'objDAQ',objDAQ0)
         
         % retrieves the new DAC information        
-        objDAQNw = AdaptorInfo('hFigM',hMain,'iType',3,...
+        objDAQNw = AdaptorInfo('hFigM',hFig,'iType',3,...
                                'reqdConfig',reqdCFig);        
         if isempty(objDAQNw)
             % if the user cancelled then return a false flag value and exit
@@ -173,7 +173,7 @@ function reduceDevInfoReload(hMain,devTypeL,nChL)
 
 % initialisations
 objD = getappdata(hMain,'objDAQ0');
-nDev0 = length(objD.sRate);
+nDev0 = length(objD.sType);
 [devTypeD,nChD] = deal(objD.sType(:),objD.nChannel(1:nDev0));
 nChD(isnan(nChD)) = 0;
 

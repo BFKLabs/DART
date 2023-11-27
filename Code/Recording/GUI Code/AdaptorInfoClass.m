@@ -130,7 +130,8 @@ classdef AdaptorInfoClass < handle
                 case 'figFlyRecord'
                     obj.iProg = getappdata(obj.hFigM,'iProg');                
                 otherwise
-                    mObj = getappdata(obj.hFigM,'mObj');
+                    hFigR = findall(0,'tag','figDART');
+                    mObj = getappdata(hFigR,'mObj');
                     obj.iProg = mObj.getProgDefField('Recording');
             end
             
@@ -199,13 +200,8 @@ classdef AdaptorInfoClass < handle
                 
                 % determines the criteria properties
                 [crStr,crCol] = obj.detCriteriaProps(obj.objDAQ.sType,...
-                                                     obj.nCh);                    
+                                                     obj.nCh);                                                    
                 
-                % initialisations and setting of the input arguments
-                Hpanel = obj.dY + (2+obj.nDAQMin)*obj.Htext;  
-                Hpanel0 = cell2mat(retObjDimPos({hPanelDAQReqd},4));
-                HpO = cell2mat(retObjDimPos({hPanelOuter},4));                              
-
                 % sets up the min USB device channel strings
                 hTextL = findobj(hPanelDAQReqd,'style','text');
                 for k = 1:length(hTextL)
@@ -258,22 +254,7 @@ classdef AdaptorInfoClass < handle
                     % updates the position of the title header
                     tPosC(2) = obj.dY+(obj.nDAQMin*obj.Htext);
                     set(hTextC,'Position',tPosC);
-                end
-
-                % deletes the IMAQ object
-                delete(hPanelIMAQ)
-                delete(hPanelExpt)                
-
-                % readjusts the location of the figure/GUI panels
-                dH = Hpanel - Hpanel0;
-                resetObjPos(hPanelDAQ,'bottom',dH,1)
-                resetObjPos(hPanelDAQReqd,'height',dH,1)      
-
-                % resets the outer/figure heights
-                pPos = get(hPanelDAQ,'position');
-                dHO = HpO - (sum(pPos([2 4])) + obj.dY);
-                resetObjPos(hPanelOuter,'height',-dHO,1)                
-                resetObjPos(obj.hFig,'height',-dHO,1)  
+                end  
                 
                 % readjusts the control button locations and properties 
                 setObjEnable(hButtonC,all(strcmp(crStr,'All')))
@@ -411,20 +392,53 @@ classdef AdaptorInfoClass < handle
             if ~obj.hasDAQ && obj.onlyDAQ
                 % if running in DAC only mode, then prompt the user 
                 % that they need to attach a device before continuing            
+                tStr = 'No Devices Attached?';
                 eStr = sprintf(['Error! There are no external ',...
-                        'devices detected.\nYou must attach a ',...
-                        'device before trying again.']);
-                waitfor(msgbox(eStr,'No Devices Attached?','modal'))
+                        'devices detected.']);                    
+                if runDevFunc('isDev')
+                    % for developers, prompt if to run in test mode
+                    eStr = sprintf(['%s\nDo you want to run the ',...
+                       'adaptor setup in Test Mode?'],eStr);
+                    uChoice = questdlg(eStr,tStr,'Yes','No','Yes');
+                    if strcmp(uChoice,'Yes')
+                        % if so, then reset the flag
+                        obj.isTest = true;
+                        obj.hGUI.menuEnableTest.Enable = 'off';
+                        
+                        % sets up the test daq information
+                        if isempty(obj.objDAQTest)
+                            obj.initTestDAQInfo();
+                        end                                                
+                        
+                        % re-initialises the 
+                        obj.onlyDAQ = false;
+                        obj.initIMAQInfo()
+                        
+                    else
+                        % if not, then exit
+                        obj.ok = false;
+                    end
+                else
+                    % closes the adaptor information GUI 
+                    obj.ok = false;                    
+                    
+                    % outputs the error to screen
+                    eStr = sprintf(['%s\nYou must attach a ',...
+                        'device before trying again.'],eStr);
+                    waitfor(msgbox(eStr,tStr,'modal'))
+                end
 
-                % closes the adaptor information GUI 
-                obj.ok = false;
-
-                % exits the function
-                return          
+                % exits the function (if not running in test mode)
+                if ~obj.ok
+                    return          
+                end
             end         
             
             % updates the DAQ list properties
-            obj.updateDAQListProps();            
+            obj.updateDAQListProps(); 
+            if obj.isTest
+                obj.menuEnableTestCB(obj.hGUI.menuEnableTest)
+            end
             
         end                   
 
@@ -469,6 +483,28 @@ classdef AdaptorInfoClass < handle
             
             % object retrieval
             handles = obj.hGUI;
+            
+            if obj.onlyDAQ
+                % initialisations and setting of the input arguments
+                Hpanel = obj.dY + (2+obj.nDAQMin)*obj.Htext;  
+                Hpanel0 = cell2mat(retObjDimPos({hPanelDAQReqd},4));
+                HpO = cell2mat(retObjDimPos({hPanelOuter},4));                              
+
+                % deletes the IMAQ object
+                delete(hPanelIMAQ)
+                delete(hPanelExpt)
+
+                % readjusts the location of the figure/GUI panels
+                dH = Hpanel - Hpanel0;
+                resetObjPos(hPanelDAQ,'bottom',dH,1)
+                resetObjPos(hPanelDAQReqd,'height',dH,1)      
+
+                % resets the outer/figure heights
+                pPos = get(hPanelDAQ,'position');
+                dHO = HpO - (sum(pPos([2 4])) + obj.dY);
+                resetObjPos(hPanelOuter,'height',-dHO,1)                
+                resetObjPos(obj.hFig,'height',-dHO,1)                
+            end
            
             % if there are no attached recording objects, then return an
             % error and exit the function
@@ -1044,9 +1080,16 @@ classdef AdaptorInfoClass < handle
             nCol = 4;
             handles = obj.hGUI;
             hPanel = handles.panelUSBRequire;
+            
+            % retrieves the device type strings
+            if obj.isTest
+                sType = obj.objDAQTest.sType;
+            else
+                sType = obj.objDAQ.sType;
+            end
 
             % determines the criteria properties
-            [crStr,crCol] = obj.detCriteriaProps(obj.objDAQ.sType,obj.nCh);
+            [crStr,crCol] = obj.detCriteriaProps(sType,obj.nCh);
 
             % updates the criteria colours/strings for each required device
             for i = 1:length(crStr)
@@ -1150,9 +1193,7 @@ classdef AdaptorInfoClass < handle
         function updateDAQListProps(obj)
             
             % object retrieval
-            handles = obj.hGUI;    
-            
-            % 
+            handles = obj.hGUI;                
             if obj.isTest
                 % case is running in test mode
                 objD = obj.objDAQTest;
