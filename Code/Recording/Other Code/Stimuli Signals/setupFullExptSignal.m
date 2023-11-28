@@ -54,8 +54,9 @@ tDurStim = vec2time(sPara.tStim,tUnits);
 blkInfo = sTrain.blkInfo;
 
 % memory allocation
-[nCh,nBlk] = deal(length(sTrain.chName),length(blkInfo));
-[xyData,xyData0] = deal(cell(nCh,1));
+nC = sPara.nCount;
+[nCh,nBlk,xiC] = deal(length(sTrain.chName),length(blkInfo),(1:nC)');
+[xyData,xyData0,sTypeT] = deal(cell(nCh,1));
 tUnitsS = lower(tUnits(1));
 
 % retrieves and separates the stimuli signal coordinates by channel
@@ -63,32 +64,66 @@ for i = 1:nBlk
     % calculates the signal time multiplier
     tMltDur = getTimeMultiplier(tUnitsS,blkInfo(i).sPara.tDurU);
     tMltOfs = getTimeMultiplier(tUnitsS,blkInfo(i).sPara.tOfsU);
+    tOfs = tMltOfs*blkInfo(i).sPara.tOfs;    
     
     % retrieves the signal from the current stimuli block
     iCh = find(strcmp(sTrain.chName,blkInfo(i).chName) & ...
                strcmp(sTrain.devType,blkInfo(i).devType));
-    [xS,yS] = setupScaledStimuliSignal(...
-                hAx,blkInfo(i).sPara,iCh,blkInfo(i).sType,useTOfs);
     
     % stores the signal values for the given channel
-    tOfs = tMltOfs*blkInfo(i).sPara.tOfs;
-    xyData0{iCh} = [xyData0{iCh};[tMltDur*xS(:)+tOfs,yS(:)]];
+    if strcmp(blkInfo(i).sType,'Random')
+        [xS,yS] = setupRandomStimuliSignal(...
+                hAx,blkInfo(i).sPara,iCh,blkInfo(i).sType,useTOfs,nC);    
+        xS = cellfun(@(x)(tMltDur*x+tOfs),xS,'un',0);                
+        xyData0{iCh} = [xyData0{iCh};{[xS(:),yS(:)]}];
+    else
+        [xS,yS] = setupScaledStimuliSignal(...
+                    hAx,blkInfo(i).sPara,iCh,blkInfo(i).sType,useTOfs);    
+        xyData0{iCh} = [xyData0{iCh};{[tMltDur*xS(:)+tOfs,yS(:)]}];
+    end
+    
+    % appends the signal protocol type to the channel
+    sTypeT{iCh} = [sTypeT{iCh};{blkInfo(i).sType}];
 end
 
 % repeats the signals for the necessary counta
-for i = 1:nCh
-    if ~isempty(xyData0{i})
+for i = find(~cellfun('isempty',xyData0(:)'))
+    % memory allocation
+    xyDataNw = cell(length(xyData0{i}),1);    
+    for j = 1:length(xyDataNw)
         % adds on the inter-stimuli duration
-        xyDataNw = cell2mat(arrayfun(@(x)(colAdd(...
-                xyData0{i},1,(x-1)*tDurStim)),(1:sPara.nCount)','un',0));        
-            
-        % scales the values in the
-        j = (nCh+1) - i;
-        yS = xyDataNw(:,2);
-        xyDataNw(:,2) = yS + (j+mod(yS(1),1))-(1+yS(1));                                
-        
-        % sorts the time-shifted data in chronological order
-        [~,iSort] = sort(xyDataNw(:,1));
-        xyData{i} = xyDataNw(iSort,:);
+        if strcmp(sTypeT{i}{j},'Random')
+            % case is a random stimuli signale
+            [xS,yS] = deal(xyData0{i}{j}(:,1),xyData0{i}{j}(:,2));
+            xyDataNw{j} = cell2mat(cellfun(@(x,y,i)...
+                ([x+(i-1)*tDurStim,y]),xS,yS,num2cell(xiC),'un',0));
+        else
+            % case is a non-random stimuli signale
+            xyDataNw{j} = cell2mat(arrayfun(@(x)(colAdd(...
+                xyData0{i}{j},1,(x-1)*tDurStim)),xiC,'un',0));
+        end
     end
+    
+    % converts the cell array to a numerical array
+    xyDataNw = cell2mat(xyDataNw);
+            
+    % scales the values in the
+    j = (nCh+1) - i;
+    yS = xyDataNw(:,2);
+    xyDataNw(:,2) = yS + (j+mod(yS(1),1))-(1+yS(1));
+
+    % sorts the time-shifted data in chronological order
+    [~,iSort] = sort(xyDataNw(:,1));
+    xyData{i} = xyDataNw(iSort,:);
+end
+
+% --- sets up the random stimuli experiment signal
+function [xS,yS] = setupRandomStimuliSignal(hAx,sPara,iCh,sType,useTOfs,nC)
+
+% memory allocation
+[xS,yS] = deal(cell(nC,1));
+
+% sets up the scale stimuli signals for each block
+for i = 1:nC
+    [xS{i},yS{i}] = setupScaledStimuliSignal(hAx,sPara,iCh,sType,useTOfs);        
 end
