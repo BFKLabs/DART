@@ -222,7 +222,10 @@ classdef SigIndivReshape < handle
                         % memory allocation
                         szY = cell2mat(cellfun(@size,Y{k}(:),'un',0));
                         szMax = max(szY,[],1);
-                        for i = 1:nExp; Y{k}(:,~fok{i}{k},i) = {[]}; end
+                        
+%                         for i = 1:nExp
+%                             Y{k}(:,~fok{i}{k},i) = {[]}; 
+%                         end
 
                         % determines all empty cells for the metric
                         isE = cellfun('isempty',Y{k});

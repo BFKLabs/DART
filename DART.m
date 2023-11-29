@@ -270,6 +270,10 @@ classdef DART < handle
             
             % global variables
             global tDay hDay
+        
+            % turns off the required warnings
+            warning('off','MATLAB:load:classNotFound');
+            warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
             
             % main field initialisation
             obj.uType = runDevFunc('isDev');

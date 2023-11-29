@@ -3,6 +3,7 @@ function onEdge = detFlyEdgePos(X,Y,R,mPara,sFac)
 
 % parameters
 drTol = 1;
+fok = ~isnan(R);
 
 % sets the radial tolerances
 rTol = R - mPara.rTol/sFac;
@@ -13,8 +14,8 @@ D = sqrt(X.^2 + Y.^2);
 
 % for each of the index groups where the fly is below threshold,
 % determine if the fly has moved significantly from the edge
-onEdge = false(size(D));
-for i = 1:size(D,2)
+onEdge = NaN(size(D));
+for i = find(fok(:)')
     % thresholds the radial positions for the secondary threshold
     onEdge(:,i) = D(:,i) >= rTol(i);       
     if (any(~onEdge(:,i)))

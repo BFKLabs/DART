@@ -119,7 +119,7 @@ pause(0.05);
 iData.startTimer();
 
 % closes the loadbar
-try; delete(h); end
+try delete(h); catch; end
 
 % ensures that the appropriate check boxes/buttons have been inactivated
 updateFlag = 0; pause(0.1);

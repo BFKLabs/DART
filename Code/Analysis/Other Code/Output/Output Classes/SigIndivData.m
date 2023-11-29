@@ -139,12 +139,7 @@ classdef SigIndivData < DataOutputArray
             
             % sets up the header/data values for the output array
             obj.setupAllGroupHeaders(); 
-            
-            try
             obj.setupMetricData(); 
-            catch
-                a = 1;
-            end
             
             % combines the final output data array
             obj.setupFinalDataArray(); 
@@ -245,8 +240,10 @@ classdef SigIndivData < DataOutputArray
                         num2cell(cellfun('length',obj.iFly)),1);
                     [obj.iFly,obj.nGrp] = deal(num2cell(obj.iFly,1),1);    
                 else                
+%                     obj.nFly = num2cell(...
+%                         num2cell(cellfun('length',obj.iFly)),2)';
                     obj.nFly = num2cell(...
-                        num2cell(cellfun('length',obj.iFly)),2)';          
+                        num2cell(cellfun('length',obj.iFly)),2)';                    
                     [obj.iFly,obj.nGrp] = deal(num2cell(obj.iFly,2)',1);    
                 end
 

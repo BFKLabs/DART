@@ -74,7 +74,7 @@ for j = 1:length(iApp)
     % sets the radii values for each sub-region in the group
     if length(iMov.autoP.R) == 1
         % case is there is a constant radii value
-        Rad{i} = (iMov.autoP.R-1)*ones(sum(fok{i}),1);
+        Rad{i} = (iMov.autoP.R-1)*ones(sum(fok{i}),1);z
     else
         % case is radii have been set for each sub-region
         Rad{i} = iMov.autoP.R(indG)-1;

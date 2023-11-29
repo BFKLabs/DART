@@ -97,13 +97,15 @@ classdef MetricIndivData < DataOutputArray
                     iOK0 = cellfun(@(x)(repmat...
                         (x{i},obj.nGrpG,1)),fok(obj.expOut),'un',0);                    
                     obj.iFly{i,j} = repmat(iOK0,obj.nGrpU(j),1);                    
-                    
+    
                     iFly0 = arrayfun(@(x)(...
                         obj.setGroupFlyIndices(x,i)),snTotF,'un',0);
                     obj.iFlyH{i,j} = repmat(iFly0,obj.nGrpU(j),1);                    
                     
                     obj.nFly{i,j} = cellfun(@(x)...
-                        (length(x)/obj.nGrpG),obj.iFly{i,j},'un',0);
+                        (sum(x)/obj.nGrpG),obj.iFly{i,j},'un',0);
+%                     obj.nFly{i,j} = cellfun(@(x)...
+%                         (length(x)/obj.nGrpG),obj.iFly{i,j},'un',0);                    
                 end
             end
             
@@ -243,9 +245,14 @@ classdef MetricIndivData < DataOutputArray
                             % reduces down the data values to remove the
                             % rejected flies
                             iFlyT = obj.iFly{i,k}(:,iExp);
-                            Ytmp0 = cellfun(@(x,y,z)(x...
-                                (y(1:z*obj.nGrpG),:)),A{iExp},iFlyT,...
-                                nFlyT,'un',0)';
+                            if obj.snTot(iExp).iMov.is2D
+                                Ytmp0 = cellfun(@(x,y,z)(x(1:sum(y))),...
+                                    A{iExp},iFlyT,'un',0)';
+                            else
+                                Ytmp0 = cellfun(@(x,y,z)(x...
+                                    (y(1:z*obj.nGrpG),:)),A{iExp},iFlyT,...
+                                    nFlyT,'un',0)';
+                            end
                             
                             % re-orders the array so that the data is
                             % grouped by the individual flies
@@ -482,17 +489,24 @@ classdef MetricIndivData < DataOutputArray
             end
             
             % calculates the index offset
+            fok = snTot.iMov.flyok{iApp};
             nFlyG = arr2vec(getSRCount(snTot.iMov)');
             iOfs = cumsum([0;nFlyG(1:end-1)]);
             
             % determines the unique row/column indices
-            [iA,~,iC] = unique(cID(:,1:2),'rows');
+            [iA,~,iC] = unique(cID(fok,1:2),'rows','stable');
             indC = arrayfun(@(x)(find(iC==x)),1:max(iC),'un',0)';
             
-            % determines the global fly
-            indGT = (iA(:,1)-1)*snTot.iMov.nCol + iA(:,2);
-            iFlyG = cell2mat(cellfun(@(x,y)(...
-                cID(x,3)+y),indC,num2cell(iOfs(indGT)),'un',0));
+            % determines the flies overall index within the group
+            if snTot.iMov.is2D
+                % case is a 2D experiment
+                iFlyG = iOfs(iA(:,2)) + iA(:,1);
+            else
+                % case is a 1D experiment
+                indGT = (iA(:,1)-1)*snTot.iMov.nCol + iA(:,2);
+                iFlyG = cell2mat(cellfun(@(x,y)(...
+                    cID(x,3)+y),indC,num2cell(iOfs(indGT)),'un',0));
+            end
             
         end        
             
