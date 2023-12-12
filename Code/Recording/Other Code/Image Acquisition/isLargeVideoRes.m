@@ -7,6 +7,9 @@ isLargeRes = false;
 
 % retrieves the video resolution
 switch class(objVid)
+    case 'DummyVideo'
+        vRes = 0;
+    
     case {'videoinput','webcam'}
         % case is retrieving it directly from the camera
         vRes = getVideoResolution(objVid);

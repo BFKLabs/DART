@@ -1,7 +1,11 @@
 % --- determines if the recording device is currently running
 function isDevRun = isDeviceRunning(obj)
 
-if obj.isWebCam
+if obj.isTest
+    % case is running a test
+    isDevRun = false;
+
+elseif obj.isWebCam
     % case is a webcam object
     if isempty(obj.objIMAQ.hTimer)
         isDevRun = false;

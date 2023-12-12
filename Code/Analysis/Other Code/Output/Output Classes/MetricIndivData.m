@@ -490,7 +490,16 @@ classdef MetricIndivData < DataOutputArray
             
             % calculates the index offset
             fok = snTot.iMov.flyok{iApp};
-            nFlyG = arr2vec(getSRCount(snTot.iMov)');
+
+            % calculates the index offset
+            if snTot.iMov.is2D
+                nFlyG = arr2vec(getSRCount(snTot.iMov)');
+%                 nFlyG = snTot.iMov.pInfo.nRow*ones(snTot.iMov.pInfo.nCol,1);                
+            else
+                nFlyG = cellfun('length',snTot.iMov.iRT(:));
+            end            
+            
+            % calculates the region index offsets 
             iOfs = cumsum([0;nFlyG(1:end-1)]);
             
             % determines the unique row/column indices

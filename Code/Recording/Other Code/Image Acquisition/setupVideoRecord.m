@@ -88,7 +88,7 @@ switch exObj.vidType
         setupLogVideo(exObj,exObj.vPara(exObj.nCountV));        
                         
         % sets the image acquisition callback functions   
-        if exObj.isWebCam
+        if exObj.isWebCam || exObj.isTest
 %             % deletes any previous timer objects
 %             hTimerPr = timerfindall('Tag','vObjW');
 %             if ~isempty(hTimerPr); delete(hTimerPr); end
@@ -114,7 +114,7 @@ switch exObj.vidType
 end
 
 % sets the videoinput specific fields
-if ~exObj.isWebCam
+if ~(exObj.isWebCam || exObj.isTest)
     % sets up the camera properties
     exObj.objIMAQ.FramesAcquiredFcnCount = 1;
     exObj.objIMAQ.TriggerRepeat = 0;    
@@ -159,7 +159,7 @@ if ~exObj.isTrigger
     % if the camera has not been triggered yet, then exit
     return
     
-elseif exObj.isWebCam
+elseif exObj.isWebCam || exObj.isTest
     % acquires the new frame
     frmAcquired([],[],exObj,exObj.objIMAQ.hTimer.UserData);
     
@@ -229,7 +229,7 @@ function frmAcquired(hTimer,~,exObj,tOfs)
 
 % retrieves the time-stamp array
 [VV,isStop] = deal(exObj.vParaVV,false);
-if exObj.isWebCam
+if exObj.isWebCam || obj.isTest
     % case is a webcam object
     if isstruct(exObj.objIMAQ.hTimer)
         % case is an experiment recording
@@ -317,7 +317,9 @@ if exObj.tStampV{exObj.nCountV}(iFrm) >= VV.Tf(exObj.nCountV)
 end
 
 % flushes the image acqusition object frame buffer
-if ~exObj.isWebCam; flushdata(exObj.objIMAQ); end
+if ~(exObj.isWebCam || exObj.isTest)
+    flushdata(exObj.objIMAQ); 
+end
 
 % if the video has reached the required duration then stop the recording
 if isStop
@@ -686,40 +688,45 @@ wState = warning('off','all');
 % exObj.isConvert = ~strcmp(vPara.vCompress,vCompressF);
 
 % flushes any frame data already in the IMAQ object
-if ~exObj.isWebCam; flushdata(exObj.objIMAQ); end
+if ~(exObj.isWebCam || exObj.isTest)
+    flushdata(exObj.objIMAQ); 
+end
 
-% sets the log-file name
-logName = fullfile(vPara.Dir,vPara.Name);
+% creates the log-file (non-test only)
+if ~exObj.isTest
+    % sets the log-file name
+    logName = fullfile(vPara.Dir,vPara.Name);    
+    logFile = VideoWriter(logName,vPara.vCompress); 
+    if isempty(vPara.FPS)
+        % sets the camera frame rate
+        if exObj.isWebCam
+            [fRate,~,iSel] = detWebcamFrameRate(exObj.objIMAQ,[]);
+        else
+            srcObj = getselectedsource(exObj.objIMAQ);
+            [fRate,~,iSel] = detCameraFrameRate(srcObj,[]);
+        end
 
-% sets the video FPS and colormap
-logFile = VideoWriter(logName,vPara.vCompress); 
-if isempty(vPara.FPS)
-    % sets the camera frame rate
-    if exObj.isWebCam
-        [fRate,~,iSel] = detWebcamFrameRate(exObj.objIMAQ,[]);
+        % sets the log-file frame rate
+        logFile.FrameRate = fRate(iSel);            
     else
-        srcObj = getselectedsource(exObj.objIMAQ);
-        [fRate,~,iSel] = detCameraFrameRate(srcObj,[]);
+        % sets the log-file frame rate
+        logFile.FrameRate = vPara.FPS;
     end
-        
-    logFile.FrameRate = fRate(iSel);            
-else
-    logFile.FrameRate = vPara.FPS;
-end
     
-% sets the colormap (for an index avi
-if strcmp(vPara.vCompress,'Indexed AVI')
-    logFile.Colormap = repmat(linspace(0,1,256)',[1,3]);
-end
+    % sets the colormap (for an index avi
+    if strcmp(vPara.vCompress,'Indexed AVI')
+        logFile.Colormap = repmat(linspace(0,1,256)',[1,3]);
+    end
 
-% sets the other video parameters
-if ~exObj.isWebCam && strcmp(exObj.objIMAQ.LoggingMode,'memory')
-    % case is logging to memory
-    exObj.objIMAQ.UserData = logFile;
-    open(logFile); 
-else
-    % case is either a webcam or loging to disk
-    exObj.objIMAQ.DiskLogger = logFile;
+    % sets the other video parameters
+    if ~exObj.isWebCam && strcmp(exObj.objIMAQ.LoggingMode,'memory')
+        % case is logging to memory
+        exObj.objIMAQ.UserData = logFile;
+        open(logFile); 
+    else
+        % case is either a webcam or loging to disk
+        exObj.objIMAQ.DiskLogger = logFile;
+    end
 end
 
 % turns on all the warnings again

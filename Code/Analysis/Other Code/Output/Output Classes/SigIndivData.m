@@ -717,7 +717,14 @@ classdef SigIndivData < DataOutputArray
             cID = snTot.cID;
             
             % calculates the index offset
-            nFlyG = arr2vec(getSRCount(snTot.iMov)');
+            if snTot.iMov.is2D
+                nFlyG = arr2vec(getSRCount(snTot.iMov)');
+%                 nFlyG = snTot.iMov.pInfo.nRow*ones(snTot.iMov.pInfo.nCol,1);                
+            else
+                nFlyG = cellfun('length',snTot.iMov.iRT(:));
+            end
+                
+            % calculates the region index offsets 
             iOfs = cumsum([0;nFlyG(1:end-1)]);
             
             % sets the global fly indices

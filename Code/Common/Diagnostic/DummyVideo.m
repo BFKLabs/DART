@@ -26,6 +26,7 @@ classdef DummyVideo < handle
         FPS = 5;
         dFrm = 1;        
         NumberOfBands = 3;
+        isWebCam = false;
         
     end
     

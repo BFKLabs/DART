@@ -5,7 +5,11 @@ function stopRecordingDevice(obj,saveStopFcn)
 if ~exist('rmvCB','var'); saveStopFcn = false; end
 
 %
-if obj.isWebCam
+if obj.isTest
+    % case is running a test
+    return
+    
+elseif obj.isWebCam
     % determines if the object is value
     if isstruct(obj.objIMAQ.hTimer)
         isV = true;

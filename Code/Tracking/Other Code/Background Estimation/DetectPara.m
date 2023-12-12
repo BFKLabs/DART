@@ -151,7 +151,7 @@ classdef DetectPara
                 case 'pPhase' 
                     % case is the phase detection parameters
                     bgP = struct('nImgR',10,'Dtol',2,'pTolLo',20,...
-                                 'pTolHi',245,'nPhMax',7);
+                                 'pTolHi',250,'nPhMax',7);
 
                 case 'pInit' 
                     % case is initial detection parameters

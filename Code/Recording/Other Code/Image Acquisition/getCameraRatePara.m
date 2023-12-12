@@ -5,6 +5,9 @@ function fpsFld = getCameraRatePara(srcObj)
 if isprop(srcObj,'FrameRate')
     fpsFld = 'FrameRate';
     
+elseif isprop(srcObj,'AcquisitionFrameRate')
+    fpsFld = 'AcquisitionFrameRate';    
+    
 elseif isprop(srcObj,'DeviceVendorName')
     switch get(srcObj,'DeviceVendorName')
         case {'Allied Vision','Basler'}

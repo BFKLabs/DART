@@ -78,6 +78,7 @@ classdef RunExptObj < handle
         isTrigger
         isUserStop
         isWebCam
+        isTest
         hasDAQ
         hasIMAQ
         userStop   
@@ -107,6 +108,7 @@ classdef RunExptObj < handle
             obj.hasIMAQ = infoObj.hasIMAQ;
             obj.objIMAQ = infoObj.objIMAQ;
             obj.isWebCam = infoObj.isWebCam;
+            obj.isTest = infoObj.isTest;
             
             %
             switch obj.vidType
@@ -139,10 +141,9 @@ classdef RunExptObj < handle
                     if obj.hasIMAQ
                         obj.vCompStr = 'obj.iExpt.Video.vCompress';
                         obj.rfRate = roundP(obj.iExpt.Video.FPS);
-                    else
-                        obj.rfRate = 1;
-                        
+                    else                        
                         % sets the streampix class object (if available)
+                        obj.rfRate = 1;                        
                         obj.spixObj = getappdata(obj.hExptF,'spixObj');
                     end                                        
                     
@@ -325,7 +326,9 @@ classdef RunExptObj < handle
         function initCameraProperties(obj)
             
             % removes the timer object
-            if obj.isWebCam && ~isempty(obj.objIMAQ.hTimer)
+            if obj.isTest
+                obj.objIMAQ.hTimer = [];            
+            elseif obj.isWebCam && ~isempty(obj.objIMAQ.hTimer)
                 obj.objIMAQ.hTimer = [];
             end
             
@@ -338,7 +341,7 @@ classdef RunExptObj < handle
             obj.checkVideoCompression();              
             
             % sets the rotation flag and recording logging mode 
-            if obj.isWebCam
+            if obj.isWebCam || obj.isTest
                 % case is using a webcam
                 obj.isMemLog = 0;
             else
@@ -354,7 +357,9 @@ classdef RunExptObj < handle
             end
 
             % sets the camera frame rate
-            if obj.isWebCam
+            if obj.isTest
+                [fRate,iSel] = deal(obj.objIMAQ.FPS,1);
+            elseif obj.isWebCam
                 [fRate,~,iSel] = detWebcamFrameRate(obj.objIMAQ,[]);
             else            
                 srcObj = getselectedsource(obj.objIMAQ);
@@ -380,7 +385,7 @@ classdef RunExptObj < handle
             set(obj.hMain,'CurrentAxes',obj.hAx);        
 
             % sets the empty images into the recording axes            
-            setupVideoRecord(obj);
+            setupVideoRecord(obj); 
             setappdata(obj.hAx,'hImage',[]);                    
         
         end
