@@ -1137,7 +1137,7 @@ classdef RunExptObj < handle
         % --- sets up the experimental stimuli signal data array
         function setupExptStimSignals(obj)
 
-            % --- repeats the stimuli blocks and adds on the time offset
+            % --- repeats the stimuli blocks and adds on time offset
             function xySigS = repeatStimBlocks(xySigS,sParaEx)
 
                 % calculates the time offset of the block (in seconds)
@@ -1149,6 +1149,41 @@ classdef RunExptObj < handle
                         (x-1)*tStimNw + tOfs),(1:sParaEx.nCount)','un',0);
                 xySigS{2} = repmat(xySigS(2),sParaEx.nCount,1);   
                                        
+            end
+            
+            % --- repeats the random stimuli blocks and adds on time offset
+            function xySigSR = repeatRandBlocks(sTrainS,chInfo,sParaEx,dT,iCh)
+                
+                % field retrieval
+                nCount = sParaEx.nCount;
+                chInfoB = chInfo(iCh,:);
+                blkInfoS = sTrainS.blkInfo;
+                
+                % determines the block channel index
+                iChB = (strcmp(sTrainS.chName,blkInfoS(iCh).chName) & ...
+                        strcmp(sTrainS.devType,blkInfoS(iCh).devType));
+                
+                % reduces down the stimuli info for the channel
+                sTrainSB = sTrainS; 
+                sTrainSB.chName = chInfoB{2};
+                sTrainSB.blkInfo = sTrainSB.blkInfo(iChB);
+                sTrainSB.devType = sTrainSB.devType(iChB);
+                
+                % calculates the time offset of the block (in seconds)
+                tStimNw = vec2sec(sParaEx.tStim);
+                tOfs = sParaEx.tOfs*getTimeMultiplier('s',sParaEx.tOfsU);
+                
+                % sets up the random stimuli blocks for each count
+                xySigSR = arrayfun(@(x)(cell(nCount,1)),1:2,'un',0);
+                for iB = 1:nCount
+                    % sets up a new random signal
+                    xySigB = setupDACSignal(sTrainSB,chInfoB,dT);
+                    
+                    % offsets and sets the new signal values
+                    xySigSR{1}{iB} = xySigB{1}{1} + (iB-1)*tStimNw + tOfs; 
+                    xySigSR{2}{iB} = xySigB{1}{2};
+                end
+                
             end
 
             % if there are no experiment stimuli trains, then exit
@@ -1164,27 +1199,37 @@ classdef RunExptObj < handle
 
             % memory allocation
             nTrain = length(sTrainS);
-            sRate = sRate(1);
+            dT = 1/sRate(1);
 
-            % calculates the signals for the current train
-            xySigS = arrayfun(@(x)(setupDACSignal...
-                                (x,chInfo,1/sRate)),sTrainS,'un',0);
+%             % calculates the signals for the current train
+%             xySigS = arrayfun(@(x)(setupDACSignal...
+%                                 (x,chInfo,1/sRate)),sTrainS,'un',0);
 
             % calculates the serial device signals (for each device)
             for i = 1:nTrain
+                % sets up the signals for the current train
+                xySigS = setupDACSignal(sTrainS(i),chInfo,dT);
+                
+                % memory allocation for the full x/y data values
                 if i == 1
-                    % memory allocation for the full x/y data values
                     xySigF = cellfun(@(x)...
-                                (cell(length(x),2)),xySigS{i},'un',0);
+                                (cell(length(x),2)),xySigS,'un',0);
                 end
 
                 % repeats the signals for each channel within the train
-                for j = 1:length(xySigS{i})
-                    for k = 1:size(xySigS{i}{j},1)
-                        if ~isempty(xySigS{i}{j}{k,1})
+                for j = 1:length(xySigS)
+                    for k = 1:size(xySigS{j},1)
+                        if ~isempty(xySigS{j}{k,1})
                             % repeats the stimuli blocks
-                            xySigSR = repeatStimBlocks(xySigS{i}{j}(k,:),...
-                                                       sParaEx(i));
+                            if strcmp(sTrainS(i).blkInfo(k).sType,'Random')
+                                % case is a random stimuli block
+                                xySigSR = repeatRandBlocks(...
+                                        sTrainS(i),chInfo,sParaEx(i),dT,k);
+                            else
+                                % case is another stimuli type
+                                xySigSR = repeatStimBlocks(...
+                                        xySigS{j}(k,:),sParaEx(i));
+                            end                            
 
                             % appends the new data values onto the full 
                             % signal arrays

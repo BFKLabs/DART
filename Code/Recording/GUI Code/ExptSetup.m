@@ -5827,6 +5827,7 @@ function turnOffFillObj(hFig,forceUpdate)
 % global variables
 global objOff mType hSigTmp hSigSel
 if nargin == 1; forceUpdate = false; end
+if isempty(objOff); objOff = true; end
 if (~forceUpdate && objOff); return; end
 
 % flag that all objects are invisible

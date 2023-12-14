@@ -8,7 +8,8 @@ if isa(sObj,'OpenSolnFileTab')
 
     % retrieves the stimuli information for the current experiment
     hFig = sObj.hFig;
-    iExpt = sObj.sInfo{sObj.iExp}.snTot.iExpt;    
+    iExpt = sObj.sInfo{sObj.iExp}.snTot.iExpt; 
+    
 else
     % retrieves the axes object/experiment data struct   
     useTOfs = 0;

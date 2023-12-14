@@ -310,15 +310,13 @@ classdef AdaptorInfoClass < handle
                 % retrieves the image aquisition hardware information
                 imaqInfo = imaqhwinfo;
             catch
-                % if there was an error then output a message to screen
-                
-                
+                % if there was an error then output a message to screen                                
                 % exit flagging an error
                 obj.ok = false;
                 return
             end
             
-            % of there are no recording devices then exit
+            % if there are no recording devices then exit
             if isempty(imaqInfo.InstalledAdaptors)                
                 obj.hasIMAQ = false;
                 return
@@ -336,18 +334,18 @@ classdef AdaptorInfoClass < handle
                   
             % loops through the adaptor strings retrieving the device names
             for i = 1:length(adaptStr)
-                try 
+                try
                     % attempts to retrieve the device info
-                    devInfo = imaqhwinfo(adaptStr{i});                    
+                    devInfo = imaqhwinfo(adaptStr{i});
                     if ~isempty(devInfo.DeviceInfo)
-                        % if available then set the imaq device information                    
+                        % if available then set the imaq device information
                         obj.objIMAQDev{i} = devInfo.DeviceInfo;
                         isOK(i) = true;
                         nInfo(i) = length(obj.objIMAQDev{i});
-
+                        
                         % determines the feasible formats for the camera
                         vStrIMAQ0{i} = field2cell...
-                                    (obj.objIMAQDev{i}(:),'DeviceName');
+                            (obj.objIMAQDev{i}(:),'DeviceName');
                         obj.sFormat{i} = obj.detFeasCamFormat(i);
                     end
                 catch
@@ -363,7 +361,7 @@ classdef AdaptorInfoClass < handle
             if ~any(isOK)
                 obj.hasIMAQ = false;
                 return
-            end                    
+            end
             
             % removes the infeasible devices and reduces
             obj.objIMAQDev = obj.objIMAQDev(isOK);
