@@ -491,7 +491,7 @@ classdef SingleTrackInit < SingleTrack
                         
             % determines if the phase is a special phase
             if obj.isSpecial
-                % 
+                % resets the blob size (if not batch processing)
                 if ~obj.isBatch
                     obj.iMov.szObj = [];
                 end

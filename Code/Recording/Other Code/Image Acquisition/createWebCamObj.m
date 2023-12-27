@@ -2,7 +2,9 @@
 function wObj = createWebCamObj(devName,pInfo,sFormatF)
 
 % creates the webcam object
+wState = warning('off','all');
 wObj = webcam(devName);
+warning(wState);
 
 % adds in the other property fields
 addprop(wObj,'pInfo');

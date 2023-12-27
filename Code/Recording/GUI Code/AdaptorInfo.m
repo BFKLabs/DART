@@ -328,53 +328,57 @@ end
 if infoObj.isWebCam
     % retrieves the source information (deleting the video object)
     pInfo = propinfo(objIMAQ0.Source);
-    delete(objIMAQ0)
     pause(0.05);
     
     % creates the webcam object
-    devName = objIMAQDev{iSelV}.DeviceName;
-    infoObj.objIMAQ = createWebCamObj(devName,pInfo,sFormatF);
-
-else
-    % case is a non-webcam device
-    infoObj.objIMAQ = objIMAQ0;
-        
-    % ensure that the video object writes avi objects to disk
     try
-        set(infoObj.objIMAQ,'ReturnedColorSpace','grayscale');
-        set(infoObj.objIMAQ,'Name',dName);
+        devName = objIMAQDev{iSelV}.DeviceName;
+        infoObj.objIMAQ = createWebCamObj(devName,pInfo,sFormatF);
+        delete(objIMAQ0)
+        return
     catch
+        infoObj.isWebCam = false;
     end
+end
+    
+% case is a non-webcam device
+infoObj.objIMAQ = objIMAQ0;
 
-    % sets the trigger configuration flag
-    triggerconfig(infoObj.objIMAQ,'manual')
-    
-    % resets any ROI parameters
-    resetCameraROIPara(infoObj.objIMAQ)
-    
-    % sets the camera automatic fields to manual
-    srcObj = getselectedsource(infoObj.objIMAQ);
-    resetFld = [];
-    % resetFld = {{'FocusMode','manual'},...
-    %             {'ExposureMode','auto'},...
-    %             {'WhiteBalanceMode','manual'}};
-    
-    % resets the flagged camera properties (if they exist)
-    for i = 1:length(resetFld)
-        if isprop(srcObj,resetFld{i}{1})
-            try
-                set(srcObj,resetFld{i}{1},resetFld{i}{2})
-            catch
-            end
+% ensure that the video object writes avi objects to disk
+try
+    set(infoObj.objIMAQ,'ReturnedColorSpace','grayscale');
+    set(infoObj.objIMAQ,'Name',dName);
+catch
+end
+
+% sets the trigger configuration flag
+triggerconfig(infoObj.objIMAQ,'manual')
+
+% resets any ROI parameters
+resetCameraROIPara(infoObj.objIMAQ)
+
+% sets the camera automatic fields to manual
+srcObj = getselectedsource(infoObj.objIMAQ);
+resetFld = [];
+% resetFld = {{'FocusMode','manual'},...
+%             {'ExposureMode','auto'},...
+%             {'WhiteBalanceMode','manual'}};
+
+% resets the flagged camera properties (if they exist)
+for i = 1:length(resetFld)
+    if isprop(srcObj,resetFld{i}{1})
+        try
+            set(srcObj,resetFld{i}{1},resetFld{i}{2})
+        catch
         end
     end
+end
     
-    % increases the amount of memory available to the camera
-    try
-        a = imaqmem;
-        imaqmem(min(a.AvailVirtual,2*a.FrameMemoryLimit));
-    catch
-    end
+% increases the amount of memory available to the camera
+try
+    a = imaqmem;
+    imaqmem(min(a.AvailVirtual,2*a.FrameMemoryLimit));
+catch
 end
 
 % --- updates the DAQ device information

@@ -494,8 +494,12 @@ classdef StimObj < handle
                 end
             end
 
+            % determines the events where A) there is change in stimuli
+            % amplitude, or B) the stimuli event is ending
+            isStimF = aEvent0 == 3;
+            isChange = [true;sum(abs(diff(yEvent0,[],1)),2) > 0] | isStimF;
+            
             % removes the points where there is no signal change
-            isChange = [true;sum(abs(diff(yEvent0,[],1)),2) > 0];
             tEvent0 = tEvent0(isChange);
             yEvent0 = num2cell(yEvent0(isChange,:),2);
             aEvent0 = num2cell(aEvent0(isChange,:),2);
@@ -511,8 +515,9 @@ classdef StimObj < handle
 
             % removes all channels where there is no change in the signal
             yEvent0 = cell2mat(yEvent0);
-            yEvent0(abs(diff([-ones(1,...
-                            size(yEvent0,2));yEvent0],[],1)) == 0) = NaN;
+            isStimFT = cell2mat(aEvent0) == 3;            
+            yEvent0((abs(diff([-ones(1,size(...
+                yEvent0,2));yEvent0],[],1)) == 0) & ~isStimFT) = NaN;
             yEvent0 = num2cell(yEvent0,2);
 
             % determine the channel indices/amplitudes for each event

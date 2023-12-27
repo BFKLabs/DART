@@ -229,7 +229,7 @@ function frmAcquired(hTimer,~,exObj,tOfs)
 
 % retrieves the time-stamp array
 [VV,isStop] = deal(exObj.vParaVV,false);
-if exObj.isWebCam || obj.isTest
+if exObj.isWebCam || exObj.isTest
     % case is a webcam object
     if isstruct(exObj.objIMAQ.hTimer)
         % case is an experiment recording
