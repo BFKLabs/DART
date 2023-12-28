@@ -496,7 +496,7 @@ classdef StimObj < handle
 
             % determines the events where A) there is change in stimuli
             % amplitude, or B) the stimuli event is ending
-            isStimF = aEvent0 == 3;
+            isStimF = any(aEvent0 == 3,2);
             isChange = [true;sum(abs(diff(yEvent0,[],1)),2) > 0] | isStimF;
             
             % removes the points where there is no signal change
