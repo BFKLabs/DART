@@ -227,7 +227,7 @@ classdef GridDetect < matlab.mixin.SetGet
             x0Txt = 165;
             eStrP = 'Filter Size: ';
             tPosFL = [x0Txt,obj.dX,obj.widTxtF,obj.hghtTxt];
-            uicontrol(obj.hPanelF,'Style','text',...
+            obj.hTxtF = uicontrol(obj.hPanelF,'Style','text',...
                     'Position',tPosFL,'FontUnits','Pixels','FontSize',...
                     12,'FontWeight','bold','String',eStrP,...
                     'HorizontalAlignment','right');
@@ -239,7 +239,8 @@ classdef GridDetect < matlab.mixin.SetGet
             obj.hEditF = uicontrol(obj.hPanelF,'Style','edit',...
                     'Position',ePosNw,'Callback',eFcnF,...
                     'String',num2str(obj.getFiltPara('hSz')));                
-            
+            setObjEnable(obj.hEditF,~obj.hFigM.isHT1)
+                
             % --------------------- %
             % --- HOUSE-KEEPING --- %
             % --------------------- %                  
@@ -279,8 +280,13 @@ classdef GridDetect < matlab.mixin.SetGet
             obj.setFiltPara('useFilt',useFilt);
             setObjEnable(obj.hButC{1},'on');
             
+            if obj.hFigM.isHT1
+                setObjEnable(obj.hTxtF,useFilt)
+            else
+                setObjEnable([obj.hEditF,obj.hTxtF],useFilt)
+            end
+            
             % updates the detection panel properties
-            setObjEnable([obj.hEditF,obj.hTxtF],useFilt)
             if ~isempty(event)
                 set(obj.hFigM,'phObj',[]);
             end
@@ -295,7 +301,7 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % determines if the new value is valid
             nwVal = str2double(get(hObj,'String'));
-            if chkEditValue(nwVal,[1,10],1)
+            if chkEditValue(nwVal,[1,20],1)
                 % if so, then update the field value
                 obj.setFiltPara('hSz',nwVal);                
                 setObjEnable(obj.hButC{1},'on');

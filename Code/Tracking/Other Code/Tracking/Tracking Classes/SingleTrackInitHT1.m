@@ -16,6 +16,7 @@ classdef SingleTrackInitHT1 < handle
         hC        
         IbgT
         IRef
+        IPosT
         pStats
         isAmbig
         szObjHT1
@@ -81,9 +82,11 @@ classdef SingleTrackInitHT1 < handle
             obj.szObjHT1 = NaN(obj.nApp,2);
             nFrmPh = length(obj.trObj.Img{1});            
             [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);  
+            obj.IPosT = obj.trObj.IPos;
             
             % determines the 
             for iApp = find(obj.iMov.ok(:)')
+%             for iApp = 6
                 % update the waitbar figure
                 wStr = sprintf('Analysing Region (%i of %i)',iApp,obj.nApp);
                 if obj.hProg.Update(2+obj.wOfsL,wStr,iApp/obj.nApp)
@@ -195,37 +198,43 @@ classdef SingleTrackInitHT1 < handle
                         % performs the search for the ambiguous object
                         obj.searchAmbigPos(iGrpA(j,:),iApp);
                     end
-                end
+                end                
                 
-                % sets the residual values (for quality calculations)
-                obj.trObj.Is{obj.iPh,iApp} = {obj.IR,obj.IR};
-                
-                % 
-                sz = size(obj.IR{1});
-                xiF = 1:getSRCount(obj.iMov,iApp);
-                
-                %
-                fOK0 = obj.iMov.flyok(xiF,iApp);
-                fPT0 = obj.trObj.fPosL{obj.iPh}(iApp,:);
-                yOfs = cellfun(@(x)(x(1)-1),obj.iMov.iRT{iApp});
-                
-                % sets the residual values at the final points
-                for j = 1:obj.nFrm
-                    fPT = fPT0{j} + [zeros(length(yOfs),1),yOfs];
-                    fOK = fOK0 & ~isnan(fPT(:,1));
-                    indP = sub2ind(sz,fPT(fOK,2),fPT(fOK,1));
-                    obj.trObj.IPos{obj.iPh}{iApp,j}(fOK) = obj.IR{j}(indP);
-                end
-                
-                % only set up the template if missing and there are fly
-                % locations known with reasonable accuracy
+                % only set up the template (if missing and there are fly
+                % locations known with reasonable accuracy)
                 if isempty(obj.hC{iApp})
                     if any(~obj.isAmbig(:))
                         obj.setupFlyTemplate(IRL,fOK,iApp);
                     else
                         return
                     end
+                end                                
+                
+                % sets the region coordinates + vertical offsets
+                xiF = 1:getSRCount(obj.iMov,iApp);                                
+                fOK0 = obj.iMov.flyok(xiF,iApp);
+                fPT0 = obj.trObj.fPosL{obj.iPh}(iApp,:);
+                yOfs = cellfun(@(x)(x(1)-1),obj.iMov.iRT{iApp});
+                
+                % sets the residual values at the final points
+                for j = 1:obj.nFrm
+                    % sets the linear indices of the fly positions
+                    fPT = fPT0{j} + [zeros(length(yOfs),1),yOfs];
+                    fOK = fOK0 & ~isnan(fPT(:,1));
+                    indP = sub2ind(size(obj.IR{1}),fPT(fOK,2),fPT(fOK,1));
+              
+                    % sets the blob point residual values
+                    obj.trObj.IPos{obj.iPh}{iApp,j}(fOK) = obj.IR{j}(indP);
+                    obj.IPosT{obj.iPh}{iApp,j}(fOK) = obj.IL{j}(indP);
+                end                
+                
+                % searches any regions flagged as stationary
+                if any(obj.trObj.sFlagT{obj.iPh,iApp} == 2)
+                    obj.searchStationaryRegions(iApp);
                 end
+                
+                % sets the residual values (for quality calculations)
+                obj.trObj.Is{obj.iPh,iApp} = {obj.IR,obj.IL};                
                 
                 % updates the waitbar figure
                 wStr = 'Sub-Region Detection Complete';
@@ -238,7 +247,118 @@ classdef SingleTrackInitHT1 < handle
             % calculates the global coordinates
             obj.trObj.calcGlobalCoords(1);            
             
-        end        
+        end      
+        
+        % --- searches any of the stationary regions
+        function searchStationaryRegions(obj,iApp)
+                        
+            % parameters
+            nS = 1000;
+            pTolZT = 1/5;
+            pTolZmxT = 1/5;
+            hG = fspecial('log',size(obj.hC{iApp})+2,1); 
+            yOfs = cellfun(@(x)(x(1)),obj.iMov.iRT{iApp}) - 1;
+            
+            % calculates the sharpened image cross-correlation binary
+            Q = cellfun(@(x)(min(0,imsharpen(x,'Amount',nS))),obj.IL,'un',0); 
+            Z = cellfun(@(x)(max(0,calcXCorr(hG,x))),Q,'un',0);            
+            Ztot = calcImageStackFcn(cellfun(@(x)(x > pTolZT),Z,'un',0)); 
+            
+            % calculates the raw image maxima cross-correlation binary
+            ILmx = calcImageStackFcn(obj.IL,'max'); 
+            Zmx = max(0,calcXCorr(-obj.hC{iApp},ILmx));            
+            ZmxB = obj.removeEdgeTouchGroups(ILmx,Zmx>pTolZmxT,iApp);
+            
+            % calculates the sub-region pixel intensity threshold
+            ILmd = median(ILmx,2);
+            ILmdT = cellfun(@(x)(...
+                0.5*(min(ILmd(x))+max(ILmd(x)))),obj.iMov.iRT{iApp});
+            
+            % determines the likely group blobs and their centroids
+            [~,A] = detGroupOverlap(Ztot==1,ZmxB); 
+            [iGrpC,pC,bSz] = getGroupIndex(A,'Centroid','Area');
+            pC = roundP(pC);
+            
+%             % REMOVE ME
+%             isOK = false(length(iGrpC),1);            
+            
+            % searches the sub-regions which were flagged as stationary
+            for i = find(obj.trObj.sFlagT{obj.iPh,iApp}(:)' == 2)
+                % determines the blobs within the sub-region
+                ii = find((pC(:,2) >= obj.iMov.iRT{iApp}{i}(1)) & ...
+                          (pC(:,2) <= obj.iMov.iRT{iApp}{i}(end)));
+                if ~isempty(ii)
+                    % if there are such blobs, then determine which blob
+                    % centroids meet the threshold criteria
+                    jj = ii(ILmd(pC(ii,2)) > ILmdT(i));
+                    switch length(jj)
+                        case 0
+                            % case is there is no blobs in the sub-region
+                            iMx = NaN;
+                            
+                        case 1
+                            % case is there is a unique blob
+                            
+                            % converts to local coordinates and sets
+                            iMx = 1;
+                                                        
+                        otherwise
+                            % case is non-unique blob counts
+                            
+                            % determines blob with highest x-corr score
+                            indP = sub2ind(size(ILmx),pC(jj,2),pC(jj,1));
+                            iMx = argMax(Zmx(indP).*sqrt(bSz(jj)));                              
+                    end
+                    
+                    if ~isnan(iMx)
+                        % converts to local coordinates and sets
+                        fPosL = pC(jj(iMx),:) - [0,yOfs(i)];
+                        obj.setObjPos(fPosL,iApp,i);
+                        
+%                         % REMOVE ME
+%                         isOK(jj(iMx)) = true;
+                    end
+                end
+            end
+            
+%             % REMOVE ME LATER
+%             plotGraph('moviesel',{A,setGroup(iGrpC(isOK),size(A)),ILmx})
+%             a = 1;
+            
+        end
+        
+        % --- sets the position vector for the fly at iApp/iTube
+        function setObjPos(obj,fPosL,iApp,iTube)
+            
+            for i = 1:obj.nFrm            
+                obj.trObj.fPosL{obj.iPh}{iApp,i}(iTube,:) = fPosL;
+            end
+                
+        end
+        
+        % --- removes any binary groups that touch the frame edge 
+        function B = removeEdgeTouchGroups(obj,ILmx,B0,iApp)
+            
+            %
+            pTolI = 10;
+                        
+            %
+            IPosAll = cell2mat(obj.IPosT{obj.iPh}(iApp,:)');
+            pTolAll = prctile(IPosAll,pTolI);
+            
+            % removes any blob groups that touch the frame edge
+            Bedge = bwmorph(true(size(B0)),'remove');
+            [~,Bover] = detGroupOverlap(B0 | (ILmx <= pTolAll),Bedge);
+            
+            % removes any groups that are too large
+            iGrp = getGroupIndex(B0 & ~Bover);
+            nGrp = cellfun('length',iGrp);
+            ii = nGrp < pi*(obj.iMov.szObj(1)/2)^2;
+            
+            % sets the final binary mask
+            B = setGroup(iGrp(ii),size(B0));
+            
+        end
         
         % ------------------------------------------ %
         % --- FLY TEMPLATE CALCULATION FUNCTIONS --- %
@@ -248,9 +368,12 @@ classdef SingleTrackInitHT1 < handle
         function setupFlyTemplate(obj,IRL,fOK,iApp)
                 
             % sets the known fly location coordinates/linear indices
-            IRL = IRL(:,fOK);
-            fPos0 = obj.trObj.fPosL{obj.iPh}(iApp,:);
-            fPosT = cellfun(@(x)(x(fOK,:)),fPos0,'un',0)';    
+            fPos0 = obj.trObj.fPosL{obj.iPh}(iApp,:);   
+            isOK = fOK & (obj.trObj.sFlagT{obj.iPh,iApp} == 1);            
+            
+            % determines the feasible frames
+            IRL = IRL(:,isOK); 
+            fPosT = cellfun(@(x)(x(isOK,:)),fPos0,'un',0);
             
             % sets up and runs the template optimisation object
             tObj = FlyTemplate(obj,iApp);
@@ -351,6 +474,9 @@ classdef SingleTrackInitHT1 < handle
             
             % search in reverse direction if first frame is ambiguous
             if length(iFrm) == length(iFrmG)
+                % case is there are no non-ambigious frame so exit (while
+                % flagging that the region might have a stationary fly)
+                obj.trObj.sFlagT{iApp}(iRow) = 2;
                 return
             elseif iFrm(1) == 1
                 [iFrm,iDir] = deal(flip(iFrm),1); 

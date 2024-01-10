@@ -8,7 +8,7 @@ classdef FlyTemplate < handle
         iApp
         
         % fixed scalar fields
-        pTolBB = 0.1;            
+        pTolBB = 0.05;            
         
     end
     
@@ -31,7 +31,7 @@ classdef FlyTemplate < handle
             N = ceil(obj.pObj.dTol);
             if obj.pObj.nI > 0
                 N = (1+obj.pObj.nI)*N + 1;         
-            end
+            end            
             
             % keep looping until the filtered binary mask no-longer touches
             % the edge of the sub-region frame
@@ -62,7 +62,8 @@ classdef FlyTemplate < handle
                 
                 % sets up template arrays within the parent class object
                 hCF = hC0.*B;
-                ii = obj.getTemplateInterpIndices(hCF);                
+                BCF = normImg(hCF) > obj.pTolBB;
+                ii = obj.getTemplateInterpIndices(BCF,obj.pObj.nI);                
                 [obj.pObj.hC{obj.iApp},B] = deal(hCF(ii,ii),B(ii,ii));
 
                 % thresholds the filtered sub-image
@@ -120,10 +121,10 @@ classdef FlyTemplate < handle
     methods (Static)
         
         % --- sets the template interpolation indices
-        function indI = getTemplateInterpIndices(B)
+        function indI = getTemplateInterpIndices(B,nI)
             
             %
-            xiF = 1:2:size(B,2);
+            xiF = 1:(nI+1):size(B,2);
             ii = any(B(:,xiF),1) | any(B(xiF,:),2)';
             
             %

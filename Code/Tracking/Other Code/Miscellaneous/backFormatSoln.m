@@ -77,12 +77,13 @@ if ~isfield(iMov,'ddD')
 end
 
 % resets/initialises the background parameter struct
+isHT1 = isHT1Controller(iData);
 if isfield(iMov,'bgP') && ~isempty(iMov.bgP)
     % retrieves the background parameter field
-    iMov.bgP = DetectPara.resetDetectParaStruct(iMov.bgP);
+    iMov.bgP = DetectPara.resetDetectParaStruct(iMov.bgP,isHT1);
 else
     % otherwise, initialise the detection parameter struct
-    iMov.bgP = DetectPara.initDetectParaStruct('All');
+    iMov.bgP = DetectPara.initDetectParaStruct('All',isHT1);
 end
 
 % resets any old format automatic detection fields

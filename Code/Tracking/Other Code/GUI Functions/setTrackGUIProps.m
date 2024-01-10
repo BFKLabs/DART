@@ -1294,17 +1294,6 @@ set(setObjEnable(hMenuCT,hasTrans),'Checked',chkStr{1+hasTrans})
 % --- menu histogram matching visibility
 function updateHMMenu(handles,iData)
 
-% initialisations
-isHT1 = false;
-
-%
-if isfield(iData,'iExpt')
-    if isfield(iData.iExpt,'Device')
-        Device = iData.iExpt.Device;
-        isHT1 = any(strContains(Device.DAQ,'HTControllerV1'));
-    end
-end
-
 % sets the visibility flag based on whether it s
-setObjVisibility(handles.menuHistMatch,isHT1);
+setObjVisibility(handles.menuHistMatch,isHT1Controller(iData));
 

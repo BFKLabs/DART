@@ -1,27 +1,28 @@
 classdef DetectPara
     
     methods (Static)
+        
         % --- sets the detection parameter data struct
-        function bgP = getDetectionPara(iMov)
-
+        function bgP = getDetectionPara(iMov,isHT1)
+            
             if isfield(iMov,'bgP') && ~isempty(iMov.bgP)
                 % retrieves the background parameter field
-                bgP = DetectPara.resetDetectParaStruct(iMov.bgP);
+                bgP = DetectPara.resetDetectParaStruct(iMov.bgP,isHT1);
             else
                 % otherwise, initialise the detection parameter struct
-                bgP = DetectPara.initDetectParaStruct('All');
+                bgP = DetectPara.initDetectParaStruct('All',isHT1);
             end
         
         end
 
         % --- resets the detection parameter struct
-        function bgP = resetDetectParaStruct(bgP)
+        function bgP = resetDetectParaStruct(bgP,isHT1)
 
             % initialisations
             fStr = fieldnames(bgP);
 
             % retrieves 
-            bgP0 = DetectPara.initDetectParaStruct('All');
+            bgP0 = DetectPara.initDetectParaStruct('All',isHT1);
             fStr0 = fieldnames(bgP0);
 
             % removes any extraneous fields
@@ -35,7 +36,7 @@ classdef DetectPara
             for i = 1:length(fStr0)
                 % sets the field update evaludation string
                 fcnStr = sprintf(...
-                    'DetectPara.initDetectParaStruct(''%s'')',fStr0{i});
+                    'DetectPara.initDetectParaStruct(''%s'')',fStr0{i},isHT1);
 
                 % determines if field exists within the parameter struct
                 if ~any(strcmp(fStr,fStr0{i}))
@@ -96,12 +97,16 @@ classdef DetectPara
                 A = load(pFile);
                 A.bgP = bgP;
                 save(pFile,'-struct','A')
+            
+            elseif isHT1
+                % case is an HT1 controller (fix smoothing to max of 1)
+                [bgP.pSingle.hSz,bgP.pMulti.hSz] = deal(1);
             end
         
         end
 
         % --- initialises the background parameter struct
-        function bgP = initDetectParaStruct(fType)                        
+        function bgP = initDetectParaStruct(fType,isHT1)                        
 
             switch fType
                 case 'All' % case is initialising all parameter fields
@@ -118,7 +123,7 @@ classdef DetectPara
                     % sets all the sub-fields for the parameter struct
                     for i = 1:length(fStr)
                         % retrieves the sub-struct values
-                        bgPnw = DetectPara.initDetectParaStruct(fStr{i});
+                        bgPnw = DetectPara.initDetectParaStruct(fStr{i},isHT1);
                         switch fStr{i}
                             case 'algoType'
                                 % case is the algorithm string
@@ -164,11 +169,11 @@ classdef DetectPara
                     
                 case 'pSingle' 
                     % case is full tracking parameters
-                    bgP = struct('hSz',3,'useFilt',true);
+                    bgP = struct('hSz',2-isHT1,'useFilt',true);
                     
                 case 'pMulti'
                     % case is multi-tracking parameters
-                    bgP = struct('isFixed',0,'hSz',3,'useFilt',true);
+                    bgP = struct('isFixed',0,'hSz',2-isHT1,'useFilt',true);
                     
             end        
         end

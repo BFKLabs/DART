@@ -110,14 +110,7 @@ classdef VideoPhase < handle
         function initClassFields(obj)
             
             % field retrieval
-            if ~isfield(obj.iData,'iExpt')
-                obj.isHT1 = false;
-            elseif isfield(obj.iData.iExpt,'Device')
-                Device = obj.iData.iExpt.Device;
-                obj.isHT1 = any(strContains(Device.DAQ,'HTControllerV1'));
-            else
-                obj.isHT1 = false;
-            end
+            obj.isHT1 = isHT1Controller(obj.iData);
             
             % sets the region count
             if isfield(obj.iMov,'posO')

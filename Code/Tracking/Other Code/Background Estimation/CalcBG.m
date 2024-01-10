@@ -29,6 +29,7 @@ classdef CalcBG < handle
         % global flags 
         is2D
         isDD  
+        isHT1
         isCalib
         isVisible
         isChange
@@ -505,6 +506,7 @@ classdef CalcBG < handle
             obj.iData = get(obj.hFig,'iData');   
             obj.iPara = obj.initParaStruct(10);             
             obj.isMTrk = detMltTrkStatus(obj.iMov);
+            obj.isHT1 = isHT1Controller(obj.iData);
             
             % sets the 2D region flag
             if isfield(obj.iMov,'is2D')
@@ -520,10 +522,11 @@ classdef CalcBG < handle
             if isfield(obj.iMov,'bgP')
                 % if the field does exist, then ensure it is correct
                 obj.iMov.bgP = ...
-                        DetectPara.resetDetectParaStruct(obj.iMov.bgP);
+                    DetectPara.resetDetectParaStruct(obj.iMov.bgP,obj.isHT1);
             else
                 % field doesn't exist, so create initialise
-                obj.iMov.bgP = DetectPara.initDetectParaStruct('All');                
+                obj.iMov.bgP = ...
+                    DetectPara.initDetectParaStruct('All',obj.isHT1);                
             end
             
             % creates the tracking object based on the tracking type
@@ -810,19 +813,12 @@ classdef CalcBG < handle
             % base image type (raw image only)
             cPh = obj.iPara.cPhase;            
             hPopup = obj.hGUI.popupImgType;
-            popStr = {'Raw Image';'Smoothed Image'};
-            
-            % sets up the special analysis flag
-            if isfield(obj.iMov,'vPhase')
-                isSpecial = obj.iMov.vPhase(cPh) == 4;
-            else
-                isSpecial = false;
-            end
+            popStr = {'Raw Image';'Smoothed Image'};            
             
             % case is the background has been calculated
             if ~isempty(obj.iMov.Ibg)
                 if ~isempty(obj.iMov.Ibg{cPh})
-                    if isSpecial
+                    if obj.isHT1
                         popStrNw = {'Residual (Filtered)'};
                     
                     elseif ~isfield(obj.trkObj,'IbgT0') || ...
@@ -1143,8 +1139,7 @@ classdef CalcBG < handle
 
             % initialisations            
             frmSz = getCurrentImageDim(obj.hGUI);
-            isHV = obj.iMov.vPhase(iPhase) == 2;
-            isSpecial = obj.iMov.vPhase(iPhase) == 4;            
+            isHV = obj.iMov.vPhase(iPhase) == 2;            
             
             % sets up the image stack
             ILs = cell(1,obj.nApp);
@@ -1153,7 +1148,7 @@ classdef CalcBG < handle
             ILs(iok) = cellfun(@(x)(x{1}),ILs(iok),'un',0);
 
             % calculates the histogram matched images (special phase only)
-            if isSpecial
+            if obj.isHT1
                 ILs(iok) = cellfun(@(x,y)(double(imhistmatch...
                     (uint8(x),y,'method','uniform'))),ILs(iok),...
                     obj.iMov.IbgR(iok),'un',0);
@@ -1975,9 +1970,16 @@ classdef CalcBG < handle
         % --- Executes when selected object is changed in popupImgType.
         function editFilterSize(obj, hObj, ~)
     
+            % sets the filter size limits (based on type)
+            if obj.iMov.vPhase(1) == 4
+                nwLim = [1,1];
+            else
+                nwLim = [1,20];
+            end
+            
             % determines if the new value is valid
             nwVal = str2double(get(hObj,'String'));           
-            if chkEditValue(nwVal,[1,50],true)            
+            if chkEditValue(nwVal,nwLim,true)            
                 if obj.checkParaChange()
                     % if so, then update the parameter 
                     obj.setTrackingPara('hSz',nwVal)

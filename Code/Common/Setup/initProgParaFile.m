@@ -3,7 +3,7 @@ function initProgParaFile(paraDir)
 
 % initialises the individual parameter structs
 gPara = initGlobalPara();
-bgP = DetectPara.initDetectParaStruct('All');
+bgP = DetectPara.initDetectParaStruct('All',false);
 trkP = initTrackPara();
 sDev = initSerialDeviceNames();
 

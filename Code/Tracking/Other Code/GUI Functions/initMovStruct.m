@@ -22,5 +22,5 @@ iMov = struct('pos',[1 1 1 1],'posG',[],'Ibg',[],'ddD',[],...
               'vGrp',[],'sRate',5,'nDS',1,'mShape','Circ','phInfo',[]);
 
 % sets the parameter sub-struct fields
-iMov.bgP = DetectPara.initDetectParaStruct('All');        
+iMov.bgP = DetectPara.initDetectParaStruct('All',isHT1Controller(iData));
 iMov.sgP = iData.sgP;

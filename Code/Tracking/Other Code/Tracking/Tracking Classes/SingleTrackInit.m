@@ -501,9 +501,13 @@ classdef SingleTrackInit < SingleTrack
                 objHT1.analysePhase();                
                 
                 % sets the background/reference image fields
-                obj.iMov.IbgR = obj.IbgR;
-                obj.Ibg = obj.iMov.Ibg;
-                obj.iMov.szObj = mean(objHT1.szObjHT1,1,'omitnan');
+                if obj.calcOK
+                    obj.iMov.IbgR = obj.IbgR;
+                    obj.Ibg = obj.iMov.Ibg;
+                    obj.iMov.szObj = mean(objHT1.szObjHT1,1,'omitnan');
+                else
+                    return
+                end
                 
             else
                 % case is there are no special phases

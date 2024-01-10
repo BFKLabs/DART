@@ -40,26 +40,27 @@ hPropTrack0 = varargin{2};
 % creates a loadbar figure
 hLoad = ProgressLoadbar('Initialising Region Setting GUI...');
 
-% loads the background parameter struct from the program parameter file
-A = load(getParaFileName('ProgPara.mat'));
-bgP = DetectPara.resetDetectParaStruct(A.bgP);
+% sets the data structs into the GUI
+hFig = hGUI.figFlyTrack;
 
 % sets the input arguments into the gui
 pFldStr = {'hDiff','iMov','iMov0','isMTrk','iData','hSelP','hProp0',...
            'infoObj','cmObj','hTabGrp','jTabGrp','hTab','srObj',...
-           'phObj','gridObj','rgObj','axPosX','axPosY'};
+           'phObj','gridObj','rgObj','axPosX','axPosY','isHT1'};
 initObjPropFields(hObject,pFldStr);
 addObjProps(hObject,'hGUI',hGUI,'hPropTrack0',hPropTrack0) 
+
+% loads the background parameter struct from the program parameter file
+hObject.isHT1 = isHT1Controller(get(hFig,'iData'));
+A = load(getParaFileName('ProgPara.mat'));
+bgP = DetectPara.resetDetectParaStruct(A.bgP,hObject.isHT1);
 
 % ---------------------------------------- %
 % --- FIELD & PROPERTY INITIALISATIONS --- %
 % ---------------------------------------- %
 
-% sets the data structs into the GUI
-hFig = hGUI.figFlyTrack;
-iMov = get(hFig,'iMov');
-
 % calculates the main axes global coordinates
+iMov = get(hFig,'iMov');
 [hObject.axPosX,hObject.axPosY] = hFig.calcAxesGlobalCoords(hGUI);
 hFig.rgObj.hMenuSR = handles.menuShowRegion;
 
@@ -534,7 +535,7 @@ handles.output.rgObj.setMarkerVisibility(isShow);
 % ----------------------------------------- %
 
 % -------------------------------------------------------------------------
-function menuDetGrid_Callback(hObject, eventdata, handles)
+function menuDetGrid_Callback(hObject, ~, handles)
 
 % field retrieval
 isUpdate = false;
@@ -543,7 +544,7 @@ iMov0 = get(hFig,'iMov');
 
 % if the field does exist, then ensure it is correct
 hFig.iMov.phInfo = [];
-hFig.iMov.bgP = DetectPara.resetDetectParaStruct(hFig.iMov.bgP);
+hFig.iMov.bgP = DetectPara.resetDetectParaStruct(hFig.iMov.bgP,hFig.isHT1);
 
 % determines the sub-region dimension configuration
 [iMovNw,ok] = setSubRegionDim(hFig.iMov,hFig.hGUI);

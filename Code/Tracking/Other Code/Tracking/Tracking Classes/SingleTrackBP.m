@@ -958,7 +958,8 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             obj.iMov = get(obj.hFig,'iMov');   
             
             % resets the detection parameters
-            obj.iMov.bgP = DetectPara.getDetectionPara(obj.iMov);
+            isHT1 = isHT1Controller(obj.iData);
+            obj.iMov.bgP = DetectPara.getDetectionPara(obj.iMov,isHT1);
             
             % if the solution tracking GUI is open then reset it
             hTrack = findall(0,'tag','figFlySolnView');
