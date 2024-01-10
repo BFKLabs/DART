@@ -291,14 +291,15 @@ classdef DART < handle
             
             % loads global analysis parameters from program parameter file
             A = load(getParaFileName('ProgPara.mat'));
-            [tDay,hDay] = deal(A.gPara.Tgrp0,A.gPara.TdayC);
+            [tDay,hDay] = deal(A.gPara.Tgrp0,A.gPara.TdayC);            
+
+            % resets the global random number stream
+            s = RandStream('mt19937ar','Seed',now);
+            RandStream.setGlobalStream(s);
             
             % uses software opengl format
-            opengl('save','software')
+            opengl('save','software')            
             
-            % turns off the warnings
-            warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
-        
         end
         
         % --- initialises the class object properties

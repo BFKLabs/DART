@@ -36,7 +36,8 @@ classdef DetectPara
             for i = 1:length(fStr0)
                 % sets the field update evaludation string
                 fcnStr = sprintf(...
-                    'DetectPara.initDetectParaStruct(''%s'')',fStr0{i},isHT1);
+                    'DetectPara.initDetectParaStruct(''%s'',%i)',...
+                    fStr0{i},isHT1);
 
                 % determines if field exists within the parameter struct
                 if ~any(strcmp(fStr,fStr0{i}))
