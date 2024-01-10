@@ -1,13 +1,13 @@
 function [Imap,pMn] = setupManualMarkMap(obj)
 
 % memory allocation
-dTol = 10;
+dTol = 5;
 pMn = cell(max(obj.nTube),obj.nApp);
-hG = fspecial('gaussian',5,2);
+hG = fspecial('gaussian',3,1);
 
 % retrieves the image from the main gui
 hImg = findobj(obj.hGUI.imgAxes,'Type','image');
-I = double(get(hImg,'CData'));
+I = normImg(imsharpen(double(get(hImg,'CData')),'Amount',100));
 
 % other memory allocations
 sz = size(I);
