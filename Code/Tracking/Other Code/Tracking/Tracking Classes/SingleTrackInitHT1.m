@@ -13,7 +13,7 @@ classdef SingleTrackInitHT1 < handle
         hProg
         
         % array class fields
-        hC        
+        hC  
         IbgT
         IRef
         IPosT
@@ -23,9 +23,9 @@ classdef SingleTrackInitHT1 < handle
         
         % tolerances
         pLo = 100;        
-        dZTol = 2;
+        dZTol = 2.25;
         dTol0 = 7.5;
-        pQmxTol = 1/3;
+        pQmxTol = 1/4;
 
         % scalar class fields
         nI        
@@ -86,7 +86,7 @@ classdef SingleTrackInitHT1 < handle
             
             % determines the 
             for iApp = find(obj.iMov.ok(:)')
-%             for iApp = 6
+%             for iApp = 4
                 % update the waitbar figure
                 wStr = sprintf('Analysing Region (%i of %i)',iApp,obj.nApp);
                 if obj.hProg.Update(2+obj.wOfsL,wStr,iApp/obj.nApp)
@@ -120,15 +120,14 @@ classdef SingleTrackInitHT1 < handle
                 obj.IL = calcHistMatchStack(IL0,obj.IRef);                
                 
                 % sets the background image estimate
-                obj.IbgT = calcHistMatchStack(...
-                    calcImageStackFcn(IL0,'max'),obj.IRef);
-                obj.trObj.iMov.Ibg{obj.iPh}{iApp} = obj.IbgT;
+                Ibg0 = calcImageStackFcn(IL0,'max');
+                obj.IbgT = calcHistMatchStack(Ibg0,obj.IRef);
                 clear IL0
                                 
                 % calculates the residual image stack
                 obj.IR = obj.calcImageResidual(obj.IL,obj.IbgT);
                 obj.pStats = obj.calcImageStackStats(obj.IR);  
-                obj.nFrm = length(obj.IR);
+                obj.nFrm = length(obj.IR);                          
                 
                 % ----------------------------- %
                 % --- MOVEMENT STATUS FLAGS --- %
@@ -170,8 +169,7 @@ classdef SingleTrackInitHT1 < handle
                 
                 % determines if there are any ambiguous locations
                 % (residuals which are outliers relative to the population)
-                obj.QmxTol = prctile(QmxF(:),25) - 1.25*iqr(QmxF(:));
-                obj.QmxTol = max(obj.QmxTol,obj.pQmxTol*max(QmxF(:)));
+                obj.QmxTol = (1+obj.dZTol)*cellfun(@(x)(mean(ZRO(x))),iRT);
 
                 % determines if there are any ambiguous locations
                 obj.isAmbig = QmxF < obj.QmxTol; 
@@ -193,7 +191,7 @@ classdef SingleTrackInitHT1 < handle
                             % if the user cancelled, then exit
                             obj.trObj.calcOK = false;
                             return
-                        end                        
+                        end
                         
                         % performs the search for the ambiguous object
                         obj.searchAmbigPos(iGrpA(j,:),iApp);
@@ -231,9 +229,10 @@ classdef SingleTrackInitHT1 < handle
                 % searches any regions flagged as stationary
                 if any(obj.trObj.sFlagT{obj.iPh,iApp} == 2)
                     obj.searchStationaryRegions(iApp);
-                end
+                end                                
                 
-                % sets the residual values (for quality calculations)
+                % sets the tracking object fields
+                obj.trObj.iMov.Ibg{obj.iPh}{iApp} = obj.IbgT;                
                 obj.trObj.Is{obj.iPh,iApp} = {obj.IR,obj.IL};                
                 
                 % updates the waitbar figure
@@ -255,7 +254,8 @@ classdef SingleTrackInitHT1 < handle
             % parameters
             nS = 1000;
             pTolZT = 1/5;
-            pTolZmxT = 1/5;
+            pTolZmxT = 1/3;
+            N = size(obj.hC{iApp},1) - 1;
             hG = fspecial('log',size(obj.hC{iApp})+2,1); 
             yOfs = cellfun(@(x)(x(1)),obj.iMov.iRT{iApp}) - 1;
             
@@ -276,7 +276,7 @@ classdef SingleTrackInitHT1 < handle
             
             % determines the likely group blobs and their centroids
             [~,A] = detGroupOverlap(Ztot==1,ZmxB); 
-            [iGrpC,pC,bSz] = getGroupIndex(A,'Centroid','Area');
+            [~,pC,bSz] = getGroupIndex(A,'Centroid','Area');
             pC = roundP(pC);
             
 %             % REMOVE ME
@@ -290,7 +290,8 @@ classdef SingleTrackInitHT1 < handle
                 if ~isempty(ii)
                     % if there are such blobs, then determine which blob
                     % centroids meet the threshold criteria
-                    jj = ii(ILmd(pC(ii,2)) > ILmdT(i));
+                    okG = (ILmd(pC(ii,2)) > ILmdT(i)) & (bSz(ii) > 1);
+                    jj = ii(okG);
                     switch length(jj)
                         case 0
                             % case is there is no blobs in the sub-region
@@ -307,18 +308,30 @@ classdef SingleTrackInitHT1 < handle
                             
                             % determines blob with highest x-corr score
                             indP = sub2ind(size(ILmx),pC(jj,2),pC(jj,1));
-                            iMx = argMax(Zmx(indP).*sqrt(bSz(jj)));                              
+                            iMx = argMax(Zmx(indP));                              
                     end
                     
                     if ~isnan(iMx)
                         % converts to local coordinates and sets
                         fPosL = pC(jj(iMx),:) - [0,yOfs(i)];
                         obj.setObjPos(fPosL,iApp,i);
+                        obj.trObj.mFlag{obj.iPh,iApp}(i) = 1;
                         
-%                         % REMOVE ME
+                        % resets the background image
+                        fPosL = num2cell(fPosL,2);
+                        ILL = obj.IbgT(obj.iMov.iRT{iApp}{i},:);
+                        IbgTL = obj.trObj.setupBGEstStack({ILL},fPosL,N);                        
+                        obj.IbgT(obj.iMov.iRT{iApp}{i},:) = IbgTL{1};
+                        
+%                         % REMOVE ME LATER
 %                         isOK(jj(iMx)) = true;
                     end
                 end
+            end
+            
+            % if there were any changes, then fill in the gaps
+            if any(isnan(obj.IbgT(:)))
+                obj.IbgT = interpImageGaps(obj.IbgT);
             end
             
 %             % REMOVE ME LATER
@@ -334,15 +347,18 @@ classdef SingleTrackInitHT1 < handle
                 obj.trObj.fPosL{obj.iPh}{iApp,i}(iTube,:) = fPosL;
             end
                 
-        end
+        end        
         
         % --- removes any binary groups that touch the frame edge 
         function B = removeEdgeTouchGroups(obj,ILmx,B0,iApp)
             
-            %
+            % parameters
             pTolI = 10;
+            
+            % sets up the region map mask
+            Imap = obj.setupRegionMap(obj.iMov.iRT{iApp},size(ILmx));
                         
-            %
+            % determines the threshold value
             IPosAll = cell2mat(obj.IPosT{obj.iPh}(iApp,:)');
             pTolAll = prctile(IPosAll,pTolI);
             
@@ -350,10 +366,11 @@ classdef SingleTrackInitHT1 < handle
             Bedge = bwmorph(true(size(B0)),'remove');
             [~,Bover] = detGroupOverlap(B0 | (ILmx <= pTolAll),Bedge);
             
-            % removes any groups that are too large
+            % removes any groups that are too large or cross sub-regions
             iGrp = getGroupIndex(B0 & ~Bover);
             nGrp = cellfun('length',iGrp);
-            ii = nGrp < pi*(obj.iMov.szObj(1)/2)^2;
+            nGrpMap = cellfun(@(x)(length(unique(Imap(x)))),iGrp);
+            ii = (nGrp < pi*(obj.iMov.szObj(1)/2)^2) & (nGrpMap == 1);
             
             % sets the final binary mask
             B = setGroup(iGrp(ii),size(B0));
@@ -455,7 +472,7 @@ classdef SingleTrackInitHT1 < handle
             end
                 
             % updates the position array
-            for iFrm = 1:size(obj.trObj.fPosL{obj.iPh},2)
+            for iFrm = 1:obj.nFrm
                 obj.trObj.fPosL{obj.iPh}...
                     {iApp,iFrm}(iFly,:) = fPosNw(iFrm,:);
             end
@@ -519,7 +536,7 @@ classdef SingleTrackInitHT1 < handle
                 
                 % sets the new frame image/residuals
                 [ImgR,ImgL] = obj.setupResidualImage(iFrmNw,iApp,iRow);
-                BNw = obj.getThresholdBinary(ImgR);
+                BNw = obj.getThresholdBinary(ImgR,iApp);
                 iNw = 1 + any(BNw(:));
                                 
                 % updates the frame limits (based on whether the new 
@@ -633,9 +650,9 @@ classdef SingleTrackInitHT1 < handle
         end                        
         
         % --- calculates the threshold binary
-        function B = getThresholdBinary(obj,I)
+        function B = getThresholdBinary(obj,I,iApp)
             
-            B = I > obj.QmxTol;
+            B = I > obj.QmxTol(iApp);
             
         end        
         
@@ -748,6 +765,19 @@ classdef SingleTrackInitHT1 < handle
             IRef = uint8(calcImageStackFcn(IL0,'weighted-sum',W));
 
         end
+
+        % --- sets up the region map mask
+        function Imap = setupRegionMap(iRT,sz)
+            
+            % memory allocation
+            Imap = zeros(sz);
+            
+            % sets the region mapping values
+            for i = 1:length(iRT)
+                Imap(iRT{i},:) = i;
+            end
+            
+        end        
         
     end
     

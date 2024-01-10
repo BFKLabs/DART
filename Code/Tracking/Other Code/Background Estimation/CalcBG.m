@@ -586,6 +586,7 @@ classdef CalcBG < handle
             isFeas = false;
             eStr = {'off','on'};            
             cHdr = {'Phase','Frame','Region','Sub-Region'};
+            hEditF = obj.hGUI.editFilterSize;
 
             % sets the pre-background detection properties
             setTrackGUIProps(obj.hGUI,'PreTubeDetect');
@@ -611,8 +612,8 @@ classdef CalcBG < handle
             % sets the image parameter object fields
             bgP = obj.getTrackingPara();            
             set(obj.hGUI.checkFilterImg,'Value',bgP.useFilt)
-            set(obj.hGUI.editFilterSize,'String',num2str(bgP.hSz),...
-                                    'Enable',eStr{1+bgP.useFilt})
+            set(hEditF,'String',num2str(bgP.hSz),...
+                       'Enable',eStr{1+(bgP.useFilt && ~obj.isHT1)})
             obj.updateImgTypePopup(true);         
             
             % if the phase info field is not set, then create one
@@ -636,15 +637,15 @@ classdef CalcBG < handle
             setObjEnable(obj.hGUI.menuPhaseStats,phaseDetected)
             setObjEnable(obj.hGUI.buttonUpdateStack,~obj.isCalib)
             setObjEnable(obj.hGUI.buttonUpdateEst,canUpdate)
-            setPanelProps(obj.hGUI.panelImageType,phaseDetected)
+            setPanelProps(obj.hGUI.panelImageType,phaseDetected,hEditF)
             
             % sets the phase detection related object properties
             if phaseDetected
                 % sets the frame index arrays
                 obj.vPhase0 = obj.iMov.vPhase;
                 nPhase = length(obj.iMov.vPhase);
-                obj.indFrm = getPhaseFrameIndices...
-                                            (obj.iMov,obj.trkObj.nFrmR);                                                                          
+                nFrmR = obj.trkObj.nFrmR*(1 + obj.isHT1);                
+                obj.indFrm = getPhaseFrameIndices(obj.iMov,nFrmR);
                                         
                 % enables the phase panel properties (if more than one phase       
                 setPanelProps(obj.hGUI.panelPhaseSelect,'on')
@@ -688,8 +689,7 @@ classdef CalcBG < handle
             
             % determines if the background has been calculated
             if initDetected
-                % sets the frame count stringx1                     
-                setObjEnable(obj.hGUI.menuShowStats,'on');
+                % sets the frame count string
                 set(setObjEnable(obj.hGUI.checkFlyMarkers,'on'),'value',1)                      
                 
                 % determines if the class object has location values
@@ -727,13 +727,17 @@ classdef CalcBG < handle
                     % updates the 
                     obj.updateObjMarkers()
                     obj.checkFlyMarkers(obj.hGUI.checkFlyMarkers, [])
-                    obj.updateMainImage()      
+                    obj.updateMainImage()
+                else
+                    set(obj.hGUI.checkFlyMarkers,'Enable','off','Value',0);
                 end
             else
                 % if not, disable the frame selection panels                
-                set(setObjEnable(obj.hGUI.checkFlyMarkers,0),'Value',0)
-                set(setObjEnable(obj.hGUI.menuShowStats,0),'Checked','off')                                 
+                set(setObjEnable(obj.hGUI.checkFlyMarkers,0),'Value',0)                
             end            
+            
+            % disables the menu stats item
+            set(setObjEnable(obj.hGUI.menuShowStats,0),'Checked','off')
             
         end
         
@@ -819,7 +823,8 @@ classdef CalcBG < handle
             if ~isempty(obj.iMov.Ibg)
                 if ~isempty(obj.iMov.Ibg{cPh})
                     if obj.isHT1
-                        popStrNw = {'Residual (Filtered)'};
+                        popStrNw = {'Background';...
+                                    'Residual (Filtered)'};
                     
                     elseif ~isfield(obj.trkObj,'IbgT0') || ...
                             isempty(obj.trkObj.IbgT0)
@@ -996,7 +1001,9 @@ classdef CalcBG < handle
                         end
                         
                         % sets the final background image
-                        if obj.iMov.phInfo.hasF || ...
+                        if obj.isHT1
+                            [ImgC0,Iofs] = deal(zeros(size(Img0)),false);
+                        elseif obj.iMov.phInfo.hasF || ...
                                         (obj.iMov.vPhase(iPhase) > 1)
                             Imd = median(cellfun(@(x)(...
                                         median(x(:),'omitnan')),IbgI));
@@ -1004,8 +1011,7 @@ classdef CalcBG < handle
                             
                             Iofs = true;
                         else
-                            ImgC0 = Img0;
-                            Iofs = false;
+                            [ImgC0,Iofs] = deal(Img0,false);
                         end
                         
                         % creates composite image from the phase bg images                       
@@ -1195,7 +1201,7 @@ classdef CalcBG < handle
             % other initialisations
             [iPhase,iFrmNw] = deal(obj.iPara.cPhase,obj.iPara.cFrm);            
             if isequal(colormap(obj.hAx),obj.cMapJet)
-                [pCol,lWid] = deal('k',3);
+                [pCol,lWid] = deal('y',3);
             else
                 [pCol,lWid] = deal('g',3);
             end
@@ -1818,12 +1824,27 @@ classdef CalcBG < handle
                         
             % updates the phase flag            
             if isOn
+                % case is the video is accepted
                 obj.iMov.vPhase(iPh) = obj.vPhase0(iPh);
             else
+                % case is the phase is rejected
                 obj.iMov.vPhase(iPh) = obj.ivRej;                                
                 
                 % if the tubes are on, then remove them
-                if get(obj.hGUI.checkFlyMarkers,'value')
+                if all(obj.iMov.vPhase == obj.ivRej)
+                    % if all are rejected, then output an error message
+                    eStr = ['At least one phase must be accepted ',...
+                            'for tracking.'];
+                    waitfor(msgbox(eStr,'Phase Error','modal'));
+                    
+                    % resets the phase values to their original
+                    obj.iMov.vPhase(iPh) = obj.vPhase0(iPh);                    
+                    set(hObject,'value',true)
+                    
+                    % exits the function
+                    return
+                    
+                elseif get(obj.hGUI.checkFlyMarkers,'value')
                     set(obj.hGUI.checkFlyMarkers,'value',false)
                     obj.checkFlyMarkers(obj.hGUI.checkFlyMarkers, [])
                 end
@@ -1956,8 +1977,13 @@ classdef CalcBG < handle
             
             % updates the tracking parameters            
             obj.setTrackingPara('useFilt',useFilt)
-            setObjEnable(obj.hGUI.textFilterSize,useFilt); 
-            setObjEnable(obj.hGUI.editFilterSize,useFilt);            
+            if obj.isHT1
+                setObjEnable(obj.hGUI.textFilterSize,useFilt);
+                setObjEnable(obj.hGUI.editFilterSize,false);
+            else
+                setObjEnable(obj.hGUI.textFilterSize,useFilt);
+                setObjEnable(obj.hGUI.editFilterSize,useFilt);                
+            end
             
             % updates the popup image type list
             if obj.updateImgTypePopup()   

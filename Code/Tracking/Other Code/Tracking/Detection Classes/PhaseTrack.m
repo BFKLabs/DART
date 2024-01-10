@@ -253,7 +253,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                     ImgBGL = ImgBG(iRT{iTube},iCT);
                     ImgSeg = obj.setupResidualStack(ImgSR,ImgBGL);
                 end                           
-                
+                                
                 % segments the image stack
                 [fP0nw,IP0nw] = obj.segmentSubRegion...
                               (ImgSeg,fPr{iTube},IPr(iTube),[iApp,iTube]);
@@ -337,7 +337,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
 
                 % ----------------------------------------------- %
                 % --- LIKELY POSITION COORDINATE CALCULATIONS --- %
-                % ----------------------------------------------- %
+                % ----------------------------------------------- %                
                 
                 % sets the previous coordinate array
                 if obj.iFrmR(i) < 5
@@ -408,9 +408,6 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 elseif nGrp == 1
                     % case is there is only 1 prominent object
                     [xP,yP] = obj.calcCOM(Img{i},iGrp{1});
-
-%                     iPnw = ;
-%                     [yP,xP] = ind2sub(szL,iPnw);
                     
                     % calculates the distance covered from the previous
                     % frame to the new positions                    

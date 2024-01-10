@@ -76,6 +76,7 @@ classdef InitTrackStats < handle
     
     % class methods
     methods
+        
         % --- class constructor
         function obj = InitTrackStats(bgObj)
             
