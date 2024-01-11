@@ -86,7 +86,6 @@ classdef SingleTrackInitHT1 < handle
             
             % determines the 
             for iApp = find(obj.iMov.ok(:)')
-%             for iApp = 4
                 % update the waitbar figure
                 wStr = sprintf('Analysing Region (%i of %i)',iApp,obj.nApp);
                 if obj.hProg.Update(2+obj.wOfsL,wStr,iApp/obj.nApp)
@@ -208,8 +207,7 @@ classdef SingleTrackInitHT1 < handle
                     end
                 end                                
                 
-                % sets the region coordinates + vertical offsets
-                xiF = 1:getSRCount(obj.iMov,iApp);                                
+                % sets the region coordinates + vertical offsets                             
                 fOK0 = obj.iMov.flyok(xiF,iApp);
                 fPT0 = obj.trObj.fPosL{obj.iPh}(iApp,:);
                 yOfs = cellfun(@(x)(x(1)-1),obj.iMov.iRT{iApp});
@@ -230,6 +228,19 @@ classdef SingleTrackInitHT1 < handle
                 if any(obj.trObj.sFlagT{obj.iPh,iApp} == 2)
                     obj.searchStationaryRegions(iApp);
                 end                                
+                
+                % 
+                isStat = obj.calcMovementRange(iApp) <= obj.calcDistTol;
+                isStatD = (obj.trObj.sFlagT{obj.iPh,iApp} == 1) & isStat;
+                for i = find(isStatD(:)')
+                    fPosL = cellfun(@(x)(x(i,:)),fPT0(:),'un',0);
+                    obj.removeBackgroundBlob(fPosL,iApp,i);
+                end
+               
+                % if there were any changes, then fill in the gaps
+                if any(isnan(obj.IbgT(:)))
+                    obj.IbgT = interpImageGaps(obj.IbgT);
+                end                
                 
                 % sets the tracking object fields
                 obj.trObj.iMov.Ibg{obj.iPh}{iApp} = obj.IbgT;                
@@ -255,7 +266,6 @@ classdef SingleTrackInitHT1 < handle
             nS = 1000;
             pTolZT = 1/5;
             pTolZmxT = 1/3;
-            N = size(obj.hC{iApp},1) - 1;
             hG = fspecial('log',size(obj.hC{iApp})+2,1); 
             yOfs = cellfun(@(x)(x(1)),obj.iMov.iRT{iApp}) - 1;
             
@@ -318,36 +328,19 @@ classdef SingleTrackInitHT1 < handle
                         obj.trObj.mFlag{obj.iPh,iApp}(i) = 1;
                         
                         % resets the background image
-                        fPosL = num2cell(fPosL,2);
-                        ILL = obj.IbgT(obj.iMov.iRT{iApp}{i},:);
-                        IbgTL = obj.trObj.setupBGEstStack({ILL},fPosL,N);                        
-                        obj.IbgT(obj.iMov.iRT{iApp}{i},:) = IbgTL{1};
+                        obj.removeBackgroundBlob({fPosL},iApp,i);                    
                         
 %                         % REMOVE ME LATER
 %                         isOK(jj(iMx)) = true;
                     end
                 end
-            end
-            
-            % if there were any changes, then fill in the gaps
-            if any(isnan(obj.IbgT(:)))
-                obj.IbgT = interpImageGaps(obj.IbgT);
-            end
+            end            
             
 %             % REMOVE ME LATER
 %             plotGraph('moviesel',{A,setGroup(iGrpC(isOK),size(A)),ILmx})
 %             a = 1;
             
-        end
-        
-        % --- sets the position vector for the fly at iApp/iTube
-        function setObjPos(obj,fPosL,iApp,iTube)
-            
-            for i = 1:obj.nFrm            
-                obj.trObj.fPosL{obj.iPh}{iApp,i}(iTube,:) = fPosL;
-            end
-                
-        end        
+        end             
         
         % --- removes any binary groups that touch the frame edge 
         function B = removeEdgeTouchGroups(obj,ILmx,B0,iApp)
@@ -396,10 +389,14 @@ classdef SingleTrackInitHT1 < handle
             tObj = FlyTemplate(obj,iApp);
             tObj.setupFlyTemplate(IRL,fPosT);             
             
-            % sets 
+            % sets blob size field
             obj.szObjHT1(iApp,:) = obj.iMov.szObj;
             
         end        
+        
+        % ------------------------------------------ %
+        % --- FLY POSITION CALCULATION FUNCTIONS --- %
+        % ------------------------------------------ %
         
         % --- calculates the locations of the special phase blobs 
         function QmxF = calcBlobPos(obj,IRL,iApp,iFly)
@@ -623,7 +620,11 @@ classdef SingleTrackInitHT1 < handle
             obj.trObj.iMov.Ibg{obj.iPh}{iApp}(iRT,:) = IbgTL;
             
         end
-            
+        
+        % ------------------------------------------ %
+        % --- FLY TEMPLATE CALCULATION FUNCTIONS --- %
+        % ------------------------------------------ %        
+        
         % --- sets up the residual image
         function [ImgR,ImgL] = setupResidualImage(obj,iFrm,iApp,iRow)
             
@@ -655,6 +656,20 @@ classdef SingleTrackInitHT1 < handle
             B = I > obj.QmxTol(iApp);
             
         end        
+                        
+        % --- removes the region from the
+        function removeBackgroundBlob(obj,fPosL,iApp,iRow)
+            
+            % field retrieval
+            N = size(obj.hC{iApp},1) - 1;
+            iRT = obj.iMov.iRT{iApp}{iRow};
+            ILL = repmat({obj.IbgT(iRT,:)},length(fPosL),1);
+            
+            % removes the blobs from the background estimate
+            IbgTL = obj.trObj.setupBGEstStack(ILL,fPosL,N);
+            obj.IbgT(iRT,:) = calcImageStackFcn(IbgTL,'max');
+            
+        end
         
         % --- calculates the distance tolerance value
         function dTolT = calcDistTol(obj)
@@ -664,13 +679,35 @@ classdef SingleTrackInitHT1 < handle
                 dTolT = obj.dTol0;
             else
                 % scales the value (if interpolating)
-                dTolT = (3/4)*min(obj.iMov.szObj);                        
+                dTolT = (3/2)*min(obj.iMov.szObj);                        
                 if obj.nI > 0
                     dTolT = ceil(dTolT/obj.nI);
                 end
             end
             
-        end        
+        end
+        
+        % --- calculates the movement range of the flies
+        function D = calcMovementRange(obj,iApp)
+            
+            % field retrieval
+            xiF = 1:getSRCount(obj.iMov,iApp);
+            fPosL = obj.trObj.fPosL{obj.iPh}(iApp,:)';
+            
+            % calculates the movement range
+            D = arrayfun(@(y)(max(range(...
+                cell2mat(cellfun(@(x)(x(y,:)),fPosL,'un',0)),1))),xiF');
+            
+        end
+        
+        % --- sets the position vector for the fly at iApp/iTube
+        function setObjPos(obj,fPosL,iApp,iTube)
+            
+            for i = 1:obj.nFrm            
+                obj.trObj.fPosL{obj.iPh}{iApp,i}(iTube,:) = fPosL;
+            end
+                
+        end           
         
     end
     
