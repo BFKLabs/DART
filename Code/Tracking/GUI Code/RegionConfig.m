@@ -1043,6 +1043,7 @@ setObjEnable(handles.buttonUpdate,hFig.iMov.isSet)
 function buttonSycnGroups_Callback(hObject, ~, handles)
 
 % initialisations
+iMov = get(handles.output,'iMov');
 hTable1D = handles.tableRegionInfo1D;
 pInfo = getDataSubStruct(handles,false);
 [iRow,~] = getTableCellSelection(hTable1D);
@@ -1073,7 +1074,7 @@ end
 
 % updates the update button
 setObjEnable(hObject,false);
-setObjEnable(handles.buttonUpdate,hFig.iMov.isSet)
+setObjEnable(handles.buttonUpdate,iMov.isSet)
 
 % updates the data struct into the gui
 setDataSubStruct(handles,pInfo,false);
