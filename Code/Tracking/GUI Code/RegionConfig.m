@@ -1,5 +1,5 @@
 function varargout = RegionConfig(varargin)
-% Last Modified by GUIDE v2.5 17-Mar-2022 12:27:36
+% Last Modified by GUIDE v2.5 11-Jan-2024 21:28:47
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -249,7 +249,7 @@ warning(wState)
 
 
 % --- Outputs from this function are returned to the command line.
-function varargout = RegionConfig_OutputFcn(hObject, eventdata, handles) 
+function varargout = RegionConfig_OutputFcn(~, ~, handles) 
 
 % Get default command line output from handles structure
 varargout{1} = handles.output;
@@ -259,13 +259,13 @@ varargout{1} = handles.output;
 %-------------------------------------------------------------------------%
 
 % --- Executes when user attempts to close figRegionSetup.
-function figRegionSetup_CloseRequestFcn(hObject, eventdata, handles)
+function figRegionSetup_CloseRequestFcn(~, ~, ~)
 
 % do nothing...?
 
 % --- Executes on mouse press over figure background, over a disabled or
 % --- inactive control, or over an axes background.
-function figRegionSetup_WindowButtonUpFcn(hFig, eventdata, handles)
+function figRegionSetup_WindowButtonUpFcn(hFig, ~, handles)
 
 % global variables
 global p0 isMouseDown
@@ -301,7 +301,7 @@ isMouseDown = false;
 
 % --- Executes on mouse press over figure background, over a disabled or
 % --- inactive control, or over an axes background.
-function figRegionSetup_WindowButtonDownFcn(hFig, eventdata, handles)
+function figRegionSetup_WindowButtonDownFcn(hFig, ~, handles)
 
 % global variables
 global p0 isMouseDown isMenuOpen
@@ -368,7 +368,7 @@ if isMenuOpen
 end
 
 % --- Executes on mouse motion over figure - except title and menu.
-function figRegionSetup_WindowButtonMotionFcn(hFig, eventdata, handles)
+function figRegionSetup_WindowButtonMotionFcn(hFig, ~, handles)
 
 % global variables
 global isMouseDown isMenuOpen
@@ -432,7 +432,7 @@ end
 % ----------------------- %
 
 % --------------------------------------------------------------------
-function menuReset_Callback(hObject, eventdata, handles)
+function menuReset_Callback(~, ~, handles)
 
 % prompts the user if they wish to proceed
 qStr = {'Are you sure you want to reset the current configuration?';...
@@ -456,7 +456,7 @@ set(hFig,'iData',initDataStruct(hFig.iMov))
 initObjProps(handles,false)
 
 % -------------------------------------------------------------------------
-function menuClose_Callback(hObject, eventdata, handles)
+function menuClose_Callback(~, ~, handles)
 
 % global variables
 global isChange
@@ -619,7 +619,7 @@ delete(h)
 % ----------------------------------------- %
 
 % -------------------------------------------------------------------------
-function menuDetCircle_Callback(hObject, eventdata, handles)
+function menuDetCircle_Callback(~, ~, handles)
 
 % retrieves the automatic detection algorithm objects
 [iMov,hGUI,~] = initAutoDetect(handles);
@@ -643,7 +643,7 @@ end
 postAutoDetectUpdate(handles,iMov,iMovNw);
 
 % -------------------------------------------------------------------------
-function menuDetRect_Callback(hObject, eventdata, handles)
+function menuDetRect_Callback(~, ~, ~)
 
 % FINISH ME!
 eStr = 'This feature is still under construction...';
@@ -661,7 +661,7 @@ I = getRegionEstImageStack(handles,hGUI,iMov);
 postAutoDetectUpdate(handles,iMov,iMovNw);
 
 % -------------------------------------------------------------------------
-function menuDetGeneral_Callback(hObject, eventdata, handles)
+function menuDetGeneral_Callback(~, ~, handles)
 
 % retrieves the automatic detection algorithm objects
 [iMov,hGUI,~] = initAutoDetect(handles);
@@ -689,7 +689,7 @@ end
 postAutoDetectUpdate(handles,iMov,iMovNw);
 
 % -------------------------------------------------------------------------
-function menuDetGeneralCust_Callback(hObject, eventdata, handles)
+function menuDetGeneralCust_Callback(~, ~, ~)
 
 % FINISH ME!
 showUnderDevelopmentMsg()
@@ -699,7 +699,7 @@ showUnderDevelopmentMsg()
 % ----------------------------------- %
 
 % -------------------------------------------------------------------------
-function menuUseSplit_Callback(hObject, eventdata, handles)
+function menuUseSplit_Callback(hObject, ~, handles)
 
 % toggles the checkmark
 toggleMenuCheck(hObject)
@@ -712,7 +712,7 @@ hFig.iMov.srData.useSR = strcmp(get(hObject,'Checked'),'on');
 setObjEnable(handles.buttonUpdate,1);
 
 % -------------------------------------------------------------------------
-function menuConfigSetup_Callback(hObject, eventdata, handles)
+function menuConfigSetup_Callback(~, ~, handles)
 
 % splits the sub-region
 hFig = handles.output;
@@ -1026,7 +1026,7 @@ if get(hTable,'UserData') == 1
 end
 
 % --- Executes on button press in checkVarFlyCount.
-function checkVarFlyCount_Callback(hObject, eventdata, handles)
+function checkVarFlyCount_Callback(hObject, ~, handles)
 
 % determines if variable fly count is being used
 isVar = get(hObject,'Value');
@@ -1038,6 +1038,48 @@ hFig.iMov.bgP.pMulti.isFixed = ~isVar;
 % sets the object enabled properties
 setObjEnable(handles.editSRCount,~isVar);
 setObjEnable(handles.buttonUpdate,hFig.iMov.isSet)
+
+% --- Executes on button press in buttonSycnGroups.
+function buttonSycnGroups_Callback(hObject, ~, handles)
+
+% initialisations
+hTable1D = handles.tableRegionInfo1D;
+pInfo = getDataSubStruct(handles,false);
+[iRow,~] = getTableCellSelection(hTable1D);
+cFormG = hTable1D.ColumnFormat{end};
+
+% resets the fly count
+pInfo.nFly(:) = hTable1D.Data{iRow,3};
+hTable1D.Data(:,end-1) = {pInfo.nFly(1)};
+
+% sets the group indices
+switch pInfo.nGrp
+    case 1
+        % case is only 1 group
+        pInfo.iGrp(:) = 1;
+        hTable1D.Data(:,end) = cFormG(2);
+        
+    otherwise
+        % case is the group count matches the grid size
+        for i = 1:pInfo.nRow
+            % calculates the row group indices
+            xiG = (1:pInfo.nCol) + (i-1)*pInfo.nCol;
+            
+            % sets the group/table entry values
+            pInfo.iGrp(i,:) = xiG;            
+            hTable1D.Data(xiG,end) = cFormG(xiG+1);
+        end
+end
+
+% updates the update button
+setObjEnable(hObject,false);
+setObjEnable(handles.buttonUpdate,hFig.iMov.isSet)
+
+% updates the data struct into the gui
+setDataSubStruct(handles,pInfo,false);
+
+% resets the configuration axes
+resetConfigAxes(handles)
 
 % ------------------------------------------ %
 % --- 1D SETUP SPECIFIC OBJECT CALLBACKS --- %
@@ -1076,13 +1118,11 @@ switch iSel(2)
                 pInfo.iGrp(iRG,iCG) = 0;
                 
                 % updates the table data
-                tData{iSel(1),4} = cForm{end}{1};
-                set(hObject,'Data',tData)
+                hObject.Data{iSel(1),4} = cForm{end}{1};
             end
         else
             % otherwise, reset to the previous valid value
-            tData{iSel(1),iSel(2)} = eventdata.PreviousData;
-            set(hObject,'Data',tData)
+            hObject.Data{iSel(1),iSel(2)} = eventdata.PreviousData;
             
             % exits the function
             return
@@ -1098,8 +1138,7 @@ switch iSel(2)
             waitfor(msgbox(eStr,'Infeasible Region Configuration','modal'))
                 
             % otherwise, reset to the previous valid value
-            tData{iSel(1),iSel(2)} = eventdata.PreviousData;
-            set(hObject,'Data',tData)
+            hObject.Data{iSel(1),iSel(2)} = eventdata.PreviousData;
             
             % exits the function
             return            
@@ -1121,9 +1160,33 @@ setDataSubStruct(handles,pInfo,false);
 resetConfigAxes(handles)
 
 % --- Executes when selected cell(s) is changed in tableRegionInfo1D.
-function tableRegionInfo1D_CellSelectionCallback(hObject, eventdata, handles)
+function tableRegionInfo1D_CellSelectionCallback(hObject, event, handles)
 
-a = 1;
+% exits if there are no indices
+if isempty(event.Indices)
+    return
+end
+
+% field retrieval
+iRow = event.Indices(1);
+pInfo = getDataSubStruct(handles,false);
+
+% determines if the row is full
+rwData = hObject.Data(iRow,end-[1,0]);
+rwFull = all([~isempty(rwData{1}),~isempty(strtrim(rwData{2}))]);
+
+% determines the button selection flag
+if rwFull
+    % case is the row is full
+    nGrpS = pInfo.nRow*pInfo.nCol;
+    canSel = any(pInfo.nGrp == [1,nGrpS]) && (nGrpS > 1);
+else
+    % case is the row isn't full
+    canSel = false;
+end
+
+% updates the button enabled properties
+setObjEnable(handles.buttonSycnGroups,canSel);
 
 % ------------------------------------------ %
 % --- 2D SETUP SPECIFIC OBJECT CALLBACKS --- %
@@ -1218,7 +1281,7 @@ end
 % -------------------------------- %
 
 % --- Executes on button press in buttonSetRegions.
-function buttonSetRegions_Callback(hObject, eventdata, handles)
+function buttonSetRegions_Callback(~, ~, handles)
 
 % retrieves the main GUI and sub-image region data structs
 hFig = handles.output;
@@ -1581,16 +1644,23 @@ fSz = 10.6666666666667;
 % --- 1D REGION INFO TABLE --- %
 % ---------------------------- %
 
+% calculates the size of the 
+dX = 5;
+hPanel1D = handles.panelRegionInfo1D;
+yPosT = sum(handles.buttonSycnGroups.Position([2,4])) + dX;
+hghtT = hPanel1D.Position(4) - (yPosT + 4*dX + 1);
+widT = hPanel1D.Position(3) - 2*dX;
+
 % table properties
 cWid = {45, 45, 45, 91};
-tabPos = [10 10 245 112];
+tabPos = [dX yPosT widT hghtT];
 cEdit = [false false true true];
 cName = {'Row #'; 'Col #'; 'Count'; 'Group'};
 cbFcnCE = {@tableRegionInfo1D_CellEditCallback,handles};
 cbFcnCS = {@tableRegionInfo1D_CellSelectionCallback,handles};
 
 % creates the table object
-handles.tableRegionInfo1D = uitable(handles.panelRegionInfo1D,...
+handles.tableRegionInfo1D = uitable(hPanel1D,...
     'Units','Pixels','FontUnits','Pixels','Position',tabPos,...
     'ColumnName',cName,'ColumnWidth',cWid,'RowName','',...
     'ColumnEditable',cEdit,'FontSize',fSz,'Tag','tableRegionInfo1D',...
@@ -1652,6 +1722,7 @@ cForm{end} = [{' '};pInfo.gName(:)]';
 % sets the final table array
 DataT = [num2cell([iRow,iCol,iFly]),cForm{end}(1+iGrpT)'];
 set(handles.tableRegionInfo1D,'ColumnFormat',cForm,'Data',DataT);
+setObjEnable(handles.buttonSycnGroups,'off')
 
 % --- updates the group name table
 function updateGroupNameTable(handles)
