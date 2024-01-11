@@ -889,7 +889,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             obj.hProg.Update(i,'Initial Solution File Load Complete',1);
             
             % sets the sub-movie/tube data structs                
-            solnData0 = backFormatSoln(solnData0);    
+            solnData0 = backFormatSoln(solnData0,obj.iData);
             
             % sets the previous status/background image arrays
             obj.iMov0 = solnData0.iMov;     
