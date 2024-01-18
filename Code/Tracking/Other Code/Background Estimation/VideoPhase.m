@@ -367,8 +367,14 @@ classdef VideoPhase < handle
             % retrieves the base image stack
             if ~exist('ImgL','var'); ImgL = obj.Img0; end
             
-            % retrieves the raw region image stack
-            [iR,iC] = deal(obj.iR0{iApp},obj.iC0{iApp});
+            % sets the region row/column indices
+            if ~isempty(obj.iMov.iR)
+                [iR,iC] = deal(obj.iMov.iR{iApp},obj.iMov.iC{iApp});
+            else
+                [iR,iC] = deal(obj.iR0{iApp},obj.iC0{iApp});
+            end
+
+            % retrieves the raw region image stack            
             IL = cellfun(@(x)(x(iR,iC)),ImgL,'un',0);
             
             % if there is severe light fluctuation or translation, then
