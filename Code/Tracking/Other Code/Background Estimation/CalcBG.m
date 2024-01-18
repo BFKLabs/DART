@@ -2122,7 +2122,9 @@ classdef CalcBG < handle
                 iReg = find(arr2vec(fok)');
             else
                 iReg = find(obj.iMov.ok(:)');
-                nFly = arrayfun(@(x)(getSRCount(obj.iMov,x)),iReg);
+                
+                nFly = zeros(size(obj.iMov.ok));
+                nFly(iReg) = arrayfun(@(x)(getSRCount(obj.iMov,x)),iReg);
             end
             
             % sets the panel properties
