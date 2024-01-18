@@ -83,7 +83,7 @@ classdef DetectParaDialog < handle
             isHT1 = isHT1Controller(obj.sObj.iData);
             
             % sets the main class fields            
-            obj.bgP = DetectPara.getDetectionPara(obj.sObj.iMov);
+            obj.bgP = DetectPara.getDetectionPara(obj.sObj.iMov,isHT1);
             obj.bgP0 = DetectPara.initDetectParaStruct('All',isHT1);
             
             % sets the tab field parameters
