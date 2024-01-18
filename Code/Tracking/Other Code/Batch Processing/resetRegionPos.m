@@ -21,7 +21,7 @@ for i = find(iMov.ok(:)')
         % resets the region/sub-region row indices
         iMov.iR{i} = iMov.iR{i}(ii);
         iMov.iRT{i} = cellfun(@(x)(x-dY),iMov.iRT{i},'un',0);
-        iMov.iRT{i}{1} = iMov.iRT{i}(iMov.iRT{i} >= 1);
+        iMov.iRT{i}{1} = iMov.iRT{i}{1}(iMov.iRT{i}{1} >= 1);
         iMov.yTube{i} = max(0,iMov.yTube{i} - dY);
         iMov.pos{i}([2,4]) = [1,iMov.pos{i}(4) - dY];  
         iMov = resetExclusionBin(iMov,ii,i,1);
