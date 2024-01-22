@@ -152,8 +152,16 @@ classdef FilterResObj < handle
             
             % field initialisations
             obj.nT = getSRCount(obj.iMov,obj.iApp);            
-            obj.yOfs = cellfun(@(x)(x(1)-1),obj.iMov.iRT{obj.iApp},'un',0)';                        
             obj.setupSubRegionIndices();
+            
+            % calculates the vertical offsets
+            ii = ~cellfun('isempty',obj.iMov.iRT{obj.iApp});
+            obj.yOfs = num2cell(NaN(size(obj.iMov.iRT{obj.iApp})));
+            obj.yOfs(ii) = cellfun(@(x)...
+                (x(1)-1),obj.iMov.iRT{obj.iApp}(ii),'un',0); 
+            
+            % removes any empty sub-regions from the analysis
+            if any(~ii); obj.iMov.flyok(~ii,obj.iApp) = false; end
             
             % initialisations
             obj.nFrm = length(obj.IL0);                        

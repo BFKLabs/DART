@@ -521,6 +521,11 @@ classdef SingleTrackInit < SingleTrack
                 obj.calcOverallQuality()
             end
             
+            % if the user cancelled, then exit the function
+            if ~obj.calcOK
+                return
+            end
+            
             % ----------------------------------- %
             % --- BACKGROUND IMAGE ESTIMATION --- %
             % ----------------------------------- %            

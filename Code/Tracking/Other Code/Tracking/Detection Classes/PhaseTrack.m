@@ -75,12 +75,21 @@ classdef PhaseTrack < matlab.mixin.SetGet
             obj.nApp = length(obj.iMov.iR);
             obj.nTube = getSRCountVec(obj.iMov);
             obj.cFlag = useDistCheck(obj.iMov);            
-            obj.is2D = is2DCheck(obj.iMov);  
+            obj.is2D = is2DCheck(obj.iMov); 
             
             % sets the tube-region offsets
             obj.y0 = cell(obj.nApp,1);
             for iApp = find(obj.iMov.ok(:)')
-                obj.y0{iApp} = cellfun(@(x)(x(1)-1),obj.iMov.iRT{iApp});
+                % sets up the row offset coordinates
+                ii = ~cellfun('isempty',obj.iMov.iRT{iApp});
+                obj.y0{iApp} = NaN(length(ii),1);
+                obj.y0{iApp}(ii) = ...
+                    cellfun(@(x)(x(1)-1),obj.iMov.iRT{iApp}(ii));
+                
+                % if any region is empty, then flag as reject
+                if any(~ii)
+                    obj.iMov.flyok(~ii,iApp) = false;
+                end
             end     
             
         end                         
@@ -253,7 +262,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                     ImgBGL = ImgBG(iRT{iTube},iCT);
                     ImgSeg = obj.setupResidualStack(ImgSR,ImgBGL);
                 end                           
-                                
+                
                 % segments the image stack
                 [fP0nw,IP0nw] = obj.segmentSubRegion...
                               (ImgSeg,fPr{iTube},IPr(iTube),[iApp,iTube]);
@@ -337,7 +346,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
 
                 % ----------------------------------------------- %
                 % --- LIKELY POSITION COORDINATE CALCULATIONS --- %
-                % ----------------------------------------------- %                
+                % ----------------------------------------------- %
                 
                 % sets the previous coordinate array
                 if obj.iFrmR(i) < 5
@@ -408,6 +417,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 elseif nGrp == 1
                     % case is there is only 1 prominent object
                     [xP,yP] = obj.calcCOM(Img{i},iGrp{1});
+
                     
                     % calculates the distance covered from the previous
                     % frame to the new positions                    
