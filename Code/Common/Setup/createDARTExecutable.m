@@ -105,13 +105,11 @@ set(hLoad.Control,'CloseRequestFcn',[]);
 
 srcStr = sprintf('-d ''%s''',exeDir);
 igDir = {'.','..','External Apps','Git'};
-geniSupport = ['C:\ProgramData\MATLAB\SupportPackages\R2021a\',...
-               'toolbox\imaq\supportpackages\gentl'];
+spkgStr = getSupportPackageDir();
 
 toolStr = sprintf(...
-           ['-N -p daq -p imaq -p images -p signal -p instrument ',...
-           '-p optim -p stats -p curvefit -p shared -p wavelet ',...
-           '-a ''%s'''],geniSupport);
+       ['-N -p daq -p imaq -p images -p signal -p instrument ',...
+       '-p optim -p stats -p curvefit -p shared -p wavelet %s'],spkgStr);
 warnStr = '-w disable:all_warnings';  
        
 % determines files the directories that need to be added
@@ -178,6 +176,29 @@ catch err
     % outputs the error to screen
     waitfor(errordlg('Error while creating executable'))
     rethrow(err);
+end
+
+% --- determines all the imaq support package directories
+function spkgDir = getSupportPackageDir()
+
+% determines the base support package directory
+mRel = matlabRelease;
+bDir = sprintf(['C:\\ProgramData\\MATLAB\\SupportPackages\\%s',...
+                '\\toolbox\\imaq\\supportpackages'],mRel.Release);
+            
+% removes the invalid support package directory strings
+dName = arrayfun(@(x)(x.name),dir(bDir),'un',0);
+dName = dName(~(strcmp(dName,'.') | strcmp(dName,'..')));
+
+% sets the full support package directories
+if isempty(dName)
+    % case is there are no support packages installed
+    spkgDir = [];
+else
+    % otherwise, set the full support package directories
+    spkgDir0 = cellfun(@(x)(fullfile(bDir,x)),dName,'un',0);    
+    spkgDir = cellfun(@(x)(sprintf('-a ''%s''',x)),spkgDir0,'un',0);
+    spkgDir = strjoin(spkgDir(:)',' ');
 end
     
 % --- sets the executable timer function
