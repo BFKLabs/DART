@@ -503,7 +503,7 @@ classdef SingleTrackInitHT1 < handle
             % initialisations
             isInit = true;            
             xiFL = iFrm(1) + [0,iDir];
-            dnFrm = min(64,diff(obj.trObj.indFrm{1}(1:2))/2);
+            dnFrm = min(64,2^(nextpow2(diff(obj.trObj.indFrm{1}(1:2)))-1));
             
             % retrieves the initial raw/residual images
             iFrmL = iFrmG(xiFL);          
