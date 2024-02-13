@@ -287,16 +287,18 @@ classdef SingleTrackInitHT1 < handle
             % determines the likely group blobs and their centroids
             [~,A] = detGroupOverlap(Ztot==1,ZmxB); 
             [~,pC,bSz] = getGroupIndex(A,'Centroid','Area');
-            pC = roundP(pC);
-            
-%             % REMOVE ME
-%             isOK = false(length(iGrpC),1);            
+            pC = roundP(pC);                        
             
             % searches the sub-regions which were flagged as stationary
             for i = find(obj.trObj.sFlagT{obj.iPh,iApp}(:)' == 2)
                 % determines the blobs within the sub-region
-                ii = find((pC(:,2) >= obj.iMov.iRT{iApp}{i}(1)) & ...
-                          (pC(:,2) <= obj.iMov.iRT{iApp}{i}(end)));
+                if isempty(pC)
+                    ii = [];
+                else
+                    ii = find((pC(:,2) >= obj.iMov.iRT{iApp}{i}(1)) & ...
+                              (pC(:,2) <= obj.iMov.iRT{iApp}{i}(end)));
+                end
+
                 if ~isempty(ii)
                     % if there are such blobs, then determine which blob
                     % centroids meet the threshold criteria
@@ -328,17 +330,10 @@ classdef SingleTrackInitHT1 < handle
                         obj.trObj.mFlag{obj.iPh,iApp}(i) = 1;
                         
                         % resets the background image
-                        obj.removeBackgroundBlob({fPosL},iApp,i);                    
-                        
-%                         % REMOVE ME LATER
-%                         isOK(jj(iMx)) = true;
+                        obj.removeBackgroundBlob({fPosL},iApp,i);
                     end
                 end
-            end            
-            
-%             % REMOVE ME LATER
-%             plotGraph('moviesel',{A,setGroup(iGrpC(isOK),size(A)),ILmx})
-%             a = 1;
+            end
             
         end             
         

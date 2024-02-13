@@ -187,7 +187,7 @@ classdef VideoPhase < handle
             obj.updateProgField('Region Property Calculations',0.5);
             
             % calculates the initial information for each region
-            for iApp = 1:obj.nApp
+            for iApp = find(obj.iMov.ok(:)')
                 % updates the progressbar
                 wStrNw = sprintf(['Calculating Region Properties ',...
                     '(Region %i of %i)'],iApp,obj.nApp);
