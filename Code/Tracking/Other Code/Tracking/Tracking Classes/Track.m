@@ -25,6 +25,7 @@ classdef Track < matlab.mixin.SetGet
         ivPhRej = 5;
         ivPhFeas = [1,2,4];
         fStepMax = 10;
+        nFrmMax = 10000;
         
         % boolean flags and other count variables
         is2D
@@ -72,7 +73,8 @@ classdef Track < matlab.mixin.SetGet
             
             % retrieves the image stack
             nFrm = length(iFrm);            
-            if (nFrm == 1) || (obj.iMov.sRate > obj.fStepMax)
+            if (obj.iData.nFrm > obj.nFrmMax) || ...
+                    (mean(diff(iFrm)) > obj.fStepMax) || (nFrm == 1)
                 % if only one frame is being read, or the step size is
                 % large, then read the frames using the slower method
                 Img = arrayfun(@(x)(obj.slowImageRead...
@@ -150,8 +152,8 @@ classdef Track < matlab.mixin.SetGet
                 % determines if the next frame is to be stored
                 if iFrmR == iFrmT(indF)
                     % if so, store the new frame
-                    Inw = readFrame(obj.mObj,'native');
-                    Img{indF} = double(rgb2gray(Inw));
+                    Inw = double(rgb2gray(readFrame(obj.mObj,'native')));
+                    Img{indF} = getRotatedImage(obj.iMov,Inw);
                
                     % updates the progressbar
                     if updateProg
