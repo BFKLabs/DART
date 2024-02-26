@@ -265,10 +265,20 @@ classdef SingleTrackInitHT1 < handle
             % parameters
             nS = 1000;
             pTolZT = 1/5;
-            pTolZmxT = 1/3;
-            hG = fspecial('log',size(obj.hC{iApp})+2,1); 
+            pTolZmxT = 1/4;            
             yOfs = cellfun(@(x)(x(1)),obj.iMov.iRT{iApp}) - 1;
+
+            % retrieves the template image
+            if isempty(obj.hC{iApp})
+                hCex = obj.trObj.expandImageArray(obj.hC(1:iApp));
+                hCnw = calcImageStackFcn(hCex(obj.iMov.ok));
+            else
+                hCnw = obj.hC{iApp};
+            end            
             
+            % sets the image filter (based on template image size)
+            hG = fspecial('log',size(hCnw)+2,1); 
+
             % calculates the sharpened image cross-correlation binary
             Q = cellfun(@(x)(min(0,imsharpen(x,'Amount',nS))),obj.IL,'un',0); 
             Z = cellfun(@(x)(max(0,calcXCorr(hG,x))),Q,'un',0);            
@@ -276,7 +286,7 @@ classdef SingleTrackInitHT1 < handle
             
             % calculates the raw image maxima cross-correlation binary
             ILmx = calcImageStackFcn(obj.IL,'max'); 
-            Zmx = max(0,calcXCorr(-obj.hC{iApp},ILmx));            
+            Zmx = max(0,calcXCorr(-hCnw,ILmx));            
             ZmxB = obj.removeEdgeTouchGroups(ILmx,Zmx>pTolZmxT,iApp);
             
             % calculates the sub-region pixel intensity threshold
@@ -342,13 +352,14 @@ classdef SingleTrackInitHT1 < handle
             
             % parameters
             pTolI = 10;
+            Imax = 50;
             
             % sets up the region map mask
             Imap = obj.setupRegionMap(obj.iMov.iRT{iApp},size(ILmx));
                         
             % determines the threshold value
             IPosAll = cell2mat(obj.IPosT{obj.iPh}(iApp,:)');
-            pTolAll = prctile(IPosAll,pTolI);
+            pTolAll = min(Imax,prctile(IPosAll,pTolI));
             
             % removes any blob groups that touch the frame edge
             Bedge = bwmorph(true(size(B0)),'remove');
@@ -374,7 +385,12 @@ classdef SingleTrackInitHT1 < handle
                 
             % sets the known fly location coordinates/linear indices
             fPos0 = obj.trObj.fPosL{obj.iPh}(iApp,:);   
-            isOK = fOK & (obj.trObj.sFlagT{obj.iPh,iApp} == 1);            
+            isOK = fOK & (obj.trObj.sFlagT{obj.iPh,iApp} == 1);   
+
+            % if there are no valid fly locations then exit the function
+            if ~any(isOK)
+                return
+            end
             
             % determines the feasible frames
             IRL = IRL(:,isOK); 
@@ -528,7 +544,7 @@ classdef SingleTrackInitHT1 < handle
                 
                 % sets the new frame image/residuals
                 [ImgR,ImgL] = obj.setupResidualImage(iFrmNw,iApp,iRow);
-                BNw = obj.getThresholdBinary(ImgR,iApp);
+                BNw = obj.getThresholdBinary(ImgR,iRow);
                 iNw = 1 + any(BNw(:));
                                 
                 % updates the frame limits (based on whether the new 

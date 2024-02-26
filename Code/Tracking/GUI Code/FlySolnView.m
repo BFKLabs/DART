@@ -491,27 +491,35 @@ end
 % sets the fly indices for each region (multi-tracking only)
 if isMltTrk
     % initialisations
-    nFlyMx = 20;
-    nFly = iMov.pInfo.nFly;
-    pInd = cell(length(iMov.iR),1);
+    nFlyMx = 20;    
+    nReg = iMov.pInfo.nRow*iMov.pInfo.nCol;
+    pInd = cell(nReg,1);
     
     % sets the fly indices for each 
-    for i = 1:length(pInd)
+    indM = 1:nReg;
+    for i = indM
+        % retrieves the fly count
+        iC = mod(i-1,iMov.pInfo.nCol) + 1;        
+        iR = floor((i-1)/iMov.pInfo.nCol) + 1;
+        nFly = iMov.pInfo.nFly(iR,iC);
+        
         % calculates the number of new menus and the fly count
-        nMenu = ceil(nFly(i)/nFlyMx);
-        nFlyP = ceil(nFly(i)/nMenu);
+        nMenu = ceil(nFly/nFlyMx);
+        nFlyP = ceil(nFly/nMenu);
         
         % sets the indices of the fly count for each region
         pInd{i} = arrayfun(@(x)(...
-                ((x-1)*nFlyP+1):min(nFly(i),(x*nFlyP))),1:nMenu,'un',0)';
-    end
+                ((x-1)*nFlyP+1):min(nFly,(x*nFlyP))),1:nMenu,'un',0)';
+    end        
+else
+    indM = find(hGUI.output.iMov.ok(:)');
 end
 
 % sets the diagnostic check menu item
 setObjEnable(handles.menuDiagCheck,mStr)
 
 % creates the new apparatus markers
-for i = find(hGUI.output.iMov.ok(:)')
+for i = indM
     % creates the new menu item
     if isMltTrk
         % creates the menus for each sub-grouping
@@ -556,9 +564,8 @@ iData = get(hGUI.output,'iData');
 pInfo = iMov.phInfo;
 
 % sets the fly count (based on tracking type)
-isMTrk = detMltTrkStatus(iMov);
-if isMTrk
-    nFly = max(iMov.pInfo.nFly);
+if hFig.isMltTrk
+    nFly = max(iMov.pInfo.nFly(:));
 else
     nFly = getSRCountMax(iMov);
 end
@@ -827,6 +834,7 @@ function updatePlotObjects(handles)
 hFig = handles.output;
 hGUI = get(hFig,'hGUI');
 pData = hGUI.output.pData;
+isMltTrk = hFig.isMltTrk;
 
 % retrieves the font-sizes
 [~,lblSz,~] = detSolnViewFontSizes(handles);
@@ -976,6 +984,16 @@ switch uData(1)
         iApp = uData(1);  
         tStr = sprintf('Region %i Location',iApp);
         
+        % sets the column indices (based on tracking type)
+        if isMltTrk
+            % case is the multi-tracking
+            iCol = mod(iApp-1,iMov.pInfo.nCol) + 1;
+            iRow = floor((iApp-1)/iMov.pInfo.nCol) + 1;
+        else
+            % case is the single tracking
+            iCol = iApp;
+        end                
+        
         if length(uData) == 1
             nFly = pData.nTube(iApp);
             [yLblStr,iFly] = deal('Sub-Region Index',1:nFly);
@@ -992,12 +1010,18 @@ switch uData(1)
         % sets the visibility of the 2nd line (if 2D or multi-tracking)
         if hFig.iMov.is2D
             setObjVisibility(findobj(hAx,'tag','hLineInd2'),vType(2)); 
-        end                
+        end                                
         
         % sets the y-axis limits and strings
         yTick = 1:nFly;
-        fPosNw = pData.fPos{iApp}(iFly);        
-        yStr = cellfun(@(x)(sprintf('%i',x)),num2cell(yTick)','un',0);                      
+        yStr = arrayfun(@(x)(sprintf('%i',x)),yTick','un',0);                      
+        
+        % sets the positional array
+        if isMltTrk
+            fPosNw = pData.fPos{iRow,iCol}(iFly);
+        else
+            fPosNw = pData.fPos{iApp}(iFly);
+        end
         
         % sets/updates the y-axis label
         hYLbl = findall(hAx,'tag','hYLbl');
@@ -1006,15 +1030,16 @@ switch uData(1)
                     'fontsize',lblSz,'tag','hYLbl'); 
         else
             set(hYLbl,'string',yLblStr)
-        end        
+        end                
         
         % calculates the x-coordinates
-        if vType(1)      
-            if isempty(iMov.iC{iApp})
+        if vType(1)            
+            % sets the lower/upper x-limits
+            if isempty(iMov.iC{iCol})
                 [xMin,xMax] = deal(0,1);
             else
-                xMin = iMov.iC{iApp}(1) - 1;
-                xMax = iMov.iC{iApp}(end) - 1; 
+                xMin = iMov.iC{iCol}(1) - 1;
+                xMax = iMov.iC{iCol}(end) - 1; 
             end
             
 %             if length(uData) > 1
@@ -1034,19 +1059,17 @@ switch uData(1)
         % calculates the y-coordinates
         if hFig.iMov.is2D && vType(2)
             if length(uData) == 1
-                yMin = num2cell(iMov.yTube{iApp}(:,1))';
-                yMax = num2cell(iMov.yTube{iApp}(:,2))';
-                
+                yMin = num2cell(iMov.yTube{iCol}(:,1))';
+                yMax = num2cell(iMov.yTube{iCol}(:,2))';
                 YpltN = cellfun(@(x,y,z)((x(:,2)-y)./(z-y)),...
-                                        fPosNw,yMin,yMax,'un',0);                 
+                    fPosNw,yMin,yMax,'un',0);       
             else
                 % determines the min/max position values over all flies
                 % within the current region
                 yPosL = cell2mat(cellfun(@(x)...
                         ([min(x(:,2)),max(x(:,2))]),fPosNw(:),'un',0)); 
-                yMin = min(iMov.iR{iApp}(1)-1,min(yPosL(:,1)));
-                yMax = max(iMov.iR{iApp}(end)-1,max(yPosL(:,2)));                
-                
+                yMin = min(iMov.iR{iCol}(1)-1,min(yPosL(:,1)));
+                yMax = max(iMov.iR{iCol}(end)-1,max(yPosL(:,2)));                
                 YpltN = cellfun(@(x,y,z)((x(:,2)-yMin)./(yMax-yMin)),...
                                         fPosNw,'un',0);                 
             end                           

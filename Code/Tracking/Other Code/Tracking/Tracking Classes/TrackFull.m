@@ -204,8 +204,12 @@ classdef TrackFull < Track
             elseif ~isempty(fPosPr)
                 % otherwise, if data from the previous phase object is
                 % available then use these values
-                iFrmL = obj.iMov.iPhase(iPhPr,2);
-                prDataPh = obj.getPrevPhaseData(obj.fObj{iPhPr},iFrmL);
+                if isa(obj.fObj{iPhPr},'ResidualDetectMulti')
+                    prDataPh = obj.getPrevPhaseData(obj.fObj{iPhPr});
+                else
+                    iFrmL = obj.iMov.iPhase(iPhPr,2);
+                    prDataPh = obj.getPrevPhaseData(obj.fObj{iPhPr},iFrmL);
+                end
                 
             else
                 % otherwise, determine the last tracked from the current 
@@ -749,8 +753,19 @@ classdef TrackFull < Track
             % sets the phase frame index groups
             xiPh = num2cell(obj.iMov.iPhase,2);
             nFrmG = diff(obj.iMov.iPhase,[],2);
-            [~,obj.iPhaseS] = sortrows([obj.iMov.vPhase,nFrmG],[1,2],dStr);
             obj.iFrmG = cellfun(@(x)(x(1):x(2)),xiPh,'un',0);            
+            
+            % sets the phase index vector
+            if obj.isMulti
+                % case is for multi-tracking
+                obj.iPhaseS = 1:obj.nPhase;
+                obj.dFrmMax = -1;
+                
+            else
+                % case is for single tracking
+                A = [obj.iMov.vPhase,nFrmG];
+                [~,obj.iPhaseS] = sortrows(A,[1,2],dStr);
+            end
             
             % determines if the positional data struct exists
             if isempty(obj.pData)

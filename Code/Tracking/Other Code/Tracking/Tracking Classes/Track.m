@@ -7,6 +7,7 @@ classdef Track < matlab.mixin.SetGet
         fObj    
 
         % main objects
+        mObj
         iData
         iMov       
         hProg
@@ -23,7 +24,8 @@ classdef Track < matlab.mixin.SetGet
         isCalib = false;
         ivPhRej = 5;
         ivPhFeas = [1,2,4];
-
+        fStepMax = 10;
+        
         % boolean flags and other count variables
         is2D
         isDD
@@ -46,6 +48,9 @@ classdef Track < matlab.mixin.SetGet
             obj.iData = iData;   
             obj.isMulti = isMulti;
             
+            % retrieves the video object handle
+            obj.mObj = get(findall(0,'tag','figFlyTrack'),'mObj');
+            
         end       
         
         % ------------------------------- %
@@ -67,8 +72,16 @@ classdef Track < matlab.mixin.SetGet
             
             % retrieves the image stack
             nFrm = length(iFrm);            
-            Img = arrayfun(@(x)(obj.getNewImage...
-                (x,iFrm(x),nFrm,length(varargin)<2)),1:nFrm,'un',0);
+            if (nFrm == 1) || (obj.iMov.sRate > obj.fStepMax)
+                % if only one frame is being read, or the step size is
+                % large, then read the frames using the slower method
+                Img = arrayfun(@(x)(obj.slowImageRead...
+                    (x,iFrm(x),nFrm,nargin<3)),1:nFrm,'un',0);
+                
+            else
+                % otherwise, read the image using the faster methods
+                Img = obj.fastImageRead(iFrm,nargin<3);                
+            end
             
             % determines which frames are feasible (only if required)
             if nargout == 2
@@ -96,8 +109,8 @@ classdef Track < matlab.mixin.SetGet
             
         end   
         
-        % --- retrieves the new image
-        function Img = getNewImage(obj,iFrm,iFrmG,nFrm,updateProg)
+        % --- retrieves the new image using the slower read method
+        function Img = slowImageRead(obj,iFrm,iFrmG,nFrm,updateProg)
             
             % sets the progress bar update flag
             if ~exist('updateProg','var'); updateProg = true; end
@@ -113,6 +126,50 @@ classdef Track < matlab.mixin.SetGet
             % retrieves the images for all frames in the array, iFrm
             Img = double(getDispImage(obj.iData,obj.iMov,iFrmG,0));             
             
+        end
+        
+        % --- retrieves the new image using the faster read method
+        function Img = fastImageRead(obj,iFrm,updateProg)
+            
+            % memory allocation
+            indF = 1;            
+            nFrm = length(iFrm);
+            Img = cell(nFrm,1);    
+            
+            % calculates the total 
+            iFrmT = obj.iMov.sRate*(iFrm-1) + obj.iData.Frm0;
+            
+            % resets the video object current time (if not matching)
+            t0 = iFrmT(1)/obj.mObj.FrameRate;
+            if obj.mObj.CurrentTime ~= t0
+                obj.mObj.CurrentTime = t0;
+            end            
+            
+            % reads all the frames from the image stack
+            for iFrmR = iFrmT(1):iFrmT(end)
+                % determines if the next frame is to be stored
+                if iFrmR == iFrmT(indF)
+                    % if so, store the new frame
+                    Inw = readFrame(obj.mObj,'native');
+                    Img{indF} = double(rgb2gray(Inw));
+               
+                    % updates the progressbar
+                    if updateProg
+                        pW = 0.5*(1+(obj.isMulti && obj.isBGCalc));
+                        wStr = sprintf(['Sub-Image Stack Reading ',...
+                                        '(Frame %i of %i)'],indF,nFrm);
+                        obj.hProg.Update(3+obj.wOfsL,wStr,pW*indF/nFrm);
+                    end
+                    
+                    % increments the frame counter
+                    indF = indF + 1;
+                    
+                else
+                    % otherwise, read the next frame without storing
+                    readFrame(obj.mObj,'native');
+                end
+            end
+                        
         end
         
         % --- initialises the class fields
