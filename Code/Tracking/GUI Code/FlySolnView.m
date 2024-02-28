@@ -653,36 +653,23 @@ initPhaseMarkers(handles,yLimT);
 % --- PLOT MARKER INITIALISATION --- %
 % ---------------------------------- %
 
-% sets the trace colours
-col = 'rb';
-
 % adds a hold to the axis
 hold(hAxI,'on')
 
-% adds the population markers
-for i = 1:nApp
-    % sets the population line markers
-    pCol = col(mod(i-1,2)+1);
-    plot(hAxI,NaN,NaN,'color',pCol,'tag','hLinePop','UserData',i,...
-                            'Linewidth',1,'hittest','off');    
+% plots the population markers
+plot(hAxI,NaN,NaN,'r','tag','hLinePop','Linewidth',1,'hittest','off');    
+                        
+% plots the x-coordinate marker
+plot(hAxI,NaN,NaN,'b','tag','hLineInd','Linewidth',1);
+if hFig.iMov.is2D 
+    % creates the y-coordinate marker (2D only)
+    plot(hAxI,NaN,NaN,'r','tag','hLineInd2','Linewidth',1,'hittest','off');
 end
-   
-% adds the individual markers
-for i = 1:NN
-    % creates the x-position marker
-    plot(hAxI,NaN,NaN,'b','tag','hLineInd','UserData',i,'Linewidth',1);
-    if hFig.iMov.is2D 
-        % creates the y-position marker (2D only)
-        plot(hAxI,NaN,NaN,'r','tag','hLineInd2',...
-                              'UserData',i,'Linewidth',1,'hittest','off');
-    end
-    
-    % adds in the seperator lines
-    if i ~= NN
-        plot(hAxI,T([1 end])*Tmlt-[pDel,0]',(i+0.5)*[1 1],...
-                  'k','linewidth',1,'hittest','off')
-    end    
-end
+
+% plots the separation markers
+TM = arr2vec(repmat([T([1 end])*Tmlt-[pDel;0];NaN],1,NN));
+YM = arr2vec([repmat((1:NN)+0.5,2,1);NaN(1,NN)]);
+plot(hAxI,TM(1:end-1),YM(1:end-1),'k','linewidth',1,'hittest','off');
 
 % updates the axis properties
 set(hAxI,'xlim',xLimT,'ylim',yLimT'-[0.001;0],...
@@ -744,7 +731,7 @@ plot(hAxI,xLimT,yLo,'k:','tag',hLTag,'LineWidth',1,'Visible','off');
 plot(hAxI,xLimT,yHi,'k:','tag',hLTag,'LineWidth',1,'Visible','off');
 setObjVisibility(hPlt,'off')
 
-% creates the legned object
+% creates the legend object
 hLg = legend(hPlt,{'X-Offset';'Y-Offset'});
 set(hLg,'location','best','tag','hLegend','location','northwest',...
         'Box','off','FontWeight','Bold','Visible','off');
@@ -918,15 +905,18 @@ switch uData(1)
         set(hTitle,'string',tStr)        
         
         % updates the plot lines for all the apparatus
+        hLine = findobj(hAx,'tag','hLinePop');
+
+        % sets the plot indices and updates the plot data        
+        [TT,VT] = deal(cell(nApp,1));
         for i = 1:nApp
-            % sets the plot indices and updates the plot data
             ii = 1:min(length(T),length(VpltN{i}));
-            hLine = findobj(hAx,'tag','hLinePop','UserData',i);
-            set(hLine,'xdata',T(ii)*Tmlt,'yData',...
-                            yDel+(1-2*yDel)*(1-VpltN{i}(ii))+(i-0.5))
+            TT{i} = [T(ii)*Tmlt;NaN];
+            VT{i} = [(yDel+(1-2*yDel)*(1-VpltN{i}(ii))+(i-0.5));NaN];
         end
         
         % updates the axis limits
+        set(hLine,'xData',cell2mat(TT),'yData',cell2mat(VT))
         set(hAx,'yLim',[1 nApp]+0.5*[-1.002 1])         
         
     case -1
@@ -1075,24 +1065,47 @@ switch uData(1)
             end                           
         end
         
+        % retrieves the x/y-coordinate marker lines
+        hLineX = findobj(hAx,'tag','hLineInd');
+        hLineY = findobj(hAx,'tag','hLineInd2');
+
+        %
+        setObjVisibility(hLineX,vType(1));        
+        
         % updates the plot lines for all tubes
+        [TT,XT,YT] = deal(cell(nFly,1));
         for i = 1:nFly
             % sets the plot indices and updates the plot data
-            hLineX = findobj(hAx,'tag','hLineInd','UserData',i);
-            setObjVisibility(hLineX,vType(1));
             if vType(1)
-                ii = 1:min(length(T),length(XpltN{i}));                 
-                set(hLineX,'xdata',T(ii)*Tmlt,'yData',...
-                                yDel+(1-2*yDel)*(1-XpltN{i}(ii))+(i-0.5))
+                ii = 1:min(length(T),length(XpltN{i}));
+                TT{i} = [T(ii)*Tmlt;NaN];
+                XT{i} = [(yDel+(1-2*yDel)*(1-XpltN{i}(ii))+(i-0.5));NaN];
             end
                             
             if hFig.iMov.is2D && vType(2)
-                ii = 1:min(length(T),length(YpltN{i})); 
-                hLineY = findobj(hAx,'tag','hLineInd2','UserData',i);
-                set(hLineY,'xdata',T(ii)*Tmlt,'yData',...
-                                yDel+(1-2*yDel)*(1-YpltN{i}(ii))+(i-0.5))                            
+                % sets the plot indices
+                ii = 1:min(length(T),length(YpltN{i}));                
+                
+                % sets the time points (if not set already)
+                if isempty(TT{i})
+                    TT{i} = [T(ii)*Tmlt;NaN];                    
+                end
+
+                % sets the y-coordinates
+                YT{i} = [(yDel+(1-2*yDel)*(1-YpltN{i}(ii))+(i-0.5));NaN];
             end
         end        
+                
+        % sets the x-coordinate line marker
+        TT = cell2mat(TT);
+        if vType(1)
+            set(hLineX,'xdata',TT,'yData',cell2mat(XT))
+        end
+        
+        % sets the y-coordinate line marker        
+        if hFig.iMov.is2D && vType(2)        
+            set(hLineY,'xdata',TT,'yData',cell2mat(YT))
+        end
         
         % updates the axis limits
         set(hAx,'yLim',[1 nFly]+0.5*[-1.002 1])

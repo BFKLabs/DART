@@ -73,8 +73,8 @@ classdef Track < matlab.mixin.SetGet
             
             % retrieves the image stack
             nFrm = length(iFrm);            
-            if (obj.iData.nFrm > obj.nFrmMax) || ...
-                    (mean(diff(iFrm)) > obj.fStepMax) || (nFrm == 1)
+            if (obj.iData.nFrm < obj.nFrmMax) && ...
+                    ((mean(diff(iFrm)) > obj.fStepMax) || (nFrm == 1))
                 % if only one frame is being read, or the step size is
                 % large, then read the frames using the slower method
                 Img = arrayfun(@(x)(obj.slowImageRead...
@@ -149,10 +149,21 @@ classdef Track < matlab.mixin.SetGet
             
             % reads all the frames from the image stack
             for iFrmR = iFrmT(1):iFrmT(end)
+                try
+                    Inw = readFrame(obj.mObj,'native');
+                catch ME
+                    if strcmp(ME.identifier,'MATLAB:audiovideo:VideoReader:EndOfFile')
+                        % if end of file, then reshape arrays and exit
+                        Img = Img(1:(indF-1));
+                        obj.iData.nFrm = iFrm(indF-1);
+                        return
+                    end
+                end                
+                
                 % determines if the next frame is to be stored
                 if iFrmR == iFrmT(indF)
                     % if so, store the new frame
-                    Inw = double(rgb2gray(readFrame(obj.mObj,'native')));
+                    Inw = double(rgb2gray(Inw));
                     Img{indF} = getRotatedImage(obj.iMov,Inw);
                
                     % updates the progressbar
@@ -164,11 +175,7 @@ classdef Track < matlab.mixin.SetGet
                     end
                     
                     % increments the frame counter
-                    indF = indF + 1;
-                    
-                else
-                    % otherwise, read the next frame without storing
-                    readFrame(obj.mObj,'native');
+                    indF = indF + 1;                    
                 end
             end
                         
