@@ -15,9 +15,9 @@ else
     if ~exist('vType','var'); vType = 0; end
     
     % retrieves the video resolution (dependent on type)
-    if isprop(vObj,'pROI')
+    try
         vRes = vObj.pROI(3:4);
-    else
+    catch
         if vType
             % video object is the image acquisition object
             try

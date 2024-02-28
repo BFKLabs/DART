@@ -861,9 +861,9 @@ classdef VideoPara < handle
         function getIgnoredFieldInfo(obj)
             
             % initialisations
-            if isprop(obj.infoObj.objIMAQ,'pROI')
+            try
                 pROI = obj.infoObj.objIMAQ.pROI;                
-            else
+            catch
                 pROI = get(obj.infoObj.objIMAQ,'ROIPosition');
             end
             
