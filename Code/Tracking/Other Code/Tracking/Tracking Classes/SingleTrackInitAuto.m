@@ -370,20 +370,41 @@ classdef SingleTrackInitAuto < SingleTrackInit
             
             %
             nD = ceil(dPMin/2);
+            se = fspecial('disk',3);
             szL = cellfun(@(x)(size(x)),IR(1,:),'un',0);            
                             
             % calculates the signal 
             for i = obj.fOK
                 % calculates the normalised maxima
-                BE = ~bwmorph(bwmorph(true(szL{i}),'remove'),'dilate',nD);                
-                Ymx0 = cellfun(@(x)(max(BE.*x,[],2)),IR(:,i),'un',0);
+                BE = ~bwmorph(bwmorph(true(szL{i}),'remove'),'dilate',nD);                 
+                IRF = cellfun(@(x)(imfilter(x,se)),IR(:,i),'un',0);
+                Ymx0 = cellfun(@(x)(max(BE.*x,[],2)),IRF,'un',0);
                 Ymx0 = cellfun(@(x)(obj.rmvBaseline(x)),Ymx0,'un',0);
                 Ymx{i} = cellfun(@(x)(normImg(x)),Ymx0,'un',0);     
 
                 % determines the major peaks from the image stack
                 for j = 1:nImg
                     % calculates the 
-                    [yPk0,tPk0] = findpeaks(Ymx0{j},'MinPeakDistance',dPMin);
+                    try
+                        [yPk0,tPk0] = ...
+                            findpeaks(Ymx0{j},'MinPeakDistance',dPMin);
+                    catch ME
+                        if strcmp(ME.identifier,'MATLAB:TooManyInputs')
+                            % if the function failed, then re-run with no
+                            % input arguments
+                            [yPk0,tPk0] = findpeaks(Ymx0{j});
+                            Y = imclose(Ymx0{j},ones(2*dPMin,1));
+                            
+                            % removes the 
+                            ii = Y(tPk0) == yPk0;
+                            [yPk0,tPk0] = deal(yPk0(ii),tPk0(ii));
+                            
+                        else
+                            % otherwise, rethrow the error
+                            rethrow(ME)
+                        end
+                    end
+                    
                     [idx,C0] = kmeans(yPk0,2);
 
                     % retrieves the times of the significant peaks
@@ -563,9 +584,25 @@ classdef SingleTrackInitAuto < SingleTrackInit
             end
             
             % returns the optimal grid offset
+            pkMin = 0.9;
             if length(QZ) >= 3
-                QZn = QZ/max(QZ);
-                [~,tPk] = findpeaks(QZn,'MinPeakHeight',0.9);
+                try
+                    % calculates the location of the peaks
+                    QZn = QZ/max(QZ);
+                    [~,tPk] = findpeaks(QZn,'MinPeakHeight',0.9);
+                catch ME
+                    if strcmp(ME.identifier,'MATLAB:TooManyInputs')
+                        % if running the old version of the function, then
+                        % run without any input arguments
+                        [yPk,tPk] = findpeaks(QZn);
+                        tPk = tPk(yPk >= pkMin);
+                        
+                    else
+                        % otherwise, rethrow the error
+                        rethrow(ME)
+                    end
+                end
+                
                 if isempty(tPk)
                     yOfsF = xiPF(argMax(QZn));
                 else
