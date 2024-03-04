@@ -825,6 +825,10 @@ classdef CalcBG < handle
                     if obj.isHT1
                         popStrNw = {'Background';...
                                     'Residual (Filtered)'};
+                                
+                    elseif obj.isMTrk
+                        popStrNw = {'Background';...
+                                    'Residual'};                        
                     
                     elseif ~isfield(obj.trkObj,'IbgT0') || ...
                             isempty(obj.trkObj.IbgT0)
@@ -990,7 +994,7 @@ classdef CalcBG < handle
                             if strContains(imgType,'Raw')
                                 IbgI = obj.iMov.IbgR(:,iPhase);
                             else
-                                IbgI = obj.iMov.Ibg(:,iPhase);
+                                IbgI = obj.iMov.Ibg{iPhase};
                             end
                         else
                             if strContains(imgType,'Raw')
@@ -1007,7 +1011,7 @@ classdef CalcBG < handle
                                         (obj.iMov.vPhase(iPhase) > 1)
                             Imd = median(cellfun(@(x)(...
                                         median(x(:),'omitnan')),IbgI));
-                            ImgC0 = Img0 - (median(Img0(:),'omitnan')+Imd);
+                            ImgC0 = Img0 - (median(Img0(:),'omitnan')-Imd);
                             
                             Iofs = true;
                         else
@@ -1175,20 +1179,34 @@ classdef CalcBG < handle
                 Inw = (obj.Ibg{iPhase} - Itot).*(Itot > 0); 
 
             else                        
+                % memory allocation
+                IbgI = obj.iMov.Ibg{iPhase};                
+                [I0,IRL] = deal(zeros(frmSz),cell(size(ILs)));
+                
                 % retrieves the background image type
                 if obj.isMTrk
-                    IbgI = obj.iMov.Ibg(:,iPhase);
+                    % case is multi-tracking
+                    [ILs0,ILs] = deal(ILs,cell(size(IbgI)));
+                    for i = 1:length(obj.iMov.iR)
+                        for j = 1:length(obj.iMov.iRT{i})
+                            k = (j - 1)*obj.iMov.pInfo.nCol + i;
+                            ILs{k} = ILs0{i}(obj.iMov.iRT{i}{j},:);
+                        end
+                    end
+                    
+                    % calculates the residual image stack
+                    IRL = cellfun(@(x,y)(max(0,x-y)),IbgI,ILs,'un',0);                    
+                    
                 else
-                    IbgI = obj.iMov.Ibg{iPhase};
+                    % case is single-tracking
+                    
+                    % calculates the residual image stack
+                    ILs = reshape(ILs,size(IbgI));                                 
+                    IRL(iok) = cellfun(@(x,y)...
+                        (x-y),IbgI(iok),ILs(iok),'un',0);
                 end
 
-                % reshapes the local image array
-                ILs = reshape(ILs,size(IbgI));                        
-
                 % creates the composite from the phase bg image
-                [I0,IRL] = deal(zeros(frmSz),cell(size(ILs)));
-                IRL(iok) = cellfun(@(x,y)...
-                                (x-y),IbgI(iok),ILs(iok),'un',0);
                 Inw = createCompositeImage(I0,obj.iMov,IRL);
 
             end

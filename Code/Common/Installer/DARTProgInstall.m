@@ -69,8 +69,8 @@ classdef DARTProgInstall < handle
        
         % Git Repository Information
         tKey = 'bea6406bc8bcc5e24e68c9889f108faf4eeff3b9';
-        rBaseURL = '@github.com/BFKLabs/';
-                
+        rBaseURL = '@github.com/BFKLabs/';                                        
+        
         % other installation fields
         gDirB
         gDirB0 = fullfile('Git','Repo');

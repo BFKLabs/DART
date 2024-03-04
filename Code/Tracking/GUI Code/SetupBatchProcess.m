@@ -35,27 +35,27 @@ setGUIFontSize(handles)
 % sets the program preference struct. if it is empty, then
 iData = varargin{1};
 
-% determines if a summary file exists in the current movie directory
-smFile0 = fullfile(iData.fData.dir,'Summary.mat');
-if ~exist(smFile0,'file')
-    % if the summary file is missing, then output an error
-    eStr = sprintf(['Error! Summary file is missing from current ',...
-                    'movie directory. Ensure summary file is present ',...
-                    'before performing batch processing.']);
-    waitfor(errordlg(eStr,'Missing Summary File','modal'));
-    
-    % exits the batch processing GUI
-    setappdata(hObject,'bpData',[]);    
-    menuExit_Callback([], [], handles)
-    return
-else
-    % otherwise, load the summary file data
-    sData0 = orderfields(load(smFile0));
-    if ~isfield(sData0,'sData')
-        sData0.sData = [];
-        sData0 = orderfields(sData0);
-    end    
-end
+% % determines if a summary file exists in the current movie directory
+% smFile0 = fullfile(iData.fData.dir,'Summary.mat');
+% if ~exist(smFile0,'file')
+%     % if the summary file is missing, then output an error
+%     eStr = sprintf(['Error! Summary file is missing from current ',...
+%                     'movie directory. Ensure summary file is present ',...
+%                     'before performing batch processing.']);
+%     waitfor(errordlg(eStr,'Missing Summary File','modal'));
+%     
+%     % exits the batch processing GUI
+%     setappdata(hObject,'bpData',[]);    
+%     menuExit_Callback([], [], handles)
+%     return
+% else
+%     % otherwise, load the summary file data
+%     sData0 = orderfields(load(smFile0));
+%     if ~isfield(sData0,'sData')
+%         sData0.sData = [];
+%         sData0 = orderfields(sData0);
+%     end    
+% end
 
 % sets the sub-data structs
 setappdata(hObject,'ProgDef',iData.ProgDef);
@@ -66,7 +66,7 @@ bpData0 = retBatchData(handles,iData.fData.dir);
 % updates the data fields
 setappdata(hObject,'ind0',1);
 setappdata(hObject,'bpData',bpData0);
-setappdata(hObject,'sData',sData0);
+% setappdata(hObject,'sData',sData0);
 
 % initialises the GUI objects
 initDefButton(handles,iData.ProgDef)

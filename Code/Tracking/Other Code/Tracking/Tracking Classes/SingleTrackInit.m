@@ -81,6 +81,7 @@ classdef SingleTrackInit < SingleTrack
         isHiV
         isSpecial
         usePTol
+        Ztol = 3;
         dXB = 5;
         pWofs = 4;
         nMet = 3;
@@ -325,6 +326,11 @@ classdef SingleTrackInit < SingleTrack
                     % reads the image stack for phase frame indices
                     [obj.Img{i},obj.indFrm{i}] = ...
                         obj.getImageStack(obj.indFrm{i});
+                    if obj.iMov.vPhase(i) == 4
+                        obj.checkHT1ImageStack(i);                            
+                    end
+
+                    % sets the frame indices for the phase
                     obj.iMov.iPhase(i,:) = obj.indFrm{i}([1,end]);
                     
                     % applies the smooth filter (if specified)
@@ -338,6 +344,40 @@ classdef SingleTrackInit < SingleTrack
             % updates the progress-bar
             obj.hProg.Update(3+obj.wOfsL,'Frame Read Complete',1);
             
+        end
+
+        % --- checks the HT1 control image stack (remove infeasible frames)
+        function checkHT1ImageStack(obj,iApp)
+
+            % calculates the z-scores of the image mean pixel intensities
+            ILmn = cellfun(@(x)(mean(x(:))),obj.Img{iApp});
+            [ILmu,ILsd] = deal(mean(ILmn),std(ILmn));
+            ZLmn = (ILmn - ILmu)/ILsd;
+
+            % determines if any frames are "odd" relative to the others
+            isOK = abs(ZLmn) < obj.Ztol;
+            for i = find(~isOK(:)')
+                % sets the direction of the frame increment
+                iDir = 1 - 2*(i > 1);
+                iFrm = obj.indFrm{iApp}(i);
+
+                % keep searching until a vaild frame is read
+                while 1
+                    % reads the new frame
+                    iFrm = iFrm + iDir;
+                    Inw = obj.getImageStack(iFrm,1,1);
+
+                    % determines if the new frame is feasible
+                    Znw = (mean(Inw(:)) - ILmu)/ILsd;
+                    if abs(Znw) < obj.Ztol
+                        % if so, update the arrays and exit the inner loop
+                        obj.Img{iApp}{i} = Inw;
+                        obj.indFrm{iApp}(i) = iFrm;
+                        break
+                    end
+                end
+            end
+
         end
         
         % --- initialises the class fields before detection
@@ -421,8 +461,7 @@ classdef SingleTrackInit < SingleTrack
             
             % reads the snapshots from the camera (stopping after)
             ImgS = getCameraSnapshots...
-                (obj.iMov,obj.iData,objIMAQ,fPara,obj.hProg);
-            
+                (obj.iMov,obj.iData,objIMAQ,fPara,obj.hProg);            
             
         end
         

@@ -114,50 +114,42 @@ catch
 end
 
 % opens the movie file and gets the movie details
-[iData.movStr,iData.isLoad] = deal(fStr,false);     
+[iData.movStr,iData.isLoad] = deal(fStr,false);
+
 % sets the video index
 if ~isempty(sStr)
     % loads the summary data file 
     A = checkSummFileTimeStamps(iData,sStr);
-    if (iVid > length(A.tStampV)) && (length(A.tStampV) == 1)
-        iVid = 1;
-    end    
     
-    % sets the final time vector
-    Tv = A.tStampV{iVid};
-    iData.Tv0 = Tv(1);
-    iData.Tv = Tv(:) - iData.Tv0;      
+    % sets the other sub-struct fields
+    if isempty(A)
+        % if summary file doesn't have time-stamps, then set empty fields
+        [iData.Tv,iData.stimP,iData.sTrainEx] = deal([]);   
+        setObjEnable(handles.menuStimInfo,'off')        
     
-    % sets the experimental data struct
-    iData.iExpt = A.iExpt;
-    
-%     %     
-%     iszTv = (Tv == 0); iszTv(1) = false;
-%     nanTv = isnan(A.tStampV{iVid}) | iszTv;
-%     
-%     % determines if there are NaN values in the time vector
-%     if all(nanTv)
-%         % if all time values are NaN values, then set up a dummy array
-%         iData.Tv = (0:(length(Tv)-1))'/iData.exP.FPS;
-%         
-%     else                
-%         % sets the final time vector
-%         if any(nanTv)
-%             FPS = 1/calcWeightedMean(diff(Tv));
-%             i0 = find(~nanTv,1,'first');
-%             Tv = removeTimeNaNs(Tv,FPS,Tv(i0)-(i0-1)/FPS,nanTv);
-%         end           
-%     end       
-   
-    
-    % retrieves the videos stimuli information
-    if isempty(iData.stimP)
-        summFile = getSummaryFilePath(iData);
-        [iData.stimP,iData.sTrainEx] = getExptStimInfo(summFile,Tv);
-    end    
-    
-    % sets the stimuli info menu item enabled properties
-    setObjEnable(handles.menuStimInfo,detIfHasStim(iData.stimP))    
+    else
+        % otherwise, set the video index
+        if (iVid > length(A.tStampV)) && (length(A.tStampV) == 1)
+            iVid = 1;
+        end    
+
+        % sets the final time vector
+        Tv = A.tStampV{iVid};
+        iData.Tv0 = Tv(1);
+        iData.Tv = Tv(:) - iData.Tv0;      
+
+        % sets the experimental data struct
+        iData.iExpt = A.iExpt;
+
+        % retrieves the videos stimuli information
+        if isempty(iData.stimP)
+            summFile = getSummaryFilePath(iData);
+            [iData.stimP,iData.sTrainEx] = getExptStimInfo(summFile,Tv);
+        end    
+
+        % sets the stimuli info menu item enabled properties
+        setObjEnable(handles.menuStimInfo,detIfHasStim(iData.stimP))    
+    end
 else
     % otherwise, set empty 
     [iData.Tv,iData.stimP,iData.sTrainEx] = deal([]);   

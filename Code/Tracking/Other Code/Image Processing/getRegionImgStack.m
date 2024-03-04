@@ -10,6 +10,7 @@ if ~iscell(I0); I0 = {I0}; end
 % retrieves the new image frame
 IL = cell(size(I0));           
 [hasF,hasT] = deal(false);
+isMltTrk = detMltTrkStatus(iMov);
 [iR,iC] = deal(iMov.iR{iApp},iMov.iC{iApp});
 
 % sets the image fluctuation flag
@@ -29,7 +30,7 @@ if any(~isOK)
 end              
 
 % corrects image fluctuation (if required)
-if hasF || isHiV
+if hasF || (isHiV && ~isMltTrk)
     % if there is fluctuation, then apply the hm filter and the
     % histogram matching to the reference image
     h = iMov.phInfo.hmFilt{iApp};

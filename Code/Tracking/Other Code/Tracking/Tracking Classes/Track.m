@@ -71,10 +71,19 @@ classdef Track < matlab.mixin.SetGet
         % --- reads the images for the frame indices given in iFrm
         function [Img,iFrm] = getImageStack(obj,iFrm,varargin)
             
+            % initialisations
+            nFrm = length(iFrm);                        
+            
+            % determines if the slow frame methods is to be used
+            if obj.isBGCalc
+                useSlow = true;
+            else
+                useSlow = (obj.iData.nFrm < obj.nFrmMax) && ...
+                    ((mean(diff(iFrm)) > obj.fStepMax) || (nFrm == 1));
+            end
+            
             % retrieves the image stack
-            nFrm = length(iFrm);            
-            if (obj.iData.nFrm < obj.nFrmMax) && ...
-                    ((mean(diff(iFrm)) > obj.fStepMax) || (nFrm == 1))
+            if useSlow
                 % if only one frame is being read, or the step size is
                 % large, then read the frames using the slower method
                 Img = arrayfun(@(x)(obj.slowImageRead...

@@ -788,23 +788,25 @@ sFile = getSummaryFilePath(solnData.fData,fDir);
 if exist(sFile,'file')
     % loads the summary file
     sData = load(sFile);
-
-    % retrieves the video index
-    if sData.iExpt.Video.nCount == 1
-        iVid = 1;
-    else
-        iVid = getVideoFileIndex(solnData.fData.name);   
-    end    
     
-    % retrieves the video index/time stamp
-    tStampV = checkVideoTimeStamps(sData.tStampV,sData.iExpt.Timing.Tp);
-    iData.Tv = tStampV{iVid};
-    
-    % sets the experimental data field (if available)
+    % determines if the experiment data sub-struct is available
     if isfield(sData,'iExpt')
-        iData.iExpt = sData.iExpt;
+        % retrieves the video index
+        if sData.iExpt.Video.nCount == 1
+            iVid = 1;
+        else
+            iVid = getVideoFileIndex(solnData.fData.name);   
+        end    
+
+        % retrieves the video index/time stamp
+        tStampV = checkVideoTimeStamps(sData.tStampV,sData.iExpt.Timing.Tp);
+        iData.Tv = tStampV{iVid};
+    
+        % sets the experimental data field (if available)
+        iData.iExpt = sData.iExpt;            
     else
-        iData.iExpt = [];
+        % otherwise, set an empty field
+        [iData.Tv,iData.iExpt] = deal([]);
     end
     
 else

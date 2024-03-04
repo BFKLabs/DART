@@ -23,7 +23,7 @@ elseif isstruct(sObj)
 end
 
 % if there is no stimuli data, then exit the function
-if isempty(sData)
+if isempty(sData) || ~isfield(sData,'iExpt')
     return
 end
 

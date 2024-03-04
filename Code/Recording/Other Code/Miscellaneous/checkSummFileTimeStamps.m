@@ -4,6 +4,12 @@ function A = checkSummFileTimeStamps(iData,sFile)
 % loads the summary file
 A = load(sFile);
 
+% if there are no time-stamps, then exit
+if ~isfield(A,'tStampV')
+    A = [];
+    return
+end
+
 % determines if any videos have NaN time-stamps
 indN = cellfun(@(x)(find(isnan(x)|(x==0))),A.tStampV,'un',0);
 hasN = ~cellfun('isempty',indN);

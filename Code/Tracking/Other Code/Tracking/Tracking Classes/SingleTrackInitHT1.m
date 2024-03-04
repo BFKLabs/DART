@@ -55,11 +55,11 @@ classdef SingleTrackInitHT1 < handle
             obj.wOfsL = trObj.wOfsL;
             obj.nApp = trObj.nApp;            
             obj.iMov = trObj.iMov;
-            obj.nI = trObj.nI;            
+            obj.nI = trObj.nI;
             
             % resets the distance tolerance field
             obj.dTol = obj.calcDistTol();
-                        
+            
         end
         
         % --- analyses the entire video for the initial locations
@@ -116,7 +116,7 @@ classdef SingleTrackInitHT1 < handle
                 obj.trObj.IbgR{obj.iPh,iApp} = obj.IRef;
                 
                 % retrieves the sub-region image stack
-                obj.IL = calcHistMatchStack(IL0,obj.IRef);                
+                obj.IL = calcHistMatchStack(IL0,obj.IRef);   
                 
                 % sets the background image estimate
                 Ibg0 = calcImageStackFcn(IL0,'max');
@@ -297,7 +297,7 @@ classdef SingleTrackInitHT1 < handle
             % determines the likely group blobs and their centroids
             [~,A] = detGroupOverlap(Ztot==1,ZmxB); 
             [~,pC,bSz] = getGroupIndex(A,'Centroid','Area');
-            pC = roundP(pC);                        
+            pC = roundP(pC);         
             
             % searches the sub-regions which were flagged as stationary
             for i = find(obj.trObj.sFlagT{obj.iPh,iApp}(:)' == 2)
@@ -718,7 +718,7 @@ classdef SingleTrackInitHT1 < handle
                 obj.trObj.fPosL{obj.iPh}{iApp,i}(iTube,:) = fPosL;
             end
                 
-        end           
+        end  
         
     end
     

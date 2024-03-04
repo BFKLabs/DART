@@ -27,6 +27,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         isRestart
         isRecord
         isMultiBatch 
+        isMltTrk
         isSeg        
         forceCalcBG
         setSoln
@@ -72,7 +73,10 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             obj.hFig = hGUI.output;
             obj.iMov = get(obj.hFig,'iMov');
             obj.iData = get(obj.hFig,'iData');
-            obj.pData = get(obj.hFig,'pData');            
+            obj.pData = get(obj.hFig,'pData');  
+            
+            % sets the other class fields
+            obj.isMltTrk = detMltTrkStatus(obj.iMov);
             
             % function handle retrieval
             obj.initFuncObj();  
@@ -671,7 +675,9 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                     
             % sets the other fields
             prData.iStatus = obj.iMov.Status;
-            prData.iStatusF = obj.iMov.StatusF;            
+            if ~obj.isMltTrk
+                prData.iStatusF = obj.iMov.StatusF;
+            end
             
         end
         
@@ -682,21 +688,20 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             obj.hProg.setLevelCount(4+obj.isMultiBatch);
             
             % initalises the tracking object
-            if strContains(obj.iMov.bgP.algoType,'single')
+            if obj.isMltTrk
                 % case is single object tracking
-                trkObjF = SingleTrackFull(obj.iData);                 
-                set(trkObjF,'wOfsL',1+obj.isMultiBatch);
-                                
+                trkObjF = runExternPackage('MultiTrack',obj.iData,'Full');
+                
             else
-                % case is single object tracking                
-                trkObjF = feval('runExternPackage','MultiTrack',...
-                                 obj.iData,'Full');
+                % case is single object tracking
+                trkObjF = SingleTrackFull(obj.iData);                                                           
             end
             
             % sets the common tracking object fields
             set(trkObjF,'hProg',obj.hProg,'hasProg',true,...
                         'isBatch',true,'prData',prData,...
-                        'isMultiBatch',obj.isMultiBatch); 
+                        'isMultiBatch',obj.isMultiBatch,...
+                        'wOfsL',1+obj.isMultiBatch); 
                         
             try
                 % segments the entire video
@@ -757,9 +762,18 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             prData.IPosPr = cellfun(@(y)(cellfun(@(x)(x(end)),y)),...
                             sData.pData.IPos,'un',0);
             
-            % retrieves the previous solution file data
-            prData.iStatus = obj.iMov.Status;
-            prData.iStatusF = obj.iMov.StatusF{end};
+            % retrieves the previous solution file status flags
+            prData.iStatus = obj.iMov.Status;            
+            if obj.isMltTrk
+                % sets the position data for the last frame
+                indF = find(~isnan(prData.fPosPr{1}{1}(:,1)),1,'last');
+                prData.fPos = arr2vec(cellfun(@(x)(cell2mat(cellfun(...
+                    @(y)(y(indF,:)),x(:),'un',0))),prData.fPosPr','un',0));
+                
+            else
+                % sets the individual flags (if not multi-tracking)
+                prData.iStatusF = obj.iMov.StatusF{end};
+            end
             
         end
         
@@ -797,8 +811,8 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                     
                 else
                     % case is tracking multiple objects
-                    trkObjI = feval('runExternPackage',...
-                                    'MultiTrack',obj.iData,'Init'); 
+                    trkObjI = runExternPackage(...
+                        'MultiTrack',obj.iData,'Init'); 
                 end                                                       
                 
                 % collapses the waitbar figure
@@ -1064,7 +1078,11 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             bdata = obj.bData(iDir);
             
             % waits for the summary file to become available
-            if ~waitForRecordedFile(bdata.sName,[],obj.hProg,wOfs)
+            if ~exist(bdata.sName,'file')
+                % if there is no summary file, then exit the function
+                return
+            
+            elseif ~waitForRecordedFile(bdata.sName,[],obj.hProg,wOfs)
                 % if the user cancelled, or there was a timeout, then exit
                 ok = false;
                 return
@@ -1147,9 +1165,14 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             
             % if the experiment data struct is not set, then retrieve 
             % from summary file
-            summData = load(summFile);
-            if ~isfield(obj.iData,'iExpt')                
-                obj.iData.iExpt = summData.iExpt;
+            if exist(summFile,'file')
+                summData = load(summFile);
+                if ~isfield(obj.iData,'iExpt')                
+                    obj.iData.iExpt = summData.iExpt;
+                end
+            else
+                % otherwise, set an empty data struct
+                summData = struct();
             end
             
             % updates the image offset array (if available)
@@ -1158,16 +1181,16 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 save(summFile,'-struct','summData')
             end                
             
-            %
             if isDummy
                 % outputs the solution file without the waitbar figure
-                saveSolutionFile(obj.sFileNw,obj.iData,obj.iMov,[])                
+                saveSolutionFile(obj.sFileNw,obj.iData,obj.iMov,[]) 
+                
             else
                 % updates the waitbar figure and saves the .soln file
                 obj.hProg.Update(5,'Saving Solution File...',1);    
                 saveSolutionFile(obj.sFileNw,obj.iData,obj.iMov,obj.pData)
                 
-                % outputs the partial solution summary data file (if requested)
+                % outputs partial solution summary data file (if requested)
                 if isfield(obj.bData(iDir),'sfData')
                     if obj.bData(iDir).sfData.isOut
                         % retrieves the experiment data struct
@@ -1471,15 +1494,15 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             
             % copies the summary file from the movie file directory to the
             % output solution file directory (if required)
-            if copySumm
+            if copySumm && exist(bdata.sName,'file')
                 obj.copySummaryFile(bdata)                
             end            
         end
         
         % --- copies the summary file from the batch processing video
         %     directory to the output solution file directory
-        function copySummaryFile(obj,bdata)
-           
+        function copySummaryFile(obj,bdata)           
+            
             try        
                 copyfile(bdata.sName,obj.outDir,'f');
             catch
@@ -1620,18 +1643,21 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             % initialisations
             ok = true;
             
+            % if there is no summary data file, then exit
+            if ~exist(bdata.sName,'file')
+                return
+            end            
+            
             % sets the waitbar figure to invisible
             wOfs = 2 + obj.isMultiBatch;
             obj.hProg.setLevelCount(wOfs);
             hh0 = getHandleSnapshot(findall(obj.hProg.hFig));            
-
+            
             % if the summary file has not yet turned up, then wait for it 
-            if ~exist(bdata.sName,'file')
-                if ~waitForRecordedFile(bdata.sName,[],obj.hProg,wOfs)
-                    % if the user cancelled, or a timeout, then exit
-                    ok = false;
-                    return
-                end
+            if ~waitForRecordedFile(bdata.sName,[],obj.hProg,wOfs)
+                % if the user cancelled, or a timeout, then exit
+                ok = false;
+                return
             end
 
             % loads the experiment information from the summary file
