@@ -62,11 +62,12 @@ indGrp(cellfun(@(x)(x==0),num2cell(N))) = {[]};
 YY = cellfun(@(x)(num2cell(Y(x,:),1)),indGrp,'un',0);
 VV = cellfun(@(x)(num2cell(VD(x,:),1)),indGrp,'un',0);
 
-% calculates the 
-dTot0 = cellfun(@(xx,yy)(cellfun(@(x,y)(mean(x(y),'omitnan')),...
+% calculates the total speed, total waking speed and the wake duration
+dTot0 = cellfun(@(xx)(cellfun(@(x)(mean(x,'omitnan')),xx)),VV,'un',0);                    
+dWake0 = cellfun(@(xx,yy)(cellfun(@(x,y)(mean(x(y),'omitnan')),...
                         xx,yy)),VV,YY,'un',0);
-dWake0 = cellfun(@(xx,yy)(cellfun(@(x,y)(mean(x(y),'omitnan')*...
-                        length(y)/sum(y)),xx,yy)),VV,YY,'un',0);
+% dWake0 = cellfun(@(xx,yy)(cellfun(@(x,y)(mean(x(y),'omitnan')*...
+%                         length(y)/sum(y)),xx,yy)),VV,YY,'un',0);
 tWake0 = cellfun(@(x,y)(60*cellfun(@sum,x)/y),YY,num2cell(N),'un',0);
 
 % removes any NaN values from the waking distance array

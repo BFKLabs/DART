@@ -90,7 +90,7 @@ classdef TrackFull < Track
             validPh = obj.iMov.vPhase < obj.ivPhRej;
             
             % ensures the progressbar is visible
-            obj.hProg.setVisibility('on');
+            obj.hProg.setVisibility('on');            
             
             % segments the objects from start phase to end
             for i = obj.iPhase0:obj.nPhase
@@ -182,7 +182,7 @@ classdef TrackFull < Track
             iPhPr = find(isSeg(1:(iPhase-1)),1,'last');
             
             % retrieves the positional data from the previous phase
-            if isempty(iPhPr) || (obj.iMov.vPhase(iPhPr) > 1)
+            if isempty(iPhPr)
                 % first phase or previous phase is not low-variance, so
                 % don't use previous positional data
                 fPosPr = [];
@@ -325,7 +325,7 @@ classdef TrackFull < Track
                                      'iFrmR',obj.sProg.iFrmR{i});
                 if ~obj.isMulti
                     set(obj.fObj{iPhase},'xLim',obj.xLim,'yLim',obj.yLim);
-                end
+                end                
                                     
                 % runs the direct detection algorithm
                 obj.fObj{iPhase}.runDetectionAlgo();   
