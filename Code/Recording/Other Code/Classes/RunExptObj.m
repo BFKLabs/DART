@@ -1308,11 +1308,7 @@ classdef RunExptObj < handle
             % creates the timer object
             obj.hTimerChk = timer('StartDelay',obj.tDelayChk,...
                 'ExecutionMode','FixedRate','TasksToExecute',1,...
-                'TimerFcn',{@(h,e)obj.timerChkFcn},'tag',obj.tagStrChk);            
-
-            % REMOVE ME LATER (USE FOR TESTING ONLY)
-            set(obj.objIMAQ,'Brightness',3)
-            pause(0.25)
+                'TimerFcn',{@(h,e)obj.timerChkFcn},'tag',obj.tagStrChk);
 
             % calculates the baseline camera average image
             obj.vB0 = get(obj.objIMAQ,'Brightness');
@@ -1347,12 +1343,18 @@ classdef RunExptObj < handle
                         % if within tolerance, then exit the loop
                         break
                     else
-                        % otherwise, recalculate the brighness value
+                        % otherwise, recalculate the brightness value
                         dIdvB = (ImgAvgNw0 - ImgAvgNw)/dvB;
-                        dvB = max(1,ceil(dImgAvg/dIdvB));
+                        dvB = max(1,roundP(dImgAvg/dIdvB));
 
                         % updates the brightness/average image values
                         [vB,ImgAvgNw0] = deal(vB - dvB,ImgAvgNw);
+
+                        % SPECIAL CASE - setting the brigtness to -1
+                        % doesn't seem to do anything?! reset to 0
+                        if vB == -1
+                            vB = 0;
+                        end
                     end
                 end
             end
@@ -1367,7 +1369,7 @@ classdef RunExptObj < handle
 
             if exist('ImgAvgPr','var')
                 % paramters
-                dImgPr = 2;
+                dImgPr = 1;
 
                 % keep looping until there is a signficant change
                 while true
