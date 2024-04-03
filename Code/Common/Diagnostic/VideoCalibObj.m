@@ -419,9 +419,9 @@ classdef VideoCalibObj < handle
                     
             % sets the sub-image
             try
-                Inw = eData.Data(obj.iRI,obj.iCI);
+                Inw = rgb2gray(eData.Data(obj.iRI,obj.iCI,:));
             catch
-                Inw = eData.Data;
+                Inw = rgb2gray(eData.Data);
             end
 
             % updates the time/avg. intensity values  
@@ -449,9 +449,13 @@ classdef VideoCalibObj < handle
             
             % updates the marker lines
             if ~isempty(obj.hMark)
+                % plot variables
                 [yLim,t0] = deal([0,255],xPlt(1));
+
+                % updates the plot markers
+                xiM = 1:min(length(obj.hMark),length(obj.Tm));
                 arrayfun(@(x,y)(set(x,'xdata',y*[1,1]-t0,'ydata',yLim)),...
-                                obj.hMark(:),obj.Tm(:));
+                                obj.hMark(xiM),obj.Tm(xiM));
             end
             
             % updates the trace title (roughly every second)

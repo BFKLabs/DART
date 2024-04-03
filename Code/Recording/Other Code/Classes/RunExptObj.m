@@ -59,7 +59,15 @@ classdef RunExptObj < handle
         vComp0
         vCompStr
         isConvert
-        
+
+        % camera check class fields
+        vB0
+        ImgAvg0
+        hTimerChk        
+        dImgTol = 3;
+        tDelayChk = 1;
+        tagStrChk = 'hTimerChk';
+
         % boolean flags
         hasDAC
         iEvent
@@ -169,6 +177,11 @@ classdef RunExptObj < handle
             % sets up the ROI row/column indices (webcam only)
             if obj.isWebCam
                 obj.setupROIIndices();
+
+                % sets up the camera image check (expt only)
+                if strcmp(obj.vidType,'Expt')
+                    obj.setupCameraImageCheck();
+                end
             end
                                             
         end        
@@ -739,10 +752,10 @@ classdef RunExptObj < handle
 
             % sets the timer object properties
             set(obj.hTimerCDown,'Period',0.2,...
-                       'ExecutionMode','FixedRate',...
-                       'StartFcn',{@(h,e)obj.startCDownFcn},...
-                       'TimerFcn',{@(h,e)obj.timerCDownFcn},...           
-                       'StopFcn',{@(h,e)obj.stopCDownFcn});   
+                'ExecutionMode','FixedRate',...
+                'StartFcn',{@(h,e)obj.startCDownFcn},...
+                'TimerFcn',{@(h,e)obj.timerCDownFcn},...
+                'StopFcn',{@(h,e)obj.stopCDownFcn});
             setappdata(obj.hProg,'cdownTimer',obj.hTimerCDown)                
 
         end
@@ -852,11 +865,11 @@ classdef RunExptObj < handle
 
             % sets the timer object properties
             set(obj.hTimerExpt,'Period',obj.FPS,...
-                               'ExecutionMode','FixedRate',...
-                               'StartFcn',{@(h,e)obj.startExptFcn},...
-                               'TimerFcn',{@(h,e)obj.timerExptFcn},...
-                               'StopFcn',{@(h,e)obj.stopExptFcn},...
-                               'TasksToExecute',inf,'tag',tagStr);
+                'ExecutionMode','FixedRate',...
+                'StartFcn',{@(h,e)obj.startExptFcn},...
+                'TimerFcn',{@(h,e)obj.timerExptFcn},...
+                'StopFcn',{@(h,e)obj.stopExptFcn},...
+                'TasksToExecute',inf,'tag',tagStr);
             setappdata(obj.hProg,'exptTimer',obj.hTimerExpt)                
 
         end
@@ -1279,6 +1292,106 @@ classdef RunExptObj < handle
         
         end
         
+        % ------------------------------------ %
+        % --- CAMERA IMAGE CHECK FUNCTIONS --- %
+        % ------------------------------------ %
+
+        % --- sets up the camera image check functions/objects
+        function setupCameraImageCheck(obj)
+
+            % deletes any previous timer objects
+            hTimerChkPr = timerfind('tag',obj.tagStrChk);
+            if ~isempty(hTimerChkPr)
+                deleteTimerObjects(hTimerChkPr)
+            end            
+
+            % creates the timer object
+            obj.hTimerChk = timer('StartDelay',obj.tDelayChk,...
+                'ExecutionMode','FixedRate','TasksToExecute',1,...
+                'TimerFcn',{@(h,e)obj.timerChkFcn},'tag',obj.tagStrChk);            
+
+            % REMOVE ME LATER (USE FOR TESTING ONLY)
+            set(obj.objIMAQ,'Brightness',3)
+            pause(0.25)
+
+            % calculates the baseline camera average image
+            obj.vB0 = get(obj.objIMAQ,'Brightness');
+            obj.ImgAvg0 = obj.calcCameraImageAvg();
+
+        end
+
+        % --- the camera brightness check timer function
+        function timerChkFcn(obj)
+
+            % parameters
+            dvB = 1;
+
+            % determines if the new image is significantly difference from 
+            % the original image average pixel intensity
+            ImgAvgNw0 = obj.calcCameraImageAvg();
+            if (ImgAvgNw0 - obj.ImgAvg0) > obj.dImgTol
+                % if a major increase brightness, then decrease brightness 
+                % until the image intensity is within tolerance
+                vB = get(obj.objIMAQ,'Brightness') - dvB;
+                while true
+                    % updates the camera brightness
+                    set(obj.objIMAQ,'Brightness',vB)
+                    pause(0.05)
+
+                    % recalculates the average image intensity
+                    ImgAvgNw = obj.calcCameraImageAvg(ImgAvgNw0);
+                    dImgAvg = ImgAvgNw - obj.ImgAvg0;
+
+                    % determines if the avg pixel intensity is within tol
+                    if dImgAvg < obj.dImgTol
+                        % if within tolerance, then exit the loop
+                        break
+                    else
+                        % otherwise, recalculate the brighness value
+                        dIdvB = (ImgAvgNw0 - ImgAvgNw)/dvB;
+                        dvB = max(1,ceil(dImgAvg/dIdvB));
+
+                        % updates the brightness/average image values
+                        [vB,ImgAvgNw0] = deal(vB - dvB,ImgAvgNw);
+                    end
+                end
+            end
+
+            % stops the timer object
+            stop(obj.hTimerChk)
+
+        end
+
+        % --- calculates the avg pixel intensity from a camera snapshot 
+        function ImgAvgNw = calcCameraImageAvg(obj,ImgAvgPr)
+
+            if exist('ImgAvgPr','var')
+                % paramters
+                dImgPr = 2;
+
+                % keep looping until there is a signficant change
+                while true
+                    % calculates the new avg pixel intensity
+                    ImgNw = double(rgb2gray(snapshot(obj.objIMAQ)));
+                    ImgAvgNw = mean(ImgNw(:));
+
+                    % determines if there is a major change
+                    if abs(ImgAvgPr - ImgAvgNw) > dImgPr
+                        % if so, then exit the loop
+                        break
+                    else
+                        % otherwise, pause for a little bit...
+                        pause(0.05)
+                    end
+                end
+            else
+                % otherwise, calculates the new avg pixel intensity
+                ImgNw = double(rgb2gray(snapshot(obj.objIMAQ)));
+                ImgAvgNw = mean(ImgNw(:));
+            end
+
+        end        
+
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %
         % ------------------------------- %          
@@ -1415,6 +1528,12 @@ classdef RunExptObj < handle
             % initialisations
             nTrig = 0;            
             
+            % runs the camera properties check (webcam only)
+            if obj.isWebCam
+                set(obj.objIMAQ,'Brightness',obj.vB0)
+                start(obj.hTimerChk)
+            end
+
             % 
             while ~isDeviceLogging(obj)
                 % if there was an error, then pause for a
