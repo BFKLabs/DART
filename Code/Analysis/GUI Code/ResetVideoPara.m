@@ -103,12 +103,25 @@ classdef ResetVideoPara < handle
                                
                 for j = 1:length(Ibg0)
                     if detMltTrkStatus(iMov{i})
-                        obj.Ibg{i} = Ibg0;
+                        % memory allocation
+                        if j == 1
+                            yLim = iMov{i}.iR{1}([1,end]);
+                            xLim = [iMov{i}.iC{1}(1),iMov{i}.iC{end}(end)];
+                            obj.Ibg{i} = NaN(diff(yLim)+1,diff(xLim)+1);
+                        end
+                        
+                        % sets the local row/column indices
+                        [iC,iR] = ind2sub(size(iMov{i}.flyok),j);
+                        iCL = iMov{i}.iC{iC} - (iMov{i}.iC{1}(1) - 1);
+                        iRL = iMov{i}.iRT{iC}{iR};                            
                     else
+                        % case is the other setup type
                         iRL = iR{j} - (yL(1)-1);
                         iCL = iC{j} - (xL(1)-1);
-                        obj.Ibg{i}(iRL,iCL) = Ibg0{j};
                     end
+                    
+                    % sets the background image
+                    obj.Ibg{i}(iRL,iCL) = Ibg0{j};
                 end
                 
                 % fills in any gaps

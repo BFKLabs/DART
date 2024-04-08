@@ -298,14 +298,18 @@ for i = 1:nFile
     
     % sets the experiment solution data struct
     snTot = sInfo{i}.snTot;
-    ok = snTot.iMov.ok;              
     
     % sets the group to overall group linking indices
+    ok = snTot.iMov.ok;                  
     gName{i}(~ok) = {''};
     indL = cellfun(@(y)(find(strcmp(gName{i},y))),grpName,'un',0);
     
     % reduces the arrays to remove any missing arrays
-    snTot = reduceExptSolnFiles(snTot,indL,grpName);     
+    if detMltTrkStatus(snTot.iMov)
+        snTot = reduceMultiTrackExptSolnFiles(snTot,indL,grpName);
+    else
+        snTot = reduceExptSolnFiles(snTot,indL,grpName);
+    end
 %     snTot.iMov.pInfo.gName = gName{i}(ok);    
     
 %     if ~isempty(snTot.Px); snTot.Px = snTot.Px(ok); end

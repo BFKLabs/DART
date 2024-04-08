@@ -5,9 +5,38 @@ if ~exist('isSave','var'); isSave = false; end
 isMltTrk = detMltTrkStatus(iMov);
 
 % sets up the ID flags for each grouping
-if iMov.is2D || isMltTrk
+if isMltTrk
+    % sets the group numbers and group indices
+    gNameU = unique(iMov.pInfo.gName,'Stable');
+    
+    % memory allocation
+    nGrp = length(gNameU);  
+    cID = cell(nGrp,1);
+    
+    % field retrieval
+    fOK = iMov.flyok'; 
+    nFlyR = iMov.pInfo.nFly';    
+    iGrp = iMov.pInfo.iGrp';    
+
+    % loops through each group setting the row/column/group indices    
+    for i = 1:nGrp
+        % sets the group index ID flags
+        idx = find(iGrp.*fOK == i);
+        cIDnw0 = arrayfun(@(x,y)([x*ones(y,1),(1:y)']),...
+                                idx,nFlyR(idx),'un',0);
+        cIDnw = cell2mat(cIDnw0(:));            
+        
+        % appends the indices to the overall array
+        cID{i} = [cID{i};cIDnw];        
+    end
+
+    % sorts the ID arrays by column and then by row (for each unique group)
+    for i = 1:nGrp
+        cID{i} = sortrows(cID{i},[1,2]);
+    end    
+    
+elseif iMov.is2D 
     % case is a 2D experiment setup    
-    iGrp = iMov.pInfo.iGrp';
     
     % sets the group numbers and group indices
     if isSave
@@ -19,29 +48,13 @@ if iMov.is2D || isMltTrk
     % memory allocation
     nGrp = max(iC);  
     cID = cell(nGrp,1);
+    iGrp = iMov.pInfo.iGrp;
 
     % loops through each group setting the row/column/group indices    
     for i = 1:length(iC)
-        % determines the regions with the current grouping           
-        if isMltTrk
-            % case is for multi-tracking
-            
-            % sets the acceptance flags (first group only)
-            if (i == 1)
-                fOK = iMov.flyok'; 
-                nFlyR = iMov.pInfo.nFly';
-            end
-                
-            % sets the group index ID flags
-            idx = find(iGrp.*fOK == i);
-            cIDnw0 = arrayfun(@(x,y)([x*ones(y,1),(1:y)']),...
-                                    idx,nFlyR(idx),'un',0);
-            cIDnw = cell2mat(cIDnw0(:));
-        else
-            % case is 2D single tracking            
-            [iy,ix] = find(iGrp==i);
-            cIDnw = [iy,ix,i*ones(length(ix),1)];
-        end
+        % case is 2D single tracking
+        [iy,ix] = find(iGrp==i);
+        cIDnw = [iy,ix,i*ones(length(ix),1)];        
         
         % appends the indices to the overall array
         cID{iC(i)} = [cID{iC(i)};cIDnw];
@@ -49,11 +62,7 @@ if iMov.is2D || isMltTrk
     
     % sorts the ID arrays by column and then by row (for each unique group)
     for i = 1:nGrp
-        if isMltTrk
-            cID{i} = sortrows(cID{i},[1,2]);
-        else
-            cID{i} = sortrows(cID{i},[2,1]);
-        end
+        cID{i} = sortrows(cID{i},[2,1]);
     end
 else
     % case is a 1D experiment setup

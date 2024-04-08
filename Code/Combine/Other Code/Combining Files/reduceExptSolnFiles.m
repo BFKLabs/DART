@@ -20,7 +20,6 @@ ok = false(nApp,1);
 
 % sets the solution struct fields
 cID0 = setupFlyLocID(snTot.iMov);
-isMT = detMltTrkStatus(snTot.iMov);
 
 % determines if the orientation angles were calculated
 if isfield(snTot,'iMov')
@@ -54,17 +53,17 @@ for i = 1:nApp
             
             if hasPx           
                 % sets the fly x-locations
-                Px{i} = [Px{i},getDataValues(isMT,snTot.Px,indD)];
+                Px{i} = [Px{i},getDataValues(snTot.Px,indD)];
                 
                 % sets the fly y-locations (if they exist)
                 if ~isempty(snTot.Py)
-                    Py{i} = [Py{i},getDataValues(isMT,snTot.Py,indD)];
+                    Py{i} = [Py{i},getDataValues(snTot.Py,indD)];
                 end
                 
                 % sets the orientation angles/aspect ratios (if they exist)
                 if calcPhi
-                    Phi{i} = [Phi{i},getDataValues(isMT,snTot.Phi,indD)];
-                    AxR{i} = [AxR{i},getDataValues(isMT,snTot.AxR,indD)];
+                    Phi{i} = [Phi{i},getDataValues(snTot.Phi,indD)];
+                    AxR{i} = [AxR{i},getDataValues(snTot.AxR,indD)];
                 end
                 
                 % reduces down the x-location scale values
@@ -93,7 +92,7 @@ for i = 1:nApp
             % reduces down the sub-region acceptance flags
             if iscell(snTot.iMov.flyok)
                 flyokNw = ...
-                    getDataValues(isMT,snTot.iMov.flyok(iNw),indD);
+                    getDataValues(snTot.iMov.flyok(iNw),indD);
                 flyok{i} = [flyok{i};flyokNw(:)];
             else
                 szOK = size(snTot.iMov.flyok);
@@ -150,34 +149,24 @@ if isfield(snTot,'pMapPx')
 end
 
 % --- retr
-function Ygrp = getDataValues(isMT,Y,cID)
+function Ygrp = getDataValues(Y,cID)
 
-Y0 = cellfun(@(x)(getRegionDataValues(Y,x,isMT)),cID,'un',0);
+Y0 = cellfun(@(x)(getRegionDataValues(Y,x)),cID,'un',0);
 Ygrp = cell2mat(Y0(:)');
 
 %
-function Y0 = getRegionDataValues(Y,cID,isMT)
+function Y0 = getRegionDataValues(Y,cID)
 
-if isMT
-    if isempty(Y{cID(1)})
-        Y0 = 0;
-    elseif size(Y{cID(1)},2) == 1
-        Y0 = Y{cID(1)}(cID(2));
-    else
-        Y0 = Y{cID(1)}(:,cID(2));
-    end
+if isempty(Y{cID(2)})
+    Y0 = [];
 else
-    if isempty(Y{cID(2)})
-        Y0 = [];
-    else
-        Y0 = Y{cID(2)}(:,cID(1));
-    end
+    Y0 = Y{cID(2)}(:,cID(1));
 end
 
 %
 function indD = getDataArrayIndices(iMov,cID)
 
-if iMov.is2D || detMltTrkStatus(iMov)
+if iMov.is2D
     indD = num2cell(cID(:,1:2),2);
 else
     iApp = (cID(:,1)-1)*iMov.pInfo.nCol + cID(:,2);

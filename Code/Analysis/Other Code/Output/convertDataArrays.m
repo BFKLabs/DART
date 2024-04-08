@@ -42,8 +42,9 @@ for i = 1:length(pFld)
             Zf = arrayfun(@(x)(NaN(nFrm,x)),pInfo.nFly,'un',0);
             for j = 1:length(cID)
                 for k = 1:size(cID{j},1)
-                    [iApp,iFly] = deal(cID{j}(k,1),cID{j}(k,2));
-                    Zf{iApp}(:,iFly) = Z0{j}(:,k);
+                    [iReg,iFly] = deal(cID{j}(k,1),cID{j}(k,2));
+                    [iC,iR] = ind2sub(size(Zf),iReg);
+                    Zf{iR,iC}(:,iFly) = Z0{j}(:,k);
                 end
             end
         

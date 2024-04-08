@@ -1419,10 +1419,24 @@ function snTot = updateRegionInfo(snTot)
 
 % retrieves the region data struct fields
 iMov = snTot.iMov;
-isMltTrk = detMltTrkStatus(iMov);
 
 % updates the setup dependent fields
-if iMov.is2D || isMltTrk
+if detMltTrkStatus(iMov)
+    % field retrieval
+    iGrp = iMov.pInfo.iGrp;
+    iGrp(:) = 0;        
+        
+    % recalculates the group indices
+    [iA,~,iC] = unique(iMov.pInfo.gName,'Stable');
+    for i = 1:max(iC)
+        iGrp(iC == i) = i;
+    end
+    
+    % resets the group counter
+    iMov.pInfo.iGrp = iGrp';
+    iMov.pInfo.nGrp = length(iA);    
+
+elseif iMov.is2D
     % resets the group index array/count
     iGrp0 = iMov.pInfo.iGrp;    
     iMov.pInfo.iGrp(:) = 0;    
@@ -1432,10 +1446,7 @@ if iMov.is2D || isMltTrk
     for i = 1:max(iGrp0(:))
         % determine the feasible groups that below to the current group
         % index (indG)
-        ii = (iGrp0 == i);
-        if ~isMltTrk
-            ii = ii & iMov.flyok; 
-        end
+        ii = (iGrp0 == i) & iMov.flyok;
 
         % updates the group index (if valid)
         if iMov.ok(i) && any(ii(:))

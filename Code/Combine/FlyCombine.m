@@ -383,11 +383,11 @@ else
 end
 
 % creates a variable region information GUI
-% if detMltTrkStatus(pObj.sInfo.snTot.iMov)
-%     hGUIInfo = MultiFlyCheckTrack(hFig,pObj.sInfo.snTot); 
-% else
+if detMltTrkStatus(pObj.sInfo.snTot.iMov)
+    hGUIInfo = MultiTrackFlyInfoGUI(handles,pObj.sInfo.snTot,[],false); 
+else
     hGUIInfo = FlyInfoGUI(handles,pObj.sInfo.snTot,[],false);   
-% end
+end
 
 % updates the information gui field in the main gui
 setappdata(hFig,'hGUIInfo',hGUIInfo)

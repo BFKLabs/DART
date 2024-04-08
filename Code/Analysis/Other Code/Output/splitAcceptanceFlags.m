@@ -11,19 +11,20 @@ if isMT
     % case is multi-tracking experiment
 
     % memory allocation
-    fok = arrayfun(@(x)(false(x,1)),pInfo.nFly,'un',0);    
+    fok = false(size(pInfo.nFly));
     
     % sets the acceptance flags for each group 
     for i = 1:length(cID)
         if ~isempty(cID{i})
             [iA,~,iC] = unique(cID{i}(:,1));
             for j = 1:length(iA)
-                [isM,k] = deal(iC==j,iA(j));
-                fok{k}(cID{i}(isM,2)) = true;
+                isM = find(iC == j,1,'first');
+                [iCL,iRL] = ind2sub(size(fok),iA(j));
+                fok(iRL,iCL) = fok0{i}(isM);
             end
         end
     end
-
+    
 elseif snTot.iMov.is2D
     % case is a 2D expt setup
     

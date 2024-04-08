@@ -432,10 +432,7 @@ classdef FlyInfoGUI < handle
                     % retrieves the plot handle indices
                     if obj.isMltTrk
                         % case is for multi-tracking
-                        iFlyF = obj.setupMultiTrackIndices();
-                        iFlyN = iFlyF{iApp}([2,3]);
-                        iApp = iFlyF{iApp}(1);
-                        iPltH = 1:(diff(iFlyN)+1);
+                        [iPltH,iApp] = obj.getPlotIndices(iApp);
                                                 
                     else
                         % case is the other setup types
@@ -546,47 +543,7 @@ classdef FlyInfoGUI < handle
             sInfo0{obj.iTab}.snTot.iMov.flyok = obj.ok;
             setappdata(hFigM,'sInfo',sInfo0);
             
-        end      
-        
-        % --- retrieves the multi-tracking indices
-        function [iRow,iCol] = getMultiTrackIndices(obj,iReg)
-            
-            [iCol,iRow] = ind2sub(size(obj.ok),iReg);
-                        
-        end
-       
-        % --- retrieves the plot indices for the current selection, iSelP
-        function iPlt = getMultiTrackPlotIndices(obj,iMov,iSelP)
-            
-            iFlyF = obj.setupMultiTrackIndices(iMov);
-            iPlt = iFlyF{iSelP}(2):iFlyF{iSelP}(3);
-            
-        end
-        
-        % --- sets up the multi-tracking indices
-        function iFlyF = setupMultiTrackIndices(obj,iMovNw)
-            
-            % sets the default input arguments
-            if ~exist('iMovNw','var')
-                iMovNw = obj.iMov;
-            end
-            
-            % parameters
-            nFlyMx = 25;
-            nFly = arr2vec(iMovNw.pInfo.nFly');
-
-            % case is splitting the fly indices into groups
-            iFlyF = cell(length(nFly),1);            
-            for i = 1:length(nFly)    
-                nGrpF = ceil(nFly(i)/nFlyMx);
-                iFlyF{i} = arrayfun(@(x)([i,(x-1)*nFlyMx+1,...
-                    min(x*nFlyMx,nFly(i))]),1:nGrpF,'un',0)';
-            end
-            
-            % combines the into a single cell array
-            iFlyF = cell2cell(iFlyF);
-            
-        end                
+        end              
         
     end
     

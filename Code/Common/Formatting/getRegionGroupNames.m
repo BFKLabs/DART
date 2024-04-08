@@ -16,7 +16,7 @@ if detMltTrkStatus(snTot.iMov)
     
     % sets the group names (for each grouping)
     for i = 1:length(iReg)
-        gName(iReg{i}) = gName0(i);
+        gName(iReg{i}) = gName0(iReg{i}(1));
     end    
     
 elseif snTot.iMov.is2D
@@ -30,7 +30,7 @@ elseif snTot.iMov.is2D
     
     % sets the group names (for each grouping)
     for i = 1:length(iReg)
-        gName(iReg{i}) = gName0(i);
+        gName(iReg{i}) = gName0(iReg{i}(1));
     end
     
 else
