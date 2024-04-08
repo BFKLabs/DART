@@ -33,7 +33,7 @@ else
             % case is other setup types
             isOK = iGrp > 0;            
             iGrp(isOK) = cellfun(@(x)...
-                    (getMatchingGroupIndex(gName,x)),gName(isOK));            
+                    (getMatchingGroupIndex(gName,x)),gName(iGrp(isOK)));
         end
         
     else
