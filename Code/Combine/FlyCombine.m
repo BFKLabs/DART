@@ -383,11 +383,11 @@ else
 end
 
 % creates a variable region information GUI
-if detMltTrkStatus(pObj.sInfo.snTot.iMov)
-    hGUIInfo = MultiFlyCheckTrack(hFig,pObj.sInfo.snTot); 
-else
+% if detMltTrkStatus(pObj.sInfo.snTot.iMov)
+%     hGUIInfo = MultiFlyCheckTrack(hFig,pObj.sInfo.snTot); 
+% else
     hGUIInfo = FlyInfoGUI(handles,pObj.sInfo.snTot,[],false);   
-end
+% end
 
 % updates the information gui field in the main gui
 setappdata(hFig,'hGUIInfo',hGUIInfo)
@@ -562,7 +562,12 @@ if ~isempty(hGUIInfo) && isa(hGUIInfo,'FlyInfoGUI')
         nwCol = getJavaColour(bgCol(j,:));
 
         % updates the colours                
-        if pObj.sInfo.snTot.iMov.is2D
+        if detMltTrkStatus(pObj.sInfo.snTot.iMov)
+            % case is multi-tracking
+            [iRow,iCol] = hGUIInfo.getMultiTrackIndices(j);
+            jT.SetBGColourCell(iRow-1,iCol-1,nwCol);
+        
+        elseif pObj.sInfo.snTot.iMov.is2D
             % case is a 2D experiment setup
             if isfield(pObj.sInfo.snTot.iMov,'pInfo')
                 [iRow,iCol] = find(pObj.sInfo.snTot.iMov.pInfo.iGrp == j);
@@ -589,6 +594,7 @@ if ~isempty(hGUIInfo) && isa(hGUIInfo,'FlyInfoGUI')
 end
 
 % updates the location/speed plots
+pause(0.05);
 pObj.updatePosPlot()
 
 % ----------------------------------------- %
@@ -1518,7 +1524,20 @@ if ~isempty(hGUIInfo)
     flyok = iMov.flyok;
 
     % updates the colours                
-    if iMov.is2D
+    if detMltTrkStatus(iMov)
+        % case is multi-tracking
+        [iRow,iCol] = hGUIInfo.getMultiTrackIndices(indNw(1));
+        
+        if nwData
+            % case is the group is accepted
+            cVal = logical(flyok(iRow,iCol));            
+            jT.setValueAt(cVal,iRow-1,iCol-1)
+        else
+            % case is the group is rejected
+            jT.setValueAt([],iRow-1,iCol-1)
+        end
+        
+    elseif iMov.is2D
         % case is a 2D experiment setup
         if isfield(iMov,'pInfo')
             [iRow,iCol] = find(iMov.pInfo.iGrp == indNw(1));

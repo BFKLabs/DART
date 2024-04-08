@@ -1369,7 +1369,7 @@ classdef RunExptObj < handle
 
             if exist('ImgAvgPr','var')
                 % paramters
-                dImgPr = 1;
+                [dImgPr,iIter,nIter] = deal(1,0,10);
 
                 % keep looping until there is a signficant change
                 while true
@@ -1384,6 +1384,13 @@ classdef RunExptObj < handle
                     else
                         % otherwise, pause for a little bit...
                         pause(0.05)
+
+                        % increments the iteration count. if it exceeds the
+                        % maximum then exit the loop
+                        iIter = iIter + 1;
+                        if iIter > nIter
+                            break
+                        end
                     end
                 end
             else

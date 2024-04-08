@@ -873,7 +873,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                             snTotNw.cID = setupFlyLocID(snTotNw.iMov);
                             
                             % reduces the region information             
-                            obj.appendSolnInfo(snTotNw,fDirS{i});                
+                            obj.appendSolnInfo(snTotNw,fDirS{i});
                         end            
 
                     case 2
@@ -1413,7 +1413,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 % sets the expt field/stimuli fields
                 sInfoNw{i}.is2D = sInfoNw{i}.snTot.iMov.is2D;
                 sInfoNw{i}.hasStim = ~isempty(sInfoNw{i}.snTot.stimP);
-
+                    
                 % sets the experiment duration in seconds
                 t0 = sInfoNw{i}.snTot.T{1}(1);
                 t1 = sInfoNw{i}.snTot.T{end}(end);                
@@ -1838,6 +1838,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             function fStrNN = getNonNumericString(fStr)
 
                 % splits the string into alphanumeric characters
+                fStr = strrep(fStr,'_',' ');
                 fStrSp = rmvEmptyCells(regexp(fStr,'\W','split'));
                 isNN = isnan(cellfun(@str2double,fStrSp));
 

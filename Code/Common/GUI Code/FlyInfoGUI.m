@@ -29,7 +29,8 @@ classdef FlyInfoGUI < handle
         nNaN
         tInact
         bgCol
-        cHdr        
+        cHdr   
+        isMltTrk
         
         % parameters
         iTab = NaN;
@@ -122,6 +123,7 @@ classdef FlyInfoGUI < handle
             end             
             
             % sets the data array and table column names
+            obj.isMltTrk = detMltTrkStatus(obj.iMov);
             obj.Data = obj.setupDataArray(num2cell(obj.ok));  
             [obj.nRow,obj.nCol] = size(obj.Data);
             
@@ -183,25 +185,35 @@ classdef FlyInfoGUI < handle
         % --- sets up the data array (removes any missing/none regions)
         function DataArr = setupDataArray(obj, DataArr)
             
-            %
+            % if the ID field isn't set, then exit the function
             if ~isfield(obj.snTot,'cID'); return; end
             
-            %
+            % field retrieval
             szArr = size(DataArr);
             pC0 = cell2mat(obj.snTot.cID(:));
             
-            % sets the row/column indices of the known sub-regions 
-            if obj.snTot.iMov.is2D
-                % case is for 2D expt setups
-                pC = pC0(:,1:2);
-            else
-                % case is for 1D expt setups
-                iCol = (pC0(:,1)-1)*obj.snTot.iMov.pInfo.nCol + pC0(:,2);
-                pC = [pC0(:,3),iCol];
-            end
+            % sets the row/column indices of the known sub-regions
+            if detMltTrkStatus(obj.snTot.iMov)
+                % case is for multi-tracking
+                isMiss0 = true(szArr);
+                isMiss0(unique(pC0(:,1))) = false;
+                isMiss = isMiss0';
             
-            % removes the missing items
-            isMiss = ~setGroup(sub2ind(szArr,pC(:,1),pC(:,2)),szArr);
+            else
+                if obj.snTot.iMov.is2D
+                    % case is for 2D expt setups
+                    pC = pC0(:,1:2);
+                else
+                    % case is for 1D expt setups
+                    iCol = (pC0(:,1)-1)*obj.snTot.iMov.pInfo.nCol + pC0(:,2);
+                    pC = [pC0(:,3),iCol];
+                end
+            
+                % removes the missing items
+                isMiss = ~setGroup(sub2ind(szArr,pC(:,1),pC(:,2)),szArr);
+            end
+               
+            % removes any missing values
             [DataArr(isMiss),obj.ok(isMiss)] = deal({[]},false);
             
         end
@@ -404,7 +416,7 @@ classdef FlyInfoGUI < handle
             if ~isempty(obj.snTot)                
                 % determines if the grouping traces is selected
                 grpCheck = get(obj.hGUI.menuAvgSpeedGroup,'Checked');
-                if strcmp(grpCheck,'on')
+                if strcmp(grpCheck,'on') || obj.isMltTrk
                     % if so, then update the main trace again
                     if hTimeNw > 0.1                    
                         pObj = getappdata(obj.hFigMain,'pltObj');
@@ -412,20 +424,37 @@ classdef FlyInfoGUI < handle
                     end
 
                 else 
-                    % case is updating non-group trace fields
-                    iApp = get(obj.hGUI.popupAppPlot,'value');    
-                    if iApp == iNw(2)
+                    % case is updating non-grouping trace fields
+                    
+                    % retrieves the selected region index
+                    iApp = get(obj.hGUI.popupAppPlot,'value');                    
+                    
+                    % retrieves the plot handle indices
+                    if obj.isMltTrk
+                        % case is for multi-tracking
+                        iFlyF = obj.setupMultiTrackIndices();
+                        iFlyN = iFlyF{iApp}([2,3]);
+                        iApp = iFlyF{iApp}(1);
+                        iPltH = 1:(diff(iFlyN)+1);
+                                                
+                    else
+                        % case is the other setup types
+                        iPltH = iNw(1);    
+                    end
+                    
+                    if any(iApp == iNw(2))
                         % updates the trace object visibility field
                         hFigM = obj.hFigMain;
-                        hPos = findall(hFigM,'UserData',iNw(1),...
-                                             'Tag','hPos');
+                        hPos = arrayfun(@(x)(findall(...
+                            hFigM,'UserData',x,'Tag','hPos')),iPltH);
                         setObjVisibility(hPos,nwValue);
 
                         % updates the fill object visibility field
-                        hGrpF = findall(hFigM,'UserData',iNw(1),...
-                                              'tag','hGrpFill');
+                        hGrpF = arrayfun(@(x)(findall(...
+                            hFigM,'UserData',x,'Tag','hGrpFill')),iPltH);                        
                         setObjVisibility(hGrpF,nwValue);
                         
+                        % resets the table background color
                         bgC = obj.bgCol{iNw(1),iNw(2)};
                         set(hGrpF,'FaceColor',bgC.getColorComponents([]))
                     end
@@ -517,12 +546,53 @@ classdef FlyInfoGUI < handle
             sInfo0{obj.iTab}.snTot.iMov.flyok = obj.ok;
             setappdata(hFigM,'sInfo',sInfo0);
             
+        end      
+        
+        % --- retrieves the multi-tracking indices
+        function [iRow,iCol] = getMultiTrackIndices(obj,iReg)
+            
+            [iCol,iRow] = ind2sub(size(obj.ok),iReg);
+                        
         end
+       
+        % --- retrieves the plot indices for the current selection, iSelP
+        function iPlt = getMultiTrackPlotIndices(obj,iMov,iSelP)
+            
+            iFlyF = obj.setupMultiTrackIndices(iMov);
+            iPlt = iFlyF{iSelP}(2):iFlyF{iSelP}(3);
+            
+        end
+        
+        % --- sets up the multi-tracking indices
+        function iFlyF = setupMultiTrackIndices(obj,iMovNw)
+            
+            % sets the default input arguments
+            if ~exist('iMovNw','var')
+                iMovNw = obj.iMov;
+            end
+            
+            % parameters
+            nFlyMx = 25;
+            nFly = arr2vec(iMovNw.pInfo.nFly');
+
+            % case is splitting the fly indices into groups
+            iFlyF = cell(length(nFly),1);            
+            for i = 1:length(nFly)    
+                nGrpF = ceil(nFly(i)/nFlyMx);
+                iFlyF{i} = arrayfun(@(x)([i,(x-1)*nFlyMx+1,...
+                    min(x*nFlyMx,nFly(i))]),1:nGrpF,'un',0)';
+            end
+            
+            % combines the into a single cell array
+            iFlyF = cell2cell(iFlyF);
+            
+        end                
         
     end
     
     % static class methods
     methods (Static)
+        
         % --- popup menu selection callback function
         function popupChange(hPopup, evnt, obj)
             
@@ -541,7 +611,7 @@ classdef FlyInfoGUI < handle
             % deletes the GUI
             delete(obj.hFig);
             
-        end              
+        end        
         
     end
 end

@@ -12,11 +12,18 @@ tOfs = 0;
 eStr = [];
 calcPhi = false;
 updateSumm = false;
+nFile = length(sFile);
 wState = warning('off','all');
 sName = cellfun(@(x)(getFileName(x,1)),sFile,'un',0);
 
 % sets the summary file name from the solution file data
 A = load(sFile{1},'-mat');
+if detMltTrkStatus(A.iMov)
+    [snTot,iMov,eStr] = combineMultiSolnFiles(A,sFile,isReduce);
+    return
+end
+
+% sets the summary file name from the solution file data
 smFile = getSummaryFilePath(A.fData);
 if isempty(smFile)
     smFile = getSummaryFilePath(struct('movStr',sFile{1}));
@@ -24,32 +31,39 @@ end
 
 % sets the video/stimuli arrays
 if exist(smFile,'file')
-    % creates the load bar
-    smData = load(smFile);
-    
-    % determines the solution files which contain the base file name
-    baseName = smData.iExpt.Info.BaseName;
-    if isempty(baseName)
-        hasBN = cellfun(@(x)(startsWith(x,' -')),sName);
-    else
-        hasBN = cellfun(@(x)(strContains(x,baseName)),sName);
-    end
-    
-    % retrieves the index of the first file
-    if any(hasBN)
-        % if the files do have the base file name, then use the first
-        % feasible solution file to determine the file index 
-        xi = cellfun(@(x)(getVideoFileIndex(x)),sName(hasBN));
-        xi = xi(~isnan(xi));
+    % loads the summary file data
+    smData = load(smFile);        
+    if isfield(smData,'iExpt')
+        % case is the experimental data field is set
+        iExpt = smData.iExpt;
+        Tp = iExpt.Timing.Tp;
         
-    elseif length(sFile) == 1
-        % if there is only one video, then only use this video
-        xi = 1;
+        % retrieves the video file base name
+        baseName = iExpt.Info.BaseName;                        
+        if isempty(baseName)
+            % case is the base name has not been set?
+            hasBN = cellfun(@(x)(startsWith(x,' -')),sName);
+        else
+            % otherwise, search for files which contain the base filename
+            hasBN = cellfun(@(x)(strContains(x,baseName)),sName);
+        end
         
-    else
-        % case is there are no validly name video solution files
-        xi = [];  
-    end
+        % retrieves the index of the first file
+        if any(hasBN)
+            % if the files do have the base file name, then use the first
+            % feasible solution file to determine the file index 
+            xi = cellfun(@(x)(getVideoFileIndex(x)),sName(hasBN));
+            xi = xi(~isnan(xi));
+
+        elseif length(sFile) == 1
+            % if there is only one video, then only use this video
+            xi = 1;
+
+        else
+            % case is there are no validly name video solution files
+            xi = [];  
+        end
+    end    
     
     if isempty(xi)
         % case is there are no validly name video solution files
@@ -64,13 +78,10 @@ if exist(smFile,'file')
     end    
         
     % retrieves the stimuli protocol/experiment information
-    [stimP,sTrainEx] = getExptStimInfo(smFile);     
-    
-    % if the summary file exists, then load it and set the time fields 
-    [iExpt,nFile] = deal(smData.iExpt,length(sFile));
-    [Tp,T0] = deal(smData.iExpt.Timing.Tp,NaN(nFile,1));
+    [stimP,sTrainEx] = getExptStimInfo(smFile);         
     
     % determines if any of the videos are all NaNs
+    T0 = NaN(nFile,1);    
     allNaN = cellfun(@(x)(all(isnan(x))),smData.tStampV(xi));
     if any(allNaN)       
         % sets the initial time of the video based on the other videos
@@ -201,11 +212,8 @@ if exist(smFile,'file')
     
 else    
     % otherwise, set an empty time-stamp array    
+    [xi,tNow] = deal(1:nFile,clock());    
     [tStampS,tStampV,T0,stimP,sTrainEx] = deal([]);
-        
-    %
-    nFile = length(sFile);    
-    [xi,tNow] = deal(1:nFile,clock());
     
     % sets up the experiment data struct
     Info = struct('Type','RecordOnly');
@@ -281,7 +289,7 @@ for i = 1:nFile
             nApp = a.pData.nApp;
         else
             nApp = numel(fPos);
-        end                
+        end
         
         % sets the essential parameters (for the first frame)
         if initData
@@ -292,7 +300,7 @@ for i = 1:nFile
             [snTot.Px,snTot.Py] = deal(cell(nApp,1));            
             [snTot.sgP,iMov,snTot.iMov] = deal(sgP,a.iMov,a.iMov);  
             
-            if (xi(1) ~= 0) && isempty(tStampS)
+            if (xi(1) ~= 0) && ~isempty(tStampS)
                 tStampS = tStampS - tOfs; 
             end                   
             
@@ -358,7 +366,7 @@ for i = 1:nFile
             end
             
             % sets the x/y locations of the flies         
-            dyOfs = a.iMov.is2D*(a.iMov.iR{j}(1)-1);            
+            dyOfs = a.iMov.is2D*(a.iMov.iR{j}(1)-1);
             Px{i}{j} = cell2mat(cellfun(@(x)(x(:,1)*sgP.sFac),...
                                 fPos{j},'un',0));
             Py{i}{j} = cell2mat(cellfun(@(x)((x(:,2)+dyOfs)*sgP.sFac),...
@@ -460,11 +468,6 @@ end
 
 % back-formats the region data struct
 iMov = backFormatRegionDataStruct(iMov);
-
-% resets the multi-tracking status to 2D
-if detMltTrkStatus(iMov)
-    iMov.is2D = true;
-end
 
 % sets the apparatus/individual fly boolean flags
 snTot.sName = sFile;

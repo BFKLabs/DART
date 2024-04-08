@@ -19,11 +19,23 @@ else
     
     % determines the matchinging grouping indices for each region
     if iMov.is2D || isMltTrk
+        % retrieves the group indices
         iGrp = iMov.pInfo.iGrp;
-        isOK = iGrp > 0;
         
-        iGrp(isOK) = cellfun(@(x)...
-                (getMatchingGroupIndex(gName,x)),gName(iGrp(isOK)));
+        % determines the feasible regions (regions with an actual index)
+        if isMltTrk
+            % case is multi-tracking
+            isOK = arr2vec(iGrp' > 0);
+            iGrp(isOK) = cellfun(@(x)...
+                    (getMatchingGroupIndex(gName,x)),gName(isOK));
+            iGrp = iGrp';
+        else
+            % case is other setup types
+            isOK = iGrp > 0;            
+            iGrp(isOK) = cellfun(@(x)...
+                    (getMatchingGroupIndex(gName,x)),gName(isOK));            
+        end
+        
     else
 %         iGrp0 = arr2vec(iMov.pInfo.iGrp')';
 %         iGrp = repmat(iGrp0,size(iMov.flyok,1),1);                

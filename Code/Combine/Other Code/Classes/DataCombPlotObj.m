@@ -253,16 +253,25 @@ classdef DataCombPlotObj < handle
             % sets the acceptance flags (dependent on expt setup type)
             if obj.isMltTrk
                 % case is multi-tracking
-                obj.fOK = combineNumericCells(snTot.iMov.flyok);
+                if iscell(snTot.iMov.flyok)
+                    obj.fOK = combineNumericCells(snTot.iMov.flyok);
+                else
+                    obj.fOK = snTot.iMov.flyok;                    
+                end
             else
                 % case is single tracking
                 obj.fOK = snTot.iMov.flyok;
             end
             
             % determines which regions are feasible
-            if obj.use2D
-                % case is a 2D/multi-tracking setup
+            if obj.isMltTrk
+                % case is multi-trackin
+                obj.isOK = obj.fOK';
+                
+            elseif obj.use2D
+                % case is a 2D setup
                 obj.isOK = any(obj.fOK,1);
+                
             else
                 % case is a 1D setup
                 obj.isOK = ~strcmp(obj.sInfo.gName,'* REJECTED *');
@@ -281,16 +290,9 @@ classdef DataCombPlotObj < handle
                 iFlyF = hGUIInfo.setupMultiTrackIndices(snTot.iMov);
                 
                 % sets the popup strings (for the region selection popup)
-                popStr0 = cell(length(snTot.iMov.pInfo.nFly),1);
-                for i = 1:length(popStr0)
-                    popStr0{i} = cellfun(@(x)(sprintf...
-                        ('Region %i (Fly %i-%i)',i,x(1),x(end))),...
-                        iFlyF{i},'un',0);
-                end
-                
-                % converts the array to a straight cell array
                 lblStr = 'Fly Index';
-                popStr = cell2cell(popStr0,1);
+                popStr = cellfun(@(x)(sprintf(...
+                    'Region %i (Fly %i-%i)',x(1),x(2),x(3))),iFlyF,'un',0);
                 
             elseif snTot.iMov.is2D
                 % case is the 2D experimental setup
@@ -416,10 +418,8 @@ classdef DataCombPlotObj < handle
             % updates the region popup indices
             if obj.isMltTrk
                 % retrieves the currently selected region
-                [iApp,iBlk] = hGUIInfo.getMultiTrackSelection(iMov);
-                
-                % sets the visibility flags
-                ok = hGUIInfo.ok{iApp};
+                iApp = obj.getMultiTrackRegion();                            
+                [iRow,iCol] = hGUIInfo.getMultiTrackIndices(iApp);
                 
             else
                 % retrieves the currently selected region
@@ -455,8 +455,8 @@ classdef DataCombPlotObj < handle
                     
                 case 'menuViewXYData'
                     % case is both the x/y-locations
-                    xPlt = obj.setupPlotValues('X',iApp);
-                    yPlt = obj.setupPlotValues('Y',iApp);
+                    xPlt = obj.setupPlotValues('Px',iApp);
+                    yPlt = obj.setupPlotValues('Py',iApp);
                     
                 case 'menuOrientAngle'
                     % case is the orientation angles
@@ -469,8 +469,10 @@ classdef DataCombPlotObj < handle
                 case ('menuAvgSpeedGroup')
                     % case is the avg. speed (group average)
                     avgPlot = true;                    
-                    nFly = length(unique(obj.sInfo.gName));
+                    [iA,~,iC] = unique(obj.sInfo.gName,'Stable');
                     [xPlt,yPlt] = deal(obj.setupPlotValues('Vavg',iApp),[]);
+                    
+                    nFly = length(iA);                    
                     ok = any(~isnan(xPlt),1);
                     
             end
@@ -518,19 +520,31 @@ classdef DataCombPlotObj < handle
                 % if they exist, then update their colours
                 if avgPlot
                     % case is the average plot
-                    [iGrp,isVis] = deal((1:nFly)',num2cell(iMov.ok));
+                    iGrp = (1:nFly)';
+                    if obj.isMltTrk
+                        indG = arrayfun(@(x)(find(iC==x)),1:max(iC),'un',0);
+                        isVis = cellfun(@(x)(any(iMov.ok(x))),indG);
+                    else
+                        isVis = iMov.ok;
+                    end
                     
                 else
                     % case is the other plot types
-                    iGrp = getRegionGroupIndices(iMov,obj.sInfo.gName,iApp);
+                    
                     if obj.isMltTrk
                         % case is for multi-tracking
-                        iPlt = hGUIInfo.getMultiTrackPlotIndices(iMov);
-                        isVis = num2cell(ok(iPlt));
+                        iSelP = get(obj.hPopupAP,'value');
+                        iPlt = hGUIInfo.getMultiTrackPlotIndices(iMov,iSelP);
+                        iGrp = iMov.pInfo.iGrp(iRow,iCol);
+                        
+                        nFlyV = iMov.pInfo.nFly(iRow,iCol);
+                        isVis = hGUIInfo.ok(iRow,iCol)*ones(nFlyV,1);
                         
                     else
                         % case is for single fly tracking
-                        isVis = num2cell(ok(:,iApp));
+                        isVis = ok(:,iApp);
+                        iGrp = getRegionGroupIndices(...
+                            iMov,obj.sInfo.gName,iApp);
                     end
                 end
 
@@ -550,7 +564,7 @@ classdef DataCombPlotObj < handle
                 hGrpP = obj.hGrpF(iS);
                 
                 % updates the face colours of the fill objects
-                isVisF = cell2mat(arr2vec(isVis(iiG)));
+                isVisF = arr2vec(isVis(iiG));
                 if avgPlot
                     indV = find(isVisF);
                     xiH = 1:length(indV);
@@ -591,7 +605,8 @@ classdef DataCombPlotObj < handle
                 canPlot = true;
             elseif obj.isMltTrk
                 % case is the multi-tracking
-                canPlot = any(hGUIInfo.ok{iApp});
+                [iRow,iCol] = hGUIInfo.getMultiTrackIndices(iApp);
+                canPlot = hGUIInfo.ok(iRow,iCol);
             elseif iMov.is2D
                 % case is 2D single tracking
                 canPlot = any(hGUIInfo.ok(:,iApp));
@@ -616,7 +631,7 @@ classdef DataCombPlotObj < handle
                         
                     elseif obj.isMltTrk
                         % case is the multi-tracking
-                        okNw = ok(iPlt(i));
+                        okNw = true;
 
                     else
                         % case is the single tracking
@@ -652,8 +667,9 @@ classdef DataCombPlotObj < handle
                 
                 % sets the y-tick label indices
                 if obj.isMltTrk && ~avgPlot
-                    iFlyF = hGUIInfo.setupMultiTrackIndices(iMov);
-                    yTickInd = iFlyF{iApp}{iBlk};
+                    iSelP = get(obj.hPopupAP,'value');
+                    iFlyF = hGUIInfo.setupMultiTrackIndices();
+                    yTickInd = iFlyF{iSelP}(2):iFlyF{iSelP}(3);
                 else
                     yTickInd = 1:nFlyF;
                 end
@@ -928,8 +944,17 @@ classdef DataCombPlotObj < handle
                             diff(obj.Py{iApp},[],1).^2)];    
             end 
             
+            % sets the calculation indices
+            if obj.isMltTrk
+                % case is for multi-tracking
+                vInd = 1:size(D,2);
+            else
+                % case is the other setups
+                vInd = find(obj.fOK(:,iApp))';
+            end
+            
             % calculates the distance travelled and the time steps
-            for i = find(obj.fOK(:,iApp))'
+            for i = vInd
                 Vplt(iVel,i) = arrayfun(@(x)(sum...
                     (D((x-obj.tBin):(x+obj.tBin),i))),iVel)./dT;
             end
@@ -963,12 +988,17 @@ classdef DataCombPlotObj < handle
                 return
             end
             
-            % sets the plot indices
+            % sets the column/plot indices
             if obj.isMltTrk
-                % retrieves the current region selection information
+                % case is the multi-tracking setup
+                iSelP = get(obj.hPopupAP,'value');
                 hGUIInfo = getappdata(obj.hFig,'hGUIInfo');
-                iPlt = hGUIInfo.getMultiTrackPlotIndices(iMov);
+                iPlt = hGUIInfo.getMultiTrackPlotIndices(iMov,iSelP);
+                [iRow,iCol] = hGUIInfo.getMultiTrackIndices(iApp);
+                
             else
+                % case is the other setup types
+                iCol = iApp;
                 iPlt = 1:size(Pz{iApp},2);
             end
             
@@ -976,10 +1006,10 @@ classdef DataCombPlotObj < handle
             switch Type
                 case 'Px'
                     % case is the x-location data
-                    if iscell(iMov.iC{iApp})
+                    if iscell(iMov.iC{iCol})
                         % determines the min/max range of the tube regions
-                        zMin = cellfun(@(x)(x(1)-1),iMov.iC{iApp});
-                        zMax = cellfun(@(x)(x(end)-1),iMov.iC{iApp});
+                        zMin = cellfun(@(x)(x(1)-1),iMov.iC{iCol});
+                        zMax = cellfun(@(x)(x(end)-1),iMov.iC{iCol});
                         zH = 0.5*(zMin + zMax);
                         
                         % determines the min/max range of actual points, 
@@ -995,16 +1025,10 @@ classdef DataCombPlotObj < handle
                             zDen = zMax(i) - zMin(i);
                             Z(:,ii) = (Pz{iApp}(:,ii)-zMin(i))/zDen;
                         end
-                    else
-                        if iMov.is2D || obj.isMltTrk
-                            % case is 2D analysis
-                            zMin = iMov.iC{iApp}(1) - 1;
-                            zMax = iMov.iC{iApp}(end) - 1;
-                        else
-                            % case is 1D analysis
-                            zMin = iMov.iC{iApp}(1) - 1;
-                            zMax = iMov.iC{iApp}(end) - 1;
-                        end
+                    else                            
+                        % sets the horizontal offset
+                        zMin = iMov.iC{iCol}(1) - 1;
+                        zMax = iMov.iC{iCol}(end) - 1;
                         
                         % calculates the normalised location
                         Z = (Pz{iApp}(:,iPlt) - zMin)/(zMax - zMin);
@@ -1012,10 +1036,10 @@ classdef DataCombPlotObj < handle
                     
                 case 'Py'
                     % case is the y-location data
-                    if iscell(iMov.iC{iApp})
+                    if iscell(iMov.iC{iCol})
                         % determines the min/max range of the tube regions
-                        zMin = cellfun(@(x)(x(1)-1),iMov.iR{iApp});
-                        zMax = cellfun(@(x)(x(end)-1),iMov.iR{iApp});
+                        zMin = cellfun(@(x)(x(1)-1),iMov.iR{iCol});
+                        zMax = cellfun(@(x)(x(end)-1),iMov.iR{iCol});
                         zH = 0.5*(zMin + zMax);
                         
                         % determines the min/max range of actual points, 
@@ -1032,12 +1056,19 @@ classdef DataCombPlotObj < handle
                             Z(:,ii) = (Pz{iApp}(:,ii)-zMin(i))/zDen;
                         end
                     else
-                        nRow = size(Pz{iApp},1);
-                        yOfs = iMov.iR{iApp}(1)-1;
-                        zMin = repmat(iMov.yTube{iApp}(:,1)',nRow,1);
-                        zMax = repmat(iMov.yTube{iApp}(:,2)',nRow,1);
+                        if obj.isMltTrk
+                            % sets the min/max scaling values
+                            zMin = iMov.yTube{iCol}(iRow,1);
+                            zMax = iMov.yTube{iCol}(iRow,2);
+                        else
+                            % sets the min/max scaling values
+                            nRow = size(Pz{iApp},1);
+                            zMin = repmat(iMov.yTube{iCol}(:,1)',nRow,1);
+                            zMax = repmat(iMov.yTube{iCol}(:,2)',nRow,1);                            
+                        end                                                
                         
                         % calculates the normalised location
+                        yOfs = iMov.iR{iCol}(1)-1;                        
                         Z = (Pz{iApp}(:,iPlt) - (zMin+yOfs))./(zMax-zMin);
                     end
                     
@@ -1055,22 +1086,29 @@ classdef DataCombPlotObj < handle
                     hGUIInfo = getappdata(obj.hFig,'hGUIInfo');
                     
                     % retrieves the region acceptance flag and grouping indices
-                    if isa(hGUIInfo,'MultiFlyCheckTrack')
-                        flyok = combineNumericCells(hGUIInfo.ok);
-                    else
-                        flyok = hGUIInfo.ok;
-                    end
+                    flyok = hGUIInfo.ok;
                     
                     % determnes the unique groupings comprising the expt
                     iGrp = getRegionGroupIndices(iMov,obj.sInfo.gName);
                     iGrpU = unique(iGrp(iGrp>0),'stable');
                     
+                    % memory allocation
+                    if obj.isMltTrk
+                        % case is multi-tracking
+                        jGrp = num2cell(arr2vec(iGrp')');
+                        okG = num2cell(arr2vec(flyok')');
+                        
+                    else
+                        % case is the other setups
+                        jGrp = num2cell(iGrp,1);
+                        okG = num2cell(flyok,1);
+                    end
+                    
                     % calculates the avg. velocity based on grouping type
                     Zgrp = cell(1,length(iGrpU));
-                    [jGrp,okG] = deal(num2cell(iGrp,1),num2cell(flyok,1));
                     for i = 1:length(Zgrp)
                         Zgrp{i} = cell2mat(cellfun(@(x,j,ok)...
-                            (x(:,(j==iGrpU(i)) & ok)),Pz,jGrp,okG,'un',0));
+                            (x(:,(j==iGrpU(i)) & ok)),Pz,jGrp,okG,'un',0));                        
                         if isempty(Zgrp{i})
                             Zgrp{i} = NaN(size(Pz{1},1),1);
                         else
@@ -1175,6 +1213,20 @@ classdef DataCombPlotObj < handle
             
         end                
         
+        % --- retrieves the region from the popup menu selection
+        function iReg = getMultiTrackRegion(obj,iSelP)
+
+            % sets the default input arguments
+            if ~exist('iSelP','var')
+                iSelP = get(obj.hPopupAP,'value');
+            end
+
+            % retrieves the region index
+            pStrS = getArrayVal(obj.hPopupAP.String,iSelP);
+            iReg = str2double(getArrayVal(regexp(pStrS,'\d+','match'),1));
+
+        end        
+        
     end
     
     % static class methods
@@ -1194,10 +1246,8 @@ classdef DataCombPlotObj < handle
             
             if detMltTrkStatus(iMov)
                 % case is the multi-tracking
-                hFigC = findall(0,'tag','figFlyCombine');
-                hGUIInfo = getappdata(hFigC,'hGUIInfo');                
-                iFlyF = hGUIInfo.setupMultiTrackIndices(iMov);
-                nRowMx = max(cellfun(@(x)(max(cellfun('length',x))),iFlyF));
+                nFly = iMov.pInfo.nFly;
+                nRowMx = max(max(nFly(:)),max(iMov.pInfo.iGrp(:)));
                 
             elseif iMov.is2D
                 % case is a 2D experiment

@@ -7,7 +7,7 @@ isMltTrk = detMltTrkStatus(iMov);
 % sets up the ID flags for each grouping
 if iMov.is2D || isMltTrk
     % case is a 2D experiment setup    
-    iGrp = iMov.pInfo.iGrp;
+    iGrp = iMov.pInfo.iGrp';
     
     % sets the group numbers and group indices
     if isSave
@@ -25,9 +25,17 @@ if iMov.is2D || isMltTrk
         % determines the regions with the current grouping           
         if isMltTrk
             % case is for multi-tracking
-            idx = find(iGrp==i);
-            cIDnw0 = cellfun(@(x,y)([x*ones(sum(y),1),find(y(:))]),...
-                                    num2cell(idx),iMov.flyok(idx),'un',0);
+            
+            % sets the acceptance flags (first group only)
+            if (i == 1)
+                fOK = iMov.flyok'; 
+                nFlyR = iMov.pInfo.nFly';
+            end
+                
+            % sets the group index ID flags
+            idx = find(iGrp.*fOK == i);
+            cIDnw0 = arrayfun(@(x,y)([x*ones(y,1),(1:y)']),...
+                                    idx,nFlyR(idx),'un',0);
             cIDnw = cell2mat(cIDnw0(:));
         else
             % case is 2D single tracking            
@@ -43,7 +51,6 @@ if iMov.is2D || isMltTrk
     for i = 1:nGrp
         if isMltTrk
             cID{i} = sortrows(cID{i},[1,2]);
-
         else
             cID{i} = sortrows(cID{i},[2,1]);
         end
