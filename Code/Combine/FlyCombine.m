@@ -410,6 +410,7 @@ popupTimeVal(hPopup, [], handles)
 % makes the GUI visible
 updateFlag = 0;
 figFlyCombine_ResizeFcn(hFig,[],handles)
+centerfig(hFig);
 pause(0.05);
 
 % closes the loadbar
