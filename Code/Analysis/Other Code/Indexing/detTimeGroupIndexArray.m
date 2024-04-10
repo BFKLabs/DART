@@ -1,15 +1,16 @@
-% --- 
+% --- sets up the daily time bin index array
 function indD = detTimeGroupIndexArray(T,iExpt,dT,Tgrp0)
 
 % determines the daily time group indices from the time array
 indD0 = detTimeGroupIndices(T,iExpt(1).Timing.T0,1,Tgrp0,1)';
 
 % offsets the time to the start of the day       
-T0 = [0,iExpt.Timing.T0(4:6)];
-T0(2) = mod(T0(2) - Tgrp0,24);
+dTime = datetime(iExpt(1).Timing.T0) - hours(Tgrp0);
+dVec = datevec(dTime);
+T0 = [0,dVec(4:end)];
 T = T + vec2sec(T0) - dT/2;
 
-%
+% determines the start/end times and number of days the expt ran for
 tDay = deal(convertTime(1,'d','s'));
 [T0D,TfD] = deal(convertTime(T(1),'s','d'),convertTime(T(end),'s','d'));
 nDay = length(indD0);
