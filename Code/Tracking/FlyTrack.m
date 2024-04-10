@@ -68,7 +68,7 @@ pFldStr = {'pData','hSolnT','hMainGUI','mObj','vcObj','mkObj','rgObj',...
            'vidTimer','hGUIOpen','reopenGUI','cType','infoObj','hTrack',...
            'isText','iMov','rtP','rtD','iData','iExpt','ppDef',...
            'frmBuffer','bgObj','prObj','objDACInfo','iStim','hTT',...
-           'pColF','isTest','fPosNew'};
+           'pColF','isTest','fPosNew','convObj','mtObj'};
 initObjPropFields(hObject,pFldStr);
 
 % ensures the background detection panel is invisible
@@ -953,7 +953,7 @@ try close(h); catch; end
 % ------------------------ %
 
 % -------------------------------------------------------------------------
-function menuConvertVideo_Callback(~, ~, handles)
+function menuDownSample_Callback(~, ~, handles)
 
 % runs the video conversion GUI
 ConvertVideo(handles.output);
@@ -1059,6 +1059,11 @@ if strcmp(uChoice,'Yes')
     % deletes the solution progress tracking GUI (if it exists)
     if ~isempty(hFig.hSolnT)
         try delete(hFig.hSolnT); catch; end
+    end
+    
+    % deletes the h264 conversion object (if open)
+    if ~isempty(hFig.convObj)
+        hFig.convObj.deleteWindow();
     end
     
     % stop and deletes the data buffering timer objects

@@ -40,7 +40,9 @@ switch (typeStr)
     % --- OBJECT INITIALISATIONS --- %
     % ------------------------------ %
     
-    case ('InitGUI') % case is initialising the GUI             
+    case ('InitGUI') 
+        % case is initialising the GUI             
+        
         % disables the GUI objects for all panels
         setImgEnable(handles,'off')
         setFrmEnable(handles,'off')
@@ -62,6 +64,10 @@ switch (typeStr)
             % deletes the handles
             delete(hMenu);         
         end        
+        
+        % sets up the h264 video file conversion object
+        hFig.convObj = feval('runExternPackage','ConvertH264',hFig);
+        hFig.mtObj = feval('runExternPackage','MultiTrack',hFig,'TrackPara');
         
         % resets the handle
         varargout{1} = handles;
@@ -301,6 +307,11 @@ switch (typeStr)
         % updates the translation correction menu item
         updateCTMenu(handles,iMov);     
         updateHMMenu(handles,iData);
+        
+        % sets the multi-tracking parameter menu item visibility
+        if ~isempty(hFig.mtObj)
+            hFig.mtObj.setMenuVisibility(detMltTrkStatus(iMov));
+        end
         
         % sets the frame/movie count
         if ishandle(handles.frmCountEdit)

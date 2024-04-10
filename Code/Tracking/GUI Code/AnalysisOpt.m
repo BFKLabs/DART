@@ -1033,6 +1033,12 @@ classdef AnalysisOpt < handle
                 end                
             end
             
+            % updates the multi-tracking menu item visibility
+            if ~isempty(obj.hFigM.mtObj)
+                isMT = detMltTrkStatus(obj.hFigM.iMov);
+                obj.hFigM.mtObj.setMenuVisibility(isMT)
+            end
+            
             % removes any guide markers and closes the GUI
             obj.removeGuideMarkers();            
             delete(obj.hFig)

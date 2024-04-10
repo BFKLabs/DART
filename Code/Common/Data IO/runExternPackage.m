@@ -148,11 +148,19 @@ if isOK
         case 'VideoCalibObj'
             % case is video calibration
             
-            % creates the class object and updates within the GUI
+            % creates the class object and updates within the GUI            
             handles = varargin{1};
             pkgObj = feval('VideoCalibObj',handles.figFlyRecord);                
             setappdata(handles.figFlyRecord,'vcObj',pkgObj)
 
+        case 'ConvertH264'
+            % case is the H264 conversion 
+            
+            % creates the class object and updates within the GUI
+            try
+                pkgObj = feval('ConvertH264',varargin{1});
+            end
+            
         case 'MultiTrack'
             % case is initialising the multi-tracking object
             switch class(varargin{1})
@@ -165,18 +173,26 @@ if isOK
                             
                         case 'Init'
                             % case is initialising the multi-tracking
-                            pkgObj = MultiTrackInit(varargin{1});
+                            pkgObj = MultiTrackInit(varargin{1});                            
                         
                         case 'InitAnalysis'
                             % case is initialising the analysis
                             pkgObj = getProgFileName('Code',...
                                         'External Apps','MultiTrack',...
-                                        'Analysis Functions');
+                                        'Analysis Functions');                                    
+                    end
+                    
+                case 'matlab.ui.Figure'
+                    % case is initialising the tracking objects
+                    switch varargin{2}                    
+                        case 'TrackPara'
+                            % case is initialising multitracking parameters
+                            pkgObj = MultiTrackPara(varargin{1});
                     end
                     
                 case 'AnalysisOpt'
                     % case is initialising multi-tracking options
-                    pkgObj = InitMultiTrackOptions(varargin{1});                    
+                    pkgObj = InitMultiTrackOptions(varargin{1});                                        
                     
             end 
     end
