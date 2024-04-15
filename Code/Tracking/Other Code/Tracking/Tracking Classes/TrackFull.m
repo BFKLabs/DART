@@ -23,8 +23,7 @@ classdef TrackFull < Track
         yLim
         
         % miscellaneous fields
-        tDir
-        wStr         
+        tDir        
         
         % boolean/flag fields
         nI = 0;
@@ -38,6 +37,7 @@ classdef TrackFull < Track
         
         % function handles
         dispImage
+        postTrackFunc
         
     end        
     
@@ -63,34 +63,44 @@ classdef TrackFull < Track
             obj.initTrackingObjects('Detect');
             obj.initOtherClassFields();
             
-            % starts the video tracking
-            obj.startVideoTracking();                                       
-            
-        end
-        
-        % ---------------------------------- %
-        % --- OBJECT DETECTION FUNCTIONS --- %
-        % ---------------------------------- %
-        
-        % --- starts the video tracking 
-        function startVideoTracking(obj)
-           
             % initialises the position data struct
             obj.initPosDataStruct();
             if ~obj.calcOK
                 % deletes the progress bar
+                obj.postTrackFunc(obj.hFig,[],[]);
                 obj.hProg.closeProgBar();
                 
                 % exits the function
                 return
             end            
             
+            % starts the video tracking   
+            if obj.isUsingParaProcess()
+                % case is parallel tracking
+                obj.startParaVideoTracking();
+            else
+                % case is serial tracking
+                obj.startVideoTracking();
+                
+                % runs the post-tracking function
+                obj.postTrackFunc(obj.hFig,obj.pData,obj.iMov);
+            end
+            
+        end
+        
+        % --------------------------------- %
+        % --- SERIAL TRACKING FUNCTIONS --- %
+        % --------------------------------- %
+        
+        % --- starts the serial video tracking 
+        function startVideoTracking(obj)
+            
             % determines the phase order (low-variance phases to be
             % segmented first)
             validPh = obj.iMov.vPhase < obj.ivPhRej;
             
             % ensures the progressbar is visible
-            obj.hProg.setVisibility('on');            
+            obj.hProg.setVisibility('on');
             
             % segments the objects from start phase to end
             for i = obj.iPhase0:obj.nPhase
@@ -105,7 +115,7 @@ classdef TrackFull < Track
                 elseif ~isempty(obj.hProg)
                     % updates the progressbar phase field
                     wStrNw = sprintf('%s #%i (Phase %i of %i)',...
-                                    obj.wStr{obj.wOfs1},j,i,obj.nPhase);
+                            obj.wStr{obj.wOfs1},j,i,obj.nPhase);
                     if obj.hProg.Update(obj.wOfs1,wStrNw,i/obj.nPhase)
                         % if the user quit, then exit the function
                         obj.calcOK = false; 
@@ -300,7 +310,7 @@ classdef TrackFull < Track
                 % updates the progressbar (if one is available)
                 if ~isempty(obj.hProg)
                     wStrNw = sprintf('%s (Stack %i of %i)',...
-                                        obj.wStr{obj.wOfs1+1},i,nStack);
+                                obj.wStr{obj.wOfs1+1},i,nStack);
                     if obj.hProg.Update(obj.wOfs1+1,wStrNw,i/nStack)
                         % if the user cancelled, then exit
                         obj.calcOK = false; 
@@ -341,6 +351,40 @@ classdef TrackFull < Track
                 % updates the solution tracking GUI  
                 obj.updateTrackingGUI(i);                           
             end           
+        end
+        
+        % ----------------------------------- %
+        % --- PARALLEL TRACKING FUNCTIONS --- %
+        % ----------------------------------- %        
+        
+        % --- starts the parallel video tracking
+        function startParaVideoTracking(obj)
+            
+            % determines the start frame
+            [iRow,iCol] = find(obj.iMov.flyok,1,'first');
+            fPos = obj.pData.fPos{iCol}{iRow};
+            
+            % determines if there are any frames that need to be tracked
+            isN = isnan(fPos(:,1));
+            if any(isN)
+                % is so, set the start frame index                
+                iFrm0 = find(isN,1,'first');
+        
+                % sets the progressbar offset
+                obj.fObj{1}.hProg = obj.hProg;
+                obj.fObj{1}.nFrmR = obj.sObj.nFrmS;
+                obj.fObj{1}.wOfs = obj.isBatch + obj.isMultiBatch;
+                
+                % sets the function handles
+                obj.fObj{1}.dispImage = obj.dispImage;
+
+                % runs the parallel processing (if available & being used)
+                obj.fObj{1}.startVideoTracking(iFrm0);
+            else
+                % deletes the progressbar
+                obj.hProg.closeProgBar();
+            end
+            
         end
         
         % -------------------------------------------- %
@@ -656,7 +700,12 @@ classdef TrackFull < Track
             obj.calcOK = true;
             obj.is2D = is2DCheck(obj.iMov);
             obj.tDir = obj.iData.ProgDef.TempFile; 
-            obj.nFrmS = getFrameStackSize();
+            
+            if obj.isUsingParaProcess()
+                obj.nFrmS = obj.hFig.mtObj.nFrmS;
+            else
+                obj.nFrmS = getFrameStackSize();
+            end
             
             % sets the interpolation value
             iLV0 = find(obj.iMov.vPhase==1,1,'first');
@@ -669,26 +718,11 @@ classdef TrackFull < Track
             % function handles
             obj.dispImage = get(obj.hFig,'dispImage');
             
-            % creates the progress bar (if not already set)
-            if isempty(obj.hProg) || ~obj.hasProg
-                % sets the progressbar strings
-                obj.wStr = {'Tracking Video Phase',...
-                            'Current Video Progress',...
-                            'Sub-Image Stack Reading'};
-
-                % case is the waitbar figure is being created here
-                wtStr = 'Fly Location Detection Progress';
-                obj.hProg = ProgBar(obj.wStr,wtStr,2);
-                pause(0.05)    
-                
-            else
-                % otherwise, retrieve the progressbar strings
-                obj.wOfs1 = 2 + obj.isMultiBatch;
-                obj.isBatch = true;
-                obj.wStr = obj.hProg.wStr;                
-            end            
-               
+            % determines if the progressbar needs creating
+            obj.sObj.createProgBar();            
+            
             % determines the number of progressbar field levels
+            obj.wStr = obj.hProg.wStr;            
             obj.nLvl = length(obj.wStr);
             
             % if the solution tracking GUI is open, then reset the 
@@ -836,6 +870,7 @@ classdef TrackFull < Track
                         if ~isempty(hDiag); delete(hDiag); end
                         
                         % sets the progressbar to be invisible 
+                        vFlag = obj.hProg.hFig.Visible;
                         obj.hProg.setVisibility('off')
                         
                         % prompts the user to restart/continue
@@ -886,7 +921,7 @@ classdef TrackFull < Track
                     % determines if the user cancelled
                     if obj.calcOK
                         % sets the progressbar to be visible again
-                        obj.hProg.setVisibility('on')   
+                        obj.hProg.setVisibility(vFlag)   
                         updateFrame = ~strcmp(uChoice,'Continue');  
                         
                     else
@@ -987,6 +1022,17 @@ classdef TrackFull < Track
                 obj.dispImage(obj.hGUI)
             end            
         end                 
+       
+        % --- determines if parallel processing is being used
+        function usePara = isUsingParaProcess(obj)
+
+            if isprop(obj.sObj,'usePara') 
+                usePara = obj.sObj.usePara;
+            else
+                usePara = false;
+            end
+
+        end        
         
     end        
     

@@ -7,7 +7,8 @@ p = varargin(2:end);
 
 if strcmpi(fType,'figure')
     % case is creating a figure
-    isOldVer = verLessThan('matlab','9.10');
+    isOldVer = true;
+%     isOldVer = verLessThan('matlab','9.10');
 
 elseif isa(varargin{1},'matlab.ui.Figure')
     % case is the parent object is a figure

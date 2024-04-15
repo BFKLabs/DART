@@ -37,7 +37,7 @@ classdef ProgBar < matlab.mixin.SetGet
     methods
         
         % --- class constructor
-        function obj = ProgBar(wStr,tStr,pType)
+        function obj = ProgBar(wStr,tStr,pType,isVis)
            
             % ensures the field strings are stored in a cell array
             if ~iscell(wStr); wStr = {wStr}; end            
@@ -46,11 +46,18 @@ classdef ProgBar < matlab.mixin.SetGet
             obj.wStr = wStr;
             obj.tStr = tStr;
             
+            % if provided, set the visibility flag
+            if exist('isVis','var')
+                obj.isVisible = isVis;
+            end
+            
             % if provided, then set the visibility/cancel flags
             if exist('pType','var')
                 if pType > 0
                     obj.hasCancel = mod(pType,2) == 0;
-                    obj.isVisible = mod(pType,2) == 1;
+                    if ~exist('isVis','var')
+                        obj.isVisible = mod(pType,2) == 1;
+                    end
                 end
             end
             

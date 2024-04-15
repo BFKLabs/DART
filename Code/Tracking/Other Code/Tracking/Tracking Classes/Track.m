@@ -12,7 +12,8 @@ classdef Track < matlab.mixin.SetGet
         iMov       
         hProg
         hGUI
-        hFig      
+        hFig 
+        wStr
 
         % initialised class fields
         dX = 5;        
@@ -42,6 +43,7 @@ classdef Track < matlab.mixin.SetGet
     
     % class methods
     methods
+        
         % class constructor
         function obj = Track(iData,isMulti)
             

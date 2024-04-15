@@ -32,6 +32,7 @@ classdef SingleTrackFull < TrackFull & SingleTrack
             obj.segEntireVideoFull();
             if ~obj.calcOK
                 % exit if the user cancelled
+                
                 return
             end            
             
@@ -58,9 +59,9 @@ classdef SingleTrackFull < TrackFull & SingleTrack
 
         end        
         
-        % -------------------------------------------- %
-        % ---- TRACKING POST-PROCESSING FUNCTIONS ---- %
-        % -------------------------------------------- %        
+        % ------------------------------------------ %
+        % --- TRACKING POST-PROCESSING FUNCTIONS --- %
+        % ------------------------------------------ %        
         
         % --- checks the final solution for any anomalies
         function checkFinalSegSolnF(obj)
@@ -169,9 +170,9 @@ classdef SingleTrackFull < TrackFull & SingleTrack
             
         end               
       
-        % ---------------------------------------------------- %            
-        % ---- CLASS/DATA STRUCT INITIALISATION FUNCTIONS ---- %
-        % ---------------------------------------------------- %                
+        % -------------------------------------------------- %
+        % --- CLASS/DATA STRUCT INITIALISATION FUNCTIONS --- %
+        % -------------------------------------------------- %
         
         % --- retrieves the previous phase information
         function prData = setupPrevPhaseData(obj,iFrmLast,varargin)
@@ -226,6 +227,33 @@ classdef SingleTrackFull < TrackFull & SingleTrack
             nRegion = obj.nTube(iApp);
 
         end                
+        
+        % ------------------------------------ %
+        % --- PROGRESS BAR SETUP FUNCTIONS --- %
+        % ------------------------------------ % 
+        
+        % --- creates the progressbar object
+        function createProgBar(obj)
+            
+            % creates the progress bar (if not already set)
+            if isempty(obj.hProg) || ~obj.hasProg
+                % sets the progressbar strings
+                wStr0 = {'Tracking Video Phase',...
+                         'Current Video Progress',...
+                         'Sub-Image Stack Reading'};
+                
+                % case is the waitbar figure is being created here
+                wtStr = 'Fly Location Detection Progress';
+                obj.hProg = ProgBar(wStr0,wtStr,2);
+                pause(0.05)
+                
+            else
+                % otherwise, retrieve the progressbar strings
+                obj.wOfs1 = 2 + obj.isMultiBatch;
+                obj.isBatch = true;
+            end            
+            
+        end
         
     end 
     

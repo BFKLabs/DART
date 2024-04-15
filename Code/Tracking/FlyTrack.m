@@ -68,7 +68,7 @@ pFldStr = {'pData','hSolnT','hMainGUI','mObj','vcObj','mkObj','rgObj',...
            'vidTimer','hGUIOpen','reopenGUI','cType','infoObj','hTrack',...
            'isText','iMov','rtP','rtD','iData','iExpt','ppDef',...
            'frmBuffer','bgObj','prObj','objDACInfo','iStim','hTT',...
-           'pColF','isTest','fPosNew','convObj','mtObj'};
+           'pColF','isTest','fPosNew','convObj','mtObj','hProp0','eData'};
 initObjPropFields(hObject,pFldStr);
 
 % ensures the background detection panel is invisible
@@ -167,7 +167,8 @@ addObjProps(hObject,'dispImage',@dispImage,...
             'menuOptSize_Callback',@menuOptSize_Callback,...
             'menuAllowResize_Callback',@menuAllowResize_Callback,...
             'calcAxesGlobalCoords',@calcAxesGlobalCoords,...
-            'figFlyTrack_ResizeFcn',@figFlyTrack_ResizeFcn)
+            'figFlyTrack_ResizeFcn',@figFlyTrack_ResizeFcn,...
+            'postTrackFunc',@postTrackFunc)
 
 % runs the fixed ratio callback function
 checkFixRatio_Callback(handles.checkFixRatio, 1, handles)
@@ -2218,19 +2219,20 @@ hFig.bgObj.openBGAnalysis();
 % --- Executes on button press in buttonDetectFly.
 function buttonDetectFly_Callback(~, eventdata, handles)
 
-% gets a snap-shot of the figure object properties
-hProp0 = getHandleSnapshot(handles);
-
 % loads the data struct
 hFig = handles.output;
 iData = get(hFig,'iData');
 iMov = get(hFig,'iMov');
 pData = get(hFig,'pData');
 
+% gets a snap-shot of the figure object properties
+set(hFig,'eData',eventdata);
+set(hFig,'hProp0',getHandleSnapshot(handles));
+
 % creates the tracking object based on the tracking type
 if detMltTrkStatus(iMov)
     % case is tracking multiple objects
-    trkObj = runExternPackage('MultiTrack',iData,'Full');
+    trkObj = runExternPackage('MultiTrack',handles,'Full');
     
 else
     % case is tracking single objects
@@ -2239,19 +2241,26 @@ end
 
 % sets the GUI properties
 setTrackGUIProps(handles,'PreFlyDetect')
+trkObj.postTrackFunc = get(hFig,'postTrackFunc');
 
 % sets the tracking object fields
+assignin('base','trkObj',trkObj);
 trkObj.segEntireVideo(handles,iMov,pData);
-[iMov,pData] = deal(trkObj.iMov,trkObj.pData);
-    
+
+% --- runs the post-tracking function
+function postTrackFunc(hFig,pData,iMov)
+
+% loads the data struct
+handles = guidata(hFig);
+
 % (re)sets the initial plot markers    
 if ~isempty(pData)   
     % updates the sub-region/positional data structs
-    set(handles.output,'iMov',iMov);
-    set(handles.output,'pData',pData);    
+    set(hFig,'iMov',iMov);
+    set(hFig,'pData',pData);    
     
     % (re)sets the initial plot 
-    handles.output.mkObj.initTrackMarkers(1);
+    hFig.mkObj.initTrackMarkers(1);
     pause(0.01)
 
     % retrieves the last segmented frame
@@ -2268,11 +2277,13 @@ if ~isempty(pData)
     
 else
     % otherwise, reset the GUI to the previous state
-    resetHandleSnapshot(hProp0,hFig)    
+    resetHandleSnapshot(hFig.hProp0,hFig)
+    set(hFig,'hProp0',[]);
 end
 
 % shows the tube regions
-checkShowTube_Callback(handles.checkShowTube, eventdata, handles)
+checkShowTube_Callback(handles.checkShowTube, hFig.eData, handles)
+set(hFig,'eData',[]);
     
 % -------------------------------------- %
 % --- AXES FEATURES OBJECT FUNCTIONS --- %
@@ -2379,10 +2390,13 @@ end
 
 % sets the image data and retrieves the current image
 switch nargin
-    case 3 % case is a special image is being displayed
+    case 3 
+        % case is a special image is being displayed
         ImgNw = varargin{1};
         
-    case 2 % case is the movie is playing
+    case 2 
+        % case is the movie is playing
+        
         % retrieves new image from the image stack (loaded from movie show)
         [iNw,ImgS] = deal(varargin{1}{1},varargin{1}{2});   
         ImgNw = ImgS{iNw};
@@ -2392,7 +2406,8 @@ switch nargin
             ImgNw = setSubImage(handles,ImgNw);
         end 
         
-    otherwise % case is a normal image update
+    otherwise
+        % case is a normal image update
         isSub = get(handles.checkLocalView,'value');
         ImgNw = getDispImage(iData,iMov,cFrm,isSub,handles,1);        
 end

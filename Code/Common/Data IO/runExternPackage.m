@@ -168,8 +168,21 @@ if isOK
                     % case is initialising the tracking objects
                     switch varargin{2}
                         case 'Full'
+                            % field retrieval
+                            hFig = varargin{1}.figFlyTrack;
+                            mtObj = hFig.mtObj;                            
+                            
+                            % retrieves the parallel processing flag
+                            if isempty(mtObj)
+                                % case is multi-tracking object is missing
+                                usePara = false;
+                            else
+                                % case is multi-tracking object is present
+                                usePara = mtObj.usePara;
+                            end
+                            
                             % case is running the full multi-tracking
-                            pkgObj = MultiTrackFull(varargin{1}); 
+                            pkgObj = MultiTrackFull(hFig.iData,usePara);
                             
                         case 'Init'
                             % case is initialising the multi-tracking
