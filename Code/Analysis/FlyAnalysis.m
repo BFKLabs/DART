@@ -572,6 +572,7 @@ end
 if ~isdeployed
     iData = getappdata(handles.figFlyAnalysis,'iData');
     rmpath(iData.ProgDef.DirFunc);
+    setExternFuncDir(handles);
 end
 
 % removes the temporary solution file (if it exists)
@@ -2816,14 +2817,18 @@ if isdeployed
     end
 else
     % retrieves all potential analysis function directories
-    mtDir = runExternPackage('MultiTrack',handles,'InitAnalysis');
-    rtDir = runExternPackage('RTTrack',handles,'InitAnalysis');
-    afDir = runExternPackage('AnalysisFunc',handles,'InitAnalysis');
-    dDir = [{dDir;mtDir;rtDir};afDir(:)];
-    
+    dDir = setExternFuncDir(handles,{dDir});    
+        
     % sets the partial/full file names
+    fPath = path;
     [fName,fFile] = deal(cell(length(dDir),1));
     for i = find(~cellfun('isempty',dDir(:)'))
+        % if the path is not on the directory then add it
+        if ~any(strcmp(fPath,dDir{i}))
+            addpath(dDir{i});
+        end
+        
+        % retrieves the files from the analysis function folder
         fName{i} = field2cell(dir(fullfile(dDir{i},'*.m')),'name');
         if ~isempty(fName{i})
             fFile{i} = cellfun(@(x)(fullfile(dDir{i},x)),fName{i},'un',0);
@@ -2864,7 +2869,6 @@ for i = 1:length(fName)
                 eval(sprintf('%s(end+1) = a;',typeStr))
             end
         end
-    catch    
     end
 end
 
@@ -3302,4 +3306,41 @@ function deleteDataCursorObj(hObj)
 
 if ~isempty(hObj)
     delete(hObj)
+end
+
+% --- sets the external function directories
+function dDir = setExternFuncDir(handles,dDir)
+
+% initialisations
+isAdd = exist('dDir','var');
+extnType = {'MultiTrack','RTTrack','AnalysisFunc'};
+
+% searches and adds/removes the external function directory types
+for i = 1:length(extnType)
+    % retrieves the function directory path
+    fcnDir = runExternPackage(extnType{i},handles,'InitAnalysis');
+    if ~isempty(fcnDir)
+        % if the directory exists, then add it to the path
+        if iscell(fcnDir)
+            % case is the path is stored as a string
+            if isAdd
+                % case is adding the directories to the path
+                cellfun(@addpath,fcnDir);
+                dDir = [dDir;fcnDir(:)];
+            else
+                % case is removing the directories from the path
+                cellfun(@rmpath,fcnDir);
+            end
+        else
+            % case is the paths are stored in a cell array
+            if isAdd
+                % case is adding the directory to the path
+                addpath(fcnDir);
+                dDir = [dDir;{fcnDir}];
+            else
+                % case is removing the directory from the path
+                rmpath(fcnDir);
+            end            
+        end
+    end
 end

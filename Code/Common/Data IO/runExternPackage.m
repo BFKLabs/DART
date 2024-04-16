@@ -3,6 +3,7 @@ function varargout = runExternPackage(pFile,varargin)
 
 % initialisations
 pkgObj = [];
+afDir = 'Analysis Functions';
 
 % if the package file doesn't exist, then exit
 if ~exist(pFile,'file')
@@ -190,9 +191,7 @@ if isOK
                         
                         case 'InitAnalysis'
                             % case is initialising the analysis
-                            pkgObj = getProgFileName('Code',...
-                                        'External Apps','MultiTrack',...
-                                        'Analysis Functions');                                    
+                            pkgObj = getPackagePath(pFile,afDir);
                     end
                     
                 case 'matlab.ui.Figure'
@@ -214,4 +213,24 @@ end
 % sets the output arguments
 if exist('pkgObj','var') && (nargout == 1)
     varargout{1} = pkgObj;
+end
+
+
+% --- retrieves the package path directory
+function pkgPath = getPackagePath(pDirM,pDirS)
+
+% initialisations
+pkgPath = [];
+
+% determines if there is a directory containing, pDirM
+pDirInfo = what(pDirM);
+if ~isempty(pDirInfo)
+    % sets the sub-directory path 
+    pkgPathTmp = fullfile(pDirInfo.path,pDirS);
+    if exist(pkgPathTmp,'dir')
+        % if it exists, then set the final path string
+        pkgPath = pkgPathTmp;
+    end
+else
+    
 end

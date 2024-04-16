@@ -528,6 +528,7 @@ classdef FuncFilterTree < matlab.mixin.SetGet
                         (getStructField(obj.pDataT,x))),pFldT,'un',0));
 
             % other initialisations            
+            nFld = 5;
             pFld = fieldnames(pData{1}.rI); 
             reqData = cell(length(pData),obj.nCol); 
 
@@ -537,7 +538,7 @@ classdef FuncFilterTree < matlab.mixin.SetGet
                 reqData{i,1} = pData{i}.Name; 
 
                 % sets the other requirement fields
-                for j = 1:(length(pFld)-1)
+                for j = 1:nFld
                     reqData{i,j+1} = getStructField(pData{i}.rI,pFld{j}); 
                 end 
             end
