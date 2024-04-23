@@ -2152,7 +2152,8 @@ classdef CalcBG < handle
             for i = iReg
                 % sets                
                 if obj.isMTrk
-                    cellfun(@(x)(setObjVisibility(x,fok(i))),obj.hMark{i})
+                    cellfun(@(x)(setObjVisibility(...
+                        x,isOK && fok(i))),obj.hMark{i})
                 else
                     indFly = 1:nFly(i);                    
                     cellfun(@(x,isOn)(setObjVisibility(x,isOn)),...
