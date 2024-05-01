@@ -12,7 +12,11 @@ end
 % sets the subplot parameter fields
 if pData.hasSP
     % sets the subplot count/subplot names
-    [nCount,spName] = deal(length(snTot.iMov.ok),snTot.iMov.pInfo.gName);        
+    if pData.useReg
+        [nCount,spName] = deal(pData.nApp,pData.appName);
+    else
+        [nCount,spName] = deal(length(snTot.iMov.ok),snTot.iMov.pInfo.gName);        
+    end
     
     % creates the data struct
     pS(2) = setParaFields([],'Subplot',...

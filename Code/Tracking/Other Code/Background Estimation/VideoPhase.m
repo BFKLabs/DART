@@ -798,7 +798,7 @@ classdef VideoPhase < handle
             obj.updateSubProgField('Setting Phase Classification...',0);
             
             % parameters
-            pTolRng = 0.25*256;         % pixel range tolerance
+            pTolRng = 0.125*256;         % pixel range tolerance
             
             % memory allocation
             nGrpF = size(iGrpF,1);

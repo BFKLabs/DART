@@ -6,7 +6,11 @@ tMin = 300;
 tMinTol = 59;
 
 % sets the number of input arguments (if already set)
-nApp = length(snTot(1).iMov.ok);
+if pData.useReg
+    nApp = pData.nApp;
+else
+    nApp = length(snTot(1).iMov.ok);
+end
 
 % sets the input argument values (if special)
 if ~ischar(varargin{1})

@@ -1804,12 +1804,19 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         function initPosDataStruct(obj, iDir)
 
             % retrieves the index of the current file
-            iVid = str2double(regexp(getFileName(...
-                    obj.iData.fData.name),'\d+','match'));
-            sFile = load(obj.bData(iDir).sName);
+            fNumS = regexp(getFileName(...
+                    obj.iData.fData.name),'\d+','match');
+            if length(fNumS) > 1
+                % if there is more than one number found, then take the
+                % last 4 digit number
+                ii = find(cellfun('length',fNumS) == 4,1,'last');
+                fNumS = fNumS(ii);
+            end                    
 
             % creates an empty position solution struct 
-            % and outputs it to file               
+            % and outputs it to file    
+            iVid = str2double(fNumS);
+            sFile = load(obj.bData(iDir).sName);            
             obj.pData = setupPosDataStruct(obj.iMov,sFile.tStampV{iVid});  
 
         end        
