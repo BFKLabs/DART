@@ -82,6 +82,11 @@ classdef DART < handle
             % updates the figure
             obj.getJavaObjectDim();
             
+            % clears the output object (if not required)
+            if nargout == 0
+                clear obj
+            end
+            
         end            
         
         % --- performs the program diagnostic check
