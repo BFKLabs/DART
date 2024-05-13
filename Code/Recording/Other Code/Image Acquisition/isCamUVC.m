@@ -3,7 +3,11 @@ function isUVC = isCamUVC(devName)
 % determines if the device is in the webcam list
 if exist('webcamlist','file')
     % uses the webcamlist to determine device type
-    isUVC = any(strcmp(webcamlist,devName));
+    try
+        isUVC = any(strcmp(webcamlist,devName));
+    catch
+        isUVC = false;
+    end
     
 else
     % manually sets the flag based on the camera type

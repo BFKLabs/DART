@@ -76,7 +76,7 @@ classdef DARTProgInstall < handle
         gDirB0 = fullfile('Git','Repo');
         rAbb = {'Main', 'Git', 'AnalysisGen'};
         rName = {'DART', 'DARTGit', 'DARTAnalysisGen'};
-        rBase = {'DART Program', 'Git Functions', 'Analysis Functions'};                
+        rBase = {'DART Program', 'Git Functions', 'Analysis Functions'};
         
         % Github user name/token key
         gtUser = 'DARTUser';        
@@ -134,7 +134,7 @@ classdef DARTProgInstall < handle
         
             % sets the output directories
             FuncDir = fullfile('Data','Analysis','1 - Analysis Functions');
-            obj.outDir = {'','Git',FuncDir};            
+            obj.outDir = {'','Git',FuncDir};
             
             % panel object dimensions
             obj.widPanel = obj.nButC*(obj.dX + obj.widButC) + obj.dX;
@@ -347,7 +347,7 @@ classdef DARTProgInstall < handle
             end
             
             % makes the installer object visible
-            obj.centreFigPosition();
+            centerfig(obj.hFig);
             set(obj.hFig,'Visible','on');
             
         end            
@@ -538,7 +538,7 @@ classdef DARTProgInstall < handle
             end            
             
             % updates the download progress strings
-            obj.updateProgressFields(1,'Installation Complete');            
+            obj.updateProgressFields(1,'Installation Complete');
             pause(1);
             
             % enables the program installation button
@@ -905,22 +905,7 @@ classdef DARTProgInstall < handle
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %
         % ------------------------------- %           
-        
-        % --- centres the figure position to the screen's centre
-        function centreFigPosition(obj)
-
-            % global variables
-            scrSz = get(0,'ScreenSize');
-
-            % retrieves the screen and figure position
-            hPos = get(obj.hFig,'position');
-            p0 = [(scrSz(3)-hPos(3))/2,(scrSz(4)-hPos(4))/2];
-            if ~isequal(p0,hPos(1:2))
-                set(obj.hFig,'position',[p0,hPos(3:4)])
-            end
-
-        end             
-        
+                
         % --- sets the install button enabled properties
         function setButtonEnabledProps(obj)
             

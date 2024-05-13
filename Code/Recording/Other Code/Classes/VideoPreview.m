@@ -439,7 +439,7 @@ classdef VideoPreview < handle
                 set(obj.hImage, 'cdata', Inw');
             else
                 set(obj.hImage, 'cdata', Inw);
-            end  
+            end 
             
             % updates the video calibration trace data
             if ~isempty(obj.vcObj)

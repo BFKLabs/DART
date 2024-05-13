@@ -24,8 +24,11 @@ end
 function FlyRecord_OpeningFcn(hObject, ~, handles, varargin)
 
 % turns off all warnings
-wState = warning('off','all');
 handles.output = hObject;
+
+% turns off the warnings
+warning('off','instrument:instrfind:FunctionToBeRemoved')
+wState = warning('off','all');
 
 % --------------------------------------------------- %
 % --- PARAMETERS & FIGURE POSITION INITIALISATION --- %

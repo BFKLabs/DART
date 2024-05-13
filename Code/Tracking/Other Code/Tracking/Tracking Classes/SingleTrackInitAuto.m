@@ -329,8 +329,8 @@ classdef SingleTrackInitAuto < SingleTrackInit
             obj.hProg.Update(3+obj.wOfsL,'Sub-Image Stack Setup',0);             
             
             % parameters  
-            pWT = 0.75;
-            dtOfs = 2;              
+            pWT = 0.75; 
+            pWmx = 1.10;
             dPMin = min(obj.iMov.szObj)/2;
             dtMin = max(ceil(pWT*obj.iMov.szObj));              
             
@@ -347,9 +347,8 @@ classdef SingleTrackInitAuto < SingleTrackInit
             [tPk,yPk] = deal(cell(nApp,nImg));   
             
             % calculates the 
-            dTMaxR = cellfun(@(x,y)(ceil(dtOfs+length(x)/getSRCount(...
-                    obj.iMov,y))),obj.iMov.iR(obj.fOK),num2cell(obj.fOK));
-            dtMax = min(dTMaxR);
+            nFlyMx = max(sum(obj.iMov.pInfo.nFly,1));
+            dtMax = ceil(pWmx*obj.iMov.posG(4)/nFlyMx);
             
             % ensures the min period is less that the max (check on this?)
             if dtMin > dtMax

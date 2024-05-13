@@ -419,9 +419,19 @@ classdef VideoCalibObj < handle
                     
             % sets the sub-image
             try
-                Inw = rgb2gray(eData.Data(obj.iRI,obj.iCI,:));
+                % reduces the image down to the interpolation indices
+                Inw = eData.Data(obj.iRI,obj.iCI,:);
+                if size(eData.Data,3) == 3
+                    % converts the RGB image to grayscale
+                    Inw = rgb2gray(Inw);
+                end
             catch
-                Inw = rgb2gray(eData.Data);
+                % case was there was an error, so use the whole image
+                Inw = eData.Data;
+                if size(Inw,3) == 3
+                    % converts the RGB image to grayscale
+                    Inw = rgb2gray(Inw);
+                end
             end
 
             % updates the time/avg. intensity values  
