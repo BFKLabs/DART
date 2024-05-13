@@ -200,8 +200,29 @@ classdef DetGridRegion < handle
 
             % re-initialises the status flags
             nT = arr2vec(getSRCountVec(obj.iMov)');
-            obj.iMov.Status = arrayfun(@(x)(NaN(x,1)),nT,'un',0);
+            obj.iMov.Status = arrayfun(@(x)(NaN(x,1)),nT,'un',0);            
+            
+            % ------------------------------------------ %            
+            % --- GLOBAL OUTLINE BOUNDING BOX UPDATE --- %
+            % ------------------------------------------ %
+            
+            % resizes the global coordinates (if necessary)
+            pPosG = obj.iMov.posG;
+            pPosT = cell2mat(obj.iMov.pos(:));
+            
+            % determines the min/max bounding box extents
+            dMin = min(pPosT(:,1:2),[],1);
+            dMax = max(pPosT(:,1:2)+pPosT(:,3:4),[],1);
+            
+            % resets the base bounding-box coordinates
+            pPosG(1:2) = max(1,min(pPosG(1:2),dMin));            
+            for i = 1:2
+                pPosG(i+2) = max(pPosG(i+2),dMax(i)-pPosG(i));
+            end
            
+            % updates the data struct
+            obj.iMov.posG = pPosG;
+            
             % ------------------------------- %
             % --- HOUSE-KEEPING EXERCISES --- %
             % ------------------------------- %            

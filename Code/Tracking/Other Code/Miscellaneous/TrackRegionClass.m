@@ -830,8 +830,8 @@ classdef TrackRegionClass < handle
                 % retrieves the new fly count index
                 nTubeNw = getSRCount(obj.iMov,i);
                 indCol = mod(i-1,length(col))+1;  
-                xTubeS0 = rPosS{i}(1)+[0 rPosS{i}(3)];
-                xTubeS = repmat(xTubeS0,nTubeNw-1,1)';
+%                 xTubeS0 = rPosS{i}(1)+[0 rPosS{i}(3)];
+%                 xTubeS = repmat(xTubeS0,nTubeNw-1,1)';
                 
                 % creates the new rectangle object
                 if obj.use2D
@@ -938,11 +938,10 @@ classdef TrackRegionClass < handle
                         obj.hROI{i}.setConstraintRegion(xLimS,yLimS);
                     end
 
-                    % creates the individual tube markers        
-                    colStr = [col(indCol),'--'];
-                    yTubeS = rPosS{i}(2) + ...
-                              (rPosS{i}(4)/nTubeNw)*(1:(nTubeNw-1));            
-                    plot(obj.hAx,xTubeS,repmat(yTubeS,2,1),colStr,'tag',...
+                    % creates the individual tube markers
+                    colStr = [col(indCol),'--'];                    
+                    [xT,yT] = obj.calcTubeCoords(rPosS{i},nTubeNw);
+                    plot(obj.hAx,xT,yT,colStr,'tag',...
                               sprintf('hTubeEdge%i',i),'UserData','hTube');     
                 end
             end
@@ -951,6 +950,13 @@ classdef TrackRegionClass < handle
             if obj.isMltTrk
                 obj.ImapR = obj.setupRegionMask;
             end
+
+            % resets the plotting objects (so inner objects are on top)
+            hObjC = obj.hAx.Children;
+            hInner = findall(hObjC,'Tag','hInner');
+            [~,iA] = setdiff(hObjC,hInner,'stable');            
+            B = setGroup(iA,size(hObjC));
+            obj.hAx.Children = [hObjC(~B);hObjC(B)];
             
             % turns the axis hold off
             hold(obj.hAx,'off')
@@ -1479,19 +1485,11 @@ classdef TrackRegionClass < handle
 
             % retrieves the sub-region data struct
             nTube = getSRCount(obj.iMov,iApp);
+            [xT,yT] = obj.calcTubeCoords(rPos,nTube);
 
             % resets the locations of the flies
             hTubeE = findobj(obj.hAx,'tag',sprintf('hTubeEdge%i',iApp));
-            dY = diff(rPos(2)+[0 rPos(4)])/nTube;
-
-            % sets the x/y locations of the tube sub-regions
-            xTubeS = repmat(rPos(1)+[0 rPos(3)],nTube-1,1)';
-            yTubeS = repmat(rPos(2)+(1:(nTube-1))*dY,2,1);
-
-            % sets the x/y locations of the inner regions
-            for i = 1:length(hTubeE)
-                set(hTubeE(i),'xData',xTubeS(:,i),'yData',yTubeS(:,i));
-            end
+            set(hTubeE,'xData',xT,'yData',yT);            
 
             % if not updating, then reset the proportional dimensions
             if ~obj.isUpdating
@@ -2122,6 +2120,19 @@ classdef TrackRegionClass < handle
             % sets the distance mask
             Bnw = setGroup((R+1)*[1,1],(2*R+1)*[1,1]);
             Dnw = bwdist(Bnw) <= R;            
+            
+        end
+        
+        function [xT,yT] = calcTubeCoords(rPosS,nTube)
+            
+            % initialisations
+            A = NaN(1,nTube-1);
+            xT0 = rPosS(1) + [0;rPosS(3);NaN];
+            yT0 = rPosS(2) + linspace(0,rPosS(4),nTube+1);
+            
+            % sets the final tube coordinates 
+            xT = arr2vec(repmat(xT0,1,nTube-1));
+            yT = arr2vec([repmat(yT0(2:end-1),2,1);A]);
             
         end
         
