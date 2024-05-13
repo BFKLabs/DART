@@ -957,6 +957,9 @@ classdef TrackRegionClass < handle
             [~,iA] = setdiff(hObjC,hInner,'stable');            
             B = setGroup(iA,size(hObjC));
             obj.hAx.Children = [hObjC(~B);hObjC(B)];
+
+            % resets the axes sort method
+            obj.hAx.SortMethod = 'childorder';
             
             % turns the axis hold off
             hold(obj.hAx,'off')
