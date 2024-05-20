@@ -310,7 +310,14 @@ switch (typeStr)
         
         % sets the multi-tracking parameter menu item visibility
         if ~isempty(hFig.mtObj)
-            hFig.mtObj.setMenuVisibility(detMltTrkStatus(iMov));
+            % sets the menu visibility
+            isMltTrk = detMltTrkStatus(iMov);
+            hFig.mtObj.setMenuVisibility(isMltTrk);
+            
+            % sets the menu item enabled properties
+            if isMltTrk
+                hFig.mtObj.setGroupMenuProps(~isempty(pData));
+            end
         end
         
         % sets the frame/movie count

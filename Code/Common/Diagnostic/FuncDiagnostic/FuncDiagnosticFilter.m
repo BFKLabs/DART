@@ -35,6 +35,9 @@ classdef FuncDiagnosticFilter < matlab.mixin.SetGet
         isUpdating = false;
         rType = {'Scope','Dur','Shape','Stim','Spec'}; 
         
+        % old version flag
+        isOldVer              
+        
     end
     
     % class methods
@@ -194,7 +197,8 @@ classdef FuncDiagnosticFilter < matlab.mixin.SetGet
             end   
             
             % sets up the compatibility table
-            cmpFcn = obj.fcnData(obj.cmpData(:,1),3:end);
+            nFld = length(rFld) - 1;
+            cmpFcn = obj.fcnData(obj.cmpData(:,1),1+(1:nFld));
             T = unique(cell2table(cmpFcn,'VariableNames',rFld(2:end)));
                
             % retrieves the object position
@@ -424,7 +428,7 @@ classdef FuncDiagnosticFilter < matlab.mixin.SetGet
                 reqData{i,1} = pData{i}.Name; 
 
                 % sets the other requirement fields
-                for j = 1:(length(pFld)-1)
+                for j = 1:(length(pFld)-2)
                     reqData{i,j+1} = getStructField(pData{i}.rI,pFld{j}); 
                 end 
             end

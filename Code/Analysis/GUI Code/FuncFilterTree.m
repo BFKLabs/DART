@@ -35,6 +35,9 @@ classdef FuncFilterTree < matlab.mixin.SetGet
         isUpdating = false;
         rType = {'Scope','Dur','Shape','Stim','Spec'}; 
         
+        % old version flag
+        isOldVer        
+        
     end
     
     % class methods

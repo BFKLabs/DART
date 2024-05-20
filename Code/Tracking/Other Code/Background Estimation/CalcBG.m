@@ -1498,8 +1498,6 @@ classdef CalcBG < handle
 
             % updates the change flag wrt the ok flags
             obj.iMov.ddD = [];
-%             obj.isChange = obj.isChange || (sum(abs(double(obj.ok0(:))-...
-%                                         double(obj.iMov.flyok(:))))>0);
 
             % if there is a change/update then prompt the user if they wish
             % to proceed with updating the changes
@@ -1706,6 +1704,11 @@ classdef CalcBG < handle
                 % sets the frame index arrays
                 obj.indFrm = field2cell(simgs,'iFrm');                
             end                              
+            
+            % disables the group menu properties
+            if obj.isMTrk
+                obj.hFig.mtObj.setGroupMenuProps(0);
+            end
             
             % disables the manual tracking panel
             obj.setManualObjProps('off')
@@ -2268,7 +2271,9 @@ classdef CalcBG < handle
                 obj.fPos = obj.trkObj.fPosG;
                 
                 % sets the single-tracking specific fields
-                if ~obj.isMTrk
+                if obj.isMTrk
+                    obj.hFig.mtObj.setGroupMenuProps(1);                  
+                else
                     obj.IPos = obj.trkObj.IPos;
                     obj.pStats = obj.trkObj.pStats;
                     obj.iMov.hFilt = calcImageStackFcn(obj.trkObj.hCQ);

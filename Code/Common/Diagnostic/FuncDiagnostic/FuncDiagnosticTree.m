@@ -46,8 +46,10 @@ classdef FuncDiagnosticTree < handle
         useSubGrp = false;        
         sScope = {'I','S','M'};        
         rootStr = 'FILTERED FUNCTION LIST';
-        isOldVer = verLessThan('matlab','9.10');
         sType = {'Individual','Single Experiment','Multiple Experiments'};
+  
+        % old version flag
+        isOldVer      
         
     end
     
@@ -62,6 +64,9 @@ classdef FuncDiagnosticTree < handle
             obj.hPanel = hPanel;
             obj.pDataT = pDataT;
             obj.snTot = snTot;
+            
+            % sets the old-version flag
+            obj.isOldVer = ffObj.isOldVer;
             
             % initialises the class fields and explorer tree
             obj.initClassFields();

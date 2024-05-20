@@ -115,7 +115,7 @@ classdef FuncDiagnostic < handle
         arrStr = char(8594);
         tDurS = {'Short','Long'};
         tagStr = 'figFuncDiagnostic';
-        isOldVer = verLessThan('matlab','9.10');
+        isOldVer = true;
         
         % function handles
         initAxes
@@ -287,6 +287,7 @@ classdef FuncDiagnostic < handle
             end           
             
             % sets the function filter callback function
+            obj.ffObj.isOldVer = true;
             set(obj.ffObj,'treeUpdateExtn',@obj.updateFuncFilter);
             
             % creates the diagnostic tree object

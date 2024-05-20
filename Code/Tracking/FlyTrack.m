@@ -1032,7 +1032,7 @@ if strcmp(uChoice,'Yes')
         hAnalyOpt = findall(0,'tag','figAnalyOpt');    
         if ~isempty(hAnalyOpt)
             try delete(hAnalyOpt); catch; end
-        end        
+        end         
         
         % if running the camera object, then stop it and reset the logging
         % mode flags
@@ -1040,7 +1040,7 @@ if strcmp(uChoice,'Yes')
             % stops the camera and resets the disklogging properties
             stop(hFig.infoObj.objIMAQ)
             set(hFig.infoObj.objIMAQ,'LoggingMode','Disk');                        
-        end 
+        end         
         
         % retrieves the full DART program default struct directory
         if ~isempty(hMain)
@@ -1056,6 +1056,12 @@ if strcmp(uChoice,'Yes')
 %             end
         end
     end
+    
+    % deletes the fly grouping figure (if it exists)
+    hFlyGroup = findall(0,'tag','figMultiGroup');
+    if ~isempty(hFlyGroup)
+        try delete(hFlyGroup); catch; end
+    end            
     
     % deletes the solution progress tracking GUI (if it exists)
     if ~isempty(hFig.hSolnT)
