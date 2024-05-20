@@ -2272,7 +2272,10 @@ classdef CalcBG < handle
                 
                 % sets the single-tracking specific fields
                 if obj.isMTrk
-                    obj.hFig.mtObj.setGroupMenuProps(1);                  
+                    obj.hFig.mtObj.setGroupMenuProps(1); 
+                    obj.iMov.sInfo = ...
+                        obj.hFig.mtObj.setupStatObjStruct(obj.trkObj);
+                                        
                 else
                     obj.IPos = obj.trkObj.IPos;
                     obj.pStats = obj.trkObj.pStats;
@@ -2320,7 +2323,7 @@ classdef CalcBG < handle
 %                 end
             end
         
-        end
+        end        
 
         % ----------------------------------- %
         % --- MANUAL CORRECTION CALLBACKS --- %
