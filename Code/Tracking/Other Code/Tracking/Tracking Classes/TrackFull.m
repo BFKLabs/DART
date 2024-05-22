@@ -37,7 +37,6 @@ classdef TrackFull < Track
         
         % function handles
         dispImage
-        postTrackFunc
         
     end        
     
@@ -67,7 +66,7 @@ classdef TrackFull < Track
             obj.initPosDataStruct();
             if ~obj.calcOK
                 % deletes the progress bar
-                obj.postTrackFunc(obj.hFig,[],[]);
+                obj.hFig.postTrackFunc(obj.hFig,[],[]);
                 obj.hProg.closeProgBar();
                 
                 % exits the function
@@ -83,7 +82,7 @@ classdef TrackFull < Track
                 obj.startVideoTracking();
                 
                 % runs the post-tracking function
-                obj.postTrackFunc(obj.hFig,obj.pData,obj.iMov);
+                obj.hFig.postTrackFunc(obj.hFig,obj.pData,obj.iMov);
             end
             
         end
@@ -863,6 +862,7 @@ classdef TrackFull < Track
                     if obj.isBatch
                         % if batch processing, flag continuing segmentation 
                         uChoice = 'Continue';
+                        vFlag = obj.hProg.hFig.Visible;
                         
                     else
                         % if the diagnostic window is open, close it

@@ -51,6 +51,10 @@ if isOldVer
             % case is the panel object
             hObj = uipanel(varargin{1},'FontUnits','Pixels');
             
+        case 'buttongroup'
+            % case is the radio button group
+            hObj = uibuttongroup(varargin{1},'FontUnits','Pixels');            
+            
         case 'axes'
             % case is an axes object
             hObj = axes(varargin{1},'FontUnits','Pixels');

@@ -2247,7 +2247,6 @@ end
 
 % sets the GUI properties
 setTrackGUIProps(handles,'PreFlyDetect')
-trkObj.postTrackFunc = get(hFig,'postTrackFunc');
 
 % sets the tracking object fields
 assignin('base','trkObj',trkObj);
