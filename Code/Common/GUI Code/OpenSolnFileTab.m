@@ -88,7 +88,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                      'buttonClearAll','buttonShowProtocol',...
                      'buttonHideProtocol','menuCombExpt',...
                      'menuScaleFactor','menuLoadExtnData',...
-                     'buttonContinue'};
+                     'menuTimeCycle','buttonContinue'};
             for i = 1:length(cbObj)
                 hObj = getStructField(obj.hGUI,cbObj{i});
                 cbFcn = eval(sprintf('@obj.%sCB',cbObj{i}));
@@ -183,6 +183,9 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 % updates the experiment information table
                 obj.updateExptInfoTable()
             end
+            
+            % sets the time cycle menu properties
+            setTimeCycleMenuProps(obj.hFig,obj.sInfo)
 
             % creates the explorer tree for each panel
             hasTree = true(obj.nTab,1);
@@ -1178,6 +1181,13 @@ classdef OpenSolnFileTab < dynamicprops & handle
         % --- MENU CALLBACK FUNCTIONS --- %
         % ------------------------------- %                
 
+        % --- callback function for the light time cycle
+        function menuTimeCycleCB(obj, ~, ~)
+            
+            TimeCycle(obj.hFig);
+            
+        end
+        
         % ---- callback function for the combine experiment menu item
         function menuScaleFactorCB(obj, ~, ~)
             
@@ -1316,7 +1326,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             
             % sets the full tab group enabled properties (if it exists)
             obj.nExp = length(obj.sInfo);
-            obj.resetFullTabProps();            
+            obj.resetFullTabProps();
 
             % recreates the explorer tree
             obj.createFileExplorerTree(obj.sDir{obj.iTab})
@@ -1338,7 +1348,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
                                       'enable','on')                       
             
             % updates the change flag
-            obj.isChange = true;          
+            obj.isChange = true;    
+            setTimeCycleMenuProps(obj.hFig,obj.sInfo)
             
         end        
         
@@ -1712,7 +1723,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
             indReset = [find(isOK);obj.iTab]';
 
         end        
-        
+                
     end
     
     % static class methods

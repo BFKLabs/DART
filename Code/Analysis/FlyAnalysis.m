@@ -1,5 +1,5 @@
 function varargout = FlyAnalysis(varargin)
-% Last Modified by GUIDE v2.5 03-Oct-2023 22:41:28
+% Last Modified by GUIDE v2.5 25-May-2024 14:02:33
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -537,6 +537,11 @@ function menuProgPara_Callback(~, ~, handles)
 
 % runs the program default GUI
 ProgDefaultDef(handles.figFlyAnalysis,'Analysis');
+
+% -------------------------------------------------------------------------
+function menuTimeCycle_Callback(~, ~, handles)
+
+TimeCycle(handles.figFlyAnalysis);
 
 % -------------------------------------------------------------------------
 function menuExit_Callback(~, ~, handles)
@@ -3247,6 +3252,7 @@ hasStim = any(cellfun(@(x)(~isempty(x.stimP)),snTot));
 setObjEnable(handles.menuSaveStim,hasStim)
 
 % makes the main gui visible again
+setTimeCycleMenuProps(hFig,sInfoNw);
 setObjVisibility(hFig,'on');
 
 % attempts to close the loadbar

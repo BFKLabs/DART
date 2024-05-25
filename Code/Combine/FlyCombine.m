@@ -1,5 +1,5 @@
 function varargout = FlyCombine(varargin)
-% Last Modified by GUIDE v2.5 24-Jun-2022 00:21:50
+% Last Modified by GUIDE v2.5 25-May-2024 13:45:08
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -190,6 +190,11 @@ function menuProgPara_Callback(~, ~, handles)
 
 % runs the program default GUI
 ProgDefaultDef(handles.figFlyCombine,'Combine');
+
+% -------------------------------------------------------------------------
+function menuTimeCycle_Callback(~, ~, handles)
+
+TimeCycle(handles.figFlyCombine);
 
 % -------------------------------------------------------------------------
 function menuExit_Callback(~, ~, handles)
@@ -955,6 +960,7 @@ end
 tabSelected(hTabSel,[],handles);
 
 % makes the gui visible again
+setTimeCycleMenuProps(hFig,sInfo);
 setObjVisibility(hFig,'on');
 
 % --- function for the after running the solution file saving guis
@@ -1044,6 +1050,7 @@ autoResizeTableColumns(handles.tableAppInfo);
 setObjEnable(handles.menuSaveExpt,'off')
 setObjEnable(handles.menuLoadExtnData,'off')
 setObjEnable(handles.menuClearData,'off')
+setObjEnable(handles.menuTimeCycle,'off')
 
 % --- initialises the experimental start object properties --- %
 function initExptDurProps(handles,hPanel,sInfo)

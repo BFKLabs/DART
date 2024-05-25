@@ -72,6 +72,7 @@ classdef VideoPhase < handle
         nFrm0 = 15;
         szDS = 800;
         szBig = 1400;
+        nFrmMin = 5;
         dnFrmMin = 25;
         NTmx = 500;
         isFeasVid = true;

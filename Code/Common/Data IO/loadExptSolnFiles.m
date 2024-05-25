@@ -252,6 +252,11 @@ if ~isempty(snTot.stimP)
     snTot.stimP = reduceStimTimingStruct(snTot.stimP);
 end
 
+% includes the time cycle parameters (if not included)
+if ~isfield(snTot,'tcPara')
+    snTot.tcPara = setupTimeCyclePara();
+end
+
 % separates the acceptance flags (if stored in a cell array)
 if iscell(snTot.iMov.flyok)
     % separates the multi-experiment group names
@@ -291,7 +296,7 @@ end
 
 % closes the waitbar figure
 if wOfs == 0
-    try; h.closeProgBar(); end
+    try h.closeProgBar(); catch; end
 end
    
 % --- checks if the old file is obsolete. if so, then the user will have to

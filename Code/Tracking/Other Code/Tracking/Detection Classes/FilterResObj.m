@@ -303,8 +303,8 @@ classdef FilterResObj < handle
             
             % only set up the template if missing and there are fly
             % locations known with reasonable accuracy
-            if isempty(obj.hC{obj.iApp})
-                if any(obj.okS)
+            if isempty(obj.hC{obj.iApp}) 
+                if any(obj.okS) && exist('dIRL','var')
                     obj.setupFlyTemplate(dIRL);
                 else
                     return

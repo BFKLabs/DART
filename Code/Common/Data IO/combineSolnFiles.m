@@ -227,7 +227,7 @@ sgP = struct('sRate',[],'fRate',[],'sFac',[]);
 snTot = orderfields(struct('T',[],'Px',[],'Py',[],'Phi',[],'AxR',[],...
                            'stimP',stimP,'sTrainEx',sTrainEx,...
                            'isDay',[],'sgP',sgP,'iExpt',iExpt,...
-                           'exD',[],'iMov',[],'Type',1));           
+                           'exD',[],'iMov',[],'Type',1,'tcPara',[]));           
            
 % sub-struct memory allocation    
 initData = true;
@@ -471,6 +471,7 @@ iMov = backFormatRegionDataStruct(iMov);
 
 % sets the apparatus/individual fly boolean flags
 snTot.sName = sFile;
+snTot.tcPara = setupTimeCyclePara();
 
 % resets the x/y locations into a cell array
 for i = 1:nApp
