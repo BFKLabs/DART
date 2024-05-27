@@ -186,6 +186,9 @@ classdef VideoPara < handle
             hghtT = fPos(4) - (7*obj.dX + obj.hghtPanelC);
             obj.nCol = max(2,ceil(obj.pHght*nParaT/hghtT));
 
+            % disable warnings
+            warning('off','imaq:gige:adaptorPropertyHealed')
+
         end
         
         % --- initialises the class fields
@@ -362,7 +365,7 @@ classdef VideoPara < handle
             isInt = all(mod(nwLim,1) == 0);
             
             % check to see if the new value is valid
-            if chkEditValue(nwVal,nwLim,isInt)
+            if chkEditValue(nwVal,nwLim,false)
                 try
                     % if so, then update the camera parameters
                     set(obj.sObj,srcInfo.Name,nwVal)    
