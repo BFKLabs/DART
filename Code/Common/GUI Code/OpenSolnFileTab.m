@@ -1008,19 +1008,22 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % disables the added experiment information fields
             setObjEnable(hObject,'off')
             setObjEnable(handles.buttonShowProtocol,0)
-            setObjVisibility(handles.tableGroupNames,0)
             setObjEnable(handles.buttonClearAll,obj.nExp>0)
-            obj.setContinueProps(obj.nExp>0)
-            setObjEnable(handles.menuScaleFactor,0);            
+            setObjEnable(handles.menuScaleFactor,0);
+            setObjEnable(handles.menuTimeCycle,0);
             setObjEnable(handles.menuCombExpt,obj.nExp>1);
-            set(setObjEnable(hText,1),'string',num2str(obj.nExp))
+            set(hText,'Enable','on','string',num2str(obj.nExp))
+            
+            obj.setContinueProps(obj.nExp>0)            
+            setObjVisibility(handles.tableGroupNames,0)            
 
             % reduces down the solution file information
             obj.sInfo = obj.sInfo(iNw);
-            obj.isChange = true;
+            setTimeCycleMenuProps(obj.hFig,obj.sInfo);
 
-            % removes the rows from the table
+            % sets the other boolean flags
             obj.tableUpdate = true;
+            obj.isChange = true;
 
             % removes the table selection
             removeTableSelection(hTable)
@@ -1115,13 +1118,15 @@ classdef OpenSolnFileTab < dynamicprops & handle
             setObjEnable(handles.menuScaleFactor,0);            
             setObjEnable(handles.menuCombExpt,0);
             setObjEnable(handles.menuLoadExtnData,0);
+            setObjVisibility(handles.tableGroupNames,0)            
+            
             obj.setContinueProps(0)
-            setObjVisibility(handles.tableGroupNames,0)
             set(handles.textExptCount,'string',0)
 
             % disables the added experiment information fields
             obj.resetExptInfoTable();
-
+            setTimeCycleMenuProps(obj.hFig,obj.sInfo);
+            
             % creates the explorer trees for each file type
             obj.pathUpdate = false;
             for i = obj.getResetIndexArray()
