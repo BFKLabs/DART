@@ -561,7 +561,6 @@ axis(hAxI,'on')
 hGUI = get(hFig,'hGUI');
 iMov = get(hGUI.output,'iMov');
 iData = get(hGUI.output,'iData');
-pInfo = iMov.phInfo;
 
 % sets the fly count (based on tracking type)
 if hFig.isMltTrk
@@ -586,6 +585,13 @@ set(hFig,'T',T)
 % determines if the gui is being initialised
 hYLbl = findall(hAxI,'tag','hYLbl');
 isInit = isempty(hYLbl);
+
+% retrieves the phase information
+if isfield(iMov,'phInfo')
+    phInfo = iMov.phInfo;    
+else
+    phInfo = [];
+end
 
 % ---------------------------------------- %
 % --- AXIS LABEL & MENU INITIALISATION --- %
@@ -688,53 +694,57 @@ set(hFig,'tTick0',get(hAxI,'xTick'),'tTickLbl0',get(hAxI,'xTickLabel'))
 % --- PLOT MARKER INITIALISATION --- %
 % ---------------------------------- %
 
-% sets up the plot values
-[ii,Imu] = deal(pInfo.iFrmF,mean(pInfo.DimgF,2));  
-yLim = [floor(min(Imu)),ceil(max(Imu))];                
-yPlt = hFig.dyLim + (1-2*hFig.dyLim)*(Imu-yLim(1))/diff(yLim);
+if ~isempty(phInfo)
+    % sets the frame indices and mean image pixel intensity
+    [ii,Imu] = deal(phInfo.iFrmF,mean(phInfo.DimgF,2));
 
-% plots image average intensity line
-hAvgTag = 'hLineAvg';
-[yLo,yHi] = deal(hFig.dyLim*[1,1],(1-hFig.dyLim)*[1,1]);
-plot(hAxI,T(ii)*Tmlt,yPlt,'kx-','tag',hAvgTag,'LineWidth',1,...
-                    'UserData',1,'Visible','off');
-plot(hAxI,xLimT,yLo,'r:','tag',hAvgTag,'LineWidth',1,...
-                    'UserData',2,'Visible','off');
-plot(hAxI,xLimT,yHi,'r:','tag',hAvgTag,'LineWidth',1,...
-                    'UserData',2,'Visible','off');
+    % sets up the plot values  
+    yLim = [floor(min(Imu)),ceil(max(Imu))];                
+    yPlt = hFig.dyLim + (1-2*hFig.dyLim)*(Imu-yLim(1))/diff(yLim);
 
-% sets up the axis limits based on whether there is translation
-if any(pInfo.hasT)
-    % sets the y-axis limits
-    pOfsT = calcImageStackFcn(pInfo.pOfs);
-    yLim = [min(-1,min(pOfsT(:))),max(1,max(pOfsT(:)))];
+    % plots image average intensity line
+    hAvgTag = 'hLineAvg';
+    [yLo,yHi] = deal(hFig.dyLim*[1,1],(1-hFig.dyLim)*[1,1]);
+    plot(hAxI,T(ii)*Tmlt,yPlt,'kx-','tag',hAvgTag,'LineWidth',1,...
+                        'UserData',1,'Visible','off');
+    plot(hAxI,xLimT,yLo,'r:','tag',hAvgTag,'LineWidth',1,...
+                        'UserData',2,'Visible','off');
+    plot(hAxI,xLimT,yHi,'r:','tag',hAvgTag,'LineWidth',1,...
+                        'UserData',2,'Visible','off');
 
-    % sets the plot values
-    pWL = (1-2*hFig.dyLim)/diff(yLim);
-    tPlt = T(pInfo.iFrm0)*Tmlt;
-    yPltX = hFig.dyLim + pWL*(pOfsT(:,1)-yLim(1));
-    yPltY = hFig.dyLim + pWL*(pOfsT(:,2)-yLim(1));
-    yPlt0 = hFig.dyLim + pWL*([0,0]-yLim(1));
+    % sets up the axis limits based on whether there is translation
+    if any(phInfo.hasT)
+        % sets the y-axis limits
+        pOfsT = calcImageStackFcn(phInfo.pOfs);
+        yLim = [min(-1,min(pOfsT(:))),max(1,max(pOfsT(:)))];
 
-else
-    % case is there is no major translation
-    tPlt = T([1,end])*Tmlt;
-    [yPltX,yPltY,yPlt0] = deal(0.5*[1,1]);
+        % sets the plot values
+        pWL = (1-2*hFig.dyLim)/diff(yLim);
+        tPlt = T(phInfo.iFrm0)*Tmlt;
+        yPltX = hFig.dyLim + pWL*(pOfsT(:,1)-yLim(1));
+        yPltY = hFig.dyLim + pWL*(pOfsT(:,2)-yLim(1));
+        yPlt0 = hFig.dyLim + pWL*([0,0]-yLim(1));
+
+    else
+        % case is there is no major translation
+        tPlt = T([1,end])*Tmlt;
+        [yPltX,yPltY,yPlt0] = deal(0.5*[1,1]);
+    end
+
+    % plot image translation line
+    hLTag = 'hLineTrans';
+    plot(hAxI,xLimT,yPlt0,'k','tag',hLTag,'LineWidth',2,'Visible','off');
+    hPlt = [plot(hAxI,tPlt,yPltX,'b','tag',hLTag,'LineWidth',2);...
+            plot(hAxI,tPlt,yPltY,'r','tag',hLTag,'LineWidth',2)];
+    plot(hAxI,xLimT,yLo,'k:','tag',hLTag,'LineWidth',1,'Visible','off');
+    plot(hAxI,xLimT,yHi,'k:','tag',hLTag,'LineWidth',1,'Visible','off');
+    setObjVisibility(hPlt,'off')
+
+    % creates the legend object
+    hLg = legend(hPlt,{'X-Offset';'Y-Offset'});
+    set(hLg,'location','best','tag','hLegend','location','northwest',...
+            'Box','off','FontWeight','Bold','Visible','off');
 end
-              
-% plot image translation line
-hLTag = 'hLineTrans';
-plot(hAxI,xLimT,yPlt0,'k','tag',hLTag,'LineWidth',2,'Visible','off');
-hPlt = [plot(hAxI,tPlt,yPltX,'b','tag',hLTag,'LineWidth',2);...
-        plot(hAxI,tPlt,yPltY,'r','tag',hLTag,'LineWidth',2)];
-plot(hAxI,xLimT,yLo,'k:','tag',hLTag,'LineWidth',1,'Visible','off');
-plot(hAxI,xLimT,yHi,'k:','tag',hLTag,'LineWidth',1,'Visible','off');
-setObjVisibility(hPlt,'off')
-
-% creates the legend object
-hLg = legend(hPlt,{'X-Offset';'Y-Offset'});
-set(hLg,'location','best','tag','hLegend','location','northwest',...
-        'Box','off','FontWeight','Bold','Visible','off');
 
 % -------------------------------------- %
 % --- STIMULI MARKER INITIALISATIONS --- %
@@ -1339,7 +1349,12 @@ phCol = distinguishable_colors(nPhase);
 
 % creates the phase patch objects
 for i = 1:nPhase
-    xP = (T(iMov.iPhase(i,:))+(dT/4)*[-1,1])*Tmlt;
+    iPh = iMov.iPhase(i,:);
+    if (diff(iPh) < 0)
+        iPh = [iPh(1),length(T)];
+    end
+    
+    xP = (T(iPh)+(dT/4)*[-1,1])*Tmlt;
     patch(hAxI,xP(ix),yLimT(iy),phCol(i,:),'FaceAlpha',fAlpha,...
                'tag','hPhase','UserData',i,'LineStyle','none');
 end

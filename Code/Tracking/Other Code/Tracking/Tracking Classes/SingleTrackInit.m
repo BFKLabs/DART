@@ -349,13 +349,24 @@ classdef SingleTrackInit < SingleTrack
         % --- checks the HT1 control image stack (remove infeasible frames)
         function checkHT1ImageStack(obj,iApp)
 
+            % parameters
+            ILsdTol = 0.25;
+
             % calculates the z-scores of the image mean pixel intensities
             ILmn = cellfun(@(x)(mean(x(:))),obj.Img{iApp});
             [ILmu,ILsd] = deal(mean(ILmn),std(ILmn));
-            ZLmn = (ILmn - ILmu)/ILsd;
+
+
+
+            if ILsd < ILsdTol
+                isOK = true(size(ILmn));
+            else
+                ZLmn = (ILmn - ILmu)/ILsd;
+                isOK = abs(ZLmn) < obj.Ztol;
+            end
+
 
             % determines if any frames are "odd" relative to the others
-            isOK = abs(ZLmn) < obj.Ztol;
             for i = find(~isOK(:)')
                 % sets the direction of the frame increment
                 iDir = 1 - 2*(i > 1);
@@ -1769,7 +1780,11 @@ classdef SingleTrackInit < SingleTrack
             end
             
             % calculates the vertical offset
-            yOfs = [0;cumsum(cellfun('length',iRT(1:end-1)))];
+            if obj.iMov.is2D
+                yOfs = [0;cumsum(cellfun('length',iRT(1:end-1)))];
+            else
+                yOfs = cellfun(@(x)(x(1)),iRT) - 1;
+            end
             
         end
                 

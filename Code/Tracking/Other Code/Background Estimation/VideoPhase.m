@@ -1447,6 +1447,9 @@ classdef VideoPhase < handle
                 D = cellfun(@(x)(prctile(x(x>0),obj.pTile)),I)';
             end
             
+            % removes any NaN values
+            D(isnan(D)) = 0;
+            
         end
         
         % --- retrieves the image pixel intensities (for the frames, iFrmD)

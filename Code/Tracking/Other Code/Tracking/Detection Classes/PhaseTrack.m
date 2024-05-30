@@ -760,7 +760,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                                 pdTol = 1 + ~obj.isStat*2;
                             else
                                 % point is not at the region edge
-                                pdTol = 2 + ~obj.isStat*3;
+                                pdTol = 2 + ~obj.isStat*5;
                             end
                         end
                     end                    
