@@ -51,8 +51,9 @@ iDev = find(dType > 0);
 hDev = objDAQ.Control(iDev);
 if ~isempty(hDev)
     for i = 1:length(hDev)
-        try
+        try        
             writeSerialString(hDev{i},sStr{iDev(i)});
+        catch
         end
     end
 end

@@ -1780,7 +1780,7 @@ classdef SingleTrackInit < SingleTrack
             end
             
             % calculates the vertical offset
-            if obj.iMov.is2D
+            if obj.iMov.is2D || (obj.nI > 0)
                 yOfs = [0;cumsum(cellfun('length',iRT(1:end-1)))];
             else
                 yOfs = cellfun(@(x)(x(1)),iRT) - 1;
