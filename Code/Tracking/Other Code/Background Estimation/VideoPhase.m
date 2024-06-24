@@ -1455,14 +1455,17 @@ classdef VideoPhase < handle
         % --- retrieves the image pixel intensities (for the frames, iFrmD)
         function Dimg = getDimg(obj,iFrmD)
             
+            % retrieves the feasible regions
+            DimgT = obj.Dimg(:,obj.iMov.ok);
+            
             % retrieves the values depending on how they are stored
             if iscell(obj.Dimg)
                 % values are stored in a cell of sparse arrays
-                DimgC = cellfun(@(x)(full(x(iFrmD,:))),obj.Dimg,'un',0);
+                DimgC = cellfun(@(x)(full(x(iFrmD,:))),DimgT,'un',0);
                 Dimg = cell2mat(DimgC(:)');
             else
                 % case is a normal sparse array
-                Dimg = full(obj.Dimg(iFrmD,:));
+                Dimg = full(DimgT(iFrmD,:));
             end
             
         end

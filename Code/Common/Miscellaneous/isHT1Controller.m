@@ -6,7 +6,8 @@ if ~isfield(iData,'iExpt')
 elseif isfield(iData.iExpt,'Device')
     Device = iData.iExpt.Device;
     isHT1 = any(strContains(Device.DAQ,'HTControllerV1')) || ...
-            any(strContains(Device.DAQ,'HTControllerV2'));
+            any(strContains(Device.DAQ,'HTControllerV2')) || ...
+            any(strContains(Device.IMAQ,'40216172'));
 else
     isHT1 = false;
 end
