@@ -1057,8 +1057,8 @@ classdef SingleTrackInit < SingleTrack
             Bfilt = D <= NN;
             
             % sets up the removal binary mask
-            szF = size(Bfilt);
-            xiN = (1:szF) - floor((szF(1)-1)/2+1);
+            szF = size(Bfilt,1);
+            xiN = (1:szF) - floor((szF-1)/2+1);
             Brmv = Bfilt > 0;
             
             % fill in the regions surrounding the points

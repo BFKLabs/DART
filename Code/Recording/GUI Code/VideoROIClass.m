@@ -595,8 +595,10 @@ classdef VideoROIClass < handle
         function getInitSnapshot(obj)
             
             % parameters
+            iter = 0;
             dITol = 5;
             tPause = 0.25;  
+            nIterMx = 10;
             pause(1)
             
             % sets 
@@ -612,6 +614,12 @@ classdef VideoROIClass < handle
                 % retrieves the new image
                 I{1} = I{2};
                 I{2} = double(obj.getSnapShot());
+
+                % if taking too long then exit the loop
+                iter = iter + 1;
+                if iter < nIterMx
+                    break
+                end
             end                            
             
             % sets the final image

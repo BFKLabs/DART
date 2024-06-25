@@ -163,8 +163,21 @@ classdef VideoPara < handle
                 pStr = fieldnames(obj.sObj);
             end
             
+            % memory allocation
+            okP = true(size(pStr));
+            obj.pVal0 = cell(length(okP),1);
+
+            % retrieves the original parameter values
+            for i = 1:length(okP)
+                try
+                    obj.pVal0(i,:) = {pStr{i},get(obj.sObj,pStr{i})};
+                catch
+                    okP(i) = false;
+                end
+            end
+
             % sets the combined array
-            obj.pVal0 = [pStr(:),get(obj.sObj,pStr(:))'];            
+            obj.pVal0 = obj.pVal0(okP,:);            
             
             % --- PROPERTY FEASIBILITY CALCULATIONS --- %
             
@@ -475,8 +488,8 @@ classdef VideoPara < handle
                 end
                 
                 % determines if camera properties match that from file
-                A = fldNames(~cellfun(@(x)(strcmp(x,'Parent')),fldNames));
-                if ~isequal(sort(A),sort(vprData.fldNames))
+                missP = ~isempty(setdiff(vprData.fldNames,fldNames));
+                if missP
                     % if not, then exit with an error
                     tStr = 'Invalid Camera Presets';
                     eStr = 'Camera presets do not match video properties.';
@@ -507,9 +520,24 @@ classdef VideoPara < handle
                 else
                     fldNames = fieldnames(obj.srcObj);
                 end
+
+                % memory allocation
+                okP = true(size(fldNames));
+                pVal = cell(size(fldNames));
+
+                % retrieves the valid parameters
+                for i = 1:length(okP)
+                    try
+                        pVal{i} = get(obj.sObj,fldNames{i});
+                    catch
+                        okP(i) = false;
+                    end
+                end
+
+                % removes the invalid parameters
+                [pVal,fldNames] = deal(pVal(okP),fldNames(okP));
                 
                 % removes the parent object from the struct
-                pVal = arr2vec(get(obj.sObj,fldNames));
                 ii = ~cellfun(@(x)(strcmp(x,'Parent')),fldNames);
                 [fldNames,pVal] = deal(fldNames(ii),pVal(ii));
                 

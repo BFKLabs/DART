@@ -1191,11 +1191,12 @@ classdef VideoPhase < handle
             
             % corrects image fluctuation
             if any(obj.hasT)
+                canCalc = obj.iMov.ok & obj.hasT;                
                 pOfsT = cellfun(@(p)(interp1...
                     (obj.iFrm0,p,iFrm,'linear','extrap')),...
-                    obj.pOfs(obj.hasT),'un',0);
-                IL(obj.hasT) = cellfun(@(x,p)(obj.applyImgTrans(x,p)),...
-                    IL(obj.hasT),pOfsT,'un',0);
+                    obj.pOfs(canCalc),'un',0);
+                IL(canCalc) = cellfun(@(x,p)(obj.applyImgTrans(x,p)),...
+                    IL(canCalc),pOfsT,'un',0);
             end
             
         end

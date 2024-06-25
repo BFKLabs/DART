@@ -2249,7 +2249,6 @@ end
 setTrackGUIProps(handles,'PreFlyDetect')
 
 % sets the tracking object fields
-assignin('base','trkObj',trkObj);
 trkObj.segEntireVideo(handles,iMov,pData);
 
 % --- runs the post-tracking function

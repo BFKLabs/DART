@@ -11,5 +11,6 @@ elseif isempty(iMov.phInfo)
 end
 
 % calculates and applied the image offset
+iMov.phInfo.hasT = iMov.phInfo.hasT & iMov.ok;
 dpOfs = mean(calcFrameOffset(iMov.phInfo,iFrmR),1,'omitnan');
 Img = calcImgTranslate(Img,dpOfs);
