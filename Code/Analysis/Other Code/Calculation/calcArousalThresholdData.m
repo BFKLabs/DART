@@ -36,7 +36,7 @@ indReact = cell(1,nApp);
 
 % sets the signal parameter struct (assumes that all signals are the same
 % across all devices for all stimuli events in the experiment)
-blkInfo = snTot.sTrainEx.sTrain.blkInfo;
+blkInfo = reduceStimBlockInfo(snTot.sTrainEx.sTrain.blkInfo);
 
 % calculates the signal duration and the time from the start of the signal
 % stimuli train to the next train
