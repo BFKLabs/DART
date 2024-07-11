@@ -87,6 +87,7 @@ classdef SigPopData < DataOutputArray
             if ~isnan(obj.tMlt)
                 tStr0 = sprintf('Time %s',obj.timeStr);
                 obj.tStr = repmat({tStr0},obj.nMet,1);
+                
             else        
                 xDepS = cellfun(@(x)(x{1}),obj.xDep,'un',0);
                 xName = field2cell(obj.pData.oP.xVar,'Name');
@@ -311,14 +312,26 @@ classdef SigPopData < DataOutputArray
 
             % combines the metric data with the first order x-variable
             if isnan(obj.tMlt)
-                YRT0 = [YR0{1}(:,1),combineNumericCells(YT)];
+                % combines the cell arrays into a numerical array
+                YTC = roundP(combineNumericCells(YT),obj.pR);
+                
+                % combines the column data
+                if isnumeric(YR0{1}{1,1})
+                    YRT0 = [YR0{1}(:,1),YTC];
+                else
+                    YRT0 = [YR0{1}(:,1),num2cell(YTC)];                    
+                end
             else
-                YRT0 = [obj.tMlt*YR0{1}(:,1),cell2mat(YT)];
+                % case is the time-multiplier is being used
+                YRT0 = roundP([obj.tMlt*YR0{1}(:,1),cell2mat(YT)],obj.pR);
             end     
             
             % converts the strings to            
-            YRT = string(roundP(YRT0,obj.pR));
-            YRT(isnan(YRT0)) = '';
+            YRT = string(YRT0);
+            try
+                YRT(isnan(YRT0)) = '';
+            catch
+            end
             
         end        
         

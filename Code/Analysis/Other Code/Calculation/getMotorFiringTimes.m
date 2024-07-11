@@ -48,14 +48,24 @@ if isempty(chType)
         
         % removes any duplicate entries
         [Ts,iA,~] = unique(Ts,'stable');
-        Tf = Tf(iA);        
+        Tf = Tf(iA); 
+        
     elseif isfield(pMotor,'Ch1')
         % case is all motors are the same
         [Ts,Tf] = deal(pMotor.Ch1.Ts,pMotor.Ch1.Tf);
         
         % removes any duplicate entries
         [Ts,iA,~] = unique(Ts,'stable');
-        Tf = Tf(iA);        
+        Tf = Tf(iA);       
+        
+    elseif isfield(pMotor,'AllCh')
+        % case is all motors are the same
+        [Ts,Tf] = deal(pMotor.AllCh.Ts,pMotor.AllCh.Tf);
+        
+        % removes any duplicate entries
+        [Ts,iA,~] = unique(Ts,'stable');
+        Tf = Tf(iA);               
+        
     else        
         % determines the names of the channels that were used
         pFld = fieldnames(pMotor);
