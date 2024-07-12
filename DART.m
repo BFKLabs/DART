@@ -926,7 +926,109 @@ classdef DART < handle
         % --- applies the DART update from the zip-file, fFile
         function applyDARTUpdate(obj,fFile)
             
+            % initialisations
+            tmpDir = getProgFileName('Temp');
+            fcnDir = obj.progDef.Analysis.DirFunc;
+            codeDir = getProgFileName('Code');                        
+            cDir = {'Analysis','Combine','Common','Recording','Tracking'};
+            
+            % creates a loadbar
+            hLoad = ProgressLoadbar('Unzipping Update File...');
+            
+            % creates a temporary directory for the zip file data
+            if ~exist('tmpDir','dir')
+                mkdir(tmpDir);
+            end
+            
+            % unzips the zip file to the temporary directory
+            unzip(fFile,tmpDir);
+
+            % --------------------------- %
+            % --- PROGRAM FILE UPDATE --- %
+            % --------------------------- %
+            
+            % DART main 
+            cDirMain = fullfile(tmpDir,'DART Main');
+            obj.copyDirFiles(cDirMain,getProgFileName);
+            
+            % Analysis functions
+            cDirFunc = fullfile(tmpDir,'Analysis Functions');
+            obj.copyDirFiles(cDirFunc,fcnDir);
+            
+            % copies over all code sub-directories
+            for i = 1:length(cDir)
+                cDirNw0 = fullfile(tmpDir,cDir{i});
+                cDirNwF = fullfile(codeDir,cDir{i});
+                obj.copyDirFiles(cDirNw0,cDirNwF);
+            end
+            
+            % ------------------------------- %
+            % --- HOUSE-KEEPING EXERCISES --- %
+            % ------------------------------- % 
+            
+            % closes the loadbar
+            hLoad.delete;
+            
             a = 1;
+            
+        end
+        
+        % --- copies the files from the temporary directory (fDir0) from
+        %     the temporary directory (tmpDir) to final directory (fDirF)
+        function copyDirFiles(obj,fDir0,fDirF)
+                        
+            % determines the files within the temporary directory
+            dList0 = dir(fullfile(fDir0, '**\*.*'));
+            
+            % removes the infeasible file elements
+            dName0 = arrayfun(@(x)(x.name),dList0,'un',0);
+            dIsDir = arrayfun(@(x)(x.isdir),dList0);            
+            isFeas = ~(strcmp(dName0,'.') | strcmp(dName0,'..') | dIsDir);
+            dList0 = dList0(isFeas);
+            
+            % groups the files by their sub-directories
+            dDir0 = arrayfun(@(x)(x.folder),dList0,'un',0);
+            [dDirU,~,iC] = unique(dDir0,'stable');
+            indC = arrayfun(@(x)(find(iC == x)),1:max(iC),'un',0);
+            
+            % memory allocation
+            nFile = length(dList0);
+            isCopy = false(nFile,1);
+            [fFile0,fFileF] = deal(cell(nFile,1));
+            dNum0 = arrayfun(@(x)(x.datenum),dList0);
+            
+            % compares and copies over any file differences
+            for i = 1:length(indC)
+                % sets the corresponding DART directory file path
+                fDirFC = [fDirF,dDirU{i}((length(fDir0)+1):end)];                
+                for j = 1:length(indC{i})
+                    % sets the temporary file name
+                    k = indC{i}(j);
+                    
+                    % retrieves the paths of the files to compare
+                    fFile0{k} = fullfile(dDirU{i},dList0(k).name);                                   
+                    fFileF{k} = fullfile(fDirFC,dList0(k).name);
+                    
+                    % retrieves the current file date number
+                    try
+                    isCopy(k) = dir(fFileF{k}).datenum ~= dNum0(k);                        
+                    catch
+                        a = 1;
+                    end
+                end
+            end
+            
+            % determines if there are any files to copy over
+            if any(isCopy)
+                % if so, reduce down the file names
+                [fFile0,fFileF] = deal(fFile0(isCopy),fFileF(isCopy));
+                
+                % copies over the files from the temporary directory
+                a = 1;
+            end
+            
+            % deletes the temporary folder (and sub-folders)
+            rmdir(fDir0,'s');
             
         end
         

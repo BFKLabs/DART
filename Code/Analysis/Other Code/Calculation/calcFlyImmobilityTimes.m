@@ -1,7 +1,8 @@
 % --- calculates the fly immobility times for the position array, Px, which
 %     has rows that have time stamps, T. the immobility time bands are
 %     given wrt
-function [tImmob,isReact,tReact] = calcFlyImmobilityTimes(T,Px,Py,Ts,cP,indB,Tmlt)
+function [tImmob,isReact,tReact] = ...
+                        calcFlyImmobilityTimes(T,Px,Py,Ts,cP,indB,Tmlt)
 
 % global variables
 global nGrpMin
