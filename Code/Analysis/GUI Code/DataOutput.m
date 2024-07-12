@@ -1830,7 +1830,7 @@ pData = getappdata(hFig,'pData');
 warning off all
 
 % updates the data struct with the
-fSz = 10.6666666666667;    
+fSz = 10 + 2/3;    
 mInd = find(any(metType,1));
 iData.tData.mSel = mInd(1);
 setappdata(hFig,'iData',iData)

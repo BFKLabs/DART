@@ -306,7 +306,7 @@ classdef RestoreDART < handle
             obj.fObj = obj.fObj(iS);
             
             % removes any non-DART figures (progressbar, loadbar etc)
-            fObjTag = get(obj.fObj,'tag');            
+            fObjTag = arrayfun(@(x)(get(x,'tag')),obj.fObj,'un',0);                        
             ii = ~(cellfun('isempty',fObjTag) | ...
                    strcmp(fObjTag,'ProgBar') | ...
                    strcmp(fObjTag,'__progressbar__'));

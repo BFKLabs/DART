@@ -178,7 +178,9 @@ classdef SigIndivData < DataOutputArray
                 hasTSP0 = false;
             elseif isnumeric(YY{1}{1}{i0}(1))
                 % case is for numerical time data
-                hasTSP0 = diff(YY{1}{1}{i0}(1:2,1)) == 0;
+                YYT = YY{1}{1}{i0}(1:2,1);
+                hasTSP0 = (diff(YYT) == 0) || ...
+                          (all(mod(YYT,1) == 0) && (all(YYT > 0)));
             else
                 % case is for non-numerical time data
                 hasTSP0 = isnumeric(YY{1}{1}{i0}{1,1});
