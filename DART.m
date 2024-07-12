@@ -83,7 +83,7 @@ classdef DART < handle
             obj.getJavaObjectDim();
             
             % clears the output object (if not required)
-            if nargout == 0
+            if (nargout == 0) && ~isdeployed
                 clear obj
             end
             

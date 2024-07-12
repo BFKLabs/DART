@@ -85,16 +85,16 @@ classdef SigPopReshape < handle
                 else
                     % appends the array together
                     if size(Y{k},1) == length(X{k})
-                        if isnumeric(X{k}{1})
-                            Ygrp{k} = [X{k}(:),Y{k}];
+                        if iscell(X{k})
+                            Ygrp{k} = [X{k}(:),num2cell(Y{k})];                            
                         else
-                            Ygrp{k} = [X{k}(:),num2cell(Y{k})];
+                            Ygrp{k} = [X{k}(:),Y{k}];
                         end
                     else
-                        if isnumeric(X{k}{1})
-                            Ygrp{k} = [X{k}(:),Y{k}(:)];
+                        if iscell(X{k})
+                            Ygrp{k} = [X{k}(:),num2cell(Y{k}(:))];
                         else
-                            Ygrp{k} = [X{k}(:),num2cell(Y{k}(:))];                        
+                            Ygrp{k} = [X{k}(:),Y{k}(:)];                            
                         end
                     end    
                 end
