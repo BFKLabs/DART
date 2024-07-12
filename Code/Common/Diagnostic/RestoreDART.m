@@ -116,6 +116,10 @@ classdef RestoreDART < handle
                 arrayfun(@(x)(get(x,'Name')),obj.fObj,'un',0));
             obj.fObj = obj.fObj(iS);
             
+            % removes any empty tag figure
+            ii = ~cellfun('isempty',obj.fObjName);
+            [obj.fObj,obj.fObjName] = deal(obj.fObj(ii),obj.fObjName(ii));
+            
             % ---------------------------- %
             % --- CONTROL BUTTON PANEL --- %
             % ---------------------------- %
@@ -281,8 +285,8 @@ classdef RestoreDART < handle
                 obj.fObjName = obj.fObjName(B);
                 
                 % sets the other figure properties
-                [obj.hListD.Value,obj.iSel] = deal([]);                
-                obj.hListD.String = obj.hListD.String(B);
+                obj.iSel = [];
+                obj.hTableD.Data = obj.hTableD.Data(B,:);
                 cellfun(@(x)(setObjEnable(x,0)),obj.hButC(1:3));
             end            
             
