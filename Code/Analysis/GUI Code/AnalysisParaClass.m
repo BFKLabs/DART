@@ -560,7 +560,8 @@ classdef AnalysisParaClass < handle
 
             % updates the parameter enabled properties
             p = obj.resetParaEnable(p,uData{1});
-            eval(sprintf('obj.pData.%sP = p;',lower(uData{2}(1))));
+            obj.pData.(lower(uData{2}(1))) = p;
+%             eval(sprintf('obj.pData.%sP = p;',lower(uData{2}(1))));
 
             % performs the updates
             switch uData{2}
@@ -603,7 +604,8 @@ classdef AnalysisParaClass < handle
 
             % updates the parameter enabled properties
             p = obj.resetParaEnable(p,uData{1});
-            eval(sprintf('obj.pData.%sP = p;',lower(uData{2}(1))));            
+            obj.pData.(lower(uData{2}(1))) = p;
+%             eval(sprintf('obj.pData.%sP = p;',lower(uData{2}(1))));            
 
             % performs the updates
             switch uData{2}
@@ -1816,7 +1818,7 @@ classdef AnalysisParaClass < handle
         function setupCalcPlotPara(obj,hTabP,p,indP,iType,yNew,uD)
          
             % sets the new height and increments the index
-            [isValid,Enable] = deal(true,p.Enable);
+            isValid = true;
             [Name,TTstr,Value] = deal(p.Name,p.TTstr,p.Value);
             
             % creates the objects for all of the parameters in the group
@@ -1865,12 +1867,13 @@ classdef AnalysisParaClass < handle
             end        
             
 %             % resets the enabled properties of the objects
-%             if ~isempty(Enable)
+%             Enable = p.Enable
+%             if ~isempty(p.Enable)
 %                 % disables the object if the enabled field is NaN
-%                 if iscell(Enable{1})
+%                 if iscell(p.Enable{1})
 %                     isOn = true;
 %                 else
-%                     isOn = all(~isnan(Enable{1}));
+%                     isOn = all(~isnan(p.Enable{1}));
 %                 end
 %                     
 %                 cellfun(@(x)(setObjEnable(x,isOn)),obj.hObj{iType}{indP})

@@ -8,7 +8,7 @@ function jTable = getJavaTable(hTable)
 while (iter <= iterMx)
     try
         h = findjobj(hTable);
-        jTable = h.getComponent(0).getComponent(0);
+        jTable = h.getComponent(0).getComponent(0);        
         return
     catch 
         pause(0.05);

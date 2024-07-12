@@ -18,11 +18,19 @@ classdef DART < handle
         hBut
         hTxt
         hMenuP
-        hTrack
+        hTrack        
+        
+        % menu item class fields
+        mStrC
+        mFcnCB
+        mSep
+        mTagC
+        mAccC
+        eStateM        
         
         % dummy object handles
         hTableD
-        hListD
+        hListD        
         
         % fixed object dimensions   
         dX = 10;
@@ -45,6 +53,8 @@ classdef DART < handle
         tSz = 30;
         nMenu = 5;        
         tagStr = 'figDART';
+        fModeZ = {'*.zip;','Zip File (*.zip)'};
+        fModeP = {'*.dpkg','DART Package (*.dpkg)'};
         prDir = {'Code','Git','External Files','Para Files'};
         
     end
@@ -278,6 +288,7 @@ classdef DART < handle
         
             % turns off the required warnings
             warning('off','MATLAB:load:classNotFound');
+            warning('off','MATLAB:ui:javaframe:PropertyToBeRemoved');
             warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
             
             % main field initialisation
@@ -395,68 +406,59 @@ classdef DART < handle
             % ------------------------- % 
             
             % initialisations            
-            A = cell(obj.nMenu,2);            
-            [mStrC,mFcnCB,mSep,mTagC,mAccC,eStateM] = deal(A);            
+            A = cell(obj.nMenu,3);            
+            [obj.mStrC,obj.mFcnCB,obj.mSep,...
+                obj.mTagC,obj.mAccC,obj.eStateM] = deal(A);
             hasPkgFile = exist('runPackageInstaller','file') > 0;
             hasExeU = (exist('ExeUpdate.exe','file') > 0) && ~isdeployed;
             
             % menu label strings
-            mStrC(:,1) = {'Program Code I/O',...
+            obj.mStrC(:,1) = {'Program Code I/O',...
                 'Program Installation Information',...
                 'Configure Serial Devices','Default Directories',...
                 'About DART'};
-            mStrC{1,2} = {'Output Program','Update Executable',...
+            obj.mStrC{1,2} = {'Program Update','Update Executable',...
                 'Create DART Executable','Run DART Installer Wizard',...
                 'Add External Package'};
+            obj.mStrC{1,3} = {'Apply Update','Output Update'};
 
             % menu item tag strings
-            mTagC(:,1) = {'menuProgCode','menuProgInstallInfo',...
+            obj.mTagC(:,1) = {'menuProgCode','menuProgInstallInfo',...
                 'menuConfigSerial','menuProgPara','menuAboutDART'};
-            mTagC{1,2} = {'menuOutputProg','menuExeUpdate',...
+            obj.mTagC{1,2} = {'menuOutputProg','menuExeUpdate',...
                 'menuDeployExe','menuRunInstaller','menuAddPackage'};
+            obj.mTagC{1,3} = {'menuApplyUpdate','menuOutputUpdate'};
             
             % menu item accelarator
-            mAccC(:,1) = {'','I','S','D','A'};
-            mAccC{1,2} = {'S','X','E','N','P'};
+            obj.mAccC(:,1) = {'','I','S','D','A'};
+            obj.mAccC{1,2} = {'','X','E','N','P'};
+            obj.mAccC{1,3} = {'L','U'};
             
             % menu item enabled state
-            eStateM(:,1) = {'on','on','off','on','on'};
-            eStateM{1,2} = {'on','on','off','on','on'};            
+            obj.eStateM(:,1) = {'on','on','off','on','on'};
+            obj.eStateM{1,2} = {'on','on','off','on','on'};
+            obj.eStateM{1,3} = {'on','on'};
             
             % menu item callback function
-            mFcnCB(:,1) = {[],...
+            obj.mFcnCB(:,1) = {[],...
                            @obj.menuProgInstallInfo,@obj.menuConfigSerial,...
                            @obj.menuProgPara,@obj.menuAboutDART};
-            mFcnCB{1,2} = {@obj.menuOutputProg,@obj.menuExeUpdate,...
+            obj.mFcnCB{1,2} = {[],@obj.menuExeUpdate,...
                            @obj.menuDeployExe,@obj.menuRunInstaller,...
                            @obj.menuAddPackage};
-            
+            obj.mFcnCB{1,3} = {@obj.menuApplyUpdate,@obj.menuOutputUpdate};
+                       
             % sets the separator flags
-            mSep(:,1) = {'off','on','off','off','on'};
-            mSep{1,2} = {'off','on','off','on','on'};
+            obj.mSep(:,1) = {'off','on','off','off','on'};
+            obj.mSep{1,2} = {'off','on','off','on','on'};
+            obj.mSep{1,3} = {'off','off'};
             
             % creates the main menu item
             obj.hMenuP = uimenu(obj.hFig,'Label','DART');
             
             % creates the other menu items
             for i = 1:obj.nMenu
-                % creates the sub-menu item
-                hMenuC = uimenu(obj.hMenuP,'Label',mStrC{i,1},...
-                                           'Callback',mFcnCB{i,1},...                                           
-                                           'Tag',mTagC{i,1},...
-                                           'Accelerator',mAccC{i,1},...
-                                           'Enable',eStateM{i,1});
-                obj.setMenuSeparatorField(hMenuC,mSep{i,1});                                       
-                   
-                % creates the sub-sub-menu items (if they exist)
-                for j = 1:length(mStrC{i,2})
-                    hMenuS = uimenu(hMenuC,'Label',mStrC{i,2}{j},...
-                                           'Callback',mFcnCB{i,2}{j},...
-                                           'Tag',mTagC{i,2}{j},...
-                                           'Accelerator',mAccC{i,2}{j},...
-                                           'Enable',eStateM{i,2}{j});
-                    obj.setMenuSeparatorField(hMenuS,mSep{i,2}{j});
-                end
+                obj.createMenuItem(obj.hMenuP,i,1);
             end                                    
             
             % only include the add package menu item if the function exists
@@ -476,8 +478,8 @@ classdef DART < handle
             end
             
             % sets the I/O menu item properties
-            obj.setMenuProp('menuUpdateProg','Visible',obj.hasSep)
-            obj.setMenuProp('menuOutputProg','Visible',obj.hasSep)
+            obj.setMenuProp('menuOutputProg','Visible',~isdeployed)            
+            obj.setMenuProp('menuOutputUpdate','Visible',obj.hasSep)
             obj.setMenuProp('menuDeployExe','Visible',obj.hasSep)
             obj.setMenuProp('menuRunInstaller','Visible',~isdeployed)
             
@@ -540,6 +542,44 @@ classdef DART < handle
             cd(obj.getProgFileName())
             
         end        
+        
+        % --- creates the menu items
+        function createMenuItem(obj,pMenu,iRow,iLvl,iLvlS)
+            
+            % creates the sub-menu item
+            if exist('iLvlS','var')
+                % case is a sub-menu item
+                hMenu = uimenu(pMenu,'Label',obj.mStrC{iRow,iLvl}{iLvlS},...
+                            'Callback',obj.mFcnCB{iRow,iLvl}{iLvlS},...
+                            'Tag',obj.mTagC{iRow,iLvl}{iLvlS},...
+                            'Accelerator',obj.mAccC{iRow,iLvl}{iLvlS},...
+                            'Enable',obj.eStateM{iRow,iLvl}{iLvlS});
+                obj.setMenuSeparatorField(hMenu,obj.mSep{iRow,iLvl}{iLvlS});
+
+                % determines if there are any sub-menus
+                hasSM = (iLvl < 3) && ~isempty(obj.mStrC{iLvlS,iLvl+1});
+                
+            else
+                % case is a parent menu item
+                hMenu = uimenu(pMenu,'Label',obj.mStrC{iRow,iLvl},...
+                            'Callback',obj.mFcnCB{iRow,iLvl},...
+                            'Tag',obj.mTagC{iRow,iLvl},...
+                            'Accelerator',obj.mAccC{iRow,iLvl},...
+                            'Enable',obj.eStateM{iRow,iLvl});
+                obj.setMenuSeparatorField(hMenu,obj.mSep{iRow,iLvl});
+                
+                % determines if there are any sub-menus
+                hasSM = ~isempty(obj.mStrC{iRow,iLvl+1});
+            end            
+            
+            % creates the sub-menu items (if available)            
+            if hasSM
+                for i = 1:length(obj.mStrC{iRow,iLvl+1})
+                    obj.createMenuItem(hMenu,iRow,iLvl+1,i);
+                end
+            end
+            
+        end
         
         % -------------------------- %
         % --- CALLBACK FUNCTIONS --- %
@@ -650,15 +690,34 @@ classdef DART < handle
         % --- OTHER MENU CALLBACK FUNCTIONS --- %
         % ------------------------------------- %                       
         
+        % --- apply update menu item callback function
+        function menuApplyUpdate(obj, ~, ~)
+            
+            % initialisations
+            tStr = 'Select DART Update';
+            dDir = obj.progDef.DART.DirVer;
+            
+            % prompts the user for the external package
+            [fName,fDir,fIndex] = uigetfile(obj.fModeZ,tStr,dDir);
+            if fIndex == 0
+                % if the user cancelled, then exit
+                return
+            end            
+            
+            % applies the DART update 
+            fFile = fullfile(fDir,fName);
+            obj.applyDARTUpdate(fFile);
+            
+        end
+        
         % --- output program menu item callback function
-        function menuOutputProg(obj, ~, ~)
+        function menuOutputUpdate(obj, ~, ~)
             
             % global variables
             global isFull
             
             % initialisations
             tStr = 'Select Program Zip File';            
-            fMode = {'*.zip;','Zip File (*.zip)'};
             wStr0 = 'Creating Temporary Code Directories';
             
             % sets the default file name
@@ -667,7 +726,7 @@ classdef DART < handle
             dFile = fullfile(dDir,dName);
             
             % prompts the user for the program update .zip file
-            [zName,zDir,zIndex] = uiputfile(fMode,tStr,dFile);
+            [zName,zDir,zIndex] = uiputfile(obj.fModeZ,tStr,dFile);
             if zIndex == 0
                 % if the user cancelled, then exit the function
                 return
@@ -743,7 +802,7 @@ classdef DART < handle
             % updates the status message
             [h.Indeterminate,h.FractionComplete] = deal(false,1);
             h.StatusMessage = 'Update File Creation Complete!'; pause(0.2)
-            try; delete(h); end
+            try delete(h); catch; end
             
             % turns on all the warnings again            
             warning(wState);
@@ -786,10 +845,9 @@ classdef DART < handle
            
             % initialisations
             tStr = 'Select DART Package';
-            fMode = {'*.dpkg','DART Package (*.dpkg)'};
             
             % prompts the user for the external package
-            [fName,fDir,fIndex] = uigetfile(fMode,tStr,obj.mainDir);
+            [fName,fDir,fIndex] = uigetfile(obj.fModeP,tStr,obj.mainDir);
             if fIndex == 0
                 % if the user cancelled, then exit
                 return
@@ -865,18 +923,25 @@ classdef DART < handle
             
         end        
         
+        % --- applies the DART update from the zip-file, fFile
+        function applyDARTUpdate(obj,fFile)
+            
+            a = 1;
+            
+        end
+        
         % --------------------------------- %
         % --- PROGRAM DEFAULT FUNCTIONS --- %
         % --------------------------------- %
         
-        % --- 
+        % --- retrieves the default directory field
         function progDef0 = getDefaultDirStruct(obj)
             
             progDef0 = obj.progDef;
             
         end
         
-        % --- 
+        % --- sets the default directory field with the struct progDefNw
         function setDefaultDirStruct(obj,progDefNw)
            
             obj.progDef = progDefNw;

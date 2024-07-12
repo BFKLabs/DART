@@ -5,7 +5,7 @@ function [p,Yfit,gof] = fitSignalExp(T,Y,cP)
 if (nargin < 3); cP = struct('useDouble',false); end
 
 % runs the function recursively if the Y data array is a cell array
-if (iscell(Y))
+if iscell(Y)
     % memory allocation
     [p,Yfit,gof] = deal(cell(length(Y),1));
     
@@ -24,38 +24,39 @@ end
 [b,c] = deal(NaN,NaN(1,2));
 
 % struct memory allocation
-a = struct('yMax',b,'yMaxR',b,'HW',b,'Tmax',b,'Tofs',b,'kA',c,'kI1',c,'kI2',c,'yInf',c);
+a = struct('yMax',b,'yMaxR',b,'HW',b,'Tmax',b,...
+           'Tofs',b,'kA',c,'kI1',c,'kI2',c,'yInf',c);
 b = struct('sse',NaN,'rsquare',NaN,'dfe',NaN,'adjrsquare',NaN,'rmse',NaN);
 [p,Yfit,gof] = deal(repmat(a,[nSig,1]),cell(nSig,1),cell(nSig,1));
 
 % fits all signals with exponentials (depending on type)
 for i = 1:nSig    
     % if the signal is too weak, then remove the signal
-    if ((sum(abs(Y(:,i)))/length(T) < yTol) || (mean(Y(:,i) == 0) > pTol))
+    if (sum(abs(Y(:,i)))/length(T) < yTol) || (mean(Y(:,i) == 0) > pTol)
         Y(:,i) = NaN;
     end
 
     % check to see if the signal is feasible
-    if (~all(isnan(Y(:,i))))
+    if ~all(isnan(Y(:,i)))
         % removes any NaN values from the signal
-        ii = ~isnan(Y(:,i));
-
+        ii = ~isnan(Y(:,i));                
+        
         % if so, then fit the exponential function to the data
-        if (cP.useDouble)
+        if cP.useDouble
             % case is using a double exponential
             [pExp,g,gof{i},Ysgn,ok] = fitDoubleExp(T(ii),Y(ii,i),cP.useToff);                                        
         else
             % case is fitting a single exponential
             [pExp,g,gof{i},Ysgn,ok] = fitSingleExp(T(ii),Y(ii,i),cP.useToff);
-        end
-
+        end                     
+        
         % calculates the exponential fit and sets the fitted parameters
-        if (ok)
+        if ok
             Yfit{i} = calcFittedValues(g,pExp,T,Ysgn);
             p(i) = setExpParameters(p(i),pExp,T,Yfit{i},Y(:,i),Ysgn);    
         else
             [Yfit{i},gof{i}] = deal(NaN(length(T),1),b);
-        end
+        end        
 
         % ensures the r2 values are non-negative
         gof{i}.rsquare = max(0,gof{i}.rsquare);
@@ -81,7 +82,7 @@ function [pExp,g,gof,Ysgn,ok] = fitSingleExp(T,Y,useTofs)
 [iter,itermx,jj] = deal(1,5,1:(4+useTofs));
 
 % if there is no signal, then exit the function with empty arrays
-if (all(Y == 0))
+if all(Y == 0)
     [pExp,g,gof,ok] = deal([],[],[],false); return; 
 end
 
@@ -108,17 +109,17 @@ xU = [  1000 kI10*20  A1U YampU T(imx)];
 
 % swaps any limits where the lower limit exceeds the upper limit
 ii = xL > xU;
-if (any(ii))
+if any(ii)
     [xU(ii),xL(ii)] = deal(xL(ii),xU(ii));
 end
     
 % ensures the time-shift is within a reasonable range
-if (T(imx) > xU(1))
+if T(imx) > xU(1)
     [x0(end),xU(end)] = deal(75,100);
 end
 
 % sets the function fit-type  
-if (useTofs)
+if useTofs
     g = fittype('A0*(1-exp(-(x-dT)/kA))*(1-A1*(1-exp(-(x-dT)/kI1)))*Hside(x-dT)',...
                 'coeff',{'kA','kI1','A1','A0','dT'});     
 else
@@ -128,9 +129,9 @@ end
 
 % sets the exponential weights
 W = exp(k*T); W = W/sum(W);
-        
+
 % sets the fit options struct
-while (cont)
+while cont
     % sets the fit options
     fOpt = fitoptions('method','NonlinearLeastSquares','Lower',xL,...
                       'Upper',xU,'StartPoint',x0,'MaxFunEvals',1e10,...
@@ -140,10 +141,11 @@ while (cont)
         % runs the solver
         [pExp,gof] = fit(T,Y,g,fOpt);
         x0 = coeffvalues(pExp);
+
     catch ME
         % if there was an error (and the offset was used), then revert the
         % model back to a non-offset model
-        if ((strcmp(ME.identifier,'curvefit:fit:nanComputed')) && (useTofs))
+        if strcmp(ME.identifier,'curvefit:fit:nanComputed') && useTofs
             g = fittype('A0*(1-exp(-x/kA))*(1-A1*(1-exp(-x/kI1)))',...
                         'coeff',{'kA','kI1','A1','A0'});  
             [x0,xL,xU] = deal(x0(1:end-1),xL(1:end-1),xU(1:end-1));
@@ -159,12 +161,12 @@ while (cont)
     % determines if the parameters are within range of the bounds. if so,
     % then reset the initial value and restart the 
     for i = ix
-        if (dpp(i) < pTol)
+        if dpp(i) < pTol
             % parameter is too close to the lower bound
             [xL(i),cont] = deal(max(0,x0(i)-dx(i)/2),1);
             xU(i) = 2*x0(i)-xL(i);
             
-        elseif (dpp(i) > (1-pTol))
+        elseif dpp(i) > (1-pTol)
             % parameter is too close to the upper bound 
             [xU(i),cont] = deal(x0(i)+dx(i)/2,1);
             xL(i) = 2*x0(i)-xU(i);
@@ -175,6 +177,10 @@ while (cont)
     iter = iter + 1;
     if (iter > itermx); cont = false; end    
 end
+
+if ~isempty(lastwarn)
+    a = 1;
+end
     
 % --- fits a single activation/inactivation exponential to Y --- %
 function [pExp,g,gof,Ysgn,ok] = fitDoubleExp(T,Y,useTofs)
@@ -184,7 +190,7 @@ function [pExp,g,gof,Ysgn,ok] = fitDoubleExp(T,Y,useTofs)
 [iter,itermx,jj] = deal(1,5,1:(6+useTofs));
 
 % if there is no signal, then exit the function with empty arrays
-if (all(Y == 0))
+if all(Y == 0)
     [pExp,g,ok] = deal([],[],false); return; 
 end
 
@@ -205,18 +211,18 @@ xU = [ 1000  kI10*2.5 kI10*20.0   1*[1 1]    YampU T(imx)];
 
 % swaps any limits where the lower limit exceeds the upper limit
 ii = xL > xU;
-if (any(ii))
+if any(ii)
     [xU(ii),xL(ii)] = deal(xL(ii),xU(ii));
 end
 
 % ensures the time-shift is within a reasonable range
-if (T(imx) > xU(1))
+if T(imx) > xU(1)
     [x0(end),xU(end)] = deal(75,100);
 end
 
 % sets the fit options struct
 W = exp(k*T); W = W/sum(W);
-if (useTofs)
+if useTofs
     g = fittype('A0*(1-exp(-(x-dT)/kA))*(1-A1*(1-exp(-(x-dT)/kI1)))*(1-A2*(1-exp(-(x-dT)/kI2)))*Hside(x-dT)',...
                 'coeff',{'kA','kI1','kI2','A1','A2','A0','dT'}); 
 else
@@ -225,7 +231,7 @@ else
 end
         
 % sets the fit options struct
-while (cont)
+while cont
     % sets the fit options
     fOpt = fitoptions('method','NonlinearLeastSquares','Lower',xL,...
                       'Upper',xU,'StartPoint',x0,'MaxFunEvals',1e10,...
@@ -235,10 +241,11 @@ while (cont)
         % runs the solver
         [pExp,gof] = fit(T,Y,g,fOpt);
         x0 = coeffvalues(pExp);
+        
     catch ME
         % if there was an error (and the offset was used), then revert the
         % model back to a non-offset model
-        if ((strcmp(ME.identifier,'curvefit:fit:nanComputed')) && (useTofs))
+        if strcmp(ME.identifier,'curvefit:fit:nanComputed') && useTofs
             g = fittype('A0*(1-exp(-x/kA))*(1-A1*(1-exp(-x/kI1)))*(1-A2*(1-exp(-x/kI2)))',...
                 'coeff',{'kA','kI1','kI2','A1','A2','A0'});
             [x0,xL,xU] = deal(x0(1:end-1),xL(1:end-1),xU(1:end-1));
@@ -254,12 +261,12 @@ while (cont)
     % determines if the parameters are within range of the bounds. if so,
     % then reset the initial value and restart the 
     for i = ix
-        if (dpp(i) < pTol)
+        if dpp(i) < pTol
             % parameter is too close to the lower bound
             [xL(i),cont] = deal(max(0,x0(i)-dx(i)/2),1);
             xU(i) = 2*x0(i)-xL(i);
             
-        elseif (dpp(i) > (1-pTol))
+        elseif dpp(i) > (1-pTol)
             % parameter is too close to the upper bound 
             [xU(i),cont] = deal(x0(i)+dx(i)/2,1);
             xL(i) = 2*x0(i)-xU(i);
@@ -267,7 +274,7 @@ while (cont)
     end
     
     % resets the lower/upper limits (so they don't overlap)
-    if (xU(2) > xL(3))
+    if xU(2) > xL(3)
         [xU(2),xL(3)] = deal(0.5*(xU(2)+xL(3)));        
         if (xU(2) < xL(2)); [xL(2),xU(2)] = deal(xU(2),xL(2)); end
         if (xU(3) < xL(3)); [xL(3),xU(3)] = deal(xU(3),xL(3)); end
@@ -295,7 +302,7 @@ function [Yamp,YampL,YampU,Yinf,imx,Ysgn] = detAmplitudeLimits(Y)
 [YpkMnT,kmnT] = min(-W(kmn).*YpkMn);
 
 % determines the overall min/max values
-if (YpkMxT > -YpkMnT)
+if YpkMxT > -YpkMnT
     % peak signal value is positive
     [Ymax,imx,Ysgn] = deal(YpkMxT,kmx(kmxT),1);
 else
@@ -328,7 +335,7 @@ indP = cell2mat(ii(~cellfun('isempty',ii)));
 % ppSEM(ppSEM > pp) = NaN;
 
 % determines if the signal is feasible (activation time constants > 0)
-if (isnan(pp(1)))
+if isnan(pp(1))
     % if not, then set all parameter values to NaNs
     fStr = fieldnames(p);
     for i = 1:length(fStr)
@@ -341,7 +348,7 @@ end
 
 % sets the new search values (for the amplitude calculations)
 tLim = [0 max(30,ceil(10*pp(1)))] + [0 pp(end)];
-if (Ysgn > 0)
+if Ysgn > 0
     Yraw = max(Y((T >= tLim(1)) & (T <= tLim(2))));
 else
     Yraw = min(Y((T >= tLim(1)) & (T <= tLim(2))));
@@ -370,7 +377,7 @@ end
 
 % calculates the index band within the signal is less than half the signal
 % amplitude (with the s/s removed) which corresponds
-if ((imx == length(Yexp)) || (Ymx < Ymin) || (all(Yexp == 0)))
+if (imx == length(Yexp)) || (Ymx < Ymin) || (all(Yexp == 0))
     HW = NaN;
 else    
     % removes the offset from the signal               
@@ -383,19 +390,19 @@ end
 
 % sets the parameter/SEM values
 for i = 1:length(indP)
-    if (strcmp(cStr{indP(i)}(1),'k'))
-        % case is a time constant parameter
-        eval(sprintf('p.%s(1) = pp(indP(i))/60;',cStr{indP(i)}))
-        eval(sprintf('p.%s(2) = ppSEM(indP(i))/60;',cStr{indP(i)}))
+    if strcmp(cStr{indP(i)}(1),'k')
+        % case is a time constant parameter    
+        p.(cStr{indP(i)})(1) = pp(indP(i))/60;
+        p.(cStr{indP(i)})(2) = ppSEM(indP(i))/60;
     else
         % case is a scale factor
-        eval(sprintf('p.%s(1) = pp(indP(i));',cStr{indP(i)}))
-        eval(sprintf('p.%s(2) = ppSEM(indP(i));',cStr{indP(i)}))
+        p.(cStr{indP(i)})(1) = pp(indP(i));
+        p.(cStr{indP(i)})(2) = ppSEM(indP(i));        
     end
 end
     
 % calculates the time to max response
-if (isMax)
+if isMax
     % case is determining the maximum point from the signal
     Tex = T(argMax(Yexp));
     ii = Tex + (-del:del); ii = ii((ii > 0) & (ii <= length(Y)));
@@ -409,7 +416,7 @@ end
 
 % sets the final values
 [p.Tmax,p.yInf] = deal(T(imxR + ii(1))/60,yInf);
-if (any(strcmp(fieldnames(pExp),'dT'))); p.Tofs = pExp.dT; end
+if any(strcmp(fieldnames(pExp),'dT')); p.Tofs = pExp.dT; end
 
 % --- calculates the initial time constant estimate
 function k0 = calcInitTauEst(Y)
@@ -420,7 +427,7 @@ P = polyfit((1:length(Y))',log(Y-(min(Y)-1)),1);
 warning(wState);
 
 % calculates an estimate of the time constant
-if (P(1) < 0)
+if P(1) < 0
     % linear component is valid, so calculate from the gradient
     k0 = -1/P(1);
 else
