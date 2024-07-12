@@ -107,18 +107,8 @@ classdef RestoreDART < handle
                 'Name',obj.figName,'Resize','off','NumberTitle','off',...
                 'Visible','off'); 
             
-            % retrieves the figure objects
-            fObj0 = findall(0,'type','figure');
-            obj.fObj = fObj0(~arrayfun(@(x)(isequal(x,obj.hFig)),fObj0));
-            
-            % retrieves the figure names
-            [obj.fObjName,iS] = sort(...
-                arrayfun(@(x)(get(x,'Name')),obj.fObj,'un',0));
-            obj.fObj = obj.fObj(iS);
-            
-            % removes any empty tag figure
-            ii = ~cellfun('isempty',obj.fObjName);
-            [obj.fObj,obj.fObjName] = deal(obj.fObj(ii),obj.fObjName(ii));
+            % sets up the figure properties
+            obj.setupFigureProps();            
             
             % ---------------------------- %
             % --- CONTROL BUTTON PANEL --- %
@@ -296,6 +286,31 @@ classdef RestoreDART < handle
         function closeWindow(obj,~,~)
             
             delete(obj.hFig);
+            
+        end
+
+        % ------------------------------- %        
+        % --- MISCELLANEOUS FUNCTIONS --- %
+        % ------------------------------- %
+        
+        % --- sets up the figure property fields
+        function setupFigureProps(obj)
+            
+            % retrieves the figure objects
+            fObj0 = findall(0,'type','figure');
+            obj.fObj = fObj0(~arrayfun(@(x)(isequal(x,obj.hFig)),fObj0));
+            
+            % retrieves the figure names
+            [obj.fObjName,iS] = sort(...
+                arrayfun(@(x)(get(x,'Name')),obj.fObj,'un',0));
+            obj.fObj = obj.fObj(iS);
+            
+            % removes any non-DART figures (progressbar, loadbar etc)
+            fObjTag = get(obj.fObj,'tag');            
+            ii = ~(cellfun('isempty',fObjTag) | ...
+                   strcmp(fObjTag,'ProgBar') | ...
+                   strcmp(fObjTag,'__progressbar__'));
+            [obj.fObj,obj.fObjName] = deal(obj.fObj(ii),obj.fObjName(ii));
             
         end
         
