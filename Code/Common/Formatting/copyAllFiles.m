@@ -9,10 +9,12 @@ if isempty(isAnalyDir); isAnalyDir = false; end
 copyData = dir(copyDir);
 [~,finalDir] = fileparts(copyDir);
  
-% removes all the *.m/*.fig files in the destination directory (removes any
+% removes all *.m/*.fig/*.p files in the destination directory (removes any
 % previous file versions to remove any overlaps). do not do this for the
 % analysis function directory
-A = [dir(fullfile(destDir,'*.m'));dir(fullfile(destDir,'*.fig'))];
+A = [dir(fullfile(destDir,'*.m'));...
+     dir(fullfile(destDir,'*.fig'));...
+     dir(fullfile(destDir,'*.p'))];
 if ~isempty(A) && ~isAnalyDir
     cellfun(@(x)(delete(fullfile(destDir,x))),field2cell(A,'name'));
 end
@@ -82,7 +84,9 @@ for i = 1:length(copyData)
                 else
                     % only copy .m or .fig files
                     [~,~,fExtn] = fileparts(copyData(i).name);            
-                    isCopy = strcmp(fExtn,'.m') || strcmp(fExtn,'.fig');             
+                    isCopy = strcmp(fExtn,'.m') || ...
+                             strcmp(fExtn,'.p') || ...
+                             strcmp(fExtn,'.fig');
                 end
             end
                 
