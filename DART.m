@@ -947,16 +947,23 @@ classdef DART < handle
             % --- PROGRAM FILE UPDATE --- %
             % --------------------------- %
             
-            % DART main 
+            % DART main              
             cDirMain = fullfile(tmpDir,'DART Main');
+            hLoad.StatusMessage = 'Updating DART Main...';
             obj.copyDirFiles(cDirMain,getProgFileName);
             
             % Analysis functions
             cDirFunc = fullfile(tmpDir,'Analysis Functions');
+            hLoad.StatusMessage = 'Updating Analysis Functions...';
             obj.copyDirFiles(cDirFunc,fcnDir);
             
             % copies over all code sub-directories
             for i = 1:length(cDir)
+                % updates the loadbar
+                lStrNw = sprintf('Updating %s Directory...',cDir{i});
+                hLoad.StatusMessage = lStrNw;                
+                
+                % copies over the files
                 cDirNw0 = fullfile(tmpDir,cDir{i});
                 cDirNwF = fullfile(codeDir,cDir{i});
                 obj.copyDirFiles(cDirNw0,cDirNwF);
@@ -966,10 +973,11 @@ classdef DART < handle
             % --- HOUSE-KEEPING EXERCISES --- %
             % ------------------------------- % 
             
-            % closes the loadbar
-            hLoad.delete;
+            % deletes the temporary folder (and sub-folders)
+            rmdir(tmpDir,'s');            
             
-            a = 1;
+            % closes the loadbar
+            hLoad.delete;            
             
         end
         
@@ -979,56 +987,87 @@ classdef DART < handle
                         
             % determines the files within the temporary directory
             dList0 = dir(fullfile(fDir0, '**\*.*'));
-            
-            % removes the infeasible file elements
-            dName0 = arrayfun(@(x)(x.name),dList0,'un',0);
-            dIsDir = arrayfun(@(x)(x.isdir),dList0);            
-            isFeas = ~(strcmp(dName0,'.') | strcmp(dName0,'..') | dIsDir);
-            dList0 = dList0(isFeas);
-            
+            dList0 = dList0(obj.detFeasFiles(dList0));
+            dNum0 = arrayfun(@(x)(x.datenum),dList0);
+           
             % groups the files by their sub-directories
             dDir0 = arrayfun(@(x)(x.folder),dList0,'un',0);
-            [dDirU,~,iC] = unique(dDir0,'stable');
-            indC = arrayfun(@(x)(find(iC == x)),1:max(iC),'un',0);
+            [dDirU,~,iCU] = unique(dDir0,'stable');
+            indC = arrayfun(@(x)(find(iCU == x)),1:max(iCU),'un',0);
             
             % memory allocation
+            fRmv = [];
             nFile = length(dList0);
             isCopy = false(nFile,1);
-            [fFile0,fFileF] = deal(cell(nFile,1));
-            dNum0 = arrayfun(@(x)(x.datenum),dList0);
+            [fFile0,fFileF] = deal(cell(nFile,1));            
             
             % compares and copies over any file differences
             for i = 1:length(indC)
-                % sets the corresponding DART directory file path
+                % determines the corresponding DART directory file paths
                 fDirFC = [fDirF,dDirU{i}((length(fDir0)+1):end)];                
-                for j = 1:length(indC{i})
+                dListF = dir(fDirFC); 
+                dListF = dListF(obj.detFeasFiles(dListF));
+                
+                % retrieves the temporary/current filenames
+                dName0 = arrayfun(@(x)(x.name),dList0(indC{i}),'un',0);
+                dNameF = arrayfun(@(x)(x.name),dListF,'un',0);                                
+                
+                % determines the removed files
+                dRmvNw = setdiff(dNameF,dName0);
+                if ~isempty(dRmvNw)
+                    % determines the feasible files to remove (only remove
+                    % .m, .p and .fig files)
+                    fExtnRmv = cellfun(@(x)(getFileExtn(x)),dRmvNw,'un',0);
+                    isF = strcmp(fExtnRmv,'.m') | ...
+                          strcmp(fExtnRmv,'.p') | ...
+                          strcmp(fExtnRmv,'.fig');
+                    
+                    % adds any remaining files to the list
+                    if any(isF)  
+                        dRmvNw = dRmvNw(isF);
+                        fR = cellfun(@(x)(fullfile(fDirFC,x)),dRmvNw,'un',0);
+                        fRmv = [fRmv;fR(:)];
+                    end
+                end
+                
+                % determines the added files
+                [dAddNw,iA] = setdiff(dName0,dNameF);
+                if ~isempty(dAddNw)
+                    % sets the copy flag for the files to add
+                    k = indC{i}(iA);
+                    isCopy(k) = true;
+                    
+                    % retrieves the paths of the files to add
+                    fFile0(k) = fullfile(dDirU{i},dAddNw);
+                    fFileF(k) = fullfile(fDirFC,dAddNw);
+                end
+                    
+                % determines the common files
+                [~,iC] = intersect(dName0,dNameF);                                                   
+                for j = iC(:)'
                     % sets the temporary file name
                     k = indC{i}(j);
                     
                     % retrieves the paths of the files to compare
-                    fFile0{k} = fullfile(dDirU{i},dList0(k).name);                                   
+                    fFile0{k} = fullfile(dDirU{i},dList0(k).name);
                     fFileF{k} = fullfile(fDirFC,dList0(k).name);
-                    
-                    % retrieves the current file date number
-                    try
-                    isCopy(k) = dir(fFileF{k}).datenum ~= dNum0(k);                        
-                    catch
-                        a = 1;
-                    end
+                    isCopy(k) = dir(fFileF{k}).datenum ~= dNum0(k);                    
                 end
             end
+
+            % deletes the DART files not in the temporary directory
+            if ~isempty(fRmv)
+                cellfun(@delete,fRmv);
+            end
             
-            % determines if there are any files to copy over
+            % copies over any missing/mismatching files to the DART folder
             if any(isCopy)
                 % if so, reduce down the file names
                 [fFile0,fFileF] = deal(fFile0(isCopy),fFileF(isCopy));
                 
                 % copies over the files from the temporary directory
-                a = 1;
+                cellfun(@(fS,fD)(movefile(fS,fD)),fFile0,fFileF);
             end
-            
-            % deletes the temporary folder (and sub-folders)
-            rmdir(fDir0,'s');
             
         end
         
@@ -1432,7 +1471,16 @@ classdef DART < handle
                 set(hMenu,'Separator',strcmp(mSep,'on'))
             end                
                 
-        end              
+        end
+        
+        % --- determines the feasible files from the file list, dFile0
+        function isFeas = detFeasFiles(dList0)
+            
+            dName0 = arrayfun(@(x)(x.name),dList0,'un',0);
+            dIsDir = arrayfun(@(x)(x.isdir),dList0);            
+            isFeas = ~(strcmp(dName0,'.') | strcmp(dName0,'..') | dIsDir);
+        
+        end        
         
     end
     

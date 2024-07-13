@@ -61,10 +61,11 @@ for i = 1:length(copyData)
                                 isCopy = any(cellfun(@(x)...
                                        (strcmp(x,copyData(i).name)),fName));
                             otherwise
-                                % only copy .m or .fig files
-                                [~,~,fExtn] = fileparts(copyData(i).name);            
-                                isCopy = strcmp(fExtn,'.m') ...
-                                        || strcmp(fExtn,'.fig');            
+                                % only copy .m, .p or .fig files
+                                [~,~,fExtn] = fileparts(copyData(i).name);
+                                isCopy = strcmp(fExtn,'.m') || ...
+                                         strcmp(fExtn,'.fig') || ...
+                                         strcmp(fExtn,'.p');
                         end
                     end
                 else                                   
