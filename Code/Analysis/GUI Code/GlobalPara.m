@@ -43,7 +43,8 @@ if ~isempty(hPara); setObjVisibility(hPara,'off'); end
 % determines if there are any y-values in the solution data. if there is,
 % then disable the movement type (absolute location only)
 snTot = getappdata(hGUI.figFlyAnalysis,'snTot');
-if ~isempty(snTot(1).Py)
+if is2DCheck(snTot(1).iMov)
+    % midline crossings only applicable for 1D assays
     setObjEnable(handles.popupMovType,'off')
 end
 
@@ -90,19 +91,32 @@ nwVal = str2double(get(hObject,'string'));
 
 % sets the parameter limits/integer flags
 switch (pStr)
-    case ('Tgrp0') % case is the start of the day
+    case ('Tgrp0') 
+        % case is the start of the day
         [nwLim,isInt] = deal([0 23.99],0);
-    case ('TdayC') % case is the day cycle duration
+    
+    case ('TdayC') 
+        % case is the day cycle duration
         [nwLim,isInt] = deal([0 24],1);        
-    case ('pWid') % case is the midline location
+    
+    case ('pWid') 
+        % case is the midline location
         [nwLim,isInt] = deal([0 1],0);
-    case ('tNonR') % case is the post-stimuli non-reactive duration
+    
+    case ('tNonR') 
+        % case is the post-stimuli non-reactive duration
         [nwLim,isInt] = deal([1 600],0);
-    case ('nAvg') % case is the stimuli averaging time bin size
+    
+    case ('nAvg') 
+        % case is the stimuli averaging time bin size
         [nwLim,isInt] = deal([1 300],1);
-    case ('dMove') % case is the activity movement distance
+    
+    case ('dMove') 
+        % case is the activity movement distance
         [nwLim,isInt] = deal([0 inf],0);
-    case ('tSleep') % case is the inactivity sleep duration
+    
+    case ('tSleep') 
+        % case is the inactivity sleep duration
         [nwLim,isInt] = deal([1 60],1);
 end
 
@@ -252,7 +266,7 @@ function initPopupObjects(handles)
 gPara = getappdata(handles.figGlobalPara,'gPara');
 
 % initialises the list strings
-set(handles.popupMovType,'string',{'Absolute Location';'Midline Crossing'}')
+set(handles.popupMovType,'string',{'Absolute Location';'Midline Crossing'})
 
 % sets the panel object handle
 hPanel = handles.panelPara;

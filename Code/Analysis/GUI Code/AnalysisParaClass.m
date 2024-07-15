@@ -1671,10 +1671,12 @@ classdef AnalysisParaClass < handle
                         % case is the sleep intensity metrics
                         nRow = 60/nNew;          
                         lStr = setTimeBinStrings(nNew,nRow,1);
+                        
                     case ('nGrp') 
                         % case is the time-grouped stimuli response
                         nRow = nNew;
                         lStr = setTimeGroupStrings(nNew,obj.tDay);
+                        
                     case {'appName','appNameS'}                        
                         lStr = snTotT(1).iMov.pInfo.gName;
                         if (pInd ~= 3)                            

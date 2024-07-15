@@ -16,13 +16,13 @@ Vtmp(:,flyok) = cell2mat(V0);
 V = num2cell(Vtmp,2);
 clear V0 Vtmp
 
-% calculates the mean proportional movement (based on the movement
-% type)
-% I = cell(length(indB),1);
-switch (cP.movType)
-    case ('Midline Crossing') % case is calculating midline crossing
+% calculates the mean proportional movement (based on movement type)
+switch cP.movType
+    case 'Midline Crossing'
+        % case is using midline crossing
         I = cellfun(@(x)(x > 0),V,'un',0);
-    otherwise % case is calculating absolute distance
-        % calculates the mean proportional movement
+    
+    otherwise
+        % case is using absolute distance
         I = cellfun(@(x)(x > cP.dMove),V,'un',0);        
 end

@@ -23,14 +23,21 @@ if (nargin == 5)
 end
 
 % sets the binned x/y locations   
-switch (cP.movType)
-    case ('Absolute Speed') % case is calculating absolute distance
+switch cP.movType
+    case 'Absolute Speed'
+        % case is calculating absolute distance
         V(jj) = calcBinnedAbsSpeed(Px,Py,T,flyok,indB(jj));
-    case ('Absolute Range') % case is calculating absolute distance
+
+    case 'Absolute Range' 
+        % case is calculating absolute distance
         V(jj) = calcBinnedRange(Px,Py,flyok,indB(jj));        
-    case ('Absolute Distance') % case is calculating absolute distance
+
+    case 'Absolute Distance' 
+        % case is calculating absolute distance
         V(jj) = calcBinnedAbsDist(Px,Py,flyok,indB(jj));                
-    case ('Midline Crossing') % case is calculating midline crossing
+
+    case 'Midline Crossing'
+        % case is calculating midline crossing
         V(jj) = calcMidlineCross(Px,flyok,indB(jj),cP.pWid,cP.tBin);
 end
 

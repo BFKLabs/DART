@@ -16,7 +16,7 @@ I = cell(length(indB),1);
 V = calcBinnedFlyMovement(snTot,Ttot,indB(jj),cP,ind,flyok);
 
 % sets the distance metric for calculating the average 
-if (strcmp(cP.movType,'Absolute Range'))
+if strcmp(cP.movType,'Absolute Range')
     cP.movType = 'Absolute Distance';
     VD = cell2mat(calcBinnedFlyMovement(snTot,Ttot,indB(jj),cP,ind,flyok));
 else
@@ -26,10 +26,12 @@ end
 % calculates the mean proportional movement (based on the movement
 % type)
 switch (cP.movType)
-    case ('Midline Crossing') % case is calculating midline crossing
+    case ('Midline Crossing') 
+        % case is calculating midline crossing
         I(jj) = cellfun(@(x)(x > 0),V,'un',0);
-    otherwise % case is calculating absolute distance
-        % calculates the mean proportional movement
+        
+    otherwise 
+        % case is calculating absolute distance
         I(jj) = cellfun(@(x)(x > cP.dMove),V,'un',0);        
 end
 
