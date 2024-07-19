@@ -313,7 +313,8 @@ classdef SigPopData < DataOutputArray
             % combines the metric data with the first order x-variable
             if isnan(obj.tMlt)
                 % combines the cell arrays into a numerical array
-                YTC = roundP(combineNumericCells(YT),obj.pR);
+                YTC = roundP(cell2mat(cell2cell(YT,0)),obj.pR);
+%                 YTC = roundP(combineNumericCells(YT),obj.pR);
                 
                 % combines the column data
                 if isnumeric(YR0{1}{1,1})

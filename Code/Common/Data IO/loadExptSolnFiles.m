@@ -43,7 +43,7 @@ A = untar(fName,TempDir);
 if strContains(A{1},'TempOutput.mat')
     % -------------------------------- %
     % --- NEW SOLUTION FILE FORMAT --- %
-    % -------------------------------- %         
+    % -------------------------------- %           
     
     % updates the waitbar figure
     h.Update(1+wOfs,'Loading Solution File...',0.5);

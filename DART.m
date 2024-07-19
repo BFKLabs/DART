@@ -290,6 +290,7 @@ classdef DART < handle
             warning('off','MATLAB:load:classNotFound');
             warning('off','MATLAB:ui:javaframe:PropertyToBeRemoved');
             warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
+            warning('off','MATLAB:class:LoadDefinitionUpdated');
             
             % main field initialisation
             obj.uType = runDevFunc('isDev');
