@@ -52,7 +52,7 @@ if (nargin == 2)
 end
     
 % resets all the units to pixels
-try; set(hLg,'color','none'); end
+try set(hLg,'color','none'); catch; end
 set(hLg,'units','normalized')
 
 % ensures all the lines in the legend are even in size

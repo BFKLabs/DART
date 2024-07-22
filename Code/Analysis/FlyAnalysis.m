@@ -1418,9 +1418,10 @@ try
             % update the table with the new values
             if pDataNw.hasSR
                 try
-                    if ~isempty(pDataNw.sP(3).Para)
+                    if ~isempty(pDataNw.sP(3).Para) % && ...
+%                             ~startsWith(pDataNw.Name,'Pre & Post')
                         pObj = getappdata(hPara,'pObj');
-                        pObj.initAnalysisGUI();
+                        pDataNw = pObj.initAnalysisGUI();
                         setObjVisibility(hPara,'off')
                     end
                 catch

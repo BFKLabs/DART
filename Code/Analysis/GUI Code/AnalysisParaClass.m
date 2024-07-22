@@ -542,9 +542,13 @@ classdef AnalysisParaClass < handle
                         obj.pData.sP(3).Lim.plotTrace = pSelT;                        
                         
                         % resets the table data
-                        Data = [lStr(:),num2cell([pSelT,pSelF])];
-                        if strcmp(p(uData{1}).Para,'nBin')
-                            Data = [Data,num2cell(pSelF)];
+                        if startsWith(obj.pData.Name,'Pre & Post')
+                            Data = [lStr(:),num2cell(pSelT)];
+                        else
+                            Data = [lStr(:),num2cell([pSelT,pSelF])];
+                            if strcmp(p(uData{1}).Para,'nBin')
+                                Data = [Data,num2cell(pSelF)];
+                            end
                         end
                         
                         % updates the table properties
@@ -1566,7 +1570,7 @@ classdef AnalysisParaClass < handle
         end
             
         % --- resets the box panel height
-        function resetBoxPanelHeight(obj)            
+        function resetBoxPanelHeight(obj)
             
             % determines which box panels are maximises
             HpanelNw = obj.getCurrentPanelHeights();
