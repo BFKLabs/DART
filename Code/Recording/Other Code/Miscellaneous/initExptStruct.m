@@ -67,10 +67,11 @@ if ~isempty(objIMAQ) && ~isa(objIMAQ,'DummyVideo')
     if strContains(devName,'Basler GenICam Source')
         % case is a basler genicam type
         Timing.Tp = 10;
+        
     else
         % case are other specific cameras
         switch devName
-            case {'Logitech Webcam Pro 9000','USB Video Device'}
+            case {'Logitech Webcam Pro 9000','USB Video Device','Trust Webcam'}
                 Timing.Tp = 10;
         end
     end

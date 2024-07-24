@@ -58,8 +58,14 @@ tLblStr = cell(size(xTick));
 for i = 1:length(xTick)
     switch iMin
         case 1   
-            tLblStr{i} = datestr([dumT(1:2) ...
+            if mod(tDay,1) == 0
+                tLblStr{i} = datestr([dumT(1:2) ...
                                 sec2vec(Ts+tTick(i)+tDayH)],'HHPM');
+            else
+                tLblStr{i} = datestr([dumT(1:2) ...
+                                sec2vec(Ts+tTick(i)+tDayH)],'HH:MMPM');
+            end
+            
         case 2
             tLblStr{i} = datestr([dumT(1:2) ...
                                 sec2vec(Ts+tTick(i)+tDayH)],'HH:MMPM');
