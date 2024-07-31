@@ -646,8 +646,9 @@ classdef DART < handle
                 warning(wState);
             end
             
-            % deletes the GUI
+            % deletes the GUI and class object
             delete(obj.hFig);
+            delete(obj);
             
         end        
         

@@ -167,6 +167,7 @@ if isChange
             
             % delete the figure and run the post solution loading function
             delete(hFig)
+            sObj.deleteClass();
             postSolnLoadFunc(hFigM,sInfo);                           
             
         case 'No'
@@ -174,11 +175,15 @@ if isChange
             
             % delete the figure and run the post solution loading function
             delete(hFig)
+            sObj.deleteClass();
             postSolnLoadFunc(hFigM);    
     end
 else
     % otherwise, delete the figure and run the post solution loading func
     delete(hFig)
+    sObj.deleteClass();
+    
+    % runs the post-loading function
     postSolnLoadFunc(hFigM); 
 end
 

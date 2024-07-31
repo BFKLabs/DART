@@ -288,6 +288,13 @@ classdef OpenSolnTab < handle
             
         end
         
+        % --- deletes the class object
+        function deleteClass(obj)
+           
+            delete(obj)
+            
+        end
+        
     end
     
     % state class methods

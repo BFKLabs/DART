@@ -2,6 +2,13 @@ function bInfo = reduceStimBlockInfo(bInfo0)
 
 % determines any matching block information
 sP = field2cell(bInfo0,'sPara',1); 
+
+% ensures the blocks are in chronological order
+tOfs = field2cell(sP,'tOfs',1);
+[~,iS] = sort(tOfs);
+[sP,bInfo0] = deal(sP(iS),bInfo0(iS));
+
+% determines which blocks are the same 
 B = cell2mat(arrayfun(@(x)(arrayfun(@(y)(isequal(x,y)),sP)),sP,'un',0)');
 
 % memory allocations

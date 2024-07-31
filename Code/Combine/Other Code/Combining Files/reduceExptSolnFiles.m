@@ -151,8 +151,22 @@ end
 % --- retr
 function Ygrp = getDataValues(Y,cID)
 
+% retrieves the regional data values
 Y0 = cellfun(@(x)(getRegionDataValues(Y,x)),cID,'un',0);
-Ygrp = cell2mat(Y0(:)');
+
+% clears the extraneous variables
+clear Y cID
+pause(0.05);
+
+try
+    Ygrp = cell2mat(Y0(:)');
+catch
+    Ygrp = NaN(length(Y0{1}),length(Y0));
+    for i = 1:length(Y0)
+        Ygrp(:,i) = Y0{i};
+        Y0{i} = [];
+    end
+end
 
 %
 function Y0 = getRegionDataValues(Y,cID)
