@@ -1,5 +1,5 @@
 function varargout = FlyRecord(varargin)
-% Last Modified by GUIDE v2.5 13-Sep-2023 23:40:45
+% Last Modified by GUIDE v2.5 06-Aug-2024 13:35:03
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -539,6 +539,18 @@ function menuVidROI_Callback(~, ~, handles)
 wState = warning('off','all');
 VideoROI(handles.figFlyRecord)
 warning(wState);
+
+% -------------------------------------------------------------------------
+function menuDefProps_Callback(~, ~, handles)
+
+% turns off the video preview (if already on)
+if get(handles.toggleVideoPreview,'value')
+    set(handles.toggleVideoPreview,'Value',0)
+    toggleVideoPreview_Callback(handles.toggleVideoPreview, [], handles)
+end
+
+% runs the default device property dialog window
+DefDeviceProps(handles.figFlyRecord);
 
 % ----------------------------- %
 % --- EXPERIMENT MENU ITEMS --- %

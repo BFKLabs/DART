@@ -255,6 +255,12 @@ end
 % includes the time cycle parameters (if not included)
 if ~isfield(snTot,'tcPara')
     snTot.tcPara = setupTimeCyclePara();
+else
+    if isempty(snTot.tcPara.tCycleR)
+        snTot.tcPara.tCycleR = {12,12};
+    elseif isnumeric(snTot.tcPara.tCycleR)
+        snTot.tcPara.tCycleR = num2cell(snTot.tcPara.tCycleR);
+    end
 end
 
 % separates the acceptance flags (if stored in a cell array)

@@ -11,7 +11,7 @@ classdef VideoPara < handle
         iProg        
         srcObj
         infoObj
-        infoSrc
+        infoSrc        
         
         % object handles
         hFig
@@ -20,6 +20,8 @@ classdef VideoPara < handle
         hTxt
         hObj
         hButC
+        hObjEN
+        hLoad
         
         % fixed object dimensions
         dX = 10;
@@ -97,6 +99,10 @@ classdef VideoPara < handle
             obj.infoObj = getappdata(obj.hFigM,'infoObj');
             obj.isWebCam = isa(obj.infoObj.objIMAQ,'webcam');
             
+            % creates the loadbar object
+            lStr = 'Retrieving Device Default Properties';
+            obj.startLoadBar(lStr);
+            
             % retrieves the source information fields
             if obj.isWebCam
                 obj.sObj = obj.infoObj.objIMAQ;
@@ -119,6 +125,9 @@ classdef VideoPara < handle
             obj.isNum = (strcmp(fType,'double') | ...
                          strcmp(fType,'integer')) & ...
                          ~strcmp(fReadOnly,'always');
+                     
+            % applies the default device properties
+            obj.applyDefDeviceProps();
                      
             % if there are no valid parameters, then exit the function
             if ~any(obj.isEnum) && ~any(obj.isNum)                
@@ -165,7 +174,7 @@ classdef VideoPara < handle
             
             % memory allocation
             okP = true(size(pStr));
-            obj.pVal0 = cell(length(okP),1);
+            obj.pVal0 = cell(length(okP),2);
 
             % retrieves the original parameter values
             for i = 1:length(okP)
@@ -191,8 +200,8 @@ classdef VideoPara < handle
             sInfoNum = obj.appendOtherNumPara(sInfoNum);            
             obj.cVal0{2} = arrayfun(@(x)...
                 (double(x.ConstraintValue)),sInfoNum(:),'un',0);
-            obj.isFeas{2} = diff(cell2mat(obj.cVal0{2}),[],2) > 0;            
-
+            obj.isFeas{2} = diff(cell2mat(obj.cVal0{2}),[],2) > 0;
+            
             % calculates the optimal column count
             fPos = get(0,'ScreenSize');
             nParaT = sum(cellfun(@sum,obj.isFeas));
@@ -205,10 +214,7 @@ classdef VideoPara < handle
         end
         
         % --- initialises the class fields
-        function initClassObjects(obj)
-            
-            % creates a loadbar
-            hP = ProgressLoadbar('Retrieving Camera Properties...');
+        function initClassObjects(obj)            
             
             % deletes any previous objects
             hFigPr = findall(0,'tag',obj.tagStr);
@@ -266,7 +272,7 @@ classdef VideoPara < handle
             tStr = {'NUMERICAL PARAMETERS','ENUMERATION PARAMETERS'};
             
             % creates the panels and objects
-            for i = 1:2            
+            for i = 1:2
                 % sets up the numerical parameters (if any)
                 if any(obj.hasP(i))
                     % creates the panel object                    
@@ -337,21 +343,70 @@ classdef VideoPara < handle
             % ------------------------------- %
             % --- HOUSE-KEEPING EXERCISES --- %
             % ------------------------------- %
-                                    
+                      
+            % sets the enumeration parameters
+            obj.setEnumParaDepObjects();     
+            obj.updateEnumParaDepObjects();  
+            setObjEnable(obj.hButC{3},'off')
+            
             % disables the real-time tracking menu item (if available)
             if isfield(obj.hMain,'menuRTTrack')
                 obj.eStr0 = get(obj.hMain.menuRTTrack,'enable');
                 setObjEnable(obj.hMain.menuRTTrack,'off')
             end
             
-            % deletes the loadbar
-            delete(hP)
+            % stops the loadbar
+            obj.stopLoadBar();
             
             % makes the main gui visible again
             centreFigPosition(obj.hFig,2);
             setObjVisibility(obj.hFig,1);
             
         end    
+        
+        % --- sets up the enumeration parameter dependent objects
+        function setEnumParaDepObjects(obj)
+        
+            % retrieves the parameter 
+            eInfoSrc = obj.infoSrc(obj.isEnum); 
+            fStrE = field2cell(eInfoSrc(obj.isFeas{1}),'Name');
+            fStrN = cellfun(@(x)(x.UserData.Name),obj.hObj{1},'un',0);
+            
+            % sets the 
+            obj.hObjEN = cell(length(fStrE),2);
+            for i = 1:length(fStrE)
+                isS = cellfun(@(x)(startsWith(fStrE{i},x)),fStrN);
+                if any(isS)
+                    obj.hObjEN{i,1} = obj.hTxt{1}{isS};
+                    obj.hObjEN{i,2} = obj.hObj{1}{isS};
+                end
+            end
+            
+        end
+        
+        % --- updates the enumeration parameter dependent objects
+        function updateEnumParaDepObjects(obj,iDev)
+            
+            % search string list
+            sStr = {'auto'};
+            
+            % sets the default input arguments
+            if ~exist('iDev','var'); iDev = 1:size(obj.hObjEN,1); end
+        
+            % updates the properties for the dependent object
+            for i = iDev(:)'
+                % if there is no dependent object, then continue
+                if isempty(obj.hObjEN{i,1})
+                    continue
+                end
+                
+                % determines if the "auto" flag has been selected
+                lStrS = obj.hObj{2}{i}.String{obj.hObj{2}{i}.Value};
+                isOn = ~any(strcmp(sStr,lStrS));                
+                cellfun(@(x)(setObjEnable(x,isOn)),obj.hObjEN(i,:))
+            end
+            
+        end            
         
         % ---------------------------------- %
         % --- PARAMETER OBJECT CALLBACKS --- %
@@ -375,7 +430,7 @@ classdef VideoPara < handle
             
             % retrieves the current parameters constraints values
             nwLim = srcInfoNw.ConstraintValue;
-            isInt = all(mod(nwLim,1) == 0);
+%             isInt = all(mod(nwLim,1) == 0);
             
             % check to see if the new value is valid
             if chkEditValue(nwVal,nwLim,false)
@@ -429,6 +484,11 @@ classdef VideoPara < handle
                     set(obj.sObj,srcInfo.Name,nwVal)
                 end                
                 
+                % updates the dependent enumeration parameters
+                fStrE = cellfun(@(x)(x.UserData.Name),obj.hObj{2},'un',0);
+                iDevE = find(strcmp(fStrE,srcInfo.Name));
+                obj.updateEnumParaDepObjects(iDevE)
+                
                 % enables the reset button
                 obj.specialParaUpdate(srcInfo.Name,nwVal)                
                 setObjEnable(obj.hButC{3},'on')
@@ -461,7 +521,7 @@ classdef VideoPara < handle
                 set(hObj,'string',num2str(iExpt.Timing.Tp));
             end
             
-        end        
+        end                        
         
         % ----------------------------------------- %
         % --- CONTROL BUTTON CALLBACK FUNCTIONS --- %
@@ -475,20 +535,11 @@ classdef VideoPara < handle
                 {'*.vpr','Video Preset Files (*.vpr)'},...
                 'Load Stimulus Playlist File',obj.iProg.CamPara);
             if (fIndex ~= 0)
-                % loads the video preset data file
-                vprData = importdata(fullfile(fDir,fName));
+                % determines the preset file feasibility
+                fFile = fullfile(fDir,fName);
+                [missP,infoSrcNw,vprData] = ...
+                    obj.detPresetFileFeasibility(fFile);
                 
-                % retrieves the source object information 
-                if obj.isWebCam
-                    [fldNames,infoSrcNw] = ...
-                        getWebCamProps(obj.infoObj.objIMAQ);
-                else
-                    pInfo = propinfo(obj.srcObj);
-                    [infoSrcNw,fldNames] = combineDataStruct(pInfo);
-                end
-                
-                % determines if camera properties match that from file
-                missP = ~isempty(setdiff(vprData.fldNames,fldNames));
                 if missP
                     % if not, then exit with an error
                     tStr = 'Invalid Camera Presets';
@@ -502,18 +553,71 @@ classdef VideoPara < handle
                     obj.pVal0 = [vprData.fldNames(:),vprData.pVal(:)];
                     obj.buttonReset(obj.hButC{3},[])
                 end
+                
+                % resets the enumeration parameter dependent objects
+                obj.updateEnumParaDepObjects();
             end
             
-        end        
+        end                
         
         % --- Executes on button press in save button
         function buttonSave(obj, ~, ~)
             
+            % sets the default file name
+            fDate = datestr(now,'dd-mmm-yyyy');            
+            devName = obj.infoObj.objIMAQ.Name;            
+            defName = sprintf('%s (%s).vpr',devName,fDate);
+            defFile = fullfile(obj.iProg.CamPara,defName);
+            
             % prompts the user for the camera preset file
             [fName,fDir,fIndex] = uiputfile(...
                 {'*.vpr','Video Preset Files (*.vpr)'},...
-                'Save Stimulus Playlist File',obj.iProg.CamPara);
+                'Save Stimulus Playlist File',defFile);
             if (fIndex ~= 0)
+                % if the file exists, then determine if the preset file is
+                % the same as the current device
+                fFile = fullfile(fDir,fName);
+                if exist(fFile,'file')
+                    % determines device name exists in the preset file
+                    A = importdata(fFile,'-mat');
+                    if isfield(A,'devName')
+                        % case is the device name field is set
+                        isFeasD = strcmp(A.devName,devName);
+                        if ~isFeasD
+                            eStr = sprintf(['There is a mismatch ',...
+                                'between the current device and the ',...
+                                'file you are attempting to overwrite:',...
+                                '\n\n %s Current Device: %s\n\n ',...
+                                '%s Preset File Device: %s\n\n',...
+                                'You will need to select another ',...
+                                'preset file name'],obj.iArr,devName,...
+                                obj.lArr,A.devName);                        
+                        end
+                        
+                    else                        
+                        % case is the device name field is missing
+                        isFeasD = ~obj.detPresetFileFeasibility(fFile);                        
+                        if ~isFeasD
+                            eStr = sprintf(['There is a mismatch ',...
+                                'between the current device and the ',...
+                                'file you are attempting to overwrite:',...
+                                '\n\n %s Current Device: %s\n\n ',...
+                                'You will need to select another ',...
+                                'preset file name'],obj.lArr,devName);
+                        end
+                    end
+                    
+                    % outputs an error message (if an error was made)
+                    if exist('eStr','var')
+                        % if the device names do not align, then 
+                        tStr = 'File Overwrite Error';
+                        waitfor(msgbox(eStr,tStr,'modal'))
+
+                        % exits the function
+                        return
+                    end                    
+                end
+                
                 % retrieves the current parameter values and field names
                 if obj.isWebCam
                     fldNames = getWebCamProps(obj.infoObj.objIMAQ);
@@ -542,7 +646,7 @@ classdef VideoPara < handle
                 [fldNames,pVal] = deal(fldNames(ii),pVal(ii));
                 
                 % saves the field names/parameter values to file
-                save(fullfile(fDir,fName),'pVal','fldNames')
+                save(fFile,'pVal','fldNames','devName')
             end
             
         end        
@@ -562,49 +666,20 @@ classdef VideoPara < handle
                 toggleFcn(obj.hMain.toggleVideoPreview,[],obj.hMain);
             end
 
-            % resets the camera ROI (if necessary)
-            resetCameraROIPara(obj.infoObj.objIMAQ);
-            
-            % 
-            for i = find(obj.hasP)
-                N = length(obj.hObj{i}) - (i == 1);                
-                for j = 1:N
-                    % retrieves the editbox user data
-                    uData = get(obj.hObj{i}{j},'UserData');
-                    isIgn = strcmp(obj.igName,uData.Name);
-                   
-                    % retrieves the object original parameter value
-                    if any(isIgn)
-                        % if field is ignored, then use the fixed value
-                        pVal = obj.igFld{isIgn}{2};
-                    else
-                        % otherwise, use the stored value
-                        indNw = strcmp(obj.pVal0(:,1),uData.Name);
-                        pVal = obj.pVal0{indNw,2};
-                    end
-                    
-                    if i == 1
-                        % resets the camera properties and editbox string
-                        try
-                            set(obj.sObj,uData.Name,pVal);
-                            set(obj.hObj{i}(j),'string',num2str(pVal))
-                        catch
-                            pValPr = get(obj.sObj,uData.Name);
-                            set(obj.hObj{i}{j},'string',num2str(pValPr))
-                        end
-                    else
-                        % resets the camera properties and popup index
-                        iSel = find(strcmp(uData.ConstraintValue,pVal));
-                        if ~isempty(iSel)
-                            try
-                                set(obj.sObj,uData.Name,pVal);
-                                set(obj.hObj{i}{j},'Value',iSel)
-                            catch
-                            end
-                        end
-                    end
+            % sets up the device parameter struct
+            pValF = obj.pVal0;
+            for i = 1:size(pValF,1)
+                % resets the values of any ignored fields
+                indP = strcmp(obj.igName,pValF{i,1});
+                if any(indP)
+                    pValF{i,2} = obj.igFld{indP}{2};
                 end
             end
+            
+            % resets the camera ROI (if necessary)
+            resetCameraROIPara(obj.infoObj.objIMAQ);                    
+            resetDeviceProps(obj.sObj,pValF,obj.hObj);            
+            obj.updateEnumParaDepObjects();                
             
             % resets the video properties (if calibrating)
             vcObj = getappdata(obj.hFigM,'vcObj');
@@ -633,6 +708,7 @@ classdef VideoPara < handle
             end
             
             % deletes the sub-GUI
+            obj.stopLoadBar(1);
             delete(obj.hFig);
             
         end               
@@ -781,6 +857,33 @@ classdef VideoPara < handle
             end
             
         end
+
+        % ------------------------- %
+        % --- LOADBAR FUNCTIONS --- %
+        % ------------------------- %
+        
+        % --- starts the loadbar object
+        function startLoadBar(obj,lStr)
+            
+            if isempty(obj.hLoad)
+                obj.hLoad = ProgressLoadbar(lStr);
+            else
+                obj.hLoad.StatusMessage = lStr;
+                setObjVisibility(obj.hLoad.Control,1);
+            end
+            
+        end
+        
+        % --- starts the loadbar object
+        function stopLoadBar(obj,varargin)
+            
+            if isempty(varargin)
+                setObjVisibility(obj.hLoad.Control,0);
+            elseif ~isempty(obj.hLoad)
+                delete(obj.hLoad.Control);
+            end
+            
+        end
         
         % ------------------------------------------- %        
         % --- DIMENSION/FIELD RETRIEVAL FUNCTIONS --- %
@@ -821,7 +924,15 @@ classdef VideoPara < handle
             
             try
                 if obj.isWebCam
+                    % case is the other parameters
                     pVal = get(obj.infoObj.objIMAQ,sInfo.Name);
+                    
+                    switch sInfo.Name
+                        case 'BacklightCompensation'
+                            % case is the backlight compensation
+                            eStr = {'off','on'};
+                            pVal = eStr{1+pVal};
+                    end
                 else
                     pVal = get(obj.srcObj,sInfo.Name);
                 end
@@ -907,6 +1018,55 @@ classdef VideoPara < handle
             obj.igName = cellfun(@(x)(x{1}),obj.igFld,'un',0);
             
         end        
+                
+        % --- applies the default device properties
+        function applyDefDeviceProps(obj)
+            
+            % loads the default data fields
+            dName = obj.infoObj.objIMAQ.Name;
+            dpData = loadDefaultPresetData(dName);
+            if isempty(dpData)
+                % if there is no default device properties, then exit
+                return
+            end
+            
+            % retrieves the parameter field names
+            fStr = field2cell(obj.infoSrc,'Name');
+            
+            % removes the non-useable
+            if dpData.Num.Count > 0
+                [~,iN] = intersect(fStr,dpData.Num.Name);
+                obj.isNum(iN(~dpData.Num.isUse)) = false;
+            end
+            
+            % updates the enumeration parameters
+            if dpData.ENum.Count > 0
+                [~,iE] = intersect(fStr,dpData.ENum.Name);
+                obj.isEnum(iE(~dpData.ENum.isUse)) = false;
+            end
+            
+        end
+        
+        % --- determines the preset file feasibility
+        function [missP,infoSrcNw,vprData] = ...
+                        detPresetFileFeasibility(obj,fFile)
+
+            % loads the video preset data file
+            vprData = importdata(fFile);
+
+            % retrieves the source object information 
+            if obj.isWebCam
+                [fldNames,infoSrcNw] = ...
+                    getWebCamProps(obj.infoObj.objIMAQ);
+            else
+                pInfo = propinfo(obj.srcObj);
+                [infoSrcNw,fldNames] = combineDataStruct(pInfo);
+            end
+
+            % determines if camera properties match that from file
+            missP = ~isempty(setdiff(vprData.fldNames,fldNames));
+
+        end                
         
     end    
     
@@ -942,9 +1102,9 @@ classdef VideoPara < handle
         
             % creates the new editbox
             hPopup = uicontrol('Style','popupmenu','String',lStr,...
-                               'BackgroundColor','w','Value',iSel,...
-                               'UserData',sInfo,'Parent',hP,...
-                               'TooltipString',sInfo.Name,'Callback',cbFcn);
+                           'BackgroundColor','w','Value',iSel,...
+                           'UserData',sInfo,'Parent',hP,...
+                           'TooltipString',sInfo.Name,'Callback',cbFcn);
             
         end        
         
@@ -1000,8 +1160,8 @@ classdef VideoPara < handle
             % appends the new field to the struct
             sInfoN(end+1) = sInfoNw;
             
-        end
-            
+        end            
+        
     end
     
 end

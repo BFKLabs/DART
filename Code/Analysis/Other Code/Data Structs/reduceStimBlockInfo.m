@@ -4,8 +4,7 @@ function bInfo = reduceStimBlockInfo(bInfo0)
 sP = field2cell(bInfo0,'sPara',1); 
 
 % ensures the blocks are in chronological order
-tOfs = field2cell(sP,'tOfs',1);
-[~,iS] = sort(tOfs);
+[~,iS] = sort(field2cell(sP,'tOfs',1));
 [sP,bInfo0] = deal(sP(iS),bInfo0(iS));
 
 % determines which blocks are the same 

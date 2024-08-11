@@ -295,9 +295,9 @@ infoObj.isWebCam = isCamUVC(objIMAQDev{vType}(vSel).DeviceName);
 sFormatF = sFormat{vSelIMAQ}{infoObj.sInd(vSelIMAQ)};
 dName = objIMAQDev{vType}(vSel).DeviceName;
 
-vStr = sprintf('%s, ''%s'')',vConStr(1:end-1),sFormatF);
 try
     % attempts to create a connection with the recording device
+    vStr = sprintf('%s, ''%s'')',vConStr(1:end-1),sFormatF);
     objIMAQ0 = eval(vStr);
     
 catch ME
@@ -325,24 +325,37 @@ catch ME
     return
 end
 
-if infoObj.isWebCam
-    % retrieves the source information (deleting the video object)
-    pInfo = propinfo(objIMAQ0.Source);
-    pause(0.05);
-    
+% retrieves the source information (deleting the video object)
+pInfo = propinfo(objIMAQ0.Source);
+pause(0.05);
+
+% % REMOVE ME LATER
+% infoObj.isWebCam = false;
+
+if infoObj.isWebCam    
     % creates the webcam object
     try
+        % creates the webcam object
         devName = objIMAQDev{iSelV}.DeviceName;
         infoObj.objIMAQ = createWebCamObj(devName,pInfo,sFormatF);
+        applyDefaultDeviceProps(infoObj,devName); 
+        
+        % retrieves the default property values
+        infoObj.getDefDevicePropValues(pInfo);
+        
+        % deletes the image acquisition object and exits
         delete(objIMAQ0)
         return
+        
     catch
+        % if there was an error, then flag the device is not a webcam
         infoObj.isWebCam = false;
     end
 end
     
 % case is a non-webcam device
 infoObj.objIMAQ = objIMAQ0;
+infoObj.getDefDevicePropValues(pInfo);
 
 % ensure that the video object writes avi objects to disk
 try
@@ -356,23 +369,7 @@ triggerconfig(infoObj.objIMAQ,'manual')
 
 % resets any ROI parameters
 resetCameraROIPara(infoObj.objIMAQ)
-
-% sets the camera automatic fields to manual
-srcObj = getselectedsource(infoObj.objIMAQ);
-resetFld = [];
-% resetFld = {{'FocusMode','manual'},...
-%             {'ExposureMode','auto'},...
-%             {'WhiteBalanceMode','manual'}};
-
-% resets the flagged camera properties (if they exist)
-for i = 1:length(resetFld)
-    if isprop(srcObj,resetFld{i}{1})
-        try
-            set(srcObj,resetFld{i}{1},resetFld{i}{2})
-        catch
-        end
-    end
-end
+applyDefaultDeviceProps(infoObj,dName);
     
 % increases the amount of memory available to the camera
 try
@@ -415,3 +412,63 @@ infoObj.objDAQ.vSelDAQ = infoObj.vSelDAQ;
 infoObj.objDAQ.nChannel = nCh;    
 infoObj.objDAQ.vStrDAQ = infoObj.vStrDAQ;    
 infoObj.objDAQ.sRate = 50*ones(length(infoObj.vStrDAQ),1);   
+
+% ----------------------------------------- %
+% --- DEFAULT DEVICE PROPERTY FUNCTIONS --- %
+% ----------------------------------------- %
+
+% --- loads the default preset data file
+function psData = loadDefaultPresetData(dName)
+
+% initialisations
+psData = [];
+
+try 
+    % attempts to create the default device property object
+    objDP = DefDeviceProps();
+    
+    % if the parameter file doesn't exists, then return 
+    if ~exist(objDP.paraFile,'file')
+        return
+    end
+    
+catch
+    % if this failed, then exit
+    return
+end
+
+% loads the data file
+dpData = load(objDP.paraFile);
+if ~isfield(dpData,'dName') || ~isfield(dpData,'dFile')
+    % if it doesn't have the correct format, then exit
+    return
+end
+
+% determines the matching device in the device list 
+iDevD = strcmp(dpData.dName,dName);
+if ~any(iDevD)
+    % if there are no matching default properties for this device listed in
+    % the main data file, then exit
+    return
+    
+elseif ~exist(dpData.dFile{iDevD},'file')
+    % if the default property file doesn't exist, then exit
+    return
+end
+
+% loads the device specific property file
+dpDev = importdata(dpData.dFile{iDevD},'-mat');
+if ~isfield(dpDev,'Preset') || ~exist(dpDev.Preset,'file')
+    % if there are no presets for the file, or the file doesn't exist, then
+    % exit the function
+    return
+end
+
+% loads the device preset data file
+psData = importdata(dpDev.Preset,'-mat');
+
+% removes the non-matching and rejected parameters
+fldStrF = [dpDev.ENum.Name(dpDev.ENum.isUse);...
+           dpDev.Num.Name(dpDev.Num.isUse)];
+[~,iB] = intersect(psData.fldNames,fldStrF);
+[psData.fldNames,psData.pVal] = deal(psData.fldNames(iB),psData.pVal(iB));

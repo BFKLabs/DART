@@ -34,7 +34,8 @@ classdef AdaptorInfoClass < handle
         
         % other class objects
         hLoad
-        pFile        
+        pFile
+        pInfo0
                 
         % object dimensions
         dY = 5;
@@ -1280,6 +1281,39 @@ classdef AdaptorInfoClass < handle
             end
             
         end
+        
+        % --- retrieves the original default device values
+        function getDefDevicePropValues(obj,pInfo)
+            
+            % retrieves the device parameter values
+            
+            
+            % retrieves the field names and the original property values
+            infoSrc = combineDataStruct(pInfo);  
+            fStr = field2cell(infoSrc,'Name');
+            fType = field2cell(infoSrc,'Type');
+            fConstraint = field2cell(infoSrc,'Constraint');
+            fReadOnly = field2cell(infoSrc,'ReadOnly');
+            
+            % determines which parameters are enumeration/numeric
+            isEnum = strcmp(fType,'string') & ...
+                     strcmp(fConstraint,'enum') & ...
+                     ~strcmp(fReadOnly,'always');
+            isNum = (strcmp(fType,'double') | ...
+                     strcmp(fType,'integer')) & ...
+                     ~strcmp(fReadOnly,'always');
+            isFld = isEnum | isNum;
+            
+            % removes the non-field entries & retrieves the default values
+            [fStr,infoSrc] = deal(fStr(isFld),infoSrc(isFld));
+            dVal = arrayfun(@(x)(x.DefaultValue),infoSrc,'un',0);
+            
+            % sets the initial device parameter struct
+            obj.pInfo0 = struct('fldNames',[],'pVal',[]);
+            obj.pInfo0.fldNames = fStr;
+            obj.pInfo0.pVal = dVal;
+            
+        end        
         
     end
     

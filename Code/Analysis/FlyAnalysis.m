@@ -3100,11 +3100,13 @@ function tempSolnDataIO(handles,Type)
 % loads the data structs from the GUI
 hFig = handles.figFlyAnalysis;
 iData = getappdata(hFig,'iData');
-tFile = fullfile(iData.ProgDef.OutData,'TempSolnData.mat');
+tFile = fullfile(iData.ProgDef.TempData,'TempSolnData.mat');
 
 % performs the solution file
 switch Type
-    case ('store') % case is storing the data
+    case ('store') 
+        % case is storing the data
+        
         % retrieves the solution data
         sInfo = getappdata(hFig,'sInfo');
         snTot = getappdata(hFig,'snTot');
@@ -3121,7 +3123,8 @@ switch Type
             try delete(h); catch; end
         end
         
-    case ('reload') % case is reloading the data
+    case ('reload') 
+        % case is reloading the data
         if exist(tFile,'file')
             % creates a loadbar figure
             h = ProgressLoadbar('Loading Temporary Solution File...');
@@ -3138,7 +3141,8 @@ switch Type
             setappdata(hFig,'snTot',a.snTot);
         end
         
-    case ('remove') % case is removing the data
+    case ('remove') 
+        % case is removing the data
         if exist(tFile,'file')
             % deletes the temporary solution file (if it exists)
             delete(tFile)

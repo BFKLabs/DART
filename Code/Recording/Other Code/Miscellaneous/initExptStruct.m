@@ -25,9 +25,8 @@ Info = struct('Title',tStr,'OutDir',outDir,'FileName',[],...
               'BaseName','Video','Type',exptType);
 
 % initialises the timing field
-% Tp = 1 + 4*(~isWebCam);
-Tp = 5;
-Timing = struct('T0',[],'Tp',Tp,'Texp',[0,12,0,0],...
+Tp0 = 5;
+Timing = struct('T0',[],'Tp',Tp0,'Texp',[0,12,0,0],...
                 'fixedT0',false,'TexpU','Hours');
 Timing.T0 = [tNow(1:2),tNow(3)+tOfs,tStartH,0,0];
  
@@ -75,9 +74,17 @@ if ~isempty(objIMAQ) && ~isa(objIMAQ,'DummyVideo')
                 Timing.Tp = 10;
         end
     end
-
+    
+    % loads the default property data
+    psData = loadDefPropData(objIMAQ.Name);
+    if ~isempty(psData)
+        % case is there a default pause time value
+        indP = strContains(psData.Other.Name,'Inter-Video Pause');
+        Timing.Tp = psData.Other.Value{indP};
+    end
+    
     % sets the image acquisition device name
-    Device.IMAQ = objIMAQ.Name;
+    Device.IMAQ = objIMAQ.Name;    
 end 
 
 % sets the external stimuli related sub-struct fields
@@ -87,3 +94,24 @@ end
            
 % final struct initialisation
 iExpt = struct('Info',Info,'Timing',Timing,'Video',Video,'Device',Device);
+
+% --- loads the default property data 
+function psData = loadDefPropData(devName)
+
+% initialisations
+psData = [];
+
+% determines if the default property file exists (exit if not)
+dpFileT = getParaFileName('DefProps.mat');
+if ~exist(dpFileT,'file'); return; end
+
+% determines if the device exists within the default file list
+A = load(dpFileT);
+isF = strcmp(A.dName,devName);
+if any(isF)
+    % if so, then determine if the device default property file exists
+    if exist(A.dFile{isF},'file')
+        % load the data (if the device property file exists)
+        psData = importdata(A.dFile{isF},'-mat');
+    end
+end
