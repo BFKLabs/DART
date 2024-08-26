@@ -1859,7 +1859,7 @@ classdef SaveFigure < handle
             
             % outputs the figure based on the file extension
             switch obj.fExtn
-                case {'eps','epsp'}
+                case {'.eps','.epsp','eps','epsp'}
                     % case is an .eps image file
                     if obj.isPaint
                         % case is a painters file
@@ -1878,7 +1878,7 @@ classdef SaveFigure < handle
                         end
                     end
                     
-                case ('fig')
+                case {'.fig','fig'}
                     % case is a Matlab figure
                     setObjVisibility(hFigO,'on');
                     saveas(hFigO,fPath)

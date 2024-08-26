@@ -1068,7 +1068,15 @@ classdef DART < handle
                 [fFile0,fFileF] = deal(fFile0(isCopy),fFileF(isCopy));
                 
                 % copies over the files from the temporary directory
-                cellfun(@(fS,fD)(movefile(fS,fD)),fFile0,fFileF);
+                try
+                    cellfun(@(fS,fD)(movefile(fS,fD,'f')),fFile0,fFileF);
+                catch
+                    try 
+                        cellfun(@(fS,fD)(copyfile(fS,fD,'f')),fFile0,fFileF);
+                        cellfun(@delete,fFile0);
+                    catch
+                    end
+                end
             end
             
         end
