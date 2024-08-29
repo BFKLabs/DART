@@ -218,7 +218,7 @@ classdef VideoPara < handle
             
             % deletes any previous objects
             hFigPr = findall(0,'tag',obj.tagStr);
-            if ~isempty(hFigPr); delete(hFigPr); end            
+            if ~isempty(hFigPr); delete(hFigPr); end
             
             % -------------------------- %
             % --- CLASS FIGURE SETUP --- %
@@ -1064,7 +1064,12 @@ classdef VideoPara < handle
             end
 
             % determines if camera properties match that from file
-            missP = ~isempty(setdiff(vprData.fldNames,fldNames));
+            missP = ~isempty(setdiff(fldNames,vprData.fldNames));
+            if ~missP
+                [~,iB] = intersect(vprData.fldNames,fldNames);
+                vprData.fldNames = vprData.fldNames(iB);
+                vprData.pVal = vprData.pVal(iB);
+            end
 
         end                
         
