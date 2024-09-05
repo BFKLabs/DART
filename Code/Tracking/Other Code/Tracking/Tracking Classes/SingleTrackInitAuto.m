@@ -21,8 +21,12 @@ classdef SingleTrackInitAuto < SingleTrackInit
         
         % other parameter fields
         pW = 0.5;
+        dtPer0 = 0.1;
+        pIRTol = 0.6;
+        pIRTolN = 0.4;
         pTolShape = 0.1; 
         seOpen = ones(21,1);
+        seSig = fspecial('disk',3);
         
     end
     
@@ -168,37 +172,39 @@ classdef SingleTrackInitAuto < SingleTrackInit
             % --- DETECTION ESTIMATION CALCULATIONS --- %
             % ----------------------------------------- %
             
-            try
-                % resets the moving blobs
-                obj.detectMovingBlobAuto(IR);
-            catch ME
-                % if there was an error then store the details
-                obj.errStr = 'moving object tracking';
-                [obj.errMsg,obj.calcOK] = deal(ME.message,false);
-                return                
-            end            
+            obj.calcAllRegionProps(IL,IR)            
             
-            try
-                % sets up the automatic blob template
-                obj.setupBlobTemplateAuto(IL)
-            catch ME
-                % if there was an error then store the details
-                obj.errStr = 'object template calculation';
-                [obj.errMsg,obj.calcOK] = deal(ME.message,false);
-                return                
-            end
-              
-            try
-                % optimises the grid placements
-                obj.optGridVertPlacement(IL,IR);
-                obj.optGridHorizPlacement(IR);  
-                
-            catch ME
-                % if there was an error then store the details
-                obj.errStr = 'grid placement optimisation';
-                [obj.errMsg,obj.calcOK] = deal(ME.message,false);
-                return                
-            end            
+%             try
+%                 % resets the moving blobs
+%                 obj.detectMovingBlobAuto(IR);
+%             catch ME
+%                 % if there was an error then store the details
+%                 obj.errStr = 'moving object tracking';
+%                 [obj.errMsg,obj.calcOK] = deal(ME.message,false);
+%                 return                
+%             end            
+%             
+%             try
+%                 % sets up the automatic blob template
+%                 obj.setupBlobTemplateAuto(IL)
+%             catch ME
+%                 % if there was an error then store the details
+%                 obj.errStr = 'object template calculation';
+%                 [obj.errMsg,obj.calcOK] = deal(ME.message,false);
+%                 return                
+%             end
+%               
+%             try
+%                 % optimises the grid placements
+%                 obj.optGridVertPlacement(IL,IR);
+%                 obj.optGridHorizPlacement(IR);  
+%                 
+%             catch ME
+%                 % if there was an error then store the details
+%                 obj.errStr = 'grid placement optimisation';
+%                 [obj.errMsg,obj.calcOK] = deal(ME.message,false);
+%                 return                
+%             end            
             
             % final progressbar update
             obj.hProg.Update(2+obj.wOfsL,'Grid Detection Complete',1);
@@ -355,6 +361,17 @@ classdef SingleTrackInitAuto < SingleTrackInit
                 dtMin = dtMax/2;
             end
             
+            % calculates the 
+            pIR0 = cellfun(@(x)(max(x(:))/mean(x(x>0))),IR);
+            pIRmd = median(pIR0,1);
+            
+            pIRN = pIRmd/max(pIRmd);
+            pIR = pIRmd/median(pIRmd);
+            okIR = (pIR >= obj.pIRTol) & (pIRN >= obj.pIRTolN);
+            
+            % determines the feasible regions
+            ok = setGroup(obj.fOK,[1,nApp]) & okIR;            
+            
             % --------------------------------------- %
             % --- INITIAL GRID SPACING ESTIMATION --- %
             % --------------------------------------- %
@@ -368,42 +385,18 @@ classdef SingleTrackInitAuto < SingleTrackInit
             obj.hProg.Update(3+obj.wOfsL,'Signal Peak Detection',0.25); 
             
             %
-            nD = ceil(dPMin/2);
-            se = fspecial('disk',3);
+            nD = floor(dPMin/2);
             szL = cellfun(@(x)(size(x)),IR(1,:),'un',0);            
                             
-            % calculates the signal 
-            for i = obj.fOK
+            % calculates the signal
+            for i = obj.fOK                
                 % calculates the normalised maxima
-                BE = ~bwmorph(bwmorph(true(szL{i}),'remove'),'dilate',nD);                 
-                IRF = cellfun(@(x)(imfilter(x,se)),IR(:,i),'un',0);
-                Ymx0 = cellfun(@(x)(max(BE.*x,[],2)),IRF,'un',0);
-                Ymx0 = cellfun(@(x)(obj.rmvBaseline(x)),Ymx0,'un',0);
-                Ymx{i} = cellfun(@(x)(normImg(x)),Ymx0,'un',0);     
-
+                [Ymx0,Ymx{i}] = obj.setupRegionSignal(IR(:,i),szL{i},nD);
+                
                 % determines the major peaks from the image stack
                 for j = 1:nImg
-                    % calculates the 
-                    try
-                        [yPk0,tPk0] = ...
-                            findpeaks(Ymx0{j},'MinPeakDistance',dPMin);
-                    catch ME
-                        if strcmp(ME.identifier,'MATLAB:TooManyInputs')
-                            % if the function failed, then re-run with no
-                            % input arguments
-                            [yPk0,tPk0] = findpeaks(Ymx0{j});
-                            Y = imclose(Ymx0{j},ones(2*dPMin,1));
-                            
-                            % removes the 
-                            ii = Y(tPk0) == yPk0;
-                            [yPk0,tPk0] = deal(yPk0(ii),tPk0(ii));
-                            
-                        else
-                            % otherwise, rethrow the error
-                            rethrow(ME)
-                        end
-                    end
-                    
+                    % calculates the signal peaks (and any sub-groups)
+                    [yPk0,tPk0] = obj.calcSignalPeaks(Ymx0{j},dPMin);
                     [idx,C0] = kmeans(yPk0,2);
 
                     % retrieves the times of the significant peaks
@@ -463,15 +456,118 @@ classdef SingleTrackInitAuto < SingleTrackInit
                     return
                 end
                 
-                % estimates the initial grid properties (spacing & offset)
-                [tPer0(i),yOfs0(i)] = ...
+                if ok(i)
+                    % estimates initial grid properties (spacing & offset)
+                    [tPer0(i),yOfs0(i),ok(i)] = ...
                         obj.estGridProps(Ymx{i},tPk(i,:),yPk(i,:),i,tPerL);
                 
-                % sets the vertical tube locations
-                obj.yTube{i} = tPer0(i)*(0:nTube(i))' + yOfs0(i);
-            end                    
+                    % sets the vertical tube locations
+                    obj.yTube{i} = tPer0(i)*(0:nTube(i))' + yOfs0(i);
+                end
+            end    
+
+            % ------------------------------- %            
+            % --- AMBIGUOUS REGION SEARCH --- %
+            % ------------------------------- %
             
-        end              
+            if all(ok)
+                % exits all regions have been investigated successfully
+                return
+                
+            elseif ~any(ok)
+                % case is there are no feasible regions
+                obj.calcOK = false;
+                return
+            end
+            
+            tPerMd = median(tPer0(ok));
+            
+            % determines the raw image signals for the known regions
+            iok = find(ok);
+            Zmx0 = arrayfun(@(x)(calcImageStackFcn(...
+                obj.setupRegionSignal(I(:,x),szL{x},nD),'median')),...
+                iok,'un',0);
+                 
+            % calculates the median peak values for each region
+            ZmxU = NaN(size(ok)); 
+            for i = 1:length(iok)
+                j = iok(i);
+                ZmxN = Zmx0{i}/max(Zmx0{i});
+                iPkU = unique(cell2mat(arr2vec(tPk(j,:))));
+                ZmxU(j) = median(ZmxN(iPkU));
+            end
+            
+            % determines if the peak signals need matching
+            isMin = median(ZmxU(ok)) < 0.5;
+            
+            % re-searches each of the ambiguous regions
+            for i = find(~ok(:)')
+                % updates the progressbar
+                wStrNw = sprintf...
+                        ('Reinvestigating Grid Placement (%i of %i)',i,nApp);
+                if obj.hProg.Update(3+obj.wOfsL,wStrNw,0.5*(1+i/nApp))
+                    % if the user cancelled, then exit
+                    obj.calcOK = false;
+                    return
+                end
+                
+                % determines the overall raw image stack signal 
+                Imd = calcImageStackFcn(I(:,i),'median');
+                [~,ZmxN] = obj.setupRegionSignal({Imd},szL{i},nD);
+                if isMin; ZmxN = -ZmxN; end
+                
+                % calculates the signal peaks
+                [yPkN,tPkN] = obj.calcSignalPeaks(ZmxN,dPMin);
+                                
+                % determines if the peak count is correct
+                nPkN = length(yPkN);
+                if nPkN < nTube(i)
+                    %
+                    a = 1;
+                    
+                elseif nPkN > nTube(i)
+                    % case is there are more peaks than tube counts
+                    xiN = 1:nTube(i); 
+                    dxiN = 0:(nPkN-nTube(i));
+                    yPkS = arrayfun(@(x)(sum(yPkN(x+xiN))),dxiN);
+                    
+                    % determines the optimal configuration
+                    ii = xiN + (argMax(yPkS)-1);                    
+                    tPkN = tPkN(ii);
+                end
+                
+                % calculates the optimal spacing frequency
+                xiZ = max(1,floor(tPkN(1)-tPerMd)):...
+                      min(length(ZmxN),ceil(tPkN(end)+tPerMd));
+                tPer0(i) = obj.calcOptSignalFreq({ZmxN(xiZ)},tPerL,nTube(i));
+                  
+                % sets up the signal weighting array
+                Fh = tPer0(i)/2;
+                xiF0 = 1:floor(nTube(i)*tPer0(i));
+                xiF = mod(xiF0(:)-1,tPer0(i)) + 1;
+                QZ = 1 - abs((Fh - (xiF-0.5))/Fh);
+                
+                % determines the optimal offset
+                QZ = obj.setupWeightingVector(tPer0(i),nTube(i));
+                if length(QZ) >= length(ZmxN)
+                    yOfs0(i) = 1;
+                    
+                else
+                    xiZ = 1:(length(ZmxN)-length(QZ));
+                    QZs = arrayfun(@(x)(obj.calcObjFcn(ZmxN,QZ,x-1)),xiZ); 
+                    yOfs0(i) = xiZ(argMax(QZs));
+                end
+                
+                % sets the vertical tube locations
+                obj.yTube{i} = tPer0(i)*(0:nTube(i))' + yOfs0(i);                
+                
+                % REMOVE ME LATER
+                if i == 14
+                    a = 1;
+                end
+            end
+            
+        end                      
         
         % --- optimises the grid vertical placement
         function optGridHorizPlacement(obj,IRL)
@@ -520,18 +616,25 @@ classdef SingleTrackInitAuto < SingleTrackInit
         end
         
         % --- estimates the initial grid properties (spacing & offset)
-        function [tPerF,yOfsF] = estGridProps(obj,Y,tPkT,yPkT,iApp,tPerL)
+        function [tPerF,yOfsF,ok] = estGridProps(obj,Y,tPkT,yPkT,iApp,tPerL)
+            
+            % if any signals have no peaks, or there are no multi-peak
+            % signals, then exit
+            nPk = cellfun('length',tPkT);
+            if any(nPk == 0) || all(nPk <= 1)
+                ok = false;
+                [tPerF,yOfsF] = deal(NaN);
+                return
+            end            
             
             % parameters
-            dtPer0 = 0.1;            
-            Nt = getSRCount(obj.iMov,iApp);
-            tPer0 = tPerL(1):dtPer0:tPerL(2);
+            ok = true;
+            Nt = getSRCount(obj.iMov,iApp);            
+            tPerF = obj.calcOptSignalFreq(Y,tPerL,Nt);            
             
             % determines the most likely grid spacing size
-            F = arrayfun(@(x)(obj.optFunc(x,Y,Nt)),tPer0);
-            tPerF = tPer0(argMax(F));
             yL = (0:Nt)*tPerF;
-
+            
             % ----------------------------- %
             % --- SIGNAL PEAK REDUCTION --- %
             % ----------------------------- %            
@@ -661,6 +764,213 @@ classdef SingleTrackInitAuto < SingleTrackInit
             end
             
         end                                    
+
+        % ------------------------------------- %
+        % --- NEW DETECTION CLASS FUNCTIONS --- %
+        % ------------------------------------- %   
+        
+        % --- calculates the properties for all of the regions
+        function calcAllRegionProps(obj,I,IR)
+            
+            % memory allocation
+            ok = true(obj.nApp,1);
+            tPerF = NaN(obj.nApp,1);
+            xLimF = NaN(obj.nApp,2);
+            YblkF = cell(obj.nApp,1);
+            szH = cellfun(@(x)(size(x,1)),I(1,:)');
+            
+            %
+            for i = 1:obj.nApp
+                % updates the progressbar
+                
+                
+                % calculates the region properties
+                [xLimF(i,:),tPerF(i),YblkF{i},ok(i)] = ...
+                                        obj.calcRegionProps(I(:,i));
+                if ok(i)
+                    obj.xTube{i} = xLimF(i,:);
+                end
+                
+                % decision point...
+                %  - if the height of the region is very tight, then
+                %    perform search on the final image signal
+                %  - otherwise, using the final image and residual signals,
+                %    determine the optimal locationing of the grid regions
+                nRowC = szH(i)/tPerF(i);
+                if nRowC > (obj.nTube(i) + 0.5)
+                    % case is loose fitting regions
+                    obj.setupLooseRegion(tPerF(i),YblkF{i},i);
+                    
+                else
+                    % case is tight fitting regions                    
+                    obj.setupTightRegion(tPerF(i),YblkF{i},i);
+                end
+            end
+            
+            a = 1;
+            
+        end
+        
+        % --- sets up the tube grid placement for loose fitted regions
+        function setupLooseRegion(obj,tPerF,YblkF,iApp)
+            
+            % field retrieval
+            QZ = obj.setupWeightingVector(tPerF,obj.nTube(iApp));
+            
+            %
+            nQZ = length(QZ);
+            xiQZ = 1:(length(YblkF) - nQZ);
+            Q = arrayfun(@(x)(dot(QZ,YblkF((x-1)+(1:nQZ)))),xiQZ);
+                        
+            % sets the vertical tube locations
+            yOfsF = xiQZ(argMax(Q)) - 1;
+            obj.yTube{iApp} = tPerF*(0:obj.nTube(iApp))' + yOfsF;
+                        
+        end
+        
+        % --- sets up the tube grid placement for tightly fitted regions
+        function setupTightRegion(obj,tPerF,YblkF,iApp)            
+            
+            % determines the optimal offset
+            QZ = obj.setupWeightingVector(tPerF,obj.nTube(iApp));
+            yOfsF = finddelay(QZ,normImg(YblkF));            
+            
+            % sets the vertical tube locations
+            obj.yTube{iApp} = tPerF*(0:obj.nTube(iApp))' + yOfsF;            
+            
+        end
+        
+        % --- calculates the properties for the region image stack, I 
+        function [xLimF,TperF,YblkF,ok] = calcRegionProps(obj,I)
+            
+            % initialisations
+            ok = true;
+            
+            % parameters
+            Nh = 5;
+            dTol = 1.0;
+            YpTol = 0.2;
+            xLimF = NaN(1,2);             
+            
+            % sets up and calculates the region block signals
+            [Tp0,Yp0] = obj.setupRegionBlockSignals(I,5);
+            Yp0N = Yp0/max(Yp0);
+            
+            % determines the comparative block groupings
+            isTF = ~isnan(Tp0);            
+            xiT = find(isTF,1,'first'):find(isTF,1,'last');
+            [iID,i0] = deal(NaN(length(Tp0),1),1);
+            
+            % sets the ID flags for each of the groups
+            for i = 1:length(xiT)
+                % only check values in reverse order
+                if i > 1
+                    % if the block is too dissimilar, then increment the
+                    % block group ID counter
+                    dTp = abs(diff(Tp0(xiT((i-1)+[0,1]))));
+                    if (dTp > dTol) || (Yp0N(i-1) < YpTol)
+                        i0 = i0 + 1;
+                    end
+                end
+                
+                % sets the group ID flag
+                iID(xiT(i)) = i0;
+            end
+            
+            % calculates the group objective score values (attempt to
+            % maximise array length AND mean signal strength)
+            xiID = 1:i0;
+            iGrp = arrayfun(@(x)(find(iID == x)),xiID,'un',0);
+            QZ = sqrt(cellfun('length',iGrp)).*...
+                      cellfun(@(x)(mean(Yp0(x))),iGrp);
+            
+            % determines the coarse x-limits
+            iMx = argMax(QZ);            
+            TpF = Tp0(iGrp{iMx}([1,end]));
+            xL0 = [Nh*(iGrp{iMx}(1)-1)+1,Nh*(iGrp{iMx}(end)+1)];
+            
+            % performs a fine search on the x-limits
+            iCL = {xL0(1):(xL0(1)+(2*Nh-1)),...
+                  (xL0(2)-(2*Nh-1)):xL0(2)};            
+            
+            %          
+            for i = 1:length(iCL)
+                % calculates the periodicity of the region sub-blocks
+                IL = cellfun(@(x)(x(:,iCL{i})),I,'un',0);
+                Tp = obj.setupRegionBlockSignals(IL,1);
+                clear IL
+                
+                % determines the first block that is within limits
+                if i == 1
+                    i0 = find(abs(Tp-TpF(i)) < dTol,1,'first');
+                else
+                    i0 = find(abs(Tp-TpF(i)) < dTol,1,'last');
+                end
+                
+                % sets the fine limit value
+                if isempty(i0)
+                    % case is no valid block was found
+                    if i == 1
+                        % case is the lower limit block
+                        xLimF(i) = iCL{i}(1);
+                        
+                    else
+                        % case is the upper limit block
+                        xLimF(i) = iCL{i}(end);
+                    end
+                    
+                else
+                    % case is a valid block was found
+                    xLimF(i) = iCL{i}(i0);
+                end
+            end
+            
+            % calculates the final full block periodcity
+            iCF = xLimF(1):xLimF(2);
+            IL = cellfun(@(x)(x(:,iCF)),I,'un',0); 
+            YblkF = obj.setupBlockSignal(IL,0);
+            TperF = obj.calcSignalPeriodicity(YblkF);
+            
+        end
+        
+        % --- sets up and analyses blocks from the image stack, I, which
+        %     consist of a image half-width, Nh
+        function [Tp,Yp] = setupRegionBlockSignals(obj,I,Nh)
+            
+            % initialisations
+            N = 2*Nh;
+            iC = 1:N;
+            Np = floor(size(I{1},2)/Nh)-1;
+            [Tp,Yp] = deal(NaN(Np,1));            
+            
+            % sets up and analyses the region block signal
+            for i = 1:Np
+                Yblk = obj.setupBlockSignal(I,0,(i-1)*(N/2) + iC);
+                [Tp(i),Yp(i)] = obj.calcSignalPeriodicity(Yblk);
+            end
+            
+        end
+        
+        % --- sets up the sub-block signal
+        function Zs = setupBlockSignal(obj,I,useMax,iC)
+            
+            % sets the default input arguments
+            if ~exist('iC','var'); iC = 1:size(I{1},2); end
+            
+            % sets up the concatenated image stack array
+            Iblk = cell2mat(cellfun(@(x)(x(:,iC)),I(:)','un',0));
+            
+            % sets up the signal based on type
+            if useMax
+                % case is using the maximum block value
+                Zs = obj.rmvBaseline(max(Iblk,[],2));
+                
+            else
+                % case is using the median block value
+                Zs = obj.rmvBaseline(median(Iblk,2));
+            end
+            
+        end        
         
         % ----------------------------- %
         % --- OTHER CLASS FUNCTIONS --- %
@@ -689,6 +999,39 @@ classdef SingleTrackInitAuto < SingleTrackInit
             end
             
         end           
+        
+        % --- sets up the region signal
+        function [Ymx0,YmxN] = setupRegionSignal(obj,I,sz,nD)
+            
+            % calculates the filtered image
+            BE = ~bwmorph(bwmorph(true(sz),'remove'),'dilate',nD);
+            IRF = cellfun(@(x)(imfilter(x,obj.seSig)),I,'un',0);
+            
+            % calculates the max signal value (after removing the baseline)
+            Ymx0 = cellfun(@(x)(max(BE.*x,[],2)),IRF,'un',0);
+            Ymx0 = cellfun(@(x)(obj.rmvBaseline(x)),Ymx0,'un',0);
+            
+            % returns the normalised image
+            if nargout == 2
+                YmxN = cellfun(@(x)(normImg(x)),Ymx0,'un',0);
+                if length(I) == 1
+                    [YmxN,Ymx0] = deal(YmxN{1},Ymx0{1});
+                end
+                
+            elseif length(I) == 1
+                Ymx0 = Ymx0{1};
+            end            
+            
+        end
+        
+        % --- calculates the optimal signal frequency
+        function tPerF = calcOptSignalFreq(obj,Y,tPerL,Nt)
+            
+            tPer0 = tPerL(1):obj.dtPer0:tPerL(2);                        
+            F = arrayfun(@(x)(obj.optFunc(x,Y,Nt)),tPer0);
+            tPerF = tPer0(argMax(F));            
+            
+        end                            
         
     end
     
@@ -756,6 +1099,79 @@ classdef SingleTrackInitAuto < SingleTrackInit
             fPos(:,2) = fPos(:,2) + cellfun(@(x)(x(1)-1),iGrp);
 
         end           
+        
+        % --- determines the signal peaks from the signal, Ymx
+        function [yPk0,tPk0] = calcSignalPeaks(Ymx,dPMin)
+            
+            try
+                % attempts to run the findpeaks function
+                [yPk0,tPk0] = ...
+                    findpeaks(Ymx,'MinPeakDistance',dPMin);
+            catch ME
+                if strcmp(ME.identifier,'MATLAB:TooManyInputs')
+                    % if the function failed, then re-run with no
+                    % input arguments
+                    [yPk0,tPk0] = findpeaks(Ymx);
+                    Y = imclose(Ymx,ones(2*dPMin,1));
+                    
+                    % removes the
+                    ii = Y(tPk0) == yPk0;
+                    [yPk0,tPk0] = deal(yPk0(ii),tPk0(ii));
+                    
+                else
+                    % otherwise, rethrow the error
+                    rethrow(ME)
+                end
+            end
+            
+        end
+        
+        % --- calculates the abiguous object function value
+        function QZs = calcObjFcn(Z,QZ,iOfs)
+            
+            QZs = dot(Z(iOfs+(1:length(QZ))),QZ);
+            
+        end        
+        
+        % --- sets up the weighting vector array
+        function QZ = setupWeightingVector(tPer0,nTube)
+
+            % precalculations
+            Fh = tPer0/2;
+            xiF0 = 1:floor(nTube*tPer0);
+            
+            % sets up the signal weighting array
+            xiF = mod(xiF0(:)-1,tPer0) + 1;
+            QZ = min(1,max(0,1 - abs((Fh - (xiF-0.5))/Fh)));
+
+        end
+        
+        % --- calculates the periodity of the signal, Y
+        function [Tp,Yp] = calcSignalPeriodicity(Y)
+            
+            % parameters
+            pTol = 0.75;
+            
+            % calculates the periodogram of the signal
+            [Pxx,f] = periodogram(Y - mean(Y(:)),hamming(length(Y)));
+            if exist('iRmv','var')
+                if ~isempty(iRmv)
+                    Pxx(1:iRmv) = 0;
+                end
+            end
+            
+            % calculates the most likely frequency of the signal
+            [~,tPk] = findpeaks(Pxx/max(Pxx),'MinPeakHeight',pTol);
+            
+            % rounds the value (if required)
+            if isempty(tPk)
+                [Tp,Yp] = deal(NaN);
+            else
+                Tp = 2*pi/f(tPk(1));
+                Yp = Pxx(tPk(1));
+            end
+            
+        end        
         
     end    
     

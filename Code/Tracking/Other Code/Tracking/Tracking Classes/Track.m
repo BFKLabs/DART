@@ -23,6 +23,7 @@ classdef Track < matlab.mixin.SetGet
         calcOK = true;
         isBatch = false; 
         isCalib = false;
+        stopUpdate = false;
         ivPhRej = 5;
         ivPhFeas = [1,2,4];
         fStepMax = 10;
@@ -130,10 +131,10 @@ classdef Track < matlab.mixin.SetGet
             
             % updates the progressbar
             if updateProg
-                pW = 0.5*(1+(obj.isMulti && obj.isBGCalc));
-                wStr = sprintf(['Sub-Image Stack Reading ',...
+                pW = obj.calcProgMult();                                
+                wStrP = sprintf(['Sub-Image Stack Reading ',...
                                 '(Frame %i of %i)'],iFrm,nFrm);
-                obj.hProg.Update(3+obj.wOfsL,wStr,pW*iFrm/nFrm);
+                obj.UpdatePB([3,2],wStrP,pW*iFrm/nFrm);
             end
                         
             % retrieves the images for all frames in the array, iFrm
@@ -179,10 +180,10 @@ classdef Track < matlab.mixin.SetGet
                
                     % updates the progressbar
                     if updateProg
-                        pW = 0.5*(1+(obj.isMulti && obj.isBGCalc));
-                        wStr = sprintf(['Sub-Image Stack Reading ',...
+                        pW = obj.calcProgMult();
+                        wStrP = sprintf(['Sub-Image Stack Reading ',...
                                         '(Frame %i of %i)'],indF,nFrm);
-                        obj.hProg.Update(3+obj.wOfsL,wStr,pW*indF/nFrm);
+                        obj.UpdatePB([3,2],wStrP,pW*indF/nFrm);
                     end
                     
                     % increments the frame counter
@@ -214,7 +215,80 @@ classdef Track < matlab.mixin.SetGet
             if ~exist('indF','var'); indF = obj.ivPhFeas; end
             okPh = arrayfun(@(x)(any(indF==x)),obj.iMov.vPhase);
 
-        end        
+        end
+        
+        % --- case is updating the progressbar
+        function isCancel = UpdatePB(obj,iType,wStrU,pNum,pDen)
+            
+            % initialisations
+            
+            
+            % sets the default input arguments
+            if ~exist('pDen','var'); pDen = 1; end
+            
+            if isa(obj.hProg,'BlobCNNProgBar')
+                % if updates are stopped, then exit
+                if obj.stopUpdate
+                    isCancel = false; 
+                    return
+                end
+                
+%                 % sets the selection type
+%                 if length(iType) == 1
+%                     iTypeS = -1;
+%                 else
+%                     iTypeS = iType(2);
+%                 end
+                
+                % case is the cnn tracking progressbar
+                switch iType(2)
+                    case 1
+                        % case is initial frame stack read
+                        obj.hProg.updateTrainPhase(1,1);
+                        
+                    case 2
+                        % case is image stack reading
+                        isCancel = obj.hProg.Update(2,1,pNum);
+                        
+                    case 3
+                        % case is moving object detection
+                        isCancel = obj.hProg.Update(2,2,0.5*(1+pNum));
+                        
+                    case 4 
+                        % case is the post-training calculations
+                        pMlt = 1/2;
+                        wStrL = 'Final Background Estimate Calculations';
+                        isCancel = obj.hProg.Update(6,pMlt*pNum,pDen,wStrL);
+                        
+                    case 5
+                        % case is the quality metrics
+                        wPr = (pDen + pNum)/2;
+                        wStrL = 'Quality Metric Calculations';                        
+                        isCancel = obj.hProg.Update(6,wPr,pDen,wStrL);
+                       
+                    case 6
+                        % case is initial tracking completion
+                        isCancel = obj.hProg.Update(6);
+                        
+                    otherwise
+                        % case is the other update types
+                        isCancel = false;
+                end
+                
+            else
+                % case is the normal progressbar object
+                iLvlP = iType(1) + obj.wOfsL;
+                isCancel = obj.hProg.Update(iLvlP,wStrU,pNum/pDen);                
+            end
+            
+        end
+
+        % --- calculates the progressbar multiplier
+        function pW = calcProgMult(obj)
+            
+            pW = 0.5*(1+(obj.isMulti && obj.isBGCalc));
+            
+        end
             
     end
     

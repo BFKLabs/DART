@@ -1,3 +1,4 @@
+import java.io.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.beans.*;
@@ -155,17 +156,24 @@ public class RowNumberTable extends JTable
 	 */
 	private static class RowNumberRenderer extends DefaultTableCellRenderer
 	{
+        private int tType;
+        private int nCol;
         private String typeStr;
         
 		public RowNumberRenderer(int Type)
 		{       
-			if (Type == 0) {
+            tType = 0;
+            
+            if (Type < 0) {
+                nCol = -Type;
+                tType = 1;                
+            } else if (Type == 0) {
                 typeStr = "Fly #";
             } else if (Type == 1) {
-                typeStr = "Row #";
+                typeStr = "Row #";                
             } else {
-				typeStr = "";
-            }  
+				typeStr = "Moo #";
+            }
             
 			setHorizontalAlignment(JLabel.CENTER);
 		}
@@ -186,7 +194,18 @@ public class RowNumberTable extends JTable
 			}          
             
 			setFont(new Font("Segoe UI", Font.PLAIN, 12));
-			setText((value == null) ? "" : typeStr + value.toString());
+            
+            if (tType == 1)
+            {
+                int valueI = Integer.parseInt(value.toString());
+                int iRow = ((valueI - 1) / nCol) + 1;
+                int iCol = ((valueI - 1) % nCol) + 1;
+    			setText((value == null) ? "" : "R" + 
+                      Integer.toString(iRow) + "/C" + Integer.toString(iCol));                
+                
+            } else {
+    			setText((value == null) ? "" : typeStr + (String) value.toString());
+            }
 
 			return this;
 		}

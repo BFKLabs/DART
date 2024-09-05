@@ -259,7 +259,7 @@ classdef ScaleFactor < handle
         function buttonUpdate(obj,hObj,~)
            
             % global variables
-            global isCalib isRTPChange
+            global isRTPChange
 
             % calculates the scale factor and updates the scale factor 
             sFac = obj.calcScaleFactor(obj.iData);
@@ -271,7 +271,7 @@ classdef ScaleFactor < handle
                     obj.hFigM.iData.exP.sFac = sFac;
 
                     % updates the scale factor for the real-time tracking 
-                    if isCalib
+                    if obj.hFigM.isCalib
                         isRTPChange = true;
                         obj.hFigM.rtP.trkP.sFac = sFac;
                     end        

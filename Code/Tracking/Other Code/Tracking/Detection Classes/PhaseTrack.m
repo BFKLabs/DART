@@ -55,7 +55,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
         nI
         dTol
         isHV
-        isHT1
+        isHT
         nPr = 5;  
         cFlag
         
@@ -241,7 +241,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             [iRT,iCT] = obj.getSubRegionIndices(iApp,size(ImgL{1},2));
             
             % sets up the special image stack
-            if obj.isHT1
+            if obj.isHT
                 IRef = obj.iMov.IbgR{iApp};
                 ImgL = calcHistMatchStack(ImgL,IRef);
                 ImgSegS = obj.setupSpecialImgStack(ImgL,iRT,iCT,iApp,fok);
@@ -250,7 +250,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             % segments the location for each feasible sub-region
             for iTube = find(fok(:)')
                 % sets up the image stack for segmentation
-                if obj.isHT1
+                if obj.isHT
                     % case is a special phase
                     ImgSeg = ImgSegS{iTube};
                     
@@ -651,7 +651,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             QRmax = 1.25;
             
             % sets the likelihood weighting factor 
-            if isfield(obj.iMov,'pB')
+            if isfield(obj.iMov,'pB') && ~isempty(obj.iMov.pB{indR(1)})
                 % removes any points which have extremely low values (that
                 % are not extremely close to the previous point)
                 IpC = Img(ipC);
@@ -909,7 +909,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                             (obj.iMov,obj.Img,obj.iFrmR,iApp,obj.isHV);
             
             % calculates the background/local images from the stack    
-            if obj.isHT1
+            if obj.isHT
                 ImgBG = obj.iMov.Ibg{obj.iPh}{iApp}; 
                 
             else

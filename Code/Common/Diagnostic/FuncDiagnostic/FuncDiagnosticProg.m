@@ -80,8 +80,8 @@ classdef FuncDiagnosticProg < handle
         
             % creates the panel object
             pPos = [2*obj.dX,obj.yPanel,obj.widPanel,obj.hghtPanel];
-            obj.hPanel = createUIObj('panel',obj.hPanelP,'Title','',...
-                'Position',pPos);   
+            obj.hPanel = createUIObj('panel',obj.hPanelP,...
+                'Title','','Position',pPos);   
             
             % field initialisation
             tStr = {'Overall Progress',...

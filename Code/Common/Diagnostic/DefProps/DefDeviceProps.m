@@ -401,7 +401,7 @@ classdef DefDeviceProps < handle
             
             % ------------------------------- %
             % --- HOUSE-KEEPING EXERCISES --- %
-            % ------------------------------- %            
+            % ------------------------------- %
             
             % resets the clear file buttons
             obj.resetClearButtonProps();

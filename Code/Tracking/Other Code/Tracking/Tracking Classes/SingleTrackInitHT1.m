@@ -5,12 +5,12 @@ classdef SingleTrackInitHT1 < handle
    
         % main class properties
         trObj
+        pCNN
         
         % struct class fields
         IL
         IR
-        iMov        
-        hProg
+        iMov 
         
         % array class fields
         hC  
@@ -18,8 +18,10 @@ classdef SingleTrackInitHT1 < handle
         IRef
         IPosT
         pStats
-        isAmbig
         szObjHT1
+        
+        % boolean class fields
+        useCNN
         
         % tolerances
         pLo = 100;        
@@ -51,11 +53,11 @@ classdef SingleTrackInitHT1 < handle
             obj.trObj = trObj;
             
             % sets the other fields
-            obj.hProg = trObj.hProg;
-            obj.wOfsL = trObj.wOfsL;
+            obj.nI = trObj.nI;                        
             obj.nApp = trObj.nApp;            
             obj.iMov = trObj.iMov;
-            obj.nI = trObj.nI;
+            obj.wOfsL = trObj.wOfsL;            
+            obj.useCNN = isa(trObj.hProg,'BlobCNNProgBar');
             
             % resets the distance tolerance field
             obj.dTol = obj.calcDistTol();
@@ -68,40 +70,43 @@ classdef SingleTrackInitHT1 < handle
             % updates the progress-bar
             wStrNw = 'Special Phase Detection (Phase #1)';
             pW0 = 2/(obj.trObj.pWofs+obj.trObj.nPhase);
-            if obj.hProg.Update(1+obj.wOfsL,wStrNw,pW0)
+            if obj.trObj.UpdatePB([1,-1],wStrNw,pW0)
                 obj.trObj.calcOK = false;
                 return
             else
                 % resets the secondary field
                 wStrNw1 = 'Initialising Region Analysis...';
-                obj.hProg.Update(2+obj.wOfsL,wStrNw1,0);
+                obj.trObj.UpdatePB([2,-1],wStrNw1,0);
             end
             
-            % field retrieval
-            obj.hC = cell(obj.nApp,1);
+            % field retrieval and memory allocation
             obj.szObjHT1 = NaN(obj.nApp,2);
-            nFrmPh = length(obj.trObj.Img{1});            
-            [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);  
+            [obj.hC,obj.IbgT,obj.IL] = deal(cell(obj.nApp,1));
+            [isAmbig,IRL,fOK] = deal(cell(obj.nApp,1));
+            
+            % field retrieval
             obj.IPosT = obj.trObj.IPos;
+            nFrmPh = length(obj.trObj.Img{1});            
+            [iR,iC] = deal(obj.iMov.iR,obj.iMov.iC);                          
             
             % determines the 
             for iApp = find(obj.iMov.ok(:)')
                 % update the waitbar figure
                 wStr = sprintf('Analysing Region (%i of %i)',iApp,obj.nApp);
-                if obj.hProg.Update(2+obj.wOfsL,wStr,iApp/obj.nApp)
+                if obj.trObj.UpdatePB([2,3],wStr,iApp/obj.nApp)
                     % if the user cancelled, then exit
                     obj.trObj.calcOK = false;
                     return
                 else
                     % resets the tertiary field
                     wStrNw2 = 'Initialising Sub-Region Analysis...';
-                    obj.hProg.Update(3+obj.wOfsL,wStrNw2,0);                    
+                    obj.trObj.UpdatePB([3,-1],wStrNw2,0);
                 end     
                                 
                 % field retrieval
                 iRT = obj.iMov.iRT{iApp};
                 xiF = 1:getSRCount(obj.iMov,iApp);
-                fOK = obj.iMov.flyok(xiF,iApp);                
+                fOK{iApp} = obj.iMov.flyok(xiF,iApp);                
                 nRT = ceil(median(cellfun(@length,iRT))); 
                 QmxF = zeros(length(iRT),nFrmPh);
 
@@ -116,15 +121,15 @@ classdef SingleTrackInitHT1 < handle
                 obj.trObj.IbgR{obj.iPh,iApp} = obj.IRef;
                 
                 % retrieves the sub-region image stack
-                obj.IL = calcHistMatchStack(IL0,obj.IRef);   
+                obj.IL{iApp} = calcHistMatchStack(IL0,obj.IRef);   
                 
                 % sets the background image estimate
                 Ibg0 = calcImageStackFcn(IL0,'max');
-                obj.IbgT = calcHistMatchStack(Ibg0,obj.IRef);
+                obj.IbgT{iApp} = calcHistMatchStack(Ibg0,obj.IRef);
                 clear IL0
                                 
                 % calculates the residual image stack
-                obj.IR = obj.calcImageResidual(obj.IL,obj.IbgT);
+                obj.IR = obj.calcImageResidual(obj.IL{iApp},obj.IbgT{iApp});
                 obj.pStats = obj.calcImageStackStats(obj.IR);  
                 obj.nFrm = length(obj.IR);                          
                 
@@ -134,33 +139,36 @@ classdef SingleTrackInitHT1 < handle
                 
                 % calculates the offset residual values
                 ZR = max(calcImageStackFcn(obj.IR,'max'),[],2);
-                ZRO = imopen(ZR,ones(nRT,1));
+                ZRO = imopen(ZR,ones(2*nRT,1));
                 dZR = (ZR - ZRO)./ZRO;
                 
                 % determines the movement status flag for each sub-region
-                Zmx = obj.getSubRegionValues(dZR,iRT,fOK);
+                Zmx = obj.getSubRegionValues(dZR,iRT,fOK{iApp});
                 isZTol = Zmx < obj.dZTol;
                 
                 % sets the status/movement flags                
                 obj.trObj.sFlagT{obj.iPh,iApp} = 1 + double(isZTol);
-                obj.trObj.sFlagT{obj.iPh,iApp}(~fOK) = NaN;
+                obj.trObj.sFlagT{obj.iPh,iApp}(~fOK{iApp}) = NaN;
                 obj.trObj.mFlag{obj.iPh,iApp} = 2 - double(isZTol);
                 obj.trObj.pStatsF{obj.iPh,iApp} = obj.pStats;
+                obj.trObj.Is{obj.iPh,iApp} = {obj.IR,obj.IL{iApp}};
                 
                 % ----------------------------------- %
                 % --- BLOB DETECTION CALCULATIONS --- %
                 % ----------------------------------- %
                 
                 % memory allocation
-                IRL = cell(obj.nFrm,length(fOK));
+                IRL{iApp} = cell(obj.nFrm,length(fOK{iApp}));
                 
                 % calculates the position of the blobs over all frames
                 wStr = 'Initial Sub-Region Detection...';
-                obj.hProg.Update(3+obj.wOfsL,wStr,1/3);
-                for iFly = find(fOK(:)')
-                    IRL(:,iFly) = cellfun(@(x)(x(iRT{iFly},:)),obj.IR,'un',0);
-                    QmxF(iFly,:) = obj.calcBlobPos(IRL(:,iFly),iApp,iFly);
-                end
+                obj.trObj.UpdatePB([3,-1],wStr,1/3);
+                for iFly = find(fOK{iApp}(:)')
+                    IRL{iApp}(:,iFly) = ...
+                        cellfun(@(x)(x(iRT{iFly},:)),obj.IR,'un',0);
+                    QmxF(iFly,:) = ...
+                        obj.calcBlobPos(IRL{iApp}(:,iFly),iApp,iFly);               
+                end                
 
                 % ------------------------------- %
                 % --- AMBIGUOUS REGION SEARCH --- %
@@ -168,17 +176,20 @@ classdef SingleTrackInitHT1 < handle
                 
                 % determines if there are any ambiguous locations
                 % (residuals which are outliers relative to the population)
-                obj.QmxTol = (1+obj.dZTol)*cellfun(@(x)(mean(ZRO(x))),iRT);
+                obj.QmxTol = min((1+obj.dZTol)*...
+                        cellfun(@(x)(mean(ZRO(x))),iRT));
 
-                % determines if there are any ambiguous locations
-                obj.isAmbig = QmxF < obj.QmxTol; 
-                obj.isAmbig(obj.trObj.sFlagT{obj.iPh,iApp} == 2,:) = false;                
+                % determines if there are any ambiguous locations (removes
+                % any sub-regions flag as being stationary)
+                isStat = obj.trObj.sFlagT{obj.iPh,iApp} == 2;
+                isAmbig{iApp} = QmxF < obj.QmxTol; 
+                isAmbig{iApp}(isStat,:) = 0;
                 
                 % determines if there are any "ambiguous" locations
                 % (locations where flies have very low residuals)
-                if any(obj.isAmbig(:))                    
+                if any(isAmbig{iApp}(:))                    
                     % searches through each of the ambiguous frames
-                    iGrpA = obj.setupSearchGroups(obj.isAmbig,fOK);
+                    iGrpA = obj.setupSearchGroups(isAmbig{iApp},fOK{iApp});
                     nGrpA = size(iGrpA,1);
                     
                     % searches each of the frame groups
@@ -186,7 +197,7 @@ classdef SingleTrackInitHT1 < handle
                         % updates the progressbar
                         pW = (1/3)*(1 + 2*j/nGrpA);
                         wStr = sprintf('Checking Group (%i of %i)',j,nGrpA);                        
-                        if obj.hProg.Update(3+obj.wOfsL,wStr,pW)
+                        if obj.trObj.UpdatePB([3,-1],wStr,pW)
                             % if the user cancelled, then exit
                             obj.trObj.calcOK = false;
                             return
@@ -194,16 +205,6 @@ classdef SingleTrackInitHT1 < handle
                         
                         % performs the search for the ambiguous object
                         obj.searchAmbigPos(iGrpA(j,:),iApp);
-                    end
-                end                
-                
-                % only set up the template (if missing and there are fly
-                % locations known with reasonable accuracy)
-                if isempty(obj.hC{iApp})
-                    if any(~obj.isAmbig(:))
-                        obj.setupFlyTemplate(IRL,fOK,iApp);
-                    else
-                        return
                     end
                 end                                
                 
@@ -216,20 +217,113 @@ classdef SingleTrackInitHT1 < handle
                 for j = 1:obj.nFrm
                     % sets the linear indices of the fly positions
                     fPT = fPT0{j} + [zeros(length(yOfs),1),yOfs];
-                    fOK = fOK0 & ~isnan(fPT(:,1));
-                    indP = sub2ind(size(obj.IR{1}),fPT(fOK,2),fPT(fOK,1));
+                    [fOK{iApp},fOKF] = deal(fOK0 & ~isnan(fPT(:,1)));
+                    indP = sub2ind(size(obj.IR{1}),fPT(fOKF,2),fPT(fOKF,1));
               
                     % sets the blob point residual values
-                    obj.trObj.IPos{obj.iPh}{iApp,j}(fOK) = obj.IR{j}(indP);
-                    obj.IPosT{obj.iPh}{iApp,j}(fOK) = obj.IL{j}(indP);
-                end                
+                    obj.trObj.IPos{obj.iPh}{iApp,j}(fOKF) = obj.IR{j}(indP);
+                    obj.IPosT{obj.iPh}{iApp,j}(fOKF) = obj.IL{iApp}{j}(indP);
+                end
+            end
+           
+            % ------------------------- %
+            % --- BLOB CNN TRAINING --- %
+            % ------------------------- %            
+            
+            % if there are moving blobs (and using CNN) then train network
+            if obj.useCNN 
+                % determines which flies are moving
+                isMoving = combineNumericCells(obj.trObj.sFlagT) == 1;
                 
-                % searches any regions flagged as stationary
-                if any(obj.trObj.sFlagT{obj.iPh,iApp} == 2)
+                if obj.trObj.hProg.isTrain
+                    % if training, then clear the network object
+                    obj.trObj.hProg.pCNN.pNet = [];                                                   
+                    
+                    % if training network, then determine if there are any
+                    % regions which have moving blobs
+                    if ~any(isMoving(:))
+                        % if not, then output a warning to screen
+                        eStr = ['There are no moving objects detected ',...
+                                'within the current setup. Either ',...
+                                'reset the group regions or deselect',...
+                                'CNN classification.'];
+                        tStr = 'No Moving Objects';
+                        waitfor(msgbox(eStr,tStr,'modal'));
+                        
+                        % resets the CNN use flag
+                        obj.useCNN = false;
+                    end
+                end    
+                
+                if obj.useCNN
+                    % updates the global coordinates
+                    obj.trObj.calcGlobalCoords(1); 
+                    
+                    % runs the CNN training/classification                    
+                    objB = BlobCNNTrain(obj.trObj);
+                    objB.trainCNN(obj.trObj.hProg);
+                    
+                    if ~objB.calcOK
+                        % if the user cancelled, then exit                    
+                        obj.trObj.calcOK = false;
+                        return
+                        
+                    elseif obj.trObj.hProg.isTrain
+                        % if training, then retrieve the network model
+                        obj.trObj.hProg.pCNN.pSF = objB.pSF;
+                        obj.trObj.hProg.pCNN.pNet = objB.pNet;
+                        
+                        % sets the average class image
+                        isT = double(objB.iIDT) == 2;
+                        obj.trObj.hProg.pCNN.Iavg = cellfun(@(x)(...
+                            mean(x(:,:,:,isT),4)),objB.ImgT,'un',0);                        
+                    end                    
+                    
+                    % clears the extraneous variables
+                    clear objB
+                end
+            end
+            
+            % -------------------------------------------- %
+            % --- POST TRAINING/DETECTION CALCULATIONS --- %
+            % -------------------------------------------- %           
+            
+            for iApp = find(obj.iMov.ok(:)')
+                % update the waitbar figure
+                wStr = sprintf('Analysing Region (%i of %i)',iApp,obj.nApp);
+                if obj.trObj.UpdatePB([2,4],wStr,iApp,obj.nApp)
+                    % if the user cancelled, then exit
+                    obj.trObj.calcOK = false;
+                    return
+                end
+                
+                % field retrieval
+                fPT0 = obj.trObj.fPosL{obj.iPh}(iApp,:);
+                
+                % only set up the template (if missing and there are fly
+                % locations known with reasonable accuracy)
+                if isempty(obj.hC{iApp})
+                    if any(~isAmbig{iApp}(:))
+                        obj.setupFlyTemplate(IRL{iApp},fOK{iApp},iApp);
+                    else
+                        return
+                    end
+                end                                
+                
+                % resets the background images for the stationary objects
+                if obj.useCNN
+                    % case is using the 
+                    for i = find(obj.trObj.sFlagT{obj.iPh,iApp}(:)' == 2)
+                        fPosL = cellfun(@(x)(x(i,:)),fPT0(:),'un',0);
+                        obj.removeBackgroundBlob(fPosL,iApp,i);
+                    end
+                    
+                elseif any(obj.trObj.sFlagT{obj.iPh,iApp} == 2)
+                    % otherwise, find and remove the stationary objects
                     obj.searchStationaryRegions(iApp);
                 end                                
                 
-                % 
+                % removes any stationary blobs from the background image
                 isStat = obj.calcMovementRange(iApp) <= obj.calcDistTol;
                 isStatD = (obj.trObj.sFlagT{obj.iPh,iApp} == 1) & isStat;
                 for i = find(isStatD(:)')
@@ -238,18 +332,19 @@ classdef SingleTrackInitHT1 < handle
                 end
                
                 % if there were any changes, then fill in the gaps
-                if any(isnan(obj.IbgT(:)))
-                    obj.IbgT = interpImageGaps(obj.IbgT);
+                if any(isnan(obj.IbgT{iApp}(:)))
+                    obj.IbgT{iApp} = interpImageGaps(obj.IbgT{iApp});
                 end                
                 
                 % sets the tracking object fields
-                obj.trObj.iMov.Ibg{obj.iPh}{iApp} = obj.IbgT;                
-                obj.trObj.Is{obj.iPh,iApp} = {obj.IR,obj.IL};                
+                obj.trObj.iMov.Ibg{obj.iPh}{iApp} = obj.IbgT{iApp};
+
+                % clears extraneous fields
                 
                 % updates the waitbar figure
                 wStr = 'Sub-Region Detection Complete';
-                obj.hProg.Update(3+obj.wOfsL,wStr,1);                
-            end            
+                obj.trObj.UpdatePB([3,-1],wStr,1);
+            end
             
             % sets the final expanded template images
             obj.trObj.hCQ = obj.trObj.expandImageArray(obj.hC);
@@ -270,22 +365,24 @@ classdef SingleTrackInitHT1 < handle
 
             % retrieves the template image
             if isempty(obj.hC{iApp})
-                hCex = obj.trObj.expandImageArray(obj.hC(1:iApp));
-                hCnw = calcImageStackFcn(hCex(obj.iMov.ok));
+                xiC = 1:(iApp-1);
+                hCex = obj.trObj.expandImageArray(obj.hC(xiC));
+                hCnw = calcImageStackFcn(hCex(obj.iMov.ok(xiC)));
             else
                 hCnw = obj.hC{iApp};
-            end            
+            end
             
             % sets the image filter (based on template image size)
             hG = fspecial('log',size(hCnw)+2,1); 
 
             % calculates the sharpened image cross-correlation binary
-            Q = cellfun(@(x)(min(0,imsharpen(x,'Amount',nS))),obj.IL,'un',0); 
+            Q = cellfun(@(x)(min(0,...
+                imsharpen(x,'Amount',nS))),obj.IL{iApp},'un',0); 
             Z = cellfun(@(x)(max(0,calcXCorr(hG,x))),Q,'un',0);            
             Ztot = calcImageStackFcn(cellfun(@(x)(x > pTolZT),Z,'un',0)); 
             
             % calculates the raw image maxima cross-correlation binary
-            ILmx = calcImageStackFcn(obj.IL,'max'); 
+            ILmx = calcImageStackFcn(obj.IL{iApp},'max'); 
             Zmx = max(0,calcXCorr(-hCnw,ILmx));            
             ZmxB = obj.removeEdgeTouchGroups(ILmx,Zmx>pTolZmxT,iApp);
             
@@ -389,6 +486,21 @@ classdef SingleTrackInitHT1 < handle
 
             % if there are no valid fly locations then exit the function
             if ~any(isOK)
+                % if there is a previous filter image, then use that
+                if isfield(obj.iMov,'hFilt') || ~isempty(obj.iMov.hFilt)
+                    % uses the previous filter sub-image
+                    obj.hC{iApp} = obj.iMov.hFilt;
+                    
+                    % calculates the other properties (if not set)
+                    if ~isfield(obj.iMov,'szObj') || isempty(obj.iMov.szObj)
+                        Brmv = obj.hC{iApp} > 0;
+                        BrmvD = sum(Brmv(logical(eye(size(Brmv)))));
+                        obj.iMov.szObj = BrmvD*[1,1];
+                        obj.dTol = obj.calcDistTol();
+                    end
+                end
+                
+                % exits the function
                 return
             end
             
@@ -518,7 +630,7 @@ classdef SingleTrackInitHT1 < handle
             
             % retrieves the initial raw/residual images
             iFrmL = iFrmG(xiFL);          
-            ImgL0 = cellfun(@(x)(x(iRT,:)),obj.IL(xiFL),'un',0);
+            ImgL0 = cellfun(@(x)(x(iRT,:)),obj.IL{iApp}(xiFL),'un',0);
             ImgR0 = cellfun(@(x)(x(iRT,:)),obj.IR(xiFL),'un',0);
             
             % keep looping while the limit size is greater than tolerance
@@ -623,7 +735,7 @@ classdef SingleTrackInitHT1 < handle
             
             % retrieves the background image for the tube region 
             iRT = obj.iMov.iRT{iApp}{iRow};
-            IbgTL = obj.IbgT(iRT,:);            
+            IbgTL = obj.IbgT{iApp}(iRT,:);            
             
             % enhances/de-enhances the background image
             IbgTL(BNw) = min(255,IbgTL(BNw) + obj.QmxTol/4);
@@ -644,8 +756,10 @@ classdef SingleTrackInitHT1 < handle
             iRT = obj.iMov.iRT{iApp}{iRow};
             
             % reads/sets the sub-region image and calculates the residual
+            obj.trObj.stopUpdate = true;
             Img = obj.trObj.getImageStack(iFrm,1,1);
             ImgL0 = calcHistMatchStack({Img(iR,iC)},obj.IRef);
+            obj.trObj.stopUpdate = false;
             
             % applies the smooth filter (if specified)
             if obj.trObj.useFilt
@@ -656,7 +770,7 @@ classdef SingleTrackInitHT1 < handle
             
             % sets the sub-region raw/residual images
             ImgL = ImgL0(iRT,:);
-            ImgR0 = obj.calcImageResidual({ImgL},obj.IbgT(iRT,:)); 
+            ImgR0 = obj.calcImageResidual({ImgL},obj.IbgT{iApp}(iRT,:)); 
             ImgR = ImgR0{1};
             
         end                        
@@ -664,7 +778,11 @@ classdef SingleTrackInitHT1 < handle
         % --- calculates the threshold binary
         function B = getThresholdBinary(obj,I,iApp)
             
-            B = I > obj.QmxTol(iApp);
+            if length(obj.QmxTol) == 1
+                B = I > obj.QmxTol;
+            else
+                B = I > obj.QmxTol(iApp);
+            end
             
         end        
                         
@@ -672,13 +790,13 @@ classdef SingleTrackInitHT1 < handle
         function removeBackgroundBlob(obj,fPosL,iApp,iRow)
             
             % field retrieval
-            N = size(obj.hC{iApp},1) - 1;
+            N = ceil((size(obj.hC{iApp},1) - 1)/2);
             iRT = obj.iMov.iRT{iApp}{iRow};
-            ILL = repmat({obj.IbgT(iRT,:)},length(fPosL),1);
+            ILL = repmat({obj.IbgT{iApp}(iRT,:)},length(fPosL),1);
             
             % removes the blobs from the background estimate
             IbgTL = obj.trObj.setupBGEstStack(ILL,fPosL,N);
-            obj.IbgT(iRT,:) = calcImageStackFcn(IbgTL,'max');
+            obj.IbgT{iApp}(iRT,:) = calcImageStackFcn(IbgTL,'max');
             
         end
         

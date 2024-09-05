@@ -63,7 +63,7 @@ classdef VideoPhase < handle
         pTile = 25;
         
         % other fixed parameters        
-        isHT1
+        isHT
         nPhMax        
         tOfs = 1;
         sFlag = 0;
@@ -111,7 +111,7 @@ classdef VideoPhase < handle
         function initClassFields(obj)
             
             % field retrieval
-            obj.isHT1 = isHT1Controller(obj.iData);
+            obj.isHT = isHTController(obj.iData);
             
             % sets the region count
             if isfield(obj.iMov,'posO')
@@ -124,7 +124,7 @@ classdef VideoPhase < handle
             obj.sFlag = 0;
             [obj.rOpt,obj.rMet] = imregconfig('monomodal');
             obj.rOpt.MaximumIterations = 250;
-            obj.nFrm0 = min(obj.iData.nFrm,(1+obj.isHT1)*obj.nFrm0);
+            obj.nFrm0 = min(obj.iData.nFrm,(1+obj.isHT)*obj.nFrm0);
             
             % sets the maximum phase count
             if ~isfield(obj.iMov.bgP.pPhase,'nPhMax')
@@ -252,7 +252,7 @@ classdef VideoPhase < handle
             end
             
             % determines the video properties
-            if ~obj.isHT1
+            if ~obj.isHT
                 obj.detVideoProps();
             end
             
@@ -409,7 +409,7 @@ classdef VideoPhase < handle
             end
             
             %
-            if obj.isHT1
+            if obj.isHT
                 % performs the histogram matching
                 IRef = uint8(calcImageStackFcn(IL));
                 IL = calcHistMatchStack(IL,IRef);
@@ -837,7 +837,7 @@ classdef VideoPhase < handle
                 
                 % determines if the frame range is too low for tracking
                 DimgF{i} = obj.getDimg(iFrmG);
-                if obj.isHT1
+                if obj.isHT
                     % SPECIAL CASE - HT1 Controller
                     vPhaseF(i) = 4;
                     
@@ -943,7 +943,7 @@ classdef VideoPhase < handle
             
             % if there are a large number of phases, then flag the video as
             % having high pixel fluctuation (non-HT1 controllers only)
-            if (length(vPhaseF) > obj.nPhaseMx) && ~obj.isHT1
+            if (length(vPhaseF) > obj.nPhaseMx) && ~obj.isHT
                 [obj.hasF,obj.sFlag] = deal(true,-1);
                 [iPhaseF,vPhaseF] = deal([1,obj.iFrm0(end)],1);
                 
@@ -1270,7 +1270,7 @@ classdef VideoPhase < handle
             [Img,sImg] = deal(cell(nPhase,1));
             
             % sets the frame indices
-            nImgR = obj.phsP.nImgR*(1+obj.isHT1);
+            nImgR = obj.phsP.nImgR*(1+obj.isHT);
             [obj.iMov.vPhase,obj.iMov.iPhase] = deal(obj.vPhase,obj.iPhase);
             iFrmR = getPhaseFrameIndices(obj.iMov,nImgR,obj.iPhase);
             

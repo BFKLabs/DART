@@ -1231,30 +1231,37 @@ classdef RunExptObj < handle
 
                 % repeats the signals for each channel within the train
                 for j = 1:length(xySigS)
-                    for k = 1:size(xySigS{j},1)
-                        if ~isempty(xySigS{j}{k,1})
-                            % repeats the stimuli blocks
-                            if strcmp(sTrainS(i).blkInfo(k).sType,'Random')
-                                % case is a random stimuli block
-                                xySigSR = repeatRandBlocks(...
-                                        sTrainS(i),chInfo,sParaEx(i),dT,k);
-                            else
-                                % case is another stimuli type
-                                xySigSR = repeatStimBlocks(...
-                                        xySigS{j}(k,:),sParaEx(i));
-                            end                            
+                    % determines the non-empty channel entries
+                    ii = find(~cellfun('isempty',xySigS{j}(:,1)));
+                    sType = field2cell(sTrainS(i).blkInfo,'sType');
+                    
+                    % loops through each of the specified channels
+                    for k0 = 1:length(ii)
+                        % sets the global index
+                        k = ii(k0);
 
-                            % appends the new data values onto the full 
-                            % signal arrays
-                            if isempty(xySigF{j}{k,1})
-                                xySigF{j}{k,1} = xySigSR{1}(:);
-                                xySigF{j}{k,2} = xySigSR{2}(:);
-                            else
-                                xySigF{j}{k,1} = ...
-                                            [xySigF{j}{k,1};xySigSR{1}(:)];
-                                xySigF{j}{k,2} = ...
-                                            [xySigF{j}{k,2};xySigSR{2}(:)];
-                            end
+                        % repeats the stimuli blocks                            
+                        if strcmp(sType{k0},'Random')
+                            % case is a random stimuli block
+                            xySigSR = repeatRandBlocks(...
+                                    sTrainS(i),chInfo,sParaEx(i),dT,k);
+
+                        else
+                            % case is another stimuli type
+                            xySigSR = repeatStimBlocks(...
+                                    xySigS{j}(k,:),sParaEx(i));
+                        end                            
+
+                        % appends the new data values onto the full 
+                        % signal arrays
+                        if isempty(xySigF{j}{k,1})
+                            xySigF{j}{k,1} = xySigSR{1}(:);
+                            xySigF{j}{k,2} = xySigSR{2}(:);
+                        else
+                            xySigF{j}{k,1} = ...
+                                        [xySigF{j}{k,1};xySigSR{1}(:)];
+                            xySigF{j}{k,2} = ...
+                                        [xySigF{j}{k,2};xySigSR{2}(:)];
                         end
                     end
                 end

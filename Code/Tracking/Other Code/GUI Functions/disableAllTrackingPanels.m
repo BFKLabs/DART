@@ -2,9 +2,6 @@
 %     disabling the panel properties (all checkboxes removed)
 function hProp0 = disableAllTrackingPanels(hGUI,varargin)
 
-% global variables
-global isCalib
-
 % main GUI handle
 hGUIF = hGUI.figFlyTrack;
 
@@ -33,7 +30,7 @@ end
 set(hGUI.checkReject,'value',0)
 set(hGUI.checkShowMark,'value',0)
 if ishandle(hGUI.checkShowAngle); set(hGUI.checkShowAngle,'value',0); end
-if ~isCalib; feval(get(hGUI.figFlyTrack,'dispImage'),hGUI); end
+if ~hGUIF.isCalib; feval(get(hGUI.figFlyTrack,'dispImage'),hGUI); end
 
 % updates the GUI properties
 hProp0 = getHandleSnapshot(hGUI);

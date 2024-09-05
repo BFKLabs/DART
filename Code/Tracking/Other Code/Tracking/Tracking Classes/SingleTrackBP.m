@@ -32,6 +32,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         forceCalcBG
         setSoln
         isCalcBG
+        useCNN
 
         % other parameters/flags
         iFile0
@@ -290,7 +291,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             obj.hProg = ProgBar(obj.wStr,tStr,2);  
             obj.hProg.collapseProgBar(1);
             obj.hProg.setVisibility('on');            
-
+            
             % ---------------------------- %            
             % --- MAIN PROCESSING LOOP --- %
             % ---------------------------- %
@@ -505,11 +506,15 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                         % creates/opens a new solution file
                         obj.openNewSolnFile(iDir,i)
                         
-                        % resets the sub-movie region data structs (only do
-                        % this if restarting the batch processing and not
-                        % the first file)
-                        if (i > 1) && isInit
-                            obj.resetSubRegionData()                            
+                        % first file post-solution loading operations
+                        if isInit
+                            % sets the cnn classification flag
+                            obj.setupClassificationFlag();                            
+                            
+                            % resets the sub-region data struct
+                            if (i > 1)
+                                obj.resetSubRegionData()                            
+                            end
                         end
 
                         % --------------------------------- %
@@ -804,27 +809,56 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 end
                 
                 % initialises the initial tracking object
-                if strContains(obj.iMov.bgP.algoType,'single')
-                    % case is tracking single objects
-                    trkObjI = SingleTrackInit(obj.iData);    
-                    set(trkObjI,'wOfsL',1+obj.isMultiBatch,'isBatch',true); 
-                    
-                else
+                if detMltTrkStatus(obj.iMov)
                     % case is tracking multiple objects
                     trkObjI = runExternPackage(...
                         'MultiTrack',obj.iData,'Init'); 
+                else
+                    % case is tracking single objects
+                    trkObjI = SingleTrackInit(obj.iData,false);    
+                    set(trkObjI,'wOfsL',1+obj.isMultiBatch,'isBatch',true);                     
                 end                                                       
                 
-                % collapses the waitbar figure
-                obj.hProg.setLevelCount(4+obj.isMultiBatch);
-                
+                % updates the progressbar (based on calculation type)
+                if obj.useCNN
+                    % case is using the cnn classification
+                    hProg0 = obj.hProg;   
+                    hProg0.setVisibility(0);
+                    
+                    % creates the CNN progressbar
+                    obj.hProg = BlobCNNProgBar(obj.iMov.pCNN,false);
+                    pause(0.05);
+                    
+                else
+                    % expands the waitbar figure
+                    obj.hProg.setLevelCount(4+obj.isMultiBatch);
+                end
+                    
                 % runs the initial tracking/background estimate
                 set(trkObjI,'prData0',prData);
                 set(trkObjI,'wOfsL',1+obj.isMultiBatch);                
                 trkObjI.calcInitEstimate(obj.iMov,obj.hProg);                
 
+                % resets the progressbar (cnn classification only)
+                if obj.useCNN
+                    % determines if the calculation was successful
+                    if trkObjI.calcOK
+                        % if so, close the progressbar
+                        obj.hProg.closeProgBar();
+                        
+                        % then reset the original progressbar
+                        obj.hProg = hProg0;
+                        hProg0.setVisibility(1);
+                        pause(0.05);
+                        
+                    else
+                        % otherwise, delete the original progressbar
+                        delete(hProg0);
+                    end
+                end
+                
                 % if the user cancelled, then exit                                
-                if ~trkObjI.calcOK
+                if ~trkObjI.calcOK                    
                     sFlag = 1;
                     return
                 end
@@ -972,8 +1006,8 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             obj.iMov = get(obj.hFig,'iMov');   
             
             % resets the detection parameters
-            isHT1 = isHT1Controller(obj.iData);
-            obj.iMov.bgP = DetectPara.getDetectionPara(obj.iMov,isHT1);
+            isHT = isHTController(obj.iData);
+            obj.iMov.bgP = DetectPara.getDetectionPara(obj.iMov,isHT);
             
             % if the solution tracking GUI is open then reset it
             hTrack = findall(0,'tag','figFlySolnView');
@@ -1828,6 +1862,13 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             a = 1;
             
         end        
+
+        % --- sets the classification flag
+        function setupClassificationFlag(obj)
+            
+            obj.useCNN = isUseCNN(obj.iData,obj.iMov);
+            
+        end
         
     end
    

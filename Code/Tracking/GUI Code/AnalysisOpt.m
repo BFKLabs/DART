@@ -110,10 +110,10 @@ classdef AnalysisOpt < handle
         function initClassFields(obj)
             
             % global variables
-            global HWT H0T isCalib
+            global HWT H0T
             
             % sets the calibration flag
-            obj.isCalib = isCalib;
+            obj.isCalib = obj.hFigM.isCalib;
             obj.hGUIM = guidata(obj.hFigM);            
             
             % calculates the dependent object dimensions

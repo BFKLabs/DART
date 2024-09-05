@@ -2,6 +2,7 @@ classdef GridDetect < matlab.mixin.SetGet
     
     % class properties
     properties
+        
         % main class objects
         hAx
         hFig
@@ -239,7 +240,7 @@ classdef GridDetect < matlab.mixin.SetGet
             obj.hEditF = uicontrol(obj.hPanelF,'Style','edit',...
                     'Position',ePosNw,'Callback',eFcnF,...
                     'String',num2str(obj.getFiltPara('hSz')));                
-            setObjEnable(obj.hEditF,~obj.hFigM.isHT1)
+            setObjEnable(obj.hEditF,~obj.hFigM.isHT)
                 
             % --------------------- %
             % --- HOUSE-KEEPING --- %
@@ -280,7 +281,7 @@ classdef GridDetect < matlab.mixin.SetGet
             obj.setFiltPara('useFilt',useFilt);
             setObjEnable(obj.hButC{1},'on');
             
-            if obj.hFigM.isHT1
+            if obj.hFigM.isHT
                 setObjEnable(obj.hTxtF,useFilt)
             else
                 setObjEnable([obj.hEditF,obj.hTxtF],useFilt)

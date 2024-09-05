@@ -218,9 +218,6 @@ classdef TrackMarkerClass < handle
         % --- updates the object location marker coordinates
         function updateTrackMarkers(obj,hasImg)
 
-            % global variables
-            global isCalib
-
             % retrieves the important data arrays/structs
             % cType = get(hFig,'cType');
 
@@ -240,7 +237,7 @@ classdef TrackMarkerClass < handle
             end
             
             % retrieves the marker boolean flag
-            if isCalib
+            if obj.hFig.isCalib
                 pltLocT0 = get(obj.hChkBGM,'value') && hasImg;
             else
                 pltLocT0 = get(obj.hChkM,'value') && hasImg;
@@ -254,7 +251,7 @@ classdef TrackMarkerClass < handle
             end
 
             % array indexing & parameters
-            if isCalib
+            if obj.hFig.isCalib
                 if isfield(obj.hFig,'rtObj')
                     if isempty(obj.hFig.fPosNew); return; end     
                 end
@@ -277,7 +274,7 @@ classdef TrackMarkerClass < handle
                     
                     % sets the plot location marker flag for the 
                     % current apparatus
-                    if isCalib       
+                    if obj.hFig.isCalib       
                         % case is updating the calibration points
                         if isprop(obj.hFig,'fPosNew')
                             obj.updateRegionMarkers(i) 
@@ -370,10 +367,10 @@ classdef TrackMarkerClass < handle
         function updateRegionMarkers(obj,ind)
             
             % global variables
-            global isCalib szDelX szDelY
+            global szDelX szDelY
             
             % retrieves the position data struct
-            if isCalib
+            if obj.hFig.isCalib
                 pData = obj.hFig.fPosNew;
             else
                 pData = obj.hFig.pData;
@@ -394,14 +391,14 @@ classdef TrackMarkerClass < handle
             % other initialisations
             vStr = {'off','on'};
             pltLV = get(obj.hChkLV,'value');
-            hasPhi = isfield(pData,'PhiF') && ~isCalib;                        
+            hasPhi = isfield(pData,'PhiF') && ~obj.hFig.isCalib;                        
             
             % retrieves the sub-region count
             nFly = length(obj.hMark{ind});
             cMov = str2double(get(obj.hEditM,'string'));            
             
             % sets the manual calibration flag             
-            if isCalib
+            if obj.hFig.isCalib
                 % case is calibration
                 [cFrm,manReseg] = deal(1,false);
                 
@@ -433,7 +430,7 @@ classdef TrackMarkerClass < handle
             % sets the global/local coordinates and the y-offset 
             if pltLV
                 % retrieves the frame's fly locations
-                if isCalib
+                if obj.hFig.isCalib
                     % case is calibration 
                     pOfs = [(obj.iMov.iC{ind(1)}(1)-1),...
                             (obj.iMov.iR{ind(1)}(1)-1)];            
@@ -447,7 +444,7 @@ classdef TrackMarkerClass < handle
                 
             else
                 % case is full video tracking
-                if isCalib
+                if obj.hFig.isCalib
                     fPos = num2cell(pData{ind(1)},2);
                 else
                     fPos = cellfun(@(x)...
@@ -834,10 +831,10 @@ classdef TrackMarkerClass < handle
         function checkShowMark(obj)
             
             % global variables
-            global isCalib isBatch            
+            global isBatch            
             
             % updates the image axes
-            if isCalib
+            if obj.hFig.isCalib
                 % updates the plot markers
                 obj.updateTrackMarkers(true)
                 
@@ -1004,15 +1001,12 @@ classdef TrackMarkerClass < handle
         %     analysis type and the status of the fly/tube region)
         function [pCol,fAlpha,eCol,pMark,mSz] = getMarkerProps(obj,i,j)
 
-            % global variables
-            global isCalib
-
             % initialisations
             eCol = 'y';
             cStr = {'pNC','pMov','pStat','pRej'};
 
             % sets the plot colour for the tubes
-            if isCalib
+            if obj.hFig.isCalib
                 % determines if the fly has been accepted/rejected
                 if obj.iMov.flyok(j,i) && obj.iMov.ok(i)
                     % case is fly is accepted

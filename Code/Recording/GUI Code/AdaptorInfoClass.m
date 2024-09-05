@@ -109,6 +109,9 @@ classdef AdaptorInfoClass < handle
         % --- initialises the class object fields
         function initClassFields(obj)
             
+            % resets the image acquisition objects
+            try imaqreset; catch; end
+            
             % initialises the parameter file path
             obj.pFile = getParaFileName('ProgPara.mat');
            

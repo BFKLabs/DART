@@ -292,7 +292,7 @@ classdef TrackFull < Track
             % ------------------------------ %            
             
             % sets the first/last frames of the HT1 phase (if present)
-            if obj.fObj{iPhase}.isHT1
+            if obj.fObj{iPhase}.isHT
                 % retrieves the first/last frame of the phase
                 iFrmS0 = [obj.sProg.iFrmR{1}(1),obj.sProg.iFrmR{end}(end)];
                 I0 = obj.getImageStack(iFrmS0);

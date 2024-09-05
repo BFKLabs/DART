@@ -29,7 +29,7 @@ handles.output = hObject;
 
 % global variables
 global isMouseDown isMenuOpen p0
-global isChange isCalib frmSz0 isUpdating
+global isChange frmSz0 isUpdating
 [isMouseDown,isMenuOpen,isChange,isUpdating] = deal(false);
 p0 = [];
 
@@ -46,14 +46,15 @@ hFig = hGUI.figFlyTrack;
 % sets the input arguments into the gui
 pFldStr = {'hDiff','iMov','iMov0','isMTrk','iData','hSelP','hProp0',...
            'infoObj','cmObj','hTabGrp','jTabGrp','hTab','srObj',...
-           'phObj','gridObj','rgObj','axPosX','axPosY','isHT1'};
+           'phObj','gridObj','rgObj','axPosX','axPosY','isHT',...
+           'isCalib'};
 initObjPropFields(hObject,pFldStr);
 addObjProps(hObject,'hGUI',hGUI,'hPropTrack0',hPropTrack0) 
 
 % loads the background parameter struct from the program parameter file
-hObject.isHT1 = isHT1Controller(get(hFig,'iData'));
+hObject.isHT = isHTController(get(hFig,'iData'));
 A = load(getParaFileName('ProgPara.mat'));
-bgP = DetectPara.resetDetectParaStruct(A.bgP,hObject.isHT1);
+bgP = DetectPara.resetDetectParaStruct(A.bgP,hObject.isHT);
 
 % ---------------------------------------- %
 % --- FIELD & PROPERTY INITIALISATIONS --- %
@@ -97,7 +98,7 @@ end
 isMTrk = detMltTrkStatus(iMov);
 
 % sets the frame size (if calibrating for the RT-Tracking/Calibration)
-if isCalib
+if hFig.isCalib
     infoObj = get(hFig,'infoObj');
     if isa(infoObj.objIMAQ,'cell')
         % case is the testing form of the gui
@@ -115,7 +116,8 @@ end
 % updates the GUI font-sizes and disables all tracking panels
 % setGUIFontSize(handles)
 hProp0 = disableAllTrackingPanels(hGUI,1);
-set(hObject,'hProp0',hProp0,'iMov',iMov,'iMov0',iMov,'isMTrk',isMTrk)
+set(hObject,'hProp0',hProp0,'iMov',iMov,'iMov0',iMov,...
+            'isMTrk',isMTrk,'isCalib',hFig.isCalib)
 
 % ---------------------------------------- %
 % --- FIELD & PROPERTY INITIALISATIONS --- %
@@ -544,7 +546,7 @@ iMov0 = get(hFig,'iMov');
 
 % if the field does exist, then ensure it is correct
 hFig.iMov.phInfo = [];
-hFig.iMov.bgP = DetectPara.resetDetectParaStruct(hFig.iMov.bgP,hFig.isHT1);
+hFig.iMov.bgP = DetectPara.resetDetectParaStruct(hFig.iMov.bgP,hFig.isHT);
 
 % determines the sub-region dimension configuration
 [iMovNw,ok] = setSubRegionDim(hFig.iMov,hFig.hGUI);
@@ -2514,9 +2516,6 @@ hFig.rgObj.deleteRegionConfig();
 % --- retrieves the region estimate image stack
 function I = getRegionEstImageStack(handles,hGUI,iMov)
 
-% global variables
-global isCalib
-
 % memory allocation
 nFrm = 10;
 tPause = 0.5;
@@ -2524,7 +2523,7 @@ I = cell(nFrm,1);
 hFig = handles.output;
 
 % retrieves the initial image stack
-if isCalib
+if hFig.isCalib
     % creates a waitbar figure
     wStr = {'Capturing Test Image Frames'};
     hProg = ProgBar(wStr,'Test Image Capture');

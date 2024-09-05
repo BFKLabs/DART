@@ -59,8 +59,8 @@ if ~isempty(hDev)
 end
 
 % runs a test pulse (HT1 controllers only)
-isHT1 = dType == 1;            
-if any(isHT1) && isOn
+isHT = dType == 1;            
+if any(isHT) && isOn
     objHT1 = setupHT1TestPulse(objDAQ);
     runOutputDevices(objHT1,1:length(objHT1));
 end

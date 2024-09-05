@@ -13,6 +13,7 @@ classdef CalcBG < handle
         
         % tracking class object
         trkObj        
+        objM
         
         % initial main gui properties
         iMov0
@@ -29,17 +30,18 @@ classdef CalcBG < handle
         % global flags 
         is2D
         isDD  
-        isHT1
+        isHT
         isCalib
         isVisible
         isChange
         isMTrk
-        frameSet        
-        hasUpdated
         isBGCalc
-        uList
-        fUpdate
         isAllUpdate
+        hasUpdated 
+        hasDLT
+        frameSet                       
+        uList
+        fUpdate        
         nManualMx   
         iSel                
         
@@ -65,6 +67,10 @@ classdef CalcBG < handle
         iCloseSR
         iCloseF
         
+        % network classifier fields
+        pCNN
+        sTypeCNN = 2;       
+        
         % other important fields  
         mSz
         Ibg
@@ -84,8 +90,8 @@ classdef CalcBG < handle
         cMapJet
         isUpdating
         
-        % fixed variables
-        ivRej = 5;
+        % numerical variables
+        ivRej = 5; 
         feasInd = [1,2,4];
         
     end
@@ -94,18 +100,15 @@ classdef CalcBG < handle
     methods
         
         % --- object constructor
-        function obj = CalcBG(hGUI)
-            
-            % global variables
-            global isCalib
+        function obj = CalcBG(hGUI)            
             
             % sets the input arguments
             obj.hGUI = hGUI;
-            obj.isCalib = isCalib;  
             
             % important object handles
             obj.hFig = obj.hGUI.figFlyTrack;
-            obj.hAx = obj.hGUI.imgAxes;                        
+            obj.hAx = obj.hGUI.imgAxes;
+            obj.isCalib = obj.hFig.isCalib;
             
             % initialises the other fields
             obj.isVisible = false;
@@ -212,6 +215,11 @@ classdef CalcBG < handle
             
             % if changes are made and accepted, then update the struct
             if obj.isChange
+                % updates the classifier network (if available)
+                if ~isempty(obj.pCNN)
+                    obj.iMov.pCNN = obj.pCNN;
+                end
+                
                 % updates the fields in the tracking GUI
                 isMovChange = true;
                 set(obj.hFig,'pData',[])
@@ -494,7 +502,7 @@ classdef CalcBG < handle
                     cbFcn = eval(sprintf('@obj.%s',csObj{i}));
                     set(hObj,'CellSelectionCallback',cbFcn)
                 end
-            end                 
+            end                             
             
         end                           
         
@@ -506,14 +514,21 @@ classdef CalcBG < handle
             obj.iData = get(obj.hFig,'iData');   
             obj.iPara = obj.initParaStruct(10);             
             obj.isMTrk = detMltTrkStatus(obj.iMov);
-            obj.isHT1 = isHT1Controller(obj.iData);
+            obj.isHT = isHTController(obj.iData);
+            obj.hasDLT = obj.hFig.hasDLT;
+            
+            % other field initialisations
+            obj.ok0 = obj.iMov.flyok;            
+            obj.isDD = isDirectDetect(obj.iMov);
+            obj.nApp = length(obj.iMov.iR);
+            obj.nTube = getSRCountVec(obj.iMov);            
             
             % sets the 2D region flag
             if isfield(obj.iMov,'is2D')
                 obj.is2D = obj.iMov.is2D;
             else
                 [obj.is2D,obj.iMov.is2D] = deal(is2DCheck(obj.iMov));
-            end
+            end            
             
             % retrieves the current image dimensions
             frmSz = getCurrentImageDim(obj.hGUI);
@@ -522,17 +537,17 @@ classdef CalcBG < handle
             if isfield(obj.iMov,'bgP')
                 % if the field does exist, then ensure it is correct
                 obj.iMov.bgP = ...
-                    DetectPara.resetDetectParaStruct(obj.iMov.bgP,obj.isHT1);
+                    DetectPara.resetDetectParaStruct(obj.iMov.bgP,obj.isHT);
             else
                 % field doesn't exist, so create initialise
                 obj.iMov.bgP = ...
-                    DetectPara.initDetectParaStruct('All',obj.isHT1);                
+                    DetectPara.initDetectParaStruct('All',obj.isHT);                
             end
             
             % creates the tracking object based on the tracking type
             if strContains(obj.iMov.bgP.algoType,'single')
                 % case is tracking single objects
-                obj.trkObj = SingleTrackInit(obj.iData);
+                obj.trkObj = SingleTrackInit(obj.iData,obj.isCalib);
             else
                 % case is tracking multiple objects                
                 obj.trkObj = feval('runExternPackage',...
@@ -543,18 +558,58 @@ classdef CalcBG < handle
             set(obj.trkObj,'isCalib',obj.isCalib);
             
             % initial main gui properties
-            obj.ok0 = obj.iMov.flyok;
             obj.hProp0 = getHandleSnapshot(obj.hGUI);
             if ~obj.isCalib
                 % retrieves the image data from the current axis
                 hImage = findobj(obj.hGUI.imgAxes,'type','image');
                 obj.ImgFrm0 = get(hImage,'cdata');                 
-            end            
+            end                                    
             
-            % initialises the index fields            
-            obj.isDD = isDirectDetect(obj.iMov);            
-            obj.nApp = length(obj.iMov.iR);
-            obj.nTube = getSRCountVec(obj.iMov);            
+            % sets the bg menu item handle array
+            obj.hMenuBG = [obj.hGUI.menuFileBG,...
+                           obj.hGUI.menuEstBG,...
+                           obj.hGUI.menuView];
+
+            % --------------------------------- %
+            % --- CNN MENU/CLASSIFIER SETUP --- %
+            % --------------------------------- %
+                       
+            % adds in the CNN classification menu items (if required)
+            if obj.isHT && obj.hasDLT
+                % determines if the menu items have been created
+                if isempty(obj.objM)
+                    % if not, then create them 
+                    obj.objM = BlobCNNMenus(obj);
+                    
+                else
+                    % otherwise, add on the existing menu item
+                    obj.objM.initClassFields();
+                end
+
+                % appends the classifier menu item
+                obj.hMenuBG(end+1) = obj.objM.hMenuP;                
+                
+                % sets/initialises the training objects
+                if ~isfield(obj.iMov,'pCNN') || isempty(obj.iMov.pCNN)
+                    isOn = false;                    
+                    obj.pCNN = BlobCNNObj();
+                else                    
+                    obj.pCNN = obj.iMov.pCNN;
+                    isOn = ~isempty(obj.pCNN.pNet);
+                end
+                
+                % resets the menu item properties
+                obj.objM.setMenuItemProps(isOn);
+%                 obj.appendClassiferImage(isOn);
+%                 
+%             else
+%                 % otherwise, ensure the classifier images are removed
+%                 obj.appendClassiferImage(0);
+            end                       
+            
+            % ------------------------------------- %
+            % --- MISCELLANEOUS INITIALISATIONS --- %
+            % ------------------------------------- %       
             
             % sets the inside/outside subregion masks
             BgrpT0 = cell(length(obj.iMov.iR),1);
@@ -562,20 +617,15 @@ classdef CalcBG < handle
                 Btmp = false(frmSz); 
                 Btmp(obj.iMov.iR{i},obj.iMov.iC{i}) = true; 
                 BgrpT0{i} = bwmorph(bwmorph(Btmp,'dilate'),'remove');
-            end            
-            
-            % sets the bg menu item handle array
-            obj.hMenuBG = [obj.hGUI.menuFileBG,...
-                           obj.hGUI.menuEstBG,...
-                           obj.hGUI.menuView];
-            
+            end
+                       
             % initialises the other class fields 
             obj.hManual = [];
             [obj.iSel,obj.BgrpT] = deal([1,1],BgrpT0);
             [obj.isChange,obj.frameSet] = deal(false);
             [obj.hasUpdated,obj.isBGCalc] = deal(false);
             [obj.uList,obj.fUpdate] = deal([]);
-            [obj.isAllUpdate,obj.nManualMx] = deal(true,10);
+            [obj.isAllUpdate,obj.nManualMx] = deal(true,10);                             
             
         end        
         
@@ -613,7 +663,7 @@ classdef CalcBG < handle
             bgP = obj.getTrackingPara();            
             set(obj.hGUI.checkFilterImg,'Value',bgP.useFilt)
             set(hEditF,'String',num2str(bgP.hSz),...
-                       'Enable',eStr{1+(bgP.useFilt && ~obj.isHT1)})
+                       'Enable',eStr{1+(bgP.useFilt && ~obj.isHT)})
             obj.updateImgTypePopup(true);         
             
             % if the phase info field is not set, then create one
@@ -644,7 +694,7 @@ classdef CalcBG < handle
                 % sets the frame index arrays
                 obj.vPhase0 = obj.iMov.vPhase;
                 nPhase = length(obj.iMov.vPhase);
-                nFrmR = obj.trkObj.nFrmR*(1 + obj.isHT1);                
+                nFrmR = obj.trkObj.nFrmR*(1 + obj.isHT);                
                 obj.indFrm = getPhaseFrameIndices(obj.iMov,nFrmR);
                                         
                 % enables the phase panel properties (if more than one phase       
@@ -822,9 +872,15 @@ classdef CalcBG < handle
             % case is the background has been calculated
             if ~isempty(obj.iMov.Ibg)
                 if ~isempty(obj.iMov.Ibg{cPh})
-                    if obj.isHT1
+                    if obj.isHT
                         popStrNw = {'Background';...
                                     'Residual (Filtered)'};
+                                
+                        % appends the image classifier (if using CNN)
+                        isAdd = ~isempty(obj.pCNN.pNet) && ...
+                                (obj.sTypeCNN < 3);
+                        popStrNw = [popStrNw;...
+                                obj.appendClassiferImage(isAdd)];
                                 
                     elseif obj.isMTrk
                         popStrNw = {'Background';...
@@ -973,9 +1029,8 @@ classdef CalcBG < handle
                       'Background (Filled)'} 
                     % case is the background estimate                    
 
-                    if size(Img0,3) == 3
-                        Img0 = double(rgb2gray(uint8(Img0)));
-                    end
+                    % ensures the image is grayscale
+                    Img0 = obj.convertImage(Img0);
                     
                     % sets the background image based on the detection type
                     if strcmp(getDetectionType(obj.iMov),'GeneralR')
@@ -1005,7 +1060,7 @@ classdef CalcBG < handle
                         end
                         
                         % sets the final background image
-                        if obj.isHT1
+                        if obj.isHT
                             [ImgC0,Iofs] = deal(zeros(size(Img0)),false);
                         elseif obj.iMov.phInfo.hasF || ...
                                         (obj.iMov.vPhase(iPhase) > 1)
@@ -1028,9 +1083,8 @@ classdef CalcBG < handle
                       'Residual (Filtered)'}
                     % case is the raw residual image
                     
-                    if size(Img0,3) == 3
-                        Img0 = double(rgb2gray(uint8(Img0)));
-                    end
+                    % ensures image is grayscale format
+                    Img0 = obj.convertImage(Img0);
                     
                     % scales the image (if required)
                     if isfield(obj.iMov,'pImg')
@@ -1042,13 +1096,43 @@ classdef CalcBG < handle
                     bgP = obj.getTrackingPara();
                     if bgP.useFilt && ~isRaw
                         Img0 = imfiltersym(Img0,hS);
-                    end
-
-                    % case is the low-variance phase
-                    cMapType = 'jet';             
+                    end          
                     
                     % sets up the residual image
                     Inw = obj.setupResidualImage(Img0,iPhase,iFrmS,iok);
+                    
+                    % resets the colourmap type
+                    cMapType = 'jet';                       
+                    
+                case {'CNN Classified'}
+
+                    % creates a progressbar
+                    wStr = 'Setting Up CNN Classified Image';
+                    hLoad = ProgressLoadbar(wStr);
+                    pause(0.05);                    
+
+                    % ensures image is grayscale format
+                    Img0 = obj.convertImage(Img0);
+                    objC = BlobCNNClassify(obj.iMov,obj.pCNN);
+                    Inw = objC.classifyImageFast(Img0);
+                    
+                    % closes the progressbar
+                    delete(hLoad)  
+                    
+                case {'X-Derivative','Y-Derivative'}  
+
+                    % ensures image is grayscale format
+                    [Ix,Iy] = imgradientxy(obj.convertImage(Img0));
+                    
+                    % sets the preview image based on the derivative type
+                    if strcmp(imgType,'X-Derivative')
+                        Inw = Ix;
+                    else
+                        Inw = Iy;
+                    end
+                    
+                    % resets the colourmap type
+                    cMapType = 'jet';                              
                     
                 case {'Cross-Correlation'}
                   
@@ -1057,9 +1141,8 @@ classdef CalcBG < handle
                     hLoad = ProgressLoadbar(wStr);
                     pause(0.05);
                     
-                    if size(Img0,3) == 3
-                        Img0 = double(rgb2gray(uint8(Img0)));
-                    end               
+                    % ensures image is grayscale format
+                    Img0 = obj.convertImage(Img0);
                     
                     % calculates the image/template gradient masks
                     cLim = [0,1];
@@ -1158,7 +1241,7 @@ classdef CalcBG < handle
             ILs(iok) = cellfun(@(x)(x{1}),ILs(iok),'un',0);
 
             % calculates the histogram matched images (special phase only)
-            if obj.isHT1
+            if obj.isHT
                 ILs(iok) = cellfun(@(x,y)(double(imhistmatch...
                     (uint8(x),y,'method','uniform'))),ILs(iok),...
                     obj.iMov.IbgR(iok),'un',0);
@@ -1457,6 +1540,12 @@ classdef CalcBG < handle
                 setObjVisibility(hGitP,~openBG)
             end
             
+            % sets the classifier menu item visibility (if available)
+            hMenuC = findall(obj.hFig,'Label','Classifier');
+            if ~isempty(hMenuC)
+                setObjVisibility(hMenuC,openBG)
+            end            
+            
         end                                                      
         
         % --------------------------------- %
@@ -1513,9 +1602,7 @@ classdef CalcBG < handle
                        
                     otherwise
                         % case is the other choices
-                        if ~strcmp(uChoice,'Yes')
-                            obj.isChange = false;
-                        end
+                        obj.isChange = strcmp(uChoice,'Yes');
                 end
             end        
             
@@ -1998,7 +2085,7 @@ classdef CalcBG < handle
             
             % updates the tracking parameters            
             obj.setTrackingPara('useFilt',useFilt)
-            if obj.isHT1
+            if obj.isHT
                 setObjEnable(obj.hGUI.textFilterSize,useFilt);
                 setObjEnable(obj.hGUI.editFilterSize,false);
             else
@@ -2222,6 +2309,9 @@ classdef CalcBG < handle
                 obj.menuFlyAccRej(obj.hGUI.menuFlyAccRej, [])
             end            
             
+            % sets the cnn training flag
+            useCNN = (obj.isHT && obj.hasDLT) && (obj.sTypeCNN < 3);
+            
 %             % creates the waitbar figure
 %             if obj.isMTrk
 %                 % case is tracking multiple objects
@@ -2229,6 +2319,13 @@ classdef CalcBG < handle
 %                 
 %             else
                 % case is tracking a single object    
+            
+            if useCNN
+                % case is deep learning (HT Controller expts only)
+                h = BlobCNNProgBar(obj.pCNN,obj.sTypeCNN == 2);
+                
+            else
+                % case is the non-deep learning progressbar
                 
                 % progressbar strings
                 wStr = {'Reading Initial Image Stack',...
@@ -2237,9 +2334,10 @@ classdef CalcBG < handle
                 
                 % creates the progressbar figure            
                 h = ProgBar(wStr,'Single Object Background Estimation'); 
-               
+            end
+                
+            % clears the tracking filter field
             if isprop(obj.trkObj,'hFilt')
-                % calculates the initial location estimates
                 obj.trkObj.hFilt = [];                                
             end
             
@@ -2251,9 +2349,10 @@ classdef CalcBG < handle
             if ok     
                 % updates and closes the waitbar figure
                 if ~isempty(h)
-                    if ~h.Update(2,'Segmentation Complete',1)
-                        h.closeProgBar();
-                    end        
+                    wStrF = 'Initial Tracking Complete!';
+                    if ~obj.trkObj.UpdatePB([2,6],wStrF,1)
+                        obj.trkObj.hProg.closeProgBar();
+                    end
                 end
                 
                 % if segmentation was successful, then update the 
@@ -2269,6 +2368,21 @@ classdef CalcBG < handle
                 
                 % likely/potential object locations
                 obj.fPos = obj.trkObj.fPosG;
+                
+                % if using CNN & training, then enable the use existing
+                % network menu item
+                if useCNN
+                    if obj.trkObj.hProg.isTrain
+                        obj.objM.setMenuItemProps(1);
+                        obj.pCNN = obj.trkObj.hProg.pCNN;
+                    end
+                    
+                elseif obj.sTypeCNN == 3
+                    % if not using CNN (but is available) then clear the
+                    % network model field
+                    obj.pCNN.pNet = [];
+                    obj.objM.setMenuItemProps(0);
+                end
                 
                 % sets the single-tracking specific fields
                 if obj.isMTrk
@@ -2522,6 +2636,7 @@ classdef CalcBG < handle
             iRT = obj.iMov.iRT{iApp}{iTube}; 
             
             % sets up the raw image stack
+            obj.trkObj.hProg = obj.hProg;
             I0 = obj.trkObj.getImageStack(obj.indFrm{iPh}(uListG(:,2)));
             if obj.trkObj.useFilt
                 I0 = cellfun(@(x)(imfiltersym(x,obj.trkObj.hS)),I0,'un',0);                
@@ -3147,6 +3262,55 @@ classdef CalcBG < handle
 
         end        
         
+        % --- appends the classifier 
+        function varargout = appendClassiferImage(obj,isAdd0)
+           
+            % field retrieval            
+            hPopup = obj.hGUI.popupImgType;                        
+            pStr = {'CNN Classified';'X-Derivative';'Y-Derivative'};
+            
+            % variable output specific initialisations
+            if nargout
+                % memory allocation
+                varargout{1} = []; 
+            
+                % if not adding, then exit with an empty array
+                if ~isAdd0; return; end
+            end
+            
+            % adds/removes the items from the list (based on type)
+            for i = 1:length(pStr)
+                if isAdd0 && (i > 1)
+                    % if adding a derivative field, make sure the field was
+                    % used within the model input channel indices
+                    isAdd = any(obj.pCNN.pTrain.iCh == i);
+                else
+                    % otherwise, use the original flag value
+                    isAdd = isAdd0;
+                end
+                
+                if nargout
+                    % if outputting and adding, then append to the list
+                    if isAdd
+                        varargout{1} = [varargout{1};pStr(i)];
+                    end
+                else
+                    % determines if the string is within the list
+                    hasP = strcmp(hPopup.String,pStr{i});                                        
+                    if any(hasP) && ~isAdd
+                        % remove field if not adding and string is present
+                        hPopup.String = hPopup.String(~hasP);
+
+                    elseif ~any(hasP) && isAdd
+                        % add field if adding and string is missing
+                        hPopup.String{end+1} = pStr{i};                    
+                    end                    
+                end
+                
+            end
+            
+        end
+        
     end
     
     % static class methods
@@ -3159,7 +3323,16 @@ classdef CalcBG < handle
             iPara = struct('nFrm',nFrm,'nFrm0',nFrm,'cFrm',1,'cPhase',1);
 
         end        
-    
+
+        % --- ensures the image, Img0, has grayscale format
+        function Img0 = convertImage(Img0)
+            
+            if size(Img0,3) == 3
+                Img0 = double(rgb2gray(uint8(Img0)));
+            end
+            
+        end
+        
     end
     
 end

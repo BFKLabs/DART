@@ -77,13 +77,13 @@ if ~isfield(iMov,'ddD')
 end
 
 % resets/initialises the background parameter struct
-isHT1 = isHT1Controller(iData);
+isHT = isHTController(iData);
 if isfield(iMov,'bgP') && ~isempty(iMov.bgP)
     % retrieves the background parameter field
-    iMov.bgP = DetectPara.resetDetectParaStruct(iMov.bgP,isHT1);
+    iMov.bgP = DetectPara.resetDetectParaStruct(iMov.bgP,isHT);
 else
     % otherwise, initialise the detection parameter struct
-    iMov.bgP = DetectPara.initDetectParaStruct('All',isHT1);
+    iMov.bgP = DetectPara.initDetectParaStruct('All',isHT);
 end
 
 % resets any old format automatic detection fields
@@ -219,6 +219,15 @@ if isfield(solnData,'tData')
     % loads the data struct
     solnData.pData = pData; 
     solnData = rmfield(solnData,'tData');
+end
+
+% ----------------------------------- %
+% --- OTHER MISSING FIELD UPDATES --- %
+% ----------------------------------- %
+
+% initialises the CNN model field (if not set)
+if ~isfield(iMov,'pCNN')
+    iMov.pCNN = [];
 end
 
 % --------------------------------- %

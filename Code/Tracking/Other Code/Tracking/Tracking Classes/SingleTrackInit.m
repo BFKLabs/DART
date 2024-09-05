@@ -48,9 +48,7 @@ classdef SingleTrackInit < SingleTrack
         tPara
         pData
         useP
-        isStat
         indFrm
-        useFilt
         dpOfs
         dpInfo
         errStr
@@ -63,6 +61,10 @@ classdef SingleTrackInit < SingleTrack
         okFrm
         prData0 = [];
         bSzT
+        
+        % boolean class fields
+        isStat
+        useFilt
         
         % plotting fields
         hAxP
@@ -102,10 +104,13 @@ classdef SingleTrackInit < SingleTrack
     methods
         
         % --- class constructor
-        function obj = SingleTrackInit(iData)
+        function obj = SingleTrackInit(iData,isCalib)
             
             % creates the super-class object
             obj@SingleTrack(iData);
+            
+            % sets the other input flags
+            obj.isCalib = isCalib;
             
         end
         
@@ -188,18 +193,14 @@ classdef SingleTrackInit < SingleTrack
             end
             
             % updates the progress bar
-            obj.hProg.Update(1+obj.wOfsL,'Initial Estimate Complete!',1);
+            obj.UpdatePB([1,-1],'Background Estimation Complete!',1);
             
         end
         
         % --- runs the pre-estimate initialisations
-        function preEstimateSetup(obj)
-            
-            % global variables
-            global isCalib
+        function preEstimateSetup(obj)           
             
             % sets the input variables
-            obj.isCalib = isCalib;
             obj.nI = getImageInterpRate();
             obj.frObj = FilterResObj(obj.iMov,obj.hProg,obj.wOfsL);
             obj.frObj.isBatch = obj.isBatch;
@@ -231,10 +232,7 @@ classdef SingleTrackInit < SingleTrack
         function calcResidualProfilePara(obj)
             
             % memory allocation
-            obj.iMov.pB = cell(obj.nApp,1);
-            
-%             % REMOVE ME!
-%             figure;
+            obj.iMov.pB = cell(obj.nApp,1);            
             
             %
             for iApp = find(obj.iMov.ok(:)')
@@ -248,12 +246,16 @@ classdef SingleTrackInit < SingleTrack
                 
                 % retrieves the unique coordinates (calculating the mean
                 % residual values for each unique coordinate)
-                [X,~,iC] = unique(fP(:,1));                 
-                Y = arrayfun(@(x)(mean(IP(iC==x))),1:max(iC));
-                
-                % sets up and fits the bimodal boltzmann equation
-                XX = [0;X(:);max(max(X)+obj.dXB,length(obj.iMov.iC{iApp}))];
-                obj.iMov.pB{iApp} = fitBimodalBoltz(XX,[0;Y(:);0]);
+                if ~isempty(fP)
+                    [X,~,iC] = unique(fP(:,1));                 
+                    Y = arrayfun(@(x)(mean(IP(iC==x))),1:max(iC));
+
+                    % sets up and fits the bimodal boltzmann equation                
+                    XX = [0;X(:);max(max(X)+obj.dXB,length(obj.iMov.iC{iApp}))];
+                    if length(XX) >= 5
+                        obj.iMov.pB{iApp} = fitBimodalBoltz(XX,[0;Y(:);0]);
+                    end
+                end
                 
 %                 % REMOVE ME!
 %                 subplot(3,2,iApp); hold on;
@@ -310,14 +312,14 @@ classdef SingleTrackInit < SingleTrack
                 % memory allocation
                 wStr0 = 'Initial Frame Stack Read';
                 obj.Img = cell(nPh,1);
-                obj.hProg.Update(1+obj.wOfsL,wStr0,1/(3+nPh));
+                obj.UpdatePB([1,1],wStr0,1,3+nPh);
                 
                 % reads the initial images
                 for i = 1:nPh
                     % updates the progressbar
                     wStr = sprintf(...
                         'Reading Phase Images (Phase %i of %i)',i,nPh);
-                    if obj.hProg.Update(2+obj.wOfsL,wStr,i/(1+nPh))
+                    if obj.UpdatePB([2,-1],wStr,i,1+nPh)
                         % if the user cancelled, then exit the function
                         obj.calcOK = false;
                         return
@@ -342,7 +344,7 @@ classdef SingleTrackInit < SingleTrack
             end
             
             % updates the progress-bar
-            obj.hProg.Update(3+obj.wOfsL,'Frame Read Complete',1);
+            obj.UpdatePB([3,-1],'Frame Read Complete',1);
             
         end
 
@@ -356,15 +358,13 @@ classdef SingleTrackInit < SingleTrack
             ILmn = cellfun(@(x)(mean(x(:))),obj.Img{iApp});
             [ILmu,ILsd] = deal(mean(ILmn),std(ILmn));
 
-
-
+            %
             if ILsd < ILsdTol
                 isOK = true(size(ILmn));
             else
                 ZLmn = (ILmn - ILmu)/ILsd;
                 isOK = abs(ZLmn) < obj.Ztol;
             end
-
 
             % determines if any frames are "odd" relative to the others
             for i = find(~isOK(:)')
@@ -504,17 +504,17 @@ classdef SingleTrackInit < SingleTrack
                 
                 % updates the progress bar
                 pW0 = (j+1)/(obj.pWofs+obj.nPhase);
-                if obj.hProg.Update(1+obj.wOfsL,wStrNw,pW0)
+                if obj.UpdatePB([1,-1],wStrNw,pW0)
                     obj.calcOK = false;
                     return
                 else
                     % resets the secondary field
                     wStrNw1 = 'Initialising Phase Analysis...';
-                    obj.hProg.Update(2+obj.wOfsL,wStrNw1,0);
+                    obj.UpdatePB([2,-1],wStrNw1,0);
                     
                     % resets the tertiary field
                     wStrNw2 = 'Initialising Region Analysis...';
-                    obj.hProg.Update(3+obj.wOfsL,wStrNw2,0);
+                    obj.UpdatePB([3,-1],wStrNw2,0);
                 end
                 
                 % analyses the phase
@@ -548,14 +548,16 @@ classdef SingleTrackInit < SingleTrack
                 
                 % creates and runs the HT1 controller 
                 objHT1 = SingleTrackInitHT1(obj);
-                objHT1.analysePhase();                
+                objHT1.analysePhase();
                 
                 % sets the background/reference image fields
                 if obj.calcOK
+                    % resets the background image fields & sizes
                     obj.iMov.IbgR = obj.IbgR;
                     obj.Ibg = obj.iMov.Ibg;
-                    obj.iMov.szObj = mean(objHT1.szObjHT1,1,'omitnan');
+                    obj.iMov.szObj = mean(objHT1.szObjHT1,1,'omitnan');                    
                 else
+                    % if the user cancelled, then exit
                     return
                 end
                 
@@ -567,9 +569,11 @@ classdef SingleTrackInit < SingleTrack
             
             % calculates the overall quality of the flies (prompting the
             % user to exclude any empty/anomalous regions)
-            if any(obj.getFeasPhase([1,2,4]))
-                obj.calcOverallQuality()
-            end
+%             if ~obj.isBatch
+                if any(obj.getFeasPhase([1,2,4]))
+                    obj.calcOverallQuality()
+                end
+%             end
             
             % if the user cancelled, then exit the function
             if ~obj.calcOK
@@ -588,7 +592,7 @@ classdef SingleTrackInit < SingleTrack
                 % updates the progressbar
                 pW = (3+nPh)/(obj.pWofs+nPh);
                 wStrNw = 'Background Image Estimation';
-                obj.hProg.Update(1+obj.wOfsL,wStrNw,pW);
+                obj.UpdatePB([1,-1],wStrNw,pW);
                 
                 % memory allocation
                 iL0 = find(~cellfun('isempty',IL),1,'first');
@@ -606,7 +610,7 @@ classdef SingleTrackInit < SingleTrack
                 for iPh = find(okPh(:)')
                     % updates the progressbar
                     wStrNw = sprintf('Analysing Phase (%i of %i)',iPh,nPh);
-                    if obj.hProg.Update(2+obj.wOfsL,wStrNw,iPh/(1+nPh))
+                    if obj.UpdatePB([2,-1],wStrNw,iPh/(1+nPh))
                         obj.calcOK = false;
                         return
                     end
@@ -653,7 +657,7 @@ classdef SingleTrackInit < SingleTrack
             
             % updates the progressbar
             wStrF = 'Initial Detection Complete!';
-            obj.hProg.Update(1+obj.wOfsL,wStrF,1);
+            obj.UpdatePB([1,-1],wStrF,1);
             
         end
         
@@ -673,7 +677,7 @@ classdef SingleTrackInit < SingleTrack
             for i = find(obj.iMov.ok(:)')
                 % update the waitbar figure
                 wStr = sprintf('Analysing Region (%i of %i)',i,obj.nApp);
-                if obj.hProg.Update(2+obj.wOfsL,wStr,i/obj.nApp)
+                if obj.UpdatePB([2,-1],wStr,i/obj.nApp)
                     % if the user cancelled, then exit
                     obj.calcOK = false;
                     return
@@ -706,7 +710,7 @@ classdef SingleTrackInit < SingleTrack
                 for i = find(noTemp(:)')
                     % update the waitbar figure
                     wStr = sprintf('Analysing Region (%i of %i)',i,obj.nApp);
-                    if obj.hProg.Update(2+obj.wOfsL,wStr,i/obj.nApp)
+                    if obj.UpdatePB([2,-1],wStr,i/obj.nApp)
                         % if the user cancelled, then exit
                         obj.calcOK = false;
                         return
@@ -913,7 +917,7 @@ classdef SingleTrackInit < SingleTrack
             for i = find(obj.iMov.ok(:)')
                 pNw = 0.45*(1+i/(1+obj.nApp));
                 wStrNw = sprintf('%s (Region %i of %i)',wStr0,i,obj.nApp);
-                if obj.hProg.Update(3+obj.wOfsL,wStrNw,pNw)
+                if obj.UpdatePB([3,-1],wStrNw,pNw)
                     obj.calcOK = false;
                     return
                 end
@@ -1004,7 +1008,7 @@ classdef SingleTrackInit < SingleTrack
                 % updates the progressbar
                 pW = 0.5*i/(1+obj.nApp);
                 wStrNw = sprintf('%s (Region %i of %i)',wStr0,i,obj.nApp);
-                if obj.hProg.Update(3+obj.wOfsL,wStrNw,pW)
+                if obj.UpdatePB([3,-1],wStrNw,pW)
                     obj.calcOK = false;
                     return
                 end
@@ -1659,7 +1663,7 @@ classdef SingleTrackInit < SingleTrack
             
             % updates the progressbar
             wStrNw = 'Calculating Quality Metrics...';
-            obj.hProg.Update(1+obj.wOfsL,wStrNw,(2+nPh)/(obj.pWofs+nPh));
+            obj.UpdatePB([1,-1],wStrNw,(2+nPh)/(obj.pWofs+nPh));
             
             % sets up the reference image
             Iref0 = calcImageStackFcn(obj.hCQ,'mean');            
@@ -1679,7 +1683,7 @@ classdef SingleTrackInit < SingleTrack
             for j = find(obj.iMov.ok(:)')
                 % updates the progressbar
                 wStr = sprintf('Analysing Region (%i of %i)',j,obj.nApp);
-                if obj.hProg.Update(2+obj.wOfsL,wStr,j/obj.nApp)
+                if obj.UpdatePB([2,5],wStr,j,obj.nApp)
                     % if the user cancelled, then exit
                     obj.calcOK = false;
                     return
@@ -1695,7 +1699,7 @@ classdef SingleTrackInit < SingleTrack
                     % updates the progressbar
                     wStr = sprintf('Analysing Phase (%i of %i)',...
                         i,obj.nPhase);
-                    if obj.hProg.Update(3+obj.wOfsL,wStr,i/obj.nPhase)
+                    if obj.UpdatePB([3,-1],wStr,i/obj.nPhase)
                         % if the user cancelled, then exit
                         obj.calcOK = false;
                         return
@@ -1831,7 +1835,7 @@ classdef SingleTrackInit < SingleTrack
             else
                 IP(isOK) = cellfun(@(x)(min(x(:),[],'omitnan')),IsubS);
             end
-        end        
+        end                
         
     end
     

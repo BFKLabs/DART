@@ -1,9 +1,6 @@
 % --- sets the gui properties given by the action given by typeStr
 function varargout = setTrackGUIProps(handles,typeStr,varargin)
 
-% global variables
-global isCalib
-
 % sets the input arguments
 pVar = varargin;
 
@@ -373,7 +370,7 @@ switch (typeStr)
         % case is after detecting the tube regions
         
         % resets the show tube checkbox and enables save soln menu item
-        if isCalib
+        if hFig.isCalib
             setDetectEnable(handles,'on',[1 4])      
         else
             % sets the GUI objects based on the whether or not the
@@ -1313,5 +1310,5 @@ set(setObjEnable(hMenuCT,hasTrans),'Checked',chkStr{1+hasTrans})
 function updateHMMenu(handles,iData)
 
 % sets the visibility flag based on whether it s
-setObjVisibility(handles.menuHistMatch,isHT1Controller(iData));
+setObjVisibility(handles.menuHistMatch,isHTController(iData));
 

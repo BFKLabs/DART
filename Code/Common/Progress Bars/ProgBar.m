@@ -31,6 +31,7 @@ classdef ProgBar < matlab.mixin.SetGet
         fSz = 10;        
         wImg = ones(1,1000,3);      
         fldNames = {'wStr','wAxes','wImg'};
+        
     end
     
     % class methods
@@ -175,20 +176,20 @@ classdef ProgBar < matlab.mixin.SetGet
         end       
         
         % --- updates the progressbar
-        function isCancel = Update(obj,ind,wStrNw,wPropNw)
+        function isStop = Update(obj,ind,wStrNw,wPropNw)
 
             % if the user cancelled (or the figure was deleted) then return
             % a true values for cancellation
             if obj.isCancel || ~isvalid(obj.hFig)
                 % sets the cancel flag and closes the progressbar
-                isCancel = true;
+                isStop = true;
                 obj.closeProgBar();
                 
                 % exits the function
                 return
             else
                 % otherwise, flag that the user didn't cancel
-                isCancel = false;
+                isStop = false;
             end            
 
             % sets the new image
@@ -271,6 +272,7 @@ classdef ProgBar < matlab.mixin.SetGet
             
             try
                 delete(obj.hFig)
+            catch
             end
             
         end                
@@ -287,11 +289,7 @@ classdef ProgBar < matlab.mixin.SetGet
 
             % pause to allow update
             pause(0.05);
-        end            
-    end
-    
-    % static class methods
-    methods (Static)
+        end
         
     end
     

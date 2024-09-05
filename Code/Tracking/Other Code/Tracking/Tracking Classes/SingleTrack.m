@@ -97,7 +97,7 @@ classdef SingleTrack < Track
                         obj.fObj{i} = PhaseTrack(obj.iMov,obj.hProg);
                         obj.fObj{i}.nI = getImageInterpRate();
                         obj.fObj{i}.isHV = sInd(i) == 2;
-                        obj.fObj{i}.isHT1 = isHT1Controller(obj.iData);
+                        obj.fObj{i}.isHT = isHTController(obj.iData);
                         
                     case 3
                         % case is an untrackable/special phase

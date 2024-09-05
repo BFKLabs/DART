@@ -7,7 +7,7 @@ classdef FlyInfoGUI < handle
         hGUI
         snTot
         hProp
-        iMov
+        iMov        
         
         % gui object handles
         hFig
@@ -15,34 +15,56 @@ classdef FlyInfoGUI < handle
         hPanel
         hPanelV
         hPopup
-        jTable
-        rTable
         hTick
         
-        % other fields           
-        isVis
-        ok
-        nRow
-        nCol
-        iGrp
-        Data        
+        % table object handle fields        
+        jTable        
+        rTable
+        hPanelT         
+        
+        % other table class fields
+        hTable
+        Data
+        bgCol
+        cHdr
+                
+        % tracking metric fields
         nNaN
         tInact
-        bgCol
-        cHdr   
-        isMltTrk
+        
+        % other important class fields           
+        ok
+        iGrp        
+        
+        % variable dimension fields
+        nRow
+        nCol
+        nApp  
+        nTable
+
+        % boolean class fields
+        isVis      
+        isTrans
+        isMltTrk                
         
         % parameters
         iTab = NaN;
         Type = 1;
+        hOfs = 2;
         dX = 10;
         Dmin = 3;
         tBin = 10;
+        nColMax = 10;
+        
+        % static string fields
+        tagStr = 'figFlyInfoCond';
+        modType = 'javax.swing.table.DefaultTableModel'
         
     end
     
     % class methods
     methods
+        
         % --- class custructor
         function obj = FlyInfoGUI(hGUI, snTot, hProp, isVis)
     
@@ -68,11 +90,11 @@ classdef FlyInfoGUI < handle
             end            
             
             % initialises the object properties
-            obj.initObjProps();
-            obj.setupInfoTable();
+            obj.initClassFields();
+            obj.initClassObjects();
             
             % repositions the sub-gui
-            obj.repositionGUI();     
+            obj.repositionGUI();
             pause(0.05);
             setObjVisibility(obj.hFig,isVis);
             
@@ -82,64 +104,32 @@ classdef FlyInfoGUI < handle
         % --- GUI INITIALISATION FUNCTIONS --- %
         % ------------------------------------ %
         
-        % --- initialises the object properties
-        function initObjProps(obj)
-           
-            % creates the figure object
-            fPos = [100,100,200,70];
+        % --- initialises the class fields
+        function initClassFields(obj)
             
-            % creates the figure object
-            obj.hFig = figure('Position',fPos,'tag','figFlyInfoCond',...
-                              'MenuBar','None','Toolbar','None',...
-                              'Name','Individual Fly Information',...
-                              'NumberTitle','off','Visible','off',...
-                              'Resize','off');  
-            
-            % creates the panel object
-            pPos = [obj.dX*[1,1],fPos(3:4)-2*obj.dX];
-            obj.hPanel = uipanel(obj.hFig,'Title','','Units','Pixels',...
-                                          'Position',pPos);            
-                                      
-            % sets the acceptance flag array            
+            % acceptance flags
             obj.ok = obj.iMov.flyok;
-            if ~isempty(obj.snTot)
-                % calculates the other fly information
-                obj.initFlyInfo()
-                ppPos = [10,15,165,25];
-                
-                % creates the popup menu object (for data combining type)
-                lStr = {'Accept/Reject','Longest Inactive','NaN Count'}';
-                cbFcn = {@obj.popupChange,obj};
-                obj.hPopup = uicontrol(obj.hPanel,'Units','Pixels',...
-                                       'Position',ppPos,'String',lStr,...
-                                       'Callback',cbFcn);                
-            end
+            obj.nApp = length(obj.iMov.iR);
+            obj.isMltTrk = detMltTrkStatus(obj.iMov);
+            
+            % sets the data array and table column names
+            obj.calcOptimalConfig();
+            obj.Data = obj.setupDataArray(num2cell(obj.ok));            
             
             % sets the grouping indices
             if isfield(obj.iMov,'pInfo')
                 obj.iGrp = obj.iMov.pInfo.iGrp; 
             else
                 obj.iGrp = ones(size(obj.ok));                
-            end             
-            
-            % sets the data array and table column names
-            obj.isMltTrk = detMltTrkStatus(obj.iMov);
-            obj.Data = obj.setupDataArray(num2cell(obj.ok));  
-            [obj.nRow,obj.nCol] = size(obj.Data);
-            
-            % removes the close request function
-            if isempty(obj.snTot)
-                cbFcn = {@obj.closeGUI,obj};
-                set(obj.hFig,'CloseRequestFcn',cbFcn);
-            else
-                set(obj.hFig,'CloseRequestFcn',[]);
-            end
+            end            
             
             % sets up the cell background colour array
             colArr = getAllGroupColours(max(obj.iGrp(:)));            
             if obj.iMov.is2D
+                % case is the 2D setup
                 obj.bgCol = arrayfun(@(x)(...
                            getJavaColour(colArr(x+1,:))),obj.iGrp,'un',0);
+
             else
                 % memory allocation
                 nFly = size(obj.ok,1);
@@ -167,187 +157,108 @@ classdef FlyInfoGUI < handle
                 % sets the background colours
                 obj.bgCol = arrayfun(@(x)(getJavaColour(...
                                         colArr(x+1,:))),iCol,'un',0);
-            end
+            end                                    
             
             % sets up the table column names
-            if obj.iMov.is2D
-                obj.cHdr = cellfun(@(x)(sprintf('%s #%i','Column',x)),...
-                                    num2cell(1:size(obj.Data,2)),'un',0); 
+            if obj.isTrans
+                % case is transposed data
+                xiF = 1:size(obj.Data,1);
+                obj.cHdr = arrayfun(@(x)(...
+                    sprintf('Fly #%i',x)),xiF,'un',0); 
+                
+            elseif obj.iMov.is2D
+                % case is 2D experimental setup
+                xiH = 1:size(obj.Data,2);
+                obj.cHdr = arrayfun(@(x)(...
+                    sprintf('Column #%i',x)),xiH,'un',0); 
+                
             else
+                % case is 1D experimental setup
                 obj.cHdr = setup1DRegionNames(obj.iMov.pInfo,3);
-            end
+            end                        
+            
+            % transposes the array if necessary            
+            if obj.isTrans
+                obj.Data = obj.Data';
+                obj.bgCol = obj.bgCol';                
+            end            
+            
+        end
+        
+        % --- initialises the object properties
+        function initClassObjects(obj)
+           
+            % removes any previous GUIs
+            hFigPr = findall(0,'tag',obj.tagStr);
+            if ~isempty(hFigPr); delete(hFigPr); end
+                        
+            % -------------------------- %
+            % --- MAIN CLASS OBJECTS --- %
+            % -------------------------- %            
+            
+            % creates the figure object
+            fPos = [100,100,200,200];
+            
+            % creates the figure object
+            obj.hFig = figure('Position',fPos,'tag',obj.tagStr,...
+                              'MenuBar','None','Toolbar','None',...
+                              'Name','Individual Fly Information',...
+                              'NumberTitle','off','Visible','off',...
+                              'Resize','off');  
+            
+            % creates the panel object
+            pPos0 = [0,0,fPos(3:4)] + obj.dX*[1,1,-2,2];
+            obj.hPanel = createUIObj('panel',...
+                obj.hFig,'Title','','Units','Pixels','Position',pPos0);
+                                      
+            % sets the acceptance flag array                        
+            if ~isempty(obj.snTot)
+                % calculates the other fly information
+                obj.initFlyInfo()
+                ppPos = [10,15,165,25];
+                
+                % creates the popup menu object (for data combining type)
+                lStr = {'Accept/Reject','Longest Inactive','NaN Count'}';
+                cbFcn = @obj.popupChange;
+                obj.hPopup = uicontrol(obj.hPanel,'Units','Pixels',...
+                                       'Position',ppPos,'String',lStr,...
+                                       'Callback',cbFcn);                
+            end                        
+            
+            % removes the close request function
+            if isempty(obj.snTot)
+                set(obj.hFig,'CloseRequestFcn',@obj.hideFigure);
+            else
+                set(obj.hFig,'CloseRequestFcn',[]);
+            end            
+            
+            % initialises the check table object
+            obj.initCheckTable();
+            
+            % resets the panel/figure dimensions to fit the tables
+            szDimP = obj.hPanelT.Position(3:4);
+            obj.hPanel.Position(3:4) = szDimP + 2*obj.dX;
+            obj.hFig.Position(3:4) = szDimP + 4*obj.dX;
             
             % sets the timer object
             obj.hTick = tic;
 
         end
         
-        % --- sets up the data array (removes any missing/none regions)
-        function DataArr = setupDataArray(obj, DataArr)
+        % --- calculates the optihmal table configuration
+        function calcOptimalConfig(obj)            
             
-            % if the ID field isn't set, then exit the function
-            if ~isfield(obj.snTot,'cID'); return; end
-            
-            % field retrieval
-            szArr = size(DataArr);
-            pC0 = cell2mat(obj.snTot.cID(:));
-            
-            % sets the row/column indices of the known sub-regions
-            if detMltTrkStatus(obj.snTot.iMov)
-                % case is for multi-tracking
-                isMiss0 = true(szArr);
-                isMiss0(unique(pC0(:,1))) = false;
-                isMiss = isMiss0';
-            
-            else
-                if obj.snTot.iMov.is2D
-                    % case is for 2D expt setups
-                    pC = pC0(:,1:2);
-                else
-                    % case is for 1D expt setups
-                    iCol = (pC0(:,1)-1)*obj.snTot.iMov.pInfo.nCol + pC0(:,2);
-                    pC = [pC0(:,3),iCol];
-                end
-            
-                % removes the missing items
-                isMiss = ~setGroup(sub2ind(szArr,pC(:,1),pC(:,2)),szArr);
-            end
-               
-            % removes any missing values
-            [DataArr(isMiss),obj.ok(isMiss)] = deal({[]},false);
-            
-        end
-        
-        % --- creates the information table
-        function setupInfoTable(obj)
-           
-            % java imports
-            import java.awt.font.FontRenderContext;
-            import java.awt.geom.AffineTransform;
-
-            % creates the font render context object
-            aTF = javaObjectEDT('java.awt.geom.AffineTransform');
-            fRC = javaObjectEDT(...
-                        'java.awt.font.FontRenderContext',aTF,true,true);
-                   
-            % Ensure all drawing is caught up before creating the table
-            drawnow        
-            
-            % ------------------------------------------- %
-            % --- INITIALISATIONS & MEMORY ALLOCATION --- % 
-            % ------------------------------------------- %
-            
-            % parameters
-            [fPos,WT] = deal(get(obj.hFig,'Position'),0);            
-            
-            % updates the progress bar (if it exists)
-            if ~isempty(obj.hProp)
-                obj.hProp.Update(1,'Creating Information GUI Objects',0.8);
-            end
-            
-            % creates the checkbox table
-            obj.createCheckTable();             
-            
-            % Create the base panel
-            obj.hPanelV = uipanel('Parent',obj.hPanel,'Clipping','on',...
-                                 'BorderType','none','tag',...
-                                 'hPanelView','Units','Normalized');
-            
-            % Draw table in scroll pane
-            jTableH = handle(obj.jTable,'Callbackproperties');
-            jSP = javaObjectEDT('javax.swing.JScrollPane',jTableH);
-            jSP.setRowHeaderView(obj.rTable);
-            jSP.setCorner(jSP.UPPER_LEFT_CORNER,...
-                                        obj.rTable.getTableHeader());
-                                    
-            % retrieves the matlab handle
-            [~, hContainer] = createJavaComponent(jSP, [], obj.hPanelV);
-            
-            % determines the overall maximum table width
-            tFont = jTableH.getTableHeader.getFont();
-            for i = 1:length(obj.cHdr)
-                tFontObj = tFont.getStringBounds(obj.cHdr{i},fRC);
-                WT = max(WT,tFontObj.getWidth());
-            end
-
-            % sets the table height/width
-            hOfs = 2;
-            H = jTableH.getPreferredSize.getHeight() + 4 + ...
-                jTableH.getTableHeader().getPreferredSize().getHeight();            
-            W = obj.rTable.getColumnModel.getColumn(0).getWidth() + ...
-                jTableH.getPreferredSize.getWidth();
-            pPos = round([obj.dX*[1,1] W (H+hOfs)]);
-            
-            % updates the progressbar
-            if ~isempty(obj.hProp)
-                obj.hProp.Update(1,'Repositioning GUI Objects',0.9);
-            end
-            
-            % sets the object position and locations
-            set(obj.hFig,'position',[fPos(1:2),pPos(3:4)+2*obj.dX])
-            set(obj.hPanel,'position',[obj.dX*[1 1],pPos(3:4)]);
-            set(obj.hPanelV,'position',[0 0 1 1],'Units','Pixels')
-            set(hContainer,'Units','Normalized','position',[0 0 1 1])
-            drawnow;
-
-            % resets the finer locations of the table/figure position
-            resetObjPos(obj.hPanelV,'left',obj.dX)
-            resetObjPos(obj.hPanelV,'bottom',obj.dX)
-            resetObjPos(obj.hPanel,'width',2*obj.dX,1)
-            resetObjPos(obj.hPanel,'height',2*obj.dX,1)
-            resetObjPos(obj.hFig,'width',2*obj.dX,1)
-            resetObjPos(obj.hFig,'height',2*obj.dX,1)  
-            
-            %
-            if ~isempty(obj.snTot)
-                if obj.snTot.iMov.is2D
-    
-                else
-                    % removes any rejected groups from the table
-                    xiR = 1:obj.jTable.getRowCount;
-                    for i = find(~obj.snTot.iMov.ok(:)')
-                        arrayfun(@(x)(obj.jTable.setValueAt([],x-1,i-1)),xiR)
-                        obj.jTable.repaint;
-                    end
-                end
-            end
-
-        end
-        
-        % --- creates the check table 
-        function createCheckTable(obj,jSP)
-            
-            % Create table model
-            modTypeStr = 'javax.swing.table.DefaultTableModel';
-            jTabMod = javaObjectEDT(modTypeStr,obj.Data,obj.cHdr);
-            jTabMod = handle(jTabMod,'callbackproperties');
+            % determines if the 
+            obj.isTrans = size(obj.ok,2) > obj.nColMax;
+                        
+        end                           
                 
-            % creates the table objects
-            obj.jTable = CondCheckTable(jTabMod,obj.Type,obj.bgCol);
-                                
-            % sets the java object callback functions
-            cbFcn = {@obj.tableCellChange};
-            addJavaObjCallback(jTabMod,'TableChangedCallback',cbFcn)
-            
-            % resets the panel viewport
-            if exist('jSP','var')
-                try
-                    jSP.setViewportView(obj.jTable);
-                    jSP.repaint(jSP.getBounds());
-                end
-            end
-            
-            % creates the table row headers 
-            obj.rTable = RowNumberTable(obj.jTable,double(obj.iMov.is2D));
-            
-        end
-        
         % --- initialises the fly information for the table
         function initFlyInfo(obj)
             
             % retrieves the dimensions of the apparatus            
-            [nFly,nApp] = deal(size(obj.ok,1),sum(obj.snTot.iMov.ok));
-            [obj.nNaN,obj.tInact] = deal(zeros(nFly,nApp));
+            [nFly,nAppC] = deal(size(obj.ok,1),sum(obj.snTot.iMov.ok));
+            [obj.nNaN,obj.tInact] = deal(zeros(nFly,nAppC));
             nFrm = length(cell2mat(obj.snTot.T));
             
             % sets the time bin
@@ -360,8 +271,8 @@ classdef FlyInfoGUI < handle
                 % updates the waitbar figure
                 if ~isempty(obj.hProp)
                     wStrNw = sprintf(['Calculating Combined Dataset ',...
-                                      'Metrics (Region %i of %i)'],i,nApp);
-                    obj.hProp.Update(1,wStrNw,0.7*(i/nApp));
+                                      'Metrics (Region %i of %i)'],i,nAppC);
+                    obj.hProp.Update(1,wStrNw,0.7*(i/nAppC));
                 end
 
                 % calculates the binned range values
@@ -388,6 +299,110 @@ classdef FlyInfoGUI < handle
             end
             
         end
+
+        % ----------------------------- %        
+        % --- TABLE SETUP FUNCTIONS --- %
+        % ----------------------------- %
+        
+        % --- initialises the class objects
+        function initCheckTable(obj)
+                        
+            % java imports
+            import java.awt.font.FontRenderContext;
+            import java.awt.geom.AffineTransform;
+
+            % creates the font render context object
+            aTF = javaObjectEDT('java.awt.geom.AffineTransform');
+            fRC = javaObjectEDT(...
+                        'java.awt.font.FontRenderContext',aTF,true,true);
+                   
+            % Ensure all drawing is caught up before creating the table
+            drawnow                        
+            
+            % ------------------------------------------- %
+            % --- INITIALISATIONS & MEMORY ALLOCATION --- %
+            % ------------------------------------------- %            
+            
+            % Create the base panel
+            obj.hPanelT = createUIObj('panel',obj.hPanel,...
+                         'BorderType','none','tag','hPanelView',...
+                         'Clipping','on','Units','Normalized');                        
+
+            % creates the check table object
+            obj.createCheckTable();                     
+                     
+            % Draw table in scroll pane
+            tHdr = obj.rTable.getTableHeader();
+            jTableH = handle(obj.jTable,'Callbackproperties');
+            jSP = javaObjectEDT('javax.swing.JScrollPane',jTableH);
+            jSP.setRowHeaderView(obj.rTable);
+            jSP.setCorner(jSP.UPPER_LEFT_CORNER,tHdr);
+            
+            % retrieves the matlab handle
+            [~, hC] = createJavaComponent(jSP, [], obj.hPanelT);            
+                     
+            % determines the overall maximum table width            
+            [tFont,WT] = deal(jTableH.getTableHeader.getFont(),0);
+            for i = 1:length(obj.cHdr)
+                tFontObj = tFont.getStringBounds(obj.cHdr{i},fRC);
+                WT = max(WT,tFontObj.getWidth());
+            end  
+            
+            % sets the table height/width            
+            H = jTableH.getPreferredSize.getHeight() + 4 + ...
+                jTableH.getTableHeader().getPreferredSize().getHeight();
+            W = jTableH.getPreferredSize.getWidth() + ...
+                obj.rTable.getColumnModel.getColumn(0).getWidth();
+            pPos = round([obj.dX*[1,1] W (H+obj.hOfs)]);
+            
+            % sets the object position and locations            
+            pPosT = [obj.dX,obj.dX,pPos(3:4)-4];
+            set(obj.hPanelT,'Units','Pixels','Position',pPosT)
+            set(hC,'Units','Normalized','Position',[0 0 1 1])
+            drawnow;     
+        
+            % removes any rejected groups from the table (1D only)
+            if ~isempty(obj.snTot)
+                if ~obj.snTot.iMov.is2D
+                    xiR = 1:obj.jTable.getRowCount;
+                    for i = find(~obj.snTot.iMov.ok(:)')
+                        % if the region is rejected, then remove the column
+                        arrayfun(@(x)(...
+                            obj.jTable.setValueAt([],x-1,i-1)),xiR)
+                        obj.jTable.repaint;
+                    end
+                end
+            end
+            
+        end        
+        
+        % --- creates the check table object
+        function createCheckTable(obj)
+            
+            % Create table model
+            jTabMod = javaObjectEDT(...
+                obj.modType,obj.Data,obj.cHdr);
+            jTabMod = handle(jTabMod,'callbackproperties');                
+            
+            % creates the table objects
+            obj.jTable = ...
+                CondCheckTable(jTabMod,obj.Type,obj.bgCol);
+                                
+            % sets the java object callback functions
+            cbFcn = {@obj.tableCellChange};
+            addJavaObjCallback(jTabMod,'TableChangedCallback',cbFcn)
+            
+            % sets the table type flag
+            if obj.isTrans
+                iType = -obj.iMov.pInfo.nCol;
+            else
+                iType = double(obj.iMov.is2D);
+            end
+            
+            % creates the table row headers                         
+            obj.rTable = RowNumberTable(obj.jTable,iType);
+            
+        end        
         
         % -------------------------- %
         % --- CALLBACK FUNCTIONS --- %
@@ -405,12 +420,13 @@ classdef FlyInfoGUI < handle
             obj.hTick = tic;
 
             % sets the cell selection callback function (non background estimate)
-            iNw = [evnt.getFirstRow+1,evnt.getColumn+1];
+            [iNw,iNwG] = deal([evnt.getFirstRow+1,evnt.getColumn+1]);
+            if obj.isTrans; iNwG = flip(iNwG); end
 
             % retrieves the ok flags and the indices of the altered cell
             nwValue = obj.jTable.getValueAt(iNw(1)-1,iNw(2)-1);
-            if isempty(nwValue); nwValue = false; end
-            obj.ok(iNw(1),iNw(2)) = nwValue;
+            if isempty(nwValue); nwValue = false; end            
+            obj.ok(iNwG(1),iNwG(2)) = nwValue;
 
             % updates the sub-region data struct
             if ~isempty(obj.snTot)                
@@ -436,10 +452,10 @@ classdef FlyInfoGUI < handle
                                                 
                     else
                         % case is the other setup types
-                        iPltH = iNw(1);    
+                        iPltH = iNwG(1);    
                     end
                     
-                    if any(iApp == iNw(2))
+                    if any(iApp == iNwG(2))
                         % updates the trace object visibility field
                         hFigM = obj.hFigMain;
                         hPos = arrayfun(@(x)(findall(...
@@ -459,7 +475,7 @@ classdef FlyInfoGUI < handle
                     % updates the flag within the solution data struct
                     iTabR = getappdata(obj.hFigMain,'iTab');
                     sInfo = getappdata(obj.hFigMain,'sInfo');
-                    sInfo{iTabR}.snTot.iMov.flyok(iNw(1),iNw(2)) = nwValue;
+                    sInfo{iTabR}.snTot.iMov.flyok(iNwG(1),iNwG(2)) = nwValue;
                     setappdata(obj.hFigMain,'sInfo',sInfo)
                     
                 end
@@ -467,7 +483,7 @@ classdef FlyInfoGUI < handle
                 % updates the sub-region data struct
                 [cbObj,hGUIM] = deal(obj.hGUI,obj.hGUI.hGUI);
                 [cbObj.iMov.flyok,cbObj.isChange] = deal(obj.ok,true);    
-                cbObj.iMov.ok(iNw(2)) = any(cbObj.iMov.flyok(:,iNw(2)));   
+                cbObj.iMov.ok(iNwG(2)) = any(cbObj.iMov.flyok(:,iNwG(2)));   
 
                 % retrieves the tube show check callback function
                 if cbObj.isCalib
@@ -490,10 +506,10 @@ classdef FlyInfoGUI < handle
                     end
                     
                     % updates the fill colour
-                    vcObj.updateFillColour(fColT,iNw(2),iNw(1));
+                    vcObj.updateFillColour(fColT,iNwG(2),iNwG(1));
                     
                     % updates the plot marker visibility properties
-                    hMarkT = cbObj.hFig.mkObj.hMark{iNw(2)}{iNw(1)};
+                    hMarkT = cbObj.hFig.mkObj.hMark{iNwG(2)}{iNwG(1)};
                     setObjVisibility(hMarkT,nwValue);
                     pause(0.01);
                     
@@ -514,6 +530,26 @@ classdef FlyInfoGUI < handle
             
         end          
         
+        % --- popup menu selection callback function
+        function popupChange(obj, ~, ~)
+            
+            % REMOVE ME
+            a = 1;
+            
+        end
+        
+        % --- closes the gui
+        function hideFigure(obj, ~, ~)
+            
+            % removes the menu check
+            hh = guidata(obj.hFigMain);
+            set(hh.menuFlyAccRej,'Checked','off');
+            
+            % deletes the GUI
+            delete(obj.hFig);
+            
+        end        
+
         % --- gui close callback function
         function closeFigure(obj,~)
             
@@ -522,6 +558,59 @@ classdef FlyInfoGUI < handle
             delete(obj.hFig);
             
         end
+                
+        % --------------------------------------- %
+        % --- IMPORTANT ARRAY SETUP FUNCTIONS --- %
+        % --------------------------------------- %        
+        
+        % --- sets up the table column index array
+        function indC = setupColIndices(obj,nCol)
+            
+            nRowT = ceil(obj.nApp/nCol);
+            indC = arrayfun(@(x)(...
+                ((x-1)*nCol+1):min(obj.nApp,x*nCol)),1:nRowT,'un',0)';
+                        
+        end
+            
+        % --- sets up the data array (removes any missing/none regions)
+        function DataArr = setupDataArray(obj, DataArr)
+                    
+            % if the ID field isn't set, then exit the function
+            if ~isfield(obj.snTot,'cID'); return; end
+            
+            % field retrieval
+            szArr = size(DataArr0);
+            pC0 = cell2mat(obj.snTot.cID(:));           
+            
+            % sets the row/column indices of the known sub-regions
+            if obj.isMltTrk
+                % case is for multi-tracking
+                isMiss0 = true(szArr);
+                isMiss0(unique(pC0(:,1))) = false;
+                isMiss = isMiss0';
+            
+            else
+                if obj.snTot.iMov.is2D
+                    % case is for 2D expt setups
+                    pC = pC0(:,1:2);
+                else
+                    % case is for 1D expt setups
+                    iCol = (pC0(:,1)-1)*obj.snTot.iMov.pInfo.nCol + pC0(:,2);
+                    pC = [pC0(:,3),iCol];
+                end
+            
+                % removes the missing items
+                isMiss = ~setGroup(sub2ind(szArr,pC(:,1),pC(:,2)),szArr);
+            end
+               
+            % removes any missing values
+            [DataArr(isMiss),obj.ok(isMiss)] = deal({[]},false);
+            
+        end        
+        
+        % ------------------------------- %
+        % --- MISCELLANEOUS FUNCTIONS --- %
+        % ------------------------------- %
         
         % --- repositions the sub-gui
         function repositionGUI(obj)
@@ -547,28 +636,4 @@ classdef FlyInfoGUI < handle
         
     end
     
-    % static class methods
-    methods (Static)
-        
-        % --- popup menu selection callback function
-        function popupChange(hPopup, evnt, obj)
-            
-            % REMOVE ME
-            a = 1;
-            
-        end
-        
-        % --- closes the gui
-        function closeGUI(hFig, evnt, obj)
-            
-            % removes the menu check
-            hh = guidata(obj.hFigMain);
-            set(hh.menuFlyAccRej,'Checked','off');
-            
-            % deletes the GUI
-            delete(obj.hFig);
-            
-        end        
-        
-    end
 end

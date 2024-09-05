@@ -42,7 +42,7 @@ classdef DetGridRegion < handle
         end
     
         % --- initialises the object class fields
-        function initClassFields(obj)            
+        function initClassFields(obj)
 
             % progressbar setup
             wStr = {'Phase Detection','Region Segmentation',...
@@ -61,13 +61,10 @@ classdef DetGridRegion < handle
         end
         
         % --- retrieves the video phase information
-        function getVideoPhaseInfo(obj)
-            
-            % global variables
-            global isCalib            
+        function getVideoPhaseInfo(obj)            
             
             % runs the phase detection solver    
-            if isCalib
+            if obj.hFig.isCalib
                 % updates the data struct with the phase information
                 obj.phObj = struct('iPhase',[1,1],'vPhase',1);
             else
@@ -131,17 +128,24 @@ classdef DetGridRegion < handle
         end
         
         % --- sets the final sub-region information fields
-        function setRegionInfo(obj)            
+        function setRegionInfo(obj)
+            
+            % field retrieval
+            nApp = length(obj.iMov.pos);
+            [nRow,nCol] = deal(obj.iMov.pInfo.nRow,obj.iMov.pInfo.nCol);
 
+            % ------------------------------------- %
+            % --- INITIAL REGION POSITION SETUP --- %
+            % ------------------------------------- %
+            
             % sets the parameters for each of the sub-regions
-            for i = 1:length(obj.iMov.pos)
+            for i = 1:nApp
                 % sets the region position coordinates
                 if ~isempty(obj.trkObj.yTube{i})
                     % calculates the dimensions/offsets for the tube regions
                     [xT,yT] = obj.calcTubeRegionOffset(i);
                     [W,H] = deal(diff(xT)+1,diff(yT([1,end]))+1);
-                    dxT = xT - xT(1);
-                    dyT = yT - yT(1);
+                    [dxT,dyT] = deal(xT - xT(1),yT - yT(1));
                     
                     % sets the region outlne coordinate vector                    
                     obj.iMov.pos{i} = [obj.pOfsG{i}+[xT(1),yT(1)],W,H];
@@ -149,7 +153,56 @@ classdef DetGridRegion < handle
                     % tube-region x/y coordinate arrays
                     obj.iMov.xTube{i} = dxT;
                     obj.iMov.yTube{i} = [dyT(1:end-1),dyT(2:end)];
+                end
+            end
 
+            % ---------------------------- %
+            % --- REGION OVERLAP CHECK --- %
+            % ---------------------------- %
+            
+            % if a multi-row setup, then if there is region overlap
+            if nRow > 1
+                % field retrieval
+                pPos = obj.iMov.pos;
+                
+                for i = 2:nRow
+                    for j = 1:nCol
+                        % sets the lower/upper region indices
+                        [iLo,iHi] = obj.getStackedRowIndices(nCol,i,j);
+                        
+                        % calculates the bottom of the lower group
+                        HB = obj.calcRegionVertLimits(iLo);
+                        HT = obj.calcRegionVertLimits(iHi);
+                        [yLoB,yHiT] = deal(HB(2),HT(1));
+                                                
+                        % determines if there is any region overlap
+                        dHght = yLoB - yHiT;
+                        if dHght > 0
+                            % if so, then reshape the lower region
+                            hghtLo0 = pPos{iLo}(4);
+                            pPos{iLo}(4) = hghtLo0 - dHght;                            
+                            
+                            % rescales the tube region placement
+                            yT0 = obj.trkObj.yTube{iLo};
+                            pyTube = ((pPos{iLo}(4)-1)/(hghtLo0-1));
+                            obj.trkObj.yTube{iLo} = ...
+                                yT0(1) + (yT0-yT0(1))*pyTube;
+                        end
+                    end
+                end
+                
+                % field resetting
+                obj.iMov.pos = pPos; 
+                obj.trkObj.iMov = obj.iMov;
+            end
+
+            % --------------------------------- %
+            % --- FINAL REGION INDEX ARRAYS --- %
+            % --------------------------------- %
+            
+            for i = 1:nApp
+                % sets the region position coordinates
+                if ~isempty(obj.trkObj.yTube{i})
                     % sets the region row/column indices   
                     [x0,y0] = deal(obj.iMov.pos{i}(1)+1,obj.iMov.pos{i}(2)+1);
                     iRnw = (ceil(y0+dyT(1)):floor(y0+dyT(end)));
@@ -181,11 +234,10 @@ classdef DetGridRegion < handle
             pPos(~obj.iMov.ok) = obj.iMov.posO(~obj.iMov.ok);
 
             % resets the outer region coordinates
-            for i = 2:obj.iMov.pInfo.nRow    
-                for j = 1:obj.iMov.pInfo.nCol
+            for i = 2:nRow    
+                for j = 1:nCol
                     % sets the lower/upper region indices
-                    iLo = (i-2)*obj.iMov.pInfo.nCol + j;
-                    iHi = (i-1)*obj.iMov.pInfo.nCol + j;
+                    [iLo,iHi] = obj.getStackedRowIndices(nCol,i,j);
 
                     % calculates the vertical location separating the regions
                     yHL = 0.5*(sum(pPos{iLo}([2 4])) + sum(pPos{iHi}(2)));
@@ -195,6 +247,9 @@ classdef DetGridRegion < handle
                     obj.iMov.posO{iHi}(2) = yHL;
                     obj.iMov.posO{iHi}(4) = yB - yHL;
                     obj.iMov.posO{iLo}(4) = yHL - obj.iMov.posO{iLo}(2);
+                    
+                    % resets the region/grid coordinates
+                    a = 1;
                 end
             end
 
@@ -258,14 +313,17 @@ classdef DetGridRegion < handle
             [dyTG0,dyTGF] = deal(yTG(1) - yTG0(1),yTG0(end) - yTG(end));                      
                         
             % resets the top/bottom
-            yTL(1) = yTL(1) + dyTG0;
-            yTL(end) = yTL(end) - dyTGF;
-            xTL(1) = xTL(1) + dxTG0;
-            xTL(end) = xTL(end) - dxTGF;
-            
-%             % calculates the tube-region offsets
-%             [xTL,yTL] = deal(xTL-xTL(1),yTL-yTL(1));
+            yTL([1,end]) = [yTL(1) + dyTG0,yTL(end) - dyTGF];
+            xTL([1,end]) = [xTL(1) + dxTG0,xTL(end) - dxTGF];            
 
+        end
+
+        % --- calculates the region vertical limits
+        function [HB,yT] = calcRegionVertLimits(obj,iApp)
+            
+            [~,yT] = obj.calcTubeRegionOffset(iApp);
+            HB = obj.iMov.pos{iApp}(2) + [0,(diff(yT([1,end])) + 1)];
+            
         end
         
     end
@@ -273,6 +331,14 @@ classdef DetGridRegion < handle
     % static class methods
     methods (Static)
     
+        % --- retrieves the indices of vertically stacked groups
+        function [iLo,iHi] = getStackedRowIndices(nCol,iRow,iCol)
+            
+            iLo = (iRow-2)*nCol + iCol;
+            iHi = (iRow-1)*nCol + iCol;
+            
+        end
+        
     end    
 
 end

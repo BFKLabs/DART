@@ -59,16 +59,16 @@ pause(0.05);
 
 % global variables
 global szDel bufData pAR frmSz0
-global isMovChange isDetecting isBatch isCalib isRTPChange
+global isMovChange isDetecting isBatch isRTPChange
 [isMovChange,isDetecting,isBatch,isRTPChange] = deal(false);
 [szDel,bufData,pAR] = deal(5,[],2);
 
 % initialses the custom property field string
 pFldStr = {'pData','hSolnT','hMainGUI','mObj','vcObj','mkObj','rgObj',...
-           'vidTimer','hGUIOpen','reopenGUI','cType','infoObj','hTrack',...
-           'isText','iMov','rtP','rtD','iData','iExpt','ppDef',...
-           'frmBuffer','bgObj','prObj','objDACInfo','iStim','hTT',...
-           'pColF','isTest','fPosNew','convObj','mtObj','hProp0','eData'};
+       'vidTimer','hGUIOpen','reopenGUI','cType','infoObj','hTrack',...
+       'isText','iMov','rtP','rtD','iData','iExpt','ppDef','isCalib',...
+       'frmBuffer','bgObj','prObj','objDACInfo','iStim','hTT','hasDLT',...
+       'pColF','isTest','fPosNew','convObj','mtObj','hProp0','eData'};
 initObjPropFields(hObject,pFldStr);
 
 % ensures the background detection panel is invisible
@@ -140,6 +140,7 @@ set(hObject,'cType',cType)
 % initialisation of the program data struct
 hObject.iData = initDataStruct(handles,ProgDefNew);
 hObject.ppDef = hObject.iData.ProgDef;
+hObject.hasDLT = detectToolbox('Deep Learning Toolbox');
 
 % initialises the axes properties
 set(handles.imgAxes,'DrawMode','fast');
@@ -194,7 +195,7 @@ setGUIFontSize(handles)
 switch length(varargin)
     case {0,1} 
         % case is the normal tracking (0 input for command-line, 1 thru DART)        
-        [isCalib,hObject.isTest] = deal(false);
+        [hObject.isCalib,hObject.isTest] = deal(false);
         hObject.iMov = initMovStruct(hObject.iData);
         
         % initialises the GUI properties
@@ -202,7 +203,7 @@ switch length(varargin)
         
     case {2,3}
         % case is the full calibration (thru Fly Record)
-        isCalib = true;
+        hObject.isCalib = true;
         
         % creates a loadbar
         h = ProgressLoadbar('Initialising Video Calibration GUI...');        
@@ -305,7 +306,7 @@ cla(hAx)
 axis(hAx,'off')
 
 % if calibrating, then start the video timer object
-if isCalib             
+if hObject.isCalib             
     % enables the window-splitting menu item
     setObjEnable(handles.menuWinsplit,'on')    
     hObject.prObj.startTrackPreview(); pause(0.01);
@@ -421,7 +422,7 @@ set(hTT,'color','k','BackgroundColor','w',...
 function ok = menuOpenMovie_Callback(hObject, eventdata, handles)
 
 % global variables
-global isBatch isCalib
+global isBatch
 
 % initialisations
 ok = 1;
@@ -450,23 +451,12 @@ end
 if setMovie
     if ~isempty(vidTimer)
         stop(vidTimer)
-        set(handles.menuVideoFeed,'checked','off')
-        
-%         if cType == 1
-%             setObjEnable(handles.menuVideoProps,~isTest)    
-%         end
+        set(handles.menuVideoFeed,'checked','off')        
     end
     
     % sets the video type/descriptors
     mType = '*.avi;*.AVI;*.mj2;*.mp4;*.mkv;*.mov';
-    mStr = 'Movie Files (*.avi, *.AVI, *.mj2, *.mp4, *.mkv, *.mov';
-    
-%     % if using windows version 10, then add in .mov videos
-%     [~, winVer] = system('ver');
-%     if ~strContains(winVer,'Version 10')
-%         mType = sprintf('%s;*.mov',mType);
-%         mStr = sprintf('%s, *.mov',mStr);
-%     end
+    mStr = 'Movie Files (*.avi, *.AVI, *.mj2, *.mp4, *.mkv, *.mov';    
     
     % user is manually selecting file to open
     [fName,fDir,fIndex] = uigetfile(...
@@ -498,7 +488,7 @@ if setMovie
                     % re-initialises the sub-window data struct and 
                     % disables the detect tube button
                     iMov.isSet = false;
-                    iMov = initMovStruct(iData);  
+                    iMov = initMovStruct(iData);                    
                     
                 else
                     % sets the file data for the new selected file
@@ -510,7 +500,7 @@ if setMovie
                     [iMov.Ibg,iMov.pStats,iMov.autoP] = deal([]);
                     for i = 1:length(iMov.Status)
                         iMov.Status{i}(:) = 0;
-                    end
+                    end                    
                     
                     % updates the sub-region data struct into the GUI
                     set(handles.output,'iMov',iMov);                    
@@ -527,7 +517,6 @@ if setMovie
 
                     % removes the background/classifier fields
                     if isfield(iMov,'xcP'); iMov = rmfield(iMov,'xcP'); end
-                    if isfield(iMov,'bgP'); iMov = rmfield(iMov,'bgP'); end
                     
                     % resets the file data struct
                     iData0.fData = fData0;
@@ -631,9 +620,17 @@ end
 if loadImgData(handles, ldData.name, ldData.dir, setMovie, isSolnLoad)
     % if not loading the solution file but the sub-region struct is set, 
     % then reset the progress data struct
-    set(handles.output,'bgObj',CalcBG(handles))
     set(findobj(handles.panelAppInfo,'style','checkbox'),'value',0)
     set(findall(handles.panelFlyDetect,'style','checkbox'),'value',0);
+    
+    % initialises/resets the background image class object
+    if isempty(hFig.bgObj)
+        % if not set, then initialise the background image class object
+        set(hFig,'bgObj',CalcBG(handles))        
+    else
+        % otherwise, reset the axes global coordinates
+        hFig.bgObj.calcAxesGlobalCoords();        
+    end
     
     % enables the menu items
     setObjEnable(handles.menuOptSize,'on')
@@ -647,22 +644,19 @@ if loadImgData(handles, ldData.name, ldData.dir, setMovie, isSolnLoad)
         if ~isempty(handles.output.hSolnT)
             menuViewProgress_Callback(handles.menuViewProgress,[],handles)
         end
+        
+        % resets the classifier properties
+        resetClassifierProps(hFig);
     end
     
     % recalculates the global axes coordinates
-    calcAxesGlobalCoords(handles)
-    
-    if isCalib
+    calcAxesGlobalCoords(handles)    
+    if hFig.isCalib
         initVideoTimer(handles,false); pause(0.01);     
         setObjEnable(handles.menuVideoFeed,'on')
         setObjEnable(handles.menuWinsplit,'on')        
         menuVideoFeed_Callback(handles.menuVideoFeed, [], handles)  
     end
-        
-%         figPos0 = get(handles.output,'position');
-%         pPos0 = get(handles.panelImg,'position');
-%         axPos0 = get(handles.imgAxes,'position');
-%     end    
 
     % determines if the 
     hMenuView = handles.menuViewProgress;
@@ -682,7 +676,7 @@ if loadImgData(handles, ldData.name, ldData.dir, setMovie, isSolnLoad)
         if hFig.iMov.isSet
             % resets the sub-region data struct
             hFig.iMov = resetProgressStruct(hFig.iData,hFig.iMov); 
-        end
+        end                        
     end    
     
     % recalculates the axes global coordinates
@@ -705,6 +699,31 @@ else
         set(handles.output,'iData',iData0);          
         resetHandleSnapshot(hProp0,hFig);
     end      
+end
+
+% --- resets the classifier object fields/properties
+function resetClassifierProps(hFig)
+
+% exit if not the correct recording device or missing toolbox
+if ~(hFig.hasDLT && isHTController(hFig.iData))
+    return
+end
+
+% resets the object's classifier fields
+if ~isfield(hFig.iMov,'pCNN') || isempty(hFig.iMov.pCNN)
+    % case is the network object is missing
+    hFig.bgObj.pCNN = [];
+    hFig.bgObj.sTypeCNN = 2;
+
+else
+    % case is the network object field exists
+    hFig.bgObj.pCNN = hFig.iMov.pCNN;
+    hFig.bgObj.sTypeCNN = 1 + isempty(hFig.iMov.pCNN.pNet); 
+end
+
+% resets the classifier 
+if ~isempty(hFig.bgObj.objM)
+    hFig.bgObj.objM.resetClassOptCheck();
 end
 
 % -------------------------------------------------------------------------
@@ -969,13 +988,13 @@ ProgDefaultDef(handles.output,'Tracking');
 function menuExit_Callback(~, ~, handles)
 
 % global variables
-global isCalib isMovChange bufData isRTPChange
+global isMovChange bufData isRTPChange
 
 % initialiations
 hFig = handles.output;
 
 % stop the video timer (if calibrating)
-if isCalib
+if hFig.isCalib
     % retrieves the required data structs
     rtP = get(hFig,'rtP');
     iMov = get(hFig,'iMov');    
@@ -997,7 +1016,7 @@ if strcmp(uChoice,'Yes')
     
     % prompts the user if they want to update the sub-region data struct
     % (only if it has been set). if so, then update in the base workspace
-    if isCalib
+    if hFig.isCalib
         % retrieves the recording GUI handle
         hMain = get(hFig,'hMainGUI');
         
@@ -1179,15 +1198,13 @@ end
 % -------------------------------------------------------------------------
 function menuWinsplit_Callback(~, ~, handles)
 
-% global variables
-global isCalib
-
 % resets the current axes 
-set(handles.output,'CurrentAxes',handles.imgAxes)
+hFig = handles.output;
+set(hFig,'CurrentAxes',handles.imgAxes)
 hProp0 = getHandleSnapshot(handles);
 
 % stop the video timer (if calibrating)
-if ~isCalib     
+if ~hFig.isCalib     
     % ensures that the first frame is being viewed 
     setTrackGUIProps(handles,'PreWindowSplit')
     pause(0.01);    
@@ -1726,9 +1743,6 @@ end
 % --- Executes on button press in checkReject.
 function checkReject_Callback(hObject, ~, handles)
 
-% global variables
-global isCalib
-
 % retrieves the data struct
 hFig = handles.output;
 iData = get(hFig,'iData');
@@ -1745,7 +1759,7 @@ if all(~iMov.ok)
 else
     % updates the movie flag and updates the GUI properties
     set(handles.output,'iMov',iMov);
-    if isCalib    
+    if hFig.isCalib    
         updateVideoFeedImage(hFig,hFig.infoObj.objIMAQ) 
         checkShowTube_Callback(handles.checkShowTube, 1, handles)
     else
@@ -1773,9 +1787,6 @@ end
 
 % --- callback function for the first frame/sub-movie button --------------
 function FirstButtonCallback(hObject, ~, handles)
-
-% global variables
-global isCalib
 
 % sets the GUI figure handle
 hFig = handles.output;
@@ -1815,7 +1826,7 @@ end
 
 % updates the edit box value and the image axis
 set(hObj,'string','1');
-if isCalib   
+if hFig.isCalib   
     updateVideoFeedImage(hFig,hFig.infoObj.objIMAQ) 
 else
     dispImage(handles)
@@ -1823,9 +1834,6 @@ end
 
 % --- callback function for the last frame/sub-movie button ---------------
 function LastButtonCallback(hObject, ~, handles, varargin)
-
-% global variables
-global isCalib
 
 % sets the GUI figure handle
 hFig = handles.output;
@@ -1869,7 +1877,7 @@ end
 
 % updates the edit box value and the image axis
 set(hObj,'string',num2str(nwVal));
-if isCalib
+if hFig.isCalib
     updateVideoFeedImage(hFig,hFig.infoObj.objIMAQ) 
 else
     dispImage(handles)
@@ -1877,9 +1885,6 @@ end
 
 % --- callback function for the previous frame/sub-movie button -----------
 function PrevButtonCallback(hObject, ~, handles)
-
-% global variables
-global isCalib
 
 % % sets the GUI figure handle
 hFig = handles.output;
@@ -1925,7 +1930,7 @@ if nwVal > 1
     
     % updates the edit box value and the image axis
     set(hObj,'string',num2str(nwVal-cStp));
-    if isCalib  
+    if hFig.isCalib  
         updateVideoFeedImage(hFig,hFig.infoObj.objIMAQ) 
     else
         dispImage(handles)
@@ -1937,10 +1942,7 @@ else
 end
 
 % --- callback function for the next frame/sub-movie button ---------------
-function NextButtonCallback(hObject, ~, handles, varargin)
-
-% global variables
-global isCalib 
+function NextButtonCallback(hObject, ~, handles, varargin) 
 
 % % sets the GUI figure handle
 hFig = handles.output;
@@ -1989,7 +1991,7 @@ if nwVal < mxVal
     
     % updates the edit box value and the image axis
     set(hObj,'string',num2str(nwVal+cStp));
-    if isCalib
+    if hFig.isCalib
         updateVideoFeedImage(hFig,hFig.infoObj.objIMAQ) 
     else
         dispImage(handles)
@@ -2002,9 +2004,6 @@ end
 
 % --- Executes on editting the frame/sub-movie edit box -------------------
 function CountEditCallback(hObject, ~, handles, varargin)
-
-% global variables
-global isCalib
 
 % retrieves the image data struct
 hFig = handles.output;
@@ -2027,7 +2026,7 @@ switch get(hObject,'UserData')
 end
 
 % updates the frame/sub-movie index
-if isCalib
+if hFig.isCalib
     % case is the user is calibrating
     isValid = true;
     
@@ -2058,7 +2057,7 @@ if isValid
     end
     
     % updates the image axes
-    if ~isCalib
+    if ~hFig.isCalib
         dispImage(handles)
     end
 else
@@ -2077,7 +2076,7 @@ end
 function editScaleFactor_Callback(hObject, ~, handles)
 
 % global variables
-global isCalib isRTPChange
+global isRTPChange
 
 % loads the data struct
 hFig = handles.output;
@@ -2089,7 +2088,7 @@ if chkEditValue(nwVal,[0 inf],0)
     hFig.iData.exP.sFac = nwVal;
     
     % updates the scale factor in the real-time tracking parameters
-    if isCalib
+    if hFig.isCalib
         [hFig.rtP.trkP.sFac,isRTPChange] = deal(nwVal,true);
     end
 else
@@ -2100,14 +2099,11 @@ end
 % --- Executes on button press in textScaleFactor -------------------------
 function textScaleFactor_Callback(~, ~, handles)
 
-% global variables
-global isCalib
-
 % initialisations
 hFig = handles.output;
 
 % stop the video timer (if calibrating)
-if isCalib
+if hFig.isCalib
     setObjEnable(handles.menuRTTrack,'off')
     stop(hFig.vidTimer)
 end
@@ -2116,7 +2112,7 @@ end
 ScaleFactor(hFig,'FlyTrack');
 
 % % restarts the video timer (if calibrating and video feed on)
-% if isCalib     
+% if hFig.isCalib     
 %     setObjEnable(handles.menuRTTrack,hFig.iMov.isSet)
 %     if strcmp(get(handles.menuVideoFeed,'checked'),'on')   
 %         start(hFig.vidTimer)
@@ -2173,9 +2169,6 @@ handles.output.mkObj.checkShowAngle();
 % --- Executes on button press in buttonDetectBackground.
 function buttonDetectBackground_Callback(~, ~, handles)
 
-% global variables
-global isCalib
-
 % field retrieval
 hFig = handles.output;
 
@@ -2202,7 +2195,7 @@ if get(handles.checkShowMark,'value')
 end
 
 % stop the video timer (if calibrating)
-if isCalib
+if hFig.isCalib
     % turns off the video feed (if it is on)
     if strcmp(get(handles.menuVideoFeed,'checked'),'on')
         menuVideoFeed_Callback(handles.menuVideoFeed, [], handles)
@@ -2302,11 +2295,8 @@ setTrackGUIProps(handles,'AxesCoordCheck')
 % --- Executes on button press in checkFixRatio ---------------------------
 function checkFixRatio_Callback(hObject, ~, handles)
 
-% global variables
-global isCalib
-
 % updates the image
-if ~isCalib
+if ~handles.output.isCalib
     dispImage(handles)
 end
 
@@ -2365,7 +2355,7 @@ handles.tableFlyUpdate = uitable(handles.panelManualSelect,...
 function dispImage(handles,varargin)
 
 % global variables
-global isCalib isBatch 
+global isBatch 
 
 % retrieves the image data struct
 hAx = handles.imgAxes;
@@ -2448,7 +2438,7 @@ elseif strcmp(get(handles.menuCorrectTrans,'Checked'),'on')
 end        
 
 % updates the frame selection properties
-if ~(isCalib || isBatch || isBGCalc)
+if ~(hFig.isCalib || isBatch || isBGCalc)
     setTrackGUIProps(handles,'UpdateFrameSelection',cFrm)
 end
 
@@ -3003,7 +2993,7 @@ updateVideoFeedImage(handles.output,objIMAQ)
 function postWindowSplit(handles,iMov,hProp0,isChange)
 
 % global variables
-global isCalib isMovChange
+global isMovChange
 
 % sets the axes focus to the main axis and removes the division figure (if
 % already been shown)
@@ -3016,7 +3006,7 @@ if isChange
     hLoad = ProgressLoadbar('Updating Region Information...');
     
     % otherwise, reset the sub-image stack progress structs
-    if isCalib      
+    if hFig.isCalib      
         % creates the background object 
         set(handles.output,'bgObj',CalcBG(handles))
         
@@ -3090,7 +3080,7 @@ if isChange
     set(handles.output,'iMov',iMov,'iData',iData,'pData',[]);
     
     % updates the object properties
-    if isCalib
+    if hFig.isCalib
         % enables the tube checkbox and segmentation para menu item
         set(setObjEnable(handles.checkShowTube,'on'),'value',1)        
         setObjEnable(handles.buttonDetectBackground,'on')
@@ -3116,7 +3106,7 @@ if isChange
     try delete(hLoad); catch; end
 else    
     % otherwise, reset the original object properties
-    if isCalib
+    if hFig.isCalib
         % resets the object properties
         resetHandleSnapshot(hProp0)        
         checkShowTube_Callback(handles.checkShowTube, 1, handles)  

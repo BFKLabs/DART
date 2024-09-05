@@ -174,10 +174,7 @@ dDir = iData.ProgDef.OutFig;
 tStr = 'Select The Subplot Configuration File';
 fMode = {'*.spp','Subplot Configuration File (*.spp)'};
 [fName,fDir,fIndex] = uigetfile(fMode,tStr,dDir);
-if fIndex == 0
-    % if the user cancelled, then exit
-    return
-else
+if fIndex
     % makes the figure invisible
     setObjVisibility(hFig,'off');
     pause(0.05);

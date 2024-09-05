@@ -80,11 +80,11 @@ classdef DetectParaDialog < handle
         function initClassFields(obj)
             
             % initialisations
-            isHT1 = isHT1Controller(obj.sObj.iData);
+            isHT = isHTController(obj.sObj.iData);
             
             % sets the main class fields            
-            obj.bgP = DetectPara.getDetectionPara(obj.sObj.iMov,isHT1);
-            obj.bgP0 = DetectPara.initDetectParaStruct('All',isHT1);
+            obj.bgP = DetectPara.getDetectionPara(obj.sObj.iMov,isHT);
+            obj.bgP0 = DetectPara.initDetectParaStruct('All',isHT);
             
             % sets the tab field parameters
             obj.tStrP = {'Phase Detection',...
