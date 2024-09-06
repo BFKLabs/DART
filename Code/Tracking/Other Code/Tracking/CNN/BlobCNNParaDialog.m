@@ -238,7 +238,7 @@ classdef BlobCNNParaDialog < dynamicprops & handle
             % ---------------------------------- %            
 
             % object properties            
-            wStrT = 'IMAGE CLASSIFICATION TYPES';
+            wStrT = 'INPUT IMAGE TYPES';
             indT = setGroup(obj.pTrain.iCh(:),[obj.nParaT,1]);
             
             % creates the panel object           
