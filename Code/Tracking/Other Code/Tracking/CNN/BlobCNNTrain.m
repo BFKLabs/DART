@@ -51,7 +51,7 @@ classdef BlobCNNTrain < dynamicprops & handle
                         
         % fixed training option parameters
         learnRate = 1e-4;  
-        pAccMin = 0.85;        
+        pAccMin = 0.90;        
         
         % temporary option parameters
         isVerbose = false;                
@@ -216,7 +216,7 @@ classdef BlobCNNTrain < dynamicprops & handle
                 end
                 
                 % sets up the image stack (for each group/channel)
-                for k = 1:obj.nCh                
+                for k = 1:obj.nCh
                     for j = 1:obj.Ng
                         % only retrieve sub-image points if they exist
                         if ~isempty(obj.fPG{i,j})

@@ -81,7 +81,7 @@ classdef BlobCNNParaDialog < dynamicprops & handle
         bStrC = {'Reset','Update','Close'};
         algoStr = {'sgdm','rmsprop','adam'};
         imgType = {'Raw Image','X-Gradient','Y-Gradient'};        
-        figName = 'Blob CNN Network Training Parameters';        
+        figName = 'Blob CNN Network Model Parameters';        
         
     end
     
@@ -161,7 +161,7 @@ classdef BlobCNNParaDialog < dynamicprops & handle
             obj.pTrain = copy(obj.pCNN.pTrain);
             obj.pTrain0 = copy(obj.pTrain);            
             
-            % ------------------------------------- %            
+            % ------------------------------------- %
             % --- OBJECT DIMENSION CALCULATIONS --- %
             % ------------------------------------- %
     
@@ -337,27 +337,27 @@ classdef BlobCNNParaDialog < dynamicprops & handle
             lPosL = sum(pPosP([1,3])) + obj.dX;
             pPosL = [lPosL,obj.dX,obj.widPanelL,obj.hghtPanel];
             obj.hPanelL = createUIObj('panel',obj.hFig,...
-                'Title','','Position',pPosL,'BackgroundColor',[1,1,1]);          
+                'Title','','Position',pPosL,'BackgroundColor',[1,1,1]);
             
             % updates the network layer graph
             obj.updateNetworkGraph();
             
             % ------------------------------- %
             % --- HOUSE-KEEPING EXERCISES --- %
-            % ------------------------------- %            
+            % ------------------------------- %
             
             % sets the moment field properties
-            obj.updateMomentumFieldProps();            
+            obj.updateMomentumFieldProps();
             
             % centers and refreshes the figure
             centerfig(obj.hFig);
-            refresh(obj.hFig);  
+            refresh(obj.hFig);
             
             % makes the window visible
-            setObjVisibility(obj.hFig,1);   
+            setObjVisibility(obj.hFig,1);
             pause(0.05);
             drawnow
-                            
+            
         end
         
         % ----------------------------------------- %
@@ -817,7 +817,7 @@ classdef BlobCNNParaDialog < dynamicprops & handle
     methods (Static)
         
         % --- retrieves the numerical parameter parameter limits
-        function nwLim = getParaLimits(pStr)            
+        function nwLim = getParaLimits(pStr)
             
             % sets the limits based on parameter type
             switch pStr

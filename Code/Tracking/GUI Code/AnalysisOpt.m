@@ -106,6 +106,10 @@ classdef AnalysisOpt < handle
             
         end
         
+        % -------------------------------------- %
+        % --- CLASS INITIALISATION FUNCTIONS --- %
+        % -------------------------------------- %        
+        
         % --- initialises the class fields
         function initClassFields(obj)
             

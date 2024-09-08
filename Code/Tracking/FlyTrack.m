@@ -480,8 +480,9 @@ if setMovie
             if iMov.isSet && compImageDim(iMov,iData,szImg)
                 % if so, ask the user if they would like to keep the same
                 % sub-window data. if not, then clear it
-                tStr = 'Keep Sub-Window Data';
-                qStr = 'Do you want to keep the same sub-window data?';
+                tStr = 'Keep Experiment Configuration';
+                qStr = ['Do you want to keep the same ',...
+                        'experiment configuration?'];
                 uChoice = questdlg(qStr,tStr,'Yes','No','Yes');
                 
                 if ~strcmp(uChoice,'Yes')
@@ -701,31 +702,6 @@ else
     end      
 end
 
-% --- resets the classifier object fields/properties
-function resetClassifierProps(hFig)
-
-% exit if not the correct recording device or missing toolbox
-if ~(hFig.hasDLT && isHTController(hFig.iData))
-    return
-end
-
-% resets the object's classifier fields
-if ~isfield(hFig.iMov,'pCNN') || isempty(hFig.iMov.pCNN)
-    % case is the network object is missing
-    hFig.bgObj.pCNN = [];
-    hFig.bgObj.sTypeCNN = 2;
-
-else
-    % case is the network object field exists
-    hFig.bgObj.pCNN = hFig.iMov.pCNN;
-    hFig.bgObj.sTypeCNN = 1 + isempty(hFig.iMov.pCNN.pNet); 
-end
-
-% resets the classifier 
-if ~isempty(hFig.bgObj.objM)
-    hFig.bgObj.objM.resetClassOptCheck();
-end
-
 % -------------------------------------------------------------------------
 function menuOpenSoln_Callback(hObject, eventdata, handles)
 
@@ -914,6 +890,12 @@ end
 % ----------------------- %
 % --- SAVE MENU ITEMS --- %
 % ----------------------- %
+
+% --------------------------------------------------------------------
+function menuSaveMovie_Callback(~, ~, handles)
+
+% runs the partial video saving dialog
+SavePartVideo(handles.figFlyTrack);
 
 % -------------------------------------------------------------------------
 function menuSaveSoln_Callback(~, ~, handles)
@@ -2903,6 +2885,31 @@ for i = 1:length(a)
     hEdit = findobj(handles.output,'UserData',a{i});
     set(hEdit,'string',num2str(eval(sprintf('exP.%s',a{i}))))
 end 
+
+% --- resets the classifier object fields/properties
+function resetClassifierProps(hFig)
+
+% exit if not the correct recording device or missing toolbox
+if ~(hFig.hasDLT && isHTController(hFig.iData))
+    return
+end
+
+% resets the object's classifier fields
+if ~isfield(hFig.iMov,'pCNN') || isempty(hFig.iMov.pCNN)
+    % case is the network object is missing
+    hFig.bgObj.pCNN = [];
+    hFig.bgObj.sTypeCNN = 2;
+
+else
+    % case is the network object field exists
+    hFig.bgObj.pCNN = hFig.iMov.pCNN;
+    hFig.bgObj.sTypeCNN = 1 + isempty(hFig.iMov.pCNN.pNet); 
+end
+
+% resets the classifier 
+if ~isempty(hFig.bgObj.objM)
+    hFig.bgObj.objM.resetClassOptCheck();
+end
 
 % ---------------------------------------------------- %
 % --- OTHER OBJECT/STRUCT INITIALISATION FUNCTIONS --- %

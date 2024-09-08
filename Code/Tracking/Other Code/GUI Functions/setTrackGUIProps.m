@@ -267,7 +267,7 @@ switch (typeStr)
         % determines if the positional data has been determined
         if varargin{1}        
             % turns all the menu items
-            setMenuEnable(handles,'on')                                
+            setMenuEnable(handles,'on')
             if ~isempty(pData)
                 % can view everything
                 iData.Status = 2;
@@ -283,6 +283,7 @@ switch (typeStr)
             elseif initDetectCompleted(iMov)
                 % case is the background has been calculated only
                 iData.Status = 1;
+                setMenuEnable(handles,'off',1);
                 setDetectEnable(handles,'on',[1 4 5])      
                 setDetectEnable(handles,'off',2:3) 
                 
@@ -293,7 +294,7 @@ switch (typeStr)
                 setDetectEnable(handles,'off',[2:3 5])            
                 
                 % turns off the batch processing/view progress menu items
-                setMenuEnable(handles,'off',[3 6])
+                setMenuEnable(handles,'off',[1 3 6])
             end        
             
         else
@@ -416,13 +417,15 @@ switch (typeStr)
         setMenuEnable(handles,'on',3)
         setMenuEnable(handles,'off',[4 6 7 8])
         
-    case ('PostFlyDetect') % case is after detecting the fly locations 
+    case ('PostFlyDetect') 
+        % case is after detecting the fly locations 
         
         % enables the tube region outline markers
         setTrackGUIProps(handles,'UpdateFrameSelection')
         setObjEnable(handles.menuFile,'on')
         setObjEnable(handles.toggleVideo,'on');
-        setMenuEnable(handles,'on')              
+        setMenuEnable(handles,'on')
+        setMenuEnable(handles,~isempty(pData),1)
         
         % resets the status flag 
         iData.Status = 2;
@@ -431,11 +434,15 @@ switch (typeStr)
         % updates the image 
         dispImage(handles)
         
-    case ('PrePreBatchProcess') % case is before the batch processing
+    case ('PrePreBatchProcess') 
+        % case is before the batch processing
+        
         % enables the tube region outline markers
         setDetectEnable(handles,'off',1:3)           
         
-    case ('PreBatchProcess') % case is before the batch processing
+    case ('PreBatchProcess') 
+        % case is before the batch processing
+        
         % enables the tube region outline markers
         setObjEnable(handles.toggleVideo,'off');
         
@@ -453,7 +460,8 @@ switch (typeStr)
         % updates the image
         FirstButtonCallback(handles.frmFirstButton,[],handles)
 
-    case ('PostBatchProcess') % case is after the batch processing        
+    case ('PostBatchProcess') 
+        % case is after the batch processing        
         hMenu = findobj(hFig,'type','uimenu');
         setPanelProps(handles.panelFrmSelect,'on')
         setObjEnable(hMenu,'on');
@@ -461,7 +469,9 @@ switch (typeStr)
     % --- PRE/POST WINDOW SPLITTING --- %
     % --------------------------------- %           
 
-    case ('PreWindowSplit') % case is before splitting the window  
+    case ('PreWindowSplit') 
+        % case is before splitting the window  
+
 %         % retrieves the video group indices
 %         vGrp = getVidGroupIndices(iMov);
 %         if isempty(vGrp)
@@ -488,7 +498,8 @@ switch (typeStr)
         % enables the movie selection buttons
         setSubMovEnable(handles);    
         setMovEnable(handles,'on');
-        setMenuEnable(handles,'on',1:2)                 
+        setMenuEnable(handles,'off',1)
+        setMenuEnable(handles,'on',2)                 
         setDetectEnable(handles,'on',[1 4])
         set(handles.checkShowTube,'value',1)
         set(handles.movCountEdit,'string','1')
@@ -502,7 +513,9 @@ switch (typeStr)
             set(hFig,'iData',iData,'pData',[]);        
         end                
         
-    case ('PostWindowSplitCalib') % case is after splitting the window          
+    case ('PostWindowSplitCalib') 
+        % case is after splitting the window          
+        
         % enables the movie selection buttons
         setSubMovEnable(handles);          
         setMovEnable(handles,'on');
@@ -511,7 +524,9 @@ switch (typeStr)
     % --- AXIS COORDINATES/GRIDLINE UPDATES --- %
     % ----------------------------------------- %                
         
-    case ('AxesCoordCheck') % case is altering the axes coordinate checkbox
+    case ('AxesCoordCheck') 
+        % case is altering the axes coordinate checkbox
+        
         % gets the state of the toggle button
         setAxesProps(handles,'label');
         
@@ -679,7 +694,9 @@ switch (typeStr)
             end
         end
         
-    case ('UpdateMovieSelection') % case is updating the frame selection buttons
+    case ('UpdateMovieSelection') 
+        % case is updating the frame selection buttons
+        
         % retrieves the current frame from the frame counter edit box
         cMov = iData.cMov;
         
@@ -726,7 +743,9 @@ switch (typeStr)
         checkShowTube_Callback(handles.checkShowTube,1,handles)
         dispImage(handles)
         
-    case ('PreViewProj') % case is before the projection view GUI is opened
+    case ('PreViewProj') 
+        % case is before the projection view GUI is opened
+        
         % sets up the division figure (if not already set)
         if (get(handles.checkSubRegions,'value'))
             rgObj.removeDivisionFigure()
