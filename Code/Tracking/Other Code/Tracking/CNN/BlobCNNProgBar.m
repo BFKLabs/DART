@@ -94,10 +94,10 @@ classdef BlobCNNProgBar < matlab.mixin.SetGet
             % sets the training waitbar strings
             if obj.isTrain
                 % case is training and classification
-                wStrPhT = {'INITIAL NETWORK TRAINING',...
-                           'TRAINING ACCURACT CHECK',...
-                           'FULL NETWORK TRAINING'};
-                wStrST = {obj.wStrS0,{'INITIAL NETWORK CHECK'},obj.wStrS0};
+                wStrPhT = {'Initial Network Training',...
+                           'Training Accuracy Check',...
+                           'Full Network Training'};
+                wStrST = {obj.wStrS0,{'Initial Network Check'},obj.wStrS0};
                 
             else
                 % case is for classification only
@@ -105,9 +105,9 @@ classdef BlobCNNProgBar < matlab.mixin.SetGet
             end
             
             % sets the panel header/sub-level string fields             
-            obj.wStrPh = [{'OVERALL TRAINING PROGRESS',...
-                           'INITIAL MOVEMENT DETECTION'},wStrPhT,...  
-                          {'POST-TRAINING CALCULATIONS'}];
+            obj.wStrPh = [{'Overall Training Progress',...
+                           'Initial Movement Detection'},wStrPhT,...  
+                          {'Post-Training Calculations'}];
             obj.wStrS = [{{'Initialising Tracking Objects...'}},...
                          {{'Reading Image Stack'}},wStrST,...
                          {{'Static Object Detection',...
@@ -203,15 +203,16 @@ classdef BlobCNNProgBar < matlab.mixin.SetGet
             % sets up the sub-panel objects
             for i = flip(1:obj.nLvl)
                 % creates the panel object
+                tStrL = upper(obj.wStrPh{i});
                 pPosP = [obj.dX,y0,obj.widPanelS,obj.hghtPanelS(i)];
                 obj.hPanelS{i} = createUIObj('panel',obj.hPanel,...
-                  'FontSize',obj.fSzH,'Title',obj.wStrPh{i},...
+                  'FontSize',obj.fSzH,'Title',tStrL,...
                   'FontWeight','Bold','Units','Pixels','Position',pPosP);
               
                 % increments the bottom location
                 y0 = sum(pPosP([2,4])) + obj.dX/2;
                 
-                %
+                % creates all the sub-panel objects
                 for j = flip(1:obj.nLvlS(i))
                     % sets the positions of the current waitbar objects
                     k = obj.nLvlS(i) - (j-1);                    
