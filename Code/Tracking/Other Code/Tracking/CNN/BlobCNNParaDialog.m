@@ -308,7 +308,7 @@ classdef BlobCNNParaDialog < dynamicprops & handle
             pPosN = [obj.dX,yPosN,obj.widPanelI,obj.hghtPanelN];
             obj.hPanelN = createUIObj('panel',obj.hPanelP,...
                 'FontSize',obj.fSzH,'Title',wStrN,'FontWeight','Bold',...
-                'Units','Pixels','Position',pPosN);            
+                'Units','Pixels','Position',pPosN);
 
             % creates the enumeration parameters
             for i = 1:obj.nParaN
