@@ -58,17 +58,18 @@ set(setObjVisibility(hObject,'off'),'position',figPosNw);
 pause(0.05);
 
 % global variables
-global szDel bufData pAR frmSz0
-global isMovChange isDetecting isBatch isRTPChange
-[isMovChange,isDetecting,isBatch,isRTPChange] = deal(false);
-[szDel,bufData,pAR] = deal(5,[],2);
+global bufData pAR frmSz0
+global isMovChange isDetecting isRTPChange
+[isMovChange,isDetecting,isRTPChange] = deal(false);
+[bufData,pAR] = deal([],2);
 
 % initialses the custom property field string
 pFldStr = {'pData','hSolnT','hMainGUI','mObj','vcObj','mkObj','rgObj',...
        'vidTimer','hGUIOpen','reopenGUI','cType','infoObj','hTrack',...
        'isText','iMov','rtP','rtD','iData','iExpt','ppDef','isCalib',...
        'frmBuffer','bgObj','prObj','objDACInfo','iStim','hTT','hasDLT',...
-       'pColF','isTest','fPosNew','convObj','mtObj','hProp0','eData'};
+       'pColF','isTest','fPosNew','convObj','mtObj','hProp0','eData',...
+       'szDel','szDelX','szDelY','isBatch'};
 initObjPropFields(hObject,pFldStr);
 
 % ensures the background detection panel is invisible
@@ -134,8 +135,10 @@ switch length(varargin)
         end
 end
 
-% updates the calibration type
+% other flag initialisations
+set(hObject,'szDel',5);
 set(hObject,'cType',cType)            
+set(hObject,'isBatch',false);
 
 % initialisation of the program data struct
 hObject.iData = initDataStruct(handles,ProgDefNew);
@@ -421,9 +424,6 @@ set(hTT,'color','k','BackgroundColor','w',...
 % -------------------------------------------------------------------------
 function ok = menuOpenMovie_Callback(hObject, eventdata, handles)
 
-% global variables
-global isBatch
-
 % initialisations
 ok = 1;
 
@@ -606,7 +606,7 @@ else
 end
 
 % clears and turns off the axis
-if ~isBatch
+if ~hFig.isBatch
     axis(hAx,'off'); 
     cla(hAx);
 end    
@@ -637,7 +637,7 @@ if loadImgData(handles, ldData.name, ldData.dir, setMovie, isSolnLoad)
     setObjEnable(handles.menuOptSize,'on')
     
     % disables the tube regions (if not batch processing)
-    if ~isBatch
+    if ~hFig.isBatch
         % toggles the show tube region markers
         checkShowTube_Callback(handles.checkShowTube, 1, handles)
         
@@ -705,16 +705,13 @@ end
 % -------------------------------------------------------------------------
 function menuOpenSoln_Callback(hObject, eventdata, handles)
 
-% global variables
-global isBatch
-
 % if accessing this function via the menu item, then reset the bp flag
+hFig = handles.output;
 if isa(eventdata,'matlab.ui.eventdata.ActionData')
-    isBatch = false;
+    hFig.isBatch = false;
 end
 
 % retrieves the image data/mesh structs
-hFig = handles.output;
 [iData0,iData] = deal(get(hFig,'iData'));
 hProp0 = getHandleSnapshot(handles); 
 
@@ -871,7 +868,7 @@ if menuOpenMovie_Callback(handles.menuOpenMovie,solnData.fData,handles)
     setTrackGUIProps(handles,'PostSolnLoad',~isstruct(eventdata))
     
     % updates the object properties   
-    if ~isBatch
+    if ~hFig.isBatch
         setTrackGUIProps(handles,'PostWindowSplit',1)          
         set(handles.checkShowTube,'value',0)
         checkLocalView_Callback(handles.checkLocalView, 1, handles)                    
@@ -1211,9 +1208,6 @@ ManualResegment(handles)
 
 % -------------------------------------------------------------------------
 function menuSetupBatch_Callback(~, ~, handles)
-
-% % global variables
-% global isBatch
 
 % prompts the user if they have set the experiment parameters correctly
 wStr = {'Have you set all experiment parameters correctly?';...
@@ -2336,9 +2330,6 @@ handles.tableFlyUpdate = uitable(handles.panelManualSelect,...
 % --- displays an image frame to the image axes 
 function dispImage(handles,varargin)
 
-% global variables
-global isBatch 
-
 % retrieves the image data struct
 hAx = handles.imgAxes;
 hFig = handles.output;
@@ -2420,7 +2411,7 @@ elseif strcmp(get(handles.menuCorrectTrans,'Checked'),'on')
 end        
 
 % updates the frame selection properties
-if ~(hFig.isCalib || isBatch || isBGCalc)
+if ~(hFig.isCalib || hFig.isBatch || isBGCalc)
     setTrackGUIProps(handles,'UpdateFrameSelection',cFrm)
 end
 

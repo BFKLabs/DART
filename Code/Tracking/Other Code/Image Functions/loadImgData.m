@@ -3,10 +3,7 @@ function [ok,iData] = loadImgData(...
                         handles,fName,fDir,setMovie,isSolnLoad,iData,iMov)
 
 % global variables
-global isBatch bufData frmSz0
-
-% sets the default values
-if isempty(isBatch); isBatch = false; end
+global bufData frmSz0
 
 % object handles
 nFrmMin = 10;
@@ -18,7 +15,7 @@ if nargin < 6
 end
     
 % sets the GUI properties after loading the image (if not batch processing)
-if ~isBatch
+if ~hFig.isBatch
     set(handles.checkLocalView,'value',0)        
     setTrackGUIProps(handles,'PreImageLoad')
 end
@@ -204,7 +201,7 @@ if hFig.cType > 0
     [iMov.sRate,Frm0] = deal(roundP(iData.exP.FPS),1);
     set(hFig,'iMov',iMov)   
     
-elseif (setMovie && ~isSolnLoad) && ~isBatch  
+elseif (setMovie && ~isSolnLoad) && ~hFig.isBatch  
     [iMov.sRate,Frm0] = SampleRate(iData);
     set(hFig,'iMov',iMov)   
 end
@@ -265,13 +262,13 @@ resizeFlyTrackGUI(hFig)
 
 % creates the tracking marker class object
 if detMltTrkStatus(iMov)
-    hFig.mkObj = MultiTrackMarkerClass(hFig,handles.imgAxes);
+    hFig.mkObj = MultiTrackMarkerClass(hFig);
 else
-    hFig.mkObj = TrackMarkerClass(hFig,handles.imgAxes);
+    hFig.mkObj = TrackMarkerClass(hFig);
 end
 
 % updates the GUI properties (if not batch processing)
-if ~isBatch
+if ~hFig.isBatch
     % determines if there is an executable for loading the image stacks    
     if ~isempty(bufData)           
         % if the buffer timer is running, then stop it

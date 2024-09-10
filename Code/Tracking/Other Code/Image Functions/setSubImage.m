@@ -2,11 +2,11 @@
 function ImgS = setSubImage(handles,Img)
 
 % global variables
-global szDel szDelX szDelY
 sz = size(Img);
 
 % retrieves the sub-region data struct
-iMov = get(handles.figFlyTrack,'iMov');
+hFig = handles.figFlyTrack;
+iMov = get(hFig,'iMov');
 isMTrk = detMltTrkStatus(iMov);
 
 % retrieves the current sub-group index
@@ -38,12 +38,12 @@ if isempty(iR) % || ~obj.iMov.ok(iApp)
 end
 
 % sets the local x-offset
-iCL = max(1,iC(1)-szDel):min(sz(2),iC(end)+szDel);
-szDelX = iCL(1)-iC(1);
+iCL = max(1,iC(1)-hFig.szDel):min(sz(2),iC(end)+hFig.szDel);
+hFig.szDelX = iCL(1)-iC(1);
 
 % sets the local x-offset
-iRL = max(1,iR(1)-szDel):min(sz(1),iR(end)+szDel);
-szDelY = iRL(1)-iR(1);
+iRL = max(1,iR(1)-hFig.szDel):min(sz(1),iR(end)+hFig.szDel);
+hFig.szDelY = iRL(1)-iR(1);
 
 % sets the sub-image
 ImgS = Img(iRL,iCL,:);

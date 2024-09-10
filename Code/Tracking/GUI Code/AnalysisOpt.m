@@ -998,9 +998,9 @@ classdef AnalysisOpt < handle
             
             % creates the tracking marker class object
             if detMltTrkStatus(obj.iMov)
-                obj.hFigM.mkObj = MultiTrackMarkerClass(obj.hFigM,obj.hAxM);
+                obj.hFigM.mkObj = MultiTrackMarkerClass(obj.hFigM);
             else
-                obj.hFigM.mkObj = TrackMarkerClass(obj.hFigM,obj.hAxM);    
+                obj.hFigM.mkObj = TrackMarkerClass(obj.hFigM);    
             end
             
             % deletes/re-adds the markers                            

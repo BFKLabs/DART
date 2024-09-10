@@ -271,8 +271,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         function startBatchProcessing(obj)
             
             % resets the global flag
-            global isBatch
-            isBatch = true;            
+            obj.hFig.isBatch = true;            
             
             % sets up the waitbar figure fields
             tStr = 'Segmentation Batch Processing';
