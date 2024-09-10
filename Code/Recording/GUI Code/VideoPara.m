@@ -1064,7 +1064,8 @@ classdef VideoPara < handle
             end
 
             % determines if camera properties match that from file
-            missP = ~isempty(setdiff(fldNames,vprData.fldNames));
+            missP = ~(isempty(setdiff(fldNames,vprData.fldNames)) || ... 
+                      isempty(setdiff(vprData.fldNames,fldNames)));
             if ~missP
                 [~,iB] = intersect(vprData.fldNames,fldNames);
                 vprData.fldNames = vprData.fldNames(iB);

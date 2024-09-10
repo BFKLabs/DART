@@ -60,10 +60,14 @@ if isnumeric(pVal)
         set(sObj,fName,pVal);
         updateObjectProps(hObj,fName,num2str(pVal),0);
         
-    catch
-        % if there was an error, then revert back to the previous value
-        pValPr = get(sObj,fName);
-        updateObjectProps(hObj,fName,num2str(pValPr),0);
+    catch        
+        try
+            % if there was an error, then revert back to the previous value
+            pValPr = get(sObj,fName);
+            updateObjectProps(hObj,fName,num2str(pValPr),0);
+        catch
+            % if there was an error, then ignore...
+        end
     end
     
 else
@@ -73,9 +77,13 @@ else
         updateObjectProps(hObj,fName,pVal,1);
         
     catch
-        % if there was an error, then revert back to the previous value
-        pValPr = get(sObj,fName);
-        updateObjectProps(hObj,fName,pValPr,1);        
+        try
+            % if there was an error, then revert back to the previous value
+            pValPr = get(sObj,fName);
+            updateObjectProps(hObj,fName,pValPr,1);
+        catch
+            % if there was an error, then ignore...            
+        end
     end
 end
 
