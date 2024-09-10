@@ -28,10 +28,10 @@ handles.output = hObject;
 % global variables
 global axLimMax mType dyMax isUpdating isCreateBlk
 global objOff mpStrDef hSigTmp hSigSel iSigObj
-global t2sStatus updateList isInit
+global t2sStatus updateList isInit nLenMax
 [axLimMax,mType,dyMax,isUpdating,isCreateBlk] = deal(900,0,2.5,false,false);
 [objOff,mpStrDef,hSigTmp,hSigSel,iSigObj] = deal(true,'arrow',[],[],0);
-[t2sStatus,updateList,isInit] = deal(-1,true,true);
+[t2sStatus,updateList,isInit,nLenMax] = deal(-1,true,true,10000);
 
 % ensures the gui is invisible
 setObjVisibility(hObject,'off')
@@ -2034,7 +2034,15 @@ if chkEditValue(nwVal,nwLim,0)
         
     % checks the signal duration is valid
     [eState,tDurMin] = checkSignalDur(hFig,sParaS,sPara);
-    if eState > 0                    
+    if eState > 0                
+        % updates the other object properties
+        setObjEnableProps(hFig,'buttonUseMinSig',eState==1)        
+        if startsWith(pStr,'tD')
+            % case is the duration time parameters
+            sParaS.nCount = calcRandCountRange(sParaS);
+            updateRandCountFields(hTab,sParaS.nCount)            
+        end        
+        
         % if so, then update the parameter struct
         sPara = setStructField(sPara,sType,sParaS);
         setappdata(hFig,sParaStr,sPara)        
@@ -2045,15 +2053,7 @@ if chkEditValue(nwVal,nwLim,0)
                 % runs the minimum duration selection button
                 hButton = getProtoObj(hFig,'buttonUseMinSig',dType);
                 buttonUseMinSig(hButton, '1', handles, tDurMin)
-        end
-        
-        % updates the other object properties
-        setObjEnableProps(hFig,'buttonUseMinSig',eState==1)        
-        if startsWith(pStr,'tD')
-            % case is the duration time parameters
-            sParaS.nCount = calcRandCountRange(sParaS);
-            updateRandCountFields(hTab,sParaS.nCount)            
-        end
+        end        
 
         % if there is a stimuli object selected, then update it
         if ~isempty(hSigSel)
@@ -5350,7 +5350,7 @@ setObjEnable(handles.menuStartExpt,isFeas)
 function createSignalObject(hFig,uData,rPos,resetLimits,addOffset)
 
 % global variables
-global chCol hSigTmp mpStrDef nProto
+global chCol hSigTmp mpStrDef nProto nLenMax
 
 % sets the default input values
 if nargin < 2
@@ -5391,10 +5391,12 @@ if addOffset; xS = xS + rPos(1); end
 hold(hAx,'on');
 
 % creates the new signal object
-if detIfUsePatch(hAx,xS,yS) || strcmp(sType,'Random')
-    % if there are not too many cycle counts, then use a patch
+if detIfUsePatch(hAx,xS,yS) || (length(xS) > nLenMax)    
+    % creates the patch object
+    [xS,yS] = checkSignalLength(xS,yS);
     hSigObj = patch(hAx,xS([1:end,1]),yS([1:end,1]),chCol{iCh},...
                     'linewidth',1,'FaceAlpha',0.2,'EdgeColor',chCol{iCh});
+                                
 else
     % otherwise, draw the signal using a line
     hSigObj = plot(hAx,xS([1:end,1]),yS([1:end,1]));
@@ -5445,7 +5447,7 @@ function hSigBlk = createExptObject(hFig,uData0,rPos,resetLimits,...
                                     addTrain,showHighlight)
 
 % global variables
-global chCol hSigTmp mpStrDef nProto
+global chCol hSigTmp mpStrDef nProto nLenMax
 
 % sets the default input values
 if nargin < 5; addTrain = true; end
@@ -5491,7 +5493,8 @@ for i = 1:length(iChObj)
     xS = xyData{iChNw}(:,1)+rPos(1);
     yS = xyData{iChNw}(:,2); 
     
-    if detIfUsePatch(hAx,xS,yS)
+    if detIfUsePatch(hAx,xS,yS) || (length(xS) > nLenMax)
+        [xS,yS] = checkSignalLength(xS,yS);
         hSigObj(i) = patch(hAx,xS,yS,chCol{j},'FaceAlpha',0.2,...
                            'EdgeColor',chCol{j},'LineWidth',1);        
     else
@@ -7641,6 +7644,11 @@ hSigSel.setPosition(rPos);
 
 % retrieves the scaled signal values
 [xS,yS] = setupScaledStimuliSignal(hAx,sParaS,iCh,sType,1);
+if isa(hSigObj,'matlab.graphics.primitive.Patch')
+    [xS,yS] = checkSignalLength(xS,yS);
+end
+
+% updates the signal data points
 set(hSigObj,'xData',xS*tMltP,'yData',yS)
 
 % updates the userdata for the selected object
@@ -8970,6 +8978,19 @@ elseif infoObj.isWebCam
     vRes = infoObj.objIMAQ.pROI(3:4);
 else
     vRes = infoObj.objIMAQ.VideoResolution;
+end
+
+% --- checks the signal length
+function [xS,yS] = checkSignalLength(xS,yS)
+
+% global variables
+global yGap nLenMax
+
+if length(xS) > nLenMax
+    % if there are not too many cycle counts, then use a full patch
+    yL = [floor(min(yS))+yGap,ceil(max(yS))];                
+    xS = xS([1,end,end,1]);    
+    yS = yL([1,1,end,end]);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
