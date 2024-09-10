@@ -194,7 +194,7 @@ classdef TrackMarkerClass < MarkerClass
                         obj.updateRegionMarkers(i) 
                     end
                 end
-            end
+            end           
 
         end                
         

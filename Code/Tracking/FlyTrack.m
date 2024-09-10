@@ -47,6 +47,10 @@ if length(varargin) < 2
     pause(0.05);
 end
 
+% sets the figure properties
+set(hObject,'BusyAction','Cancel','GraphicsSmoothing','off',...
+            'DoubleBuffer','off');
+        
 % --------------------------------------------------- %
 % --- PARAMETERS & FIGURE POSITION INITIALISATION --- %
 % --------------------------------------------------- %
@@ -69,7 +73,7 @@ pFldStr = {'pData','hSolnT','hMainGUI','mObj','vcObj','mkObj','rgObj',...
        'isText','iMov','rtP','rtD','iData','iExpt','ppDef','isCalib',...
        'frmBuffer','bgObj','prObj','objDACInfo','iStim','hTT','hasDLT',...
        'pColF','isTest','fPosNew','convObj','mtObj','hProp0','eData',...
-       'szDel','szDelX','szDelY','isBatch'};
+       'szDel','szDelX','szDelY','isBatch','hImg'};
 initObjPropFields(hObject,pFldStr);
 
 % ensures the background detection panel is invisible
@@ -1638,10 +1642,11 @@ calcAxesGlobalCoords(h)
 % --- Executes on button press in toggleVideo.
 function toggleVideo_Callback(hObject, ~, handles)
 
-%
 if get(hObject,'value')
     % sets the visibility statuses of the play/stop buttons
     setTrackGUIProps(handles,'PlayMovie')
+    
+    % runs the video until the end (or the user stops)
     if showMovie(handles)
         stopMovie(handles)
     end
@@ -1651,7 +1656,8 @@ end
 function stopMovie(handles)
 
 % updates the frame index with the current frame
-handles.iData.cFrm = str2double(get(handles.frmCountEdit,'string'));
+hFig = handles.output;
+hFig.iData.cFrm = str2double(get(handles.frmCountEdit,'string'));
 
 % sets the visibility statuses of the play/stop buttons
 setTrackGUIProps(handles,'StopMovie')
@@ -1706,13 +1712,9 @@ end
 % updates the image axis
 if ~updateTube
     % makes the tube/fly location markers invisible
-    for i = 1:length(mkObj.hMark)
-        try
-            mkObj.setMarkerVis('hMark',i,'off')
-            mkObj.setMarkerVis('hTube',i,'off')
-        catch
-            mkObj.initTrackMarkers(1);            
-        end
+    mkObj.objM.setVisibility(0);    
+    for i = 1:length(mkObj.hTube)
+        cellfun(@(x)(set(x,'Visible','off')),mkObj.hTube{i})
     end
 end
 
@@ -2420,10 +2422,9 @@ end
 % -------------------- %
 
 % updates the image axes with the new image
-hImg = findobj(handles.imgAxes,'type','image');
-if isempty(hImg)
+if isempty(hFig.hImg) || ~ishandle(hFig.hImg)
     % if there is no image object, then create a new one
-    imagesc(uint8(ImgNw),'parent',handles.imgAxes);    
+    hFig.hImg = imagesc(uint8(ImgNw),'parent',handles.imgAxes);    
     set(hAx,'xtick',[],'ytick',[],'xticklabel',[],'yticklabel',[]);
     set(hAx,'ycolor','w','xcolor','w','box','off')   
     colormap(hAx,gray)
@@ -2447,9 +2448,9 @@ if isempty(hImg)
 else
     % updates the axis limits
     if max(ImgNw(:)) < 10
-        set(hImg,'cData',double(ImgNw))    
+        set(hFig.hImg,'cData',double(ImgNw))    
     else
-        set(hImg,'cData',uint8(ImgNw))    
+        set(hFig.hImg,'cData',uint8(ImgNw))    
     end
     
     % otherwise, update the image object with the new image  
@@ -2478,13 +2479,8 @@ end
 %     movies or, B) until the user presses stop 
 function isComplete = showMovie(handles)
 
-% global variables
-global bufData playVideo
-
 % retrieves the image data struct
 hFig = handles.output;
-iData = get(hFig,'iData');
-iMov = get(hFig,'iMov');
 
 % retrieves the current frame index
 isComplete = true;
@@ -2493,39 +2489,51 @@ cStp = str2double(get(handles.editFrameStep,'string'));
 
 % displays the image to the image figure
 set(handles.output,'CurrentAxes',handles.imgAxes)
-jCheck = findjobj(handles.toggleVideo);
+jToggle = findjobj(handles.toggleVideo);
 
 % loops through all the images frames in the movie displaying to screen
-while (iFrm + cStp) <= iData.nFrm
-    % if the user paused the movie, then exit the function
-    cState = jCheck.isSelected;    
-    if ~cState
+while (iFrm + cStp) <= hFig.iData.nFrm
+    cState = jToggle.isSelected;    
+    if ~cState        
+        % if the user paused the movie, then exit the function        
         stopMovie(handles)
         isComplete = false;
-        set(handles.toggleVideo,'Value',0)
+        jToggle.setSelected(false);
         return
+        
     else
-        % pauses for any changes
-        if ~isempty(bufData)
-            while bufData.changeArray
-                pause(0.01)
-            end
-        end
-                
+        % retrieves the current frame step value
+        cStp = str2double(get(handles.editFrameStep,'string'));           
+        
+        % retrieves the new image (fast read)
+        isSub = get(handles.checkLocalView,'value');        
+        iFrmR = hFig.iMov.sRate*(iFrm + [0,cStp]) + hFig.iData.Frm0;        
+            
         % otherwise, update the frame counter
         iFrm = iFrm + cStp;
-        set(handles.frmCountEdit,'string',num2str(iFrm));
-        updateBufferIndices(handles,iFrm,'next')        
-               
-        % sets the movie frame index number    
-        isSub = get(handles.checkLocalView,'value');
-        ImgNw = getDispImage(iData,iMov,iFrm,isSub,handles,1); 
-        dispImage(handles,ImgNw,1)   
-        pause(0.01)                
+        set(handles.frmCountEdit,'string',num2str(iFrm));                
         
-        % updates the frame count
-        cStp = str2double(get(handles.editFrameStep,'string'));           
-    end        
+        % if there is no new image then exit
+        ImgNw = getDispImageFast(hFig,iFrmR,isSub);        
+        if isempty(ImgNw)
+            isComplete = true;
+            jToggle.setSelected(false);
+            return 
+        else
+            % updates the main image and marker
+            hFig.hImg.CData = uint8(ImgNw);            
+        end                
+        
+        % updates the markers (if available)
+        if handles.checkShowMark.Value
+            hFig.mkObj.updateTrackMarkers(1)
+        end        
+        
+        % refreshes the screen
+        drawnow limitrate        
+        
+    end
+    
 end
 
 % ------------------------------------------- %

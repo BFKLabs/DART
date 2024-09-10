@@ -171,7 +171,7 @@ classdef TrackMarkerObj < dynamicprops & handle
             
             % updates the marker colours
             cPT = cell2mat(obj.cP(xiR));
-            obj.hMark.FaceVertexCData = obj.vcData(cPT,:);
+            obj.hMark.FaceVertexCData = obj.vcData(cPT,:);                 
             
         end
         
