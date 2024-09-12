@@ -166,8 +166,8 @@ classdef StimObj < handle
                 obj.cEvent = obj.cEvent + 1;
                 if obj.cEvent > length(obj.tEvent)
                     % if no more events then stop/delete the timer
-                    try; stop(obj.hTimer); end
-                    try; delete(obj.hTimer); end
+                    try stop(obj.hTimer); catch; end
+                    try delete(obj.hTimer); catch; end
                 end
             end
         

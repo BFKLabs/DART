@@ -228,7 +228,7 @@ if iStim.nDACObj > 0
     end
 else
     % otherwise, set an empty array for the channel names
-    iStim.oPara = struct('vMin',0.5,'vMax',2.5,'sRate',50);
+    iStim.oPara = struct('vMin',0.5,'vMax',2.5,'sRate',1000);
 end  
 
 % updates the object field

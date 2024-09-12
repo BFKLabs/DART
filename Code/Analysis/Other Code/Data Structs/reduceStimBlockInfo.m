@@ -17,7 +17,7 @@ isM = false(size(B,1),1);
 % groups stimuli blocks that are exact
 for i = 1:size(B,1)
     % sets the new grouping
-    iGrpB{end+1} = find(B(:,i));
+    iGrpB{end+1} = find(B(:,i) & ~isM);
     
     % sets the flags for the matching stimuli blocks
     isM(B(:,i)) = true;
@@ -25,6 +25,9 @@ for i = 1:size(B,1)
         break
     end
 end
+
+% removes any empty cells
+iGrpB = iGrpB(~cellfun('isempty',iGrpB));
 
 % reduces down the common groupings
 bInfo = cell(length(iGrpB),1);

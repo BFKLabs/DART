@@ -753,7 +753,7 @@ function iPara = initStimParaStruct()
 
 % sub-struct initialisation
 sStr = struct('pVal',[],'pMin',[],'pMax',[],'isRand',false);
-opStr = struct('wNM',450,'pI',100,'sRate',50);
+opStr = struct('wNM',450,'pI',100,'sRate',1000);
 
 % initialises the parameter struct
 iPara = struct('pCount',sStr,'pDur',sStr,'pAmp',sStr,...

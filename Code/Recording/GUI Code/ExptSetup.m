@@ -2980,15 +2980,15 @@ xySig = setupDACSignal(sTrainC,chInfo,1./sRate);
 % determines the unique device indices
 iDev = find(cellfun(@(x)(~all(cellfun('isempty',x(:,1)))),xySig));
 
-% sets the sample rate for the device(s)
-if max(iDev) > length(iStim.oPara)
-    sRate = iStim.oPara(1).sRate*ones(length(iDev),1);
-else
-    sRate = field2cell(iStim.oPara(iDev),'sRate',1);
-end
-
 % determines if the serial 
 if any(strcmp(objDAQ.dType{iDev(1)},'Serial'))
+    % sets the sample rate for the device(s)
+    if max(iDev) > length(iStim.oPara)
+        sRate = iStim.oPara(1).sRate*ones(length(iDev),1);
+    else
+        sRate = field2cell(iStim.oPara(iDev),'sRate',1);
+    end    
+    
     % if so, set up the serial controller devices
     objDev = {setupSerialDevice(objDAQ,'Test',xySig(iDev),sRate,iDev)}; 
     
@@ -5686,10 +5686,10 @@ switch pType
             x0 = 0;
         elseif mPos(1,1) > (tDurFull - tDurStim/2)
             % case is the patch is too close to the stimuli end
-            x0 = roundP(tDurFull - tDurStim,0.01);
+            x0 = roundP(tDurFull - tDurStim,0.001);
         else
             % case is the mouse is far from the stimuli edges
-            x0 = roundP(mPos(1,1) - tDurStim/2,0.01);
+            x0 = roundP(mPos(1,1) - tDurStim/2,0.001);
         end        
         
         %
@@ -5723,10 +5723,10 @@ switch pType
             x0 = 0;
         elseif mPos(1,1) > (sPara.tDur-sParaS.tDur/2)
             % case is the patch is too close to the stimuli end
-            x0 = roundP(sPara.tDur - sParaS.tDur,0.01);
+            x0 = roundP(sPara.tDur - sParaS.tDur,0.001);
         else
             % case is the mouse is far from the stimuli edges
-            x0 = roundP(mPos(1,1) - sParaS.tDur/2,0.01);
+            x0 = roundP(mPos(1,1) - sParaS.tDur/2,0.001);
         end
         
         % sets up the position/userdata for the imrect object
@@ -5960,6 +5960,9 @@ if length(mX) == 4
     return
 end
 
+% parameters
+sbR = 0.001;
+
 % determines if there are any valid stimuli blocks
 if isempty(sBlk)
     % if not, then set the full stimuli channel range
@@ -5972,13 +5975,13 @@ else
     iLeft = find(mX <= sPos(:,1),1,'first');
     if isempty(iLeft)
         % case is the mouse is after the last signal block
-        sbLim = roundP([sum(sPos(end,[1,3])),tDur],0.01);
+        sbLim = roundP([sum(sPos(end,[1,3])),tDur],sbR);
     elseif iLeft == 1
         % case is the mouseis before the first signal block
-        sbLim = roundP([0,sPos(1,1)],0.01);
+        sbLim = roundP([0,sPos(1,1)],sbR);
     else
         % case is the mouse is between existing signal blocks
-        sbLim = roundP([sum(sPos(iLeft-1,[1,3])),sPos(iLeft,1)],0.01);
+        sbLim = roundP([sum(sPos(iLeft-1,[1,3])),sPos(iLeft,1)],sbR);
     end
 end
 
@@ -6241,13 +6244,13 @@ if ~isempty(hSigSel)
     else        
         % otherwise, determine if the stimuli+offset is less than the upper
         % block temporal limit
-        ok = double(roundP(tOfs+tDurStim,0.01) <= tLim(2));        
+        ok = double(roundP(tOfs+tDurStim,0.001) <= tLim(2));        
         if ok == 0
             % if not, then create an error message for screen
             eStr = sprintf(['The initial offset must be less than ',...
-                            '(%.2f) hours for the currently selected ',...
+                            '(%.3f) hours for the currently selected ',...
                             'block to fit within limits.'],...
-                            roundP(tLim(2)-tDurStim,0.01));
+                            roundP(tLim(2)-tDurStim,0.001));
         end
     end
 end
@@ -7357,7 +7360,7 @@ end
 
 % scales the x/y coordinates to the axes/channel coordinates
 dX = diff(xS0([1,end]));
-xS = (roundP(tOfs,0.01)+pX) + (dX-2*pX)*(xS0-xS0(1))/dX;
+xS = (roundP(tOfs,0.001)+pX) + (dX-2*pX)*(xS0-xS0(1))/dX;
 yS = ((pY+yGap)+(iCh-1)) + (1-(yGap+3*pY))*yS0/100;
 
 % --- calculates the axis limits (dependent on size and type)
@@ -7542,7 +7545,7 @@ uData = {tLim,sPara,sType,iCh,hButOfs};
 function tMin = getMinTrainDuration(hFig,isRound)
 
 % initialisations
-tMin = 0.01;
+tMin = 0.001;
 if nargin < 2; isRound = true; end
 
 % retrieves the signal blocks for the current protocol
@@ -7558,7 +7561,7 @@ end
 
 % rounds the values to the nearest decimal
 if isRound
-    tMin = roundP(tMin,0.01);
+    tMin = roundP(tMin,0.001);
 end
 
 % --- updates the experiment block object properties

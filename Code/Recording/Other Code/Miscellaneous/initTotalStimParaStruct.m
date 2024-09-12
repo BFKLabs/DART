@@ -5,5 +5,5 @@ function iStim = initTotalStimParaStruct()
 sStr = struct('sRate',[]);
 iStim = struct('oPara',sStr,'nDACObj',0,'nChannel',[],'ID',[]);
 
-% sets the firing frequency of the device (obsolete?)
-iStim.oPara.sRate = 50;
+% sets the firing frequency of the device (used for stimuli timer)
+iStim.oPara.sRate = 1000;
