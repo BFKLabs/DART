@@ -41,7 +41,7 @@ if ~verLessThan('matlab','9.2')
     set(hObject,'Renderer','painters')
 end
 
-% creates the load bar
+% creates the load bar,'
 if length(varargin) < 2
     h = ProgressLoadbar('Initialising Tracking GUI...');
     pause(0.05);

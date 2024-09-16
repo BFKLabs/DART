@@ -56,7 +56,7 @@ classdef BlobCNNMenus < dynamicprops & handle
                 metaprop.GetMethod = @(obj)GetDispatch(obj, propname{1});
             end
             
-        end        
+        end
         
         % --- initialises the class fields
         function initClassFields(obj)

@@ -32,11 +32,12 @@ classdef SingleTrackInitAuto < SingleTrackInit
     
     % class methods
     methods
+        
         % class constructor
         function obj = SingleTrackInitAuto(iData)
             
             % creates the super-class object
-            obj@SingleTrackInit(iData);
+            obj@SingleTrackInit(iData,false);
             
             % sets the auto-detection flag
             obj.isAutoDetect = true;

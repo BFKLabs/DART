@@ -206,7 +206,7 @@ classdef BlobCNNParaDialog < dynamicprops & handle
             % creates the network parameter panel
             pPosP = [obj.dX*[1,1],obj.widPanelP,obj.hghtPanel];
             obj.hPanelP = createUIObj('panel',obj.hFig,...
-                'Title','','Position',pPosP);            
+                'Title','','Position',pPosP);
 
             % ---------------------------- %
             % --- CONTROL BUTTON PANEL --- %
