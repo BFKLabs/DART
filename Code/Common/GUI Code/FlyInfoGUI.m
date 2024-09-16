@@ -579,7 +579,7 @@ classdef FlyInfoGUI < handle
             if ~isfield(obj.snTot,'cID'); return; end
             
             % field retrieval
-            szArr = size(DataArr0);
+            szArr = size(DataArr);
             pC0 = cell2mat(obj.snTot.cID(:));           
             
             % sets the row/column indices of the known sub-regions
