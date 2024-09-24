@@ -172,7 +172,7 @@ public class RowNumberTable extends JTable
             } else if (Type == 1) {
                 typeStr = "Row #";                
             } else {
-				typeStr = "Moo #";
+				typeStr = "#";
             }
             
 			setHorizontalAlignment(JLabel.CENTER);
