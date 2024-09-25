@@ -715,7 +715,8 @@ if isa(eventdata,'matlab.ui.eventdata.ActionData')
     hFig.isBatch = false;
 end
 
-% retrieves the image data/mesh structs
+% field retrieval and other initialisations
+lStr = 'Loading Solution File...';
 [iData0,iData] = deal(get(hFig,'iData'));
 hProp0 = getHandleSnapshot(handles); 
 
@@ -740,9 +741,17 @@ end
 iData.sfData = dir(fullfile(fDir,fName));
 iData.sfData.dir = fDir;
 
-% creates a loadbar
 if ~isempty(hObject)
-    h = ProgressLoadbar('Loading Solution File...');
+    % determines if there are any existing progress loadbars
+    h = findall(0,'tag','__progressbar__');
+    if isempty(h)    
+        % if not, then create a new one
+        closeLB = true;
+        h = ProgressLoadbar(lStr);
+    else
+        closeLB = false;
+        set(findobj(h,'Style','Text'),'String',lStr);
+    end        
 end
 
 % opens the solution file
@@ -884,7 +893,7 @@ else
 end
 
 % closes the loadbar (for opening solution file directly only)
-if ~isempty(hObject)
+if ~isempty(hObject) && closeLB
     try delete(h); catch; end
 end
 
@@ -1124,7 +1133,10 @@ StimInfo(handles)
 function menuViewProgress_Callback(hObject, ~, handles)
 
 % global variables
-global isDetecting isBatch
+global isDetecting
+
+% field retrieval
+hFig = handles.output;
 
 % creates/deletes the solution tracking GUI (depending on state)
 if strcmp(get(hObject,'checked'),'off')
@@ -1136,8 +1148,7 @@ if strcmp(get(hObject,'checked'),'off')
     if ~isempty(hPrev); delete(hPrev); end
     
     % creates the solution tracking GUI   
-    set(handles.output,'hSolnT',FlySolnView(handles));
-    iMov = get(handles.output,'iMov');
+    set(hFig,'hSolnT',FlySolnView(handles));
     
     % closes the loadbar    
     try close(h); catch; end
@@ -1146,10 +1157,15 @@ if strcmp(get(hObject,'checked'),'off')
     set(hObject,'checked','on') 
     
     % if detecting, then check the show marker
-    if isDetecting || isBatch
+    if isDetecting || hFig.isBatch
+        % enables the tube/marker checkbox markers
         setObjEnable(handles.checkShowMark,'on')
         setObjEnable(handles.checkShowTube,'on')
-        if iMov.calcPhi; setObjEnable(handles.checkShowAngle,'on'); end
+        
+        % case is directions have been calculated
+        if hFig.iMov.calcPhi
+            setObjEnable(handles.checkShowAngle,'on'); 
+        end
         
         % updates the display image
         dispImage(handles)        
@@ -1157,16 +1173,16 @@ if strcmp(get(hObject,'checked'),'off')
 else
     % attempts to delete the solution tracking GUI
     try
-        delete(handles.output.hSolnT)
+        delete(hFig.hSolnT)
     catch
     end    
     
     % removes the check and GUI handle
     set(hObject,'checked','off')
-    set(handles.output,'hSolnT',[])
+    set(hFig,'hSolnT',[])
     
     % if detecting, then remove the show marker
-    if isDetecting || isBatch
+    if isDetecting || hFig.isBatch
 %         % updates the GUI object properties
 %         set(setObjEnable(handles.checkShowMark,'off'),'value',0)
 %         set(setObjEnable(handles.checkShowTube,'off'),'value',0)
@@ -2511,18 +2527,7 @@ while (iFrm + cStp) <= hFig.iData.nFrm
             
         % otherwise, update the frame counter
         iFrm = iFrm + cStp;
-        set(handles.frmCountEdit,'string',num2str(iFrm));                
-        
-        % if there is no new image then exit
-        ImgNw = getDispImageFast(hFig,iFrmR,isSub);        
-        if isempty(ImgNw)
-            isComplete = true;
-            jToggle.setSelected(false);
-            return 
-        else
-            % updates the main image and marker
-            hFig.hImg.CData = uint8(ImgNw);            
-        end                
+        set(handles.frmCountEdit,'string',num2str(iFrm));                        
         
         % updates the markers (if available)
         if handles.checkShowMark.Value
@@ -2530,8 +2535,20 @@ while (iFrm + cStp) <= hFig.iData.nFrm
         end        
         
         % refreshes the screen
-        drawnow limitrate        
+%         refreshdata(handles.imgAxes);
+        drawnow
+        pause(0.01);
         
+        % if there is no new image then exit
+        ImgNw = getDispImageFast(hFig,iFrmR,isSub);
+        if isempty(ImgNw)
+            isComplete = true;
+            jToggle.setSelected(false);
+            return
+        else
+            % updates the main image and marker
+            hFig.hImg.CData = uint8(ImgNw);
+        end        
     end
     
 end

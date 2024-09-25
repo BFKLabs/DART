@@ -21,6 +21,7 @@ classdef SavePartVideo < handle
         fPath
         nFPS
         ivProf
+        nPath0
         nPath = 1;
         
         % object handle fields
@@ -119,7 +120,7 @@ classdef SavePartVideo < handle
     end
     
     % class methods
-    methods                
+    methods
         
         % --- class constructor
         function obj = SavePartVideo(hFigM)
@@ -148,6 +149,7 @@ classdef SavePartVideo < handle
             obj.nFrmT = obj.hFigM.iData.nFrm;
             obj.nFPS = obj.hFigM.iData.exP.FPS;
             obj.T = obj.hFigM.iData.Tv(iData.Frm0:sRate:end);            
+            obj.nPath0 = obj.hFigM.iMov.nPath;
             
             % sets the start/frame indices
             obj.iFrm1 = 1;
@@ -170,6 +172,9 @@ classdef SavePartVideo < handle
             obj.fcnI = obj.hFigM.dispImage;
             obj.fcnLV = obj.hFigM.checkLocalView_Callback;
             obj.fcnSM = obj.hFigM.checkShowMark_Callback;
+           
+            % turns the warning off (mp4 format)
+            warning('off','MATLAB:audiovideo:VideoWriter:mp4FramePadded');
             
             % ------------------------------------- %
             % --- OBJECT DIMENSION CALCULATIONS --- %
@@ -485,8 +490,11 @@ classdef SavePartVideo < handle
             
             % ensures the path length is set correctly
             if obj.useTrack
-                a = 1;
+                obj.hFigM.mkObj.iMov.nPath = obj.nPath;
             end
+            
+            % makes the dialog window invisible
+            setObjVisibility(obj.hFig,0);
             
             % other pre-calculations
             wStr0 = 'Video Output';
@@ -513,6 +521,16 @@ classdef SavePartVideo < handle
                     % closes and deletes the video file
                     close(vObj)
                     delete(obj.fPath);
+               
+                    % resets the path length
+                    if obj.useTrack
+                        obj.hFigM.mkObj.iMov.nPath = obj.nPath0;
+                        obj.fcnI(obj.hGUIM);                        
+                    end
+                    
+                    % makes the dialog window visible again
+                    setObjVisibility(obj.hFig,1);
+                    figure(obj.hFig);
                     
                     % exits the function
                     return
@@ -528,7 +546,17 @@ classdef SavePartVideo < handle
             end                        
                         
             % closes the video object
-            close(vObj)            
+            close(vObj)
+            
+            % resets the path length (if using track length)
+            if obj.useTrack
+                obj.hFigM.mkObj.iMov.nPath = obj.nPath0;
+                obj.fcnI(obj.hGUIM);
+            end            
+            
+            % makes the dialog window visible again
+            setObjVisibility(obj.hFig,1);
+            figure(obj.hFig);
             
             % closes the loadbar (if still open)
             if ~hProg.Update(1,'Video Output Complete!',1)

@@ -138,10 +138,12 @@ classdef TrackMarkerObj < dynamicprops & handle
             hMarkPr = findall(obj.hAx,'tag','hMark');
             if ~isempty(hMarkPr); delete(hMarkPr); end
             
+            % retrieves the marker properties
+            [~,~,~,mShape,mSize] = obj.objB.getMarkerProps();
+            
             % creates the marker object
-            obj.hMark = patch(obj.hAx,NaN,NaN,NaN,...
-                'EdgeColor','interp','Marker','.','MarkerSize',20,...
-                'tag','hMark');
+            obj.hMark = patch(obj.hAx,NaN,NaN,NaN,'EdgeColor','interp',...
+                'Marker',mShape,'MarkerSize',mSize,'tag','hMark');
             
         end
 
@@ -259,8 +261,9 @@ classdef TrackMarkerObj < dynamicprops & handle
             end
             
             % sets the colour data vector
+            xiP = 1:length(fPos);
             obj.cP{iApp} = cell2mat(cellfun(@(x,y)(x*ones(...
-                size(y,1)+1,1)),num2cell(fStatus(:)),fPos(:),'un',0));
+                size(y,1)+1,1)),num2cell(fStatus(xiP)),fPos(:),'un',0));
             
         end
         
@@ -356,6 +359,7 @@ classdef TrackMarkerObj < dynamicprops & handle
         function delete(obj)
             
             delete(obj.hMark)
+            obj.hMark = [];
             
         end        
         

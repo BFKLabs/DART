@@ -320,8 +320,19 @@ classdef VideoPhase < handle
             
             % updates the progressbar
             obj.updateSubProgField('Determining Video Translation',0.25);
-            ImgHM = cellfun(@(x)(applyHMFilter(x)),obj.Img0([i0,i1]),'un',0);
-            pOfs0 = obj.estImgOffset(ImgHM{2},ImgHM{1});
+            
+            % performs histogram matching on the images (image to be
+            % matched is furtherest away from mid-image range)
+            ImgE = obj.Img0([i0,i1]);
+            dImgMu = abs(cellfun(@(x)(mean(x(:))),ImgE) - 128);                        
+            if argMin(dImgMu) == 2
+                ImgE{1} = obj.histMatchImage(ImgE{1},ImgE{2});                
+            else
+                ImgE{2} = obj.histMatchImage(ImgE{2},ImgE{1});
+            end
+            
+            % calculates the image offset
+            pOfs0 = obj.estImgOffset(ImgE{2},ImgE{1});
             
             % if there is significant translation, then determine which
             % regions have significant shift
@@ -1614,6 +1625,13 @@ classdef VideoPhase < handle
             Ihm = 255*normImg(Ihm - min(Ihm(:)));
             
         end    
+        
+        % --- performs the image histogram matching
+        function Ihm = histMatchImage(I,Iref)
+            
+            Ihm = double(imhistmatch(uint8(I),uint8(Iref)));
+            
+        end
         
     end
     

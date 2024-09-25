@@ -333,7 +333,7 @@ switch (typeStr)
         if ~isempty(pData)
             % case is the fly locations have been calculated
             setDetectEnable(handles,'on')    
-            if ~pData.calcPhi
+            if ~isfield(pData,'calcPhi') || ~pData.calcPhi
                 setDetectEnable(handles,'off',3)    
             end
         elseif initDetectCompleted(iMov)
@@ -497,8 +497,7 @@ switch (typeStr)
         
         % enables the movie selection buttons
         setSubMovEnable(handles);    
-        setMovEnable(handles,'on');
-        setMenuEnable(handles,'off',1)
+        setMovEnable(handles,'on');        
         setMenuEnable(handles,'on',2)                 
         setDetectEnable(handles,'on',[1 4])
         set(handles.checkShowTube,'value',1)
@@ -509,6 +508,7 @@ switch (typeStr)
         if (nargin == 2)
             % resets the status flag 
             iData.Status = 0;
+            setMenuEnable(handles,'off',1)
             setDetectEnable(handles,'off',[2 3 5])
             set(hFig,'iData',iData,'pData',[]);        
         end                

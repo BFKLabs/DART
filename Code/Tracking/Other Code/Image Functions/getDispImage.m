@@ -88,7 +88,8 @@ if ~frameSet
             end
                
             % reads the new image (converts to grayscale if truecolor)
-            Img = read(mObj,cFrmT); 
+            mObj.CurrentTime = cFrmT/mObj.FrameRate;
+            Img = readFrame(mObj,'native'); 
             if (size(Img,3) == 3) && ~useRGB
                 Img = rgb2gray(Img); 
             end            

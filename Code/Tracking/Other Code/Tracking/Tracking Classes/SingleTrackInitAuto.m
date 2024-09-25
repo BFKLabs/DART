@@ -173,39 +173,39 @@ classdef SingleTrackInitAuto < SingleTrackInit
             % --- DETECTION ESTIMATION CALCULATIONS --- %
             % ----------------------------------------- %
             
-            obj.calcAllRegionProps(IL,IR)            
+%             obj.calcAllRegionProps(IL,IR)            
             
-%             try
-%                 % resets the moving blobs
-%                 obj.detectMovingBlobAuto(IR);
-%             catch ME
-%                 % if there was an error then store the details
-%                 obj.errStr = 'moving object tracking';
-%                 [obj.errMsg,obj.calcOK] = deal(ME.message,false);
-%                 return                
-%             end            
-%             
-%             try
-%                 % sets up the automatic blob template
-%                 obj.setupBlobTemplateAuto(IL)
-%             catch ME
-%                 % if there was an error then store the details
-%                 obj.errStr = 'object template calculation';
-%                 [obj.errMsg,obj.calcOK] = deal(ME.message,false);
-%                 return                
-%             end
-%               
-%             try
-%                 % optimises the grid placements
-%                 obj.optGridVertPlacement(IL,IR);
-%                 obj.optGridHorizPlacement(IR);  
-%                 
-%             catch ME
-%                 % if there was an error then store the details
-%                 obj.errStr = 'grid placement optimisation';
-%                 [obj.errMsg,obj.calcOK] = deal(ME.message,false);
-%                 return                
-%             end            
+            try
+                % resets the moving blobs
+                obj.detectMovingBlobAuto(IR);
+            catch ME
+                % if there was an error then store the details
+                obj.errStr = 'moving object tracking';
+                [obj.errMsg,obj.calcOK] = deal(ME.message,false);
+                return                
+            end            
+            
+            try
+                % sets up the automatic blob template
+                obj.setupBlobTemplateAuto(IL)
+            catch ME
+                % if there was an error then store the details
+                obj.errStr = 'object template calculation';
+                [obj.errMsg,obj.calcOK] = deal(ME.message,false);
+                return                
+            end
+              
+            try
+                % optimises the grid placements
+                obj.optGridVertPlacement(IL,IR);
+                obj.optGridHorizPlacement(IR);  
+                
+            catch ME
+                % if there was an error then store the details
+                obj.errStr = 'grid placement optimisation';
+                [obj.errMsg,obj.calcOK] = deal(ME.message,false);
+                return                
+            end            
             
             % final progressbar update
             obj.hProg.Update(2+obj.wOfsL,'Grid Detection Complete',1);
@@ -371,7 +371,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
             okIR = (pIR >= obj.pIRTol) & (pIRN >= obj.pIRTolN);
             
             % determines the feasible regions
-            ok = setGroup(obj.fOK,[1,nApp]) & okIR;            
+            ok = setGroup(obj.fOK(:),[1,nApp]) & okIR;            
             
             % --------------------------------------- %
             % --- INITIAL GRID SPACING ESTIMATION --- %

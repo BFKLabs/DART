@@ -691,7 +691,11 @@ classdef TrackMarkerClass < MarkerClass
                 end
             else
                 % case is single fly tracking
-                if ~(obj.iMov.flyok(j,i) && obj.iMov.ok(i))
+                if ~exist('i','var') || ~exist('j','var')
+                    % case is initialising (after grid setting)
+                    Status = 0;
+                
+                elseif ~(obj.iMov.flyok(j,i) && obj.iMov.ok(i))
                     % case is the fly has been rejected
                     [Status,obj.iMov.Status{i}(j)] = deal(3);
 
