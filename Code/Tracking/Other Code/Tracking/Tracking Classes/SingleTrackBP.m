@@ -171,6 +171,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                             break
                         end
                     end
+                catch
                 end
 
                 % increments the frame counter
@@ -270,7 +271,8 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         % --- starts running the batch processing 
         function startBatchProcessing(obj)
             
-            % resets the global flag
+            % resets the calculation/batch processing flags
+            obj.calcOK = true;
             obj.hFig.isBatch = true;            
             
             % sets up the waitbar figure fields
@@ -282,7 +284,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                        'Sub-Image Stack Reading'};
                    
             % removes the top line if not
-            if ~obj.isMultiBatch
+            if ~obj.isMultiBatch && ~obj.isMltTrk
                 obj.wStr = obj.wStr([1,3:end]);            
             end
                    
@@ -347,23 +349,43 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             
             % if there was an error 
             if ~obj.calcOK
-                % determines if there are any valid solution files in the
-                % first batch processing directory
-                fDir = obj.getSolnFileDir(1);
-                sName = dir(fullfile(fDir,'*.soln'));
-                if ~isempty(sName)
-                    % if there are solution files in the directory, then 
-                    % set the first solution file as that being loaded
-                    e = struct('fDir',fDir,'fName',sName(1).name);
-
-                    % opens and displays the solution file 
-                    obj.menuOpenSoln(obj.hGUI.menuOpenSoln, e, obj.hGUI)        
-                    obj.dispImage(obj.hGUI)  
+                if isempty(obj.iData0)
+                    % determines if there are any solution files
+                    fDir = obj.getSolnFileDir(1);
+                    sName = dir(fullfile(fDir,'*.soln'));
+                    isReset = ~isempty(sName);
                     
-                else                    
+                    % if there are files, then use the first file
+                    if isReset
+                        fName = sName(1).name;
+                    end
+                    
+                else
+                    % sets the original directory/file names
+                    fDir = obj.iData0.sfData.dir;
+                    fName = obj.iData0.sfData.name;
+                    
+                    % determines if the original/current files match (if
+                    % not, then reset to the original)
+                    sFile0 = fullfile(fDir,fName);
+                    sFileC = fullfile(obj.iData.sfData.dir,...
+                                      obj.iData.sfData.name);
+                    isReset = ~isequal(sFile0,sFileC);
+                end
+                    
+                % determines if the solution file reset is required
+                if isReset
+                    % if the current solution file doesn't match the
+                    % original, then reload the original
+                    e = struct('fDir',fDir,'fName',fName);
+                    obj.menuOpenSoln(obj.hGUI.menuOpenSoln,e,obj.hGUI)
+
+                    % opens and displays the solution file         
+                    obj.dispImage(obj.hGUI)
+                else
                     % otherwise, reset to the original GUI properties
-                    resetHandleSnapshot(obj.hProp0,obj.hFig); 
-                end        
+                    resetHandleSnapshot(obj.hProp0,obj.hFig);
+                end
             end                        
 
             % updates the GUI properties
@@ -380,7 +402,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             end    
             
             % resets the global flag
-            isBatch = false;
+            obj.hFig.isBatch = false;
             
         end                    
         
@@ -410,7 +432,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             obj.iFile0 = obj.detectStartPoint(obj.iData0.exP,iDir);
             if isnan(obj.iFile0)
                 % if the user cancelled, then exit the function
-                ok = false;
+                [ok,obj.calcOK] = deal(false);                
                 return
                 
             else
@@ -495,15 +517,20 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                             ok = false;
                             return
                         end
-                    end
+                    end                    
 
-                    % reloads the current movie and resets the parameters 
+                    % creates a loadbar figure
+                    obj.hProg.setVisibility(0);
+                    hLB = ProgressLoadbar('Setting Up Video Object...');
+                    
+                    % reloads the current movie and resets the parameters                     
                     obj.reloadImgData(iDir,i)
                     
                     % if the next video is valid, then segment the video
                     if obj.bData(iDir).movOK(i)
                         % creates/opens a new solution file
-                        obj.openNewSolnFile(iDir,i)
+                        obj.openNewSolnFile(iDir,i);
+                        try delete(hLB); catch; end
                         
                         % first file post-solution loading operations
                         if isInit
@@ -551,14 +578,13 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                                 pause(0.05);       
 
                                 % updates the sub-region data struct
-                                hFigM = obj.hGUI.output;
-                                iMovT = get(hFigM,'iMov');
-                                set(hFigM,'iMov',obj.iMov);
+                                iMovT = obj.hFig.iMov;
+                                set(obj.hFig,'iMov',obj.iMov);
                                 set(hTrack,'iMov',obj.iMov);
 
                                 % attempts to updates the solution view GUI
                                 hTrack.initFunc(guidata(hTrack),1)
-                                set(hFigM,'iMov',iMovT,'hSolnT',hTrack)
+                                set(obj.hFig,'iMov',iMovT,'hSolnT',hTrack)
 
                                 % pause to refresh
                                 pause(0.05);
@@ -627,7 +653,12 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                         % ensures the orientation angle flag has been set
                         if ~isfield(obj.pData,'calcPhi') 
                             obj.pData.calcPhi = false; 
-                        end                                
+                        end                        
+                        
+                    else
+                        % otherwise, delete the progressbar
+                        try delete(hLB); catch; end
+                        obj.hProg.setVisibility(1);
                     end
                 end                                               
                 
@@ -657,9 +688,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             
             % clears the major class fields from the tracking objects
             fldStr = {'iMov','iMov0','iData0','pData0','p0Pr'};
-            for i = 1:length(fldStr)
-                set(obj,fldStr{i},[]);
-            end            
+            cellfun(@(x)(set(obj,x,[])),fldStr);
             
 %             % outputs to screen any videos that were invalid
 %             obj.outputInvalidVideosMsg();
@@ -1164,7 +1193,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         function updateVideoInfo(obj,iDir)
             
             % clears java memory stack
-            try; jheapcl; end
+            try jheapcl; catch; end
 
             % scans the movie directory to see if new videos have turned
             % up. if so then reset the movie file name array and file count        
@@ -1369,11 +1398,11 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                     if nFileNw > 0
                         % prompt the user for the start video
                         iFile0 = obj.promptUserCont(sName,iDir,nFileNw);                        
-                        if isnan(iFile0)
-                            % if the user cancelled, then reload the 
-                            % original solution file
-                            obj.resetObjProps();                             
-                        end
+%                         if isnan(iFile0)
+%                             % if the user cancelled, then reload the 
+%                             % original solution file
+%                             obj.resetObjProps();                             
+%                         end
                     end
                 end                
             end            
@@ -1496,14 +1525,18 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             % determines if the summary file exists
             if exist(obj.outSumm,'file')
                 % if so compare the time stamps to see if they match
-                isOK = false;
-                for i = 1:obj.nRetry
-                    try
-                        [a0,a1] = deal(load(bdata.sName),load(obj.outSumm));
-                        isOK = true;
-                        break
-                    catch
-                        pause(1)
+                isOK = false;                
+                if exist(bdata.sName,'file')
+                    % only compare if the original summary file exists
+                    for i = 1:obj.nRetry
+                        try
+                            a0 = load(bdata.sName);
+                            a1 = load(obj.outSumm);
+                            isOK = true;
+                            break
+                        catch
+                            pause(1)
+                        end
                     end
                 end
                 
@@ -1585,7 +1618,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         end
         
         % --- reloads the image data struct with the movie, mName --- %
-        function reloadImgData(obj,varargin)
+        function reloadImgData(obj,varargin)        
             
             % sets the input variables (based on input argument count)
             if nargin == 3
@@ -1735,7 +1768,8 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             end
             
             % re-saves the batch processing data file
-            eval(sprintf('save(''%s'',''bData'')',obj.bFile))
+            save(obj.bFile,'bData')
+%             eval(sprintf('save(''%s'',''bData'')',obj.bFile))
             
         end    
         
@@ -1758,7 +1792,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             % loops through all the apparatus checking if the tube statuses
             % have been set correctly. if not, then update the statuses to 
             % reflect the previous
-            for j = 1:find(obj.iMov.ok(:)')
+            for j = find(obj.iMov.ok(:)')
                 % determines 
                 [iCol,~,iRow] = getRegionIndices(obj.iMov,j);
                 ii0 = (StatusNw{j} ~= 3) & (StatusPr{j} == 3);
@@ -1857,8 +1891,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         % --- outputs a message listing the invalid videos (if any) 
         function outputInvalidVideosMsg(obj)
            
-            % FINISH ME!
-            a = 1;
+
             
         end        
 

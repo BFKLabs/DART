@@ -6,18 +6,24 @@ switch fExtn
     case {'.mj2','.mov','.mp4','.avi'}
         
         % determines the final frame count (some frames at the
-        % end of videos sometimes are dodgy...)        
-        nFrmT = mObj.NumberOfFrames;        
-        while 1            
+        % end of videos sometimes are dodgy...)
+        iOfs = 1;        
+        while 1  
+            % resets the video object current time
+            mObj.CurrentTime = mObj.Duration - iOfs/mObj.FrameRate;
+            
             try 
-                % reads a new frame. 
-                I = read(mObj,nFrmT);
+                % reads a new frame from the current time 
+                readFrame(mObj);
                 break
             catch
-                % if there was an error, reduce the frame count
-                nFrmT = nFrmT - 1;
+                % if there was an error, the increment the frame count
+                iOfs = iOfs + 1;
             end
         end
+        
+        % sets the final frame
+        nFrmT = round(mObj.CurrentTime*mObj.FrameRate);
         
     case '.mkv'
         

@@ -284,6 +284,11 @@ classdef SingleTrackInitHT1 < handle
                 end
             end
             
+            % runs the batch processing perform check (if necessary)
+            if obj.trObj.isBatch
+                obj.trObj.performBatchProcessCheck();
+            end
+
             % -------------------------------------------- %
             % --- POST TRAINING/DETECTION CALCULATIONS --- %
             % -------------------------------------------- %           

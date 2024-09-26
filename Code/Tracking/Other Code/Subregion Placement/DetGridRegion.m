@@ -61,7 +61,7 @@ classdef DetGridRegion < handle
         end
         
         % --- retrieves the video phase information
-        function getVideoPhaseInfo(obj)            
+        function getVideoPhaseInfo(obj)
             
             % runs the phase detection solver    
             if obj.hFig.isCalib

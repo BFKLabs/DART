@@ -565,15 +565,13 @@ classdef SingleTrackInit < SingleTrack
                 % case is there are no special phases
                 obj.interPhasePosMatch();
                 obj.hCQ = obj.expandImageArray(obj.frObj.hC);
-            end                                                     
+            end   
             
             % calculates the overall quality of the flies (prompting the
             % user to exclude any empty/anomalous regions)
-%             if ~obj.isBatch
-                if any(obj.getFeasPhase([1,2,4]))
-                    obj.calcOverallQuality()
-                end
-%             end
+            if any(obj.getFeasPhase([1,2,4]))
+                obj.calcOverallQuality()
+            end
             
             % if the user cancelled, then exit the function
             if ~obj.calcOK
@@ -606,7 +604,6 @@ classdef SingleTrackInit < SingleTrack
                 obj.iMov.szObj = obj.bSzT*[1,1];
                 
                 % calculates background image estimates (for feasible phases)
-                %             okPh = obj.getFeasPhase(1:2);
                 for iPh = find(okPh(:)')
                     % updates the progressbar
                     wStrNw = sprintf('Analysing Phase (%i of %i)',iPh,nPh);
@@ -709,7 +706,8 @@ classdef SingleTrackInit < SingleTrack
                 % sets up the raw/residual image stacks
                 for i = find(noTemp(:)')
                     % update the waitbar figure
-                    wStr = sprintf('Analysing Region (%i of %i)',i,obj.nApp);
+                    wStr = sprintf(...
+                        'Analysing Region (%i of %i)',i,obj.nApp);
                     if obj.UpdatePB([2,-1],wStr,i/obj.nApp)
                         % if the user cancelled, then exit
                         obj.calcOK = false;
@@ -725,6 +723,11 @@ classdef SingleTrackInit < SingleTrack
                         obj.setStackProcessInfo(iPh,i);
                     end
                 end                
+            end
+
+            % runs the batch processing performance check (if required)
+            if obj.isBatch
+                obj.performBatchProcessCheck();
             end
             
         end
@@ -751,7 +754,7 @@ classdef SingleTrackInit < SingleTrack
             
         end
         
-        % --- calculates the final diagnostic check
+        % --- runs the final diagnostic performance check
         function performFinalDiagnosticCheck(obj)
             
             % calculates the max metric values (grouped by region/metric)
@@ -801,6 +804,49 @@ classdef SingleTrackInit < SingleTrack
             
         end
         
+        % --- runs the batch processing performance check
+        function performBatchProcessCheck(obj)
+
+            % if there is no previous data, then exit
+            if isempty(obj.prData0); return; end
+
+            % field retrieval            
+            okPh = obj.getFeasPhase([1:2,4]);
+            fP0 = obj.fPosL{okPh(1)}(:,1);
+            xiF = num2cell(obj.nTube(:)',1);
+            [iR,iC,iRT] = deal(obj.iMov.iR,obj.iMov.iC,obj.iMov.iRT);
+
+            % sets up the acceptance flag arrays
+            fOK = num2cell(obj.iMov.flyok,1);
+            fOK = cellfun(@(x,y)(x(1:y)),fOK,xiF,'un',0);
+
+            % determines if any valid flies have not been calculated
+            hasN = cellfun(@(x,y)(isnan(x(:,1)) & y),fP0,fOK(:),'un',0);
+            for i = find(cellfun(@any,hasN(:)'))
+                % for the "missing" flies, use the previous location from
+                % the last file to use instead
+                for j = find(hasN{i}(:)')
+                    % retrieves the previous frame values
+                    fPprL = obj.prData0.fPosPr{i}{j}(end,:);
+                    fPpr = fPprL + ([iC{i}(1),iRT{i}{j}(1)] - 1);
+
+                    % resets coordinates/flags for each phase
+                    for iPh = 1:obj.nPhase
+                        % fly coordinate reset (local/global coords)
+                        for k = 1:length(obj.Img{iPh})
+                            obj.fPosL{1}{i,k}(j,:) = fPprL;
+                            obj.fPos{1}{i,k}(j,:) = fPpr;
+                        end
+
+                        % resets the other flags
+                        obj.sFlag{iPh}(j,i) = 1;
+                        obj.mFlag{iPh,i}(j) = 1;
+                    end                        
+                end
+            end
+
+        end
+
         % -------------------------------- %
         % --- STATUS FLAG CALCULATIONS --- %
         % -------------------------------- %

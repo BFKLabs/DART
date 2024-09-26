@@ -170,7 +170,7 @@ if isOK
                     switch varargin{2}
                         case 'Full'
                             % field retrieval
-                            hFig = varargin{1}.figFlyTrack;
+                            hFig = findall(0,'tag','figFlyTrack');
                             mtObj = hFig.mtObj;                            
                             
                             % retrieves the parallel processing flag

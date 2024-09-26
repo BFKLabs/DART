@@ -739,7 +739,7 @@ classdef BlobCNNTrain < dynamicprops & handle
             BS = false(obj.szG);
             BC = cell(obj.nFrm,1);            
             obj.objC.pNet = obj.pNet;            
-            isS = cellfun(@(x)(x == 2),obj.sFlagT,'un',0);
+            [isS,isS0] = deal(cellfun(@(x)(x == 2),obj.sFlagT,'un',0));
 
             % field resetting/update
             iPhaseTot = 2 + 3*obj.hProgT.isTrain;
@@ -821,7 +821,9 @@ classdef BlobCNNTrain < dynamicprops & handle
                 % ---------------------------- %                
 
                 % sets up and runs the classification neighbourhood search
-                BC{iFrm} = obj.objC.runNeighbourhoodSearch(ICh,fP);                
+                if ~isempty(fP)
+                    BC{iFrm} = obj.objC.runNeighbourhoodSearch(ICh,fP);
+                end
                 
                 % sets the classified image mask for the stationary regions
                 for i = 1:obj.nApp
@@ -831,13 +833,33 @@ classdef BlobCNNTrain < dynamicprops & handle
                             BCL{i}{j} = cell(obj.nFrm,1);
                         end
                         
-                        % updates the binary mask
+                        % retrieves the sub-region classified binary mask 
                         [iRS,iCS] = obj.getRegionIndices(i,j);
-                        BCL{i}{j}{iFrm} = BC{iFrm}(iRS,iCS);
-                        BS(iRS,iCS) = BS(iRS,iCS) | BC{iFrm}(iRS,iCS);
+                        BCnw = BC{iFrm}(iRS,iCS);
+                        if any(BCnw(:))
+                            % if the fly has been classified, then updates
+                            % the binary mask for the sub-region
+                            BCL{i}{j}{iFrm} = BCnw;
+                            BS(iRS,iCS) = BS(iRS,iCS) | BC{iFrm}(iRS,iCS);
 
-                        % sets the stationary binary blobs
-                        iGrpS{i}{j} = cell2mat(getGroupIndex(BS(iRS,iCS)));
+                            % sets the stationary binary blobs
+                            iGrpS{i}{j} = ...
+                                cell2mat(getGroupIndex(BS(iRS,iCS)));
+
+                        else
+                            % if the model can't classify, and not the
+                            % first frame, then use previous frame values                            
+                            if iFrm == 1
+                                % remove the post-classification flag
+                                isS0{i}(j) = false;
+
+                                % resets the movement flag to unknown
+                                obj.mFlag{1,i}(j) = 0;
+                            end
+
+                            % flag that the region won't be searched
+                            isS{i}(j) = false;
+                        end
                     end
                 end                            
                 
@@ -852,7 +874,7 @@ classdef BlobCNNTrain < dynamicprops & handle
             
             % sets the classified image mask for the stationary regions
             for i = 1:obj.nApp
-                for j = find(isS{i}(:)')                    
+                for j = find(isS0{i}(:)')                    
                     % updates the binary mask
                     [iRS,iCS] = obj.getRegionIndices(i,j);            
                     pOfs = [iCS(1),iRS(1)] - 1;       

@@ -77,13 +77,14 @@ classdef TrackFull < Track
             if obj.isUsingParaProcess()
                 % case is parallel tracking
                 obj.startParaVideoTracking();
+
             else
                 % case is serial tracking
-                obj.startVideoTracking();
-                
-                % runs the post-tracking function
-                obj.hFig.postTrackFunc(obj.hFig,obj.pData,obj.iMov);
+                obj.startVideoTracking();                
             end
+            
+            % runs the post-tracking function
+            obj.hFig.postTrackFunc(obj.hFig,obj.pData,obj.iMov);            
             
         end
         
@@ -374,13 +375,29 @@ classdef TrackFull < Track
                 obj.fObj{1}.nFrmR = obj.sObj.nFrmS;
                 obj.fObj{1}.wOfs = obj.isBatch + obj.isMultiBatch;
                 
+                % batch processing only initialisations
+                if obj.isBatch
+                    % re-initialises parallel workers    
+                    obj.fObj{1}.initParallelWorkers();                    
+                end
+                
+                % sets the positional data struct into the main figure
+                % (this is linked within the MultiTrackParallel object)
+                obj.hFig.pData = obj.pData;                
+                
                 % sets the function handles
+                obj.fObj{1}.pData = obj.pData;
                 obj.fObj{1}.dispImage = obj.dispImage;
 
-                % runs the parallel processing (if available & being used)
+                % start the parallel processing tracking
                 obj.fObj{1}.startVideoTracking(iFrm0);
-            else
-                % deletes the progressbar
+                
+                % post-tracking value retrieval
+                obj.pData = obj.fObj{1}.pData;
+                obj.calcOK = obj.fObj{1}.calcOK;
+                
+            elseif ~obj.isBatch
+                % deletes the progressbar (if not batch processing)
                 obj.hProg.closeProgBar();
             end
             
