@@ -827,7 +827,7 @@ classdef SingleTrackInit < SingleTrack
                 % the last file to use instead
                 for j = find(hasN{i}(:)')
                     % retrieves the previous frame values
-                    fPprL = obj.prData0.fPosPr{i}{j}(end,:);
+                    fPprL = round(obj.prData0.fPosPr{i}{j}(end,:));
                     fPpr = fPprL + ([iC{i}(1),iRT{i}{j}(1)] - 1);
 
                     % resets coordinates/flags for each phase

@@ -108,7 +108,8 @@ classdef Track < matlab.mixin.SetGet
                     while 1
                         % retrieves the new image
                         iFrm(i) = iFrm(i) + diFrm;
-                        Img{i} = obj.getNewImage(i,iFrm(i),nFrm);
+                        Img{i} = ...
+                            obj.slowImageRead(i,iFrm(i),nFrm,nargin<3);
                         
                         % if the image is feasible, then exit the loop
                         if ~all(isnan(Img{i}(:)))
