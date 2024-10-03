@@ -1536,6 +1536,7 @@ setObjEnable(handles.menuSaveFigure,'on')
 % sets the save data menu item
 isOn = ~(isempty(pDataNw.oP) || isempty(pDataNw.oP.yVar));
 setObjEnable(handles.menuSaveData,isOn);
+setObjEnable(handles.menuSave,isOn)
 
 % disables the listboxes
 setObjVisibility(hPara,'on')
