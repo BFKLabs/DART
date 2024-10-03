@@ -4,6 +4,7 @@
 function V = calcBinnedFlyMovement(snTot,T,indB,cP,ind,flyok,varargin)
 
 % determines the non-empty time bins
+cID = snTot.cID{ind};
 jj = cellfun('length',indB) > 1;
 V = cell(length(indB),1);
 
@@ -38,7 +39,7 @@ switch cP.movType
 
     case 'Midline Crossing'
         % case is calculating midline crossing
-        V(jj) = calcMidlineCross(Px,flyok,indB(jj),cP.pWid,cP.tBin);
+        V(jj) = calcMidlineCross(Px,flyok,indB(jj),cP.pWid,cP.tBin,cID);
 end
 
 % converts the binned activity array to the full sized array
@@ -148,18 +149,29 @@ end
 % ----------------------------------------------- %
 
 % --- calculates the movement using the absolute distance
-function N = calcMidlineCross(Px,flyok,indB,pWid,tBin)
+function N = calcMidlineCross(Px,flyok,indB,pWid,tBin,cID)
 
 % the exclusion zone (in pixels) around the mid-line crossing
-xDel = 1;
 tScale = 60/tBin;
 nRow = size(Px,1);
 
-% sets the lower/uppder midline location   
-[PxMn,PxMx] = deal(min(Px(:)),max(Px(:)));     
-P0 = PxMn + pWid*(PxMx - PxMn); 
-xLo = floor(P0)-xDel; 
-xHi = xLo + 2*xDel;
+% determines the column group index for each fly
+[~,~,iC] = unique(cID(:,2),'stable');
+indC = arrayfun(@(x)(find(iC == x)),1:max(iC),'un',0);
+
+%
+for i = 1:length(indC)
+    % sets the min/max values for the column grouping
+    PxMn = min(min(Px(:,indC{i}),[],1));
+    PxMx = max(max(Px(:,indC{i}),[],1));    
+
+    % normalises the coordinates for the grouping
+    Px(:,indC{i}) = (Px(:,indC{i}) - PxMn)/(PxMx - PxMn);
+end
+
+% sets the lower/uppder midline location
+dpWid = 0.5/(PxMx-PxMn);
+[xLo,xHi] = deal(pWid-dpWid,pWid+dpWid);
 
 % determines the indices where the flies move from 
 if (sum(flyok) == size(Px,2))
