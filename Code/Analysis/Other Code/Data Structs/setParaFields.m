@@ -22,7 +22,9 @@ else
     
     % updates the other fields based on the data type
     switch (Type)
-        case ('Time') % case is the time limit parameter struct
+        case ('Time') 
+            % case is the time limit parameter struct
+            
             % memory allocation
             p.Value = struct('Lower',[],'Upper',[],'Name',[]);           
             T0 = floor(vec2sec([0,Value.iExpt(1).Timing.T0(4:end)]));
@@ -41,7 +43,9 @@ else
             % sets the limit fields
             [p.Lim,p.Name,p.Para] = deal([T0,Tf],'Time','pTime');
 
-        case ('Subplot') % case is the time subplot parameter struct           
+        case ('Subplot') 
+            % case is the time subplot parameter struct           
+            
             % memory allocation
             [nCount,spName] = deal(varargin{3},varargin{4});
             [canComb,hasRC] = deal(varargin{5},varargin{6});
@@ -55,7 +59,9 @@ else
             p.Value.Name = spName;
             [p.Lim,p.Name,p.Para] = deal([1 nCount],'Subplot','pSub');  
             
-        case ('Stim') % case is the stimuli response signal selection struct
+        case ('Stim') 
+            % case is the stimuli response signal selection struct
+            
             % set the input arguments
             [pData,pStr,pType] = deal(varargin{3},varargin{4},varargin{5});
             [p.Name,p.Lim,p.Para] = deal('Stim',pType,pStr);
@@ -64,15 +70,20 @@ else
             % calculation parameter struct. if so, then updates the
             % value/parameter strings of the data struct
             if ~isempty(pStr)
-                if strcmp(pStr,'appName')
-                    p.Value = pStr;
-                else
-                    ii = cellfun(@(x)(strcmp(x,pStr)),field2cell(pData.cP,'Para'));
-                    if any(ii)
-                        p.Value = pData.cP(ii).Value{1};   
-                    end            
+                switch pStr
+                    case {'appName','appNameR'}
+                        % special case - region/sub-region names
+                        p.Value = pStr;
+                        
+                    otherwise
+                        % case is the other parameter types
+                        ii = arrayfun(@(x)(strcmp(x.Para,pStr)),pData.cP);
+                        if any(ii)
+                            p.Value = pData.cP(ii).Value{1};
+                        end
                 end
             end
+            
         otherwise
             % case is the other parameter type
             [p.Para,p.Name,p.Value] = deal(varargin{4},varargin{5},Value);

@@ -21,6 +21,16 @@ classdef AnalysisParaClass < handle
         % parameter struct fields
         pData
         
+        % variables scalar fields
+        yOfs
+        Hnew
+        yNew
+        tOfs
+        HObjS
+        wObjNw
+        scrSz
+        hasTab        
+        
         % object dimensioning
         tDay
         pOfs = 5;
@@ -32,19 +42,14 @@ classdef AnalysisParaClass < handle
         dhTabOfs = 10;
         pHght = 25;
         
-        % other array fields
-        pStr = {'Calc','Plot','Sub','Time','StimRes'};
+        % boolean class fields
+        isOK = true;        
         
-        % other scalar fields
-        yOfs
-        Hnew
-        yNew
-        tOfs
-        HObjS
-        wObjNw
-        scrSz
-        hasTab
-        isOK = true;
+        % fixed scalar fields
+        nAppMax = 10;
+
+        % fixed character array fields
+        pStr = {'Calc','Plot','Sub','Time','StimRes'};                
         
     end
     
@@ -1082,7 +1087,7 @@ classdef AnalysisParaClass < handle
                 wObj = cell2mat(retObjDimPos(hObjNw(2:3),3)');    
                 wObjOfs = roundP((obj.wObjNw - sum(wObj))/2,1) - 2*lObj(1);                           
 
-                % resets the panel/object positions    )    
+                % resets the panel/object positions    
                 for i = 2:3
                     for j = 1:length(hObjNw{i})
                         resetObjPos(hObjNw{i}{j},...
@@ -1471,7 +1476,7 @@ classdef AnalysisParaClass < handle
             
             % calculates the new subplot panel height dimension
             pPos = get(hP,'position');
-            Htab = calcTableHeight(nApp,0,Value.hasRC); 
+            Htab = calcTableHeight(min(nApp,obj.nAppMax),0,Value.hasRC); 
             obj.Hnew = Htab + 2*obj.pOfs + cOfs;            
                         
             % creates the objects for the row/column input
@@ -1622,15 +1627,24 @@ classdef AnalysisParaClass < handle
                         pVal = obj.pData.sP(3).Lim;
                     end
                 else
-                    pVal = 1;
+                    pVal = obj.pData.sP(3).Lim;
                 end                
                 
                 % other initialisations
-                [hObjNw,cOfs] = deal(cell(2,1),obj.hOfs);                    
-                lStr = snTotL.iMov.pInfo.gName;
-                if obj.pData.useAll
-                    lStr = [lStr;{'All Genotypes'}];
-                end                
+                [hObjNw,cOfs] = deal(cell(2,1),obj.hOfs);
+                
+                % sets the popupmenu list items
+                if detMltTrkStatus(snTotL.iMov)
+                    % case is multi-tracking
+                    lStr = obj.pData.appName;
+                    
+                else
+                    % case is single-tracking
+                    lStr = snTotL.iMov.pInfo.gName;
+                    if obj.pData.useAll
+                        lStr = [lStr;{'All Genotypes'}];
+                    end
+                end
                 
                 % creates the popup menu/label objects
                 hObjNw{2}{1} = obj.createNewObj(hP,obj.pOfs,'Text',...
@@ -1671,22 +1685,23 @@ classdef AnalysisParaClass < handle
 
                 % sets the column 
                 switch p.Para
-                    case ('nBin') 
+                    case 'nBin' 
                         % case is the sleep intensity metrics
                         nRow = 60/nNew;          
                         lStr = setTimeBinStrings(nNew,nRow,1);
                         
-                    case ('nGrp') 
+                    case 'nGrp'
                         % case is the time-grouped stimuli response
                         nRow = nNew;
                         lStr = setTimeGroupStrings(nNew,obj.tDay);
                         
                     case {'appName','appNameS'}                        
+                        % case is region/split region names 
                         lStr = snTotT(1).iMov.pInfo.gName;
                         if (pInd ~= 3)                            
                             lStr = lStr(snTotT(eInd).iMov.ok);
                         end
-                        nRow = length(lStr);
+                        nRow = length(lStr);                        
                 end        
 
                 % calculates the table height

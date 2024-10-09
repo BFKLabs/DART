@@ -23,7 +23,7 @@ if (nargin == 5)
     flyok = true(size(Px,2),1);
 end
 
-% sets the binned x/y locations   
+% sets the binned x/y locations
 switch cP.movType
     case 'Absolute Speed'
         % case is calculating absolute distance

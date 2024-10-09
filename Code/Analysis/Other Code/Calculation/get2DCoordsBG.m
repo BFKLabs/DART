@@ -1,13 +1,14 @@
 % --- scales the position values back to pixel values for a given apparatus
 function [dPx,dPy,Rad] = get2DCoordsBG(snTot,iApp,indFrm)
 
-% runs the function depending on the soluton file format
-if isfield(snTot,'cID')
-    % case is the new file format
-    [dPx,dPy,Rad] = get2DCoordsBGNew(snTot,iApp);
-else
-    % case is the old file format
-    [dPx,dPy,Rad] = get2DCoordsBGOld(snTot,iApp);
+switch snTot.iMov.pInfo.mShape
+    case 'Rectangle'
+        % case is the rectangle
+        [dPx,dPy,Rad] = get2DCoordsRect(snTot,iApp);
+        
+    case 'Circle'
+        % case is circular regions
+        [dPx,dPy,Rad] = get2DCoordsCirc(snTot,iApp);
 end
 
 % reduces the arrays for the specified number of frames (if procided)
@@ -23,21 +24,90 @@ if nApp == 1
     [dPx,dPy,Rad] = deal(dPx{iApp(1)},dPy{iApp(1)},Rad{iApp(1)});
 end
 
-% ---------------------------- %
-% --- NEW FUNCTION VERSION --- %
-% ---------------------------- %
+% ------------------------------------ %
+% --- RECTANGULAR REGION FUNCTIONS --- %
+% ------------------------------------ %
+
+% --- retrieves the 2D coordinates for rectangular regions
+function [dPx,dPy,Rad] = get2DCoordsRect(snTot,iApp)
+
+% field retrieval
+iMov = snTot.iMov;
+pInfo = iMov.pInfo;
+isMT = detMltTrkStatus(iMov);
+
+% memory allocation
+nApp = max(1,length(snTot.Px));
+[dPx,dPy,Rad] = deal(cell(nApp,1));
+
+% calculates the relative x/y-coordinates
+for j = 1:length(iApp)  
+    i = iApp(j);
+    
+    if isMT
+        % case is multi-tracking
+        
+        % separates the flies into their separate regions
+        cID = snTot.cID{i};
+        [~,~,iC] = unique(cID(:,1),'stable');
+        indC = arrayfun(@(x)(find(iC==x)),1:max(iC),'un',0);
+        
+        % retrieves the regions 
+        [dPx0,dPy0,Rad0] = deal(cell(1,length(indC)));
+        for k = 1:length(indC)
+            % determines the row/column indices of the region
+            iReg = iC(indC{k}(1));
+            iCol = mod(iReg-1,pInfo.nCol) + 1;
+            iRow = floor((iReg-1)/pInfo.nCol) + 1;
+            nFly = pInfo.nFly(iRow,iCol);
+            szD = [length(iMov.iC{iCol});length(iMov.iRT{iCol}{iRow})];            
+            
+            % retrieves the x/y-offset
+            xOfs = iMov.iC{iCol}(1) - 1;
+            yOfs = iMov.iR{iCol}(iMov.iRT{iCol}{iRow}(1)) - 1;            
+            
+            % calculates the x/y offsets
+            dPx0{k} = snTot.Px{i}(:,indC{k}) - (xOfs + szD(1)/2);
+            dPy0{k} = snTot.Py{i}(:,indC{k}) - (yOfs + szD(2)/2);
+            
+            % sets the region dimensions
+            Rad0{k} = repmat(szD,1,nFly);
+        end
+        
+        % combines the data from the regions into a cell single element
+        dPx{i} = cell2mat(dPx0);
+        dPy{i} = cell2mat(dPy0);
+        Rad{i} = cell2mat(Rad0);
+    end
+end
+
+% --------------------------------- %
+% --- CIRCULAR REGION FUNCTIONS --- %
+% --------------------------------- %
+
+% --- retrieves the 2D coordinates for circular regions
+function [dPx,dPy,Rad] = get2DCoordsCirc(snTot,iApp)
+
+% runs the function depending on the soluton file format
+if isfield(snTot,'cID')
+    % case is the new file format
+    [dPx,dPy,Rad] = get2DCoordsBGNew(snTot,iApp);
+else
+    % case is the old file format
+    [dPx,dPy,Rad] = get2DCoordsBGOld(snTot,iApp);
+end
 
 % --- runs the new version of the function
 function [dPx,dPy,Rad] = get2DCoordsBGNew(snTot,iApp)
 
 % field retrieval
+isMT = detMltTrkStatus(snTot.iMov);
 [cID,iMov] = deal(snTot.cID,snTot.iMov);
 [sFac,hasApp,fok] = deal(snTot.sgP.sFac,~isempty(iApp),iMov.flyok);
 [X0,Y0] = getCircCentreCoords(iMov);
 
 % memory allocation
 nApp = max(1,length(snTot.Px));
-isMT = detMltTrkStatus(snTot.iMov);
 [dPx,dPy,Rad] = deal(cell(nApp,1));
 
 % retrieves the x/y coordinates and other important quantities
@@ -46,12 +116,7 @@ if hasApp
 else
     [Px,Py,iApp] = deal(snTot.Px,snTot.Py,1);
 end
-
-% reduces down the acceptance flag array
-if isMT
     
-end
-
 % reduces down the x/y-coordinates
 i0 = find(~cellfun('isempty',Px),1,'first');
 [szG,nFrm] = deal(size(X0),size(Px{i0},1)); 
@@ -80,10 +145,6 @@ for j = 1:length(iApp)
         Rad{i} = iMov.autoP.R(indG)-1;
     end
 end
-
-% ---------------------------- %
-% --- OLD FUNCTION VERSION --- %
-% ---------------------------- %
 
 % --- runs the old version of the function
 function [dPx,dPy,Rad] = get2DCoordsBGOld(snTot,iApp)
