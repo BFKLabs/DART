@@ -1728,9 +1728,17 @@ end
 % updates the image axis
 if ~updateTube
     % makes the tube/fly location markers invisible
-    mkObj.objM.setVisibility(0);    
-    for i = 1:length(mkObj.hTube)
-        cellfun(@(x)(set(x,'Visible','off')),mkObj.hTube{i})
+    mkObj.objM.setVisibility(0); 
+    if ~isempty(mkObj.hTube)
+        if iscell(mkObj.hTube{1})
+            % case is regions are stored as cell of cells
+            for i = 1:length(mkObj.hTube)
+                cellfun(@(x)(set(x,'Visible','off')),mkObj.hTube{i})
+            end
+        else
+            % case is regions are not stored as cell of cells
+            cellfun(@(x)(set(x,'Visible','off')),mkObj.hTube)
+        end
     end
 end
 

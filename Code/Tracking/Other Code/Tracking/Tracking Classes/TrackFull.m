@@ -99,6 +99,11 @@ classdef TrackFull < Track
             % segmented first)
             validPh = obj.iMov.vPhase < obj.ivPhRej;
             
+            % if multi-tracking, then retrieve 
+            if obj.isMulti && ((obj.iStack0 > 1) || (obj.iPhase0 > 1))
+                obj.setupPrevStackBinary();
+            end
+            
             % ensures the progressbar is visible
             obj.hProg.setVisibility('on');
             
@@ -199,11 +204,7 @@ classdef TrackFull < Track
                 
             else
                 % otherwise, retrieve the data from the tracking object
-                if isempty(iPhPr)
-                    fPosPr = [];
-                else
-                    fPosPr = obj.fObj{iPhPr}.fPos;
-                end
+                fPosPr = obj.fObj{iPhPr}.fPos;                                
             end
             
             % sets the previous data from the current tracking state
@@ -363,43 +364,46 @@ classdef TrackFull < Track
             % determines the start frame
             [iRow,iCol] = find(obj.iMov.flyok,1,'first');
             fPos = obj.pData.fPos{iCol}{iRow};
+            isN = isnan(fPos(:,1));            
             
-            % determines if there are any frames that need to be tracked
-            isN = isnan(fPos(:,1));
+            % is so, set the start frame index
             if any(isN)
-                % is so, set the start frame index                
                 iFrm0 = find(isN,1,'first');
-        
-                % sets the progressbar offset
-                obj.fObj{1}.hProg = obj.hProg;
-                obj.fObj{1}.nFrmR = obj.sObj.nFrmS;
-                obj.fObj{1}.wOfs = obj.isBatch + obj.isMultiBatch;
-                
-                % batch processing only initialisations
-                if obj.isBatch
-                    % re-initialises parallel workers    
-                    obj.fObj{1}.initParallelWorkers();                    
-                end
-                
-                % sets the positional data struct into the main figure
-                % (this is linked within the MultiTrackParallel object)
-                obj.hFig.pData = obj.pData;                
-                
-                % sets the function handles
-                obj.fObj{1}.pData = obj.pData;
-                obj.fObj{1}.dispImage = obj.dispImage;
-
-                % start the parallel processing tracking
-                obj.fObj{1}.startVideoTracking(iFrm0);
-                
-                % post-tracking value retrieval
-                obj.pData = obj.fObj{1}.pData;
-                obj.calcOK = obj.fObj{1}.calcOK;
-                
-            elseif ~obj.isBatch
-                % deletes the progressbar (if not batch processing)
-                obj.hProg.closeProgBar();
+            else
+                iOfs = obj.iMov.iPhase(obj.nPhase,1);
+                iFrm0 = (obj.nCountS-1)*obj.hFig.mtObj.nFrmS + iOfs;
             end
+
+            % sets the progressbar offset
+            obj.fObj{1}.hProg = obj.hProg;
+            obj.fObj{1}.nFrmR = obj.sObj.nFrmS;
+            obj.fObj{1}.wOfs = obj.isBatch + obj.isMultiBatch;
+
+            % batch processing only initialisations
+            if obj.isBatch
+                % re-initialises parallel workers    
+                obj.fObj{1}.initParallelWorkers();                    
+            end
+
+            % sets the positional data struct into the main figure
+            % (this is linked within the MultiTrackParallel object)
+            obj.hFig.pData = obj.pData;                
+
+            % sets the function handles
+            obj.fObj{1}.pData = obj.pData;
+            obj.fObj{1}.dispImage = obj.dispImage;
+
+            % start the parallel processing tracking
+            obj.fObj{1}.startVideoTracking(iFrm0);
+
+            % post-tracking value retrieval
+            obj.pData = obj.fObj{1}.pData;
+            obj.calcOK = obj.fObj{1}.calcOK;
+%                 
+%             elseif ~obj.isBatch
+%                 % deletes the progressbar (if not batch processing)
+%                 obj.hProg.closeProgBar();
+%             end
             
         end
         
@@ -1050,6 +1054,56 @@ classdef TrackFull < Track
             end
 
         end        
+        
+        % --- sets up the previous stack binary mask
+        function setupPrevStackBinary(obj)
+            
+            % creates a loadbar figure
+            hLoad = ProgressLoadbar('Setting Up Previous Stack Data...');
+            
+            % field retrieval 
+            iPh0 = obj.iPhase0;            
+            [pP,pW] = deal(obj.iMov.pPara{iPh0},obj.fObj{iPh0}.pW);
+            [nRow,nCol] = deal(obj.iMov.pInfo.nRow,obj.iMov.pInfo.nCol);            
+            
+            % retrieves the previous image
+            iOfs = obj.iMov.iPhase(iPh0,1);
+            iFrmPr = (obj.iStack0 - 1)*obj.nFrmS + (iOfs - 1);            
+            ImgPr = double(getDispImage(obj.iData,obj.iMov,iFrmPr,0));            
+            
+            % sets up the binary mask/blob fly counts for all regions
+            for j = 1:nCol    
+                % column field retrieval
+                [iC,iR] = deal(obj.iMov.iC{j},obj.iMov.iR{j});
+                
+                % sets the previous 
+                for i = 1:nRow
+                    % global region index
+                    iReg = (i-1)*nCol + j;
+                    
+                    % sets up the binary mask
+                    IL = ImgPr(iR(obj.iMov.iRT{j}{i}),iC);
+                    IRL = max(0,obj.iMov.Ibg{iPh0}{iReg} - IL);
+                    BL = obj.fObj{iPh0}.calcImageBinary(IRL,pW*pP.pTol);
+                    obj.fObj{iPh0}.BPr{iReg} = BL;
+                    
+                    % retrieves the blob linear indices
+                    [~,iGrpL] = obj.fObj{iPh0}.calcBlobProps(BL,pP);
+                    
+                    % sets up the blob fly count
+                    fPosL = cell2mat(cellfun(@(x)(...
+                        x(iFrmPr,:)),obj.pData.fPosL{i,j},'un',0)');                    
+                    Imap = obj.fObj{iPh0}.setupMapMask(iGrpL,size(IL));
+                    ImapL = Imap(sub2ind(size(IL),fPosL(:,2),fPosL(:,1)));
+                    obj.fObj{iPh0}.nGrpPr{iReg} = ...
+                        arrayfun(@(x)(sum(ImapL==x)),1:length(iGrpL))';
+                end
+            end
+            
+            % deletes the loadbar
+            delete(hLoad);
+            
+        end
         
     end        
     

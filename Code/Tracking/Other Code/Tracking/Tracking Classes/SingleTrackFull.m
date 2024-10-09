@@ -31,8 +31,7 @@ classdef SingleTrackFull < TrackFull & SingleTrack
             % starts the video tracking
             obj.segEntireVideoFull();
             if ~obj.calcOK
-                % exit if the user cancelled
-                
+                % exit if the user cancelled                
                 return
             end            
             
