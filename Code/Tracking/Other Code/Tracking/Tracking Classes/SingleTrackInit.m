@@ -597,11 +597,13 @@ classdef SingleTrackInit < SingleTrack
                 szL = cellfun(@size,IL{iL0}(1,:),'un',0);
                 A = cellfun(@(x)(NaN(x)),szL,'un',0);
                 obj.Ibg = repmat({A},obj.nPhase,1);
+                nFrmPh = diff(obj.iMov.iPhase,[],2) + 1;                
                 
                 % calculates the estimated blob size
-                obj.bSzT = obj.calcBlobSize();
-                nFrmPh = diff(obj.iMov.iPhase,[],2) + 1;
-                obj.iMov.szObj = obj.bSzT*[1,1];
+                if ~obj.isBatch
+                    obj.bSzT = obj.calcBlobSize();
+                    obj.iMov.szObj = obj.bSzT*[1,1];
+                end
                 
                 % calculates background image estimates (for feasible phases)
                 for iPh = find(okPh(:)')
@@ -726,7 +728,7 @@ classdef SingleTrackInit < SingleTrack
             end
 
             % runs the batch processing performance check (if required)
-            if obj.isBatch
+            if obj.isBatch && (iPh == 1)
                 obj.performBatchProcessCheck();
             end
             
@@ -757,11 +759,15 @@ classdef SingleTrackInit < SingleTrack
         % --- runs the final diagnostic performance check
         function performFinalDiagnosticCheck(obj)
             
+            % if there are no stats available, then exit the function
+            hasStats = ~cellfun('isempty',obj.pStats(:,:,1));
+            if ~any(hasStats(:)); return; end
+            
             % calculates the max metric values (grouped by region/metric)
             QMet0 = cell(obj.nApp,obj.nMet);
             for i = 1:obj.nMet
                 QMet0(:,i) = cellfun(@(x)(max(cell2mat(x),[],2)),...
-                    num2cell(obj.pStats(:,:,i),2),'un',0);
+                        num2cell(obj.pStats(:,:,i),2),'un',0);
             end
             
             % reshapes the metric arrays (grouped by region)
@@ -809,12 +815,11 @@ classdef SingleTrackInit < SingleTrack
 
             % if there is no previous data, then exit
             if isempty(obj.prData0); return; end
-
+            
             % field retrieval            
-            okPh = obj.getFeasPhase([1:2,4]);
-            fP0 = obj.fPosL{okPh(1)}(:,1);
+            fP0 = obj.fPosL{1}(:,1);
             xiF = num2cell(obj.nTube(:)',1);
-            [iR,iC,iRT] = deal(obj.iMov.iR,obj.iMov.iC,obj.iMov.iRT);
+            [iC,iRT] = deal(obj.iMov.iC,obj.iMov.iRT);
 
             % sets up the acceptance flag arrays
             fOK = num2cell(obj.iMov.flyok,1);
@@ -823,25 +828,22 @@ classdef SingleTrackInit < SingleTrack
             % determines if any valid flies have not been calculated
             hasN = cellfun(@(x,y)(isnan(x(:,1)) & y),fP0,fOK(:),'un',0);
             for i = find(cellfun(@any,hasN(:)'))
-                % for the "missing" flies, use the previous location from
-                % the last file to use instead
+                % for the "missing" flies, use the final location from
+                % the previous file instead
                 for j = find(hasN{i}(:)')
                     % retrieves the previous frame values
                     fPprL = round(obj.prData0.fPosPr{i}{j}(end,:));
                     fPpr = fPprL + ([iC{i}(1),iRT{i}{j}(1)] - 1);
 
-                    % resets coordinates/flags for each phase
-                    for iPh = 1:obj.nPhase
-                        % fly coordinate reset (local/global coords)
-                        for k = 1:length(obj.Img{iPh})
-                            obj.fPosL{1}{i,k}(j,:) = fPprL;
-                            obj.fPos{1}{i,k}(j,:) = fPpr;
-                        end
+                    % fly coordinate reset (local/global coords)
+                    for k = 1:length(obj.Img{1})
+                        obj.fPosL{1}{i,k}(j,:) = fPprL;
+                        obj.fPos{1}{i,k}(j,:) = fPpr;
+                    end
 
-                        % resets the other flags
-                        obj.sFlag{iPh}(j,i) = 1;
-                        obj.mFlag{iPh,i}(j) = 1;
-                    end                        
+                    % resets the other flags
+                    obj.sFlag{1}(j,i) = 1;
+                    obj.mFlag{1,i}(j) = 1;
                 end
             end
 
@@ -870,7 +872,11 @@ classdef SingleTrackInit < SingleTrack
             % ----------------------------------- %
             
             % retrieves the residual scores
-            pPR = obj.pStats(:,iPh,1);
+            pPR = obj.pStats(:,iPh,1);     
+            if all(cellfun('isempty',pPR))
+                xiF = getSRCount(obj.iMov,1:obj.nApp);
+                pPR = arrayfun(@(x)(zeros(x,2)),xiF(:),'un',0);
+            end
             
             % determines if a majority of the residual pixel intensities
             % meets the tolerance (for each sub-region) across all frames
@@ -954,9 +960,15 @@ classdef SingleTrackInit < SingleTrack
             
             % initialisations
             pW = 1/2;
-            N = ceil(1.5*obj.bSzT);
             hG = fspecial('disk',2);
             wStr0 = 'Recalculating Coordinates';
+            
+            % sets the sub-image size
+            if isempty(obj.bSzT)
+                N = ceil(1.5*mean(obj.iMov.szObj));
+            else
+                N = ceil(1.5*obj.bSzT);            
+            end
             
             % loops through all regions recalculating the blob locations
             % using the new background image estimate
@@ -1028,16 +1040,29 @@ classdef SingleTrackInit < SingleTrack
             sD = NaN(obj.nApp,2);
             [ff,II] = deal(cell(obj.nApp,2));
             
-            % calculates the gaussian signal parameters for each region
-            for i = find(obj.iMov.ok(:)')
-                for j = 1:2
-                    II{i,j} = max(obj.frObj.hC{i},[],j,mStr);
-                    [sD(i,j),ff{i,j}] = obj.optGaussSignal(II{i,j});
+            % estimates the blob size based on the template images
+            if all(cellfun('isempty',obj.frObj.hC))
+                % if there are no template images, then use another method
+                if obj.iMov.is2D
+                    % case is 2D experiments 
+                    bSz = 10;             % come up with a better methods?!
+                else
+                    % case is 1D experiments. estimate from row height
+                    bSz = ceil(median(cellfun(@(x)(...
+                        median(cellfun('length',x))),obj.iMov.iRT))/4);
                 end
+            else
+                % calculates the gaussian signal parameters for each region
+                for i = find(obj.iMov.ok(:)')
+                    for j = 1:2
+                        II{i,j} = max(obj.frObj.hC{i},[],j,mStr);
+                        [sD(i,j),ff{i,j}] = obj.optGaussSignal(II{i,j});
+                    end
+                end
+
+                % calculates the blob size based on the max std-dev values
+                bSz = roundP(max(arr2vec(sD*sqrt(log(1/obj.pTolSz)))));
             end
-            
-            % calculates the blob size based on the max std-dev values
-            bSz = roundP(max(arr2vec(sD*sqrt(log(1/obj.pTolSz)))));
             
         end
         

@@ -251,6 +251,12 @@ classdef TrackFull < Track
                         % case is the first phase, so no valid frame
                         iFrmLast = [];
                     end
+                    
+                elseif all(isTrk)
+                    % case is all frame have been tracked. use the last
+                    % frame from the previous stack
+                    iFrmLast = (nCountNw-1)*obj.nFrmS + (iFrmP(1)-1);
+                    
                 else
                     % otherwise, return the last tracked frame
                     iFrmLast = iFrmP(find(isTrk,1,'last'));
@@ -1069,7 +1075,7 @@ classdef TrackFull < Track
             % retrieves the previous image
             iOfs = obj.iMov.iPhase(iPh0,1);
             iFrmPr = (obj.iStack0 - 1)*obj.nFrmS + (iOfs - 1);            
-            ImgPr = double(getDispImage(obj.iData,obj.iMov,iFrmPr,0));            
+            ImgPr = double(getDispImage(obj.iData,obj.iMov,iFrmPr,0));
             
             % sets up the binary mask/blob fly counts for all regions
             for j = 1:nCol    
@@ -1080,15 +1086,17 @@ classdef TrackFull < Track
                 for i = 1:nRow
                     % global region index
                     iReg = (i-1)*nCol + j;
+                    nFlyR = obj.iMov.pInfo.nFly(i,j);
                     
                     % sets up the binary mask
                     IL = ImgPr(iR(obj.iMov.iRT{j}{i}),iC);
                     IRL = max(0,obj.iMov.Ibg{iPh0}{iReg} - IL);
                     BL = obj.fObj{iPh0}.calcImageBinary(IRL,pW*pP.pTol);
-                    obj.fObj{iPh0}.BPr{iReg} = BL;
-                    
+                                        
                     % retrieves the blob linear indices
-                    [~,iGrpL] = obj.fObj{iPh0}.calcBlobProps(BL,pP);
+                    [BLF,iGrpL] = ...
+                        obj.fObj{iPh0}.calcBlobProps(BL,IRL,pP,nFlyR);
+                    obj.fObj{iPh0}.BPr{iReg} = BLF;
                     
                     % sets up the blob fly count
                     fPosL = cell2mat(cellfun(@(x)(...

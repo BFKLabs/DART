@@ -54,6 +54,7 @@ classdef FilterResObj < handle
         pWS = 2.5;
         dTol0 = 7.5;
         ZTolR = 5;
+        nTolSD = -3;
         
         % other class fields
         hS
@@ -190,11 +191,13 @@ classdef FilterResObj < handle
             obj.IRs = cellfun(@(x)(obj.Bexc.*x),obj.IRs,'un',0);
             IRTmn = calcImageStackFcn(obj.IRs,'min');
             
-            % calculates the residual difference image stack
+            % sets the exclusion mask to remove very dark regions (this
+            % usually occurs for 1D setups at the edges)
             if obj.iMov.is2D
                 Bs = true(size(IRTmn));
             else
-                Bs = IRTmn > prctile(IRTmn(:),10);
+                ZRTmn = (IRTmn - mean(IRTmn(:)))/std(IRTmn(:));
+                Bs = ZRTmn > obj.nTolSD;
             end
             
             % calculates the residual image stack
