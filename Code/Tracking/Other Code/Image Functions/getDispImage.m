@@ -62,7 +62,7 @@ if ~frameSet
     
     % otherwise, retrieves the file extension
     [~,~,fExtn] = fileparts(iData.movStr);
-    cFrmT = iMov.sRate*(cFrm-1) + iData.Frm0;
+    cFrmT = iMov.sRate*(cFrm-1) + max(1,iData.Frm0/iMov.sRate);
     
     % loads the frame based on the movie type
     switch fExtn    

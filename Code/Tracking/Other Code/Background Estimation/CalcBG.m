@@ -100,7 +100,7 @@ classdef CalcBG < handle
     methods
         
         % --- object constructor
-        function obj = CalcBG(hGUI)            
+        function obj = CalcBG(hGUI)
             
             % sets the input arguments
             obj.hGUI = hGUI;
@@ -743,7 +743,7 @@ classdef CalcBG < handle
                 set(setObjEnable(obj.hGUI.checkFlyMarkers,'on'),'value',1)                      
                 
                 % determines if the class object has location values
-                if ~isempty(obj.fPos)                    
+                if ~(isempty(obj.fPos) || obj.isMTrk)
                     % retrieves the positional data from the main gui
                     pData0 = get(obj.hGUI.figFlyTrack,'pData');
                     if ~isempty(pData0)                    

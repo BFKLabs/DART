@@ -100,8 +100,10 @@ classdef TrackFull < Track
             validPh = obj.iMov.vPhase < obj.ivPhRej;
             
             % if multi-tracking, then retrieve 
-            if obj.isMulti && ((obj.iStack0 > 1) || (obj.iPhase0 > 1))
-                obj.setupPrevStackBinary();
+            if obj.isMulti
+                vPhase = ones(obj.nPhase,1);
+            else
+                vPhase = obj.iMov.vPhase;
             end
             
             % ensures the progressbar is visible
@@ -110,7 +112,17 @@ classdef TrackFull < Track
             % segments the objects from start phase to end
             for i = obj.iPhase0:obj.nPhase
                 % sets the phase to be segmented
-                j = obj.iPhaseS(i);                
+                j = obj.iPhaseS(i);
+                
+                % multi-tracking previous stack data setup
+                if obj.isMulti
+                    if i > obj.iPhase0
+                        obj.fObj{i}.BPr = obj.fObj{i-1}.BPr; 
+                        obj.fObj{i}.nGrpPr = obj.fObj{i-1}.nGrpPr;
+                    elseif (obj.iStack0 > 1) || (i > 1)
+                        obj.setupPrevStackBinary();
+                    end
+                end
                 
                 % updates the progessbar (if it exists)
                 if ~validPh(j)
@@ -132,7 +144,7 @@ classdef TrackFull < Track
                 end                
                 
                 % resets the progress struct
-                switch obj.iMov.vPhase(j)
+                switch vPhase(j)
                     case {1,4}
                         % case is a low-variance/special phase
                         
@@ -244,7 +256,7 @@ classdef TrackFull < Track
                     if iPhase > 1
                         % case is not the first phase, so determine if any
                         % preceding phase frames are valid
-                        ii = 1:(obj.iMov.iPhase(iPhase-1,2)-1);
+                        ii = 1:(obj.iMov.iPhase(iPhase-1,2));
                         X0 = obj.pData.fPos{iApp0}{iTube0}(ii,1);
                         iFrmLast = find(~isnan(X0),1,'last');
                     else
@@ -819,7 +831,7 @@ classdef TrackFull < Track
             if obj.isMulti
                 % case is for multi-tracking
                 obj.iPhaseS = 1:obj.nPhase;
-                obj.dFrmMax = -1;
+                obj.dFrmMax = 10;
                 
             else
                 % case is for single tracking
@@ -1069,7 +1081,7 @@ classdef TrackFull < Track
             
             % field retrieval 
             iPh0 = obj.iPhase0;            
-            [pP,pW] = deal(obj.iMov.pPara{iPh0},obj.fObj{iPh0}.pW);
+            pP = obj.iMov.pPara{iPh0};
             [nRow,nCol] = deal(obj.iMov.pInfo.nRow,obj.iMov.pInfo.nCol);            
             
             % retrieves the previous image
@@ -1091,12 +1103,13 @@ classdef TrackFull < Track
                     % sets up the binary mask
                     IL = ImgPr(iR(obj.iMov.iRT{j}{i}),iC);
                     IRL = max(0,obj.iMov.Ibg{iPh0}{iReg} - IL);
-                    BL = obj.fObj{iPh0}.calcImageBinary(IRL,pW*pP.pTol);
+                    BR = obj.fObj{iPh0}.calcResidualBinary(IRL,pP.pTol);
+                    BS = obj.fObj{iPh0}.calcSauvolaBinary(IL,pP);
                                         
                     % retrieves the blob linear indices
-                    [BLF,iGrpL] = ...
-                        obj.fObj{iPh0}.calcBlobProps(BL,IRL,pP,nFlyR);
-                    obj.fObj{iPh0}.BPr{iReg} = BLF;
+                    [BSF,iGrpL] = ...
+                            obj.fObj{iPh0}.calcBlobProps(BS,BR,nFlyR);
+                    obj.fObj{iPh0}.BPr{iReg} = BSF;
                     
                     % sets up the blob fly count
                     fPosL = cell2mat(cellfun(@(x)(...

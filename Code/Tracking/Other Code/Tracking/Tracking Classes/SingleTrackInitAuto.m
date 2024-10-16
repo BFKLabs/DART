@@ -390,7 +390,7 @@ classdef SingleTrackInitAuto < SingleTrackInit
             szL = cellfun(@(x)(size(x)),IR(1,:),'un',0);            
                             
             % calculates the signal
-            for i = obj.fOK                
+            for i = obj.fOK
                 % calculates the normalised maxima
                 [Ymx0,Ymx{i}] = obj.setupRegionSignal(IR(:,i),szL{i},nD);
                 

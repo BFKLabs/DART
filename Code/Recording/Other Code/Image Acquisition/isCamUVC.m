@@ -1,5 +1,11 @@
 function isUVC = isCamUVC(devName)
 
+% HARD CODE FIX - recording as webcam doesn't allow for higher frame rates
+if startsWith(devName,'UV155xLE')
+    isUVC = false;
+    return;
+end
+
 % determines if the device is in the webcam list
 if exist('webcamlist','file')
     % uses the webcamlist to determine device type

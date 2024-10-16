@@ -139,7 +139,14 @@ classdef Track < matlab.mixin.SetGet
             end
                         
             % retrieves the images for all frames in the array, iFrm
-            Img = double(getDispImage(obj.iData,obj.iMov,iFrmG,0));             
+            while true
+                try
+                    Img = double(getDispImage(obj.iData,obj.iMov,iFrmG,0));
+                    break
+                catch
+                    iFrmG = iFrmG - 1;
+                end
+            end
             
         end
         

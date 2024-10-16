@@ -1126,7 +1126,8 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 end
                 
                 % calculates video offset between the new/candidate frames
-                dpImg = flip(roundP(fastreg(ImgNw,Img0)));
+                tForm = imregcorr(ImgNw,Img0,'rigid');
+                dpImg = round(tForm.T(end,1:2));
             end
             
         end
@@ -1804,6 +1805,11 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                     ii0((nFly+1):end) = false;
                 end
                 
+                % sets the group column indices
+                nC = length(obj.iMov.iC{j});
+                nC0 = length(obj.iMov.iC{j});
+                [iC,iC0] = deal(1:min(nC,nC0));
+                
                 % determines the tubes which in the new video have been
                 % classified as feasible, but have been classified as 
                 % rejected in the previous                
@@ -1812,11 +1818,14 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                     % resets the tube status/rejection flags 
                     obj.iMov.Status{j}(ii(k)) = 3;
                     obj.iMov.flyok(ii(k),j) = false;
+                    
+                    % sets the row/column indices
+                    iRT = obj.iMov.iRT{j}{ii(k)};                                           
 
                     % resets the background image region 
                     for i = 1:nPhase
-                        obj.iMov.Ibg{i}{j}(obj.iMov.iRT{j}{ii(k)},:) = ...
-                           obj.iMov0.Ibg{iPr}{j}(obj.iMov.iRT{j}{ii(k)},:);
+                        obj.iMov.Ibg{i}{j}(iRT,iC) = ...
+                               obj.iMov0.Ibg{iPr}{j}(iRT,iC0);    
                     end
                 end
 

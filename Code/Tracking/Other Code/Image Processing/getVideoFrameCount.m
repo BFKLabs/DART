@@ -7,10 +7,11 @@ switch fExtn
         
         % determines the final frame count (some frames at the
         % end of videos sometimes are dodgy...)
-        iOfs = 1;        
+        iOfs = 1;
         while 1  
             % resets the video object current time
-            mObj.CurrentTime = mObj.Duration - iOfs/mObj.FrameRate;
+            cTime = mObj.Duration - iOfs/mObj.FrameRate;
+            mObj.CurrentTime = cTime;
             
             try 
                 % reads a new frame from the current time 
@@ -23,7 +24,7 @@ switch fExtn
         end
         
         % sets the final frame
-        nFrmT = round(mObj.CurrentTime*mObj.FrameRate);
+        nFrmT = floor(cTime*mObj.FrameRate);
         
     case '.mkv'
         

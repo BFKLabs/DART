@@ -16,7 +16,7 @@ switch get(hPopup,'userdata')
         switch lStr{iSel}
             case 'Seconds' % case is time is in seconds
                 [timeStr,tMlt] = deal('(secs)',1);
-                tRnd = 1/(1 + 999*(length(lStr) < 4));
+                tRnd = 0.01/(1 + 999*(length(lStr) < 4));
             case 'Minutes' % case is time is in minutes
                 [timeStr,tMlt] = deal('(mins)',1/60);
                 tRnd = 0.1/(1 + 9*(length(lStr) < 4));

@@ -645,12 +645,18 @@ end
 postAutoDetectUpdate(handles,iMov,iMovNw);
 
 % -------------------------------------------------------------------------
-function menuDetRect_Callback(~, ~, ~)
+function menuDetRect_Callback(~, ~, handles)
 
-% FINISH ME!
-eStr = 'This feature is still under construction...';
-waitfor(msgbox(eStr,'Finish Me!','modal'))
-return
+% field retrieval
+hFig = handles.figRegionSetup;
+isMltTrk = detMltTrkStatus(hFig.iMov);
+
+% IF SINGLE TRACKING - ALGORITHM INCOMPLETE
+if ~isMltTrk
+    eStr = 'This feature is still under construction...';
+    waitfor(msgbox(eStr,'Finish Me!','modal'))
+    return
+end
 
 % retrieves the automatic detection algorithm objects
 [iMov,hGUI,~] = initAutoDetect(handles);
@@ -658,7 +664,26 @@ if isempty(iMov); return; end
 
 % retrieves the region estimate image stack
 I = getRegionEstImageStack(handles,hGUI,iMov); 
+if isempty(I)
+    % if there were no images read, then exit
+    setObjVisibility(handles.output,'on');
+    return
 
+else
+    % runs the rectangle region detection algorithm
+    objG = GenRegionDetect(iMov,I);
+    
+    %
+    if objG.calcOK
+        % case is the calculations succeeded
+        iMovNw = objG.iMov;
+        
+    else
+        % case is the user cancelled
+        iMovNw = [];
+    end
+end
+    
 % performs the post automatic detection updates
 postAutoDetectUpdate(handles,iMov,iMovNw);
 
@@ -772,7 +797,7 @@ hasSR = isfield(iMov,'srData') && ~isempty(iMov.srData);
 
 % sets the menu item enabled properties
 setObjEnable(handles.menuReset,iMov.isSet);
-setObjEnable(handles.menuAutoPlace,iMov.isSet && ~isMltTrk);
+setObjEnable(handles.menuAutoPlace,iMov.isSet);
 
 % updates the split region menu item enabled properties
 isFeas = iData.is2D || isMltTrk;
@@ -788,7 +813,7 @@ setObjEnable(handles.menuShowRegion,isFeas);
 
 % updates the enabled properties of the detection menu items
 setObjEnable(handles.menuDetectSetup1D,~isFeas);
-setObjEnable(handles.menuDetectSetup2D,iData.is2D);
+setObjEnable(handles.menuDetectSetup2D,isFeas);
 
 % --- callback function for the parameter editbox update
 function editParaUpdate(hObj, ~, handles)
@@ -2461,8 +2486,8 @@ if isUpdate
     % global variables
     setObjEnable(handles.buttonUpdate,'on')
 else
-    % updates the menu properties
-    setObjEnable(handles.menuSplitRegion,hFig.iMov.isSet && iMovNw.is2D)
+    % updates the menu properties    
+    setObjEnable(handles.menuSplitRegion,hFig.iMov.isSet && iMov0.is2D)
     setMenuCheck(setObjEnable(handles.menuShowRegion,'off'),'on')    
     
     % shows the tube regions
