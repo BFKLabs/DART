@@ -1053,7 +1053,9 @@ classdef DART < handle
                     % retrieves the paths of the files to compare
                     fFile0{k} = fullfile(dDirU{i},dList0(k).name);
                     fFileF{k} = fullfile(fDirFC,dList0(k).name);
-                    isCopy(k) = dir(fFileF{k}).datenum ~= dNum0(k);                    
+                    
+                    dInfo = dir(fFileF{k});
+                    isCopy(k) = dInfo.datenum ~= dNum0(k); 
                 end
             end
 
