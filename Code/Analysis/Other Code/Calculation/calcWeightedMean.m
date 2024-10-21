@@ -2,11 +2,16 @@
 function Ymn = calcWeightedMean(Y,W,nIter)
 
 % initialisations
-if (isempty(Y)); Ymn = NaN; return; end
-sz = size(Y);
+if isempty(Y)
+    Ymn = NaN; 
+    return
+else
+    Y = Y(:);
+end
 
 % sets the parameters based on the dimensions
-if (sz(1) == 1)
+sz = size(Y);
+if (numel(Y) == 1)
     % only one value, so no need to take weighted mean...
     Ymn = Y;
     return

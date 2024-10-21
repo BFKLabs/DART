@@ -1240,7 +1240,7 @@ classdef TrackRegionClass < handle
         end
         
         % --- callback function for the multi-tracking
-        function roiCallbackMT(obj,hObjR,evnt)
+        function roiCallbackMT(obj,hObjR,evnt)            
                                     
             % updates the region mask image (if change in selected region)
             if obj.manReset
@@ -1297,6 +1297,9 @@ classdef TrackRegionClass < handle
                     end   
                 
             end
+            
+            % enables the update button
+            setObjEnable(obj.hButU,'on')
             
         end
         

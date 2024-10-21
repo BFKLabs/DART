@@ -220,8 +220,7 @@ if hObject.isMTrk
     else
         set(hCheck,'Value',true);
         set(hPopup,'Value',find(strcmp(lStr,hObject.iData.D1.mShape)));
-    end    
-    
+    end
 end
 
 % initialises the object properties
@@ -1401,6 +1400,7 @@ hFig = handles.output;
 hPanelConfig = handles.panelRegionConfig;
 
 % initialisations
+dH = 40;
 iMov = get(hFig,'iMov');
 iData = get(hFig,'iData');
 isMltTrk = detMltTrkStatus(iMov);
@@ -1563,6 +1563,10 @@ for i = 1:length(tStr)
         end
     end
     
+    % retrieves the group name table handle
+    hPanelGN = findall(hPanel{i},'tag',sprintf('panelGroupNames%iD',i));
+    hTableGN = findall(hPanelGN,'type','uitable');          
+    
     % initialises the popup objects for the panel
     if isMltTrk
         hCheck = findall(hPanel{i},'style','checkbox');
@@ -1579,12 +1583,25 @@ for i = 1:length(tStr)
                     set(hCheck(j),'Value',isChk,'Callback',cbFcnCheck)
                 end
             end
-        end    
+        end
+        
+        % resizes the figure and outer panel objects
+        resetObjPos(hFig,'Height',dH,1);
+        resetObjPos(handles.panelRegionConfig,'Height',dH,1)
+        drawnow                
+
+        % resets the other panel objects
+        hP = findall(hTabGrp,'Type','uipanel');
+        resetObjPos(hTabGrp,'Height',dH,1)
+        resetObjPos(handles.panel1D,'Height',dH,1)        
+        arrayfun(@(x)(resetObjPos(x,'Bottom',dH,1)),hP(2:end))
+        drawnow
+        
+        % resets the configuration axes objects
+        resetObjPos(handles.panelAxesConfig,'Height',dH,1)
+        resetObjPos(handles.axesConfig,'Height',dH,1)
+        drawnow
     end
-    
-    % retrieves the group name table handle
-    hPanelGN = findall(hPanel{i},'tag',sprintf('panelGroupNames%iD',i));
-    hTableGN = findall(hPanelGN,'type','uitable');      
     
     % initialises the group name table (initialising only)
     if isInit  

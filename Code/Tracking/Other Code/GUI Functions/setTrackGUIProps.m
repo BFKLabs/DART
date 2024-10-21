@@ -223,9 +223,10 @@ switch (typeStr)
         setDetectEnable(handles,'off')
         setTrackGUIProps(handles,'UpdateFrameSelection')
         setMenuEnable(handles,'on',8)
-        setMenuEnable(handles,'off',[2,7])                
+        setMenuEnable(handles,'off',7)
+        setMenuEnable(handles,eStr{1+iMov.isSet},2);
         updateHMMenu(handles,iData);
-        
+                
         % resets the status flag 
         iData.Status = 0;        
         set(handles.output,'iData',iData,'pData',[]);

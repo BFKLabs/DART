@@ -2,8 +2,17 @@
 %     directory, progDir, and the analysis function directory, funcDir
 function createDARTExecutable(progDir,outDir,ProgDef)
 
+% global variables
+global mainProgDir
+
 % clears the screen
 clc
+
+% other initialisations
+tagStr = 'hTimerExe';
+
+% changes directory to the main program directory
+cd(mainProgDir);
 
 % ---------------------------------- %
 % --- EXECUTABLE DIRECTORY SETUP --- %
@@ -103,13 +112,18 @@ end
 hLoad = ProgressLoadbar('Creating DART Program Executable...');
 set(hLoad.Control,'CloseRequestFcn',[]);
 
+% sets up the support package string
 srcStr = sprintf('-d ''%s''',exeDir);
 igDir = {'.','..','External Apps','Git'};
 spkgStr = getSupportPackageDir();
 
+% sets up the toolbox addition string
 toolStr = sprintf(...
        ['-N -p daq -p imaq -p images -p signal -p instrument ',...
-       '-p optim -p stats -p curvefit -p shared -p wavelet %s'],spkgStr);
+        '-p optim -p stats -p curvefit -p shared -p wavelet ',...
+        '-p vision -p nnet %s'],spkgStr);
+    
+% warning string
 warnStr = '-w disable:all_warnings';  
        
 % determines files the directories that need to be added
@@ -156,9 +170,17 @@ end
 % --- EXECUTABLE CREATION --- %
 % --------------------------- %
 
+% deletes any previous timer objects
+hTimerPr = timerfindall('tag',tagStr);
+if ~isempty(hTimerPr)
+    stop(hTimerPr);
+    delete(hTimerPr);
+end
+    
 % creates and starts the timer object
-tObj = timer('TimerFcn',{@exeTimerFunc,hLoad,outDir,exeDir,rmvFile,pFileT},...
-             'Period',1,'ExecutionMode','fixedRate','BusyMode','queue');
+tFcn = {@exeTimerFunc,hLoad,outDir,exeDir,rmvFile,pFileT};
+tObj = timer('TimerFcn',tFcn,'Period',1,'ExecutionMode','fixedRate',...
+             'BusyMode','queue','Tag',tagStr);
 start(tObj); 
          
 % runs the compiler to create the executable

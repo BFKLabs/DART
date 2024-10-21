@@ -492,7 +492,7 @@ classdef SingleTrackInitHT1 < handle
             % if there are no valid fly locations then exit the function
             if ~any(isOK)
                 % if there is a previous filter image, then use that
-                if isfield(obj.iMov,'hFilt') || ~isempty(obj.iMov.hFilt)
+                if isfield(obj.iMov,'hFilt') && ~isempty(obj.iMov.hFilt)
                     % uses the previous filter sub-image
                     obj.hC{iApp} = obj.iMov.hFilt;
                     

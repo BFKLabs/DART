@@ -151,6 +151,7 @@ classdef CalcBG < handle
             obj.initClassFields()
             obj.initLikelyPlotMarkers()
             obj.isVisible = true;
+            obj.isUpdating = false;
             
             % updates the properties based on the tracking type
             if obj.isCalib                
@@ -340,6 +341,7 @@ classdef CalcBG < handle
             % toggles the normal/background estimate panel visibilities
             obj.resetGUIDimensions(false)
             obj.isVisible = false;
+            obj.isUpdating = false;
             set(obj.hGUI.figFlyTrack,'bgObj',obj)
                                    
             % sets the menu item visibiity properties
@@ -2287,6 +2289,9 @@ classdef CalcBG < handle
                     return
                 end
             end            
+            
+            % initialisations
+            obj.isUpdating = false;
             
             % deselects the tube tracking regions
             set(obj.hGUI.checkTubeRegions,'value',0);

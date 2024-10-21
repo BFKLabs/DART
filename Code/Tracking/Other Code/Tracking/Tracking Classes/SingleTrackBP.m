@@ -1100,7 +1100,10 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             % parameters
             pTolDiff = 10;
             dMuTolDiff = 30;
-            dpImg = zeros(1,2);                        
+            dpImg = zeros(1,2);   
+            
+            % turns off the weak image registration warning
+            warning('off','images:imregcorr:weakPeakCorrelation');
             
             % retrieves the 
             Img0 = obj.bData(iDir).Img0;
@@ -1126,8 +1129,19 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 end
                 
                 % calculates video offset between the new/candidate frames
+                lastwarn('');                
                 tForm = imregcorr(ImgNw,Img0,'rigid');
-                dpImg = round(tForm.T(end,1:2));
+                
+                % checks the performance of the image correlation
+                [~,wID] = lastwarn();                
+                if strcmp(wID,'images:imregcorr:weakPeakCorrelation')
+                    % if there is weak correlation then use zero offset
+                    dpImg = zeros(1,2);
+                    
+                else
+                    % otherwise, use the calculated offset value
+                    dpImg = round(tForm.T(end,1:2));
+                end
             end
             
         end

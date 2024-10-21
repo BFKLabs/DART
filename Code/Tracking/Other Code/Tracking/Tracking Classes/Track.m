@@ -157,9 +157,10 @@ classdef Track < matlab.mixin.SetGet
             indF = 1;            
             nFrm = length(iFrm);
             Img = cell(nFrm,1);    
+            sRate = obj.iMov.sRate;
             
             % calculates the total 
-            iFrmT = obj.iMov.sRate*(iFrm-1) + obj.iData.Frm0;
+            iFrmT = sRate*(iFrm-1) + (obj.iData.Frm0/sRate);
             
             % resets the video object current time (if not matching)
             t0 = iFrmT(1)/obj.mObj.FrameRate;

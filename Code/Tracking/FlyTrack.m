@@ -501,8 +501,8 @@ if setMovie
                     [iData0.fData.dir,iData0.fData.name] = deal(fDir,fName);
 
                     % removes the background and resets the statuses    
-                    [iMov.isSet,iMov.phInfo] = deal(true,[]);
-                    [iMov.Ibg,iMov.pStats,iMov.autoP] = deal([]);
+                    iMov.isSet = true;
+                    [iMov.Ibg,iMov.pStats,iMov.phInfo] = deal([]);
                     for i = 1:length(iMov.Status)
                         iMov.Status{i}(:) = 0;
                     end                    

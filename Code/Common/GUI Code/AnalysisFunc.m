@@ -177,6 +177,10 @@ delete(hFig)
 % --- initialises the GUI objects
 function initGUIObjects(handles)
 
+% % global variables
+% global mainProgDir
+% pkgDir = fullfile(fileparts(mainProgDir),'External Apps');
+
 % retrieves the final analysis function names
 hFig = handles.figAnalyFunc;
 

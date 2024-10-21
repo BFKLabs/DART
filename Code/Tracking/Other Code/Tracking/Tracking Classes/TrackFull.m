@@ -614,7 +614,7 @@ classdef TrackFull < Track
             Brmv(obj.iFrmG{jPhase}(((indS(2)-1)*obj.nFrmS+1):end)) = true;
             
             % resets the positional arrays
-            for i = 1:length(obj.pData.fPos)
+            for i = 1:numel(obj.pData.fPos)
                 for j = 1:length(obj.pData.fPos{i})
                     % resets the local/global position arrays
                     obj.pData.fPos{i}{j}(Brmv,:) = NaN;
@@ -1074,14 +1074,11 @@ classdef TrackFull < Track
         end        
         
         % --- sets up the previous stack binary mask
-        function setupPrevStackBinary(obj)
-            
-            % creates a loadbar figure
-            hLoad = ProgressLoadbar('Setting Up Previous Stack Data...');
+        function setupPrevStackBinary(obj)            
             
             % field retrieval 
             iPh0 = obj.iPhase0;            
-            pP = obj.iMov.pPara{iPh0};
+            [pP,obj.fObj{iPh0}.pPara] = deal(obj.iMov.pPara{iPh0});
             [nRow,nCol] = deal(obj.iMov.pInfo.nRow,obj.iMov.pInfo.nCol);            
             
             % retrieves the previous image
@@ -1103,26 +1100,30 @@ classdef TrackFull < Track
                     % sets up the binary mask
                     IL = ImgPr(iR(obj.iMov.iRT{j}{i}),iC);
                     IRL = max(0,obj.iMov.Ibg{iPh0}{iReg} - IL);
+                    
+                    % calculates the image subtraction residual binary mask
                     BR = obj.fObj{iPh0}.calcResidualBinary(IRL,pP.pTol);
-                    BS = obj.fObj{iPh0}.calcSauvolaBinary(IL,pP);
-                                        
+                    
+                    % calculates sauvola threshold/binary images
+                    PS = setupSauvolaBinary(IL,pP,1);
+                    BS = obj.fObj{iPh0}.calcSauvolaBinary(IL,PS);
+                    
                     % retrieves the blob linear indices
                     [BSF,iGrpL] = ...
-                            obj.fObj{iPh0}.calcBlobProps(BS,BR,nFlyR);
-                    obj.fObj{iPh0}.BPr{iReg} = BSF;
+                        obj.fObj{iPh0}.calcBlobProps(BS,PS-IL,BR,nFlyR);
                     
                     % sets up the blob fly count
                     fPosL = cell2mat(cellfun(@(x)(...
                         x(iFrmPr,:)),obj.pData.fPosL{i,j},'un',0)');                    
                     Imap = obj.fObj{iPh0}.setupMapMask(iGrpL,size(IL));
                     ImapL = Imap(sub2ind(size(IL),fPosL(:,2),fPosL(:,1)));
+                    
+                    % sets the previous frame data fields 
+                    obj.fObj{iPh0}.BPr{iReg} = BSF;                    
                     obj.fObj{iPh0}.nGrpPr{iReg} = ...
                         arrayfun(@(x)(sum(ImapL==x)),1:length(iGrpL))';
                 end
             end
-            
-            % deletes the loadbar
-            delete(hLoad);
             
         end
         
