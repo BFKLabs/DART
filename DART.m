@@ -822,16 +822,8 @@ classdef DART < handle
         % --- executable redeployment menu item callback function
         function menuDeployExe(obj, ~, ~)
             
-            % initialisations
-            titleStr = 'Set The Executable Output Directory';
-            
-            % prompts the user to set the output directory
-            outDir = uigetdir(obj.mainDir,titleStr);
-            if outDir
-                % runs the executable creation code
-                createDARTExecutable(obj.mainDir,outDir,obj.progDef)
-            end
-            
+            CreateDARTExe(obj.hFig);
+                        
         end
         
         % --- DART installer menu item callback function

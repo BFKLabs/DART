@@ -161,7 +161,7 @@ classdef TrackMarkerObj < dynamicprops & handle
             if obj.isLV
                 xiR = str2double(get(obj.hEditM,'string'));
             else
-                xiR = (1:obj.nApp)';
+                xiR = find(obj.iMov.ok);
             end
             
             % sets up marker data vectors for the specified regions
