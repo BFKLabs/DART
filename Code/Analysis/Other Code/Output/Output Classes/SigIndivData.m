@@ -179,8 +179,8 @@ classdef SigIndivData < DataOutputArray
             elseif isnumeric(YY{1}{1}{i0}(1))
                 % case is for numerical time data
                 YYT = YY{1}{1}{i0}(1:2,1);
-                hasTSP0 = (diff(YYT) == 0) || ...
-                          (all(mod(YYT,1) == 0) && (all(YYT > 0)));
+                hasTSP0 = (diff(YYT) == 0) || (all(mod(YYT,1) == 0) ...
+                    && (all(YYT > 0)) && obj.iData.sepDay);
             else
                 % case is for non-numerical time data
                 hasTSP0 = isnumeric(YY{1}{1}{i0}{1,1});
