@@ -160,6 +160,8 @@ classdef TrackMarkerObj < dynamicprops & handle
             % sets the region marker data to update
             if obj.isLV
                 xiR = str2double(get(obj.hEditM,'string'));
+            elseif obj.isMltTrk
+                xiR = find(arr2vec(obj.iMov.flyok')');                
             else
                 xiR = find(obj.iMov.ok);
             end

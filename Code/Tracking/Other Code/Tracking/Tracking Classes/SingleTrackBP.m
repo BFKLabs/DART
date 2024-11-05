@@ -272,6 +272,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         function startBatchProcessing(obj)
             
             % resets the calculation/batch processing flags
+            dLvl = 0;
             obj.calcOK = true;
             obj.hFig.isBatch = true;            
             
@@ -284,13 +285,28 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                        'Sub-Image Stack Reading'};
                    
             % removes the top line if not
-            if ~obj.isMultiBatch && ~obj.isMltTrk
+            if obj.isMltTrk
+                % determines if parallel processing is being used
+                if ~isempty(obj.hFig.mtObj) && obj.hFig.mtObj.usePara
+                    % if so, then expand the number of progressbar levels
+                    iOfs = obj.isMultiBatch;
+                    dLvl = max(0,(iOfs + obj.hFig.mtObj.nWorker) - 2);
+                    
+                    % expands the progressbar string
+                    if dLvl > 0
+                        wStrT = 'Final Tracking Check (Initialising...)';
+                        obj.wStr = [obj.wStr,repmat({wStrT},1,dLvl)];
+                    end
+                end
+                
+            elseif ~obj.isMultiBatch
+                % removes directory field (if not multi-batch processing)                
                 obj.wStr = obj.wStr([1,3:end]);            
-            end
+            end            
                    
             % creates the waitbar figure                
             obj.hProg = ProgBar(obj.wStr,tStr,2);  
-            obj.hProg.collapseProgBar(1);
+            obj.hProg.collapseProgBar(1 + dLvl);
             obj.hProg.setVisibility('on');            
             
             % ---------------------------- %            
@@ -891,8 +907,12 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                     return
                 end
                 
-                % retrieves the 
-                obj.iMov = trkObjI.iMov;               
+                % retrieves the sub-region data struct
+                obj.iMov = trkObjI.iMov;   
+                if obj.isMltTrk
+                    obj.iMov.sInfo = ...
+                        obj.hFig.mtObj.setupStatObjStruct(trkObjI);                    
+                end
                 
                 % ensures the sub-region data struct reflects the previous 
                 % solution file
@@ -1130,7 +1150,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 
                 % calculates video offset between the new/candidate frames
                 lastwarn('');                
-                tForm = imregcorr(ImgNw,Img0,'rigid');
+                tForm = imregcorr(ImgNw,Img0,'rigid','Window',false);
                 
                 % checks the performance of the image correlation
                 [~,wID] = lastwarn();                
@@ -1582,7 +1602,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         
         % --- copies the summary file from the batch processing video
         %     directory to the output solution file directory
-        function copySummaryFile(obj,bdata)           
+        function copySummaryFile(obj,bdata)
             
             try        
                 copyfile(bdata.sName,obj.outDir,'f');
@@ -1633,7 +1653,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
         end
         
         % --- reloads the image data struct with the movie, mName --- %
-        function reloadImgData(obj,varargin)        
+        function reloadImgData(obj,varargin)
             
             % sets the input variables (based on input argument count)
             if nargin == 3

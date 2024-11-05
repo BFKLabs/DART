@@ -222,14 +222,27 @@ for j = length(solnFile):-1:1
     % data has been calculated. if not, then flag that the
     % solution file has not been segmented
     sNameNw = fullfile(bpDir,solnFile(j).name);
-    B = load(sNameNw,'-mat','pData');                
+    B = load(sNameNw,'-mat','pData','iMov');
+    
+    % determines the 
     if isempty(B.pData)
         if j ~= 1
             delete(sNameNw);
         end
     else
+        % retrieves the tracking data from the first feasible object
+        [i0,j0] = find(B.iMov.flyok,1,'first');
+        if detMltTrkStatus(B.iMov)
+            % case is multi-tracking            
+            fP = B.pData.fPos{i0,j0}{1};            
+            
+        else
+            % case is single tracking
+            fP = B.pData.fPos{i0}{j0};
+        end
+        
         % determines if the current video has been entirely segmented
-        isSeg(j) = all(B.pData.isSeg);
+        isSeg(j) = ~any(isnan(fP(end,:)));        
         if isSeg(j)
             % if so, then flag the previous have also been segmented and
             % exit the function

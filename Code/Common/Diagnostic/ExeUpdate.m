@@ -18,6 +18,7 @@ classdef ExeUpdate < handle
         
         % path string fields
         exeFile
+        zipFile
         dartFile
         tempDir
         statusFile
@@ -219,7 +220,7 @@ classdef ExeUpdate < handle
 
             % sets the temporary file name
             setObjEnable(hObject,0)
-            tempFile = fullfile(obj.tempDir,'ExeUpdate.zip');
+            tempFile = fullfile(obj.tempDir,obj.zipFile);
 
             % -------------------------------- %
             % --- EXECUTABLE FILE DOWNLOAD --- %
@@ -292,12 +293,34 @@ classdef ExeUpdate < handle
         % --- OTHER FUNCTIONS --- %
         % ----------------------- %
         
+        % --- sets up the executable update process
+        function startExeUpdateProcess(obj)
+            
+            % sets the default zip file name
+            obj.zipFile = 'ExeUpdate.zip';
+            
+            % sets the specific directory file name
+            if ~isempty(which('MultiTrack'))
+                % case is multi-tracking
+                obj.zipFile = 'ExeUpdate_MT.zip';
+            end
+            
+            % runs the executable file
+            Process = System.Diagnostics.Process();
+            Process.StartInfo.UseShellExecute = false;
+            Process.StartInfo.CreateNoWindow = true;
+            Process.StartInfo.FileName = obj.exeFile;
+            Process.StartInfo.Arguments = obj.zipFile;
+            Process.Start();
+            
+        end
+        
         % --- checks the status of the current update file
         function iStatus = checkCurrentUpdateStatus(obj)
 
             % creates a loadbar
             lStr = 'Checking Current DART Executable Version...';
-            h = ProgressLoadbar(lStr);
+            h = ProgressLoadbar(lStr);            
             
             % initialisations
             iStatus = 0;
@@ -305,7 +328,7 @@ classdef ExeUpdate < handle
             obj.dartFile = getProgFileName('DART.ctf');
             obj.tempDir = fullfile(fileparts(obj.exeFile),'TempFiles');
             obj.statusFile = fullfile(obj.tempDir,'Status.mat');
-
+            
             % sets the important fields into the gui
             setObjVisibility(obj.hFigM,0)
 
@@ -316,13 +339,10 @@ classdef ExeUpdate < handle
 
             % changes directory to the temporary directory
             cDir0 = pwd;
-            cd(fileparts(obj.tempDir))
+            cd(fileparts(obj.tempDir))            
 
-            % runs the executable file
-            Process = System.Diagnostics.Process();
-            Process.StartInfo.UseShellExecute = false;
-            Process.StartInfo.CreateNoWindow = true;
-            Process.Start(obj.exeFile);
+            % runs the executable update process
+            obj.startExeUpdateProcess();
 
             % keep waiting until the status file appears
             while ~exist(obj.statusFile,'file')
@@ -340,10 +360,13 @@ classdef ExeUpdate < handle
             % determines if the file could be successfully detected
             if sInfo.ok
                 % determines if the .ctf file exists
-                if exist(obj.dartFile,'file')
+                if exist(obj.dartFile,'file')                    
                     % if so, compare the date to the remote zip file date
-                    fInfo = dir(obj.dartFile);
-                    updateReqd = fInfo.datenum < datenum(sInfo.mod_time);
+                    fInfo = dir(obj.dartFile);                    
+                    dtLocal = datetime(datestr(fInfo.date));
+                    dtRemote = datetime(datestr(sInfo.mod_time));
+                    updateReqd = time(between(dtLocal,dtRemote)) > 0;
+                    
                 else
                     % if the .ctf file is missing, then force update
                     updateReqd = true;
@@ -378,7 +401,7 @@ classdef ExeUpdate < handle
             % sets the response file name
             if exist(obj.tempDir,'dir')
                 % sets the response file output directory
-                obj.responseFile = fullfile(obj.tempDir,'Response.mat');                
+                obj.responseFile = fullfile(obj.tempDir,'Response.mat');
                 
                 % saves the continuation flag to file and pauses...
                 save(obj.responseFile,'cont')

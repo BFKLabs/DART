@@ -474,7 +474,7 @@ classdef DART < handle
                 % case is DART is being run via Matlab on PC
                 obj.setMenuProp('menuDeployExe','Enable','on')
                 obj.setMenuProp('menuConfigSerial','Enable','on')
-                obj.setMenuProp('menuExeUpdate','Enable',hasExeU)                                
+                obj.setMenuProp('menuExeUpdate','Enable',hasExeU)
                 
             end
             
