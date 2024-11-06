@@ -56,7 +56,7 @@ for j = 1:length(iApp)
         [dPx0,dPy0,Rad0] = deal(cell(1,length(indC)));
         for k = 1:length(indC)
             % determines the row/column indices of the region
-            iReg = iC(indC{k}(1));
+            iReg = cID(indC{k}(1),1);
             iCol = mod(iReg-1,pInfo.nCol) + 1;
             iRow = floor((iReg-1)/pInfo.nCol) + 1;
             nFly = pInfo.nFly(iRow,iCol);

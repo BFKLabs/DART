@@ -636,12 +636,12 @@ classdef AnalysisOpt < handle
             
             % rotates the region markers (if set)
             if obj.iMov.isSet
-                obj.updateRegionMarkers(isRot90,frmSz);
+%                 obj.updateRegionMarkers(isRot90,frmSz);
             end
             
             % rotates the positional data (if calculated)
             if ~isempty(obj.hFigM.pData) && isfield(obj.hFigM.pData,'fPos')
-                obj.rotatePosData(isRot90);
+%                 obj.rotatePosData(isRot90);
             end
             
             % updates the data structs in the main GUI

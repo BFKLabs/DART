@@ -27,9 +27,7 @@ classdef ExptCompObj < handle
             % sets up the experiment criteria and compatibility flags
             obj.setupExptCriteriaData(sInfo);            
             obj.calcCompatibilityFlags();
-            obj.setupExptInfo(sInfo);            
-            
-%             setupExptCriteriaData
+            obj.setupExptInfo(sInfo);
             
         end
         
@@ -39,9 +37,13 @@ classdef ExptCompObj < handle
             % updates the data related fields
             obj.nExp = length(sInfoNw);
             
+            % resets the selection criteria (if no experiments)
+            if obj.nExp == 0
+                obj.iSel(:) = true;
+            end
+            
             % updates the experiment criteria and compatibility flags
             obj.setupExptCriteriaData(sInfoNw);
-%             obj.getInitCritCheck();
             obj.calcCompatibilityFlags();
             obj.setupExptInfo(sInfoNw)
             

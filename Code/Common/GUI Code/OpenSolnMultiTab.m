@@ -194,6 +194,7 @@ classdef OpenSolnMultiTab < dynamicprops & handle
             
             % determines the compatible experiment info
             if ~isempty(obj.sInfo)
+                obj.cObj.getInitCritCheck();
                 indG = obj.cObj.detCompatibleExpts();
                 obj.resetFinalGroupNameArrays(indG)
             end
@@ -378,9 +379,7 @@ classdef OpenSolnMultiTab < dynamicprops & handle
             end
             
             % updates the experiment list selection
-            set(obj.hList,'Value',find(indG{iTabG} == iExpNw));
-            
-            
+            set(obj.hList,'Value',find(indG{iTabG} == iExpNw));                        
             obj.tabSelectedGrp(hTabG, [], indG)
             
         end
@@ -820,7 +819,11 @@ classdef OpenSolnMultiTab < dynamicprops & handle
             end
 
             % resets the selection mode to single selection
-            set(hObject,'max',1)
+            set(hObject,'max',2)
+            
+            % resets the listbox selection
+            iSelS = hObject.Value;
+            obj.jTable.changeSelection(iSelS-1,0,0,0);
 
             % updates the table group names
             obj.updateTableGroupNames()            
@@ -1109,13 +1112,16 @@ classdef OpenSolnMultiTab < dynamicprops & handle
         end
         
         % --- callback function for updating a criteria checkbox value
-        function checkUpdate(obj, hObject, ~)
+        function checkUpdate(obj, hObject, ~)            
             
             % object retrieval
             pStr = get(hObject,'UserData');
             pValue = get(hObject,'Value');
             obj.cObj.setCritCheck(pStr,pValue)
 
+            % flag a change was made
+            obj.isChange = true;            
+            
             % resets the final group name arrays
             obj.resetFinalGroupNameArrays();
 
@@ -1142,8 +1148,7 @@ classdef OpenSolnMultiTab < dynamicprops & handle
 
             % determines the unique group names
             obj.gNameU = cellfun(@(x)(obj.rmvInfeasName(unique...
-                        (cell2cell(obj.gName(x)),'stable'))),indG,'un',0);
-
+                (cell2cell(obj.gName(x)),'stable'))),indG,'un',0);
         end        
         
     end

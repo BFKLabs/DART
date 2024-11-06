@@ -42,4 +42,7 @@ end
 indF = unique(cIDT,'rows','stable');
 for j = 1:size(indF,1)
     gName{indF(j,1)} = pInfo.gName{indF(j,2)};
-end    
+end
+
+% ensures the name array is a row vector
+gName = gName(:);

@@ -770,22 +770,16 @@ set(handles.output,'iMov',iMov)
 
 % sets the fly positional data struct depending whether it is empty or not
 if isfield(solnData,'pData')
+    % case is the position data field exists
     pData = solnData.pData;
+    
+    % determines the frame count (if positional data is available)
     if ~isempty(pData)    
-        % determines the first feasible region/sub-region
         [i0,j0] = getFirstFeasRegion(iMov);
-        if detMltTrkStatus(iMov)
-            % case is multi-tracking
-            nFrm = size(pData.fPos{i0}{j0},1);
-        else
-            % case is single-tracking
-            nFrm = size(pData.fPos{i0}{j0},1);
-        end
-
-        % resets the time vector (if required)
-        if length(pData.T) > nFrm; pData.T = pData.T(1:nFrm); end        
+        nFrm = size(pData.fPos{i0}{j0},1);
     end
 else
+    % case is the position data field is missing
     pData = [];
 end 
 

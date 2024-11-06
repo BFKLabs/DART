@@ -16,7 +16,7 @@ if length(snTot) == 1
     snTotL.iMov.ok = snTotL.iMov.ok(ok);
     snTotL.iMov.flyok = snTotL.iMov.flyok(ok);
     [snTotL.iMov.Name,snTotL.iMov.pInfo.gName] = ...
-                                        deal(snTotL.iMov.pInfo.gName(ok));            
+                            deal(snTotL.iMov.pInfo.gName(ok));
     
     % reduces down the individual acceptance flags (dependent on expt type)
     if ~iscell(snTotL.iMov.flyok)

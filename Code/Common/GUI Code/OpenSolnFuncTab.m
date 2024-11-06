@@ -25,7 +25,8 @@ classdef OpenSolnFuncTab < dynamicprops & handle
     
     % class methods
     methods
-        % class constructor
+        
+        % --- class constructor
         function obj = OpenSolnFuncTab(baseObj)
             
             % field initialisations
@@ -86,7 +87,6 @@ classdef OpenSolnFuncTab < dynamicprops & handle
             % initialises the other gui objects
             obj.initFuncDepTable();
             obj.initFuncCellComp();
-%             obj.initFilterTree();
             
             % updates the function object fields
             set(obj.objFcn,'jTable',obj.jTable,'treeUpdateExtn',cbFcn);

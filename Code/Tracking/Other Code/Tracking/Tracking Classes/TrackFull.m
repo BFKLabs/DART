@@ -1023,7 +1023,7 @@ classdef TrackFull < Track
                     % otherwise, set the time from the movie properties
                     tStep = 1/get(mObj,'FrameRate');
                     nFrmTot = get(mObj,'NumberOfFrames');
-                    obj.pData.T = (0:tStep:(nFrmTot-1)*tStep)';
+                    obj.pData.T = tStep*(0:(nFrmTot-1))';
                 end
                 
             else

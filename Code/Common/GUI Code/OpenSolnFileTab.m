@@ -1232,8 +1232,15 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % object retrieval
             handles = obj.hGUI;
 
-            % if there is no solution data loaded, then exit the function
-            if isempty(obj.sInfo) || isempty(eventdata.Indices)
+            if isempty(obj.sInfo)
+                % if there is no solution data loaded, then exit 
+                return
+                
+            elseif isempty(eventdata.Indices)
+                % otherwise, if data is loaded, but 
+                setObjEnable(handles.menuScaleFactor,0);
+                
+                % exits the function
                 return
             end
 

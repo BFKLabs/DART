@@ -32,7 +32,9 @@ if isMltTrk
 
     % sorts the ID arrays by column and then by row (for each unique group)
     for i = 1:nGrp
-        cID{i} = sortrows(cID{i},[1,2]);
+        if ~isempty(cID{i})
+            cID{i} = sortrows(cID{i},[1,2]);
+        end
     end    
     
 elseif iMov.is2D 

@@ -1744,6 +1744,9 @@ setObjEnable(handles.menuSaveFigure,'off')
 % calculates the global axes coordinates
 resetPlotPanelCoords(handles)
 
+% clears any temporary data
+tempSolnDataIO(handles,'remove')
+
 % --- resizes the analysis GUI objects
 function resetFigSize(h,fPos)
 
