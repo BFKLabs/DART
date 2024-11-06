@@ -111,11 +111,15 @@ classdef FuncDiagnostic < handle
         widScr = 17;
         rowHght = 20;
         hghtLog = 212;
+        isOldVer = true;
+        
+        % string fields
+        igList        
         tabStr = '  ';
-        arrStr = char(8594);
+        arrStr = char(8594);        
         tDurS = {'Short','Long'};
         tagStr = 'figFuncDiagnostic';
-        isOldVer = true;
+        wStr0 = {'Plotting','Calculation'};        
         
         % function handles
         initAxes
@@ -187,6 +191,9 @@ classdef FuncDiagnostic < handle
             
             % function handle retrieval
             obj.initAxes = getappdata(obj.hFigM,'initAxesObject');
+            
+            % sets the warning ignore list
+            obj.igList = {'MATLAB:ui:javacomponent:FunctionToBeRemoved'};
             
         end
         
@@ -730,12 +737,7 @@ classdef FuncDiagnostic < handle
             end
             
             % appends a warning (if one has been generated)
-            [wMsg, wID] = lastwarn();            
-            if ~isempty(wMsg)
-                obj.updateProgressLog('Calculation Warning Detected!!',4,'rb')
-                obj.appendErrorData({wMsg,wID},pDataF,indSF,true,false);
-                lastwarn('');
-            end
+            obj.getWarnMsg(pDataF,indSF,true);
             
             % ---------------------------------- %
             % --- ANALYSIS FUNCTION PLOTTING --- %
@@ -759,18 +761,30 @@ classdef FuncDiagnostic < handle
             pause(obj.tPause);            
             
             % appends a warning (if one has been generated)
-            [wMsg, wID] = lastwarn();            
-            if ~isempty(wMsg)
-                obj.updateProgressLog('Plotting Warning Detected!!',4,'rb')
-                obj.appendErrorData({wMsg,wID},pDataF,indSF,false,false);
-                
-            else
-                % updates the plot data struct
-                iFcn = obj.iSelS{indSF(2)}(indSF(3));
-                obj.plotD{indSF(2)}{iFcn,indSF(1)} = {pltDC};
-            end                        
+            obj.getWarnMsg(pDataF,indSF,false);            
             
-        end
+            % updates the plot data struct
+            iFcn = obj.iSelS{indSF(2)}(indSF(3));
+            obj.plotD{indSF(2)}{iFcn,indSF(1)} = {pltDC};
+            
+        end                
+        
+        % --- sets up the warning message
+        function getWarnMsg(obj,pDataF,indSF,isCalc)
+
+            % sets up the warning string
+            wStr = sprintf('%s Warning Detected!',obj.wStr0{1+isCalc});
+
+            % determines if there is a valid warning
+            [wMsg, wID] = lastwarn();            
+            if ~isempty(wID) && ~any(strcmp(obj.igList,wID))
+                % if there is not on the ignore list, then add 
+                obj.updateProgressLog(wStr,4,'rb')
+                obj.appendErrorData({wMsg,wID},pDataF,indSF,isCalc,false);
+                lastwarn('');
+            end
+
+        end        
         
         % ------------------------------------- %
         % --- PROGRESS LOG UPDATE FUNCTIONS --- %

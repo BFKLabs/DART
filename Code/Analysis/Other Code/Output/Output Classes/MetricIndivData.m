@@ -7,22 +7,22 @@ classdef MetricIndivData < DataOutputArray
         xiD
         iiX
         iiU
-        nGrp
-        nGrpU
-        nGrpG
         VarX                
         xDep
         mIndG
         mStrT
         mStrD
-        iFly
         nFly
+        iFly
         iFlyH
         appName        
         
         % scalar fields
         iMet
         nDay
+        nGrp
+        nGrpG
+        nGrpU
         outType
         
         % boolean fields
@@ -31,7 +31,7 @@ classdef MetricIndivData < DataOutputArray
         % data array fields
         YR
         YT
-        YM        
+        YM
         
     end
     
@@ -50,50 +50,39 @@ classdef MetricIndivData < DataOutputArray
             
         end
         
-        % --- sets up the data output array
-        function setupDataArray(obj)
-            
-            % sets up the header/data values for the output array
-            obj.setupGroupHeaders();
-            obj.setupMetricData();
-            
-            % combines the final output data array
-            obj.setupFinalDataArray();               
-            
-        end
-            
         % --- initialises the class fields
         function initClassFields(obj)
             
             % sets the global metric indices
-            Type = field2cell(obj.iData.yVar,'Type',1); 
+            Type = field2cell(obj.iData.yVar,'Type',1);
             mIndG0 = find(Type(:,3));
-            obj.mIndG = mIndG0(obj.iOrder);            
+            obj.mIndG = mIndG0(obj.iOrder);
 
             % sets the data group properties
             obj.sepGrp2 = obj.iData.sepGrp;
             obj.outType = obj.sepDay + 1;
             obj.nGrpG = 1 + obj.sepGrp2;
-            obj.nMet = length(obj.iOrder);            
+            obj.nMet = length(obj.iOrder);
             obj.nExp = sum(obj.expOut);
-            [obj.nGrp,obj.iiX,obj.VarX] = ...
-                        detDataGroupSize(obj.iData,obj.plotD,obj.mIndG,1);            
-            obj.iiU = unique(obj.iiX,'stable');
-            obj.nGrpU = unique(obj.nGrp,'stable');                                
             
-            % sets the reduced acceptance flags
-            snTot = getappdata(obj.hFig,'snTot');
-            fok = arrayfun(@(x)(groupAcceptFlags(x)),snTot(:),'un',0)';
+            % determines the dependent variable properties
+            [obj.nGrp,obj.iiX,obj.VarX] = ...
+                detDataGroupSize(obj.iData,obj.plotD,obj.mIndG,1);
+            obj.iiU = unique(obj.iiX,'stable');
+            obj.nGrpU = unique(obj.nGrp,'stable');
+            
+            % sets the reduced acceptance flags            
+            fok = arrayfun(@(x)(groupAcceptFlags(x)),obj.snTot(:),'un',0)';
             for i = 1:length(fok)
-                fok{i} = fok{i}(obj.appOut); 
-            end                                
+                fok{i} = fok{i}(obj.appOut);
+            end
             
             % sets the output fly indices/counts
             A = cell(obj.nApp,length(obj.nGrpU));
-            snTotF = arr2vec(obj.snTot(obj.expOut))';            
+            snTotF = arr2vec(obj.snTot(obj.expOut))';
             [obj.iFly,obj.iFlyH,obj.nFly] = deal(A);
             for i = 1:obj.nApp
-                for j = 1:length(obj.nGrpU)                                        
+                for j = 1:length(obj.nGrpU)
                     iOK0 = cellfun(@(x)(repmat...
                         (x{i},obj.nGrpG,1)),fok(obj.expOut),'un',0);                    
                     obj.iFly{i,j} = repmat(iOK0,obj.nGrpU(j),1);                    
@@ -112,7 +101,7 @@ classdef MetricIndivData < DataOutputArray
             % determines the inclusion flags for each genotype group
             hGUI = getappdata(obj.hFig,'hGUI');
             [~,~,pInd] = getSelectedIndices(guidata(hGUI));
-            if pInd == 3                        
+            if pInd == 3
                 % reduces the genotype groups to those that appear >= once
                 iOut = find(obj.appOut);
                 hasF = cellfun(@(x)(any(cell2mat(x(1,:))>0)),obj.nFly);
@@ -125,15 +114,27 @@ classdef MetricIndivData < DataOutputArray
                 appOutF = obj.appOut;
             end
             
-            % reduces down the output data array            
-            obj.reduceDataArray(appOutF);            
+            % reduces down the output data array
+            obj.reduceDataArray(appOutF);
             
-            % sets the other fields 
+            % sets the other fields
             obj.nApp = sum(appOutF);
-            obj.appName = obj.iData.appName(appOutF);            
-            obj.xDep = field2cell(obj.iData.yVar(obj.mIndG),'xDep');            
+            obj.appName = obj.iData.appName(appOutF);
+            obj.xDep = field2cell(obj.iData.yVar(obj.mIndG),'xDep');
             
-        end
+        end        
+        
+        % --- sets up the data output array
+        function setupDataArray(obj)
+            
+            % sets up the header/data values for the output array
+            obj.setupGroupHeaders();
+            obj.setupMetricData();
+            
+            % combines the final output data array
+            obj.setupFinalDataArray();               
+            
+        end            
         
         % ---------------------------------- %
         % --- DATA ARRAY SETUP FUNCTIONS --- %
@@ -220,7 +221,7 @@ classdef MetricIndivData < DataOutputArray
 %             nRow = 1+obj.sepGrp2;
             obj.YM = cell(obj.nApp,1);            
             
-            % case is separating the metric data by apparatus
+            % case is separating the metric data by grouping
             for i = 1:obj.nApp
                 % sub-array memory allocation
                 YMtmp = cell(1,obj.nMet);
@@ -289,7 +290,7 @@ classdef MetricIndivData < DataOutputArray
         % --- combines the header & metric data arrays into the final array
         function setupFinalDataArray(obj)
             
-            %
+            % initialisations
             [a,b] = deal({''},'');
             DataF0 = cell(max(obj.iiX),obj.nApp);
            
@@ -464,12 +465,14 @@ classdef MetricIndivData < DataOutputArray
     % static class methods
     methods (Static)
         
+        % --- splits the grouped data
         function y = splitGroupData(y)
 
             y = num2cell(cell2mat(cellfun(@(x)(cell2mat(x(:))),y,'un',0)));
             
         end
         
+        % --- sets up the sub-groupingindices
         function indG = setupSubGroupIndices(iFly,xiG)
         
             [x,y] = meshgrid(xiG,iFly);
@@ -490,16 +493,16 @@ classdef MetricIndivData < DataOutputArray
             
             % calculates the index offset
             fok = snTot.iMov.flyok{iApp};
-
+            
             % calculates the index offset
             if snTot.iMov.is2D
                 nFlyG = arr2vec(getSRCount(snTot.iMov)');
-%                 nFlyG = snTot.iMov.pInfo.nRow*ones(snTot.iMov.pInfo.nCol,1);                
+                %                 nFlyG = snTot.iMov.pInfo.nRow*ones(snTot.iMov.pInfo.nCol,1);
             else
                 nFlyG = cellfun('length',snTot.iMov.iRT(:));
-            end            
+            end
             
-            % calculates the region index offsets 
+            % calculates the region index offsets
             iOfs = cumsum([0;nFlyG(1:end-1)]);
             
             % determines the unique row/column indices
@@ -517,7 +520,7 @@ classdef MetricIndivData < DataOutputArray
                     cID(x,3)+y),indC,num2cell(iOfs(indGT)),'un',0));
             end
             
-        end        
+        end
             
     end
     

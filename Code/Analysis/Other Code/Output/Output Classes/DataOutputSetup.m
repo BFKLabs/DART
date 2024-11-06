@@ -19,6 +19,7 @@ classdef DataOutputSetup < handle
         
         % boolean flag fields
         ok = true;        
+        isMltTrk
         
     end
     
@@ -43,6 +44,10 @@ classdef DataOutputSetup < handle
             
             % retrieves the main class object fields
             obj.iData = getappdata(obj.hFig,'iData');
+            
+            % sets the multi-tracking flag
+            snTot = getappdata(obj.hFig,'snTot');
+            obj.isMltTrk = detMltTrkStatus(snTot(1).iMov);
             
             % sets the selection/metric indices
             obj.iSel = obj.iData.tData.iSel(obj.iData.cTab);
@@ -98,7 +103,14 @@ classdef DataOutputSetup < handle
 
                     case 4
                         % case is the individual metric output
-                        dataObj = MetricIndivData(obj.hFig,obj.hProg);
+                        if obj.isMltTrk
+                            % case is multi-tracking data output
+                            dataObj = ...
+                                MetricIndivDataMulti(obj.hFig,obj.hProg);
+                        else
+                            % case is other tracking data output
+                            dataObj = MetricIndivData(obj.hFig,obj.hProg);
+                        end
 
                     case 5 
                         % case is the population signal output 
@@ -106,7 +118,14 @@ classdef DataOutputSetup < handle
 
                     case 6 
                         % case is the individual signal output 
-                        dataObj = SigIndivData(obj.hFig,obj.hProg);
+                        if obj.isMltTrk
+                            % case is multi-tracking data output
+                            dataObj = ...
+                                SigIndivDataMulti(obj.hFig,obj.hProg);
+                        else
+                            % case is other tracking data output
+                            dataObj = SigIndivData(obj.hFig,obj.hProg);
+                        end
 
                     case 7 
                         % case is the general population data array

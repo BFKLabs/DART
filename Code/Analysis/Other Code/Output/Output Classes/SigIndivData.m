@@ -1,7 +1,7 @@
 classdef SigIndivData < DataOutputArray
     
     % class properties
-    properties        
+    properties
         
         % index/cell array fields        
         xDep        
@@ -85,7 +85,7 @@ classdef SigIndivData < DataOutputArray
             obj.mIndG = mIndG0(obj.iOrder);
             
             % sets the other important class fields
-            obj.outType = obj.sepDay + 1;            
+            obj.outType = obj.sepDay + 1;
             obj.xDep = field2cell(yVar(obj.mIndG),'xDep');
             obj.xDepT = cellfun(@(x)(x{1}),obj.xDep,'un',0);
             
@@ -94,7 +94,7 @@ classdef SigIndivData < DataOutputArray
             [xVarV,xVarT] = field2cell(xVar,{'Var','Type'});
             [obj.xDepTU,~,obj.indU] = unique(obj.xDepT,'stable');
             obj.iiXD = cellfun(@(x)(find(strcmp(xVarV,x))),obj.xDepT);
-            obj.hasTime = strcmp(xVarT(obj.iiXD),'Time');                                    
+            obj.hasTime = strcmp(xVarT(obj.iiXD),'Time');
             
         end                        
         
@@ -147,7 +147,7 @@ classdef SigIndivData < DataOutputArray
         end
         
         % --- initialises the class fields for the current metric
-        function initMetricClassFields(obj)            
+        function initMetricClassFields(obj)
             
             % sets the time vector properites
             if obj.hasTime(obj.iMet)
@@ -323,12 +323,12 @@ classdef SigIndivData < DataOutputArray
             
             % ------------------------------ %
             % --- SUB-GROUP HEADER SETUP --- %
-            % ------------------------------ %            
+            % ------------------------------ %
             
             % determines the feasible
             nDayT = obj.sepDay*(obj.nDay(iExp)-1) + 1;
             nP = [nDayT,obj.nGrp,false];
-            isKeep = [true,nP>1];            
+            isKeep = [true,nP>1];
             
             % sets the header string based on the level
             for iLvl = find(isKeep)
@@ -340,7 +340,7 @@ classdef SigIndivData < DataOutputArray
                         else
                             xiE = 1:obj.nFly{iApp}{iExp};
                         end
-                            
+                        
                         if obj.numGrp
                             mStr0{iLvl} = arrayfun(@num2str,xiE,'un',0);
                         else
@@ -357,14 +357,14 @@ classdef SigIndivData < DataOutputArray
                             mStr0{iLvl} = arrayfun(@(x)...
                                 (sprintf('Day #%i',x)),1:nP(1),'un',0);
                         end
-                            
+                        
                     case {3,4}
                         % case is the bin/grouping separation
                         mStrNw = arr2vec(getStructField...
-                                (obj.plotD,obj.xDep{obj.iMet}{iLvl-1}))';
+                            (obj.plotD,obj.xDep{obj.iMet}{iLvl-1}))';
                         if obj.numGrp
                             xiM = 1:length(mStrNw);
-                            mStr0{iLvl} = arrayfun(@num2str,xiM,'un',0);                            
+                            mStr0{iLvl} = arrayfun(@num2str,xiM,'un',0);
                         else
                             mStr0{iLvl} = mStrNw;
                         end
@@ -379,57 +379,57 @@ classdef SigIndivData < DataOutputArray
             for i = 2:length(mStr0)
                 A = num2cell(mStrC,1);
                 mStrC = cell2cell(cellfun(@(x)(...
-                        combineCellArrays(x,mStr0{i},0,b)),A,'un',0),0);                
+                    combineCellArrays(x,mStr0{i},0,b)),A,'un',0),0);
             end
             
             % combines the main group header strings
             mStrC = combineCellArrays(obj.mStrMG{iApp,iExp},mStrC,0,b);
             
-            % appends the independent variable fields                        
+            % appends the independent variable fields
             tSpT = [a,obj.tSp(:)'];
             xStrC = [repmat(a,size(mStrC,1)-1,length(obj.tSp)+1);tSpT];
-            mStrC = [xStrC,mStrC];            
-                
-        end                    
+            mStrC = [xStrC,mStrC];
+            
+        end
         
         % --- sets up the metric data strings
         function setupMetricData(obj)
-        
+            
             % updates the loadbar
             lStr0 = 'Metric Data Array Setup';
             lStr = sprintf('%s (Metric %i of %i)',lStr0,obj.iMet,obj.nMet);
-            obj.hProg.StatusMessage = lStr;                        
+            obj.hProg.StatusMessage = lStr;
             
             % other memory allocation
             a = {''};
             tData = obj.setupTimeVector();
             nDayTmp = obj.sepDay*(obj.nDay-1) + 1;
-            obj.mData = cellfun(@(x)(strings(obj.nRow,x)),obj.nCol,'un',0);            
+            obj.mData = cellfun(@(x)(strings(obj.nRow,x)),obj.nCol,'un',0);
             
             % sets the signal data for each apparatus (split by day)
             for j = 1:obj.nApp
                 % sets the column offset indices
-                iFlyN = find(cell2mat(obj.nFly{j})>0);                    
-                for i = 1:length(iFlyN) 
+                iFlyN = find(cell2mat(obj.nFly{j})>0);
+                for i = 1:length(iFlyN)
                     % sets the column indices
                     [i2,iOfs] = deal(iFlyN(i),(1 + obj.hasTSP));
                     nC = obj.nFly{j}{i2}*nDayTmp(i2)*obj.nGrp + iOfs;
                     xiC = 1:nC;
-
+                    
                     % sets the data into the arrays
-                    if ~isempty(xiC)            
+                    if ~isempty(xiC)
                         % field retrieval
                         YRnw = obj.YR{j}{i2}(:,xiC);
                         if iscell(YRnw)
                             % determines the NaN/numeric cells values
                             [isNN,isNum] = deal(cellfun(@isnumeric,YRnw));
                             iNum = find(isNum);
-                            isNN(iNum(~cellfun(@isnan,YRnw(isNN)))) = false;                            
-
+                            isNN(iNum(~cellfun(@isnan,YRnw(isNN)))) = false;
+                            
                             % rounds the numerical values
                             YRnw(isNum) = cellfun(@(x)...
-                                    (roundP(x,obj.pR)),YRnw(isNum),'un',0);
-
+                                (roundP(x,obj.pR)),YRnw(isNum),'un',0);
+                            
                             % rounds the values and removes any NaN's
                             mDataNw = string(YRnw);
                             mDataNw(isNN) = a;
@@ -449,26 +449,26 @@ classdef SigIndivData < DataOutputArray
                         obj.mData{j,i2}(iRT,iCT) = tData{j}{i};
                     end
                 end
-            end  
+            end
             
-        end        
+        end
         
         % --- sets up the time vector
         function tData = setupTimeVector(obj)
             
             % memory allocation and field retrieval
-            tData = cell(obj.nApp,1);                       
+            tData = cell(obj.nApp,1);
             
             % sets the time vector for each group
             for i = 1:obj.nApp
                 % retrieves the time vector from the raw data array
                 iok = obj.isOK{i};
                 tData{i}(iok) = cellfun(@(x)...
-                            (x(:,1+obj.hasTSP)),obj.YR{i}(iok),'un',0);            
+                    (x(:,1+obj.hasTSP)),obj.YR{i}(iok),'un',0);
                 for j = find(iok(:)')
                     % converts the time numerical values to strings
                     if obj.hasTime(obj.iMet)
-                        % case is metric is time dependent     
+                        % case is metric is time dependent
                         if obj.nonZeroTime
                             dT = tData{i}{j} - diff(tData{i}{j}(1:2))/2;
                         else
@@ -481,12 +481,12 @@ classdef SigIndivData < DataOutputArray
                         % case metric is not time dependent
                         if isnumeric(tData{i}{j})
                             tData{i}{j} = string(tData{i}{j});
-                        end                        
+                        end
                     end
                 end
             end
             
-        end        
+        end
         
         % --- combines the header & metric data arrays into the final array
         function setupFinalDataArray(obj)
@@ -494,12 +494,12 @@ classdef SigIndivData < DataOutputArray
             % updates the loadbar
             lStr0 = 'Combining Final Data Array';
             lStr = sprintf('%s (Metric %i of %i)',lStr0,obj.iMet,obj.nMet);
-            obj.hProg.StatusMessage = lStr;                    
+            obj.hProg.StatusMessage = lStr;
             
             % combines the data/number index arrays
             [cOfs,rOfs] = deal(0,1);
             [obj.mData,obj.mStrT] = deal(obj.mData',obj.mStrT');
-            iOK = cell2mat(cell2cell(obj.nFly)') > 0; 
+            iOK = cell2mat(cell2cell(obj.nFly)') > 0;
             i0 = find(iOK,1,'first');
             
             % memory allocation for the final data table
@@ -519,22 +519,22 @@ classdef SigIndivData < DataOutputArray
                 obj.DataT(iR,iC) = mDataT;
                 
                 % increments the column offset
-                cOfs = cOfs + szD(j,2);                
+                cOfs = cOfs + szD(j,2);
             end
-                
-%             % combines the header
-%             isN0 = cellfun(@(x,y)([zeros(size(x));y]),...
-%                             obj.mStrT(iOK),obj.indN(iOK),'un',0);            
             
-%             % removes the first column
-%             obj.DataT = obj.DataT(:,2:end);
-%             obj.DataTN = obj.DataTN(:,2:end);            
+            %             % combines the header
+            %             isN0 = cellfun(@(x,y)([zeros(size(x));y]),...
+            %                             obj.mStrT(iOK),obj.indN(iOK),'un',0);
+            
+            %             % removes the first column
+            %             obj.DataT = obj.DataT(:,2:end);
+            %             obj.DataTN = obj.DataTN(:,2:end);
             
         end
 
         % ------------------------------------- %
         % --- COLUMN HEADER ARRAY FUNCTIONS --- %
-        % ------------------------------------- %                
+        % ------------------------------------- %
         
         % --- sets up the main group header string array
         function mStrGH = setMainGroupHeader(obj,x)
@@ -593,22 +593,22 @@ classdef SigIndivData < DataOutputArray
         
         % --- sets the reduced metric data array
         function reduceDataArray(obj)
-                        
+            
             % sets the fly count for each group/experiment
             nFlyT = cell2mat(arrayfun(@(x)(cellfun...
-                            (@sum,x.iMov.flyok)),obj.snTot,'un',0)');
+                (@sum,x.iMov.flyok)),obj.snTot,'un',0)');
             
             % reduces the count array to only include groups which
             % intersect with the current data output configuration
             gName0 = obj.snTot(1).iMov.pInfo.gName;
-            [~,iA] = intersect(gName0,obj.iData.appName,'stable');                        
-            nFlyT = nFlyT(iA,obj.expOut);                                                            
-                        
+            [~,iA] = intersect(gName0,obj.iData.appName,'stable');
+            nFlyT = nFlyT(iA,obj.expOut);
+            
             % reduces the genotype groups to those that appear in each expt
             [hasF,iOut] = deal(any(nFlyT>0,2),find(obj.appOut));
-            appOutF = obj.appOut & setGroup(iOut,size(hasF));            
+            appOutF = obj.appOut & setGroup(iOut,size(hasF));
             obj.appName = obj.iData.appName(iOut);
-            [obj.nApp,nFlyT] = deal(sum(appOutF),nFlyT(iOut,:));            
+            [obj.nApp,nFlyT] = deal(sum(appOutF),nFlyT(iOut,:));
             
             % sets the global fly indices
             if obj.useGlob
@@ -617,17 +617,17 @@ classdef SigIndivData < DataOutputArray
                     obj.snTot(obj.expOut),'un',0));
                 obj.iFly = iFly0(:,iOut);
             else
-                obj.iFly = arrayfun(@(x)(1:x),nFlyT,'un',0);                
+                obj.iFly = arrayfun(@(x)(1:x),nFlyT,'un',0);
             end
             
             % resets the metrics to the specified genotype groups
-            Ynw = obj.Y{obj.iOrder(obj.iMet),obj.outType}(obj.appOut);  
+            Ynw = obj.Y{obj.iOrder(obj.iMet),obj.outType}(obj.appOut);
             Ynw = cellfun(@(x)(x(obj.expOut)),Ynw,'un',0);
-
-            % sets the final data values
-            obj.YR = Ynw;  
             
-        end        
+            % sets the final data values
+            obj.YR = Ynw;
+            
+        end
         
         % --- retrieves the number format string
         function frmStr = getFormatString(obj)
