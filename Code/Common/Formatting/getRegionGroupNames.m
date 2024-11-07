@@ -7,17 +7,23 @@ pInfo = snTot.iMov.pInfo;
 
 if detMltTrkStatus(snTot.iMov)
     % case is a multi-experiment    
-
+    
     % sets the final data/column headers
     ii = ~cellfun('isempty',snTot.cID);
     iReg = cellfun(@(x)(unique(x(:,1))),snTot.cID(ii),'un',0);
     nReg = max(cell2mat(iReg));
-    gName = cell(nReg,1);
     
-    % sets the group names (for each grouping)
-    for i = 1:length(iReg)
-        gName(iReg{i}) = gName0(i);
-    end    
+    if nReg == length(gName0)
+        % if the group names length matches overall, then set as is
+        gName = gName0;
+        
+    else
+        % otherwise, set the names (for each grouping)
+        gName = cell(nReg,1);    
+        for i = 1:length(iReg)
+            gName(iReg{i}) = gName0(i);
+        end
+    end
     
 elseif snTot.iMov.is2D
     % case is a 2D experiment    
