@@ -2497,6 +2497,9 @@ end
 %     movies or, B) until the user presses stop 
 function isComplete = showMovie(handles)
 
+% parameters
+dFrmMax = 5;
+
 % retrieves the image data struct
 hFig = handles.output;
 
@@ -2541,9 +2544,16 @@ while (iFrm + cStp) <= hFig.iData.nFrm
         drawnow
         pause(0.01);
         
-        % if there is no new image then exit
-        ImgNw = getDispImageFast(hFig,iFrmR,isSub);
+        % retrieves the next frame
+        if cStp <= dFrmMax
+            ImgNw = getDispImageFast(hFig,iFrmR,isSub);            
+        else
+            ImgNw = getDispImage(hFig.iData,hFig.iMov,iFrm,isSub);
+        end
+
+        % updates the image axes
         if isempty(ImgNw)
+            % if there is no new image then exit            
             isComplete = true;
             jToggle.setSelected(false);
             return
