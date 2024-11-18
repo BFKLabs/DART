@@ -210,12 +210,17 @@ switch (typeStr)
     case ('PostImageLoad') 
         % case is the successful movie load
         
+        % creates a progress loadbar (not for batch processing?)
+        if ~hFig.isBatch
+            hLoad = ProgressLoadbar('Setting Up Image Axes...');
+        end
+        
         % sets the image data panel text strings   
         setImgData(handles,iData,iMov,1); 
         
         % resets the image zoom        
         [m,n] = deal(iData.sz(1),iData.sz(2));
-        set(handles.imgAxes,'xlim',[1 n],'ylim',[1 m],'visible','on')   
+        set(handles.imgAxes,'xlim',[1 n],'ylim',[1 m])
         
         % sets the GUI object enabled properties
         setParaEnable(handles,'on')
@@ -246,10 +251,11 @@ switch (typeStr)
                         'string',num2str(iData.cStp))
         set(setObjEnable(handles.menuCorrectTrans,'off'),'checked','off')
     	setObjEnable(handles.textFrameStep,'on')
-        setObjEnable(handles.menuWinsplit,'on')
+        setObjEnable(handles.menuWinsplit,'on')        
         
-        % updates the display image
-        dispImage(handles);      
+        % updates the display image        
+        dispImage(handles);  
+        axis(handles.imgAxes,'on');
         
         % disables the detect tube button
         if iMov.isSet
@@ -259,9 +265,13 @@ switch (typeStr)
             set(handles.checkShowTube,'value',1)
         else
             % deletes the temporary image stacks        
-            mkObj.deleteTrackMarkers()
-            
+            mkObj.deleteTrackMarkers()            
         end          
+        
+        % deletes the loadbar (if created)
+        if exist('hLoad','var')
+            delete(hLoad)
+        end
         
     case ('PostSolnLoad') % case is before opening a solution file    
         
