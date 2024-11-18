@@ -369,15 +369,15 @@ classdef ConvertVideo < handle
             
             % ------------------------------- %
             % --- HOUSE-KEEPING EXERCISES --- %
-            % ------------------------------- %                                      
+            % ------------------------------- %
             
-            % centers the figure and makes it visible            
+            % centers the figure and makes it visible
             centerfig(obj.hFig);
             refresh(obj.hFig);
-            pause(0.05);                   
+            pause(0.05);
             
-            % makes the figure visible 
-            set(obj.hFig,'Visible','on');            
+            % makes the figure visible
+            set(obj.hFig,'Visible','on');
             
         end        
         

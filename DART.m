@@ -333,8 +333,8 @@ classdef DART < handle
             % creates the figure object
             obj.hFig = figure('Position',fPos,'tag',obj.tagStr,...
                   'MenuBar','None','Toolbar','None','Resize','off',...
-                  'Name',titleStr,'NumberTitle','off',...
-                  'NumberTitle','off','Visible','off');
+                  'Name',titleStr,'NumberTitle','off','Visible','off',...
+                  'NumberTitle','off');
         
             % creates the main panel 
             pPos = [obj.dX,obj.dX,obj.widPanel,obj.hghtPanel];
@@ -1110,7 +1110,11 @@ classdef DART < handle
             for i = 1:length(fNames)                
                 % sets the new sub-struct and its field names
                 nwStr = getStructField(ProgDef,fNames{i});
-                fNamesS = fieldnames(nwStr.fldData);
+                if isfield(nwStr,'fldData')
+                    fNamesS = fieldnames(nwStr.fldData);
+                else
+                    continue
+                end
                 
                 % memory allocation
                 nFlds = length(fNamesS);
