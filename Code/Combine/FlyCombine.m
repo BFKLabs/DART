@@ -590,7 +590,11 @@ if ~isempty(hGUIInfo) && isa(hGUIInfo,'FlyInfoGUI')
         else
             % case is a 1D experiment setup
             for i = find(pObj.sInfo.snTot.iMov.flyok(:,j))'
-                jT.SetBGColourCell(i-1,j-1,nwCol);
+                if jT.getRowCount == size(pObj.sInfo.snTot.iMov.flyok,1)
+                    jT.SetBGColourCell(i-1,j-1,nwCol);
+                else
+                    jT.SetBGColourCell(j-1,i-1,nwCol);
+                end
             end
         end
     end
