@@ -8,5 +8,5 @@ end
 
 % evaluates all the struct fields
 for i = 1:length(pStr)
-    eval(sprintf('p.%s = pVal{i};',pStr{i}));
+    p.(pStr{i}) = pVal{i};
 end

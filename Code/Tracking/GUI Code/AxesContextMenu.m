@@ -34,7 +34,8 @@ classdef AxesContextMenu < handle
     
     % class methods
     methods
-        % class constructor
+        
+        % --- class constructor
         function obj = AxesContextMenu(hFig,hAx,mStr)
             
             % sets the input parameters
@@ -208,7 +209,7 @@ classdef AxesContextMenu < handle
             resetObjPos(obj.hMenu,'Bottom',y0)
             
             % updates the current selection point
-            mPC = ceil(get(obj.hAx,'CurrentPoint'));
+            mPC = ceil(get(obj.hAx,'CurrentPoint')-0.5);
             obj.mP0 = mPC(1,1:2);
             
         end
@@ -273,7 +274,7 @@ classdef AxesContextMenu < handle
     methods (Static)
         
         % --- branch merge callback function
-        function menuSelect(hMenu,~,obj)
+        function menuSelect(~,~,obj)
        
             % if there is no selection, then exit
             if obj.iSel == 0
@@ -283,7 +284,7 @@ classdef AxesContextMenu < handle
             % updates the menu check mark
             obj.updateMenuCheck(obj.iSel);
             
-            % 
+            % runs the callback function (if one exists)
             if ~isempty(obj.cbFcn)
                 feval(obj.cbFcn,obj)
             end

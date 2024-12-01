@@ -457,7 +457,8 @@ classdef ProgDefaultDef < handle
                     % case is the fly tracking gui
                     wStrIO = {'DirMov','RECORDED VIDEO FILE';...
                               'DirSoln','VIDEO SOLUTION FILE'};
-                    wStrPr = {'TempFile','TEMPORARY IMAGE STACK'};
+                    wStrPr = {'TempFile','TEMPORARY IMAGE STACK';...
+                              'ConfigFile','REGION CONFIGURATION FILES'};
                     
             end
         end        

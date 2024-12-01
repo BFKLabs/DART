@@ -1,345 +1,548 @@
-function varargout = SolnDiagCheck(varargin)
-% Last Modified by GUIDE v2.5 24-Dec-2015 20:05:14
-
-% Begin initialization code - DO NOT EDIT
-gui_Singleton = 1;
-gui_State = struct('gui_Name',       mfilename, ...
-                   'gui_Singleton',  gui_Singleton, ...
-                   'gui_OpeningFcn', @SolnDiagCheck_OpeningFcn, ...
-                   'gui_OutputFcn',  @SolnDiagCheck_OutputFcn, ...
-                   'gui_LayoutFcn',  [] , ...
-                   'gui_Callback',   []);
-if nargin && ischar(varargin{1})
-    gui_State.gui_Callback = str2func(varargin{1});
-end
-
-if nargout
-    [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
-else
-    gui_mainfcn(gui_State, varargin{:});
-end
-% End initialization code - DO NOT EDIT
-
-% --- Executes just before SolnDiagCheck is made visible.
-function SolnDiagCheck_OpeningFcn(hObject, eventdata, handles, varargin)
-
-% Choose default command line output for SolnDiagCheck
-handles.output = hObject;
-
-% Update handles structure
-guidata(hObject, handles);
-
-% sets the input arguments
-hGUI = varargin{1};
-
-% parameters
-Dtol0 = 10;
-
-% initialises the object properties
-pFldStr = {'jTabD','jTabN','jObjD','jObjN','cjTab','chTab',...
-           'nNaN','Dfrm','Dtol','hGUI'};
-initObjPropFields(hObject,pFldStr);
-
-% sets the diagnostic metrics from the solution view GUI
-hFigM = hGUI.output;
-set(hObject,'nNaN',hFigM.nNaN,'Dfrm',hFigM.Dfrm,'Dtol',Dtol0,'hGUI',hGUI);
-
-% sets the GUI object properties
-setObjEnable(handles.buttonGoto,'off')
-set(handles.editFrmDist,'string',num2str(Dtol0))
-
-% sets the figure to be visible
-setObjVisibility(hGUI.figFlySolnView,'off')
-setObjVisibility(hObject,'on'); 
-pause(0.05);
-
-% initialises the table positions
-hasNaN = updateNaNTable(handles);
-hasD = updateDistTable(handles);
-centreFigPosition(hObject);
-
-% retrieves the distance table java objects (if created)
-if hasD
-    set(hObject,'jObjD',findjobj(handles.tableFrmDist)); 
-    set(hObject,'jTabD',getJavaTable(handles.tableFrmDist)); 
-end         
-
-% retrieves the NaN frame table java objects (if created)
-if hasNaN
-    set(hObject,'jObjN',findjobj(handles.tableNaNCount)); 
-    set(hObject,'jTabN',getJavaTable(handles.tableNaNCount)); 
-end
-
-% UIWAIT makes SolnDiagCheck wait for user response (see UIRESUME)
-% uiwait(handles.figDiagCheck);
-
-% --- Outputs from this function are returned to the command line.
-function varargout = SolnDiagCheck_OutputFcn(hObject, eventdata, handles) 
-
-% Get default command line output from handles structure
-varargout{1} = handles.output;
-
-%-------------------------------------------------------------------------%
-%                        FIGURE CALLBACK FUNCTIONS                        %
-%-------------------------------------------------------------------------%
-
-% --- TABLE SELECTION CALLBACK FUNCTIONS --- %
-% ------------------------------------------ %
-
-% --- executes on editting editFrmDist
-function editFrmDist_Callback(hObject, eventdata, handles)
-
-% check to see if the new value is valid
-nwVal = str2double(get(hObject,'string'));
-if chkEditValue(nwVal,[10 inf],0)
-    % if so, then update the value into the GUI
-    set(handles.output,'Dtol',nwVal)
-    updateDistTable(handles);
-else
-    % otherwise, reset the editbox to the original value
-    set(hObject,'string',num2str(get(handles.output,'Dtol')))
-end
-
-% --- TABLE SELECTION CALLBACK FUNCTIONS --- %
-% ------------------------------------------ %
-
-% --- Executes when selected cell(s) is changed in tableNaNCount.
-function tableNaNCount_CellSelectionCallback(hObject, eventdata, handles)
-
-% if the indices are empty, then exit
-if isempty(eventdata.Indices); return; end
-
-% retrieves the java object handles
-jTabD = get(handles.output,'jTabD');
-jTabN = get(handles.output,'jTabN');
-
-% removes the table selection for the other table
-if ~isempty(jTabD)
-    jTabD.changeSelection(-1,-1, false, false);
-end
-
-% updates the goto button enabled properties (frame index selection only)
-setObjEnable(handles.buttonGoto',any(eventdata.Indices(2) == [4,5]))
-
-% sets the current table handle
-set(handles.output,'cjTab',jTabN,'chTab',hObject);
-
-% --- Executes when selected cell(s) is changed in tableFrmDist.
-function tableFrmDist_CellSelectionCallback(hObject, eventdata, handles)
-
-% if the indices are empty, then exit
-if isempty(eventdata.Indices); return; end
-
-% retrieves the java object handles
-jTabD = get(handles.output,'jTabD');
-jTabN = get(handles.output,'jTabN');
-
-% removes the table selection for the other table
-if ~isempty(jTabN)
-    jTabN.changeSelection(-1,-1, false, false);
-end
-
-% updates the goto button enabled properties (frame index selection only)
-setObjEnable(handles.buttonGoto,eventdata.Indices(2) == 4)
-
-% sets the current table handle
-set(handles.output,'cjTab',jTabD,'chTab',hObject);
-
-% --- PROGRAM CONTROL BUTTONS --- %
-% ------------------------------- %
-
-% --- Executes on button press in buttonGoto.
-function buttonGoto_Callback(hObject, eventdata, handles)
-
-% retrieves the main GUI object handles
-hGUI = get(handles.output,'hGUI');
-hGUIM = get(hGUI.figFlySolnView,'hGUI');
-
-% retrieves the selected row/column indices
-jTab = get(handles.output,'cjTab');
-hTab = get(handles.output,'chTab');
-[row,col] = deal(jTab.getSelectedRows+1,jTab.getSelectedColumns+1);
-
-% retrieves the table data and updates the frame counter
-Data = get(hTab,'Data');
-set(hGUIM.frmCountEdit,'string',num2str(Data{row,col}));
-
-% updates the main figure
-feval(get(hGUIM.figFlyTrack,'dispImage'),hGUIM);
-setObjEnable(hObject,'off')
-
-% --- Executes on button press in buttonClose.
-function buttonClose_Callback(hObject, eventdata, handles)
-
-% retrieves the solution viewing GUI handles
-hGUI = get(handles.output,'hGUI');
-
-% deletes the GUI and makes the GUI visible again
-delete(handles.output)
-setObjVisibility(hGUI.figFlySolnView,'on');
-
-%-------------------------------------------------------------------------%
-%                             OTHER FUNCTIONS                             %
-%-------------------------------------------------------------------------%
-
-% --- OBJECT UPDATE FUNCTIONS --- %
-% ------------------------------- %
-
-% --- updates the distance tolerance table
-function hasD = updateDistTable(handles)
-
-% retrieves the relevant data arrays/values
-Dfrm = get(handles.output,'Dfrm');
-Dtol = get(handles.output,'Dtol');
-
-% retrievesw the NaN panel/table and figure position vectors
-pPos = get(handles.panelFrmDist,'position');
-pPos2 = get(handles.panelNaNCount,'position');
-tPos = get(handles.tableFrmDist,'position');
-fPos = get(handles.figDiagCheck,'position');
-txPos = get(handles.textFrmDist,'position');
-edPos = get(handles.editFrmDist,'position');
-
-% parameters
-[yDel,fPosH,hasD] = deal(10,fPos(4),true);
-setObjVisibility(handles.figDiagCheck,'off')
-
-% determines the frames where distance is greater than tolerance
-DfrmT = cellfun(@(x)(find(x > Dtol)),Dfrm,'un',0);
-
-% determines the array entries where the NaN count is greater than zero
-nDCount = cellfun('length',DfrmT);
-if all(nDCount == 0)
-    % resets the panel dimensions
-    [hasD,pPos(4)] = deal(false,85);
-    txPos2 = get(handles.textDispLbl,'position');
+classdef SolnDiagCheck < handle
     
-    % makes the table invisible 
-    setObjVisibility(handles.tableFrmDist,'off')      
-    txPos = [txPos(1) (2*yDel+txPos2(4)) txPos(3:4)];
-    edPos = [edPos(1) (2*yDel+txPos2(4)+3) edPos(3:4)];
-    set(handles.textDispLbl,'position',[txPos2(1) yDel txPos2(3:4)],...
-                            'visible','on')
+    % class properties
+    properties
+    
+        % main class fields
+        nNaN
+        dFrm
+        hFigM
+        hGUIM
+        
+        % main object handle class fields
+        hFig
+        hTableS
+        jTableS
+        
+        % failed segmentation frame class fields
+        hPanelF
+        hTableF
+        jTableF
+        hTxtFL
+        
+        % inter-frame displacement class fields
+        hPanelD
+        hTableD
+        jTableD
+        hEditD
+        hTxtD
+        hTxtDL
+        
+        % control button object class fields
+        hPanelC
+        hButC        
+        
+        % fixed object dimension fields
+        dX = 10;
+        dHght = 25;
+        hghtTxt = 16;
+        hghtBut = 25;
+        hghtEdit = 22;
+        hghtRow = 25;
+        hghtPanelC = 40;
+        widPanel = 380;
+        widTxtD = 260;
+        
+        % calculated object dimension fields
+        hghtFig
+        widFig
+        hghtPanelF
+        hghtPanelD
+        hghtTableF
+        hghtTableD
+        widTable
+        widTxtL
+        widButC
+        
+        % static scalar fields
+        nRowF
+        nRowD   
+        nColT = 5;
+        nButC = 2;
+        dTol = 10;
+        nRowMx = 10;
+        fSzH = 13;
+        fSzL = 12;
+        fSz = 10 + 2/3;
+        
+        % static string fields
+        tagStr = 'figDiagCheck';
+        figName = 'Solution Diagnostic Check';
+        tStrFL = 'All Video Frame Were Segmented Correctly';
+        tStrDL = 'All Inter-Frame Displacements Within Tolerance';
+        
+    end
+    
+    % class methods
+    methods
+    
+        % --- class constructor
+        function obj = SolnDiagCheck(hFigM)
+            
+            % sets the input arguments
+            obj.hFigM = hFigM;
+            obj.hGUIM = obj.hFigM.hGUI;
+            
+            % initialises the class fields/objects
+            obj.initClassFields();
+            obj.initClassObjects();            
+            
+        end
+
+        % -------------------------------------- %        
+        % --- CLASS INITIALISATION FUNCTIONS --- %
+        % -------------------------------------- %
+        
+        % --- initialises the class fields
+        function initClassFields(obj)            
+            
+            % field retrieval
+            obj.nNaN = obj.hFigM.nNaN;
+            obj.dFrm = obj.hFigM.Dfrm;
+            
+            % makes the main window invisible
+            setObjVisibility(obj.hFigM,0);
+            
+            % ------------------------------------- %
+            % --- OBJECT DIMENSION CALCULATIONS --- %
+            % ------------------------------------- % 
+            
+            % height offset
+            hOfs = obj.dX + obj.dHght;
+            
+            % case is there is at least one failed frame
+            obj.hghtTableF = calcTableHeight(obj.nRowMx);
+            obj.hghtPanelF = obj.hghtTableF + hOfs;
+            
+            % case is there is at least 
+            obj.hghtTableD = calcTableHeight(obj.nRowMx);
+            obj.hghtPanelD = obj.hghtTableD + obj.hghtRow + hOfs;
+            
+            % calculates the object dimensions
+            obj.hghtFig = obj.hghtPanelC + ...
+                obj.hghtPanelD + obj.hghtPanelF + 4*obj.dX;
+            obj.widFig = obj.widPanel + 2*obj.dX;
+            
+            % other object dimension calculations
+            [obj.widTxtL,obj.widTable] = deal(obj.widPanel - 2*obj.dX);
+            obj.widButC = (obj.widPanel - 2.5*obj.dX)/obj.nButC;
+            
+        end
+        
+        % --- initialises the class objects
+        function initClassObjects(obj)
+            
+            % deletes any previous GUIs
+            hPrev = findall(0,'tag',obj.tagStr);
+            if ~isempty(hPrev); delete(hPrev); end
+            
+            % sets the table column widths
+            cWid = {40,65,75,90,0};
+            cWid{end} = obj.widTable - sum(cell2mat(cWid(1:end-1)));            
+            
+            % --------------------------- %
+            % --- MAIN FIGURE OBJECTS --- %
+            % --------------------------- %
+            
+            % creates the figure object
+            fPos = [100,100,obj.widFig,obj.hghtFig];
+            
+            % creates the figure object
+            obj.hFig = createUIObj('figure','Position',fPos,...
+                'tag',obj.tagStr,'MenuBar','None','Toolbar','None',...
+                'Name',obj.figName,'NumberTitle','off','Visible','off',...
+                'AutoResizeChildren','off','CloseRequestFcn',[]);            
+            
+            % ------------------------------ %
+            % --- CONTROL BUTTON OBJECTS --- %
+            % ------------------------------ %
+            
+            % initialisations
+            bStrC = {'Goto Selected Frame','Close Window'};
+            cbFcnC = {@obj.buttonGotoFrame,@obj.buttonClose};
+            
+            % creates the control button objects
+            pPosC = [obj.dX*[1,1],obj.widPanel,obj.hghtPanelC];
+            obj.hPanelC = createUIObj(...
+                'Panel',obj.hFig,'Position',pPosC,'Title',''); 
+            
+            % other initialisations
+            obj.hButC = cell(length(bStrC),1);
+            for i = 1:length(bStrC)
+                % sets up the button position vector
+                lBut = obj.dX + (i-1)*(obj.widButC + obj.dX/2);
+                bPos = [lBut,obj.dX-2,obj.widButC,obj.hghtBut];
+                
+                % creates the button object
+                obj.hButC{i} = createUIObj('Pushbutton',obj.hPanelC,...
+                    'Position',bPos,'Callback',cbFcnC{i},...
+                    'FontUnits','Pixels','FontSize',obj.fSzL,...
+                    'FontWeight','Bold','String',bStrC{i});
+            end            
+            
+            % disables the goto frame button
+            setObjEnable(obj.hButC{1},0);
+            
+            % ---------------------------------------- %
+            % --- INTER-FRAME DISPLACEMENT OBJECTS --- %
+            % ---------------------------------------- %
+            
+            % initialisations
+            cbFcnD = @obj.editFrameDist;
+            tHdrD = 'INTER-FRAME DISPLACEMENT';            
+            tStrD = 'Large Displacement Threshold Limit (mm)';
+            cHdrD = {'#','Region','Sub Region','Frame Index','Distance'};
+            cFormD = repmat({'numeric'},1,length(cHdrD));
+            cEditD = false(1,length(cHdrD));                        
+            
+            % creates the panel object
+            yPosD = sum(pPosC([2,4])) + obj.dX;
+            pPosD = [obj.dX,yPosD,obj.widPanel,obj.hghtPanelD];
+            obj.hPanelD = createUIObj('Panel',obj.hFig,...
+                'Position',pPosD,'Title',tHdrD,'FontSize',obj.fSzH,...
+                'FontWeight','Bold');
+            
+            % creates the table object
+            pPosTD = [obj.dX*[1,1],obj.widTable,obj.hghtTableD];
+            obj.hTableD = createUIObj('table',obj.hPanelD,...
+                'Data',[],'Position',pPosTD,'ColumnName',cHdrD,...
+                'ColumnEditable',cEditD,'ColumnFormat',cFormD,...
+                'RowName',[],'ColumnWidth',cWid,...
+                'CellSelectionCallback',@obj.tableDistSelect);
+            
+            % creates the parameter objects
+            yPosD = sum(pPosTD([2,4])) + obj.dX/2;
+            [obj.hEditD,obj.hTxtD] = ...
+                obj.createEditGroup(obj.hPanelD,tStrD,yPosD);
+            set(obj.hEditD,'Callback',cbFcnD,'String',num2str(obj.dTol));
+            
+            % creates the null text label object
+            pPosDL = [obj.dX*[1,1],obj.widTxtL,obj.hghtTxt];
+            obj.hTxtDL = createUIObj('text',obj.hPanelD,...
+                'Position',pPosDL,'String',obj.tStrDL,...
+                'FontWeight','Bold','FontSize',obj.fSzL,...
+                'HorizontalAlignment','Center');            
+            
+            % auto-resizes the table columns
+            obj.jTableD = getJavaTable(obj.hTableD);
+            autoResizeTableColumns(obj.hTableD);            
+            
+            % ----------------------------------- %
+            % --- FAILED SEGMENTATION OBJECTS --- %
+            % ----------------------------------- %
+            
+            % initialisations
+            tHdrF = 'FAILED SEGMENTATION FRAMES';
+            cHdrF = {'#','Region','Sub Region','Start Frame','End Frame'};
+            cFormF = repmat({'numeric'},1,length(cHdrF));
+            cEditF = false(1,length(cHdrF));
+            
+            % creates the panel object
+            yPosF = sum(pPosD([2,4])) + obj.dX;
+            pPosF = [obj.dX,yPosF,obj.widPanel,obj.hghtPanelF];
+            obj.hPanelF = createUIObj('Panel',obj.hFig,...
+                'Position',pPosF,'Title',tHdrF,'FontSize',obj.fSzH,...
+                'FontWeight','Bold');            
+            
+            % creates the table object
+            pPosTF = [obj.dX*[1,1],obj.widTable,obj.hghtTableF];
+            obj.hTableF = createUIObj('table',obj.hPanelF,...
+                'Data',[],'Position',pPosTF,'ColumnName',cHdrF,...
+                'ColumnEditable',cEditF,'ColumnFormat',cFormF,...
+                'RowName',[],'ColumnWidth',cWid,...
+                'CellSelectionCallback',@obj.tableNaNSelect);
+
+            % creates the null text label object
+            pPosFL = [obj.dX*[1,1],obj.widTxtL,obj.hghtTxt];
+            obj.hTxtFL = createUIObj('text',obj.hPanelF,...
+                'Position',pPosFL,'String',obj.tStrFL,...
+                'FontWeight','Bold','FontSize',obj.fSzL,...
+                'HorizontalAlignment','Center');
+            
+            % auto-resizes the table columns
+            obj.jTableF = getJavaTable(obj.hTableF);
+            autoResizeTableColumns(obj.hTableF);            
+            
+            % ------------------------------- %
+            % --- HOUSE-KEEPING EXERCISES --- %
+            % ------------------------------- %
+            
+            % updates the NaN/distance tables
+            obj.updateDistTable(false);
+            obj.updateNaNTable(false);            
                         
-else
-    % determines the regions which have NaN values     
-    nGrp = sum(nDCount(:));
-    [iNaN,jNaN] = find(nDCount > 0);        
-    
-    % resets the table/panel dimensions
-    tPos(4) = calcTableHeight(min(10,nGrp));
-    pPos(4) = 65 + tPos(4);    
-    txPos(2) = 2*yDel + tPos(4) + 3;
-    edPos(2) = 2*yDel + tPos(4);
-        
-    % sets the data into the table
-    [Data,tOfs] = deal(cell(length(jNaN),5),0);
-    for i = 1:length(jNaN)        
-        for j = 1:length(DfrmT{iNaN(i),jNaN(i)})
-            % sets the apparatus and tube indices
-            iFrmNw = DfrmT{iNaN(i),jNaN(i)}(j);
-            Data{j+tOfs,2} = jNaN(i);                        
-            [Data{j+tOfs,3},Data{j+tOfs,4}] = deal(iNaN(i),iFrmNw);            
-            Data{j+tOfs,5} = Dfrm{iNaN(i),jNaN(i)}(iFrmNw);
+            % centers the figure and makes it visible
+            centerfig(obj.hFig);
+            refresh(obj.hFig);
+            pause(0.05);
+            
+            % makes the figure visible
+            set(obj.hFig,'Visible','on');            
+            
         end
         
-        % increments the table offset counter
-        tOfs = tOfs + length(DfrmT{iNaN(i),jNaN(i)});
-    end
-    
-    % sort arrays by distance (in descending order)
-    [~,ii] = sort(cell2mat(Data(:,5)),'descend');
-    Data = Data(ii,:); Data(:,1) = num2cell(1:size(Data,1));
-    
-    % resets the table properties
-    set(handles.tableFrmDist,'visible','on','Data',Data,...
-                'position',tPos,'columnwidth',getCWid(tPos(3),nGrp))
-    setObjVisibility(handles.textDispLbl,'off')
-    autoResizeTableColumns(handles.tableFrmDist);
-end
-
-% resets the panel/figure dimensions
-pPos(2) = 25 + 2*yDel;
-pPos2(2) = sum(pPos([2 4])) + yDel;
-fPos(4) = pPos(4) + pPos2(4) + (25 + 4*yDel);
-fPos(2) = fPos(2) + (fPosH - fPos(4));
-
-% resets the panel/figure positions
-set(handles.figDiagCheck,'position',fPos)
-set(handles.panelFrmDist,'position',pPos) 
-set(handles.panelNaNCount,'position',pPos2) 
-set(handles.textFrmDist,'position',txPos)
-set(handles.editFrmDist,'position',edPos)
-setObjVisibility(handles.figDiagCheck,'on')
-
-% --- updates the NaN count table
-function hasNaN = updateNaNTable(handles)
-
-% retrieves the relevant data arrays/values
-nNaN = get(handles.output,'nNaN');
-jObj = get(handles.output,'jObjN');
-
-% retrievesw the NaN panel/table and figure position vectors
-pPos = get(handles.panelNaNCount,'position');
-tPos = get(handles.tableNaNCount,'position');
-
-% parameters
-hasNaN = true;
-
-% determines the array entries where the NaN count is greater than zero
-nNaNCount = cellfun('length',nNaN);
-if (all(nNaNCount == 0))
-    % resets the panel dimensions
-    [hasNaN,pPos(4)] = deal(false,55);
-    
-    % makes the table invisible 
-    setObjVisibility(handles.tableNaNCount,'off')   
-else
-    % determines the regions which have NaN values     
-    nGrp = sum(nNaNCount(:));
-    [iNaN,jNaN] = find(nNaNCount > 0);        
-    
-    % resets the table/panel dimensions
-    tPos(4) = calcTableHeight(min(10,nGrp));
-    pPos(4) = 35 + tPos(4);    
+        %---------------------------------- %
+        % --- OBJECT CREATION FUNCTIONS --- %
+        %---------------------------------- %
         
-    % sets the data into the table
-    [Data,tOfs] = deal(cell(length(jNaN),4),0);
-    for i = 1:length(jNaN)        
-        for j = 1:length(nNaN{iNaN(i),jNaN(i)})
-            % sets the apparatus and tube indices
-            Data{j+tOfs,1} = j+tOfs;
-            [Data{j+tOfs,2},Data{j+tOfs,3}] = deal(jNaN(i),iNaN(i));
-            Data{j+tOfs,4} = nNaN{iNaN(i),jNaN(i)}{j}(1);
-            Data{j+tOfs,5} = nNaN{iNaN(i),jNaN(i)}{j}(end);
+        % --- creates the text label combo objects
+        function [hEdit,hTxt] = createEditGroup(obj,hP,tTxt,yOfs)
+            
+            % initialisations
+            tTxtL = sprintf('%s: ',tTxt);
+            widEdit = hP.Position(3) - (2*obj.dX + obj.widTxtD);
+            
+            % sets up the text label
+            pPosL = [obj.dX,yOfs+2,obj.widTxtD,obj.hghtTxt];
+            hTxt = createUIObj('text',hP,'Position',pPosL,...
+                'FontSize',obj.fSzL,'HorizontalAlignment','Right',...
+                'String',tTxtL,'FontWeight','Bold');
+            
+            % creates the text object
+            pPosE = [sum(pPosL([1,3])),yOfs,widEdit,obj.hghtEdit];
+            hEdit = createUIObj(...
+                'edit',hP,'Position',pPosE,'FontSize',obj.fSz);            
+            
         end
         
-        % increments the table offset counter
-        tOfs = tOfs + length(nNaN{iNaN(i),jNaN(i)});
+        % --------------------------------- %
+        % --- OBJECT CALLBACK FUNCTIONS --- %
+        % --------------------------------- %        
+        
+        % --- NaN count table selection callback function
+        function tableNaNSelect(obj, ~, evnt)
+            
+            % if the indices are empty, then exit
+            if isempty(evnt.Indices); return; end
+            
+            % removes the table selection for the other table
+            if ~isequal(obj.jTableS,obj.jTableF)
+                obj.jTableS.changeSelection(-1,-1, false, false);
+                [obj.jTableS,obj.hTableS] = deal(obj.jTableF,obj.hTableF);
+            end
+            
+            % updates the other object properties
+            iColS = evnt.Indices(2);
+            obj.jTableS = obj.jTableF;
+            setObjEnable(obj.hButC{1},any(iColS == [4,5]));
+            
+        end
+        
+        % --- NaN count table selection callback function
+        function tableDistSelect(obj, ~, evnt)
+            
+            % if the indices are empty, then exit
+            if isempty(evnt.Indices); return; end
+            
+            % removes the table selection for the other table
+            if ~isequal(obj.jTableS,obj.jTableD)
+                obj.jTableS.changeSelection(-1,-1, false, false);
+                [obj.jTableS,obj.hTableS] = deal(obj.jTableD,obj.hTableD);
+            end
+            
+            % updates the other object properties
+            iColS = evnt.Indices(2);
+            obj.jTableS = obj.jTableD;
+            setObjEnable(obj.hButC{1},iColS == 4);
+            
+        end        
+        
+        % --- frame distance editbox callback function
+        function editFrameDist(obj, hEdit, ~)
+            
+            % field retrieval
+            nwVal = str2double(hEdit.String);
+            
+            % determines if the new value is valid
+            if chkEditValue(nwVal,[10,inf],0)
+                % if so, update the parameter and table values
+                obj.dTol = nwVal;
+                obj.updateDistTable();
+                
+            else
+                % otherwise, revert to the previous value
+                hEdit.String = num2str(obj.dTol);
+            end
+            
+        end        
+        
+        % --- goto frame pushbutton callback function
+        function buttonGotoFrame(obj, hObj, ~)        
+        
+            % field retrieval
+            iRow = obj.jTableS.getSelectedRows + 1;
+            iCol = obj.jTableS.getSelectedColumns + 1;
+            iFrm = obj.hTableS.Data{iRow,iCol};
+            
+            % updates the frame counter
+            obj.hGUIM.frmCountEdit.String = num2str(iFrm);
+            feval(obj.hGUIM.figFlyTrack.dispImage,obj.hGUIM);
+            
+            % disables the button
+            setObjEnable(hObj,0);
+            
+        end
+        
+        % --- close window pushbutton callback function
+        function buttonClose(obj, ~, ~)
+            
+            % deletes the main window
+            delete(obj.hFig);
+            
+            % makes the main window visible again
+            setObjVisibility(obj.hFigM,1);            
+            
+        end        
+
+        % ------------------------------ %        
+        % --- TABLE UPDATE FUNCTIONS --- %
+        % ------------------------------ %
+
+        % --- updates the distance tolerance table
+        function updateDistTable(obj,hideFig)
+            
+            % sets the default input arguments
+            if ~exist('hideFig','var'); hideFig = true; end
+            
+            % hides the figure (if required)
+            if hideFig; setObjVisibility(obj.hFig,0); end            
+            
+            % initialisations            
+            hghtPanel0 = obj.hPanelD.Position(4);
+            hOfs = obj.dX + obj.hghtRow + obj.dHght;
+            
+            % determines frames where distance is greater than tolerance
+            dFrmT = cellfun(@(x)(find(x > obj.dTol)),obj.dFrm,'un',0);
+            nDCount = cellfun('length',dFrmT);
+            
+            % determines if the there any frames above tolerance
+            if all(nDCount(:) == 0)
+                % makes the table invisible
+                setObjVisibility(obj.hTableD,0); 
+                setObjVisibility(obj.hTxtDL,1); 
+                
+                % resets the other objects
+                obj.hTxtDL.Position(2) = obj.dX;
+                obj.hEditD.Position(2) = 3*obj.dX; 
+                obj.hTxtD.Position(2) = 3*obj.dX + 2;
+                
+                % resets the panel height
+                obj.hPanelD.Position(4) = hOfs + 2*obj.dX;                
+                
+            else
+                % determines the regions which have NaN values
+                nGrp = sum(nDCount(:));
+                [iNaN,jNaN] = find(nDCount > 0);                
+                
+                % resets the table/panel dimensions
+                hghtTab = calcTableHeight(min(obj.nRowMx,nGrp));
+                obj.hTableD.Position(4) = hghtTab;
+                obj.hPanelD.Position(4) = hghtTab + hOfs;
+                obj.hTxtD.Position(2) = (3/2)*obj.dX + hghtTab + 2;
+                obj.hEditD.Position(2) = (3/2)*obj.dX + hghtTab;
+                
+                % sets the data into the table
+                [Data,tOfs] = deal(cell(length(jNaN),obj.nColT),0);
+                for i = 1:length(jNaN)
+                    dFrmNw = dFrmT{iNaN(i),jNaN(i)};
+                    for j = 1:length(dFrmNw)
+                        % sets the apparatus and tube indices
+                        iFrmNw = dFrmNw(j);
+                        Data{j+tOfs,2} = jNaN(i);
+                        Data{j+tOfs,3} = iNaN(i);
+                        Data{j+tOfs,4} = iFrmNw;
+                        Data{j+tOfs,5} = obj.dFrm{iNaN(i),jNaN(i)}(iFrmNw);
+                    end
+                    
+                    % increments the table offset counter
+                    tOfs = tOfs + length(dFrmNw);                    
+                end
+                
+                % sort arrays by distance (in descending order)
+                [~,ii] = sort(cell2mat(Data(:,end)),'descend');
+                Data = Data(ii,:); 
+                Data(:,1) = num2cell(1:size(Data,1));                
+                
+                % resets the table properties
+                set(obj.hTableD,'Data',Data,'Visible','on');
+                setObjVisibility(obj.hTxtDL,'off')
+            end
+            
+            % resets the position of the other objects
+            dHghtNw = obj.hPanelD.Position(4) - hghtPanel0;
+            resetObjPos(obj.hPanelF,'Bottom',dHghtNw,1);
+            resetObjPos(obj.hFig,'Height',dHghtNw,1);
+            
+            % reshows the figure (if required)
+            if hideFig; setObjVisibility(obj.hFig,1); end
+            
+        end        
+        
+        % --- updates the NaN count table
+        function updateNaNTable(obj,hideFig)
+            
+            % sets the default input arguments
+            if ~exist('hideFig','var'); hideFig = true; end
+            
+            % initialisations
+            hghtPanel0 = obj.hPanelF.Position(4);            
+                
+            % hides the figure (if required)
+            if hideFig; setObjVisibility(obj.hFig,0); end
+            
+            % determines array entries where NaN count is greater than zero
+            nNaNCount = cellfun('length',obj.nNaN);
+            
+            if all(nNaNCount == 0)
+                % resets the panel dimensions
+                obj.hPanelF.Position(4) = 3*obj.dX + obj.hghtRow;
+
+                % makes the table invisible
+                setObjVisibility(obj.hTableF,0)
+                setObjVisibility(obj.hTxtFL,1)
+                
+            else
+                % determines the regions which have NaN values
+                nGrp = sum(nNaNCount(:));
+                [iNaN,jNaN] = find(nNaNCount > 0);
+                hOfs = 3/2*obj.dX + obj.hghtRow;
+                
+                % resets the table/panel dimensions
+                hghtTab = calcTableHeight(min(obj.nRowMx,nGrp));                
+                obj.hTableF.Position(4) = hghtTab;
+                obj.hPanelF.Position(4) = hghtTab + hOfs;
+            
+                % sets the data into the table
+                [Data,tOfs] = deal(cell(length(jNaN),obj.nColT),0);
+                for i = 1:length(jNaN)
+                    nNaNnw = obj.nNaN{iNaN(i),jNaN(i)};
+                    for j = 1:length(nNaNnw)
+                        % sets the apparatus and tube indices
+                        Data{j+tOfs,1} = j+tOfs;
+                        Data{j+tOfs,2} = jNaN(i);
+                        Data{j+tOfs,3} = iNaN(i);
+                        Data{j+tOfs,4} = nNaNnw{j}(1);
+                        Data{j+tOfs,5} = nNaNnw{j}(end);
+                    end
+                    
+                    % increments the table offset counter
+                    tOfs = tOfs + length(nNaNnw);
+                end
+                
+                % resets the table properties
+                set(obj.hTableF,'Visible','on','Data',Data);                
+                setObjVisibility(obj.hTxtFL,0);
+            end
+            
+            % resets the table position
+            dHghtNw = obj.hPanelF.Position(4) - hghtPanel0;
+            resetObjPos(obj.hFig,'Height',dHghtNw,1)            
+            
+            % reshows the figure (if required)
+            if hideFig; setObjVisibility(obj.hFig,1); end            
+            
+        end
+    
     end
     
-    % resets the table properties
-    set(handles.tableNaNCount,'visible','on','Data',Data,...
-                'position',tPos,'columnwidth',getCWid(tPos(3),nGrp))
-    autoResizeTableColumns(handles.tableNaNCount);            
 end
-
-% resets the table position
-set(handles.panelNaNCount,'position',pPos) 
-
-% --- retrieves the column widths for the tables
-function cWid = getCWid(Wtot,nGrp)
-
-% global variables
-global W0T
-
-% resets the column widths
-if (nGrp <= 10)
-    cWid = [40,84,64,84];
-else
-    cWid = [40,80,60,79];
-end
-
-% calculates the final column width and converts array to a cell array
-cWid(end+1) = Wtot - (sum(cWid)+W0T);
-cWid = num2cell(cWid);

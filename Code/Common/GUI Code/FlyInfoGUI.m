@@ -133,7 +133,13 @@ classdef FlyInfoGUI < handle
             else
                 % memory allocation
                 nFly = size(obj.ok,1);
-                iGrpC = arr2vec(obj.iGrp')'; 
+                iGrpC = arr2vec(obj.iGrp')';
+                
+                % sets the group ID flags (1D sub-grouped setup)
+                if detIfCustomGrid(obj.iMov)
+                    gID = arr2vec(obj.iMov.pInfo.gID')';
+                    colArr = getAllGroupColours(max(cellfun(@max,gID)));
+                end
                 
                 % retrieves the sub-region count for each region
                 if isempty(obj.snTot) || isempty(obj.snTot.Px)
@@ -149,7 +155,14 @@ classdef FlyInfoGUI < handle
                 iCol = zeros(nFly,length(iGrpC));
                 for i = 1:size(iCol,2)
                     if ~isnan(nFlyR(i))
-                        iCol(1:nFlyR(i),i) = iGrpC(i);
+                        % sets the colour 
+                        if detIfCustomGrid(obj.iMov)
+                            iCol(1:nFlyR(i),i) = gID{i};
+                        else
+                            iCol(1:nFlyR(i),i) = iGrpC(i);
+                        end
+                           
+                        % clears any extraneous fields
                         obj.Data((nFlyR(i)+1):end,i) = {[]};
                     end
                 end
@@ -576,11 +589,11 @@ classdef FlyInfoGUI < handle
         function DataArr = setupDataArray(obj, DataArr)
                     
             % if the ID field isn't set, then exit the function
-            if ~isfield(obj.snTot,'cID'); return; end
+            if ~isfield(obj.snTot,'gID'); return; end
             
             % field retrieval
             szArr = size(DataArr);
-            pC0 = cell2mat(obj.snTot.cID(:));           
+            pC0 = cell2mat(obj.snTot.gID(:));           
             
             % sets the row/column indices of the known sub-regions
             if obj.isMltTrk

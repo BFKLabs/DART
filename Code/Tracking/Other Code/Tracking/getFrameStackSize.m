@@ -2,14 +2,14 @@
 function nFrmS = getFrameStackSize()
 
 % global parameters
-global frmSz0
+hFig = findall(0,'tag','figFlyTrack');
 
 % opens the program parameter struct
 A = load(getParaFileName('ProgPara.mat'));
 
 % sets the comparison/maximum size limits
 szMax = [1400,1800];
-szComp = [min(frmSz0),max(frmSz0)];
+szComp = [min(hFig.frmSz0),max(hFig.frmSz0)];
 
 % sets the image stack size
 if any(szComp > szMax)

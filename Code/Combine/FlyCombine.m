@@ -587,9 +587,34 @@ if ~isempty(hGUIInfo) && isa(hGUIInfo,'FlyInfoGUI')
                 jT.SetBGColourCell(iRow(i)-1,iCol(i)-1,nwCol);
             end
 
+        elseif detIfCustomGrid(pObj.sInfo.snTot.iMov)
+            % case is a 1D experiment setup (custom grid)
+            
+            % field retrieval
+            cID = pObj.sInfo.snTot.cID{j};
+            fOK = pObj.sInfo.snTot.iMov.flyok;
+            nCol = pObj.sInfo.snTot.iMov.pInfo.nCol;
+
+            % updates the background colour over all cells in the group
+            for i = 1:size(cID,1)
+                % sets up the table row/column indices
+                iRow = cID(i,end);
+                iCol = (cID(i,1)-1)*nCol + cID(i,2);
+                
+                % updates the current cell background
+                if jT.getRowCount == size(fOK,1)
+                    jT.SetBGColourCell(iRow-1,iCol-1,nwCol);
+                else
+                    jT.SetBGColourCell(iCol-1,iRow-1,nwCol);
+                end
+            end
+            
         else
-            % case is a 1D experiment setup
-            for i = find(pObj.sInfo.snTot.iMov.flyok(:,j))'
+            % case is a 1D experiment setup (fixed grid)
+            
+            % updates the background colour over all cells in the group            
+            for i = find(pObj.sInfo.snTot.iMov.flyok(:,j))'                
+                % updates the current cell background                
                 if jT.getRowCount == size(pObj.sInfo.snTot.iMov.flyok,1)
                     jT.SetBGColourCell(i-1,j-1,nwCol);
                 else
@@ -815,7 +840,7 @@ end
 
 % determines if the new value is valid
 nwVal = str2double(get(hObject,'String'));
-[ok,eStr] = chkEditValue(nwVal,nwLim,1);
+[ok,eStr] = chkEditValue(nwVal,nwLim,iType<4);
 
 % determines if new value is valid
 if ok

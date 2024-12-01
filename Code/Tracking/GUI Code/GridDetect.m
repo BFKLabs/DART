@@ -6,8 +6,6 @@ classdef GridDetect < matlab.mixin.SetGet
         % main class objects
         hAx
         hFig
-        hFigM
-        hFigTrk
         trkObj
         iMov
         Img0
@@ -57,14 +55,21 @@ classdef GridDetect < matlab.mixin.SetGet
         
     end
     
+    % private class properties
+    properties (Access = private)
+        
+        objB
+        
+    end
+    
     % class methods
     methods
         
         % class constructor
-        function obj = GridDetect(hFigM)
+        function obj = GridDetect(objB)
            
             % sets the input parameters
-            obj.hFigM = hFigM;
+            obj.objB = objB;
             
             % sets up the class objects and callback functions
             obj.initObjProps();                        
@@ -79,21 +84,17 @@ classdef GridDetect < matlab.mixin.SetGet
         function initObjProps(obj)
             
             % retrieves the main image
-            obj.hFigTrk = findall(0,'tag','figFlyTrack');
-            obj.hAx = findall(obj.hFigTrk,'type','axes');
+            obj.hAx = obj.objB.hAxM;
             obj.hImg = findall(obj.hAx,'type','image');
             obj.Img0 = double(get(obj.hImg,'CData'));
             
             % sets the region set flag
-            obj.iMov = obj.hFigM.iMov;
+            obj.iMov = obj.objB.iMov;
             obj.isSet = ~isempty(obj.iMov.iR);
             
             % deletes any existing grid detection guis
             hFigPr = findall(0,'tag','figGridDetect');
-            if ~isempty(hFigPr); delete(hFigPr); end
-            
-            % sets the grid object into the region config GUI
-            set(obj.hFigM,'gridObj',obj)
+            if ~isempty(hFigPr); delete(hFigPr); end            
             
             % -------------------- %
             % --- FIGURE SETUP --- %
@@ -240,7 +241,7 @@ classdef GridDetect < matlab.mixin.SetGet
             obj.hEditF = uicontrol(obj.hPanelF,'Style','edit',...
                     'Position',ePosNw,'Callback',eFcnF,...
                     'String',num2str(obj.getFiltPara('hSz')));                
-            setObjEnable(obj.hEditF,~obj.hFigM.isHT)
+            setObjEnable(obj.hEditF,~obj.objB.isHT)
                 
             % --------------------- %
             % --- HOUSE-KEEPING --- %
@@ -255,14 +256,14 @@ classdef GridDetect < matlab.mixin.SetGet
             setPanelProps(obj.hPanelD,'off')
             
             % sets up the sub-regions
-            obj.hFigM.rgObj.setupRegionConfig(obj.iMov,1,1);
+            obj.objB.objRC.setupRegionConfig(obj.iMov,1,1);
             
             % turns on the region highlight
             obj.hSelS = findobj(obj.hAx,'tag','hInner','UserData',1);
             if obj.isSet; obj.setRegionHighlight('on'); end
             
             % repositions the sub-GUI
-            repositionSubGUI(obj.hFigM,obj.hFig)
+            repositionSubGUI(obj.objB.hFig,obj.hFig)
             
             % resumes the figure
             uiwait(obj.hFig);                
@@ -281,7 +282,7 @@ classdef GridDetect < matlab.mixin.SetGet
             obj.setFiltPara('useFilt',useFilt);
             setObjEnable(obj.hButC{1},'on');
             
-            if obj.hFigM.isHT
+            if obj.objB.isHT
                 setObjEnable(obj.hTxtF,useFilt)
             else
                 setObjEnable([obj.hEditF,obj.hTxtF],useFilt)
@@ -289,7 +290,7 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % updates the detection panel properties
             if ~isempty(event)
-                set(obj.hFigM,'phObj',[]);
+                set(obj.objB.hFigM,'phObj',[]);
             end
             
             % updates the main image
@@ -306,7 +307,7 @@ classdef GridDetect < matlab.mixin.SetGet
                 % if so, then update the field value
                 obj.setFiltPara('hSz',nwVal);                
                 setObjEnable(obj.hButC{1},'on');
-                set(obj.hFigM,'phObj',[]);
+                set(obj.objB.hFigM,'phObj',[]);
                 
                 % updates the main image
                 obj.updateMainImage()                
@@ -321,7 +322,7 @@ classdef GridDetect < matlab.mixin.SetGet
         function editSelect(obj,hObj,~)
         
             % initialisations
-            iMov0 = obj.hFigM.iMov;
+            iMov0 = obj.objB.iMov;
             iType = get(hObj,'UserData');
             nwVal = str2double(get(hObj,'String'));
             
@@ -421,9 +422,9 @@ classdef GridDetect < matlab.mixin.SetGet
                     lPos(:,2) = yH;
                     hHorz = findall(obj.hAx,'tag','hHorz','UserData',uD);
                     
-                    obj.hFigM.rgObj.isUpdating = true;
+                    obj.objB.objRC.isUpdating = true;
                     setIntObjPos(hHorz,lPos); pause(0.05);
-                    obj.hFigM.rgObj.isUpdating = false;
+                    obj.objB.objRC.isUpdating = false;
                 end
             end            
             
@@ -432,7 +433,7 @@ classdef GridDetect < matlab.mixin.SetGet
             setIntObjPos(hInner,obj.iMov.pos{iApp});
             
             % updates the ROI coordinates
-            obj.hFigM.rgObj.roiCallback(obj.iMov.pos{iApp},iApp);
+            obj.objB.objRC.roiCallback(obj.iMov.pos{iApp},iApp);
             
             % updates the move button enabled properties
             setObjEnable(obj.hButC{2},'on')
@@ -461,7 +462,7 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % updates the status flag/callback function
             obj.iFlag = get(hObj,'UserData');
-            set(obj.hFigTrk,'WindowButtonDownFcn',[])
+            set(obj.objB.hFigM,'WindowButtonDownFcn',[])
             
             % flag that the calculations were successful            
             uiresume(obj.hFig);
@@ -474,7 +475,7 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % flag that the calculations were unsuccessful
             obj.iFlag = get(hObj,'UserData');
-            set(obj.hFigTrk,'WindowButtonDownFcn',[])
+            set(obj.objB.hFigM,'WindowButtonDownFcn',[])
             
             % flag that the calculations were successful 
             uiresume(obj.hFig);
@@ -502,7 +503,7 @@ classdef GridDetect < matlab.mixin.SetGet
             set(obj.hTxtP,'String',num2str(tPer));
             
             % sets up the sub-regions
-            obj.hFigM.rgObj.setupRegionConfig(iMovNw,1,1);
+            obj.objB.objRC.setupRegionConfig(iMovNw,1,1);
             
             % removes the hit-test of the inner regions            
             hInner = findall(obj.hAx,'tag','hInner');
@@ -521,7 +522,7 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % updates the move button enabled properties
             obj.updateMoveEnableProps();
-            set(obj.hFigTrk,'WindowButtonDownFcn',axCbFcn)
+            set(obj.objB.hFigM,'WindowButtonDownFcn',axCbFcn)
             
             % deletes the loadbar
             delete(h);
@@ -536,13 +537,13 @@ classdef GridDetect < matlab.mixin.SetGet
         function trackAxesClick(obj,~,~)
             
             % retrieves the current mouse click coordinates
-            mPos = get(obj.hFigTrk,'CurrentPoint');
+            mPos = get(obj.objB.hFigM,'CurrentPoint');
             
             % determines if the 
-            if isOverAxes(mPos,obj.hFigM.axPosX,obj.hFigM.axPosY)
+            if isOverAxes(mPos,obj.objB.axPosX,obj.objB.axPosY)
                 % determines the plot objects the mouse is currently over
                 mStr = {'tag','hInner'};
-                hInner = findAxesHoverObjects(obj.hFigTrk,mStr,obj.hAx);  
+                hInner = findAxesHoverObjects(obj.objB.hFigM,mStr,obj.hAx);  
                 if ~isempty(hInner)
                     % recalculates the selected row/columns
                     nCol = obj.iMov.pInfo.nCol;
@@ -653,15 +654,15 @@ classdef GridDetect < matlab.mixin.SetGet
         % --- gets the background filter parameter filter
         function pVal = getFiltPara(obj,pFld)
             
-            pVal = getTrackingPara(obj.hFigM.iMov.bgP,'pSingle',pFld);
+            pVal = getTrackingPara(obj.objB.iMov.bgP,'pSingle',pFld);
             
         end
         
         % --- sets the background filter parameter filter
         function setFiltPara(obj,pFld,pVal)
            
-            bgP = obj.hFigM.iMov.bgP;
-            obj.hFigM.iMov.bgP = setTrackingPara(bgP,'pSingle',pFld,pVal);
+            bgP = obj.objB.iMov.bgP;
+            obj.objB.iMov.bgP = setTrackingPara(bgP,'pSingle',pFld,pVal);
             
         end        
         

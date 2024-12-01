@@ -6,7 +6,7 @@ IL0 = fillArrayNaNs(IL0);
 
 % sets the image expansion size offset
 if exist('H','var')
-    dX = (size(H) - (2*size(IL0)+1))/4;
+    dX = ceil((size(H) - (2*size(IL0)+1))/4);
 else
     dX = 10*[1,1];
 end
@@ -26,8 +26,14 @@ if ~exist('H','var')
     H = fftshift(A + B*H0);
 end
 
-% applies the FFT filter
+% peforms the 2D fft transform
 If = fft2(I, M, N);
+if ~isequal(size(If),size(H))
+    % ensures the filter is the same size and the transform
+    H = imresize(H,size(If));
+end
+
+% applies the FFT filter
 Iout = real(ifft2(H.*If));
 Iout = Iout(1:size(I,1),1:size(I,2));
 Iout = Iout((1:sz0(1))+dX(1),(1:sz0(2))+dX(2));

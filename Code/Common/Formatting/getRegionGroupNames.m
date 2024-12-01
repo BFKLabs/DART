@@ -65,10 +65,22 @@ else
         end    
     end
     
-    % removes the missing items
-    [szArr,cIDT] = deal(size(snTot.iMov.flyok),cell2mat(cID(:)));
-    iCol = (cIDT(:,1)-1)*snTot.iMov.pInfo.nCol + cIDT(:,2);
-    isMiss = ~setGroup(sub2ind(szArr,cIDT(:,3),iCol),szArr);  
-    gName(all(isMiss,1)) = {'* REJECTED *'};
+    % determines if any groupings are missing from the configuration
+    cIDT = cell2mat(cID(:));
+    if detIfCustomGrid(snTot.iMov)
+        % case is a custom grid setup
+        gID = snTot.iMov.pInfo.gID;
+        gIDT = combineNumericCells(arr2vec(gID')');
+        isMiss = ~arrayfun(@(x)(any(gIDT(:)==x)),(1:length(gName))');
+        
+    else
+        % case is a fixed grid setup
+        szArr = size(snTot.iMov.flyok);
+        iCol = (cIDT(:,1)-1)*snTot.iMov.pInfo.nCol + cIDT(:,2);
+        isMiss = all(~setGroup(sub2ind(szArr,cIDT(:,3),iCol),szArr),1);  
+    end
+    
+    % removes the missing groups
+    gName(isMiss) = {'* REJECTED *'};    
 end
 

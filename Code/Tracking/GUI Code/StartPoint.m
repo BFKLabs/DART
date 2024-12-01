@@ -1,370 +1,557 @@
-function varargout = StartPoint(varargin)
-% Begin initialization code - DO NOT EDIT
-gui_Singleton = 1;
-gui_State = struct('gui_Name',       mfilename, ...
-                   'gui_Singleton',  gui_Singleton, ...
-                   'gui_OpeningFcn', @StartPoint_OpeningFcn, ...
-                   'gui_OutputFcn',  @StartPoint_OutputFcn, ...
-                   'gui_LayoutFcn',  [] , ...
-                   'gui_Callback',   []);
-if nargin && ischar(varargin{1})
-    gui_State.gui_Callback = str2func(varargin{1});
-end
-
-if nargout
-    [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
-else
-    gui_mainfcn(gui_State, varargin{:});
-end
-% End initialization code - DO NOT EDIT
-
-
-% --- Executes just before StartPoint is made visible.
-function StartPoint_OpeningFcn(hObject, eventdata, handles, varargin)
-
-% Choose default command line output for StartPoint
-handles.output = hObject;
-
-% sets the input arguments
-trkObj = varargin{1};
-
-% loads the progress data file
-A = load(getParaFileName('ProgPara.mat'));
-
-% sets the data structs into the GUI
-setappdata(hObject,'trkObj',trkObj)
-setappdata(hObject,'nFrmS',getFrameStackSize)
-setappdata(hObject,'iDataS',initDataStruct(handles,trkObj))
-
-% initialises the object properties
-initObjProps(handles)
-centreFigPosition(hObject)
-
-% Update handles structure
-guidata(hObject, handles);
-
-% UIWAIT makes StartPoint wait for user response (see UIRESUME)
-uiwait(handles.figStartPoint);
-
-
-% --- Outputs from this function are returned to the command line.
-function varargout = StartPoint_OutputFcn(hObject, eventdata, handles) 
-
-% global variables
-global indStart
-
-% Get default command line output from handles structure
-varargout{1} = indStart;
-
-%-------------------------------------------------------------------------%
-%                        FIGURE CALLBACK FUNCTIONS                        %
-%-------------------------------------------------------------------------%
-
-% --- Executes when user attempts to close figStartPoint.
-function figStartPoint_CloseRequestFcn(hObject, eventdata, handles)
-
-% closes the figure via the cancel function
-buttonCancel_Callback(handles.buttonCancel,[],handles)
-
-%-------------------------------------------------------------------------%
-%                        OBJECT CALLBACK FUNCTIONS                        %
-%-------------------------------------------------------------------------%
-
-% --- Executes when selected object is changed in panelStartPoint.
-function panelStartPoint_SelectionChangedFcn(hObject, eventdata, handles)
-
-% retrieves the handle of the selected radio button
-if ischar(eventdata)
-    hRadio = get(hObject,'SelectedObject');
-else
-    hRadio = eventdata.NewValue;
-end   
-
-% updates the object properties based on the selection
-isFrameSel = strcmp(get(hRadio,'tag'),'radioStartFrame');
-setObjEnable(handles.editFrame,isFrameSel)
-setPanelProps(handles.panelStartPhase,~isFrameSel)
-
-% sets the table background colour based on the selection
-if isFrameSel
-    % case is the global frame is selected
-    bgCol = 0.81*[1,1,1];
-else
-    % case is the phase/stack is selected
-    nStackTrk = getappdata(handles.output,'nStackTrk');
-    nStackTot = getappdata(handles.output,'nStackTot');
+classdef StartPoint < handle
     
-    % sets the table background colours
-    prTrk = nStackTrk./nStackTot;
-    bgCol0 = {[1,0,0],[1,1,0],[0,1,0]};
-    trkType = 1 + (prTrk > 0) + (prTrk == 1);
-    bgCol = cell2mat(arrayfun(@(x)(bgCol0{x}),trkType(:),'un',0));
-    
-    % highlights the selected row
-    iData = getappdata(handles.output,'iDataS');
-    bgCol(iData.Phase,:) = 0.75*bgCol(iData.Phase,:);
-end
-
-% updates the table background colour
-set(handles.tablePhaseInfo,'BackgroundColor',bgCol)
-
-% --- Executes on updating parameter editboxes
-function editParaUpdate(hEdit, eventdata, h)
-
-% retrieves the important data structs
-hFig = h.figStartPoint;
-isTrk = getappdata(hFig,'isTrk');
-nStackTot = getappdata(hFig,'nStackTot');
-nStackTrk = getappdata(hFig,'nStackTrk');
-[iDataS,iData0] = deal(getappdata(hFig,'iDataS'));
-hPanelS = h.panelStartPoint;
-
-% retrieves the parameter limits (based on type)
-pStr = get(hEdit,'UserData');
-switch pStr
-    case 'Phase' % case is the start frame
+    % class properties
+    properties
         
-        % determines the feasible max phase count
-        nPhMax = find(nStackTrk > 0,1,'last');
-        if nStackTrk(nPhMax)/nStackTot(nPhMax) == 1
-            % if the phase is fully tracked, then start on the next phase
-            nPhMax = min(length(nStackTot),nPhMax+1);
+        % main figure class fields
+        hFig
+                
+        % tracking start panel object class fields
+        hPanelS
+        hRadioS
+        hTxtS
+        hEditS
+        
+        % phase start panel object class fields
+        hPanelP
+        hTableP
+        hEditP
+        
+        % control button object class fields
+        hPanelC
+        hButC        
+        
+        % fixed object dimension fields
+        dX = 10;
+		dHght = 20;		
+        hghtTxt = 16;
+		hghtBut = 25;
+	    hghtEdit = 22;
+	    hghtRow = 25;		
+		hghtRadio = 20;
+        hghtPanelC = 40;
+        widPanel = 270;
+        widRadioS = 20;
+        widTxtS = [185,200];
+        widTxtP = 80;
+        
+        % calculated object dimension fields
+        hghtFig
+        widFig
+        hghtPanelS
+        hghtPanelP        
+        widPanelP
+        hghtTableP        
+        widTableP
+        widEditP
+        widEditS
+        widButC
+        
+        % temporary value class fields
+        nFrmS
+        nFrmMx
+        nTrk
+        nTot
+        iPh
+        iFrm0
+        isTrk
+        iPhase0
+        iStack0                
+        indStart
+        
+        % boolean class fields
+        isOK = true;
+        
+        % static scalar fields
+        nPhase
+        nButC = 2;
+        nColP = 5;
+        nEditP = 2;
+        nRadioS = 2;
+        fSzL = 12;
+        fSz = 10 + 2/3;
+        
+        % static string fields
+        tagStr = 'figStartPoint';
+        figName = 'Restart From...';        
+        
+    end
+    
+    % private class properties
+    properties (Access = private)
+        
+        objT
+                
+    end
+    
+    % class methods
+    methods
+    
+        % --- class constructor
+        function obj = StartPoint(objT)
+            
+            % sets the input arguments
+            obj.objT = objT;
+            
+            % initialises the class fields/objects
+            obj.initClassFields();
+            obj.initClassObjects();    
+            
+            % waits for the user response
+            uiwait(obj.hFig);
+            
+        end
+
+        % -------------------------------------- %        
+        % --- CLASS INITIALISATION FUNCTIONS --- %
+        % -------------------------------------- %
+        
+        % --- initialises the class fields
+        function initClassFields(obj)            
+            
+            % field retrieval
+            obj.nFrmS = getFrameStackSize();            
+            obj.nFrmMx = size(obj.objT.pData.fPos{1}{1},1);            
+            obj.iPhase0 = obj.objT.iPhase0;
+            obj.iStack0 = max(1,obj.objT.nCountS);                        
+            
+            % other field retrieval
+            obj.calcFrameIndex();
+            obj.nPhase = size(obj.objT.iMov.iPhase,1);
+            
+            % retrieves the first valid region/tube index
+            iApp0 = find(obj.objT.iMov.ok,1,'first');            
+            if iscell(obj.objT.iMov.flyok)
+                iTube0 = find(obj.objT.iMov.flyok{iApp0},1,'first');
+            else
+                iTube0 = find(obj.objT.iMov.flyok(:,iApp0),1,'first');
+            end
+            
+            % determines which frames have been tracked
+            obj.iPh = obj.objT.iMov.iPhase(obj.objT.iPhaseS,:);
+            obj.isTrk = ~isnan(obj.objT.pData.fPos{iApp0}{iTube0}(:,1));
+            
+            % determines the total number of stacks per phase
+            nFrmPh = diff(obj.iPh,[],2) + 1;
+            obj.nTot = ceil(nFrmPh/obj.objT.nFrmS);
+            
+            % determines the number of tracked stacks per phase
+            obj.nTrk = ceil(cellfun(@(x)(sum(...
+               obj.isTrk(x(1):x(2)))),num2cell(obj.iPh,2))/obj.objT.nFrmS);            
+            
+            % ------------------------------------- %
+            % --- OBJECT DIMENSION CALCULATIONS --- %
+            % ------------------------------------- %            
+            
+            % table/panel height dimension calculations
+            if obj.nPhase == 1
+                % case is there is only one phase
+                obj.nRadioS = 1;                
+                obj.widRadioS = 0;  
+                obj.hghtPanelS = obj.dX + obj.hghtRow;
+                obj.widPanel = obj.widPanel - 2*obj.dX;
+                
+            else
+                % case is there are multiple phases
+                obj.hghtTableP = calcTableHeight(obj.nPhase);
+                obj.hghtPanelP = obj.hghtTableP + 1.5*obj.dX + obj.hghtRow;
+                obj.hghtPanelS = obj.hghtPanelP + 2*obj.hghtRow+1.5*obj.dX;
+            end
+                
+            % figure dimension calculations
+            obj.hghtFig = obj.hghtPanelS + obj.hghtPanelC + 2*obj.dX;
+            obj.widFig = obj.widPanel + 2*obj.dX;            
+            
+            % other object dimension calculations (common)
+            obj.widEditS = obj.widPanel - ...
+                (obj.widRadioS + obj.widTxtS(1) + 2*obj.dX);            
+            obj.widButC = (obj.widPanel - 2.5*obj.dX)/obj.nButC;
+            
+            % other object dimension calculations (multi-phase only)
+            if obj.nPhase > 1
+                obj.widPanelP = obj.widPanel - obj.dX;
+                obj.widTableP = obj.widPanelP - obj.dX;            
+                obj.widEditP = (obj.widPanelP - 2*(obj.widTxtP+obj.dX))/2;
+            end
+            
         end
         
-        % sets the phase limits
-        nwLim = [1,nPhMax];        
-        
-    case 'Stack' % case is the start stack
-        nwLim = [1,max(1,nStackTrk(iDataS.Phase))];
-        
-    case 'Frame' % case is the start frame
-        nwLim = [1,length(isTrk)];
-        
-end
-
-% resets the lower limit if the upper limit is zero
-if nwLim(2) == 0; nwLim(1) = 0; end
-
-% determines if the new value is 
-nwVal = str2double(get(hEdit,'string'));
-if chkEditValue(nwVal,nwLim,true)
-    % if so, then update the parameter struct
-    eval(sprintf('iDataS.%s = nwVal;',pStr));   
-    
-    % updates the other fields based on the parameter being altered
-    switch pStr
-        case 'Frame' % case is the frame index
-            % determines if the selected frame has been tracked
-            if ~isTrk(nwVal)
-                % if not, output an error to screen
-                eStr = sprintf(['Error! The selected frame has not ',...
-                                'yet been tracked.\nTry again with ',...
-                                'an untracked frame index.']);
-                waitfor(msgbox(eStr,'Invalid Frame Index','modal'))
+        % --- initialises the class objects
+        function initClassObjects(obj)
+            
+            % deletes any previous GUIs
+            hPrev = findall(0,'tag',obj.tagStr);
+            if ~isempty(hPrev); delete(hPrev); end
+            
+            % callback function
+            cbFcnP = @obj.editParaUpdate;
+            
+            % --------------------------- %
+            % --- MAIN FIGURE OBJECTS --- %
+            % --------------------------- %
+            
+            % creates the figure object
+            fPos = [100,100,obj.widFig,obj.hghtFig];
+            
+            % creates the figure object
+            obj.hFig = createUIObj('figure','Position',fPos,...
+                'tag',obj.tagStr,'MenuBar','None','Toolbar','None',...
+                'Name',obj.figName,'NumberTitle','off','Visible','off',...
+                'AutoResizeChildren','off','CloseRequestFcn',[]);   
+            
+            % ------------------------------ %
+            % --- CONTROL BUTTON OBJECTS --- %
+            % ------------------------------ %
+            
+            % initialisations
+            bStrC = {'Continue','Cancel'};
+            cbFcnC = {@obj.buttonContinue,@obj.buttonCancel};
+            
+            % creates the control button objects
+            pPosC = [obj.dX*[1,1],obj.widPanel,obj.hghtPanelC];
+            obj.hPanelC = createUIObj(...
+                'Panel',obj.hFig,'Position',pPosC,'Title',''); 
+            
+            % other initialisations
+            obj.hButC = cell(length(bStrC),1);
+            for i = 1:length(bStrC)
+                % sets up the button position vector
+                lBut = obj.dX + (i-1)*(obj.widButC + obj.dX/2);
+                bPos = [lBut,obj.dX-2,obj.widButC,obj.hghtBut];
                 
-                % resets to the last valid value and exits
-                set(hEdit,'string',num2str(iData0.Frame)) 
-                return
-            else            
-                % otherwise, update the phase/stack fields
-                [iDataS.Phase,iDataS.Stack] = calcPhaseIndex(h,nwVal);
-                set(h.editPhase,'string',num2str(iDataS.Phase))
-                set(h.editStack,'string',num2str(iDataS.Stack))
+                % creates the button object
+                obj.hButC{i} = createUIObj('Pushbutton',obj.hPanelC,...
+                    'Position',bPos,'Callback',cbFcnC{i},...
+                    'FontUnits','Pixels','FontSize',obj.fSzL,...
+                    'FontWeight','Bold','String',bStrC{i});
             end
             
-        case 'Phase' % case is the phase index
-            % resets the stack index
-            if iDataS.Stack > nStackTot(iDataS.Phase)
-                iDataS.Stack = nStackTot(iDataS.Phase);
-                set(h.editStack,'string',num2str(iDataS.Stack))                
+            % --------------------------------- %
+            % --- START FRAME PANEL OBJECTS --- %
+            % --------------------------------- %
+
+            % initialisations
+            pStrS = 'iFrm0';
+            cbFcnS = @obj.panelStartPoint;
+            tStrR = {'Start From Global Video Frame',...
+                     'Start From Specific Video Phase'};
+            
+            % creates the panel object
+            yPosS = sum(pPosC([2,4])) + obj.dX/2;
+            pPosS = [obj.dX,yPosS,obj.widPanel,obj.hghtPanelS];
+            obj.hPanelS = createUIObj('ButtonGroup',obj.hFig,...
+                'Position',pPosS,'Title','','SelectionChangedFcn',cbFcnS);            
+            
+            % creates the phase panel object
+            if obj.nPhase == 1
+                % case is there is only a single phase
+                yOfs = obj.dX/2 + 2;
+                
+            else
+                % case is there are multiple phases
+                pPosP = [obj.dX*[1,1]/2,obj.widPanelP,obj.hghtPanelP];
+                obj.hPanelP = createUIObj(...
+                    'Panel',obj.hPanelS,'Position',pPosP,'Title','');
+                yOfs = sum(pPosP([2,4])) + obj.dX/2;
             end
             
-            % resets the frame index
-            iDataS.Frame = calcFrameIndex(h,iDataS.Phase,iDataS.Stack);                
-            set(h.editFrame,'string',num2str(iDataS.Frame))                    
+            % creates the other objects
+            [obj.hRadioS,obj.hTxtS] = deal(cell(obj.nRadioS,1));
+            for i = 1:obj.nRadioS
+                % sets up the radio button position vector
+                j = obj.nRadioS - (i-1);
+                tStr = sprintf('%s: ',tStrR{i});
+                
+                % creates the radio button object
+                yPosR = (j-1)*obj.hghtRow + yOfs;
+                if obj.nPhase == 1
+                    % case is single phase video
+                    pPosR = [obj.dX,0,0,0];
+                    
+                else
+                    % case is multiple phase video
+                    pPosR = [obj.dX,yPosR,obj.widRadioS,obj.hghtRadio];
+                    obj.hRadioS{i} = createUIObj(...
+                        'radiobutton',obj.hPanelS,'Position',pPosR,...
+                        'String','','UserData',i,'Value',i==1);
+                end
+                
+                % creates the text label
+                lPosT = sum(pPosR([1,3]));
+                pPosT = [lPosT,yPosR+1,obj.widTxtS(i),obj.hghtTxt];
+                createUIObj('text',obj.hPanelS,...
+                    'Position',pPosT,'String',tStr,...
+                    'FontWeight','Bold','FontSize',obj.fSzL,...
+                    'HorizontalAlignment','Left');
+                
+                % creates the frame index editbox (first button only)
+                if i == 1
+                    lPosE = sum(pPosT([1,3]));
+                    pPosE = [lPosE,yPosR-1,obj.widEditS,obj.hghtEdit];
+                    obj.hEditS = createUIObj('edit',obj.hPanelS,...
+                        'Position',pPosE,'String',num2str(obj.iFrm0),...
+                        'FontSize',obj.fSz,'UserData',pStrS,...
+                        'Callback',cbFcnP);
+                end
+            end            
             
-        otherwise % case is the stack index
-            iDataS.Frame = calcFrameIndex(h,iDataS.Phase,iDataS.Stack);
-            set(h.editFrame,'string',num2str(iDataS.Frame))
+            % --------------------------------- %
+            % --- START PHASE PANEL OBJECTS --- %
+            % --------------------------------- %            
+
+            % sets the phase panel object (multi-phase video only)
+            if obj.nPhase > 1
+                % initialisations
+                pStrP = {'iPhase0','iStack0'};
+                tStrP = {'Start Phase','Start Stack'};
+                cHdrP = {'Phase','Start','Finish','Tracked','Total'};
+                cFormP = repmat({'numeric'},1,obj.nColP);
+                cEditP = false(1,obj.nColP);
+                cWidP = {48,50,50,50,50};            
+
+                % creates the label/editbox parameter combo groups
+                obj.hEditP = cell(obj.nEditP,1);
+                for i = 1:obj.nEditP
+                    % creates the text label object
+                    tStrPT = sprintf('%s: ',tStrP{i});
+                    lPosPT = obj.dX/2 + (i-1)*...
+                        (obj.widTxtP + obj.widEditP + obj.dX/2);
+                    pPosPT = [lPosPT,obj.dX,obj.widTxtP,obj.hghtTxt];
+                    createUIObj('text',obj.hPanelP,'Position',pPosPT,...
+                        'String',tStrPT,'FontWeight','Bold',...
+                        'FontSize',obj.fSzL,'HorizontalAlignment','Right');
+
+                    % creates the editbox label object
+                    pValPE = num2str(obj.(pStrP{i}));
+                    lPosPE = sum(pPosPT([1,3]));
+                    pPosPE = [lPosPE,obj.dX-2,obj.widEditP,obj.hghtEdit];
+                    obj.hEditP{i} = createUIObj('edit',obj.hPanelP,...
+                        'Position',pPosPE,'String',pValPE,...
+                        'FontSize',obj.fSz,'UserData',pStrP{i},...
+                        'Callback',cbFcnP);
+                end
+
+                % creates the table object
+                yPosTP = obj.dX + obj.hghtRow;
+                pPosTP = [obj.dX/2,yPosTP,obj.widTableP,obj.hghtTableP];
+                obj.hTableP = createUIObj('table',obj.hPanelP,...
+                    'Data',[],'Position',pPosTP,'ColumnName',cHdrP,...
+                    'ColumnEditable',cEditP,'ColumnFormat',cFormP,...
+                    'RowName',[],'ColumnWidth',cWidP);
+
+                % updates the table fields
+                tDataP = [(1:obj.nPhase)',obj.iPh,obj.nTrk,obj.nTot];
+                obj.hTableP.Data = num2cell(tDataP);
+                
+                % resizes the table columns
+                autoResizeTableColumns(obj.hTableP);
+                
+                % runs the start point selection callback function
+                obj.panelStartPoint(obj.hPanelS, [])                   
+            end
             
-    end
-    
-    % updates the data struct
-    setappdata(hFig,'iDataS',iDataS)
-    if strcmp(pStr,'Phase')
-        panelStartPoint_SelectionChangedFcn(hPanelS,'1',h)
-    end
-    
-else
-    % otherwise, reset the parameter to the last valid value
-    set(hEdit,'string',num2str(eval(sprintf('iDataS.%s',pStr))))
-end
+            % ------------------------------- %
+            % --- HOUSE-KEEPING EXERCISES --- %
+            % ------------------------------- %
+            
+            % centers the figure and makes it visible
+            centerfig(obj.hFig);
+            refresh(obj.hFig);
+            pause(0.05);
+            
+            % makes the figure visible
+            set(obj.hFig,'Visible','on');
+            
+        end
 
-% --- Executes on button press in buttonCont.
-function buttonCont_Callback(hObject, eventdata, handles)
+        % --------------------------------- %        
+        % --- OBJECT CALLBACK FUNCTIONS --- %
+        % --------------------------------- %
+        
+        % --- start point buttongroup selection callback function
+        function panelStartPoint(obj, hObj, ~)
+            
+            % retrieves the handle of the selected radio button
+            hRadio = hObj.SelectedObject;
+            
+            % updates the object properties based on the selection
+            isFrameSel = hRadio.UserData == 1;
+            setObjEnable(obj.hEditS,isFrameSel)
+            setPanelProps(obj.hPanelP,~isFrameSel)
+            
+            % sets the table background colour based on the selection
+            if isFrameSel
+                % case is the global frame is selected
+                bgCol = 0.81*[1,1,1];      
+                
+            else
+                % sets the table background colours
+                prTrk = obj.nTrk./obj.nTot;
+                bgCol0 = {[1,0,0],[1,1,0],[0,1,0]};
+                tType = 1 + (prTrk > 0) + (prTrk == 1);
+                bgCol = cell2mat(arrayfun(@(x)(bgCol0{x}),tType(:),'un',0));
+                
+                % highlights the selected rows
+                bgCol(obj.iPhase0,:) = 0.75*bgCol(obj.iPhase0,:);
+            end
+            
+            % updates the table background colour
+            obj.hTableP.BackgroundColor = bgCol;
+            
+        end
+        
+        % --- parameter editbox callback function
+        function editParaUpdate(obj, hObj, ~)
+            
+            % field retrieval
+            pStr = hObj.UserData;           
+            pVal0 = obj.(pStr);
+            nwVal = str2double(hObj.String);
+            
+            % retrieves the parameter limits (based on type)
+            switch pStr
+                case 'iFrm0'
+                    % case is the start frame
+                    nwLim = [1,length(obj.isTrk)];                
+                
+                case 'iPhase0'
+                    % case is the start phase
 
-% global variables
-global indStart
+                    % determine the feasible max phase count
+                    nPhMax = find(obj.nTrk > 0,1,'last');
+                    if obj.nTrk(nPhMax)/obj.nTot(nPhMax) == 1
+                        % if phase is fully tracked, start on next phase
+                        nPhMax = min(length(obj.nTot),nPhMax+1);
+                    end
+                    
+                    % sets the phase limits
+                    nwLim = [1,nPhMax];                    
+                    
+                case 'iStack0'
+                    % case is the start stack
+                    nwLim = [1,max(1,obj.nTrk(obj.iPhase0))];                    
+            end
+            
+            % resets the lower limit if the upper limit is zero
+            if nwLim(2) == 0; nwLim(1) = 0; end            
+            
+            % determines if the new value is valid
+            if chkEditValue(nwVal,nwLim,1)
+                % if so, then update the class field
+                obj.(pStr) = nwVal;
 
-% returns an empty data struct
-iDataS = getappdata(handles.figStartPoint,'iDataS');
-indStart = [iDataS.Phase,iDataS.Stack];
-
-% deletes the GUI
-delete(handles.figStartPoint)
-
-% --- Executes on button press in buttonCancel.
-function buttonCancel_Callback(hObject, eventdata, handles)
-
-% global variables
-global indStart
-
-% returns an empty data struct
-indStart = [];
-
-% deletes the GUI
-delete(handles.figStartPoint)
-
-%-------------------------------------------------------------------------%
-%                             OTHER FUNCTIONS                             %
-%-------------------------------------------------------------------------%
-
-% --- initialises the object properties
-function initObjProps(handles)
-
-% global variables
-global H0T HWT
-
-% retrieves the data structs
-dX = 10;
-hFig = handles.figStartPoint;
-iDataS = getappdata(hFig,'iDataS');
-trkObj = getappdata(hFig,'trkObj');
-iMov = trkObj.iMov;
-
-% object handles
-hEditF = handles.editFrame;
-hTable = handles.tablePhaseInfo;
-hPanelS = handles.panelStartPoint;
-hPanelP = handles.panelStartPhase;
-
-% initialises the editbox object properties
-fStr = fieldnames(iDataS);
-for i = 1:length(fStr)
-    % retrieves the editbox handle
-    hEdit = eval(sprintf('handles.edit%s',fStr{i}));
-    
-    % sets the callback function and values
-    cbFcn = {@editParaUpdate,handles};
-    pVal = eval(sprintf('iDataS.%s;',fStr{i}));
-    set(hEdit,'Callback',cbFcn,'String',num2str(pVal))
-end
-
-% the current phase and first valid region index
-nPh = length(iMov.vPhase);
-iPh = iMov.iPhase(trkObj.iPhaseS,:);
-iApp0 = find(trkObj.iMov.ok,1,'first');
-
-% retrieves the first valid tube index
-if iscell(trkObj.iMov.flyok)
-    iTube0 = find(trkObj.iMov.flyok{iApp0},1,'first');
-else
-    iTube0 = find(trkObj.iMov.flyok(:,iApp0),1,'first');
-end
-
-% determines which frames have been tracked
-isTrk = ~isnan(trkObj.pData.fPos{iApp0}{iTube0}(:,1));
-
-% determines the total number of stacks per phase
-nFrmS = diff(iPh,[],2) + 1;
-nStackTot = ceil(nFrmS/trkObj.nFrmS);
-
-% determines the number of tracked stacks per phase
-nStackTrk = ceil(cellfun(@(x)(sum(isTrk(x(1):x(2)))),...
-                        num2cell(iPh,2))/trkObj.nFrmS);    
-
-setappdata(hFig,'isTrk',isTrk);
-setappdata(hFig,'nStackTrk',nStackTrk);
-setappdata(hFig,'nStackTot',nStackTot);
-
-% determines if the video is multi-phase. reduce the GUI if not
-if nPh == 1
-    % calculates the change in height for the remaining objects
-    pPos = get(handles.radioStartFrame,'Position');
-    dHght = dX - pPos(2);    
-    
-    % makes the phase objects invisible
-    setObjVisibility(handles.radioStartFrame,0)
-    setObjVisibility(handles.radioStartPhase,0)  
-    setObjVisibility(handles.textStartPhase,0)
-    setObjVisibility(handles.panelStartPhase,0)
-    
-    % retrieves the non-panel object handles
-    hObj = findall(hPanelS);
-    hObj = hObj(hObj ~= hPanelS);
-    
-    % resets the height of the objects
-    resetObjPos(hObj,'Bottom',dHght,1)
-    resetObjPos(hPanelS,'Height',dHght,1)    
-    resetObjPos(hFig,'Height',dHght,1)
-    set(handles.radioStartFrame,'Value',1)
-    
-else
-    % case is there are multiple phases
-    
-    % initialisations
-    hObj = [findall(handles.panelStartPoint,'UserData',1);hEditF];
-    
-    % determines the change in the GUI object heights/locations 
-    tPos0 = get(hTable,'Position');
-    dtHght = H0T + nPh*HWT - tPos0(4);
-    
-    % resets the object positions
-    resetObjPos(hFig,'Height',dtHght,1)
-    resetObjPos(hTable,'Height',dtHght,1)
-    resetObjPos(hPanelS,'Height',dtHght,1)
-    resetObjPos(hPanelP,'Height',dtHght,1)
-    resetObjPos(hObj,'Bottom',dtHght,1)                            
+                % updates other fields based on parameter being altered
+                switch pStr                
+                    case 'iFrm0'
+                        % case is the frame index
                         
-    % sets the table data/properties
-    tData = num2cell([(1:nPh)',iPh,nStackTrk,nStackTot]);
-    set(hTable,'Data',tData);            
+                        % determines if the selected frame has been tracked
+                        if ~obj.isTrk(nwVal)
+                            % if not, output an error to screen
+                            tStr = 'Invalid Frame Index';
+                            eStr = sprintf(['Error! The selected ',...
+                                'frame has not yet been tracked.\nTry ',...
+                                'again with an untracked frame index.']);
+                            waitfor(msgbox(eStr,tStr,'modal'))
+                            
+                            % resets to the last valid value and exits
+                            obj.(pStr) = pVal0;
+                            hObj.String = num2str(obj.iFrm0);                            
+                            return
+                            
+                        else
+                            % otherwise, update the phase/stack fields
+                            obj.calcPhaseIndex();
+                            obj.hEditP{1}.String = num2str(obj.iPhase0);
+                            obj.hEditP{2}.String = num2str(obj.iStack0);
+                        end
+                        
+                    case 'iPhase0'
+                        % case is the phase index
+                        
+                        % resets the stack index
+                        if obj.iStack0 > obj.nTot(obj.iPhase0)
+                            obj.iStack0 = obj.nTot(obj.iPhase0);
+                            obj.hEditP{2}.String = num2str(obj.iStack0);
+                        end
+                        
+                        % resets the frame index
+                        obj.calcFrameIndex();
+                        obj.hEditS.String = num2str(obj.iFrm0);
+                        
+                    case 'iStack0'
+                        % case is the stack index
+                        
+                        % resets the frame index
+                        obj.calcFrameIndex();
+                        obj.hEditS.String = num2str(obj.iFrm0);
+                end
+            
+                % resets the start point (if altering the phase)
+                if strcmp(pStr,'iPhase0')
+                    obj.panelStartPoint(obj.hPanelS,'1');
+                end
+                
+            else
+                % otherwise, reset to the last valid value
+                hObj.String = num2str(obj.(pStr));
+            end
+            
+        end
+        
+        % --- continue button callback function
+        function buttonContinue(obj, ~, ~)
+            
+            % flag that the user chose to continue
+            obj.isOK = true;
+            obj.indStart = [obj.iPhase0,obj.iStack0];
+            
+            % deletes the dialog window
+            delete(obj.hFig);            
+            
+        end
+            
+        % --- cancel button callback function
+        function buttonCancel(obj, ~, ~)
+            
+            % flag that the user cancelled
+            obj.isOK = false;
+            
+            % deletes the dialog window
+            delete(obj.hFig);
+            
+        end       
+
+        % ------------------------------- %        
+        % --- MISCELLANEOUS FUNCTIONS --- %
+        % ------------------------------- %
+        
+        % --- calculates the frame index (from the phase/stack indices)
+        function calcFrameIndex(obj)
+           
+            % field retrieval
+            jPhase = obj.objT.iPhaseS(obj.iPhase0);            
+            iFrmPh0 = obj.objT.iMov.iPhase(jPhase,1);
+            
+            % start frame calculation
+            obj.iFrm0 = min(obj.nFrmMx,iFrmPh0+obj.nFrmS*(obj.iStack0-1));
+            
+        end
+        
+        % --- calculates the phase/stack indices (from the frame index)
+        function calcPhaseIndex(obj)
+            
+            % phase index calculation
+            iFrmG = obj.objT.iFrmG(obj.objT.iPhaseS);
+            obj.iPhase0 = find(cellfun(@(x)(any(x==obj.iFrm0)),iFrmG));
+            
+            % phase stack index calculation            
+            iPhaseS0 = obj.objT.iPhaseS(obj.iPhase0);
+            iFrmPh0 = obj.objT.iMov.iPhase(iPhaseS0,1);
+            obj.iStack0 = max(1,ceil((obj.iFrm0-iFrmPh0)/obj.nFrmS));
+            
+        end
     
-    % runs the start point selection callback function
-    panelStartPoint_SelectionChangedFcn(hPanelS, '1', handles)    
+    end
+    
 end
-
-% --- initialises the data struct
-function iDataS = initDataStruct(handles,trkObj)
-
-% calculates the frame index
-[iPhase0,iStack0] = deal(trkObj.iPhase0,max(1,trkObj.nCountS));
-iFrm0 = calcFrameIndex(handles,iPhase0,iStack0);
-
-% sets up the data struct
-iDataS = struct('Phase',iPhase0,'Stack',iStack0,'Frame',iFrm0);
-setappdata(handles.figStartPoint,'iFrm0',iFrm0)
-
-% --- calculates the frame index (from the phase/stack indices)
-function iFrm0 = calcFrameIndex(handles,iPhase0,iStack0)
-
-% retrieves the important values from the GUI
-nFrmS = getappdata(handles.figStartPoint,'nFrmS');
-trkObj = getappdata(handles.figStartPoint,'trkObj');
-nFrmMx = size(trkObj.pData.fPos{1}{1},1);
-
-% calculates the start frame index
-jPhase = trkObj.iPhaseS(iPhase0);
-iFrm0 = min(nFrmMx,trkObj.iMov.iPhase(jPhase,1)+nFrmS*(iStack0-1));
-
-% --- calculates the phase/stack indices (from the frame index)
-function [iPhase0,iStack0] = calcPhaseIndex(handles,iFrm0)
-
-% retrieves the important values from the GUI
-nFrmS = getappdata(handles.figStartPoint,'nFrmS');
-trkObj = getappdata(handles.figStartPoint,'trkObj');
-
-% calculates the phase/stack indices
-iPhase0 = find(cellfun(@(x)(any(x==iFrm0)),trkObj.iFrmG(trkObj.iPhaseS)));
-iPhaseS0 = trkObj.iPhaseS(iPhase0);
-iStack0 = max(1,ceil((iFrm0-trkObj.iMov.iPhase(iPhaseS0,1))/nFrmS));

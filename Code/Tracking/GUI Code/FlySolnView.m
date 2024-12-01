@@ -21,7 +21,7 @@ end
 % End initialization code - DO NOT EDIT
 
 % --- Executes just before FlySolnView is made visible.
-function FlySolnView_OpeningFcn(hObject, eventdata, handles, varargin)
+function FlySolnView_OpeningFcn(hObject, ~, handles, varargin)
 
 % global variables
 global isDetecting nFrmRS updateFlag2 regSz
@@ -96,7 +96,7 @@ guidata(hObject, handles);
 % uiwait(handles.figFlySolnView);
 
 % --- Outputs from this function are returned to the command line.
-function varargout = FlySolnView_OutputFcn(hObject, eventdata, handles) 
+function varargout = FlySolnView_OutputFcn(~, ~, handles) 
 
 % Get default command line output from handles structure
 varargout{1} = handles.output;
@@ -106,7 +106,7 @@ varargout{1} = handles.output;
 %-------------------------------------------------------------------------%
 
 % -------------------------------------------------------------------------
-function uiZoomAxes_ClickedCallback(hObject, eventdata, handles)
+function uiZoomAxes_ClickedCallback(hObject, ~, handles)
 
 % global variables
 global isDetecting
@@ -165,16 +165,16 @@ end
 % ----------------------- %
 
 % -------------------------------------------------------------------------
-function menuDiagCheck_Callback(hObject, eventdata, handles)
+function menuDiagCheck_Callback(~, ~, handles)
 
 % calculates the NaN count/inter-frame displacement 
 [handles.output.nNaN,handles.output.Dfrm] = calcDiagnosticValue(handles);
 
 % runs the solution diagnostic check
-SolnDiagCheck(handles)
+SolnDiagCheck(handles.figFlySolnView);
 
 % -------------------------------------------------------------------------
-function menuClose_Callback(hObject, eventdata, handles)
+function menuClose_Callback(~, ~, handles)
 
 % retrieves the tracking GUI handles and the related GUI object handles
 hGUI = get(handles.output,'hGUI');
@@ -230,7 +230,7 @@ if isUpdate
 end
 
 % --------------------------------------------------------------------
-function menuMetricOptions_Callback(hObject, eventdata, handles)
+function menuMetricOptions_Callback(hObject, ~, handles)
 
 % if the metric parameter GUI is already open then exit
 if strcmp(get(hObject,'Checked'),'on')
@@ -239,10 +239,10 @@ end
 
 % runs the solution metric parameter GUI
 set(hObject,'Checked','on');
-SolnMetricPara(handles.output)
+SolnMetricPara(handles.figFlySolnView);
 
 % --------------------------------------------------------------------
-function menuShowPhase_Callback(hObject, eventdata, handles)
+function menuShowPhase_Callback(hObject, ~, handles)
 
 % retrieves the phase object
 eStr = {'off','on'};
@@ -258,7 +258,7 @@ set(hObject,'Checked',eStr{~isCheck+1})
 % -------------------------------- %
 
 % -------------------------------------------------------------------------
-function menuTime_Callback(hObject, eventdata, handles)
+function menuTime_Callback(hObject, ~, handles)
 
 % resets the check labels
 if strcmp(get(hObject,'checked'),'on')
@@ -279,7 +279,7 @@ set(hAx,'xtick',get(handles.output,'tTick0'))
 set(hAx,'xTickLabel',get(handles.output,'tTickLbl0'))
 
 % -------------------------------------------------------------------------
-function menuFrmIndex_Callback(hObject, eventdata, handles)
+function menuFrmIndex_Callback(hObject, ~, handles)
 
 % resets the check labels
 if strcmp(get(hObject,'checked'),'on')
@@ -309,19 +309,19 @@ tLblNw = cellfun(@(x)(num2str(x)),num2cell(tTickNw),'un',0);
 set(hAx,'xtick',T(tTickNw+1)/60,'xticklabel',tLblNw);
 
 % -------------------------------------------------------------------------
-function menuViewXY_Callback(hObject, eventdata, handles)
+function menuViewXY_Callback(hObject, ~, handles)
 
 % updates the view menu properties and the viewing axes
 updateViewMenu(handles,hObject,[1 1])
 
 % -------------------------------------------------------------------------
-function menuViewX_Callback(hObject, eventdata, handles)
+function menuViewX_Callback(hObject, ~, handles)
 
 % updates the view menu properties and the viewing axes
 updateViewMenu(handles,hObject,[1 0])
 
 % -------------------------------------------------------------------------
-function menuViewY_Callback(hObject, eventdata, handles)
+function menuViewY_Callback(hObject, ~, handles)
 
 % updates the view menu properties and the viewing axes
 updateViewMenu(handles,hObject,[0 1])
@@ -331,7 +331,7 @@ updateViewMenu(handles,hObject,[0 1])
 % -------------------------- %
 
 % -------------------------------------------------------------------------
-function menuShowStim_Callback(hObject, eventdata, handles)
+function menuShowStim_Callback(hObject, ~, handles)
 
 % initialistions
 dY = 10;
@@ -381,7 +381,7 @@ resetObjPos(hPanelI,'height',Hnw);
 set(hPanelI,'Units',hUnitsI)
 
 % -------------------------------------------------------------------------
-function menuPhaseStats_Callback(hObject, eventdata, handles)
+function menuPhaseStats_Callback(hObject, ~, handles)
 
 % object handles
 hFig = handles.output;
@@ -411,7 +411,7 @@ end
 % ----------------------------- %
 
 % --- Executes when figFlySolnView is resized.
-function figFlySolnView_ResizeFcn(hObject, eventdata, handles)
+function figFlySolnView_ResizeFcn(~, ~, ~)
 
 % % global variables
 % global updateFlag2 uTime2
@@ -605,7 +605,7 @@ switch iApp
     case 0 
         % case is the average velocity             
         yLimT = [1 nApp] + 0.5*[-1 1];
-        yLblStr = 'Region Index';      
+        yLblStr = 'Group Index';      
         
     otherwise
         % case is the positional traces
@@ -889,10 +889,10 @@ switch uData(1)
         % sets/updates the y-axis label
         hYLbl = findall(hAx,'tag','hYLbl');
         if isempty(hYLbl)
-            ylabel(hAx,'Region Index','fontweight','bold',...
+            ylabel(hAx,'Group Index','fontweight','bold',...
                        'fontsize',lblSz,'tag','hYLbl')
         else
-            set(hYLbl,'string','Region Index')
+            set(hYLbl,'string','Group Index')
         end
         
         % retrieves the data values based on the region struct format
@@ -1151,14 +1151,26 @@ for i = 1:iMov.pInfo.nGrp
     
     % case is a 2D expt setup
     if iMov.is2D        
-        fPos{i} = arrayfun(@(ir,ic)(fPos0{ic}{ir}),iRowG,iColG,'un',0)';        
-    else
-        indG = sub2ind(size(iMov.pInfo.nFly),iRowG,iColG);
-        iRegG = (iRowG-1)*iMov.pInfo.nCol + iColG;
-        nFly = iMov.pInfo.nFly(indG);
+        % case is a 2D expt setup
+        fPos{i} = arrayfun(@(ir,ic)(fPos0{ic}{ir}),iRowG,iColG,'un',0)';
         
-        fPos{i} = cell2cell(arrayfun(@(i,n)...
+    else
+        % case is non 2D expt setup
+        if detIfCustomGrid(iMov)
+            % case is 1D expt with custom regions
+            gID = iMov.pInfo.gID;            
+            fPos{i} = cell2cell(cellfun(@(x,y)...
+                    (x(y==i)),fPos0(:),gID(:),'un',0));
+            
+        else
+            % case is the other experiment setup types
+            indG = sub2ind(size(iMov.pInfo.nFly),iRowG,iColG);
+            iRegG = (iRowG-1)*iMov.pInfo.nCol + iColG;
+            nFly = iMov.pInfo.nFly(indG);
+
+            fPos{i} = cell2cell(arrayfun(@(i,n)...
                                     (fPos0{i}(1:n)),iRegG,nFly,'un',0),0);
+        end
     end
 end
 
@@ -1167,7 +1179,7 @@ end
 % --------------------------------------- %
 
 % --- context menu callback function for the plotting axis
-function updateMainFrame(source,eventdata,handles)
+function updateMainFrame(~, ~, handles)
 
 % sets the current x/y location of the mouse
 hAx = handles.axesImg;
@@ -1214,12 +1226,14 @@ if (strcmp(fExtn,'.avi')); nFrm = nFrm - 1; end
 
 % ensures the frame counter index array is a cell array
 frmOK = pData.frmOK;
-if (~iscell(frmOK)); frmOK = {frmOK}; end
+if ~iscell(frmOK)
+    frmOK = {frmOK}; 
+end
 
 % sets the indices of the frames that have already been read
-if (isnan(nFrmRS))
+if isnan(nFrmRS)
     ii = [];
-elseif (all(cellfun(@all,frmOK)))
+elseif all(cellfun(@all,frmOK))
     ii = 1:nFrm;
 else
     jj = find(~isnan(pData.fPos{i0}{j0}(:,1)),1,'last');
@@ -1232,18 +1246,23 @@ Dfrm = repmat({NaN(nFrm,1)},pData.nTube(i0),pData.nApp);
 
 % loops through each of the apparatus determining the number of NaN values
 % and the inter-frame displacement
-for j = 1:pData.nApp        
+for j = 1:pData.nApp
     % calculates the time point displacements between time points
-    if (iMov.ok(j))
+    if iMov.ok(j)
         D = cellfun(@(x)(sFac*[0;sqrt(sum(diff(x(ii,:),1).^2,2))]),...
                                             pData.fPos{j},'un',0);                                    
         N = cellfun(@(x)(getGroupIndex(isnan(x(ii,1)))),...
-                                            pData.fPos{j},'un',0);                                                                    
-
+                                            pData.fPos{j},'un',0);        
+                                        
         % NaN-frame count calculation and inter-frame displacement setting                                    
-        for i = 1:size(nNaN,1)        
-            if (iMov.flyok(i,j))
-                if (~isempty(N{i})); nNaN{i,j} = N{i}; end
+        for i = 1:size(nNaN,1)
+            if iMov.flyok(i,j)
+                % sets the NaN values (if any exist)
+                if ~isempty(N{i})
+                    nNaN{i,j} = N{i}; 
+                end
+                
+                % sets the distance values
                 Dfrm{i,j} = D{i};
             end
         end
@@ -1428,7 +1447,7 @@ end
 % ------------------------------- %
 
 % callback on mouse motion over figure - except title and menu.
-function resetMarkerLine(hObject, eventdata, handles)
+function resetMarkerLine(~, ~, handles)
 
 % retrieves the current mouse point
 hFig = handles.output;

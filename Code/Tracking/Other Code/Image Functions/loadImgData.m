@@ -3,7 +3,7 @@ function [ok,iData] = loadImgData(...
                         handles,fName,fDir,setMovie,isSolnLoad,iData,iMov)
 
 % global variables
-global bufData frmSz0
+global bufData
 
 % object handles
 nFrmMin = 10;
@@ -154,7 +154,7 @@ else
 end 
 
 % sets the global frame size 
-frmSz0 = iData.sz; 
+hFig.frmSz0 = iData.sz; 
 
 % sets the image rotation flag
 if isfield(iMov,'useRot')
@@ -202,7 +202,8 @@ if hFig.cType > 0
     set(hFig,'iMov',iMov)   
     
 elseif (setMovie && ~isSolnLoad) && ~hFig.isBatch  
-    [iMov.sRate,Frm0] = SampleRate(iData);
+    objSR = SampleRate(iData); 
+    [iMov.sRate,Frm0] = deal(objSR.sRate,objSR.iFrm0);
     set(hFig,'iMov',iMov)   
 end
 

@@ -25,8 +25,27 @@ if length(snTot) == 1
             iGrpU = unique(pInfo.iGrp(:));
             snTotL.iMov.flyok = arrayfun(@(x)...
                             (flyok0(pInfo.iGrp==x)),iGrpU(iGrpU>0),'un',0);
+                        
+        elseif detIfCustomGrid(snTotL.iMov)
+            % case is a 1D experiment (custom grid)
+            gID = snTotL.iMov.pInfo.gID;
+            nFly = arr2vec(snTotL.iMov.pInfo.nFly')';
+            snTotL.iMov.flyok = arrayfun(@(n)(false(n,1)),nFly,'un',0);
+                        
+            % sets the acceptance flags for each grouping type
+            for i = 1:length(gID)
+                % determines the sub-grouping indices
+                [gIDU,~,iC] = unique(gID{i});
+                indC = arrayfun(@(x)(find(iC==x)),1:max(iC),'un',0);
+                
+                % sets the acceptance flags for each sub-grouping
+                for j = 1:length(gIDU)
+                    snTotL.iMov.flyok{gIDU(j)}(indC{j}) = true;
+                end
+            end
+            
         else
-            % case is the 1D expt
+            % case is a 1D experiment (fixed grid)
             nFly = pInfo.nFly;
             indG = arrayfun(@(x)(find(pInfo.iGrp==x)),1:pInfo.nGrp,'un',0);
             nFlyG = cellfun(@(x)(nFly(x)),indG,'un',0);

@@ -908,7 +908,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                         % loads the multi-experiment solution file
                         fFileS = fullfile(fDirS{i},fNameS{i});
                         [snTotNw,mNameNw,ok] = ...
-                                 loadMultiExptSolnFiles(tDir,fFileS,[],hh);                             
+                            loadMultiExptSolnFiles(tDir,fFileS,[],hh);
                         if ~ok
                             % if the user cancelled, then exit the function
                             return
@@ -1629,8 +1629,8 @@ classdef OpenSolnFileTab < dynamicprops & handle
             % sets the 
             [devType,~,iC] = unique(sTrainEx.sTrain(1).devType,'stable');
             nCh = NaN(length(devType),1);
-
-            % sets up the 
+            
+            % sets up the device type string
             for iCh = 1:length(devType)
                 % calculates the number of motor channels 
                 if startsWith(devType{iCh},'Motor')
@@ -1641,14 +1641,18 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 devType{iCh} = regexprep(devType{iCh},'[0-9]','');
             end
 
-            chCol = flip(getChannelCol(devType,nCh));
-
+            % sets up the channel colours
+            chCol = flip(getChannelCol(devType,nCh));            
+            
+            % determines the experiment finish time
+            TexpF = obj.sInfo{obj.iExp}.snTot.T{end}(end);            
+            
             % determines the experiment units string
-            Texp = obj.sInfo{obj.iExp}.snTot.T{end}(end);
             iLim = find(cellfun(@(x)...
-                        (convertTime(Texp,'s',x)),tStr0) < tLim,1,'first');
+                        (convertTime(TexpF,'s',x)),tStr0) < tLim,1,'first');
             [tStr,tUnits] = deal(tStr0{iLim},tUnits0{iLim});
-            tLim = [0,Texp]*getTimeMultiplier(tStr,'s');
+            tLim = [0,TexpF]*getTimeMultiplier(tStr,'s');
+            tUnitsExp = obj.sInfo{obj.iExp}.snTot.iExpt.Timing.TexpU(1);
 
             % clears the axes and turns it on
             cla(hAx)
@@ -1664,7 +1668,7 @@ classdef OpenSolnFileTab < dynamicprops & handle
                 xyData0 = setupFullExptSignal(obj,sTrain,sPara);
 
                 % scales the x/y coordinates for the axes time scale
-                tMlt = getTimeMultiplier(tStr,sPara.tDurU);
+                tMlt = getTimeMultiplier(tStr,lower(tUnitsExp));
                 tOfs = getTimeMultiplier(tStr,sPara.tOfsU)*sPara.tOfs;    
                 xyData = cellfun(@(x)(colAdd...
                             (colMult(x,1,tMlt),1,tOfs)),xyData0,'un',0);        

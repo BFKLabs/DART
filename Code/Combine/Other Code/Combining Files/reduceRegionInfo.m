@@ -15,8 +15,13 @@ if iMov.is2D
     nGrp = max(iMov.pInfo.iGrp(:));
     iok = arrayfun(@(x)(any(iMov.pInfo.iGrp(:)==x)),(1:nGrp)');   
     
+elseif detIfCustomGrid(iMov)
+    % case is a 1D experiment setup (custom grid)
+    gID = iMov.pInfo.gID;
+    iok = arrayfun(@(x)(any(cellfun(@(y)(any(y==x)),gID))),1:nApp);
+    
 else
-    % case is 1D expt setup
+    % case is a 1D experiment setup (fixed grid)
     iGrp = arr2vec(iMov.pInfo.iGrp');
     iok = iGrp > 0;       
 

@@ -640,7 +640,7 @@ classdef TrackMarkerClass < MarkerClass
         % ------------------------------- %                
         
         % --- updates the marker visibility
-        function updateMarkerVisibility(obj,hObj,isOn)        
+        function updateMarkerVisibility(obj,hObj,isOn)
             
             % ensures the objects are stored in a cell array
             if ~iscell(hObj); hObj = {hObj}; end

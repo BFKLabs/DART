@@ -188,7 +188,7 @@ classdef VideoClipper < handle
             % creates the panel object
             pPosAx = [obj.dX*[1,1],obj.widPanel,obj.hghtPanel];
             obj.hPanelAx = createUIObj(...
-                'Panel',obj.hFig,'Position',pPosAx,'Title','');            
+                'Panel',obj.hFig,'Position',pPosAx,'Title','');
 
             % --------------------------------- %
             % --- VIDEO CLIPPING AXES PANEL --- %
@@ -267,7 +267,7 @@ classdef VideoClipper < handle
             pause(0.05);
             
             % makes the figure visible
-            set(obj.hFig,'Visible','on');            
+            set(obj.hFig,'Visible','on');
             
         end
         
@@ -428,7 +428,7 @@ classdef VideoClipper < handle
             hEdit = createUIObj('edit',hP,'Position',pPosE,...
                 'FontSize',obj.fSz);
             
-        end        
+        end
 
         % ------------------------------- %
         % --- MENU ITEM CLASS METHODS --- %
@@ -444,7 +444,7 @@ classdef VideoClipper < handle
             if isInit
                 % field setup
                 tStr = 'Select Video File';
-                dDir = 'C:\Work\DART\Documents\Michael\Documentation';
+                dDir = 'C:\Work\DART\Documents\Michael\Documentation\2.0 - Fly Tracking\Videos';
             
                 % user is manually selecting file to open            
                 [fName,fDir,fIndex] = uigetfile(obj.fMode,tStr,dDir);

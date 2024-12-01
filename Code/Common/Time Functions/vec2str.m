@@ -14,15 +14,30 @@ elseif any(V(:) < 0)
     return    
 end
 
+% determines which values to use
+hasV = V > 0;
+useV = false(size(V));
+
 % sets the strings for each time field
 S0 = cell(1,length(V));
-for i = 1:length(V)
-    if V(i) < 10
-        S0{i} = sprintf('0%i',roundP(V(i)));
+for i = find(hasV,1,'first'):length(V)
+    if i == length(V)
+        if V(i) < 10
+            S0{i} = sprintf('0%.3f',V(i));
+        else
+            S0{i} = sprintf('%.3f',V(i));
+        end
+        
     else
-        S0{i} = num2str(V(i));
+        if V(i) < 10
+            S0{i} = sprintf('0%i',roundP(V(i)));
+        else
+            S0{i} = num2str(V(i));
+        end
     end
+    
+    useV(i) = true;
 end
 
 % combines the final string
-S = strjoin(S0,':');
+S = strjoin(S0(useV),':');

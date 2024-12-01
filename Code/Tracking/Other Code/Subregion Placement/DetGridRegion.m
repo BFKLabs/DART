@@ -4,7 +4,6 @@ classdef DetGridRegion < handle
     properties
         
         % main class fields
-        hFig
         iMov
         iData
         phObj
@@ -20,14 +19,22 @@ classdef DetGridRegion < handle
         updateObj
     
     end
+    
+    % private class properties
+    properties (Access = private)
+        
+        objB
+        
+    end        
 
     % class methods
     methods
-        % class constructor
-        function obj = DetGridRegion(hFig)
+        
+        % --- class constructor
+        function obj = DetGridRegion(objB)
            
-            % sets the input arguments
-            obj.hFig = hFig;
+            % sets the input argumentsz
+            obj.objB = objB;
             
             % initialsises the class fields
             obj.initClassFields();
@@ -49,10 +56,10 @@ classdef DetGridRegion < handle
                     'Sub-Region Segmentation'};
             obj.hProg = ProgBar(wStr,'1D Automatic Detection'); 
             
-            % field retrieval            
-            obj.phObj = get(obj.hFig,'phObj');
-            obj.iMov = get(obj.hFig,'iMov');
-            obj.iData = get(obj.hFig.hGUI.output,'iData');
+            % field retrieval                        
+            obj.iMov = obj.objB.iMov;
+            obj.phObj = obj.objB.objPh;			
+			obj.iData = obj.objB.hFigM.iData;
             
             % other initialisations             
             obj.frmSz = getCurrentImageDim();
@@ -64,7 +71,7 @@ classdef DetGridRegion < handle
         function getVideoPhaseInfo(obj)
             
             % runs the phase detection solver    
-            if obj.hFig.isCalib
+            if obj.objB.isCalib
                 % updates the data struct with the phase information
                 obj.phObj = struct('iPhase',[1,1],'vPhase',1);
             else
@@ -288,7 +295,7 @@ classdef DetGridRegion < handle
                 [obj.phObj.Img0,obj.phObj.ILF] = deal([]);
 
                 % updates the phase object field
-                set(obj.hFig,'phObj',obj.phObj)
+                obj.objB.objPh = obj.phObj;
             end
 
             % closes the progressbar

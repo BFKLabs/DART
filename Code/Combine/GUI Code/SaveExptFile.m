@@ -21,7 +21,7 @@ end
 % End initialization code - DO NOT EDIT
 
 % --- Executes just before SaveExptFile is made visible.
-function SaveExptFile_OpeningFcn(hObject, eventdata, handles, varargin)
+function SaveExptFile_OpeningFcn(hObject, ~, handles, varargin)
 
 % global variables
 global isUpdating
@@ -73,7 +73,7 @@ guidata(hObject, handles);
 % uiwait(handles.figExptSave);
 
 % --- Outputs from this function are returned to the command line.
-function varargout = SaveExptFile_OutputFcn(hObject, eventdata, handles)
+function varargout = SaveExptFile_OutputFcn(~, ~, handles)
 
 % Get default command line output from handles structure
 varargout{1} = handles.output;
@@ -83,7 +83,7 @@ varargout{1} = handles.output;
 %-------------------------------------------------------------------------%
 
 % --- Executes when user attempts to close figExptSave.
-function figExptSave_CloseRequestFcn(hObject, eventdata, handles)
+function figExptSave_CloseRequestFcn(~, ~, handles)
 
 % runs the close windown button
 buttonCancel_Callback(handles.buttonCancel, [], handles)
@@ -93,7 +93,7 @@ buttonCancel_Callback(handles.buttonCancel, [], handles)
 %-------------------------------------------------------------------------%
 
 % --- Executes when selected object is changed in panelExptOutput.
-function panelExptOutput_SelectionChangedFcn(hObject, eventdata, handles)
+function panelExptOutput_SelectionChangedFcn(~, ~, handles)
 
 % initialisations
 hFig = handles.figExptSave;
@@ -113,7 +113,7 @@ resetExptTableBG(hFig)
 setappdata(hFig,'isChange',true)
 
 % --- Executes on button press in buttonFixedDir.
-function buttonFixedDir_Callback(hObject, eventdata, handles)
+function buttonFixedDir_Callback(~, ~, handles)
 
 % retrieves the fixed directory path
 hFig = handles.figExptSave;
@@ -137,7 +137,7 @@ resetExptTableBG(hFig)
 setappdata(hFig,'isChange',true)
 
 % --- tree selection change callback function
-function treeSelectChng(hObject, eventdata, hFig)
+function treeSelectChng(~, eventdata, hFig)
 
 % global variables
 global isUpdating
@@ -181,7 +181,7 @@ if strcmp(get(hCheck,'Tag'),'checkSolnTime')
 end
 
 % --- Executes on button press in checkSolnTime.
-function checkSolnTime_Callback(hObject, eventdata, handles)
+function checkSolnTime_Callback(hObject, ~, handles)
 
 % sets the time interval text/editbox properties
 isSel = get(hObject,'value');
@@ -189,7 +189,7 @@ setObjEnable(handles.textSolnTime,isSel)
 setObjEnable(handles.editSolnTime,isSel)
 
 % --- Executes on editting editSolnTime
-function editSolnTime_Callback(hObject, eventdata, handles)
+function editSolnTime_Callback(hObject, ~, handles)
 
 % retrieves the parameters/data structs
 hFig = handles.figExptSave;
@@ -214,7 +214,7 @@ end
 % ------------------------------ %
 
 % --- callback function for the file chooser property change
-function chooserPropChange(hObject, eventdata, handles)
+function chooserPropChange(~, eventdata, handles)
 
 % global variables
 global isUpdating
@@ -452,7 +452,6 @@ isUpdating = true;
 
 % object handle retrieval
 hFig = handles.figExptSave;
-hTable = handles.tableExptName;
 fName = getappdata(hFig,'fName');
 
 % retrieves the input values
@@ -627,9 +626,8 @@ set(hObject,'Data',tabData,'BackgroundColor',bgCol);
 % --- PROGRAM CONTROL BUTTON CALLBACKS --- %
 % ---------------------------------------- %
 
-
 % --- Executes on button press in buttonRefresh.
-function buttonRefresh_Callback(hObject, eventdata, handles)
+function buttonRefresh_Callback(~, ~, handles)
 
 % sets the full solution file name
 hFig = handles.figExptSave;
@@ -640,7 +638,7 @@ resetExptTableBG(hFig)
 jFileC.rescanCurrentDirectory()
 
 % --- Executes on button press in buttonCreate.
-function buttonCreate_Callback(hObject, eventdata, handles)
+function buttonCreate_Callback(~, ~, handles)
 
 % sets the full solution file name
 hFig = handles.figExptSave;
@@ -798,7 +796,7 @@ buttonRefresh_Callback(handles.buttonRefresh, [], handles)
 hProg.closeProgBar()
 
 % --- Executes on button press in buttonCancel.
-function buttonCancel_Callback(hObject, eventdata, handles)
+function buttonCancel_Callback(~, ~, handles)
 
 % makes the information GUI invisible
 hFig = handles.figExptSave;

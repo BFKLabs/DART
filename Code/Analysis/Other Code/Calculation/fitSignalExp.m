@@ -302,7 +302,7 @@ function [Yamp,YampL,YampU,Yinf,imx,Ysgn] = detAmplitudeLimits(Y)
 [YpkMnT,kmnT] = min(-W(kmn).*YpkMn);
 
 % determines the overall min/max values
-if YpkMxT > -YpkMnT
+if isempty(YpkMnT) || (YpkMxT > -YpkMnT)
     % peak signal value is positive
     [Ymax,imx,Ysgn] = deal(YpkMxT,kmx(kmxT),1);
 else

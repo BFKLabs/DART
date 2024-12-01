@@ -576,7 +576,10 @@ classdef TrackFull < Track
             resetData = false; 
             
             % prompts the user for the restart point
-            indS = StartPoint(obj);
+            objSP = StartPoint(obj);
+            
+            % retrieves the user selection
+            indS = objSP.indStart;
             if isempty(indS)
                 % user cancelled, so exit 
                 obj.calcOK = false; 

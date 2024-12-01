@@ -119,7 +119,8 @@ if range(nStr) ~= 0
         for j = find(~cellfun(@(x)(any(strcmp(x,fStr{i}))),fStrT(:)'))
             switch fStrT{j}
                 % updates the fields based on the field type
-                case ('Type') % case is the type field
+                case ('Type') 
+                    % case is the type field
                     ii = cellfun(@(x)(any(strcmp(x,'Type'))),fStr);
                     if ~any(ii)
                         % if there are no other matches, then set the field
@@ -130,7 +131,9 @@ if range(nStr) ~= 0
                         % matching solution file
                         snTot{i}.Type = snTot{find(ii,1,'first')}.Type;
                     end
-                otherwise % case is the other field types
+                    
+                otherwise
+                    % case is the other field types
                     eval(sprintf('snTot{i}.%s = [];',fStrT{j}));
             end
         end

@@ -1179,6 +1179,7 @@ classdef DART < handle
             strTrk.DirMov = {'Output','1 - Recorded Movies'};
             strTrk.DirSoln = {'Output','2 - Solution Files (Video)'};
             strTrk.TempFile = {'Tracking','1 - Temporary Files'};
+            strTrk.ConfigFile = {'Tracking','2 - Region Configuration'};
             
             % sets up the tracking data struct fields
             strComb = struct();

@@ -606,10 +606,7 @@ classdef AnalysisOpt < handle
         end
         
         % --- orientation angle checkbox callback function
-        function checkUseRot(obj,hObj,~)
-            
-            % global variables
-            global frmSz0
+        function checkUseRot(obj,hObj,~)            
                         
             % removes the division figure
             obj.hFigM.rgObj.removeDivisionFigure();
@@ -628,10 +625,10 @@ classdef AnalysisOpt < handle
             isRot90 = detIfRotImage(obj.iMov);
             if isRot90
                 % case is the frame is rotated
-                frmSz = flip(frmSz0);
+                frmSz = flip(obj.hFigM.frmSz0);
             else
                 % case is the frame is not rotated
-                frmSz = frmSz0;
+                frmSz = obj.hFigM.frmSz0;
             end
             
             % rotates the region markers (if set)
@@ -688,10 +685,7 @@ classdef AnalysisOpt < handle
         end        
         
         % --- tracking parameter editbox callback functions
-        function editSegPara(obj,hObj,~)
-            
-            % global parameters
-            global frmSz0
+        function editSegPara(obj,hObj,~)            
             
             % field retrieval
             uD = get(hObj,'UserData');
@@ -724,10 +718,10 @@ classdef AnalysisOpt < handle
                     % updates the frame size
                     if detIfRotImage(obj.iMov)
                         % case is the frame is rotated
-                        frmSz = flip(frmSz0);
+                        frmSz = flip(obj.hFigM.frmSz0);
                     else
                         % case is the frame is not rotated
-                        frmSz = frmSz0;
+                        frmSz = obj.hFigM.frmSz0;
                     end            
 
                     % if the guide markers are present, then remove them

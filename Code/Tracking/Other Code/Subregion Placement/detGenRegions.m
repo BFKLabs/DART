@@ -213,17 +213,17 @@ end
 % aligns the sub-region centroids
 [xC0,yC0] = getBinaryCoords(BC);
 dLim = min(0.1*[range(xC0),range(yC0)]);      
-[xP,yP,ok] = realignSubRegions(iMov,Ixc,pMax,nRowT,dLim);
+[xP,yP] = realignSubRegions(iMov,Ixc,pMax,nRowT,dLim);
 
 % prompts the user for the final binary dilation
-BC = GenPara(iMov,B0,nDil,xP,yP,h);
-if isempty(B0)
+objGP = GenPara(iMov,B0,nDil,xP,yP,h);
+if isempty(objGP.B0)
     % if the user cancelled, then exit the function
     iMov = [];
     return
 else
     % otherwise, calculate the final binary coordinates
-    [xC,yC,pOfs] = getBinaryCoords(BC);
+    [xC,yC,pOfs] = getBinaryCoords(objGP.BC);
 end
 
 % ------------------------------- %

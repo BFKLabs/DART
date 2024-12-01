@@ -68,6 +68,11 @@ elseif iMov.is2D
     end
 else
     % case is a 1D experiment setup
+    
+    % determines if the setup has a custom configuration
+    isCust = detIfCustomGrid(iMov);    
+    
+    % sets the ID flags for each region/grouping
     iGrp = zeros(size(iMov.flyok));
     [iCol,iRow] = deal(zeros(size(iMov.flyok,2),1));
     for i = 1:size(iGrp,2)
@@ -75,17 +80,25 @@ else
         [iCol(i),~,iRow(i)] = getRegionIndices(iMov,i);
         
         % determines if the ok flag has been set
-        iGrpG = iMov.pInfo.iGrp(iRow(i),iCol(i));        
-        if iGrpG == 0
-            isOK = false;
+        if isCust
+            % case is a custom grid setup
+            gID = iMov.pInfo.gID{iRow(i),iCol(i)};
+            iGrp(iMov.flyok(:,i),i) = gID;
+            
         else
-            isOK = iMov.ok(i);
-        end
-        
-        % updates the grouping flag
-        if isOK
-            iGrp(iMov.flyok(:,i),i) = iMov.pInfo.iGrp(iRow(i),iCol(i));
-        end
+            % case is a fixed grid setup
+            iGrpG = iMov.pInfo.iGrp(iRow(i),iCol(i));        
+            if iGrpG == 0
+                isOK = false;
+            else
+                isOK = iMov.ok(i);
+            end
+            
+            % updates the grouping flag
+            if isOK
+                iGrp(iMov.flyok(:,i),i) = iMov.pInfo.iGrp(iRow(i),iCol(i));
+            end
+        end        
     end
     
     % determines the number of unique groupings
@@ -106,13 +119,27 @@ else
         end
     else
         % memory allocation
-        cID = cell(size(iGrp,2),1);
+        if isCust
+            cID = cell(nGrp,1);
+        else
+            cID = cell(size(iGrp,2),1);
+        end
         
         for i = 1:nGrp
+            % determines the matching group indices
             [iy,ix] = find(iGrp == iGrpU(i));
-            for iApp = unique(ix(:))'
-                ii = ix == iApp;
-                cID{iApp} = [iRow(ix(ii)),iCol(ix(ii)),iy(ii)];
+            
+            % sets the group 
+            if isCust
+                % case is a custom grid setup
+                cID{i} = [iRow(ix),iCol(ix),iy];
+                
+            else
+                % case is a fixed grid setup
+                for iApp = unique(ix(:))'
+                    ii = ix == iApp;
+                    cID{iApp} = [iRow(ix(ii)),iCol(ix(ii)),iy(ii)];
+                end
             end
         end
     end

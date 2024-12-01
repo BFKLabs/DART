@@ -362,7 +362,7 @@ classdef OpenSolnMultiTab < dynamicprops & handle
         end
         
         % --- callback function for cell selection in tableExptComp
-        function tableExptCompCS(obj, hObject, eventdata)
+        function tableExptCompCS(obj, ~, eventdata)
         
             % retrieves the new experiment index
             iExpNw = eventdata.Indices(1);
@@ -548,9 +548,9 @@ classdef OpenSolnMultiTab < dynamicprops & handle
         end        
         
         % --- callback function for cell editting in tableLinkName
-        function tableExptCompCE(obj, hObject, eventdata)
+        function tableExptCompCE(~, ~, ~)
             
-            a = 1;
+            % do nothing...?
             
         end
         
@@ -1112,7 +1112,7 @@ classdef OpenSolnMultiTab < dynamicprops & handle
         end
         
         % --- callback function for updating a criteria checkbox value
-        function checkUpdate(obj, hObject, ~)            
+        function checkUpdate(obj, hObject, ~)
             
             % object retrieval
             pStr = get(hObject,'UserData');
@@ -1131,10 +1131,9 @@ classdef OpenSolnMultiTab < dynamicprops & handle
         end
         
         % --- callback function for selecting the experiment info tabs
-        function tabSelectedInfo(obj, hObject, eventdata)
+        function tabSelectedInfo(~, ~, ~)
             
-            % FINISH ME?!
-            a = 1;
+            % do nothing...?
             
         end
         

@@ -360,7 +360,7 @@ classdef BlobCNNClassify < handle
             
             % scales the indices (if required)
             if pS > 1
-                ind = unique(floor((ind0-1)/pS)+1);
+                ind = unique(floor((ind-1)/pS)+1);
             end
 
         end        

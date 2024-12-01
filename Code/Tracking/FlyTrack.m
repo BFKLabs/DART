@@ -62,7 +62,7 @@ set(setObjVisibility(hObject,'off'),'position',figPosNw);
 pause(0.05);
 
 % global variables
-global bufData pAR frmSz0
+global bufData pAR
 global isMovChange isDetecting isRTPChange
 [isMovChange,isDetecting,isRTPChange] = deal(false);
 [bufData,pAR] = deal([],2);
@@ -73,7 +73,7 @@ pFldStr = {'pData','hSolnT','hMainGUI','mObj','vcObj','mkObj','rgObj',...
        'isText','iMov','rtP','rtD','iData','iExpt','ppDef','isCalib',...
        'frmBuffer','bgObj','prObj','objDACInfo','iStim','hTT','hasDLT',...
        'pColF','isTest','fPosNew','convObj','mtObj','hProp0','eData',...
-       'szDel','szDelX','szDelY','isBatch','hImg'};
+       'szDel','szDelX','szDelY','isBatch','hImg','frmSz0'};
 initObjPropFields(hObject,pFldStr);
 
 % ensures the background detection panel is invisible
@@ -206,7 +206,8 @@ switch length(varargin)
         hObject.iMov = initMovStruct(hObject.iData);
         
         % initialises the GUI properties
-        handles = setTrackGUIProps(handles,'InitGUI'); pause(0.01);        
+        handles = setTrackGUIProps(handles,'InitGUI'); 
+        pause(0.01);        
         
     case {2,3}
         % case is the full calibration (thru Fly Record)
@@ -282,7 +283,7 @@ switch length(varargin)
         end
         
         % retrieves the frame size (flips if required)
-        [sz,frmSz0] = deal(size(Inw(:,:,1)));
+        [sz,hObject.frmSz0] = deal(size(Inw(:,:,1)));
         if detIfRotImage(hObject.iMov); sz = flip(sz); end
                        
         % sets the image size vector/string

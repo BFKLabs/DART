@@ -231,11 +231,6 @@ if exist(expFile,'file')
     end
 end
 
-% % creates the progress bar
-% wStr0 = {'File Batch Progress','Waiting For Process',...
-%          'Current Experiment Progress','Output Data Field'};
-% hProg = ProgBar(wStr0,'Solution File Loading');
-
 % creates the waitbar figure
 wStr = {'Overall Progress',...
         'Current Field Progress',...

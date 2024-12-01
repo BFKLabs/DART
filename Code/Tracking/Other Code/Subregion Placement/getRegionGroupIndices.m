@@ -36,7 +36,15 @@ else
                     (getMatchingGroupIndex(gName,x)),gName(iGrp(isOK)));
         end
         
+    elseif detIfCustomGrid(iMov)
+        % case is a 1D custom grid setup
+        iGrp = combineNumericCells(arr2vec(iMov.pInfo.gID')');
+        iGrp(isnan(iGrp)) = 0;
+        iGrp(:,~iMov.ok) = 0;
+        
     else
+        % case is a 1D fixed grid setup
+        
 %         iGrp0 = arr2vec(iMov.pInfo.iGrp')';
 %         iGrp = repmat(iGrp0,size(iMov.flyok,1),1);                
         [~,~,iC] = unique(gName,'stable');

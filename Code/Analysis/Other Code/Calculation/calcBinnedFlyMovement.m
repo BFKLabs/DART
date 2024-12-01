@@ -19,7 +19,7 @@ else
 end
 
 % sets the fly feasibility boolean array (if not provided)
-if (nargin == 5)
+if nargin == 5
     flyok = true(size(Px,2),1);
 end
 
@@ -43,7 +43,7 @@ switch cP.movType
 end
 
 % converts the binned activity array to the full sized array
-if (nargin == 7)    
+if nargin == 7
     Vtmp = NaN(length(V),length(flyok));
     Vtmp(:,flyok) = cell2mat(V);
     V = num2cell(Vtmp,2);
@@ -88,22 +88,24 @@ function V = calcBinnedRange(Px,Py,flyok,indB)
 
 % calculates the binned distances from the summed absolute
 % difference in the x-locations
-if (isempty(Py))
+if isempty(Py)
     % case is for 1-dimension. calculate the range of the distance
     % travelled over the time bin
-    if (sum(flyok) == size(Px,2))
+    if sum(flyok) == size(Px,2)
         V = cellfun(@(x)(range(Px(x,:))),indB,'un',0);
+
     else
         V = cellfun(@(x)(range(Px(x,flyok))),indB,'un',0);
     end
 else
     % case is for 2-dimensions. calculate the largest distance travelled
     % from the initial time point in the time bin
-    if (sum(flyok) == size(Px,2))
+    if sum(flyok) == size(Px,2)
         dX = cellfun(@(x)(Px(x,:)-repmat(Px(x(1),:),...
                                     length(x),1)),indB,'un',0);
         dY = cellfun(@(x)(Py(x,:)-repmat(Py(x(1),:),...
                                     length(x),1)),indB,'un',0);        
+
     else
         dX = cellfun(@(x)(Px(x,flyok)-repmat(Px(x(1),flyok),...
                                     length(x),1)),indB,'un',0);
@@ -125,6 +127,7 @@ if isempty(Py)
     if sum(flyok) == size(Px,2)
         D = cellfun(@(x)(sum...
                 (abs(diff(Px(x,:),1)),1,'omitnan')),indB,'un',0);
+
     else
         D = cellfun(@(x)(sum...
                 (abs(diff(Px(x,flyok),1)),1,'omitnan')),indB,'un',0);
@@ -134,6 +137,7 @@ else
     if sum(flyok) == size(Px,2)
         PxB = cellfun(@(x)(Px(x,:)),indB,'un',0);
         PyB = cellfun(@(x)(Py(x,:)),indB,'un',0);            
+
     else
         PxB = cellfun(@(x)(Px(x,flyok)),indB,'un',0);
         PyB = cellfun(@(x)(Py(x,flyok)),indB,'un',0);    
@@ -213,7 +217,7 @@ ii = find(A>0);
 indCross = [0;ii(abs(diff([A(ii(1));A(ii)])) > 0)];
 
 % sets the initial side index (based on the first x-location)
-if (PxNw(1) < xLo)
+if PxNw(1) < xLo
     % fly is initially on the left side
     indCross(1) = find(iL2R,1,'first');
 else

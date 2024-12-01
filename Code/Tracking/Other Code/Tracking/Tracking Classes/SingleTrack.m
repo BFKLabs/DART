@@ -81,8 +81,10 @@ classdef SingleTrack < Track
             
             % updates the ok flags
             if isfield(obj.iMov,'pInfo')
-                iGrp = arr2vec(obj.iMov.pInfo.iGrp')';
-                obj.iMov.flyok(:,iGrp==0) = false;
+                if obj.iMov.is2D || ~obj.iMov.pInfo.isFixed
+                    iGrp = arr2vec(obj.iMov.pInfo.iGrp')';
+                    obj.iMov.flyok(:,iGrp==0) = false;
+                end
             end
             
             % memory allocation            

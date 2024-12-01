@@ -4,7 +4,7 @@ function snTot = splitAcceptanceFlags(snTot)
 cID = snTot.cID;
 isMT = detMltTrkStatus(snTot.iMov);
 [fok0,pInfo] = deal(snTot.iMov.flyok,snTot.iMov.pInfo);
-gName0 = pInfo.gName;
+% gName0 = pInfo.gName;
 
 % resets the acceptance flags 
 if isMT
@@ -41,12 +41,12 @@ elseif snTot.iMov.is2D
         end
     end   
     
-else
-    % case is a 1D expt setup
-    
-    % memory allocation    
-    sz = [pInfo.nFlyMx,pInfo.nRow*pInfo.nCol];
-    [fok,ok] = deal(false(sz),false(sz(2),1));    
+else    
+    % memory allocation
+    isCust = detIfCustomGrid(snTot.iMov);
+    nFlyMx = max(snTot.iMov.pInfo.nFly(:));
+    sz = [nFlyMx,pInfo.nRow*pInfo.nCol];
+    [fok,ok] = deal(false(sz),false(sz(2),1));
     
     % calculates the linear indices
     for i = 1:length(cID)
@@ -55,14 +55,18 @@ else
             iReg = (cID{i}(:,1)-1)*pInfo.nCol + cID{i}(:,2);
             indG = sub2ind(sz,cID{i}(:,3),iReg);
             fok(indG) = true;
+            
+            % updates the region group index (fixed grid only)
+            if ~isCust
+                indU = unique(iReg(:));
+                pInfo.iGrp(indU) = i;
+            end
 
-            % updates the region flag and names             
-            indU = unique(iReg(:));
-%             [pInfo.gName(indU),pInfo.iGrp(indU)] = deal(gName0(i),i);
-            pInfo.iGrp(indU) = i;
-            ok(unique(iReg(fok(indG)))) = true;
+            % updates the region flag and acceptance values           
+            ok(unique(iReg(fok(indG)))) = true;                      
         end
     end
+    
 end
 
 % updates the flags within the sub-region data struct
