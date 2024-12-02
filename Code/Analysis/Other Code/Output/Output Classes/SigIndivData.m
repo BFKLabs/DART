@@ -732,6 +732,11 @@ classdef SigIndivData < DataOutputArray
             % sets the global fly indices
             iFly = cell(1,length(cID));
             for i = 1:length(cID)
+                % if the ID array is empty, then continue
+                if isempty(cID{i})
+                    continue
+                end
+                
                 % determines the unique row/column indices
                 [iA,~,iC] = unique(cID{i}(:,1:2),'rows');
                 indC = arrayfun(@(x)(find(iC==x)),1:max(iC),'un',0)';                
