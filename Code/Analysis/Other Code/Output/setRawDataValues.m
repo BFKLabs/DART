@@ -1,4 +1,4 @@
-% --- 
+% --- sets the raw data values into the plotting data struct, plotD
 function plotD = setRawDataValues...
                             (plotD,snTot,Y,indD,pStr,iExpt,iApp,Type,mlt)
 
@@ -20,7 +20,8 @@ switch Type
             Yr = cellfun(@(x)(x'),Yr,'un',0);
         end
         
-    case (3) %
+    case (3) 
+        %
         xi = num2cell(1:length(fok));
         A = cellfun(@(x)(Y(x,:)),indD,'un',0);
         isE = cellfun('isempty',A);
@@ -33,11 +34,11 @@ end
 
 % sets the values into the raw data array
 Yr = cellfun(@(x)(mlt*x),Yr,'un',0);
-if size(eval(sprintf('plotD.%s',pStr)),3) > 1
+if size(plotD.(pStr),3) > 1
     [xiR,xiC] = deal(1:size(Yr,1),1:size(Yr,2));
-    eval(sprintf('plotD.%s(xiR,xiC,iExpt) = Yr;',pStr));
+    plotD.(pStr)(xiR,xiC,iExpt) = Yr;
 else
-    eval(sprintf('plotD.%s = Yr;',pStr));
+    plotD.(pStr) = Yr;
 end
 
 % --- sets up the raw data array (separates data by day)

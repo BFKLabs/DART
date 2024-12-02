@@ -1,5 +1,6 @@
 % --- calculates the sleep metrics for an experiment --- %
-function [nBoutAvg,tSleepAvg,Tgrp] = calcSleepMetrics(snTot,Ttot,indB,cP,ind,fok)
+function [nBoutAvg,tSleepAvg,Tgrp] = ...
+                calcSleepMetrics(snTot,Ttot,indB,cP,ind,fok)
 
 %
 if isfield(cP,'nGrp')
