@@ -121,7 +121,7 @@ classdef RegionConfig < handle
             
             % sets the input arguments
             obj.hGUI = hGUI;
-            obj.hProp0 = hProp0;            
+            obj.hProp0 = hProp0;            pos
             
             % initialises the class fields/objects
             obj.initClassFields();

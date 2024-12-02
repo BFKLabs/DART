@@ -677,6 +677,13 @@ if loadImgData(handles, ldData.name, ldData.dir, setMovie, isSolnLoad)
             % disables the 
             set(hMenuView,'Checked','off','Enable','off')            
         end
+        
+        % sets the multi-tracking parameter menu item visibility
+        if ~isempty(hFig.mtObj)
+            isMltTrk = detMltTrkStatus(hFig.iMov);
+            hFig.mtObj.setMenuVisibility(isMltTrk);            
+            hFig.mtObj.setGroupMenuProps(isMltTrk && iMov.isSet);
+        end
 
         % resets the progress struct (if the sub-regions have been set)
         if hFig.iMov.isSet
@@ -3085,6 +3092,8 @@ if isChange
     if detMltTrkStatus(iMov)
         % multi-tracking
         iMov.Status = num2cell(ones(size(iMov.flyok)));
+        hFig.mtObj.setGroupMenuProps(hFig.iMov.isSet);
+        
     else
         % single-tracking
         nTube = getSRCountVec(iMov);

@@ -603,11 +603,11 @@ classdef CreateDARTExe < handle
             
             % sets the final code directory array
             cDir = [rmvEmptyCells(cDir);pkgName(:)];
-            jFiles = {which('ColoredFieldCellRenderer.zip')};
+%             jFiles = {which('ColoredFieldCellRenderer.zip')};
             
             % sets up the main file, analysis function directory and other 
             % important file directories add string
-            fStrAll = [cDir(:);jFiles(:);{'Para Files'}];
+            fStrAll = [cDir(:);{'Para Files'}];
             addStr = sprintf('-v ''%s'' -a ''%s''',obj.mainFile,obj.fDirB);            
             for i = 1:length(fStrAll)
                 addStr = sprintf('%s -a ''%s''',addStr,fStrAll{i});

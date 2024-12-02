@@ -11,9 +11,6 @@ else
     hFig = handles.figFlyTrack;
 end
 
-% determines if the sub-image is being viewed
-isSub = get(handles.checkLocalView,'value');
-
 % retrieves the fields
 iMov = get(hFig,'iMov');
 iData = get(hFig,'iData');
@@ -21,6 +18,10 @@ pData = get(hFig,'pData');
 cType = get(hFig,'cType');
 mkObj = get(hFig,'mkObj');
 rgObj = get(hFig,'rgObj');
+
+% determines if the sub-image is being viewed
+isSub = get(handles.checkLocalView,'value');
+isMltTrk = detMltTrkStatus(iMov);
 
 % retrieves the gui functions
 dispImage = get(hFig,'dispImage');
@@ -33,11 +34,12 @@ indFV = [1,2,4];
 eStr = {'off','on'};
     
 % sets the object properties based on the type string
-switch (typeStr)
+switch typeStr
+    % ------------------------------ %    
     % --- OBJECT INITIALISATIONS --- %
     % ------------------------------ %
     
-    case ('InitGUI') 
+    case 'InitGUI'
         % case is initialising the GUI             
         
         % disables the GUI objects for all panels
@@ -51,7 +53,7 @@ switch (typeStr)
         setMenuEnable(handles,'off')   
         
         % deletes any extraneous menu items
-        try           
+        try
             % removes the tags from the handles struct
             hMenu = findall(handles.menuRTCalib,'type','uimenu');            
             for i = 1:length(hMenu)
@@ -73,7 +75,9 @@ switch (typeStr)
         setObjVisibility(handles.textVideoStatus,'off')
         setObjVisibility(handles.editVideoStatus,'off')
         
-    case ('InitGUICalib') % case is initialising the GUI  
+    case 'InitGUICalib' 
+        % case is initialising the GUI  
+        
         % device object data struct
         infoObj = get(hFig,'infoObj');
         
@@ -189,11 +193,12 @@ switch (typeStr)
         
         % sets the other menu items
         set(handles.menuVideoFeed,'checked','on')        
-        
-    % --- PRE/POST FILE I/O --- %
+
     % ------------------------- %        
+    % --- PRE/POST FILE I/O --- %
+    % ------------------------- %
         
-    case ('PreMovieLoad') 
+    case 'PreMovieLoad'
         % case is before opening a movie file        
         
         % disables buttons and option boxes, and clears all text labels
@@ -201,13 +206,13 @@ switch (typeStr)
         setImgEnable(handles,'off');
         pause(0.01);                
         
-    case ('PostImageLoadBatch') 
+    case 'PostImageLoadBatch'
         % case is the successful movie load (for batch processing)
         
         % sets the image data panel text strings   
         setImgData(handles,iData,iMov,1);        
         
-    case ('PostImageLoad') 
+    case 'PostImageLoad'
         % case is the successful movie load
         
         % creates a progress loadbar (not for batch processing?)
@@ -266,14 +271,15 @@ switch (typeStr)
         else
             % deletes the temporary image stacks        
             mkObj.deleteTrackMarkers()            
-        end          
+        end
         
         % deletes the loadbar (if created)
         if exist('hLoad','var')
             delete(hLoad)
         end
         
-    case ('PostSolnLoad') % case is before opening a solution file    
+    case 'PostSolnLoad' 
+        % case is before opening a solution file    
         
         % determines if the positional data has been determined
         if varargin{1}        
@@ -319,14 +325,9 @@ switch (typeStr)
         
         % sets the multi-tracking parameter menu item visibility
         if ~isempty(hFig.mtObj)
-            % sets the menu visibility
-            isMltTrk = detMltTrkStatus(iMov);
-            hFig.mtObj.setMenuVisibility(isMltTrk);
-            
-            % sets the menu item enabled properties
-            if isMltTrk
-                hFig.mtObj.setGroupMenuProps(~isempty(pData));
-            end
+            % sets the menu visibility            
+            hFig.mtObj.setMenuVisibility(isMltTrk);            
+            hFig.mtObj.setGroupMenuProps(isMltTrk && iMov.isSet);
         end
         
         % sets the frame/movie count
@@ -339,7 +340,9 @@ switch (typeStr)
         % updates the program data struct 
         set(hFig,'iData',iData)
         
-    case ('PostSolnLoadBP') % case is before opening a solution file                               
+    case 'PostSolnLoadBP' 
+        % case is before opening a solution file                               
+        
         % determines if the positional data has been determined
         if ~isempty(pData)
             % case is the fly locations have been calculated
@@ -367,7 +370,7 @@ switch (typeStr)
     % --- PRE/POST IMAGE SEGMENTATION --- %
     % ----------------------------------- %    
     
-    case ('PreTubeDetect') 
+    case 'PreTubeDetect'
         % case is before detecting the tube regions
         
         % ensures the 
@@ -378,7 +381,7 @@ switch (typeStr)
         set(setObjEnable(handles.menuCorrectTrans,'off'),'checked','off')
         setDetectEnable(handles,'off')         
             
-    case ('PostInitDetect') 
+    case 'PostInitDetect'
         % case is after detecting the tube regions
         
         % resets the show tube checkbox and enables save soln menu item
@@ -408,7 +411,9 @@ switch (typeStr)
             updateCTMenu(handles,iMov);            
         end                           
         
-    case ('PreFlyDetect') % case is after detecting the fly locations 
+    case 'PreFlyDetect'
+        % case is after detecting the fly locations 
+        
         % turns off the tube regions
         if get(handles.checkShowMark,'Value')
             set(handles.checkShowMark,'value',0)
@@ -428,7 +433,7 @@ switch (typeStr)
         setMenuEnable(handles,'on',3)
         setMenuEnable(handles,'off',[4 6 7 8])
         
-    case ('PostFlyDetect') 
+    case 'PostFlyDetect' 
         % case is after detecting the fly locations 
         
         % enables the tube region outline markers
@@ -445,13 +450,13 @@ switch (typeStr)
         % updates the image 
         dispImage(handles)
         
-    case ('PrePreBatchProcess') 
+    case 'PrePreBatchProcess' 
         % case is before the batch processing
         
         % enables the tube region outline markers
         setDetectEnable(handles,'off',1:3)           
         
-    case ('PreBatchProcess') 
+    case 'PreBatchProcess'
         % case is before the batch processing
         
         % enables the tube region outline markers
@@ -712,7 +717,7 @@ switch (typeStr)
         cMov = iData.cMov;
         
         % updates the rejection button
-        if ~detMltTrkStatus(iMov)
+        if ~isMltTrk
             setObjEnable(handles.checkReject,~isempty(iMov.pos{cMov}))
         end
 
@@ -924,7 +929,7 @@ function setSubMovEnable(handles,varargin)
 
 % loads the sub-movie
 iMov = get(handles.output,'iMov');
-if (iMov.isSet && (nargin == 1))
+if iMov.isSet && (nargin == 1)
     % sets the sub-movie properties strings
     setObjEnable(handles.textRowCountL,'on')
     setObjEnable(handles.textColCountL,'on')        

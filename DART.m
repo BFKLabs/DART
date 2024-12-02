@@ -194,7 +194,7 @@ classdef DART < handle
             cDir0 = obj.getProgFileName('Code','Common');
             jDir0 = {{'File Exchange','xlwrite','poi_library'},...
                      {'Utilities','CondCheckTable'},...
-                     {'File Exchange','ColoredFieldCellRenderer.zip'}};
+                     {'File Exchange','ColoredFieldCellRenderer'}};
             
             % sets up the java file directory paths
             jFiles0 = cell(length(jDir0),1);

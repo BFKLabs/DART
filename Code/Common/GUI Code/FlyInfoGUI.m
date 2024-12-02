@@ -124,8 +124,8 @@ classdef FlyInfoGUI < handle
             end            
             
             % sets up the cell background colour array
-            colArr = getAllGroupColours(max(obj.iGrp(:)));            
-            if obj.iMov.is2D
+            colArr = getAllGroupColours(max(obj.iGrp(:)));
+            if obj.iMov.is2D || obj.isMltTrk
                 % case is the 2D setup
                 obj.bgCol = arrayfun(@(x)(...
                            getJavaColour(colArr(x+1,:))),obj.iGrp,'un',0);
@@ -179,7 +179,7 @@ classdef FlyInfoGUI < handle
                 obj.cHdr = arrayfun(@(x)(...
                     sprintf('Fly #%i',x)),xiF,'un',0); 
                 
-            elseif obj.iMov.is2D
+            elseif obj.iMov.is2D || obj.isMltTrk
                 % case is 2D experimental setup
                 xiH = 1:size(obj.Data,2);
                 obj.cHdr = arrayfun(@(x)(...
@@ -259,7 +259,7 @@ classdef FlyInfoGUI < handle
         end
         
         % --- calculates the optihmal table configuration
-        function calcOptimalConfig(obj)            
+        function calcOptimalConfig(obj)
             
             % determines if the 
             obj.isTrans = size(obj.ok,2) > obj.nColMax;
@@ -343,7 +343,7 @@ classdef FlyInfoGUI < handle
 
             % creates the check table object
             obj.createCheckTable();                     
-                     
+                        
             % Draw table in scroll pane
             tHdr = obj.rTable.getTableHeader();
             jTableH = handle(obj.jTable,'Callbackproperties');
@@ -409,7 +409,7 @@ classdef FlyInfoGUI < handle
             if obj.isTrans
                 iType = -obj.iMov.pInfo.nCol;
             else
-                iType = double(obj.iMov.is2D);
+                iType = double(obj.iMov.is2D || obj.isMltTrk);
             end
             
             % creates the table row headers                         
@@ -495,8 +495,13 @@ classdef FlyInfoGUI < handle
             else
                 % updates the sub-region data struct
                 [cbObj,hGUIM] = deal(obj.hGUI,obj.hGUI.hGUI);
-                [cbObj.iMov.flyok,cbObj.isChange] = deal(obj.ok,true);    
-                cbObj.iMov.ok(iNwG(2)) = any(cbObj.iMov.flyok(:,iNwG(2)));   
+                [cbObj.iMov.flyok,cbObj.isChange] = deal(obj.ok,true);   
+                
+                % updates the region flags (non multi-tracking only)
+                if ~obj.isMltTrk
+                    cbObj.iMov.ok(iNwG(2)) = ...
+                        any(cbObj.iMov.flyok(:,iNwG(2)));
+                end
 
                 % retrieves the tube show check callback function
                 if cbObj.isCalib
@@ -527,6 +532,7 @@ classdef FlyInfoGUI < handle
                     pause(0.01);
                     
                 else
+                    % field retrieval
                     cFunc = get(hGUIM.figFlyTrack,'checkShowTube_Callback');
                     cFunc2 = get(hGUIM.checkFlyMarkers,'Callback');
 
@@ -586,13 +592,13 @@ classdef FlyInfoGUI < handle
         end
             
         % --- sets up the data array (removes any missing/none regions)
-        function DataArr = setupDataArray(obj, DataArr)
+        function dArr = setupDataArray(obj, dArr)
                     
             % if the ID field isn't set, then exit the function
             if ~isfield(obj.snTot,'gID'); return; end
             
             % field retrieval
-            szArr = size(DataArr);
+            szArr = size(dArr);
             pC0 = cell2mat(obj.snTot.gID(:));           
             
             % sets the row/column indices of the known sub-regions
@@ -617,7 +623,7 @@ classdef FlyInfoGUI < handle
             end
                
             % removes any missing values
-            [DataArr(isMiss),obj.ok(isMiss)] = deal({[]},false);
+            [dArr(isMiss),obj.ok(isMiss)] = deal({[]},false);
             
         end        
         
