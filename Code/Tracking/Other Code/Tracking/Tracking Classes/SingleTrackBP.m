@@ -1264,7 +1264,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
             % from summary file
             if exist(summFile,'file')
                 summData = load(summFile);
-                if ~isfield(obj.iData,'iExpt')                
+                if ~isfield(obj.iData,'iExpt') && isfield(summData.iExpt)
                     obj.iData.iExpt = summData.iExpt;
                 end
             else
