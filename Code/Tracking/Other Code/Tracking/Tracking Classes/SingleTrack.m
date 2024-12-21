@@ -81,7 +81,12 @@ classdef SingleTrack < Track
             
             % updates the ok flags
             if isfield(obj.iMov,'pInfo')
-                if obj.iMov.is2D || ~obj.iMov.pInfo.isFixed
+                if obj.iMov.is2D || obj.isMulti 
+                    % case is a 2D/multi-tracking expt setup
+                    obj.iMov.flyok(obj.iMov.pInfo.iGrp==0) = false;
+                    
+                elseif ~obj.iMov.pInfo.isFixed
+                    % case is a 1D expt setup (fixed grid)
                     iGrp = arr2vec(obj.iMov.pInfo.iGrp')';
                     obj.iMov.flyok(:,iGrp==0) = false;
                 end

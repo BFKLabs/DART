@@ -672,6 +672,11 @@ classdef SingleTrackInit < SingleTrack
             iFrm = obj.indFrm{iPh};
             IL = cell(length(iFrm),obj.nApp);
             
+            % REMOVE ME LATER
+            if isHiV
+                a = 1;
+            end            
+            
             % sets up the raw/residual image stacks
             for i = find(obj.iMov.ok(:)')
                 % update the waitbar figure
@@ -680,7 +685,7 @@ classdef SingleTrackInit < SingleTrack
                     % if the user cancelled, then exit
                     obj.calcOK = false;
                     return
-                end
+                end                
                 
                 % retrieves and processes the image stack
                 IL(:,i) = obj.getRegionImageStack(Img,iFrm,i,isHiV);

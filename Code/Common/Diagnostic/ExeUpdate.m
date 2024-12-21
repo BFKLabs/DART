@@ -254,7 +254,7 @@ classdef ExeUpdate < handle
             
             % makes the current GUI invisible
             setObjVisibility(obj.hFig,0);
-            pause(0.1);
+            drawnow;
             
             % if deployed, then close the main DART GUI
             if isdeployed
@@ -347,7 +347,7 @@ classdef ExeUpdate < handle
             % keep waiting until the status file appears
             while ~exist(obj.statusFile,'file')
                 pause(0.1);
-            end
+            end            
 
             % loads the status file information and then deletes it
             sInfo = load(obj.statusFile);

@@ -29,7 +29,7 @@ handles.output = hObject;
 global axLimMax mType dyMax isUpdating isCreateBlk
 global objOff mpStrDef hSigTmp hSigSel iSigObj
 global t2sStatus updateList isInit nLenMax
-[axLimMax,mType,dyMax,isUpdating,isCreateBlk] = deal(900,0,2.5,false,false);
+[axLimMax,mType,dyMax,isUpdating,isCreateBlk] = deal(1800,0,2.5,false,false);
 [objOff,mpStrDef,hSigTmp,hSigSel,iSigObj] = deal(true,'arrow',[],[],0);
 [t2sStatus,updateList,isInit,nLenMax] = deal(-1,true,true,10000);
 

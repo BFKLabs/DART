@@ -871,7 +871,11 @@ classdef TrackRegionClass < handle
                     % if moveable, then set the position callback function
                     for j = 1:length(obj.hROI{i})
                         % determines the region index
-                        indF = pInfo.iGrp(j,i);                            
+                        indF = pInfo.iGrp(j,i);
+                        if ~indF
+                            obj.hROI{i}{j}.setLineProps('Visible','off')
+                            continue
+                        end
                         
                         % sets main object properties/callback functions
                         obj.hROI{i}{j}.setColour(col(indF,:));                           
@@ -1220,7 +1224,7 @@ classdef TrackRegionClass < handle
         end
         
         % --- callback function for the multi-tracking
-        function roiCallbackMT(obj,hObjR,evnt)            
+        function roiCallbackMT(obj,hObjR,evnt)
                                     
             % updates the region mask image (if change in selected region)
             if obj.manReset

@@ -120,10 +120,13 @@ for i = 1:nFile
                 bpData{i} = A.bData;
                 bpData{i}.SolnDirName = getFinalDirString(bpDir{i});
                 [bpData{i}.SolnDir,~,~] = fileparts(bpDir{i});                
-                bpData{i}.mName = cellfun(@(x)(fullfile...
-                    (A.bData.MovDir,x)),field2cell(movFile,'name'),'un',0);
                 bpData{i}.sName = fullfile(bpData{i}.MovDir,'Summary.mat');
 
+                % retrieves and sorts the video file names
+                mName0 = cellfun(@(x)(fullfile...
+                    (A.bData.MovDir,x)),field2cell(movFile,'name'),'un',0);                
+                bpData{i}.mName = sortVideoFiles(mName0);
+                
                 % ensures the video status flag array has been set
                 if ~isfield(bpData{i},'movOK')
                     bpData{i}.movOK = ones(length(bpData{i}.sName),1);

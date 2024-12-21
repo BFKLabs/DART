@@ -116,11 +116,17 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 
                 % if the user cancelled, then reset the object properties
                 resetHandleSnapshot(obj.hProp0,obj.hFig); 
+                
+                % re-displays the image
+                obj.dispImage(obj.hGUI);
+                
+                % resets the region/tracking markers
                 try
                     obj.checkShowTube(obj.hGUI.checkShowTube,1,obj.hGUI)
                     obj.checkShowMark(obj.hGUI.checkShowMark,1,obj.hGUI)
                 catch
-                end
+                end                
+                
             else
                 % otherwise, check the record status of the video
                 obj.checkVideoStatus();
@@ -363,7 +369,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 obj.menuViewProgress(obj.hGUI.menuViewProgress,[],obj.hGUI)
             end            
             
-            % if there was an error 
+            % if there was an either an error or the user cancelled
             if ~obj.calcOK
                 if isempty(obj.iData0)
                     % determines if there are any solution files
@@ -455,7 +461,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                 % otherwise, set the video output file base name
                 j0 = max(1,obj.iFile0-1);
                 [~,obj.fNameBase0,~] = fileparts(obj.bData(iDir).mName{j0});                 
-            end     
+            end                 
             
             % updates the waitbar figure
             wStrNw = sprintf('%s (Movie %i of %i)',...
@@ -678,7 +684,7 @@ classdef SingleTrackBP < matlab.mixin.SetGet
                     end
                 end                                               
                 
-                % detects the next video 
+                % detects the next video information
                 obj.updateVideoInfo(iDir)
 
                 % video counter incrememnt and output flag reset

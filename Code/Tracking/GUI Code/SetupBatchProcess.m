@@ -21,7 +21,7 @@ end
 % End initialization code - DO NOT EDIT
 
 % --- Executes just before SetupBatchProcess is made visible.
-function SetupBatchProcess_OpeningFcn(hObject, eventdata, handles, varargin)
+function SetupBatchProcess_OpeningFcn(hObject, ~, handles, varargin)
 
 % Choose default command line output for SetupBatchProcess
 handles.output = hObject;

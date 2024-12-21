@@ -592,34 +592,69 @@ classdef FlyInfoGUI < handle
         end
             
         % --- sets up the data array (removes any missing/none regions)
-        function dArr = setupDataArray(obj, dArr)
-                    
-            % if the ID field isn't set, then exit the function
-            if ~isfield(obj.snTot,'gID'); return; end
+        function dArr = setupDataArray(obj, dArr)                    
             
-            % field retrieval
-            szArr = size(dArr);
-            pC0 = cell2mat(obj.snTot.gID(:));           
+            % memory allocation
+            szArr = size(dArr);            
+            isFT = strcmp(obj.hFigMain.Tag,'figFlyTrack');
+            
+            % figure specific properties
+            if isFT
+                % case is accessing via background estimation
+                iGrpD = obj.iMov.pInfo.iGrp;
+                
+            else
+                % case is accessing via data combining
+                if isfield(obj.snTot,'cID')
+                    pC0 = cell2mat(obj.snTot.cID(:));
+                else
+                    return
+                end
+            end
             
             % sets the row/column indices of the known sub-regions
             if obj.isMltTrk
                 % case is for multi-tracking
                 isMiss0 = true(szArr);
-                isMiss0(unique(pC0(:,1))) = false;
-                isMiss = isMiss0';
+                if isFT
+                    isMiss(iGrpD > 0) = false;
+                else
+                    isMiss0(unique(pC0(:,1))) = false;
+                    isMiss = isMiss0';
+                end
             
+            elseif isFT
+                % case is accessing via fly tracking
+                if is2DCheck(obj.iMov)
+                    % case is a 2D setup
+                    isMiss = iGrpD == 0;
+                
+                elseif detIfCustomGrid(obj.iMov)
+                    % case is 1D expt setup (custom grid)
+                    gID = obj.iMov.pInfo.gID;
+                    isMiss = cell2mat(arr2vec(gID')') == 0;
+                    
+                else
+                    % case is 1D expt setup (fixed grid)
+                    isMiss = false(szArr);
+                    isMiss(:,arr2vec(iGrpD')' == 0) = true;
+                end
+                    
             else
+                % case is accessing via data combining
                 if obj.snTot.iMov.is2D
                     % case is for 2D expt setups
                     pC = pC0(:,1:2);
                 else
                     % case is for 1D expt setups
-                    iCol = (pC0(:,1)-1)*obj.snTot.iMov.pInfo.nCol + pC0(:,2);
+                    pInfo = obj.snTot.iMov.pInfo;
+                    iCol = (pC0(:,1)-1)*pInfo.nCol + pC0(:,2);
                     pC = [pC0(:,3),iCol];
                 end
             
                 % removes the missing items
-                isMiss = ~setGroup(sub2ind(szArr,pC(:,1),pC(:,2)),szArr);
+                indM = sub2ind(szArr,pC(:,1),pC(:,2));
+                isMiss = ~setGroup(indM,szArr);
             end
                
             % removes any missing values

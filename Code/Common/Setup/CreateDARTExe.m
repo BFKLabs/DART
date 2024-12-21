@@ -27,8 +27,9 @@ classdef CreateDARTExe < handle
         
         % executable type panel objects        
         hEditT
+        hEditTS
         hButT
-        hRadioT
+        hRadioT        
         
         % control button panel objects
         hButC
@@ -45,6 +46,7 @@ classdef CreateDARTExe < handle
         widTxt = 25;
         hghtPanelC = 40;        
         widRatioT = [140,210];
+        widTxtTS = 130;                                        
         
         % calculated object dimension fields
         hghtFig
@@ -84,6 +86,7 @@ classdef CreateDARTExe < handle
         tObj
         hLoad
         hTimer
+        zipName = 'ExeUpdate';
         
         % boolean class fields
         isConsoleApp = true;
@@ -215,7 +218,7 @@ classdef CreateDARTExe < handle
             % calculates the panel heights
             obj.hghtPanelF = obj.hghtTableF + hghtHdr + obj.hghtRow;
             obj.hghtPanelP = obj.hghtTableP + hghtHdr + obj.hghtRow;
-            obj.hghtPanelT = obj.hghtRow + 2*obj.dX + hghtHdr;
+            obj.hghtPanelT = 2*obj.hghtRow + 2*obj.dX + hghtHdr;
             
             % calculates the figure dimensions
             obj.hghtFig = obj.hghtPanelC + obj.hghtPanelP + ...
@@ -283,7 +286,7 @@ classdef CreateDARTExe < handle
             cbFcnC = {@obj.compileExe,@obj.closeWindow};
             
             % creates the button objects
-            for i = 1:obj.nButC                
+            for i = 1:obj.nButC
                 % creates the button objects
                 lPosC = obj.dX + (i-1)*obj.widButC;
                 pPosD = [lPosC,obj.dX-2,obj.widButC,obj.hghtBut];
@@ -377,6 +380,7 @@ classdef CreateDARTExe < handle
             
             % initialisations
             cbFcnT = @obj.setDefDir;            
+            cbFcnTS = @obj.chkFileName;
             tStrE = sprintf('  %s',obj.outDir);
             
             % creates the radio button objects
@@ -392,8 +396,16 @@ classdef CreateDARTExe < handle
             % ensures the console application radio button is set
             obj.hRadioT{1}.Value = 1;
             
+            % creates the 
+            yOfs = 3.5*obj.dX;
+            tTxtTS = 'Update Zip File Name';
+            obj.hEditTS = obj.createEditGroup(...
+                obj.hPanelT,tTxtTS,yOfs,obj.widTxtTS);            
+            set(obj.hEditTS,'String',obj.zipName,...
+                'Callback',cbFcnTS,'HorizontalAlignment','Left');
+            
             % creates the editbox object
-            yPosT0 = 3.5*obj.dX;
+            yPosT0 = yOfs + obj.hghtRow + 3;
             pPosTE = [obj.dX,yPosT0,obj.widEditT,obj.hghtEdit];
             obj.hEditT = createUIObj('edit',obj.hPanelT,...
                 'Position',pPosTE,'FontSize',obj.fSz,...
@@ -702,6 +714,24 @@ classdef CreateDARTExe < handle
             
         end
 
+        % --- executable file name callback function
+        function chkFileName(obj, hEdit, ~)
+            
+            % field retrieval
+            nwVal = hEdit.String;
+            
+            % determines if the new value is valid
+            if chkDirString(nwVal)
+                % if so, then update the data fields
+                obj.zipName = nwVal;
+         
+            else
+                % otherwise, revert back to the previous valid value
+                hEdit.String = obj.zipName;
+            end
+            
+        end
+        
         % --- adds a function to the table
         function addFunction(obj, ~, ~)
             
@@ -866,10 +896,11 @@ classdef CreateDARTExe < handle
             fprintf('Executable Compilation Time = %.2fs\n',tElapse);
             
             % creates the executable update zip file
+            zipFile = sprintf('%s.zip',obj.zipName);
             if obj.isConsoleApp
-                zip('ExeUpdate.zip',{'DART.exe','DART.ctf'});
+                zip(zipFile,{'DART.exe','DART.ctf'});
             else
-                zip('ExeUpdate.zip',{'DART.exe'});                
+                zip(zipFile,{'DART.exe'});                
             end
             
         end
@@ -896,6 +927,31 @@ classdef CreateDARTExe < handle
             
         end        
        
+        % --- creates the text/edit object pair
+        function [hEdit,hTxt] = createEditGroup(obj,hP,tTxt,yOfs,widTxt)
+            
+            % sets the default input arguments
+            if ~exist('widTxt','var'); widTxt = obj.widTxtS; end
+            
+            % initialisations
+            tTxtL = sprintf('%s: ',tTxt);
+            widEdit = hP.Position(3) - (2*obj.dX + widTxt);
+            
+            % sets up the text label
+            xOfs = obj.dX;
+            pPosL = [xOfs,yOfs,widTxt,obj.hghtTxt];
+            hTxt = createUIObj('text',hP,'Position',pPosL,...
+                'FontWeight','Bold','FontSize',obj.fSzL,...
+                'HorizontalAlignment','Right','String',tTxtL);
+            
+            % creates the text object
+            lPosE = sum(pPosL([1,3]));
+            pPosE = [lPosE,yOfs-3,widEdit,obj.hghtEdit];
+            hEdit = createUIObj('edit',hP,'Position',pPosE,...
+                'FontSize',obj.fSz);
+            
+        end                
+        
         % --- checks the function validity
         function isOK = checkFcnValidity(obj,fDir,fName)
             

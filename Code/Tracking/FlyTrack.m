@@ -1704,15 +1704,16 @@ updateTube = ~isa(eventdata,'char');
 if get(hObject,'value')
     % if any sub-regions are showing, then remove them
     setTrackGUIProps(handles,'RemoveSubDivision')   
-    setTrackGUIProps(handles,'EnableAppSelect')    
+    setTrackGUIProps(handles,'EnableAppSelect')                
     
     % case is update is from the main GUI
     CountEditCallback(handles.movCountEdit, [], handles)     
     
-%     % updates the tube region (if required)
-%     if updateTube
-%         checkShowTube_Callback(handles.checkShowTube, 1, handles)
-%     end    
+    % updates the tube region (if required)
+    if updateTube
+        checkShowTube_Callback(handles.checkShowTube, 1, handles)
+    end        
+    
 else
     % case is the global view is being shown, so enable objects
     setTrackGUIProps(handles,'EnableSubMovieObjects')    
@@ -2439,7 +2440,7 @@ elseif strcmp(get(handles.menuCorrectTrans,'Checked'),'on')
 end        
 
 % updates the frame selection properties
-if ~(hFig.isCalib || hFig.isBatch || isBGCalc)
+if ~(hFig.isCalib || isBGCalc)
     setTrackGUIProps(handles,'UpdateFrameSelection',cFrm)
 end
 
