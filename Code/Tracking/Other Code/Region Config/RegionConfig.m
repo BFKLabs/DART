@@ -1367,6 +1367,9 @@ classdef RegionConfig < handle
                     % case is the type field hasn't be set (force reset)
                     obj.iMov.srData = [];
                 end
+            else
+                % case is the type field hasn't be set (force reset)
+                obj.iMov.srData = [];                
             end
             
             % if there is no split region data, then disable the split menu item
@@ -1376,7 +1379,7 @@ classdef RegionConfig < handle
             end
             
             % runs the sub-region splitting sub-program
-            obj.objSR = SplitSubRegion(obj.hFig);
+            obj.objSR = SplitSubRegion(obj);
                 
         end        
         

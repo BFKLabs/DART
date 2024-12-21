@@ -1,7 +1,8 @@
-classdef SplitSubRegion < handle
+classdef SplitSubRegion < dynamicprops & handle
     
     % class properties
     properties
+        
         % main class fields
         hAx
         hFig
@@ -43,6 +44,7 @@ classdef SplitSubRegion < handle
         isUpdating = false;
         isFixed
         isOld
+        isMTrk
         
         % object properties dimensions     
         dX = 10;
@@ -74,21 +76,32 @@ classdef SplitSubRegion < handle
         
     end
     
+    % private class properties
+    properties (Access = private)
+        
+        objB
+        
+    end
+    
     % class methods
     methods
         
         % --- class constructor
-        function obj = SplitSubRegion(hFigM)
+        function obj = SplitSubRegion(objB)
             
             % creates a loadbar
             wStr = 'Setting Up Split Region Plot Objects...';
             hProg = ProgressLoadbar(wStr);
             
             % sets the input arguments
-            obj.hFigM = hFigM;            
-            obj.iMov = get(hFigM,'iMov');
-            obj.mShape = obj.iMov.mShape;   
-            obj.isOld = isOldIntObjVer;
+            obj.objB = objB;
+            
+            % sets the other class fields
+            obj.hFigM = objB.hFig;            
+            obj.iMov = objB.iMov;
+            obj.mShape = obj.iMov.mShape;
+            obj.isMTrk = objB.isMTrk;
+            obj.isOld = isOldIntObjVer;            
             
             % sets the axes handles
             obj.hFigT = findall(0,'tag','figFlyTrack');
@@ -341,13 +354,19 @@ classdef SplitSubRegion < handle
             
             % ---------------------------------------- %
             % --- POPUP MENU OBJECT INITIALISATION --- %
-            % ---------------------------------------- %            
+            % ---------------------------------------- %           
+            
+            % 
+            if obj.isMTrk
+                pStrPp = {'Row #:','Column #:'};
+            else
+                pStrPp = {'Region #:','Sub-Region #:'};                
+            end            
             
             % region/sub-region popup menu objects
             y0 = sum(pPosT([2,4]))+obj.dX/2;
             pValP = {(1:nApp)',(1:nFly)'};
-            pStrPp = {'Region #:','Sub-Region #:'};
-            [obj.hPopupP,obj.hTxtP] = deal(cell(length(pStrPp),1));
+            [obj.hPopupP,obj.hTxtP] = deal(cell(length(pStrPp),1));            
             
             % creates the update button object (if more than one region)
             if (nFly*nApp) > 1
@@ -470,12 +489,14 @@ classdef SplitSubRegion < handle
             
             % updates the sub-region data struct within the main GUI            
             obj.iMov.srData = srData;
-            set(obj.hFigM,'iMov',obj.iMov);
+            obj.objB.iMov = obj.iMov;
             
             % enables the split region use menu item
-            hGUI = guidata(obj.hFigM);
-            set(hGUI.menuUseSplit,'Checked','On','Enable','On');
-            setObjEnable(hGUI.buttonUpdate,1);
+            hMenuUS = findall(obj.hFigM,'tag','hMenuUseSplit');
+            set(hMenuUS,'Checked','On','Enable','On');
+            
+            % enables the update button
+            setObjEnable(obj.objB.hButC{1},1);
             
             % disables the update button
             setObjEnable(obj.hBut{1},0);            

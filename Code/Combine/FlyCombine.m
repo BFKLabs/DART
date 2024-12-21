@@ -534,8 +534,8 @@ switch indNw(2)
             
         else
             % apparatus name is invalid so output an error
-            eStr = 'Region names strings can''t contain a comma';
-            waitfor(errordlg(eStr,'Region Naming Error','modal'))
+            eStr = 'Group names strings can''t contain a comma';
+            waitfor(errordlg(eStr,'Group Naming Error','modal'))
             
             % resets the table values
             Data{indNw(1),indNw(2)} = pObj.sInfo.gName{indNw(1)};

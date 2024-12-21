@@ -1095,8 +1095,8 @@ classdef DataCombPlotObj < handle
                     % memory allocation
                     if obj.isMltTrk
                         % case is multi-tracking
-                        jGrp = num2cell(arr2vec(iGrp')');
-                        okG = num2cell(arr2vec(flyok')');
+                        jGrp = arr2vec(iGrp')';
+                        okG = arr2vec(flyok')';
                         
                     else
                         % case is the other setups
@@ -1107,8 +1107,19 @@ classdef DataCombPlotObj < handle
                     % calculates the avg. velocity based on grouping type
                     Zgrp = cell(1,length(iGrpU));
                     for i = 1:length(Zgrp)
-                        Zgrp{i} = cell2mat(cellfun(@(x,j,ok)...
-                            (x(:,(j==iGrpU(i)) & ok)),Pz,jGrp,okG,'un',0));                        
+                        % sets the metric values for the current group
+                        if obj.isMltTrk
+                            % case is multi-tracking
+                            ii = (jGrp == iGrpU(i)) & okG;
+                            Zgrp{i} = cell2mat(Pz(ii));
+                            
+                        else
+                            % case is single-tracking
+                            Zgrp{i} = cell2mat(cellfun(@(x,j,ok)...
+                                (x(:,(j==iGrpU(i)) & ok)),...
+                                Pz,jGrp,okG,'un',0));
+                        end
+                        
                         if isempty(Zgrp{i})
                             Zgrp{i} = NaN(size(Pz{1},1),1);
                         else
