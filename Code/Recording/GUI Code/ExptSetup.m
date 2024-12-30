@@ -2385,18 +2385,18 @@ iChC = (1:length(chName));
 iChC = iChC(iChC ~= iCh);
 
 % determines the indices of the channels to copy
-[isWC,sParaC,iChCopy] = CopySignal(iChC,chName(iChC),sBlk,sPara.tDur);
-if isempty(iChCopy)
+objCS = CopySignal(iChC,chName(iChC),sBlk,sPara.tDur);
+if ~objCS.isCopy
     % if the user cancelled, then exit the function
     return
     
-elseif isWC
+elseif objCS.isWCopy
     % case is copying within a channel
     
     % determines the time limits of the entire signal
     tLimBlk = calcSignalBlockLimits(sBlk);
     dtLim = diff(tLimBlk);
-    tOfs = sParaC.tOfs;
+    tOfs = objCS.tOfs;  
     
     % copies the signal block information
     for i = 1:length(sBlk)
@@ -2405,13 +2405,13 @@ elseif isWC
         sPara = uData{indFcn('sPara')};
         rPos0 = sBlk{i}.getPosition();
         
-        for j = 1:sParaC.nCount
+        for j = 1:objCS.nCount
             % updates the signal parameter struct in the user data field
             sPara.tOfs = rPos0(1) + j*(dtLim + tOfs);
             uData{indFcn('sPara')} = sPara;
             
             % creates the new signal obkect
-            isReset = (j==sParaC.nCount) && (i==length(sBlk));
+            isReset = (j==objCS.nCount) && (i==length(sBlk));
             createSignalObject(hFig,uData(1:5),rPos0,isReset);
         end
     end
@@ -2420,9 +2420,9 @@ else
     % case is copying between channels
     
     % copies the signal block information
-    for j = 1:length(iChCopy)
+    for j = 1:length(objCS.iChCopy)
         % deletes the signal blocks within the channel
-        deleteChannelSignalBlocks(hFig,iProto,iChCopy(j));
+        deleteChannelSignalBlocks(hFig,iProto,objCS.iChCopy(j));
         
         % creates the signal blocks for all signals within the channel
         for i = 1:length(sBlk)
@@ -2431,11 +2431,11 @@ else
 
             % creates the new signal object
             [uData,rPos] = deal(uData0(1:5),sBlk{i}.getPosition());
-            uData{indFcn('iCh')} = iChCopy(j);
-            rPos(2) = (iChCopy(j)-1)+yGap;
+            uData{indFcn('iCh')} = objCS.iChCopy(j);
+            rPos(2) = (objCS.iChCopy(j)-1)+yGap;
             
             % creates the stimuli signal blocks
-            isReset = (j==length(iChCopy)) && (i==length(sBlk));
+            isReset = (j==length(objCS.iChCopy)) && (i==length(sBlk));
             createSignalObject(hFig,uData,rPos,isReset);  
         end    
     end

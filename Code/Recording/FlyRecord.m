@@ -511,7 +511,7 @@ if ~isempty(vPara)
         else
             % updates the waitbar figure
             tRem = Tp - tNew;
-            if exObj.hProg.Update(1,sprintf('%s (%i Seconds Remains)',...
+            if exObj.objP.Update(1,sprintf('%s (%i Seconds Remains)',...
                                             wStr,ceil(tRem)),1-tRem/Tp)
                 % if the user cancelled, then exit
                 setObjEnable(handles.toggleVideoPreview,'on')

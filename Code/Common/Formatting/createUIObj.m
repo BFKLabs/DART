@@ -55,6 +55,18 @@ if isOldVer
             % case is the radio button group
             hObj = uibuttongroup(varargin{1},'FontUnits','Pixels');            
             
+        case 'toolbar'
+            % case is the toolbar object
+            hObj = uitoolbar(varargin{1});
+            
+        case 'pushtool'
+            % case is the toolbar pushbutton
+            hObj = uipushtool(varargin{1});
+            
+        case 'toggletool'
+            % case is the toolbar togglebutton
+            hObj = uitoggletool(varargin{1});            
+            
         case 'axes'
             % case is an axes object
             hObj = axes(varargin{1},'FontUnits','Pixels');
@@ -76,7 +88,9 @@ if isOldVer
     end        
     
     % sets the object units
-    set(hObj,'Units','Pixels');
+    if isprop(hObj,'Units')
+        set(hObj,'Units','Pixels');
+    end
     
 else
     % case is using a newer version of matlab    
@@ -128,8 +142,8 @@ else
         case 'tabgroup'
             % case is a tab group object
             hObj = uitabgroup(varargin{1},'Units','pixels');
-            drawnow
-            pause(0.05);
+%             drawnow
+%             pause(0.05);
             
         case 'tab'
             % case is a tab object            

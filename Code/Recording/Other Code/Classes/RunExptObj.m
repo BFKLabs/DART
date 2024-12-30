@@ -2,6 +2,9 @@ classdef RunExptObj < handle
     
     % class properties
     properties
+        
+        % other class objects
+        objP
 
         % object handles/arrays
         hMain
@@ -230,7 +233,7 @@ classdef RunExptObj < handle
 
             % creates the experiment progress summary GUI
             h.StatusMessage = 'Setting Up Experiment Progress Dialog...';
-            obj.hProg = ExptProgress(obj); 
+            obj.objP = ExptProgress(obj);             
             pause(0.05)
             
             % resets the loadbar to be on top
@@ -266,7 +269,7 @@ classdef RunExptObj < handle
 %                     objDACT = createDACObjects(obj.objDAQ,50);        
 %                     if ~isempty(objDACT)
 %                         obj.objDev(isD) = setupDACDevice(...
-%                                     objDACT,'Expt',obj.ExptSig,obj.hProg);        
+%                                     objDACT,'Expt',obj.ExptSig,obj.objP);        
 %                     end
                 end    
 
@@ -277,14 +280,13 @@ classdef RunExptObj < handle
             % if a real-time tracking experiment, then initialise the RT 
             % data struct and tracking GUI
             if obj.isRT; obj.initRTExptObj(); end    
-
-            % updates the fields of the progress-bar gui
-            setappdata(obj.hProg,'sFunc',@obj.saveSummaryFile);
-            setappdata(obj.hProg,'iExpt',obj.iExpt)   
             
             % deletes the progressbar
             try delete(h); catch; end
 
+            % makes the 
+            setObjVisibility(obj.objP.hFig,1);
+            
             % initalises the countdown/experiment timers            
             obj.initExptTimer();
             obj.initCDownTimer();
@@ -518,8 +520,8 @@ classdef RunExptObj < handle
 
             % retrieves the image/data acquisition objects
             aFunc = getappdata(obj.hExptF,'afterExptFunc');
-            if ishandle(obj.hProg) 
-                set(obj.hProg,'WindowStyle','normal'); 
+            if ishandle(obj.objP.hFig) 
+                set(obj.objP.hFig,'WindowStyle','normal'); 
             end
 
             % deletes the timer objects
@@ -603,9 +605,10 @@ classdef RunExptObj < handle
                 figure(obj.hExptF)    
 
                 % deletes the experimental GUI
-                delete(obj.hProg)
+                obj.objP.closeWindow();          
                 aFunc(obj.hExptF)
                 return
+                
             else
     %             % check to see that the devices have all been turned 
     %             % off correctly
@@ -651,9 +654,9 @@ classdef RunExptObj < handle
 
             % closes the experimental information
             if isStore
+                % updates the progressbar
                 wStr = sprintf('Saving Experiment Summary (100%s)','%');
-                pFunc = getappdata(obj.hProg,'pFunc');
-                pFunc(1,wStr,1,obj.hProg);
+                obj.objP.updateBar(1,wStr,1);                
                 pause(0.05);
 
                 % saves the summary file to disk
@@ -673,7 +676,7 @@ classdef RunExptObj < handle
             end
 
             % closes the experiment progress GUI
-            try delete(obj.hProg); catch; end                 
+            obj.objP.closeWindow(); 
 
             % if there are any stimuli devices then ensure they are stopped
             if ~isempty(obj.sTrain)
@@ -756,7 +759,6 @@ classdef RunExptObj < handle
                 'StartFcn',{@(h,e)obj.startCDownFcn},...
                 'TimerFcn',{@(h,e)obj.timerCDownFcn},...
                 'StopFcn',{@(h,e)obj.stopCDownFcn});
-            setappdata(obj.hProg,'cdownTimer',obj.hTimerCDown)                
 
         end
                
@@ -775,7 +777,7 @@ classdef RunExptObj < handle
 
         % --- the countdown timer callback function       
         function timerCDownFcn(obj)
-
+                            
             % determines the time until the experiment is due to start
             dT = obj.tCDown - toc;
 
@@ -786,19 +788,18 @@ classdef RunExptObj < handle
                 stop(obj.hTimerCDown)
             else
                 % otherwise, update the summary figure
-                pFunc = getappdata(obj.hProg,'pFunc');
                 [~,~,C] = calcTimeDifference(dT);
                 wStrNw = sprintf(['Time Until Experiment Starts = ',...
                                   '%s:%s:%s:%s'],C{1},C{2},C{3},C{4});
 
                 % updates the countdown timer
-                if (pFunc(1,wStrNw,1-dT/obj.tCDown,obj.hProg))
+                if obj.objP.updateBar(1,wStrNw,1-dT/obj.tCDown)
                     % if the user has aborted, then exit the function
                     obj.isUserStop = true;
                     stop(obj.hTimerCDown)
                 end
             end
-        
+                    
         end
 
         % --- the countdown timer stop callback function       
@@ -810,8 +811,7 @@ classdef RunExptObj < handle
                 obj.finishExptObj()       
             else
                 % if still open, then update the summary figure
-                pFunc = getappdata(obj.hProg,'pFunc');
-                pFunc(1,'Starting Experiment',1,obj.hProg);
+                obj.objP.updateBar(1,'Starting Experiment',1);
                 
                 % initialises the experiment tic object
                 obj.tExpt = tic;
@@ -870,7 +870,6 @@ classdef RunExptObj < handle
                 'TimerFcn',{@(h,e)obj.timerExptFcn},...
                 'StopFcn',{@(h,e)obj.stopExptFcn},...
                 'TasksToExecute',inf,'tag',tagStr);
-            setappdata(obj.hProg,'exptTimer',obj.hTimerExpt)                
 
         end
         
@@ -903,15 +902,15 @@ classdef RunExptObj < handle
                 iFrm = get(hTimer,'TasksExecuted') + obj.indOfs;        
             catch
                 return
-            end                   
-
+            end                  
+            
             % sets the sub-structs            
             tTot = vec2sec(obj.iExpt.Timing.Texp);
             VV = obj.iExpt.Video;            
 
             % checks to see if the user aborted the experiment. if so, then 
             % stop the timer object and exit the function
-            if get(getappdata(obj.hProg,'hBut'),'value')
+            if obj.objP.hButC.Value
                 % flag that the user has aborted the experiment
                 [obj.isUserStop,obj.userStop] = deal(true);
 
@@ -919,7 +918,7 @@ classdef RunExptObj < handle
                 if ~obj.isWebCam && (get(obj.objIMAQ,'TriggersExecuted')>=1)
                     % camera has been triggered, so remove stop function
                     stopRecordingDevice(obj);
-%                     obj.hTimerExpt.StopFcn = [];
+
                 else
                     % attempts to close the video file
                     if obj.hasIMAQ
@@ -943,7 +942,7 @@ classdef RunExptObj < handle
                 
                 % exits the function
                 return
-            end
+            end            
 
             % -------------------------------- %        
             % --- STIMULI EVENT TRIGGERING --- %
@@ -982,7 +981,11 @@ classdef RunExptObj < handle
                             end
 
                             % attempt to trigger the camera.
+                            try
                             obj.triggerVideoInput();                            
+                            catch ME
+                                a = 1;
+                            end
                         end
                     end
 
@@ -992,15 +995,17 @@ classdef RunExptObj < handle
             else
                 % stimuli only, so flag no event
                 obj.tNew = toc(obj.tExpt);             
-            end
+            end   
 
+            try
+            
             % otherwise, update the summary figure (every second)
             if mod(iFrm,obj.rfRate) == 0
                 % ---------------------------------- %
                 % --- EXPERIMENT PROGRESS UPDATE --- %
                 % ---------------------------------- %
 
-                if isempty(obj.hProg) || ~ishandle(obj.hProg)
+                if isempty(obj.objP) || ~ishandle(obj.objP.hFig)                                        
                     % if the figure handle is invalid, then exit function
                     return
                     
@@ -1009,10 +1014,9 @@ classdef RunExptObj < handle
                     tCurr = obj.tNew;        
 
                     % updates the overall progress
-                    pFunc = getappdata(obj.hProg,'pFunc');
-                    pFunc(1,sprintf('Overall Progress (%i%s Complete)',...
-                            floor(100*(tCurr/tTot)),'%'),...
-                            tCurr/tTot,obj.hProg); 
+                    wStr = sprintf(['Overall Progress ',...
+                        '(%i%s Complete)'],floor(100*(tCurr/tTot)),'%');
+                    obj.objP.updateBar(1,wStr,tCurr/tTot);
                         
                     % stops the timer if the current experiment time
                     % exceeds experiment duration (stimuli expt only)
@@ -1029,7 +1033,7 @@ classdef RunExptObj < handle
                         nSec = roundP(obj.iExpt.Video.Ts(1) - tCurr);
                         wStr = sprintf(['Waiting For Recording To ',...
                                         'Start (%i Seconds Remain)'],nSec);
-                        pFunc(2,wStr,0,obj.hProg);
+                        obj.objP.updateBar(2,wStr,0);
                     end    
                 end
 
@@ -1039,12 +1043,11 @@ classdef RunExptObj < handle
 
                 % initialisations
                 isRunning = false;
-                hText = getappdata(obj.hProg,'hText');
-                nInfo = getappdata(obj.hProg,'nInfo');
+                hText = obj.objP.hTxtI;
 
                 % expands the running flags and stimuli start/finish time 
                 % (if the experiment has stimuli)
-                if nInfo > 1 || ~obj.hasIMAQ
+                if obj.objP.nLvlI > 1 || ~obj.hasIMAQ
                     % sets the device running flags for the devices
                     isRunning = [isRunning;cell2mat(cellfun(@(x,ok)...
                                 (x.isRunning(ok)'),obj.objDev,...
@@ -1061,11 +1064,11 @@ classdef RunExptObj < handle
                 end                        
 
                 % loops through all the information fields getting the 
-                for i = 1:nInfo
+                for i = 1:obj.objP.nLvlI
                     % retrieves the current/total event counts
-                    k = nInfo - (i-1);
+                    k = obj.objP.nLvlI - (i-1);
                     jStim = str2double(get(hText{k,2},'string'));
-                    nStim = str2double(get(hText{k,3},'string'));                  
+                    nStim = str2double(get(hText{k,3},'string'));
 
                     % determines if the stimuli is current running
                     if isRunning(i)
@@ -1115,6 +1118,10 @@ classdef RunExptObj < handle
                     set(hText{k,4},'string',nwStr,'ForegroundColor',tCol)        
                 end   
             end       
+            
+            catch ME
+                a = 1;
+            end            
 
             % updates the timer function
             if obj.isWebCam && isDeviceRunning(obj)

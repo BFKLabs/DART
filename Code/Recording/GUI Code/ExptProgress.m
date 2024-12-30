@@ -1,305 +1,460 @@
-function varargout = ExptProgress(varargin)
-% Last Modified by GUIDE v2.5 17-May-2019 16:16:17
-
-% Begin initialization code - DO NOT EDIT
-gui_Singleton = 1;
-gui_State = struct('gui_Name',       mfilename, ...
-                   'gui_Singleton',  gui_Singleton, ...
-                   'gui_OpeningFcn', @ExptProgress_OpeningFcn, ...
-                   'gui_OutputFcn',  @ExptProgress_OutputFcn, ...
-                   'gui_LayoutFcn',  [] , ...
-                   'gui_Callback',   []);
-if nargin && ischar(varargin{1})
-    gui_State.gui_Callback = str2func(varargin{1});
-end
-
-if nargout
-    [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
-else
-    gui_mainfcn(gui_State, varargin{:});
-end
-% End initialization code - DO NOT EDIT
-
-% --- Executes just before ExptProgress is made visible.
-function ExptProgress_OpeningFcn(hObject, eventdata, handles, varargin)
-
-% Choose default command line output for ExptProgress
-handles.output = hObject;
-
-% sets the input arguments
-exObj = varargin{1};
-setappdata(hObject,'exObj',exObj);
-
-% initialises the progress bar/stimulus information panels
-initProgBars(handles,exObj)
-initStimInfo(handles)
-centreFigPosition(hObject);
-
-% sets the waitbar strings
-wStr = {'Overall Progress','Current Video Progress'};
-
-% sets the important fields into the GUI
-setappdata(hObject,'pFunc',@updateBar);
-setappdata(hObject,'tFunc',@updateTextInfo);
-setappdata(hObject,'wStr',wStr);
-setappdata(hObject,'isCancel',0);
-setappdata(hObject,'mxProp',1);
-setappdata(hObject,'cProp',0);
-setappdata(hObject,'hBut',handles.buttonAbort);
-
-% Update handles structure
-guidata(hObject, handles);
-setObjVisibility(hObject,'off')
-
-% UIWAIT makes ExptProgress wait for user response (see UIRESUME)
-% uiwait(handles.figExptProg);
-
-% --- Outputs from this function are returned to the command line.
-function varargout = ExptProgress_OutputFcn(hObject, eventdata, handles) 
-
-% Get default command line output from handles structure
-varargout{1} = handles.output;
-
-%-------------------------------------------------------------------------%
-%                             OTHER FUNCTIONS                             %
-%-------------------------------------------------------------------------%
-
-% --- FIGURE PROPERTY INITIALISATION FUNCTIONS --- %
-% ------------------------------------------------ %
-
-% --- initialises the progress bar properties --- %
-function initProgBars(handles,exObj)
-
-% global variables
-global wImg
-wImg = ones(1,1000,3);
-
-% loads the experimental data struct
-nStr = 1 + exObj.hasIMAQ;
-hP = handles.panelProgress;
-hObj = repmat(struct('wStr',[],'wAxes',[],'wImg',[]),nStr,1);
-
-% removes the video progress waitbar figure
-if ~exObj.hasIMAQ
-    % retrieves the locations 
-    dHght = 50;
-    posP = get(hP,'position');
-    figP = get(handles.figExptProg,'position');
+classdef ExptProgress < dynamicprops & handle
     
-    % deletes the video progressbar
-    delete(findobj(hP,'UserData',2))
-    
-    % resets the GUI object dimensions    
-    resetObjPos(handles.figExptProg,'height',figP(4)-dHght);    
-    resetObjPos(hP,'height',posP(4)-dHght);
-    
-    % repositions the experiment progress objects
-    resetObjPos(handles.textExptProgress,'Bottom',-dHght,1)
-    resetObjPos(handles.axesExptProgress,'Bottom',-dHght,1)
-    
-    % resets the bottom location of the panel/cancel button
-    resetObjPos(handles.panelStimInfo,'bottom',45);
-    resetObjPos(handles.buttonAbort,'bottom',10);
-end
-    
-% sets the properties for each of the progress bar elements
-for j = 1:nStr
-    % sets the axes properties
-    hObj(j).wStr = findobj(hP,'UserData',j,'style','text');
-    hObj(j).wAxes = findobj(hP,'UserData',j,'type','axes');
-
-    % clears the axis and adds the image
-    cla(hObj(j).wAxes);
-    hObj(j).wImg = image(wImg,'parent',hObj(j).wAxes);
-    
-    % updates the progress bar axes
-    set(hObj(j).wAxes,'xtick',[],'ytick',[],'xticklabel',[],...
-                      'yticklabel',[],'xcolor','k','ycolor','k','box','on')    
-end
-
-% sets the objects into the GUI
-setappdata(handles.figExptProg,'hObj',hObj)
-
-% --- initialises the progress bar properties --- %
-function initStimInfo(handles)
-
-% panel/textbox
-hP = handles.panelStimInfo;
-[txtL,txtW,txtH,dY] = deal([10 135 230 290],[125 80 60 140],20,10);
-
-% retrieves the experimental data struct
-hFig = handles.figExptProg;
-exObj = getappdata(hFig,'exObj');
-[nCount,chID] = deal([]);
-
-% if the experiment type field is not set, then set its value
-if isempty(exObj.iExpt.Info.Type) || ~ischar(exObj.iExpt.Info.Type)
-    % sets the experiment type based on whether a RT expt is running
-    if exObj.isRT
-        exptType = 'RTTrack';
-    else
-        iType = double(exObj.hasIMAQ) + 2*double(exObj.hasDAQ);
+    % class properties
+    properties
+        
+        % main class objects
+        hFig
+        
+        % progress panel objects
+        hPanelP
+        hAxP
+        hTxtP
+        
+        % progress panel objects
+        hPanelI
+        hTxtI
+        
+        % other figure objects
+        hPanelC
+        hButC
+        
+        % fixed dimension fields
+        dX = 10;    
+        hghtTxt = 20;
+        hghtBut = 25;
+        hghtRow = 25;
+        hghtHdr = 20;
+        widPanel = 440;
+        widPanelC = 190;
+        hghtAx = 20;        
+        widButC = 170;
+        
+        % calculated dimension fields
+        widFig
+        hghtFig        
+        hghtPanelP
+        hghtPanelI
+        hghtPanelC
+        widAx        
+        
+        % information text object property fields
+        xTxtI = [10,135,230,290];
+        wTxtI = [125,80,60,140];
+        
+        % progressbar class fields
+        wImg
+        hObj        
+        mxProp = 1;
+        cProp = 0;
+        
+        % stimuli information class fields
+        chID
+        nCount
+        
+        % miscellaneous class fields
+        rtPos
+                
+        % static class fields
+        nAx
+        nLvlI
+        nColI = 4;
+        nPr = 1000;
+        fSzH = 13;
+        fSzL = 12;
+        fSz = 10 + 2/3;
+        
+        % static string fields
+        tagStr = 'figExptProg';
+        figName = 'Experimental Progress Summary';
+        
+        % cell array fields
         exptTypeS = {'RecordOnly','StimOnly','RecordStim'};
-        exptType = exptTypeS{iType};
-    end    
+        wStr = {'Current Experiment Progress','Current Video Progress'};                
+        
+    end
     
-    % sets the experiment type into the experiment information struct
-    exObj.iExpt.Info.Type = exptType;
-end
-
-% sets the number of text objects to add
-switch (exObj.iExpt.Info.Type)
-    case {'RecordStim','StimOnly'}
-        % case is a stimuli-dependent experiment
-        ID = field2cell(exObj.ExptSig,'ID');
-        chInfo = getappdata(exObj.hExptF,'chInfo'); 
-        iOfs = double(exObj.hasIMAQ);
+    % private class properties
+    properties (Access = private)
         
-        % sets the channel/device ID flags
-        chID = cell2mat(cellfun(@(x)(unique(x,'rows')),ID,'un',0));
-        chID = [chID,zeros(size(chID,1),1)];
-        devID = cell2mat(chInfo(:,1));
+        objB
         
-        % sets the final mapping values
-        nStim = size(chID,1) + iOfs;
-        nCount = zeros(nStim-iOfs,1);
-        for i = 1:nStim-iOfs
-            ii = find(devID==chID(i,1),chID(i,2),'first');
-            chID(i,3) = ii(end);            
-            nCount(i) = sum(cellfun(@(x)(isequal(x,chID(i,1:2))),...
-                                num2cell(exObj.ExptSig(chID(i,1)).ID,2)));
+    end     
+    
+    % class methods
+    methods
+        
+        % --- class constuctor
+        function obj = ExptProgress(objB)
+            
+            % sets the input arguments
+            obj.objB = objB;
+            
+            % initialises the class fields/objects
+            obj.linkParentProps();            
+            obj.initClassFields();
+            obj.initClassObjects();
+            
+        end        
+        
+        % -------------------------------------- %
+        % --- CLASS INITIALISATION FUNCTIONS --- %
+        % -------------------------------------- %
+        
+        % --- initialises the class object fields with that parent object
+        function linkParentProps(obj)
+            
+            % parent fields strings
+            fldStr = {'iExpt','hExptF','ExptSig','hasIMAQ','hasDAQ'};
+            
+            % connects the base/child objects
+            for propname = fldStr
+                metaprop = addprop(obj, propname{1});
+                metaprop.SetMethod = @(obj, varargin) ...
+                    SetDispatch(obj, propname{1}, varargin{:});
+                metaprop.GetMethod = @(obj)GetDispatch(obj, propname{1});
+            end
+            
+        end                
+        
+        % --- initialises the class fields
+        function initClassFields(obj)
+            
+            % other field initialisations
+            obj.nAx = 1 + obj.hasIMAQ; 
+            
+            % initialises the stimuli information 
+            obj.initStimInfo();                                   
+            
+            % memory allocation
+            obj.hTxtI = cell(obj.nLvlI,obj.nColI);
+            [obj.hTxtP,obj.hAxP] = deal(cell(obj.nAx,1));
+            
+            % ------------------------------------- %
+            % --- OBJECT DIMENSION CALCULATIONS --- %
+            % ------------------------------------- %
+            
+            % panel dimension calculations
+            obj.hghtPanelC = obj.hghtRow + obj.dX;
+            obj.hghtPanelP = 2*obj.hghtHdr*obj.nAx + 5*obj.dX;
+            obj.hghtPanelI = (obj.nLvlI+1)*obj.hghtTxt + 2*obj.dX;            
+            
+            % calculates the figure dimensions
+            obj.widFig = obj.widPanel + 2*obj.dX;
+            obj.hghtFig = 4*obj.dX + ...
+                obj.hghtPanelC + obj.hghtPanelI + obj.hghtPanelP; 
+            
+            % other object dimension calculations
+            obj.widButC = obj.widPanelC - obj.dX;
+            obj.widAx = obj.widPanel - 4*obj.dX;
+            
         end
         
-    otherwise
-        % case is RT tracking or recording only
-        nStim = 1;
-end
-    
-% resets the panel position
-pPos = [10 45 440 ((nStim+1)*txtH+2*dY)];
-set(hP,'position',pPos);
-
-% updates the progress bar location
-pPos2 = get(handles.panelProgress,'position');
-pPos2(2) = (pPos(2)+pPos(4)) + dY;
-set(handles.panelProgress,'position',pPos2);
-
-% resets the figure height
-fPos = get(handles.figExptProg,'position');
-fPos(4) = (25 + 4*dY) + (pPos(4) + pPos2(4));
-set(handles.figExptProg,'position',fPos)
-
-% sets the header locations
-YnwH = dY + nStim*txtH;
-hEditH = findobj(handles.panelStimInfo,'UserData',1,'Style','text');
-
-% resets the header positions
-for i = 1:length(hEditH)
-    % resets the header text-box location
-    ePos = get(hEditH(i),'position');
-    ePos(2) = YnwH;
-    
-    % updates the text-box position
-    set(hEditH(i),'position',ePos);
-end
-    
-% creates the text-boxes for all the rows
-hText = cell(nStim,length(txtL));
-for i = 1:nStim
-    % sets the new Y location within the 
-    Ynw = dY + (i-1)*txtH;
-    j = nStim - (i-1);
-    
-    % creates all the text objects for the current row
-    for k = 1:length(txtL)
-        % sets the horizontal alignment flag
-        hAlign = 'center';
-        
-        % sets the editbox string
-        switch (k)
-            case (1) % case is the stimuli number
-                hAlign = 'right';                
-                if (j == 1) && exObj.hasIMAQ
-                    tStr = 'Video Recordings: ';                   
-                else
-                    iOfs = double(exObj.hasIMAQ);
-                    tStr = sprintf('%s (%s): ',chInfo{chID(j-iOfs,3),3},...
-                                               chInfo{chID(j-iOfs,3),2});                
-                end
-            case (2) % case is the current count (initially 0)
-                tStr = '0';
-                
-            case (3) % case is the total stimuli count
-                if (j == 1) && exObj.hasIMAQ
-                    tStr = num2str(exObj.iExpt.Video.nCount);
-                else
-                    iOfs = double(exObj.hasIMAQ);
-                    tStr = num2str(nCount(j-iOfs));
-                end
-                
-            case (4) % case is the time to next stimuli field
-                tStr = 'N/A';
-        end
-        
-        % creates the new text-box and sets it properties
-        nwPos = [txtL(k) Ynw txtW(k) txtH];
-        hText{i,k} = uicontrol(hP,'style','text','position',nwPos,...
-                     'FontSize',10,'UserData',k,'FontWeight','bold',...
-                     'HorizontalAlignment',hAlign,'string',tStr,'tag',...
-                     sprintf('text%i',j));
-    end    
-end
-
-% sets the number of information fields to update
-setappdata(hFig,'nInfo',nStim);
-setappdata(hFig,'hText',hText);
-setappdata(hFig,'nCount',nCount);
-setappdata(hFig,'chID',chID);
-
-% --- OBJECT CALLBACK FUNCTIONS --- %
-% --------------------------------- %
-
-% --- updates the stimulus info text labels --- %
-function updateTextInfo(ind,tStr,h,tCol)
-
-% sets the text colour (if not provided)
-if (nargin == 3)
-    tCol = 'k';
-end
-
-% updates the corresponding text object (to the index array, ind)
-hh = guidata(h);
-hText = findobj(hh.panelStimInfo,'Tag',...
-                            sprintf('text%i',ind(1)),'UserData',ind(2));
-set(hText,'string',tStr,'ForegroundColor',tCol);
+        % --- initialises the class fields
+        function initClassObjects(obj)
+            
+            % deletes any previous GUIs
+            hPrev = findall(0,'tag',obj.tagStr);
+            if ~isempty(hPrev); delete(hPrev); end
+            
+            % --------------------------- %
+            % --- MAIN FIGURE OBJECTS --- %
+            % --------------------------- %
+            
+            % creates the figure object
+            fPos = [100,100,obj.widFig,obj.hghtFig];
+            
+            % creates the figure object
+            obj.hFig = createUIObj('figure','Position',fPos,...
+                'tag',obj.tagStr,'MenuBar','None','Toolbar','None',...
+                'Name',obj.figName,'Resize','on','NumberTitle','off',...
+                'Visible','off','AutoResizeChildren','off',...
+                'BusyAction','Cancel','GraphicsSmoothing','off',...
+                'DoubleBuffer','off','Renderer','painters',...
+                'CloseReq',[]);            
+            
+            % ----------------------- %
+            % --- SUB-PANEL SETUP --- %
+            % ----------------------- %
                         
-% --- updates the waitbar status string and proportion complete --- %
-function isCancel = updateBar(ind,wStr,wProp,h)
+            % sets up the sub-panel objects
+            obj.setupControlButtonPanel();
+            obj.setupProgressInfoPanel();
+            obj.setupProgressAxesPanel();                        
+            
+            % ------------------------------- %
+            % --- HOUSE-KEEPING EXERCISES --- %
+            % ------------------------------- %                                
+            
+            % opens the class figure
+            openClassFigure(obj.hFig,0);
+            
+        end
+        
+        % --- initialises the stimuli information
+        function initStimInfo(obj)
+            
+            % initialisations
+            [obj.nCount,obj.chID] = deal([]);
+            
+            % if experiment type field has not been set, then initialise
+            if isempty(obj.iExpt.Info.Type) || ~ischar(obj.iExpt.Info.Type)
+                if obj.isRT
+                    % case is real-time tracking
+                    exptType = 'RTTrack';
+                    
+                else
+                    % case is the other experiment types
+                    iType = double(obj.hasIMAQ) + 2*double(obj.hasDAQ);
+                    exptType = obj.exptTypeS{iType};                    
+                end
+                
+                % resets the experiment type field
+                obj.iExpt.Info.Type = exptType;
+            end
+            
+            % sets the number of text objects to add
+            switch obj.iExpt.Info.Type
+                case {'RecordStim','StimOnly'}
+                    % case is a stimuli-dependent experiment
+                    ID = field2cell(obj.ExptSig,'ID');
+                    chInfo = getappdata(obj.hExptF,'chInfo'); 
+                    iOfs = double(obj.hasIMAQ);
 
-% global variables
-global wImg 
+                    % sets the channel/device ID flags
+                    obj.chID = cell2mat(...
+                        cellfun(@(x)(unique(x,'rows')),ID,'un',0));
+                    obj.chID = [obj.chID,zeros(size(obj.chID,1),1)];
+                    devID = cell2mat(chInfo(:,1));
 
-% initialisations
-isCancel = 0;
+                    % sets the final mapping values
+                    obj.nLvlI = size(obj.chID,1) + iOfs;
+                    obj.nCount = zeros(obj.nLvlI-iOfs,1);
+                    for i = 1:obj.nLvlI - iOfs
+                        % determines the matching channel ID flags
+                        ii = find(devID == ...
+                            obj.chID(i,1),obj.chID(i,2),'first');
 
-% retrieves the waitbar handle (if not set)
-if nargin == 3
-    h = findobj('tag','waitbar');
-end
+                        % sets the channel ID/count flags
+                        obj.chID(i,3) = ii(end);            
+                        obj.nCount(i) = sum(cellfun(@(x)(...
+                            isequal(x,obj.chID(i,1:2))),num2cell(...
+                            obj.ExptSig(obj.chID(i,1)).ID,2)));
+                    end    
+                    
+                otherwise
+                    % case is RT tracking or recording only
+                    obj.nLvlI = 1;
+                    
+            end
+            
+        end        
+        
+        % ------------------------------------ %
+        % --- PANEL OBJECT SETUP FUNCTIONS --- %
+        % ------------------------------------ %
+        
+        % --- sets up the control button panel objects
+        function setupControlButtonPanel(obj)
+            
+            % creates the panel object
+            lPos = obj.widFig - (obj.dX + obj.widPanelC);
+            pPos = [lPos,obj.dX,obj.widPanelC,obj.hghtPanelC];
+            obj.hPanelC = createPanelObject(obj.hFig,pPos);
+        
+            % creates the button object
+            pPosB = [obj.dX*[1,1]/2,obj.widButC,obj.hghtBut];
+            obj.hButC = createUIObj('togglebutton',obj.hPanelC,...
+                'Position',pPosB,'FontUnits','Pixels',...
+                'FontWeight','Bold','FontSize',obj.fSzL,...
+                'String','Abort Experiment');            
+            
+        end
+        
+        % --- sets up the progress information panel objects
+        function setupProgressInfoPanel(obj)
+            
+            % creates the panel object
+            yPos = sum(obj.hPanelC.Position([2,4])) + obj.dX;
+            pPos = [obj.dX,yPos,obj.widPanel,obj.hghtPanelI];
+            obj.hPanelI = createPanelObject(obj.hFig,pPos);
 
-% retrieves the current status of the waitbar cancel status
-[hObj,hBut] = deal(getappdata(h,'hObj'),getappdata(h,'hBut'));    
-if get(hBut,'value')   
-    % if flagged to cancel, then delete the waitbar object
-    isCancel = 1;
-else
-    % sets the new image
-    wLen = roundP(wProp*1000,1);
-    wImg(:,1:wLen,2:3) = 0;
-    wImg(:,(wLen+1):end,2:3) = 1;
+            % creates the text label objects
+            wObjT = [obj.wTxtI(1:2),15,obj.wTxtI(3:4)];
+            pStrT = {[],'Started',[],'Total','Time To Next Event'};            
+            
+            %
+            for i = 1:(obj.nLvlI+1)
+                % calculates the vertical offset
+                j = (obj.nLvlI+1) - (i-1);
+                yOfs = obj.dX + (j-1)*obj.hghtTxt;
+                
+                % sets the row string array
+                if i == 1
+                    % case is the header row
+                    pStrR = pStrT;
+                    
+                else
+                    % case is the other rows
+                    pStrR = obj.getInfoRowString(i-1);
+                end
+                
+                % sets up the text labels 
+                hObjR = createObjectRow(obj.hPanelI,length(wObjT),...
+                    'text',wObjT,'yOfs',yOfs,'xOfs',obj.dX,...
+                    'dxOfs',0,'pStr',pStrR,'hghtTxt',obj.hghtTxt,...
+                    'fSz',obj.fSzH);
+                
+                % stores the text objects into the class object
+                if i > 1
+                    set(hObjR{1},'HorizontalAlignment','Right');
+                    obj.hTxtI(i-1,:) = hObjR([1,2,4,5]);
+                end
+            end            
+            
+        end
+        
+        % --- sets up the progress axes panel objects
+        function setupProgressAxesPanel(obj)
 
-    % updates the status bar and the string
-    set(hObj(ind).wImg,'cdata',wImg);
-    set(hObj(ind).wStr,'string',wStr)
-    drawnow;     
+            % initialisations
+            p = struct('wStr',[],'wAxes',[],'wImg',[]);            
+            
+            % memory allocation
+            obj.wImg = ones(obj.nAx,1000,3);            
+            obj.hObj = repmat(p,obj.nAx,1);            
+            
+            % creates the panel object
+            yPos = sum(obj.hPanelI.Position([2,4])) + obj.dX;
+            pPos = [obj.dX,yPos,obj.widPanel,obj.hghtPanelP];
+            obj.hPanelP = createPanelObject(obj.hFig,pPos);            
+            
+            % creates the progress axes objects
+            for i = 1:obj.nAx
+                % creates the axes object
+                j = obj.nAx - (i-1);                
+                yOfsAx = 2*obj.dX + (j-1)*(2*obj.hghtHdr + obj.dX);
+                pPosAx = [2*obj.dX,yOfsAx,obj.widAx,obj.hghtAx];
+                hAx = createUIObj('axes',obj.hPanelP,...
+                    'Units','Pixels','Position',pPosAx);                    
+                
+                % creates the text label object
+                yOfsT = yOfsAx + obj.hghtAx;
+                pPosT = [2*obj.dX,yOfsT,obj.widAx,obj.hghtTxt];
+                hTxt = createUIObj('text',obj.hPanelP,...
+                    'Position',pPosT,'FontUnits','Pixels',...
+                    'FontWeight','bold','FontSize',obj.fSzH,...
+                    'String',obj.wStr{i});
+                
+                % sets the objects into the data struct
+                obj.hObj(i).wImg = image(obj.wImg(i,:,:),'parent',hAx);
+                [obj.hObj(i).wAxes,obj.hObj(i).wStr] = deal(hAx,hTxt);
+                
+                % updates the progress bar axes
+                set(hAx,'XTick',[],'YTick',[],'XTicklabel',[],...
+                      'YTicklabel',[],'Xcolor','k','Ycolor','k','Box','on')                    
+            end
+            
+        end
+        
+        % --------------------------------------- %
+        % --- OTHER OBJECT CALLBACK FUNCTIONS --- %
+        % --------------------------------------- %
+        
+        % --- updates the stimuli information text labels
+        function updateTextInfo(obj,ind,tStr,tCol)
+            
+            % sets the default input arguments
+            if ~exist('tCol','var'); tCol = 'k'; end
+            
+            % updates the text label
+            set(obj.hTxtI{ind(1),ind(2)},...
+                'String',tStr,'ForegroundColor',tCol)
+            
+        end
+        
+        % --- updates the status string and progressbar axes
+        function isCancel = updateBar(obj,ind,wStr,wProp)            
+            
+            % initialisation
+            isCancel = false;
+            
+            % determines if the abort experiment button has been clicked
+            if obj.hButC.Value
+                % case is the user cancelled
+                isCancel = true;
+                
+            else
+                % updates the image array
+                wLen = round(wProp*obj.nPr);
+                obj.wImg(ind,1:wLen,2:3) = 0;
+                obj.wImg(ind,(wLen+1):end,2:3) = 1;
+                
+                % updates the status bar/strings
+                obj.hObj(ind).wImg.CData = obj.wImg(ind,:,:);
+                obj.hObj(ind).wStr.String = wStr;
+                drawnow
+            end
+            
+        end
+        
+        % --- closes the dialog window
+        function closeWindow(obj)
+            
+            try
+                delete(obj.hFig);
+            catch
+            end
+            
+        end
+        
+        % ------------------------------- %
+        % --- MISCELLANEOUS FUNCTIONS --- %
+        % ------------------------------- %        
+        
+        % --- retrieves the row 
+        function pStrR = getInfoRowString(obj,iRow)
+            
+            % initialisations
+            iOfs = double(obj.hasIMAQ);
+            pStrR = {[],'0',[],[],'N/A'};
+            chInfo = getappdata(obj.hExptF,'chInfo');             
+            
+            % sets the device string field
+            if iOfs && (iRow == 1)
+                % case is the recording row
+                pStrR{1} = 'Video Recordings: ';
+                pStrR{4} = num2str(obj.iExpt.Video.nCount);
+                
+            else
+                % case is a stimuli device
+                j = iRow - iOfs;
+                iID = obj.chID(j,3);
+                pStrR{1} = sprintf('%s (%s)',chInfo{iID,3},chInfo{iID,3});
+                pStrR{4} = num2str(obj.nCount(j));
+            end
+                
+        end
+        
+    end   
+    
+    % private class methods
+    methods (Access = private)
+        
+        % --- sets a class object field
+        function SetDispatch(obj, propname, varargin)
+            
+            obj.objB.(propname) = varargin{:};
+            
+        end
+        
+        % --- gets a class object field
+        function varargout = GetDispatch(obj, propname)
+            
+            varargout{:} = obj.objB.(propname);
+            
+        end
+        
+    end    
+    
 end

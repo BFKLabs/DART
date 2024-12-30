@@ -15,9 +15,9 @@ end
 switch exObj.vidType
     case ('Test')
         % initialises the waitbar figure
-        exObj.hProg = ProgBar('Initialising Recording...',...
+        exObj.objP = ProgBar('Initialising Recording...',...
                               'Recording Test Video');
-        exObj.hProg.wStr = {'Recording Video - '};
+        exObj.objP.wStr = {'Recording Video - '};
         
         % retrieves the video logging mode
         if ~exObj.isWebCam
@@ -147,8 +147,7 @@ end
 
 % updates the video counter
 if strcmp(exObj.vidType,'Expt')
-    feval(getappdata(exObj.hProg,'tFunc'),[1 2],...
-                     num2str(exObj.nCountV),exObj.hProg);
+    exObj.objP.updateTextInfo([1,2],num2str(exObj.nCountV));
 end
 
 % --- callback function for the imaq object timer --- %
@@ -172,11 +171,8 @@ end
 
 try
     % retrieves the waitbar strings
-    if isprop(exObj.hProg,'wStr')
-        wStr = exObj.hProg.wStr;
-    else
-        wStr = getappdata(exObj.hProg,'wStr');
-    end
+    wStr = exObj.objP.wStr;
+    
 catch
     % if user stopped the video prematurely, then stop recording
     [exObj.userStop,exObj.isUserStop] = deal(true);
@@ -196,14 +192,12 @@ try
             % case is for a test recording   
             [ind,wStrT] = deal(1,wStr{1});
             wStrNw = sprintf('%s (%i%s Complete)',wStrT,ppWait,'%');
-            isCancel = exObj.hProg.Update(ind,wStrNw,pWait);
+            isCancel = exObj.objP.Update(ind,wStrNw,pWait);
             
         case ('Expt') 
             % case is for an experiment recording
-            wFunc = getappdata(exObj.hProg,'pFunc');
-            [ind,wStrT] = deal(2,wStr{2});
-            wStrNw = sprintf('%s (%i%s Complete)',wStrT,ppWait,'%');            
-            isCancel = wFunc(ind,wStrNw,pWait,exObj.hProg);
+            wStrNw = sprintf('%s (%i%s Complete)',wStr{2},ppWait,'%');
+            isCancel = exObj.objP.updateBar(2,wStrNw,pWait);
     end
 
     % updates the waitbar progress fields
@@ -377,12 +371,12 @@ if frmUpdate
         
     % checks to see if a real-time tracking experiment is being run. if so,
     % then update the real-time tracking stats GUI and stats   
-    if isExpt && exObj.isRT
-        % updates the image axes and tracking GUI
+    if isExpt && exObj.isRT        
         try
-            rtPos = getappdata(exObj.hProg,'rtPos');
-            rtPos = updateVideoFeedImage(exObj.hMain,[],ImgNw,rtPos);
-            setappdata(exObj.hProg,'rtPos',rtPos)
+            % updates the image axes and tracking GUI
+            rtPos0 = exObj.objP.rtPos;
+            exObj.objP.rtPos = ...
+                updateVideoFeedImage(exObj.hMain,[],ImgNw,rtPos0);
         catch
             return
         end
@@ -413,7 +407,14 @@ function errorFunc(objIMAQ,event,exObj)
 [exObj.userStop,exObj.isError] = deal(false,true);
 
 % deletes the summary GUI
-delete(exObj.hProg)
+if strcmp(exObj.vidType,'Expt')
+    % case is an experiment recording
+    exObj.objP.closeWindow();
+    
+else
+    % case is a test recording
+    delete(exObj.objP)
+end
 
 % output an error to screen
 resStr = splitStringRegExp(get(exObj.objIMAQ,'VideoFormat'),'x_');
@@ -454,7 +455,7 @@ if ~exObj.isError
     switch exObj.vidType
         case ('Test') % case is the test output
             try
-                exObj.userStop = exObj.hProg.Update...
+                exObj.userStop = exObj.objP.Update...
                                     (1,'Outputing Video To File...',1);
             catch               
                 % if there was an error then flag a stop
@@ -465,11 +466,11 @@ if ~exObj.isError
             % case is the experiment output
             try
                 % updates the progressbar
-                wFunc = getappdata(exObj.hProg,'pFunc');
-                wFunc(2,'Outputing Video To File...',1,exObj.hProg);
+                wStr = 'Outputing Video To File...';
+                exObj.objP.updateBar(2,wStr,1);
                 
                 % checks if the user aborted. if so then flag a stop
-                if get(getappdata(exObj.hProg,'hBut'),'value')
+                if exObj.objP.hButC.Value
                     exObj.userStop = true;
                 end                
             catch
@@ -521,10 +522,10 @@ else
     % clears the logfile
     if strcmp(exObj.vidType,'Test') && ~exObj.isError
         try
-            if isa(exObj.hProg,'ProgBar')
-                exObj.hProg.closeProgBar();
+            if isa(exObj.objP,'ProgBar')
+                exObj.objP.closeProgBar();
             else
-                close(exObj.hProg)
+                exObj.objP.closeWindow();
             end
         catch
         end
@@ -545,7 +546,7 @@ if strcmp(exObj.vidType,'Expt')
     if ~isempty(exObj.iExpt.Info.OutSoln) && ~exObj.userStop
         % retrieves the current RT tracking experiment struct and saves
         % the data to a temporary file
-        rtPos = getappdata(exObj.hProg,'rtPos');
+        rtPos = exObj.objP.rtPos;
         tmpDir = fullfile(exObj.iExpt.Info.OutSoln,exObj.iExpt.Info.Title);
         tmpFile = fullfile(tmpDir,sprintf('TempRT_%i.mat',exObj.nCountV));
         save(tmpFile,'rtPos');
@@ -585,7 +586,7 @@ if strcmp(exObj.vidType,'Expt')
         [exObj.nCountV,exObj.isTrigger] = deal(exObj.nCountV + 1,false);        
                     
         % saves the summary file to disk
-        feval(getappdata(exObj.hProg,'sFunc'))
+        exObj.saveSummaryFile();
                     
         % if the camera is still logging, then stop the camera (disables
         % the stop function as this isn't required)
@@ -608,18 +609,18 @@ if strcmp(exObj.vidType,'Expt')
         % if running a real-time tracking experiment (and outputting the
         % solution files directly) then re-initialise the data struct)
         if exObj.isRT
-            initRTTrackExpt(exObj.hMain,exObj.hProg,false); 
+            initRTTrackExpt(exObj.hMain,exObj.objP,false); 
         end        
         
         % updates the waitbar figure
-        wFunc(2,'Starting Camera Object...',0,exObj.hProg);
+        exObj.objP.updateBar(2,'Starting Camera Object...',0);
         
         % restarts the camera (video input only)
         startRecordingDevice(exObj);
         pause(0.05)
         
-        % updates the waitbar figure
-        wFunc(2,'Waiting For Camera Trigger...',0,exObj.hProg);             
+        % updates the waitbar figure          
+        exObj.objP.updateBar(2,'Waiting For Camera Trigger...',0);
         
         % resets the save flag to false
         exObj.isSaving = false;        
@@ -762,7 +763,7 @@ end
 function initRTTrackExpt(exObj,isInit)
 
 % loads the important data structs
-iExpt = getappdata(exObj.hProg,'iExpt');
+iExpt = obj.objP.iExpt;
 rtP = getappdata(exObj.hMain,'rtP');
 iMov = getappdata(exObj.hMain,'iMov');
 
@@ -782,7 +783,7 @@ end
 
 % creates a new experiment data struct (if required)
 if ~isempty(iExpt.Info.OutSoln)                
-    setappdata(exObj.hProg,'rtPos',setupRTExptStruct(iMov)); 
+    exObj.objP.rtPos = setupRTExptStruct(iMov);
 end     
 
 function ImgNw = getPreviewFrame(exObj)
