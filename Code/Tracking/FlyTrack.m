@@ -1129,7 +1129,7 @@ end
 function menuStimInfo_Callback(~, ~, handles)
 
 % runs the stimulus
-StimInfo(handles)
+StimInfo(handles.figFlyTrack)
 
 % -------------------------------------------------------------------------
 function menuViewProgress_Callback(hObject, ~, handles)

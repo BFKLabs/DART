@@ -1726,18 +1726,18 @@ classdef CalcBG < handle
                 infoObj = get(obj.hFig,'infoObj');    
                 
                 % prompts the user for the video capture information
-                frmPara = CapturePara();
-                if isempty(frmPara)
-                    % if the user cancelled, then exit the function
-                    return
-                else
+                objCP = CapturePara();                
+                if objCP.isCapture
                     % reads the snapshots from the camera (stopping after)
                     Img = getCameraSnapshots...
-                                (imov,idata,infoObj.objIMAQ,frmPara);
+                                (imov,idata,infoObj.objIMAQ,objCP);
                     if isempty(Img)
                         % if the user cancelled, then exit the function
                         return
                     end
+                else
+                    % if the user cancelled, then exit the function
+                    return                    
                 end
 
                 % sets the sub-image struct

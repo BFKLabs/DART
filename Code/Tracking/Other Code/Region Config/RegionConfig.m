@@ -615,7 +615,7 @@ classdef RegionConfig < handle
             % ------------------------------- %
            
             % centers the figure and makes it visible
-            optFigPosition([obj.hFigM,obj.hFig])
+            optFigPosition([obj.hFigM,obj.hFig],1)
             refresh(obj.hFig);
             pause(0.05);
 

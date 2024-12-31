@@ -26,7 +26,8 @@ p = ip.Results;
 % initialisations
 if isempty(p.wObjM)
     if isempty(p.wObjTot)
-        wObjM = hP.Position(3) - (20 + wObjL);    
+        pPosP = getpixelposition(hP);
+        wObjM = pPosP(3) - (20 + wObjL);    
     else
         wObjM = p.wObjTot - (20 + wObjL);
     end

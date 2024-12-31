@@ -10,6 +10,7 @@ addParameter(ip,'hghtEdit',22);
 addParameter(ip,'hghtBut',25);
 addParameter(ip,'hghtPopup',22);
 addParameter(ip,'hghtChk',21);
+addParameter(ip,'hghtRadio',23);
 addParameter(ip,'hghtObj',[]);
 addParameter(ip,'fSz',12);
 addParameter(ip,'pStr',[]);
@@ -79,6 +80,10 @@ switch lower(pType)
     case {'pushbutton','togglebutton'}
         % case is pushbutton/togglebutton
         hObj = p.hghtBut;
+
+    case 'radiobutton'
+        % case is the editbox
+        hObj = p.hghtRadio;        
         
     case 'edit'
         % case is the editbox

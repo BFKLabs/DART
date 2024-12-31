@@ -478,58 +478,65 @@ if get(handles.toggleVideoPreview,'Value')
     toggleVideoPreview_Callback(handles.toggleVideoPreview, [], handles)
 end
 
-% prompts the user for the movie parameters
-vPara = TestMovie(infoObj,iProg); 
-if ~isempty(vPara)    
-    % turns off the video preview (if on)    
-    if get(hToggle,'Value')
-        set(hToggle,'Value',0);
-        toggleVideoPreview_Callback(hToggle, '1', handles)
-    end
-        
-    % retrieves the video recording object
-    setObjEnable(hToggle,'off')
-    pause(0.05);        
+% prompts the user for the test movie details
+objTM = TestMovie(infoObj,iProg);
+if objTM.isSave
+    % if successful, then retrieve the save file properties
+    vPara = objTM.vPara;
     
-    % sets up and runs the test video recording
-    exObj = RunExptObj(hFig,'Test',vPara); 
-    if ~exObj.isOK
-        % if there was an issue in setting up the recording object, then
-        % exit the function
-        return
-    end
-    
-    % initialises the time start
-    [tStart,Tp] = deal(tic,3); 
-    wStr = 'Waiting For Test Video Recording To Start';   
+else
+    % if the user cancelled, then exit
+    return
+end
 
-    % pauses the program until the wait-period has passed
-    while 1
-        tNew = toc(tStart);
-        if tNew > Tp
-            break
-        else
-            % updates the waitbar figure
-            tRem = Tp - tNew;
-            if exObj.objP.Update(1,sprintf('%s (%i Seconds Remains)',...
-                                            wStr,ceil(tRem)),1-tRem/Tp)
-                % if the user cancelled, then exit
-                setObjEnable(handles.toggleVideoPreview,'on')
-                return
-            else
-                % pause to ensure camera has initialised properly
-                pause(0.1);           
-            end
-        end               
-    end
-    
-    % starts the test object
-    exObj.isStart = true;
-    if exObj.isWebCam
-        start(exObj.objIMAQ.hTimer);
+% turns off the video preview (if on)    
+if get(hToggle,'Value')
+    set(hToggle,'Value',0);
+    toggleVideoPreview_Callback(hToggle, '1', handles)
+end
+
+% retrieves the video recording object
+setObjEnable(hToggle,'off')
+pause(0.05);        
+
+% sets up and runs the test video recording
+exObj = RunExptObj(hFig,'Test',vPara); 
+if ~exObj.isOK
+    % if there was an issue in setting up the recording object, then
+    % exit the function
+    return
+end
+
+% initialises the time start
+[tStart,Tp] = deal(tic,3); 
+wStr = 'Waiting For Test Video Recording To Start';   
+
+% pauses the program until the wait-period has passed
+while 1
+    tNew = toc(tStart);
+    if tNew > Tp
+        break
     else
-        trigger(exObj.objIMAQ)
-    end
+        % updates the waitbar figure
+        tRem = Tp - tNew;
+        if exObj.objP.Update(1,sprintf('%s (%i Seconds Remains)',...
+                                        wStr,ceil(tRem)),1-tRem/Tp)
+            % if the user cancelled, then exit
+            setObjEnable(handles.toggleVideoPreview,'on')
+            return
+        else
+            % pause to ensure camera has initialised properly
+            pause(0.1);           
+        end
+    end               
+end
+
+% starts the test object
+exObj.isStart = true;
+if exObj.isWebCam
+    start(exObj.objIMAQ.hTimer);
+else
+    trigger(exObj.objIMAQ)
 end
 
 % -------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 % --- retrieves the set number of frames from the camera
-function Img = getCameraSnapshots(iMov,iData,objIMAQ,frmPara,h)
+function Img = getCameraSnapshots(iMov,iData,objIMAQ,fPara,h)
 
 % parameters & memory allocation
 wOfs = 1;
@@ -25,8 +25,8 @@ end
 while 1 
     % updates the waitbar figure
     iFrm = length(Img)+1;
-    wStrNw = sprintf('%s (%i of %i)',h.wStr{1},iFrm,frmPara.Nframe);
-    if h.Update(1+wOfs,wStrNw,iFrm/frmPara.Nframe)
+    wStrNw = sprintf('%s (%i of %i)',h.wStr{1},iFrm,fPara.Nframe);
+    if h.Update(1+wOfs,wStrNw,iFrm/fPara.Nframe)
         % if the user cancelled, then exit the function
         Img = [];
         return
@@ -59,14 +59,14 @@ while 1
             
             % if the required number of frames has been reached, then exit
             % the frame capture loop
-            if length(Img) == frmPara.Nframe                
+            if length(Img) == fPara.Nframe                
                 break
             end
         end     
     end       
     
     % pause for required time period
-    if ~pauseForFrame(h,frmPara,wOfs)
+    if ~pauseForFrame(h,fPara,wOfs)
         % if the user cancelled, then exit the function
         Img = [];
         return        
@@ -80,12 +80,12 @@ Img = Img(:);
 if wOfs == 0; h.closeProgBar(); end
 
 % --- pauses for the next frame (updates the waitbar figure)
-function ok = pauseForFrame(h,frmPara,wOfs)
+function ok = pauseForFrame(h,fPara,wOfs)
 
 % sets up the wait timer object
 ok = true;
 tUpdate = 0.05;
-nUpdate = roundP(frmPara.wP/tUpdate);
+nUpdate = roundP(fPara.wP/tUpdate);
 
 % updates the progressbar for the required number of iterations
 for i = 1:nUpdate
