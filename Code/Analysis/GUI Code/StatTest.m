@@ -885,6 +885,7 @@ fxVal = getappdata(handles.figStatTest,'fxVal');
 switch (getappdata(handles.figStatTest,'tType'))
     case (0) % case is no output data string
         outStr = [];
+        
     case (1) % case is the significance strings
         outStr = {'Test P-Value Strings';...
                   'Test Significance Strings';...

@@ -1,14 +1,19 @@
 % --- retrieves the batch processing data          
-function bData = retBatchData(handles,dirName,baseDir) 
+function bData = retBatchData(bpObj,dirName,baseDir) 
+
+if isfield(bpObj,'figBatchProcess')
+    ProgDef = getappdata(bpObj.figBatchProcess,'ProgDef');
+else
+    ProgDef = bpObj;
+end
 
 % initialises the batch processing data struct
-ProgDef = getappdata(handles.figBatchProcess,'ProgDef');
 bData = struct('MovDir',[],'SolnDir',[],'SolnDirName',[],...
                'mName',[],'sName',[],'sfData',[],'movOK',[],...
                'Img0',[],'dpImg',[]);
 
 % removes any path seperators from the end of the directory names
-if (strcmp(dirName(end),'/') || strcmp(dirName(end),'\'))
+if strcmp(dirName(end),'/') || strcmp(dirName(end),'\')
     dirName = dirName(1:end-1);
 end
            
@@ -23,8 +28,8 @@ bData.sName = fullfile(dirName,getSummFileName(dirName));
 
 % sets the solution file output directory name
 dirPart = getDirSuffix(dirName);
-if (nargin < 3)
-    if (isempty(bData.SolnDir))
+if ~exist('baseDir','var')
+    if isempty(bData.SolnDir)
         % if the solution directory is not set, then set the base
         % directory to be the default solution directory
         baseDir = ProgDef.DirSoln;

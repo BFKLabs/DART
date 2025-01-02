@@ -1,176 +1,327 @@
-function varargout = DiskSpace(varargin)
-
-% Begin initialization code - DO NOT EDIT
-gui_Singleton = 1;
-gui_State = struct('gui_Name',       mfilename, ...
-                   'gui_Singleton',  gui_Singleton, ...
-                   'gui_OpeningFcn', @DiskSpace_OpeningFcn, ...
-                   'gui_OutputFcn',  @DiskSpace_OutputFcn, ...
-                   'gui_LayoutFcn',  [] , ...
-                   'gui_Callback',   []);
-if nargin && ischar(varargin{1})
-    gui_State.gui_Callback = str2func(varargin{1});
-end
-
-if nargout
-    [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
-else
-    gui_mainfcn(gui_State, varargin{:});
-end
-% End initialization code - DO NOT EDIT
-
-
-% --- Executes just before DiskSpace is made visible.
-function DiskSpace_OpeningFcn(hObject, eventdata, handles, varargin)
-
-% Choose default command line output for DiskSpace
-handles.output = hObject;
-
-% initialises the object properties
-initObjProps(handles)
-
-% Update handles structure
-guidata(hObject, handles);
-
-% UIWAIT makes DiskSpace wait for user response (see UIRESUME)
-% uiwait(handles.figDiskSpace);
-
-
-% --- Outputs from this function are returned to the command line.
-function varargout = DiskSpace_OutputFcn(hObject, eventdata, handles)
-
-% Get default command line output from handles structure
-varargout{1} = handles.output;
-
-%-------------------------------------------------------------------------%
-%                        FIGURE CALLBACK FUNCTIONS                        %
-%-------------------------------------------------------------------------%
-
-% --- Executes when user attempts to close figDiskSpace.
-function figDiskSpace_CloseRequestFcn(hObject, eventdata, handles)
-
-% runs the close window function
-buttonClose_Callback(handles.buttonClose, [], handles);
-
-%-------------------------------------------------------------------------%
-%                         OTHER CALLBACK FUNCTIONS                        %
-%-------------------------------------------------------------------------%
-
-% --- Executes on button press in buttonClose.
-function buttonClose_Callback(hObject, eventdata, handles)
-
-% deletes the figure
-delete(handles.figDiskSpace)
-
-%-------------------------------------------------------------------------%
-%                             OTHER FUNCTIONS                             %
-%-------------------------------------------------------------------------%
-
-% --- 
-function initObjProps(handles)
-
-% object dimensions
-dX = 10;
-[txtWid,txtHght] = deal(70,16);
-[axHght,axWid,axBot] = deal(125,60,95);
-lblPos = get(handles.textVolName,'Position');
-lblWid = lblPos(3);
-
-% retrieves the disk volume information
-volInfo = getDiskVolumeInfo();
-
-% calculates the width of the panel objects
-nVol = size(volInfo,1);
-pWid = (3+nVol)*(dX/2) + lblWid + nVol*txtWid;
-
-% resets the widths of the other gui objects
-resetObjPos(handles.figDiskSpace,'Width',pWid+2*dX);
-resetObjPos(handles.panelDiskInfo,'Width',pWid);
-resetObjPos(handles.panelContButton,'Width',pWid);
-resetObjPos(handles.buttonClose,'Width',pWid-2*dX);
-
-% creates the objects for each of the 
-for i = 1:nVol
-    % creates the text objects
-    xTxt = (i-1)*txtWid + lblWid + (1+i)*(dX/2);
-    txtPos = [xTxt,NaN,txtWid,txtHght];    
+classdef DiskSpace < handle
     
-    % creates the text objects for 
-    txtStr = flip([volInfo(i,:),{100*volInfo{i,3}/volInfo{i,2}}]);
-    txtCol = getTextColour(txtStr{1});
-    for j = 1:length(txtStr)
-        createTextObj(handles,txtPos,txtStr{j},txtCol,j)
+    % class properties
+    properties
+        
+        % main class objects
+        hFig
+        
+        % information panel objects
+        hPanelI
+        hTxtI
+        hAxI
+        
+        % control button obects
+        hPanelC
+        hButC        
+        
+        % fixed dimension fields
+        dX = 10;         
+        hghtTxt = 16;
+        hghtBut = 25;
+        hghtHdr = 20;
+        hghtRow = 25;
+        hghtPanelI = 230;
+        widLblI = 110;
+        widTxtI = 70;
+        
+        % calculated dimension fields
+        widFig
+        hghtFig        
+        widPanel
+        hghtPanelC
+        hghtAxI
+        widAxI
+        widButC
+        
+        % disk information class fields
+        vInfo
+        
+        % static class fields
+        nVol
+        nLblI = 4;
+        fSzH = 13;
+        fSzL = 12;
+        fSz = 10 + 2/3;
+        
+        % axes class fields
+        fAlpha = 0.5;
+        yTick = 0:20:100;        
+        ix = [1,1,2,2];
+        iy = [1,2,2,1];
+        
+        % static string fields
+        tagStr = 'figDiskSpace';
+        figName = 'Volume Disk Space';
+        
     end
     
-    % creates the axes objects
-    axPos = [xTxt+dX/2,axBot,axWid,axHght];
-    createAxesObject(handles,txtStr{1},axPos,i==1)
+    % class methods
+    methods
+        
+        % --- class constuctor
+        function obj = DiskSpace()
+                        
+            % initialises the class fields/objects
+            obj.initClassFields();
+            obj.initClassObjects();            
+            
+            % clears the output object (if not required)
+            if (nargout == 0) && ~isdeployed
+                clear obj
+            end            
+            
+        end        
+        
+        % -------------------------------------- %
+        % --- CLASS INITIALISATION FUNCTIONS --- %
+        % -------------------------------------- %
+        
+        % --- initialises the class fields
+        function initClassFields(obj)
+            
+            % retrieves the disk volume information
+            obj.vInfo = getDiskVolumeInfo(); 
+            
+            % array dimensioning
+            obj.nVol = size(obj.vInfo,1);
+            
+            % memory allocation
+            obj.hTxtI = cell(obj.nLblI,obj.nVol);
+            
+            % ------------------------------------- %
+            % --- OBJECT DIMENSION CALCULATIONS --- %
+            % ------------------------------------- %
+            
+            % calculates the panel width
+            obj.hghtPanelC = obj.dX + obj.hghtRow;
+            obj.widPanel = obj.widLblI + ...
+                (3+obj.nVol)*(obj.dX/2) + obj.nVol*obj.widTxtI;
+            
+            % calculates the figure dimensions
+            obj.widFig = obj.widPanel + 2*obj.dX;
+            obj.hghtFig = obj.hghtPanelI + obj.hghtPanelC + 3*obj.dX;
+            
+            % calculates the other object handles
+            obj.hghtAxI = obj.hghtPanelI - ...
+                (2*obj.dX + obj.nLblI*obj.hghtHdr);
+            obj.widAxI = obj.widTxtI - obj.dX;
+            obj.widButC = obj.widPanel - obj.dX;
+            
+        end
+        
+        % --- initialises the class fields
+        function initClassObjects(obj)
+            
+            % deletes any previous GUIs
+            hPrev = findall(0,'tag',obj.tagStr);
+            if ~isempty(hPrev); delete(hPrev); end
+            
+            % --------------------------- %
+            % --- MAIN FIGURE OBJECTS --- %
+            % --------------------------- %
+            
+            % creates the figure object
+            fPos = [100,100,obj.widFig,obj.hghtFig];
+            
+            % creates the figure object
+            obj.hFig = createUIObj('figure','Position',fPos,...
+                'tag',obj.tagStr,'MenuBar','None','Toolbar','None',...
+                'Name',obj.figName,'Resize','on','NumberTitle','off',...
+                'Visible','off','AutoResizeChildren','off',...
+                'BusyAction','Cancel','GraphicsSmoothing','off',...
+                'DoubleBuffer','off','Renderer','painters');            
+            
+            % ----------------------- %
+            % --- SUB-PANEL SETUP --- %
+            % ----------------------- %
+            
+            % sets up the sub-panel objects
+            obj.setupControlButtonPanel();            
+            obj.setupVolumnInfoPanel();
+            
+            % ------------------------------- %
+            % --- HOUSE-KEEPING EXERCISES --- %
+            % ------------------------------- %            
+                        
+            % opens the class figure
+            openClassFigure(obj.hFig);
+            
+        end
+        
+        % --- creates the axes object for volume, iVol
+        function createAxesObject(obj,pFree,iVol)
+            
+            % precalculations
+            xP = 0.5*[-1,1];
+            [yFree,yUsed] = deal(100-[pFree,0],[0,100-pFree]);
+
+            % sets up the position vector
+            yPos = (3/2)*obj.dX + obj.nLblI*obj.hghtHdr;
+            xPos = (iVol-1)*obj.widTxtI + obj.widLblI + (1+iVol)*obj.dX/2;
+            axPos = [xPos,yPos,obj.widAxI,obj.hghtAxI];
+            
+            % creates the new axes object
+            hAx = createUIObj('axes',obj.hPanelI,'Position',axPos,...
+                'xticklabel',[],'yticklabel',[],'xtick',[],'box','on',...
+                'ytick',obj.yTick,'xlim',xP,'ylim',[0,100],'YGrid','on');
+            
+            % creates the new axes objects
+            hold(hAx,'on');
+            hFree = patch(hAx,...
+                xP(obj.ix),yFree(obj.iy),'g','FaceAlpha',obj.fAlpha);
+            hUsed = patch(hAx,...
+                xP(obj.ix),yUsed(obj.iy),'r','FaceAlpha',obj.fAlpha);
+            
+            % sets the legend (first volume only)
+            if iVol == 1
+                % creates the legend object
+                hLg = legend([hFree,hUsed],{'Free Space','Used Space'},'box','off',...
+                    'FontWeight','bold','FontSize',8,'Units','Pixels');
+                
+                % resets the legend location
+                lgPos = get(hLg,'Position');
+                yLg = axPos(2)+0.5*axPos(4)-lgPos(4)/2;
+                set(hLg,'Position',[obj.dX/2,yLg,axPos(1)-obj.dX,lgPos(4)])
+            end
+        end
+        
+        % ------------------------------------ %
+        % --- PANEL OBJECT SETUP FUNCTIONS --- %
+        % ------------------------------------ %        
+            
+        % --- sets up the control button panel objects
+        function setupControlButtonPanel(obj)
+            
+            % initialisations
+            tStrB = 'Close Window';            
+            cbFcnB = @obj.buttonCloseWindow;
+            
+            % creates the panel object
+            pPos = [obj.dX*[1,1],obj.widPanel,obj.hghtPanelC];
+            obj.hPanelC = createPanelObject(obj.hFig,pPos);
+            
+            % creates the button object
+            pPosB = [obj.dX*[1,1]/2,obj.widButC,obj.hghtBut];
+            obj.hButC = createUIObj('pushbutton',obj.hPanelC,...
+                'Position',pPosB,'FontUnits','Pixels',...
+                'FontWeight','Bold','FontSize',obj.fSzL,...
+                'String',tStrB,'Callback',cbFcnB);
+            
+        end
+        
+        % --- sets up the volume information panel objects
+        function setupVolumnInfoPanel(obj)
+           
+            % initialisations
+            pStr = cell(obj.nLblI,1+obj.nVol);
+            tStrR = {'Volumn Name: ','Total Space (GB): ',...
+                     'Free Space (GB): ','% Capacity: '};            
+            wObj = [obj.widLblI,obj.widTxtI*ones(1,obj.nVol)];
+                 
+            % creates the panel object
+            yPos = sum(obj.hPanelC.Position([2,4])) + obj.dX;
+            pPos = [obj.dX,yPos,obj.widPanel,obj.hghtPanelI];
+            obj.hPanelI = createPanelObject(obj.hFig,pPos);
+            
+            % sets up the text labels
+            for i = 1:obj.nLblI
+                % calculates the object vertical offset
+                j = obj.nLblI - (i-1);
+                yOfs = obj.dX + (j-1)*obj.hghtHdr;
+                
+                % creates the text object
+                pStr{1} = tStrR{i};
+                hObj = createObjectRow(obj.hPanelI,1+obj.nVol,...
+                    'text',wObj,'xOfs',obj.dX/2,'yOfs',yOfs,...
+                    'dxOfs',obj.dX,'pStr',pStr); 
+                
+                % sets the object properties
+                obj.hTxtI(i,:) = hObj(2:end);
+                set(hObj{1},'HorizontalAlignment','Right');
+                
+                % retrieves the volume data strings
+                txtStr = obj.getVolumeDataStrings(i);                
+                
+                % sets the text properties
+                cellfun(@(x,y,z)(set(x,'String',y)),obj.hTxtI(i,:)',txtStr)                
+            end
+            
+            % sets up the text label colours
+            pFree = cellfun(@(x)(x{3}/x{2}),num2cell(obj.vInfo,2));
+            txtCol = arrayfun(@(x)(obj.getTextColour(100*x)),pFree,'un',0);
+            
+            % updates the volumn object properties
+            for i = 1:obj.nVol
+                % sets the text label colour
+                cellfun(@(x)(set(...
+                    x,'ForegroundColor',txtCol{i})),obj.hTxtI(:,i));
+                
+                % creates the axes object
+                obj.createAxesObject(100*pFree(i),i);                
+            end            
+            
+        end        
+        
+        % --------------------------------------- %
+        % --- OTHER OBJECT CALLBACK FUNCTIONS --- %
+        % --------------------------------------- %
+        
+        % --- close window button callback function
+        function buttonCloseWindow(obj, ~, ~)
+            
+            delete(obj.hFig);
+            
+        end
+        
+        % ------------------------------- %
+        % --- MISCELLANEOUS FUNCTIONS --- %
+        % ------------------------------- %        
+        
+        % --- retrieves the volume data strings (based on row index)
+        function tStrR = getVolumeDataStrings(obj,iRow)
+        
+            if iRow == obj.nLblI
+                % case is the capacity fields
+                tStr0 = cellfun(@(x)(100*x{3}/x{2}),num2cell(obj.vInfo,2));
+                tStrR = arrayfun(@(x)(sprintf('%.1f%s',x,'%')),tStr0,'un',0);
+                
+            else
+                % case is the other fields
+                tStrR = obj.vInfo(:,iRow);
+                
+                % converts the numerical values to strings
+                if iRow > 1
+                    tStrR = cellfun(@(x)(sprintf('%.1f',x)),tStrR,'un',0);
+                end
+            end
+            
+        end
+        
+    end
+    
+    % class methods
+    methods (Static)
+        
+        % --- retrieves text colour based on the volumes % capacity
+        function txtCol = getTextColour(pFree)
+            
+            % sets the colour of the text based on the capacity %age
+            if pFree < 10
+                % case is free space is very low
+                txtCol = 'r';
+                
+            elseif pFree < 25
+                % case is free space is low
+                txtCol = [0.9,0.3,0.0];
+                
+            else
+                % case is free space is normal
+                txtCol = 'k';
+            end
+            
+        end
+        
+    end    
+    
 end
-
-% --- retrieves the colour of the text (based on the volumes % capacity)
-function txtCol = getTextColour(pFree)
-
-% sets the colour of the text based on the capacity %age
-if pFree < 10
-    % case is free space is very low
-    txtCol = 'r';
-elseif pFree < 25
-    % case is free space is low
-    txtCol = [0.9,0.3,0.0];
-else
-    % case is free space is normal
-    txtCol = 'k';
-end
-
-% --- creates the axes objects
-function createAxesObject(handles,pFree,axPos,isFirst)
-
-% initialisations
-dX = 5;
-fAlpha = 0.5;
-yTick = 0:20:100;
-hPanel = handles.panelDiskInfo;
-[yFree,yUsed,xP] = deal(100-[pFree,0],[0,100-pFree],0.5*[-1,1]);
-[ix,iy] = deal([1,1,2,2],[1,2,2,1]);
-
-% creates the new axes object
-hAx = axes(hPanel,'Units','Pixels','Position',axPos,'xticklabel',[],...
-           'yticklabel',[],'xtick',[],'ytick',yTick,'box','on',...
-           'xlim',0.5*[-1,1],'ylim',[0,100],'YGrid','on');
-  
-% creates the new axes objects
-hold(hAx,'on');
-hFree = patch(hAx,xP(ix),yFree(iy),'g','FaceAlpha',fAlpha);
-hUsed = patch(hAx,xP(ix),yUsed(iy),'r','FaceAlpha',fAlpha);
-
-% sets the legend (first volume only)
-if isFirst    
-    hLg = legend([hFree,hUsed],{'Free Space','Used Space'},'box','off',...
-                 'FontWeight','bold','FontSize',8,'Units','Pixels');
-             
-    lgPos = get(hLg,'Position');
-    lgBot = axPos(2)+0.5*axPos(4)-lgPos(4)/2;
-    set(hLg,'Position',[dX,lgBot,axPos(1)-2*dX,lgPos(4)])
-end
-
-% --- creates the text objects
-function createTextObj(handles,txtPos,txtStr,txtCol,iLbl)
-
-% initialisations
-dY = 20;
-txtPos(2) = ((iLbl-1)+0.5)*dY;
-hPanel = handles.panelDiskInfo;
-
-% converts the numerical values to formatted strings
-switch iLbl
-    case 1
-        txtStr = sprintf('%.1f%s',txtStr,'%');    
-    case {2,3}
-        txtStr = sprintf('%.1f',txtStr);    
-end
-
-% creates the text object
-uicontrol('Parent',hPanel,'Style','Text','Position',txtPos,...
-          'String',txtStr,'HorizontalAlignment','Center',...
-          'FontWeight','Bold','FontUnits','Pixels','FontSize',12,...
-          'ForegroundColor',txtCol);
