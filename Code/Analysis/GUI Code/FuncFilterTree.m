@@ -53,13 +53,13 @@ classdef FuncFilterTree < matlab.mixin.SetGet
             obj.hFig = hFig;
             obj.hPanel = findall(obj.hFig,'tag','panelFuncFilter');
             obj.hButton = findall(obj.hFig,'tag','toggleFuncFilter');  
+            obj.hCheck = findall(obj.hFig,'tag','checkGrpExpt');
             
             % retrieves the solution file information
             obj.snTot = snTot;
             obj.pDataT = pDataT;            
             
-            % sets the input argument
-            obj.hCheck = findall(obj.hFig,'tag','checkGrpExpt');
+            % sets the input argument            
             obj.isLoading = ~isempty(obj.hCheck);
             
             % initialises the tree object
@@ -503,7 +503,7 @@ classdef FuncFilterTree < matlab.mixin.SetGet
             
             % sets the panel offset
             if obj.isLoading
-                dY = 2*(1 + obj.dX);                 
+                dY = 2*(1 + obj.dX);
             else
                 dY = 4 + 3*obj.dX;                               
             end

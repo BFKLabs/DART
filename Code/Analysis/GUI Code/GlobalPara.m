@@ -1,285 +1,432 @@
-function varargout = GlobalPara(varargin)
-% Begin initialization code - DO NOT EDIT
-gui_Singleton = 1;
-gui_State = struct('gui_Name',       mfilename, ...
-                   'gui_Singleton',  gui_Singleton, ...
-                   'gui_OpeningFcn', @GlobalPara_OpeningFcn, ...
-                   'gui_OutputFcn',  @GlobalPara_OutputFcn, ...
-                   'gui_LayoutFcn',  [] , ...
-                   'gui_Callback',   []);
-if nargin && ischar(varargin{1})
-    gui_State.gui_Callback = str2func(varargin{1});
-end
-
-if nargout
-    [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
-else
-    gui_mainfcn(gui_State, varargin{:});
-end
-% End initialization code - DO NOT EDIT
-
-% --- Executes just before GlobalPara is made visible.
-function GlobalPara_OpeningFcn(hObject, eventdata, handles, varargin)
-
-% global variables
-global isChange
-isChange = false;
-
-% Choose default command line output for GlobalPara
-handles.output = hObject;
-
-% Update handles structure
-guidata(hObject, handles);
-
-% sets the input arguments
-hGUI = varargin{1};
-gPara = getappdata(hGUI.figFlyAnalysis,'gPara');
-hPara = getappdata(hGUI.figFlyAnalysis,'hPara');
-
-% makes the main/parameter GUIs invisible
-setObjVisibility(hGUI.figFlyAnalysis,'off')
-if ~isempty(hPara); setObjVisibility(hPara,'off'); end
-
-% determines if there are any y-values in the solution data. if there is,
-% then disable the movement type (absolute location only)
-snTot = getappdata(hGUI.figFlyAnalysis,'snTot');
-if is2DCheck(snTot(1).iMov)
-    % midline crossings only applicable for 1D assays
-    setObjEnable(handles.popupMovType,'off')
-end
-
-% sets the data structs into the GUI
-setappdata(hObject,'gPara',gPara);
-setappdata(hObject,'hPara',hPara);
-setappdata(hObject,'hGUI',hGUI);
-
-% initialises the 
-initEditObjects(handles)
-initPopupObjects(handles)
-setObjEnable(handles.buttonUpdate,'off')
-setObjEnable(handles.buttonReset,'off')
-centreFigPosition(hObject);
-
-% UIWAIT makes GlobalPara wait for user response (see UIRESUME)
-uiwait(handles.figGlobalPara);
-
-% --- Outputs from this function are returned to the command line.
-function varargout = GlobalPara_OutputFcn(hObject, eventdata, handles) 
-
-% global variables
-global gPara isChange
-
-% Get default command line output from handles structure
-varargout{1} = gPara;
-varargout{2} = isChange;
-
-%-------------------------------------------------------------------------%
-%                        FIGURE CALLBACK FUNCTIONS                        %
-%-------------------------------------------------------------------------%
-
-% ------------------------------------- %
-% --- GUI OBJECT CALLBACK FUNCTIONS --- %
-% ------------------------------------- %
-
-% --- callback function for the edit box objects --- %
-function editCallback(hObject, eventdata, handles)
-
-% retrieves the global parameter struct
-gPara = getappdata(handles.figGlobalPara,'gPara');
-pStr = get(hObject,'userdata');
-nwVal = str2double(get(hObject,'string'));
-
-% sets the parameter limits/integer flags
-switch (pStr)
-    case ('Tgrp0') 
-        % case is the start of the day
-        [nwLim,isInt] = deal([0 23.99],0);
+classdef GlobalPara < handle
     
-    case ('TdayC') 
-        % case is the day cycle duration
-        [nwLim,isInt] = deal([0 24],1);        
-    
-    case ('pWid') 
-        % case is the midline location
-        [nwLim,isInt] = deal([0 1],0);
-    
-    case ('tNonR') 
-        % case is the post-stimuli non-reactive duration
-        [nwLim,isInt] = deal([1 600],0);
-    
-    case ('nAvg') 
-        % case is the stimuli averaging time bin size
-        [nwLim,isInt] = deal([1 300],1);
-    
-    case ('dMove') 
-        % case is the activity movement distance
-        [nwLim,isInt] = deal([0 inf],0);
-    
-    case ('tSleep') 
-        % case is the inactivity sleep duration
-        [nwLim,isInt] = deal([1 60],1);
-end
-
-% determines if the new value is valid
-if (chkEditValue(nwVal,nwLim,isInt))
-    % updates the parameter value
-    if (isInt)
-        % parameter is an integer
-        eval(sprintf('gPara.%s = %i;',pStr,nwVal))
-    else
-        % parameter is a float
-        eval(sprintf('gPara.%s = %f;',pStr,nwVal))
+    % class properties
+    properties
+        
+        % input arguments
+        hFigM        
+        hPara
+        
+        % output class fields
+        gParaU
+        isChange = false;        
+        
+        % main class objects
+        hFig
+        
+        % global variable panel objects
+        hPanelV
+        hObjV
+        
+        % control button panel objects
+        hPanelC
+        hButC
+        
+        % fixed dimension fields
+        dX = 10;    
+        hghtRow = 25;
+        hghtHdr = 20;        
+        widPanel = 460;
+        widLblV = 300;
+        
+        % calculated dimension fields
+        widFig
+        hghtFig
+        hghtPanelV
+        hghtPanelC
+        widButC        
+        
+        % static class fields
+        nButC = 3;
+        nParaV = [4,3,1];
+        fSzH = 13;
+        fSzL = 12;
+        fSz = 10 + 2/3;
+        
+        % static string fields
+        tagStr = 'figGlobalPara';
+        figName = 'Setting Global Parameters';
+        tHdrV = 'ANALYSIS FUNCTION GLOBAL VARIABLES';
+        
     end
     
-    % resets the parameter struct and enables the update button
-    setappdata(handles.figGlobalPara,'gPara',gPara)
-    setObjEnable(handles.buttonReset,'on')
-    setObjEnable(handles.buttonUpdate,'on')
-    
-else
-    % resets the string to the previous value
-    set(hObject,'string',eval(sprintf('gPara.%s',pStr)))
-end
+    % class methods
+    methods
+        
+        % --- class constuctor
+        function obj = GlobalPara(hFigM)
+            
+            % sets the input arguments
+            obj.hFigM = hFigM;
+            
+            % initialises the class fields/objects
+            obj.initClassFields();
+            obj.initClassObjects();                
+            
+            % clears the output object (if not required)
+            if (nargout == 0) && ~isdeployed
+                clear obj
+            end     
+            
+            % waits for the user response
+            uiwait(obj.hFig);
+            
+        end        
+        
+        % -------------------------------------- %
+        % --- CLASS INITIALISATION FUNCTIONS --- %
+        % -------------------------------------- %
+        
+        % --- initialises the class fields
+        function initClassFields(obj)
+            
+            % memory allocation
+            obj.hObjV = cell(sum(obj.nParaV),1);
+            
+            % field retrieval
+            obj.hPara = getappdata(obj.hFigM,'hPara');            
+            obj.gParaU = getappdata(obj.hFigM,'gPara');
+            
+            % ------------------------------------- %
+            % --- OBJECT DIMENSION CALCULATIONS --- %
+            % ------------------------------------- %
 
-% --- callback function for the popup menu objects --- %
-function popupCallback(hObject, eventdata, handles)
+            % panel dimension calculations
+            obj.hghtPanelV = 2*obj.dX + ...
+                obj.hghtHdr + sum(obj.nParaV)*obj.hghtRow;
+            obj.hghtPanelC = obj.dX + obj.hghtRow;
+            
+            obj.widFig = obj.widPanel + 2*obj.dX;
+            obj.hghtFig = obj.hghtPanelV + obj.hghtPanelC + 3*obj.dX;
 
-% retrieves the global parameter struct
-gPara = getappdata(handles.figGlobalPara,'gPara');
+            % other object dimension calculations
+            obj.widButC = (obj.widPanel - 2*obj.dX)/obj.nButC;
+            
+        end
+        
+        % --- initialises the class fields
+        function initClassObjects(obj)
+            
+            % deletes any previous GUIs
+            hPrev = findall(0,'tag',obj.tagStr);
+            if ~isempty(hPrev); delete(hPrev); end
+            
+            % --------------------------- %
+            % --- MAIN FIGURE OBJECTS --- %
+            % --------------------------- %
+            
+            % creates the figure object
+            fPos = [100,100,obj.widFig,obj.hghtFig];
+            
+            % creates the figure object
+            obj.hFig = createUIObj('figure','Position',fPos,...
+                'tag',obj.tagStr,'MenuBar','None','Toolbar','None',...
+                'Name',obj.figName,'Resize','on','NumberTitle','off',...
+                'Visible','off','AutoResizeChildren','off',...
+                'BusyAction','Cancel','GraphicsSmoothing','off',...
+                'DoubleBuffer','off','Renderer','painters','CloseReq',[]);            
+            
+            % ----------------------- %
+            % --- SUB-PANEL SETUP --- %
+            % ----------------------- %
+                        
+            % sets up the sub-panel objects
+            obj.setupControlButtonPanel();
+            obj.setupGlobalParaPanel();
+            
+            % ------------------------------- %
+            % --- HOUSE-KEEPING EXERCISES --- %
+            % ------------------------------- %
+            
+            % initialises the object properties
+            obj.initObjectProps();            
+            
+            % opens the class figure
+            openClassFigure(obj.hFig);
+            
+        end      
+        
+        % --- initialises the object properties
+        function initObjectProps(obj)
+            
+            % updates the values for each parameter object
+            for i = 1:sum(obj.nParaV)
+                % field retrieval
+                pStr = obj.hObjV{i}.UserData;
+                
+                % updates/set the parameter values
+                switch obj.hObjV{i}.Style
+                    case 'edit'
+                        % updates the editbox value
+                        
+                        % sets the editbox string
+                        obj.hObjV{i}.String = num2str(obj.gParaU.(pStr));
+                        
+                    case 'popupmenu'
+                        % case is a popup menu
+                        
+                        % retrieves the popupmenu strings
+                        if strcmp(pStr,'movType')
+                            pL = {'Absolute Location';'Midline Crossing'};
+                        end
+                        
+                        % resets the popupmenu properties
+                        iSel = find(strcmp(pL,obj.gParaU.(pStr)));
+                        set(obj.hObjV{i},'String',pL,'Value',iSel);
+                end
+                
+            end
+            
+        end
+        
+        % ------------------------------------ %
+        % --- PANEL OBJECT SETUP FUNCTIONS --- %
+        % ------------------------------------ %
+        
+        % --- sets up the control button parameter panel
+        function setupControlButtonPanel(obj)
+            
+            % initialisations
+            cbFcnB = {@obj.buttonResetPara;@obj.buttonUpdatePara;...
+                      @obj.buttonCloseWindow};
+            bStrC = {'Reset Default','Update Parameters','Close Window'};
+                        
+            % creates the panel object
+            pPos = [obj.dX*[1,1],obj.widPanel,obj.hghtPanelC];
+            obj.hPanelC = createPanelObject(obj.hFig,pPos);
+            
+            % creates the panel objects
+            obj.hButC = createObjectRow(obj.hPanelC,obj.nButC,...
+                'pushbutton',obj.widButC,'pStr',bStrC,'dxOfs',0,...
+                'yOfs',obj.dX/2);
+            cellfun(@(x,y)(set(x,'Callback',y)),obj.hButC,cbFcnB);
+            cellfun(@(x)(setObjEnable(x,0)),obj.hButC(1:2));
+            
+        end
+        
+        % --- sets up the global parameter panel
+        function setupGlobalParaPanel(obj)
+            
+            % initialisations
+            nParaVS = cumsum(obj.nParaV);
+            iTypeE = [(1:2),(4:sum(obj.nParaV))];            
+            pStrV = {'Tgrp0','TdayC','movType','pWid',...
+                     'tNonR','nAvg','tSleep','dMove'};
+            tLblV = {'Day Cycle Start Hour',...
+                     'Day Cycle Duration (Hours)',...
+                     'Movement Calculation Type',...
+                     'Mid-Line Crossing Location',...
+                     'Post-Stimuli Event Response Time (sec)',...
+                     'Stimuli Response Averaging Time-Window (frames)',...
+                     'Sleep Inactivity Duration (min)',...
+                     'Activity Movement Distance (mm)'};
+                                  
+            % function handles
+            cbFcnE = @obj.editParaUpdate;
+            cbFcnP = @obj.popupParaUpdate;
+            
+            % creates the panel object
+            yPos = sum(obj.hPanelC.Position([2,4])) + obj.dX;
+            pPos = [obj.dX,yPos,obj.widPanel,obj.hghtPanelV];
+            obj.hPanelV = createPanelObject(obj.hFig,pPos,obj.tHdrV);            
+            
+            % creates the popupmenu/editbox objects
+            for i = 1:sum(obj.nParaV)
+                % calculates the vertical offset
+                j = sum(obj.nParaV) - (i-1);
+                hOfs = (obj.dX/2)*sum(i <= nParaVS);
+                yOfs = obj.dX/2 + (j-1)*obj.hghtRow + hOfs;
+                
+                % sets the object type string (based on type)
+                if any(iTypeE == i)
+                    [pTypeV,cbFcn] = deal('edit',cbFcnE);
+                else
+                    [pTypeV,cbFcn] = deal('popupmenu',cbFcnP);
+                end
+                
+                % creates the parameter object
+                obj.hObjV{i} = createObjectPair(obj.hPanelV,tLblV{i},...
+                    obj.widLblV,pTypeV,'yOfs',yOfs,'cbFcnM',cbFcn);
+                set(obj.hObjV{i},'UserData',pStrV{i});
+            end
+            
+            % disables the movement type popupmenu object (2D setup only)
+            snTot = getappdata(obj.hFigM,'snTot');
+            if is2DCheck(snTot(1).iMov)
+                hPopupMT = findobj(obj.hPanelV,'UserData','movType');
+                setObjEnable(hPopupMT,'off');
+            end
+            
+        end
+        
+        % --------------------------------------- %
+        % --- OTHER OBJECT CALLBACK FUNCTIONS --- %
+        % --------------------------------------- %
+        
+        % --- parameter update editbox callback function
+        function editParaUpdate(obj, hEdit, ~)
+            
+            % field retrieval
+            pStr = hEdit.UserData;
+            nwVal = str2double(hEdit.String);
+            [nwLim,isInt] = obj.getParaLimits(pStr);
+            
+            % determines if the new value is valid
+            if chkEditValue(nwVal,nwLim,isInt)
+                % updates the parameter value
+                obj.gParaU.(pStr) = nwVal;
+                
+                % sets the other object properties
+                cellfun(@(x)(setObjEnable(x,1)),obj.hButC(1:2))
+                
+            else
+                % otherwise, revert back to the previous value
+                hEdit.String = num2str(obj.gParaU.(pStr));
+            end
+            
+        end
+        
+        % --- parameter update popupmenu callback function
+        function popupParaUpdate(obj, hPopup, ~)
+            
+            % resets the parameter value
+            pStr = hPopup.UserData;
+            obj.gParaU.(pStr) = hPopup.String{hPopup.Value};
+            
+            % sets the other object properties
+            cellfun(@(x)(setObjEnable(x,1)),obj.hButC(1:2))
+            
+        end        
+        
+        % --- reset parameter button callback function
+        function buttonResetPara(obj, ~, ~)
+           
+            % prompts the user if they wish to update the struct
+            tStr = 'Reset Global Parameters?';
+            qStr = ['Are sure you wish to update the ',...
+                    'default global parameters?'];
+            uChoice = questdlg(qStr,tStr,'Yes','No','Yes');
+            
+            % if the user cancelled, then exit
+            if ~strcmp(uChoice,'Yes'); return; end  
+            
+            % overwrites the global parameter struct in the program 
+            gPara = obj.gParaU;
+            save(getParaFileName('ProgPara.mat'),'gPara','-append');
+            
+            % resets the other flag/object properties
+            obj.isChange = true;
+            cellfun(@(x)(setObjEnable(x,0)),obj.hButC(1:2));
+            
+        end
+        
+        % --- update parameter button callback function
+        function buttonUpdatePara(obj, hBut, evnt)
+           
+            if ~isempty(evnt)
+                % prompts the user if they really want to update
+                tStr = 'Update Global Parameters?';
+                qStr = {'Do you wish to update the global parameters?',...
+                        'Note - this will clear all current calculations.'};
+                uChoice = questdlg(qStr,tStr,'Yes','No','Yes');
+                
+                % if the user cancelled, then exit
+                if ~strcmp(uChoice,'Yes'); return; end
+            end
+            
+            % resets the change flag and disables the button
+            obj.isChange = true;
+            setObjEnable(hBut,0);
+            
+        end
+        
+        % --- close window button callback function
+        function buttonCloseWindow(obj, ~, ~)        
+           
+            if strcmp(obj.hButC{2}.Enable,'on')
+                % prompts the user if they wish to update the struct
+                uChoice = questdlg({'Do you wish to update the global parameters?',...
+                    'Note - this will clear all current calculations'},...
+                    'Update Global Parameters?','Yes','No','Cancel','Yes');
 
-% updates the global parameter struct
-[popupStr,iSel] = deal(get(hObject,'string'),get(hObject,'value'));
-gPara.movType = popupStr{iSel};
-
-% resets the parameter struct and enables the update button
-setappdata(handles.figGlobalPara,'gPara',gPara)
-setObjEnable(handles.buttonUpdate,'on')
-
-% ------------------------------- %
-% --- PROGRAM CONTROL BUTTONS --- %
-% ------------------------------- %
-
-% --- Executes on button press in buttonReset.
-function buttonReset_Callback(hObject, eventdata, handles)
-
-% global variables
-global isChange
-
-% prompts the user if they wish to update the struct
-uChoice = questdlg('Are sure you wish to update the default global parameters?',...        
-                   'Reset Global Parameters?','Yes','No','Yes');
-if ~strcmp(uChoice,'Yes')
-    return
-end
-
-% overwrites the global parameter struct in the program parameter data file
-gPara = getappdata(handles.figGlobalPara,'gPara');
-save(getParaFileName('ProgPara.mat'),'gPara','-append');
-
-% sets the change flag to true and disables the reset/update buttons
-isChange = true;
-setObjEnable(hObject,'off')
-setObjEnable(handles.buttonUpdate,'off')
-
-% --- Executes on button press in buttonUpdate.
-function buttonUpdate_Callback(hObject, eventdata, handles)
-
-% global variables
-global isChange 
-
-% prompts the user if they really do want to update
-if (~isa(eventdata,'char'))
-    % prompts the user if they wish to update the struct
-    uChoice = questdlg({'Do you wish to update the global parameters?',...
-            'Note - this will clear all current calculations'},...
-            'Update Global Parameters?','Yes','No','Yes');
-    if (~strcmp(uChoice,'Yes'))
-        % user chose no or cancelled
-        return
+                switch uChoice
+                    case 'Yes' 
+                        % case is user does want to update
+                        obj.buttonUpdatePara(obj.hButC{2},[]);
+                    
+                    case 'No'
+                        % flag that no changes were made
+                        obj.isChange = false;
+                    
+                    otherwise
+                        % case is the user cancelled so exit
+                        return
+                end
+            end
+            
+            % closes the GUI
+            setObjVisibility(obj.hFig,0);
+            setObjVisibility(obj.hFigM,1);
+            setObjVisibility(obj.hPara,1);            
+            
+            % delete the dialog window
+            delete(obj.hFig)            
+            
+        end        
+        
+        % ------------------------------- %
+        % --- MISCELLANEOUS FUNCTIONS --- %
+        % ------------------------------- %        
+        
+        % --- deletes the class object
+        function deleteClass(obj)            
+            
+            % deletes and clears the class object
+            delete(obj)
+            clear obj
+            
+        end
+        
     end
-end
-
-% sets the change flag to true and disables the update button
-isChange = true;
-setObjEnable(hObject,'off')
-
-% --- Executes on button press in buttonClose.
-function buttonClose_Callback(hObject, eventdata, handles)
-
-% global variables
-global gPara isChange
-
-% retrieves the global parameter struct
-gPara = getappdata(handles.figGlobalPara,'gPara');
-hPara = getappdata(handles.figGlobalPara,'hPara');
-hGUI = getappdata(handles.figGlobalPara,'hGUI');
-
-% if there is an update specified, then prompt the user to update
-if strcmp(get(handles.buttonUpdate,'enable'),'on')
-    % prompts the user if they wish to update the struct
-    uChoice = questdlg({'Do you wish to update the global parameters?',...
-            'Note - this will clear all current calculations'},...
-            'Update Global Parameters?','Yes','No','Cancel','Yes');
-    switch (uChoice)
-        case ('Yes') % case is the user wants to update movie struct
-            buttonUpdate_Callback(handles.buttonUpdate, '1', handles)            
-        case ('No')
-            [gPara,isChange] = deal([],false);
-        otherwise
-            return
-    end
-end
-
-% closes the GUI
-delete(handles.figGlobalPara);
-
-% makes the main/parameter GUIs invisible
-setObjVisibility(hGUI.figFlyAnalysis,'on')
-if ~isempty(hPara); setObjVisibility(hPara,'on'); end
-
-%-------------------------------------------------------------------------%
-%                             OTHER FUNCTIONS                             %
-%-------------------------------------------------------------------------%
-
-% --- initialises the GUI edit box object properties --- %
-function initEditObjects(handles)
-
-% retrieves the global parameter struct
-gPara = getappdata(handles.figGlobalPara,'gPara');
-
-% sets the panel object handle
-hPanel = handles.panelPara;
-hEdit = findall(hPanel,'style','edit');
-cbFcn = {@editCallback,handles};
-
-% initialises all the editboxes in the GUI
-for i = 1:length(hEdit)
-    hObj = hEdit(i);
-    pStr = num2str(getStructField(gPara,get(hEdit(i),'UserData')));    
-    set(hObj,'string',pStr,'callback',cbFcn)
-end
-
-% --- initialises the GUI edit box object properties --- %
-function initPopupObjects(handles)
-
-% retrieves the global parameter struct
-gPara = getappdata(handles.figGlobalPara,'gPara');
-
-% initialises the list strings
-set(handles.popupMovType,'string',{'Absolute Location';'Midline Crossing'})
-
-% sets the panel object handle
-hPanel = handles.panelPara;
-hPopup = findall(hPanel,'style','popupmenu');
-cbFcn = {@popupCallback,handles};
-
-% initialises all the editboxes in the GUI
-for i = 1:length(hPopup)
-    % determines the item that is to be selected
-    hObj = hPopup(i);
-    pStr = getStructField(gPara,get(hPopup(i),'UserData'));    
-    iSel = find(strcmp(pStr,get(hObj,'string')));
     
-    % sets the popup menu properties    
-    set(hObj,'callback',cbFcn,'value',iSel)
+    % class methods
+    methods (Static)
+        
+        function [nwLim,isInt] = getParaLimits(pStr)
+            
+            % sets the parameter limits/integer flags
+            switch pStr
+                case 'Tgrp0'
+                    % case is the start of the day
+                    [nwLim,isInt] = deal([0 23.99],0);
+                    
+                case 'TdayC'
+                    % case is the day cycle duration
+                    [nwLim,isInt] = deal([0 24],1);
+                    
+                case 'pWid'
+                    % case is the midline location
+                    [nwLim,isInt] = deal([0 1],0);
+                    
+                case 'tNonR'
+                    % case is the post-stimuli non-reactive duration
+                    [nwLim,isInt] = deal([1 600],0);
+                    
+                case 'nAvg'
+                    % case is the stimuli averaging time bin size
+                    [nwLim,isInt] = deal([1 300],1);
+                    
+                case 'dMove'
+                    % case is the activity movement distance
+                    [nwLim,isInt] = deal([0 inf],0);
+                    
+                case 'tSleep'
+                    % case is the inactivity sleep duration
+                    [nwLim,isInt] = deal([1 60],1);
+            end
+            
+        end
+        
+    end    
+    
 end

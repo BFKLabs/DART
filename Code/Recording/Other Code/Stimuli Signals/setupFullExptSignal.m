@@ -2,7 +2,7 @@
 function [xyData,sPara] = setupFullExptSignal(sObj,sTrain,sPara)
 
 % retrieves the properties from the gui
-if isa(sObj,'OpenSolnFileTab')
+if isa(sObj,'OpenSolnFileTab') || isa(sObj,'SolnFileLoad')
     % object retrieval
     useTOfs = 1;        
 

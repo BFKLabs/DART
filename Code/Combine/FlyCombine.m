@@ -146,7 +146,8 @@ end
 
 % opens the solution file gui
 wState = warning('off','all');
-OpenSolnFile(hFig);
+% OpenSolnFile(hFig);
+OpenSolnFiles(hFig,1);
 warning(wState)
 
 % --------------------------------------------------------------------
@@ -159,7 +160,7 @@ SaveExptFile(handles.figFlyCombine)
 function menuSaveMulti_Callback(~, ~, handles)
 
 % runs the save multi experiment file gui
-SaveMultiExptFile(handles.figFlyCombine)
+SaveMultiExptFiles(handles.figFlyCombine)
 
 % ------------------- %
 % --- OTHER ITEMS --- %

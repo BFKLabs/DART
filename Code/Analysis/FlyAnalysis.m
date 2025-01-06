@@ -159,7 +159,8 @@ end
 
 % opens the solution file gui
 wState = warning('off','all');
-OpenSolnFile(hFig);
+% OpenSolnFile(hFig);
+OpenSolnFiles(hFig,3);
 warning(wState);
 
 % -------------------------------------------------------------------------
@@ -762,18 +763,24 @@ function menuGlobalParameters_Callback(~, ~, handles)
 % global variables
 global tDay
 
-% runs the stimulus
-[gPara,isChange] = GlobalPara(handles);
+% field retrieval
+hFig = handles.figFlyAnalysis;
+
+% runs the global parameter dialog window
+objGP = GlobalPara(hFig);
 
 % updates the global parameter struct (if changes are made)
-if isChange
+if objGP.isChange    
     % updates the global parameter struct
-    tDay = gPara.Tgrp0;
-    setappdata(handles.figFlyAnalysis,'gPara',gPara);
+    tDay = objGP.gParaU.Tgrp0;
+    setappdata(hFig,'gPara',objGP.gParaU);
     
     % resets all the calculated/plotted data
     menuResetData_Callback(handles.menuResetData, 'All', handles)
 end
+
+% deletes the class object
+objGP.deleteClass();
 
 % --------------------------------------------------------------------
 function menuResetPara_Callback(~, ~, handles)

@@ -7,6 +7,7 @@ classdef FileTreeExplorer < handle
         sDir
         hP
         fExtn
+        iTab
         
         % other class fields
         sFileT
@@ -31,18 +32,24 @@ classdef FileTreeExplorer < handle
     methods
         
         % --- class constructor
-        function obj = FileTreeExplorer(bObj,sDir)
+        function obj = FileTreeExplorer(bObj,sDir,iTab)
     
             % sets the input arguments
+            obj.iTab = iTab;
             obj.sDir = sDir;
-            obj.hP = bObj.hPanel{bObj.iTab};
-            obj.fExtn = bObj.fExtn{bObj.iTab};            
+            obj.fExtn = bObj.fExtn{obj.iTab};            
+            
+            if isprop(bObj,'hPanelTF')
+                obj.hP = bObj.hPanelTF{obj.iTab};
+            else
+                obj.hP = bObj.hPanel{obj.iTab};                
+            end
             
             % determines the solution files on the search path
             obj.sFileT = obj.findFileAll(obj.sDir);
             if ~isempty(bObj.sInfo)
                 % removes any previously loaded files from the search
-                if bObj.iTab == 1
+                if obj.iTab == 1
                     % case is the video solution files tab
                     sFile0 = cell2cell(cellfun(@(x)(cell2cell...
                         (field2cell(x.snTot,'sName'))),bObj.sInfo,'un',0));
@@ -440,6 +447,14 @@ classdef FileTreeExplorer < handle
             for i = 2:length(iLvl)
                 sFileL = sFileL.sFileD(iLvl(i));
             end
+            
+        end
+        
+        % --- deletes the class object
+        function deleteClass(obj)
+            
+            delete(obj.mTree)
+            clear obj;
             
         end
         

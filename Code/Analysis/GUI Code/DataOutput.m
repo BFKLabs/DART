@@ -853,11 +853,16 @@ if (iCol == 3) && (pInd == 2)
     % retrieves the data struct
     Data = get(hObject,'Data');
     
+%     % determined if a valid test type was selected
+%     [metInd,isChange] = MetricStats(iData,iRow,pInd);
+%     if isChange
+    
     % determined if a valid test type was selected
-    [metInd,isChange] = MetricStats(iData,iRow,pInd);
-    if isChange
+    objMS = MetricStats(iData,iRow,pInd);
+    if objMS.isChange
         % retrieves the order and metric index arrays
-        [iOrder,mIndF] = deal(iData.tData.iPara{iData.cTab}{pInd}{1},find(metInd)');
+        mIndF = find(objMS.metInd(:));
+        iOrder = iData.tData.iPara{iData.cTab}{pInd}{1};
         
         % determines which of the indices (which were previously set) have
         % been included in the new selection. remove those that are missing
@@ -876,22 +881,27 @@ if (iCol == 3) && (pInd == 2)
         end
         
         % resets the metric indices
-        iData.tData.iPara{iData.cTab}{pInd}{2}(iRow,:) = metInd;
+        iData.tData.iPara{iData.cTab}{pInd}{2}(iRow,:) = objMS.metInd;
         iData.runReshapeFunc(1,iRow);
         setappdata(handles.figDataOutput,'iData',iData);
         
         % updates the table string
-        mStr = iData.tData.setMetricStatString(metInd);
-        if (iscell(mStr))
+        mStr = iData.tData.setMetricStatString(objMS.metInd);
+        if iscell(mStr)
             Data{iRow,iCol} = mStr{1};
         else
             Data{iRow,iCol} = mStr;
         end
+        
+        % resets the table data
         set(hObject,'Data',Data)
         
         % updates the order list
         updateOrderList(handles)
     end
+    
+    % deletes the class object
+    objMS.deleteClass();
     
     % updates the current sheet tab
     iData.tData.updateDataTable(true);

@@ -10,7 +10,7 @@ if isempty(sInfo)
     isOn = false;
     
 else
-    % case is at least one expt is loaded
+    % case is at least one long (1/2 day) expt is loaded
     tDur = cellfun(@(x)(x.tDur),sInfo);
     isOn = any(convertTime(tDur,'s','d') > 0.5);
 end
