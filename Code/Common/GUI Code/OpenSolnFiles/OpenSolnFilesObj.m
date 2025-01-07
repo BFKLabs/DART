@@ -171,6 +171,9 @@ classdef OpenSolnFilesObj < handle
                     'BusyAction','Cancel','GraphicsSmoothing','off',...
                     'DoubleBuffer','off','Renderer','painters',...
                     'CloseReq',[]);
+                
+                % creates the load bar
+                hLoad = ProgressLoadbar(obj.lStr);                
             end
             
             if obj.sType == 3
@@ -213,10 +216,7 @@ classdef OpenSolnFilesObj < handle
                     % case is opening from multi-experiment saving
                     obj.objT = MultiExptGrouping(obj,2,true);        
                     
-                case 3
-                    % creates the load bar
-                    hLoad = ProgressLoadbar(obj.lStr);                    
-                    
+                case 3                    
                     % case is opening from analysis file load 
                     obj.objT{1} = SolnFileLoad(obj,1);
                     obj.objT{2} = MultiExptGrouping(obj,2,false);
@@ -229,14 +229,11 @@ classdef OpenSolnFilesObj < handle
                     
                     % disables these tabs (enabled when files are loaded)
                     obj.jTabGrp = getTabGroupJavaObj(obj.hTabGrp);
-                    arrayfun(@(x)(obj.jTabGrp.setEnabledAt(x-1,0)),2:3);
-                    
-                    % deletes the loadbar
-                    delete(hLoad);
+                    arrayfun(@(x)(obj.jTabGrp.setEnabledAt(x-1,0)),2:3);                    
             end
                         
-%             % REMOVE ME LATER
-%             obj.hTabGrp.SelectedTab = obj.objT{2}.hTab;
+            % deletes the loadbar (if one exists)
+            if exist('hLoad','var'); delete(hLoad); end
             
             % ------------------------------- %
             % --- HOUSE-KEEPING EXERCISES --- %

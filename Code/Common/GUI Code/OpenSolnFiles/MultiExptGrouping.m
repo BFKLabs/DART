@@ -650,7 +650,7 @@ classdef MultiExptGrouping < handle & dynamicprops
                     'Position',pPos,'FontUnits','Pixels',...
                     'FontWeight','Bold','FontSize',obj.fSzL,...
                     'Callback',cbFcnC,'UserData',i,'String',tStrC{i});
-            end            
+            end
             
         end
         
