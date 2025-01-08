@@ -47,17 +47,17 @@ hGUIH = guidata(hGUI);
 
 % retrieves the data structs from the main GUI
 iProg = getappdata(hGUI,'iProg');
-hPara = getappdata(hGUI,'hPara');
 plotD = getappdata(hGUI,'plotD');
 snTot = getappdata(hGUI,'snTot');
 sName = getappdata(hGUI,'sName');
+objP = getappdata(hGUI,'objP');
 setappdata(hObject,'fPos0',get(hObject,'Position'))
 
 % retrieves the currently stored plot data
-pData = feval(getappdata(hPara,'getPlotData'),hPara);
+pData = objP.pData;
 
 % Choose default command line output for DataOutput
-setObjVisibility(hPara,'off')
+objP.setVisibility(0);
 setObjVisibility(hGUI,'off')
 pause(0.05);
 
@@ -83,7 +83,7 @@ end
 setappdata(hObject,'hGUI',hGUI);
 setappdata(hObject,'snTot',snTot)
 setappdata(hObject,'iProg',iProg)
-setappdata(hObject,'hPara',hPara)
+setappdata(hObject,'objP',objP)
 setappdata(hObject,'pData',pData)
 setappdata(hObject,'plotD',plotD)
 setappdata(hObject,'sName',sName)
@@ -285,8 +285,8 @@ end
 
 % retrieves the parameter GUI handle
 hGUI = getappdata(handles.figDataOutput,'hGUI');
-hPara = getappdata(handles.figDataOutput,'hPara');
 iData = getappdata(handles.figDataOutput,'iData');
+objP = getappdata(handles.figDataOutput,'objP');
 
 % % resets the solution/plot data structs from the analysis GUI
 % setappdata(hGUI,'snTot',getappdata(handles.figDataOutput,'snTot'))
@@ -301,10 +301,10 @@ if ~isempty(hStats); delete(hStats); end
 % deletes the sub-GUI and makes the parameter GUI visible again
 delete(handles.figDataOutput)
 setObjVisibility(hGUI,'on')
-setObjVisibility(hPara,'on')
+objP.setVisibility(1);
 
 % sets the parameter GUI to the top
-uistack(hPara,'top');
+uistack(objP.hFig,'top');
 
 % ---------------------------------- %
 % --- TAB INFORMATION MENU ITEMS --- %

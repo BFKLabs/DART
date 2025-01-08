@@ -1286,9 +1286,14 @@ classdef SplitAxisClass < handle
                 switch (uChoice)
                     case ('Yes') 
                         % case is wanting to update
-                        sParaF = obj.sPara;             
-                        delete(getappdata(obj.hFigM,'hPara'))
-                        setappdata(obj.hFigM,'hPara',[])
+                        sParaF = obj.sPara;          
+                        
+                        % deletes the parameter gui object
+                        objP = getappdata(obj.hFigM,'objP');
+                        if ~isempty(objP)
+                            objP.deleteClass();
+                            setappdata(obj.hFigM,'objP',[])
+                        end
                         
                     case ('No') 
                         % case is not wanting to update
@@ -1388,8 +1393,10 @@ classdef SplitAxisClass < handle
 
             % makes the parameter GUI invisible (if disabling objects)
             if strcmp(state,'off')
-                hPara = getappdata(obj.hFigM,'hPara');
-                if ~isempty(hPara); setObjVisibility(hPara,'off'); end    
+                objP = getappdata(obj.hFigM,'objP');
+                if ~isempty(objP)
+                    objP.setVisibility(0); 
+                end    
             end            
             
         end        

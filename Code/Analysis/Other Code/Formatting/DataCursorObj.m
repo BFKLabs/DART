@@ -6,7 +6,7 @@ classdef DataCursorObj < handle
         % object handle fields
         hFig
         hCur
-        pObj
+        objP
         evnt
         
         % plot info fields
@@ -74,7 +74,7 @@ classdef DataCursorObj < handle
         function initClassFields(obj)
             
             % retrieves the parameter object handle
-            obj.pObj = getappdata(getappdata(obj.hFig,'hPara'),'pObj');
+            obj.objP = getappdata(obj.hFig,'objP');
             
             % creates the data cursor mode object
             obj.hCur = datacursormode(obj.hFig);
@@ -731,7 +731,7 @@ classdef DataCursorObj < handle
             
             % sets the plot data fields
             obj.plotD = plotD0{pInd}{fInd,eInd};
-            obj.pData = obj.pObj.pData;
+            obj.pData = obj.objP.pData;
             
         end
         

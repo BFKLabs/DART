@@ -560,7 +560,7 @@ classdef SaveExptFiles < handle
             cWidN = {210,40,40};
             cbFcnNE = @obj.tableExptEdit;
             cbFcnNS = @obj.tableExptSelect;
-            cNameN = {'Experiment Name','Add?','Type'};                        
+            cNameN = {'Experiment Name','Add?','Type'};
             
             % creates the table object
             pPosTN = [obj.dX*[1,1]/2,obj.widTableTN,obj.hghtTableT];

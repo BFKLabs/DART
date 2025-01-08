@@ -71,7 +71,7 @@ setappdata(hObject,'LoadSuccess',false);
 
 % initialises the structs
 setappdata(hObject,'sInd',1)
-setappdata(hObject,'hPara',[])
+setappdata(hObject,'objP',[])
 setappdata(hObject,'hDART',hFigM)
 setappdata(hObject,'iData',iData)
 setappdata(hObject,'gPara',gPara)
@@ -139,9 +139,9 @@ hFig = handles.figFlyAnalysis;
 setObjVisibility(hFig,0);
 
 % if the parameter gui is present, then make it visible
-hPara = findall(0,'tag','figAnalysisPara');
-if ~isempty(hPara)
-    setObjVisibility(hPara,0);
+objP = getappdata(hFig,'objP');
+if ~isempty(objP)
+    objP.setVisibility(0);
 end
 
 % resets the toolbar objects
@@ -189,9 +189,11 @@ if fIndex
     if ~isempty(hPanel); delete(hPanel); end
     
     % deletes/clears the analysis parameter GUI
-    hPara = getappdata(hFig,'hPara');
-    if ~isempty(hPara); delete(hPara); end
-    setappdata(hFig,'hPara',[]);
+    objP = getappdata(hFig,'objP');
+    if isempty(objP)
+        objP.deleteClass();
+        setappdata(hFig,'objP',[]);
+    end    
     
     % creates the new subplot panels and menu items
     nReg = size(A.sPara.pos,1);
@@ -262,7 +264,6 @@ end
 % currently loaded fields
 pData = getappdata(hFig,'pData');
 plotD = getappdata(hFig,'plotD');
-hPara = getappdata(hFig,'hPara');
 for i = 1:length(pData)
     if ~isempty(pData{i}) && ~isempty(A.pData{i})
         % retrieves the function names for the current function type
@@ -297,8 +298,10 @@ setObjEnable(handles.menuSaveTempData,'on')
 [eInd,fInd,pInd] = getSelectedIndices(handles);
 if fInd > 0
     % updates the parameter struct into the parameter gui
-    pObj = getappdata(hPara,'pObj');
-    pObj.updatePlotData(pData{pInd}{fInd,eInd})
+%     pObj = getappdata(hPara,'pObj');
+%     pObj.updatePlotData(pData{pInd}{fInd,eInd})
+    objP = getappdata(hFig,'objP');
+    objP.updatePlotData(pData{pInd}{fInd,eInd})
 end
 
 % updates the figure with the new data
@@ -510,13 +513,13 @@ hTree = findall(handles.panelFuncList,'type','hgjavacomponent');
 delete(hTree)
 
 % deletes the analysis parameter gui (if it exists)
-hPara = findall(0,'tag','figAnalysisPara');
-if ~isempty(hPara)
-    delete(hPara);
+objP = getappdata(hFig,'objP');
+if ~isempty(objP)
+    objP.deleteClass();
+    setappdata(hFig,'objP',[])
 end
 
 % resets the data/object fields within the gui
-setappdata(hFig,'hPara',[])
 setappdata(hFig,'plotD',[])
 setappdata(hFig,'pData',[])
 setappdata(hFig,'sInfo',[])
@@ -544,18 +547,22 @@ TimeCycle(handles.figFlyAnalysis);
 % -------------------------------------------------------------------------
 function menuExit_Callback(~, ~, handles)
 
+% field retrieval
+hFig = handles.figFlyAnalysis;
+
 % prompts the user if they wish to close the tracking gui
 uChoice = questdlg('Are you sure want to close the Analysis GUI?',...
-    'Close Analysis GUI?','Yes','No','Yes');
+                   'Close Analysis GUI?','Yes','No','Yes');
 if ~strcmp(uChoice,'Yes')
+    % unless the user confirms, then exit the function
     return
 end
 
-% deletes the parameter GUI
 try
-    hPara = getappdata(handles.figFlyAnalysis,'hPara');
-    if ~isempty(hPara)
-        try delete(hPara); catch; end
+    % deletes the parameter GUI class object
+    objP = getappdata(hFig,'objP');
+    if ~isempty(objP)
+        objP.deleteClass();
     end
 catch    
 end
@@ -616,10 +623,9 @@ setObjEnable(handles.menuSaveData,'off');
 setObjEnable(handles.menuSaveTempData,'off');
 
 % deletes the parameter GUI
-hPara = getappdata(handles.figFlyAnalysis,'hPara');
-if ~isempty(hPara)
-    pObj = getappdata(hPara,'pObj');
-    pObj.updatePlotData(pData);
+objP = getappdata(handles.figFlyAnalysis,'objP');
+if ~isempty(objP)
+    objP.updatePlotData(pData);
     resetRecalcObjProps(handles,'Yes')
 end
 
@@ -659,7 +665,7 @@ if isnan(pInd)
 end
 
 % rescans the analysis function directory
-if isempty(getappdata(hFig,'hPara'))
+if isempty(getappdata(hFig,'objP'))
     delete(h);
     return;
 else
@@ -704,17 +710,18 @@ setObjEnable(handles.menuSaveData,'off');
 setObjEnable(handles.menuSaveTempData,'off');
 
 % deletes the parameter GUI
-[hPara,pData] = deal(getappdata(hFig,'hPara'),getappdata(hFig,'pData'));
-if ~isempty(hPara)
+[objP,pData] = deal(getappdata(hFig,'objP'),getappdata(hFig,'pData'));
+if ~isempty(objP)
     % updates the parameter GUI data struct
     [eInd,fInd,pInd] = getSelectedIndices(handles);
     if fInd > 0
+        % if a function is selected, then reset the plot data
         resetRecalcObjProps(handles,'Yes')
-        pObj = getappdata(hPara,'pObj');
-        pObj.updatePlotData(pData{pInd}{fInd,eInd});
+        objP.updatePlotData(pData{pInd}{fInd,eInd});
     else
+        % otherwise, hide the parameter figure
         resetRecalcObjProps(handles,'No')
-        setObjVisibility(hPara,0);
+        objP.setVisibility(0);
         
         % makes the parameter GUI
         setappdata(hFig,'fIndex',0)        
@@ -727,17 +734,20 @@ delete(h);
 % --------------------------------------------------------------------
 function menuFuncDiagnostic_Callback(~, ~, handles)
    
+% field retrieval
+hFig = handles.figFlyAnalysis;
+objP = getappdata(hFig,'objP');
+
 % sets the selected nodes
 setSelectedNode(handles)
 
 % hide the parameter window
-hPara = findall(0,'tag','figAnalysisPara');
-if ~isempty(hPara)
-    setObjVisibility(hPara,0)
+if ~isempty(objP)
+    objP.setVisibility(0);
 end
 
 % runs the video parameter reset dialog
-FuncDiagnostic(handles.figFlyAnalysis);
+FuncDiagnostic(hFig);
 
 % -------------------------------------------------------------------------
 function menuUndock_Callback(~, ~, ~)
@@ -813,10 +823,10 @@ function menuSubPlot(hObject, eventdata, sInd0)
 handles = guidata(hObject);
 hFig = handles.figFlyAnalysis;
 hMenuSP = handles.menuSubPlot;
-hPara = getappdata(hFig,'hPara');
 sPara = getappdata(hFig,'sPara');
 pData = getappdata(hFig,'pData');
 fObj = getappdata(hFig,'fObj');
+objP = getappdata(hFig,'objP');
 
 % sets the default input arguments
 if ~exist('sInd0','var'); sInd0 = getappdata(hFig,'sInd'); end
@@ -845,15 +855,14 @@ set(findobj(hPanel,'tag','subPanel','UserData',sInd),'HighlightColor','r');
 
 % determines if there are any valid indices selected
 [eInd,fInd,pInd] = getSelectedIndices(handles);
-if ~isempty(hPara) && ~isa(eventdata,'char')
+if ~isempty(objP) && ~isa(eventdata,'char')
     if all([eInd,fInd,pInd] > 0)
         % if so, then update the plotting data struct
-        pObj = getappdata(hPara,'pObj');
-        sPara.pData{sInd0} = pObj.pData;
+        sPara.pData{sInd0} = objP.pData;
         setappdata(hFig,'sPara',sPara);
         
         % updates the plot data struct
-        pData{pInd}{fInd,eInd} = pObj.pData;
+        pData{pInd}{fInd,eInd} = objP.pData;
         setappdata(hFig,'pData',pData);
     end
 end
@@ -873,12 +882,14 @@ if ~isempty(sPara.pData{sInd}) && ~any(isnan(sPara.ind(sInd,:)))
     setSelectedNode(handles,fIndNw)
     
     % updates the parameter GUI
-    if isempty(hPara)
-        hPara = AnalysisPara(handles);
-        setappdata(hFig,'hPara',hPara);
+    if isempty(objP)
+        % case is the object needs initialising
+        objP = AnalysisPara(handles);
+        setappdata(hFig,'objP',objP);
+
     else
-        pObj = getappdata(hPara,'pObj');
-        pObj.initAnalysisGUI()
+        % case is the object is already initialises
+        objP.initAnalysisGUI()
     end
     
     % updates the recalculation button properties if calc required
@@ -889,7 +900,7 @@ if ~isempty(sPara.pData{sInd}) && ~any(isnan(sPara.ind(sInd,:)))
 else
     % otherwise, remove the plot list
     setSelectedNode(handles)
-    setObjVisibility(hPara,'off');
+    objP.setVisibility(0);
     setObjEnable(handles.menuSaveData,'off')
     
     % enables the undocking menu item
@@ -1052,8 +1063,8 @@ sInd0 = getappdata(hObject,'sInd');
 snTot = getappdata(hObject,'snTot');
 pData = getappdata(hObject,'pData');
 sPara = getappdata(hObject,'sPara');
-hPara = getappdata(hObject,'hPara');
 plotD = getappdata(hObject,'plotD');
+objP = getappdata(hObject,'objP');
 
 % parameters
 [Wmin,Hmin] = deal(1000,554);
@@ -1098,9 +1109,8 @@ if isSet
             hP = handles.panelPlot;
             
             % retrieves the plot data struct
-            if ~isempty(hPara)
-                pObj = getappdata(hPara,'pObj');
-                pDataNw = pObj.pData;
+            if ~isempty(objP)
+                pDataNw = objP.pData;
                 plotDNw = plotD{pInd}{fInd,eInd};
             end
         else
@@ -1207,21 +1217,20 @@ function popupExptIndex_Callback(hObject, eventdata, handles)
 
 % retrieves the solution struct and solution directory/file names
 hFig = handles.figFlyAnalysis;
-hPara = getappdata(hFig,'hPara');
 pData = getappdata(hFig,'pData');
 snTot = getappdata(hFig,'snTot');
 eIndex = getappdata(hFig,'eIndex');
+objP = getappdata(hFig,'objP');
 
 % check to see if the new experiment
 if (eIndex ~= get(hObject,'value')) || isa(eventdata,'char')
-    if ~isempty(hPara) && ~isa(eventdata,'double')
+    if ~isempty(objP) && ~isa(eventdata,'double')
         % updates the parameter struct in the overall array
         [~,fInd,pInd] = getSelectedIndices(handles);
         
         % updates the parameter struct
         if fInd > 0
-            pObj = getappdata(hPara,'pObj');
-            pDataOld = pObj.pData;
+            pDataOld = objP.pData;
             if pInd == 3
                 pData{pInd}{fInd,1} = pDataOld;
             else
@@ -1255,21 +1264,20 @@ hFig = handles.figFlyAnalysis;
 pData = getappdata(hFig,'pData');
 pDataT = getappdata(hFig,'pDataT');
 pIndex = getappdata(hFig,'pIndex');
-hPara = getappdata(hFig,'hPara');
 snTot = getappdata(hFig,'snTot');
+objP = getappdata(hFig,'objP');
 
 % check to see if the new selection is unique
 % check to see if the new experiment
 if ~isa(eventdata,'char')
     if pIndex ~= get(hObject,'value')
-        if ~isempty(hPara)
+        if ~isempty(objP)
             % updates the parameter struct in the overall array
             [eInd,fInd,~] = getSelectedIndices(handles);
             
             % updates the corresponding parameter struct
             if fInd > 0
-                pObj = getappdata(hPara,'pObj');
-                pDataOld = pObj.pData;
+                pDataOld = objP.pData;
                 pData{pIndex}{fInd,eInd} = pDataOld;
                 setappdata(hFig,'pData',pData);
             end
@@ -1375,12 +1383,10 @@ snTot = getappdata(hFig,'snTot');
 fcnStack = getappdata(hFig,'fcnStack');
 
 % retrieves the parameter GUI handle
-hPara = getappdata(hFig,'hPara');
-try
-    guidata(hPara);
-catch
-    hPara = AnalysisPara(handles);
-    setappdata(hFig,'hPara',hPara);
+objP = getappdata(hFig,'objP');
+if isempty(objP) || ~ishandle(objP.hFig)
+    objP = AnalysisPara(handles);
+    setappdata(hFig,'objP',objP);
 end
 
 % memory allocation
@@ -1402,15 +1408,15 @@ hAx = initAxesObject(handles);
 if isempty(pData{pInd}{fInd,eInd})
     pData{pInd}{fInd,eInd} = feval(fcnStack{fInd},snTot(1));
     setappdata(hFig,'pData',pData);
-elseif ~isempty(hPara)
-    pDataNw = feval(getappdata(hPara,'getPlotData'),hPara);
-    pData{pInd}{fInd,eInd} = pDataNw;
+
+elseif ~isempty(objP)
+    pData{pInd}{fInd,eInd} = objP.pData;
     setappdata(hFig,'pData',pData);
 end
 
 % retrieves the necessary data structs
 pDataNw = pData{pInd}{fInd,eInd};
-setObjVisibility(hPara,'off')
+objP.setVisibility(0);
 
 % runs the analysis function
 try
@@ -1424,9 +1430,8 @@ try
                 try
                     if ~isempty(pDataNw.sP(3).Para) % && ...
 %                             ~startsWith(pDataNw.Name,'Pre & Post')
-                        pObj = getappdata(hPara,'pObj');
-                        pDataNw = pObj.initAnalysisGUI();
-                        setObjVisibility(hPara,'off')
+                        pDataNw = objP.initAnalysisGUI();
+                        objP.setVisibility(0);
                     end
                 catch
                     return
@@ -1446,14 +1451,14 @@ catch err
     canSelect = true;
     
     % enables the listboxes again
-    setObjVisibility(hPara,'on')
+    objP.setVisibility(1);
     setObjProps(handles,'on')
     rethrow(err)
 end
 
 if isempty(plotDCalc)
     % if the user cancelled, then exit the function
-    setObjVisibility(hPara,'on')
+    objP.setVisibility(0);
     setObjProps(handles,'on')
     return
 else
@@ -1467,7 +1472,7 @@ iNw = length(plotDNw);
 pDataNw.pF.Legend(1).String{iNw} = sprintf('Trace #%i',iNw);
 
 % if the parameter GUI is open, then update the struct there as well
-if ~isempty(hPara)
+if ~isempty(objP)
     resetRecalcObjProps(handles,'No')
 end
 
@@ -1498,15 +1503,14 @@ catch err
     canSelect = true;    
     
     % enables the listboxes again
-    setObjVisibility(hPara,'on')
+    objP.setVisibility(1);
     setObjProps(handles,'on')
     rethrow(err)
 end
 
 % if the parameter GUI is open, then update the struct there as well
-if ~isempty(hPara)
-    pObj = getappdata(hPara,'pObj');
-    pObj.updatePlotData(pDataNw);
+if ~isempty(objP)
+    objP.updatePlotData(pDataNw);
 end
 
 % updates the sub-plot parameters (if more than one subplot)
@@ -1546,7 +1550,7 @@ setObjEnable(handles.menuSaveData,isOn);
 setObjEnable(handles.menuSave,isOn)
 
 % disables the listboxes
-setObjVisibility(hPara,'on')
+objP.setVisibility(1);
 setObjEnable(handles.menuZoom,'on')
 setObjEnable(handles.menuDataCursor,'on')
 setObjProps(handles,'on')
@@ -2118,10 +2122,10 @@ if isShowPara
         clearAxesObject(handles)
         
         % creates the new parameter GUI
-        hPara = getappdata(hFig,'hPara');
-        if isempty(hPara)
-            hPara = AnalysisPara(handles);
-            setappdata(hFig,'hPara',hPara);
+        objP = getappdata(hFig,'objP');
+        if isempty(objP)
+            objP = AnalysisPara(handles);
+            setappdata(hFig,'objP',objP);
             
             % if there is more than one subplot, update the data values
             if nReg > 1
@@ -2140,8 +2144,7 @@ if isShowPara
             % updates the parameter struct in the overall array
             if (fIndex > 0) && (str2double(eventdata) == 0)
                 % updates the
-                pObj = getappdata(hPara,'pObj');
-                pDataOld = pObj.pData;
+                pDataOld = objP.pData;
                 pData{pInd}{fIndex,eInd} = pDataOld;
                 setappdata(hFig,'pData',pData);
             end
@@ -2161,14 +2164,14 @@ if isShowPara
             end
             
             % reinitialises the function parameter struct
-            if ishandle(hPara)
+            if ishandle(objP.hFig)
                 % if the gui is valid, then re-initialise it
-                pObj = getappdata(hPara,'pObj');
-                pObj.initAnalysisGUI();
+                objP.initAnalysisGUI();
+
             else
                 % if the gui is not valid, then recreate the gui
-                hPara = AnalysisPara(handles);
-                setappdata(hPara,'hPara',hPara);
+                objP = AnalysisPara(handles);
+                setappdata(hFig,'objP',objP);
             end
             
             % retrieves the plotting data struct
@@ -2193,8 +2196,8 @@ else
     setappdata(hFig,'fIndex',0)
     
     % makes the parameter figure invisible
-    hPara = getappdata(hFig,'hPara');
-    setObjVisibility(hPara,'off');
+    objP = getappdata(hFig,'objP');
+    objP.setVisibility(0);
 end
 
 % determines if there is any previous stored plotting values
@@ -2225,7 +2228,7 @@ if all([eInd,fInd,pInd] > 0)
         setObjEnable(handles.menuZoom,'on')
         setObjEnable(handles.menuDataCursor,'on')
         setObjEnable(handles.menuSaveFigure,'on')        
-        if isShowPara; setObjVisibility(hPara,'on'); end
+        if isShowPara; objP.setVisibility(1); end
         
         % if there are output data parameters, then enable the save menu
         if isempty(pData{pInd}{fInd,eInd}.oP)
@@ -2282,7 +2285,7 @@ setObjProps(handles,'on')
 setObjEnable(hTree,'on');
 
 % disables the clear plot menu item
-if isShowPara; setObjVisibility(hPara,'on'); end
+if isShowPara; objP.setVisibility(1); end
 setObjEnable(handles.menuSaveData,'off')
 setObjEnable(handles.menuClearPlot,'off')
 
@@ -3212,9 +3215,9 @@ if ~exist('sInfoNw','var')
     tempSolnDataIO(handles,'reload')
     
     % if the parameter gui is present, then make it visible
-    hPara = findall(0,'tag','figAnalysisPara');
-    if ~isempty(hPara)
-        setObjVisibility(hPara,1);
+    objP = getappdata(hFig,'objP');
+    if ~isempty(objP)
+        objP.setVisibility(1);
     end    
     
     % makes the gui visible again and exits the function

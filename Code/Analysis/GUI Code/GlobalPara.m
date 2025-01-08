@@ -5,7 +5,7 @@ classdef GlobalPara < handle
         
         % input arguments
         hFigM        
-        hPara
+        objP
         
         % output class fields
         gParaU
@@ -84,7 +84,7 @@ classdef GlobalPara < handle
             obj.hObjV = cell(sum(obj.nParaV),1);
             
             % field retrieval
-            obj.hPara = getappdata(obj.hFigM,'hPara');            
+            obj.objP = getappdata(obj.hFigM,'objP');            
             obj.gParaU = getappdata(obj.hFigM,'gPara');
             
             % ------------------------------------- %
@@ -367,7 +367,7 @@ classdef GlobalPara < handle
             % closes the GUI
             setObjVisibility(obj.hFig,0);
             setObjVisibility(obj.hFigM,1);
-            setObjVisibility(obj.hPara,1);            
+            obj.objP.setVisibility(1);
             
             % delete the dialog window
             delete(obj.hFig)            

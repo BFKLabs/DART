@@ -18,6 +18,7 @@ addParameter(ip,'fSzL',12);
 addParameter(ip,'fSzM',10+2/3);
 addParameter(ip,'useColon',true);
 addParameter(ip,'cbFcnM',[]);
+addParameter(ip,'UserData',[]);
 
 % parses the input arguments
 parse(ip,varargin{:})

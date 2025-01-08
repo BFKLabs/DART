@@ -1,15 +1,19 @@
 % --- resets the recalculation object properties --- %
-function resetRecalcObjProps(handles,state,hParaH)
+function resetRecalcObjProps(handles,state,objP)
+
+if isfield(handles,'figFlyAnalysis')
+    hFig = handles.figFlyAnalysis;
+else
+    hFig = objP.hFig;
+end
 
 % initialisations
-hFig = handles.figFlyAnalysis;
 sPara = getappdata(hFig,'sPara');
 
 % retrieves the analysis GUI handles
 if (nargin == 2)
-    hPara = getappdata(hFig,'hPara');
-    if isempty(hPara); return; end
-    hParaH = guidata(hPara);
+    objP = getappdata(hFig,'objP');
+    if isempty(objP); return; end
 end
 
 % if there is more than one sub-plot, then update the required check flag
@@ -22,9 +26,9 @@ end
 
 % updates the object properties based on the update type
 if strcmp(state,'Yes')
-    set(hParaH.textCalcReqd,'string','Yes','ForegroundColor','r');
+    set(objP.textCalcReqd,'string','Yes','ForegroundColor','r');
     set(handles.buttonUpdateFigure,'BackgroundColor','r');
 else
-    set(hParaH.textCalcReqd,'string','No','ForegroundColor','k');
+    set(objP.textCalcReqd,'string','No','ForegroundColor','k');
     set(handles.buttonUpdateFigure,'BackgroundColor',(240/255)*[1 1 1]);    
 end

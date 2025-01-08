@@ -15,7 +15,7 @@ hFigM = findall(0,'tag','figFlyAnalysis');
 pImg = getappdata(hFigM,'pImg'); 
 sPara = getappdata(hFigM,'sPara');
 snTot = getappdata(hFigM,'snTot');
-hPara = getappdata(hFigM,'hPara'); 
+objP = getappdata(hFigM,'objP');
 hGUI = guidata(hFigM);
 
 % retrieves the subplot data struct
@@ -29,7 +29,8 @@ else
 end
 
 % ensures the parameter GUI is invisible
-setObjVisibility(hPara,'off'); pause(0.05);
+objP.setVisibility(0);
+pause(0.05);
 
 % retrieves the data based on the 
 nReg = size(sPara.pos,1);
@@ -51,7 +52,9 @@ end
 % if there is no plot data, then exit the function
 if isempty(plotDNw)
     % makes the parameter GUI visible again (if showing)
-    if isShowGUIs; setObjVisibility(hPara,'on'); end
+    if isShowGUIs
+        objP.setVisibility(1); 
+    end
     
     % exits the function
     return; 
@@ -113,7 +116,7 @@ end
 % redisplays the parameter GUI (is displaying the GUI output)
 pause(0.05);
 if isShowGUIs
-    setObjVisibility(hPara,'on'); 
+    objP.setVisibility(1);
 end
 
 % if not outputting the figure, but a function output is required, then

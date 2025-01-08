@@ -43,8 +43,8 @@ classdef SaveFigure < handle
         % main figure data structs
         pData
         plotD
-        hPara
         sPara
+        objP
         
         % main figure object/function handles
         hPS
@@ -166,8 +166,7 @@ classdef SaveFigure < handle
             [obj.eInd0,obj.fInd0,obj.pInd0] = getSelectedIndices(hGUIM);
             
             % updates the current plotting data struct parameters
-            pDataH = getStructField(getappdata(obj.hPara,'pObj'),'pData');
-            obj.pData{obj.pInd0}{obj.fInd0,obj.eInd0} = pDataH;
+            obj.pData{obj.pInd0}{obj.fInd0,obj.eInd0} = obj.objP.pData;
             setappdata(obj.hFigM,'pData',obj.pData);
             
         end
@@ -210,9 +209,9 @@ classdef SaveFigure < handle
             iProg = getappdata(obj.hFigM,'iProg');
             obj.plotD = getappdata(obj.hFigM,'plotD');
             obj.pData = getappdata(obj.hFigM,'pData');
-            obj.hPara = getappdata(obj.hFigM,'hPara');
             obj.sPara = getappdata(obj.hFigM,'sPara');
             obj.sName = getappdata(obj.hFigM,'sName');
+            obj.objP = getappdata(obj.hFigM,'objP');
             
             % sets the main gui function/object handles
             obj.ppFcn = getappdata(obj.hFigM,'popupPlotType');
@@ -237,7 +236,7 @@ classdef SaveFigure < handle
             
             % sets the main GUI to be invisible
             setObjVisibility(obj.hFigM,0);
-            setObjVisibility(obj.hPara,0);
+            obj.objP.setVisibility(0);
             
             % removes any previous GUIs
             hFigPr = findall(0,'tag',obj.tagStr);
@@ -637,7 +636,7 @@ classdef SaveFigure < handle
             
             % sets the main GUI to be invisible
             setObjVisibility(obj.hFigM,1);
-            setObjVisibility(obj.hPara,1);
+            obj.objP.setVisibility(1);
             hLoad.delete();
             
         end
@@ -1015,13 +1014,15 @@ classdef SaveFigure < handle
         % --- creates the tree node (dependent on type)
         function hNode = createTreeNode(obj,hP,pStr,hasChild)
             
+            % module import
+            import com.mathworks.mwswing.checkboxtree.*
+
             % sets the default input arguments
             if ~exist('hasChild','var'); hasChild = true; end
             
             % imports the checkbox tree
             if obj.isOldVer
                 % checkbox tree import
-                import com.mathworks.mwswing.checkboxtree.*
                 hNode = DefaultCheckBoxNode(pStr);
                 hNode.setAllowsChildren(hasChild)
                 

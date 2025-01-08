@@ -12,6 +12,7 @@ classdef FuncDiagnostic < handle
         pDataT
         snTot
         gPara
+        objP
         
         % sub-class objects
         ffObj
@@ -141,6 +142,7 @@ classdef FuncDiagnostic < handle
             obj.pData = getappdata(obj.hFigM,'pData');
             obj.pDataT = getappdata(obj.hFigM,'pDataT');
             obj.gPara = getappdata(obj.hFigM,'gPara');
+            obj.objP = getappdata(obj.hFigM,'objP');
             
             % initialises the class fields
             obj.initClassFields();
@@ -598,8 +600,7 @@ classdef FuncDiagnostic < handle
             setObjEnable(obj.hButC{2},1);
             
             % makes the parameter GUI invisible
-            hPara = findall(0,'tag','figAnalysisPara');
-            setObjVisibility(hPara,0);            
+            obj.objP.setVisibility(0);
             
             % retrieves the currently selected functions
             obj.iScopeS = find(~cellfun(@isempty,obj.iSelS));
