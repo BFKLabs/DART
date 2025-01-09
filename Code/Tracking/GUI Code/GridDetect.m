@@ -290,7 +290,7 @@ classdef GridDetect < matlab.mixin.SetGet
             
             % updates the detection panel properties
             if ~isempty(event)
-                set(obj.objB.hFigM,'phObj',[]);
+                obj.objB.objPh = [];                
             end
             
             % updates the main image
@@ -307,7 +307,7 @@ classdef GridDetect < matlab.mixin.SetGet
                 % if so, then update the field value
                 obj.setFiltPara('hSz',nwVal);                
                 setObjEnable(obj.hButC{1},'on');
-                set(obj.objB.hFigM,'phObj',[]);
+                obj.objB.objPh = [];
                 
                 % updates the main image
                 obj.updateMainImage()                
