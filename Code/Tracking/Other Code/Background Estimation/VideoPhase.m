@@ -166,8 +166,8 @@ classdef VideoPhase < handle
             % sets the region row/column indices
             for iApp = 1:obj.nApp
                 pP = posO{iApp};
-                obj.iR0{iApp} = ceil(pP(2))+(0:floor(pP(4)));
-                obj.iC0{iApp} = ceil(pP(1))+(0:floor(pP(3)));
+                obj.iR0{iApp} = ceil(pP(2)):min(obj.sz0(1),sum(pP([2,4])));
+                obj.iC0{iApp} = ceil(pP(1)):min(obj.sz0(2),sum(pP([1,3])));
             end
             
         end

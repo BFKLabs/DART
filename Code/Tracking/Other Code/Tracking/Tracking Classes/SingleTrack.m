@@ -85,10 +85,18 @@ classdef SingleTrack < Track
                     % case is a 2D/multi-tracking expt setup
                     obj.iMov.flyok(obj.iMov.pInfo.iGrp==0) = false;
                     
-                elseif ~obj.iMov.pInfo.isFixed
-                    % case is a 1D expt setup (fixed grid)
-                    iGrp = arr2vec(obj.iMov.pInfo.iGrp')';
-                    obj.iMov.flyok(:,iGrp==0) = false;
+                else
+                    if isfield(obj.iMov.pInfo,'isFixed')
+                        isFixed = ~obj.iMov.pInfo.isFixed;
+                    else
+                        isFixed = true;
+                    end
+                    
+                    % case is a 1D expt setup (fixed grid)                    
+                    if isFixed
+                        iGrp = arr2vec(obj.iMov.pInfo.iGrp')';
+                        obj.iMov.flyok(:,iGrp==0) = false;
+                    end
                 end
             end
             
