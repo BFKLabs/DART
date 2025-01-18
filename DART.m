@@ -190,6 +190,9 @@ classdef DART < handle
                 return
             end
         
+            % checks the cell renderer is setup correctly
+            obj.coloredFieldCellRendererCheck()            
+            
             % sets up the java file directories
             cDir0 = obj.getProgFileName('Code','Common');
             jDir0 = {{'File Exchange','xlwrite','poi_library'},...
@@ -1394,6 +1397,23 @@ classdef DART < handle
             save(logFile,'File','Time')
             
         end         
+        
+        % checks the cell renderer is setup correctly
+        function coloredFieldCellRendererCheck(obj)        
+            
+            pName = 'ColoredFieldCellRenderer';
+            pDir = obj.getProgFileName(...
+                    'Code','Common','File Exchange',pName);
+            pFile = [pDir,'.zip'];
+            
+            % if the directory doesn't exist, but the zip file does, then
+            % unzip the file to the required folder
+            if ~exist(pDir,'dir') && exist(pFile,'file')
+                unzip(pFile,pDir);
+                addpath(pDir);
+            end
+            
+        end             
         
     end
         
