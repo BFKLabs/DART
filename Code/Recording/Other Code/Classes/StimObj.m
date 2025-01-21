@@ -6,7 +6,7 @@ classdef StimObj < handle
         % object handles
         hS
         hTimer
-        hGUI        
+        objP
         
         % device parameters/information fields
         xySig
@@ -177,7 +177,7 @@ classdef StimObj < handle
         function serialStopRT(obj)
         
             % retrieves the real-time tracking data struct
-            rtD = getappdata(obj.hGUI,'rtD');
+            rtD = obj.objP.rtD;
 
             % sets the entries for the stimuli finish array
             obj.sFin(obj.iDev,:) = [1,rtD.T(rtD.ind)];            
@@ -192,7 +192,7 @@ classdef StimObj < handle
         function updateProgressBar(obj,ind)
          
             % if there is no progress bar handle, then exit the function
-            if isempty(obj.hGUI); return; end                
+            if isempty(obj.objP); return; end                
 
             % loops through each of the channels which have action flag 
             % values updating the progress gui
@@ -214,8 +214,8 @@ classdef StimObj < handle
                         % updates the triggered device count within the 
                         % expertiment progress GUI
                         iOfsCh = double(obj.hasIMAQ);
-                        tFunc = getappdata(obj.hGUI,'tFunc');
-                        tFunc([(iCh+iOfsCh) 2],num2str(iCount),obj.hGUI);                     
+                        obj.objP.updateTextInfo(...
+                            [(iCh+iOfsCh) 2],num2str(iCount));                  
 
                     case 3   
                         % case is a running stimuli train is finishing
@@ -365,11 +365,10 @@ classdef StimObj < handle
         % ------------------------------- %        
         
         % --- sets the progress gui handle
-        function setProgressGUI(obj,hGUI)
+        function setProgressGUI(obj,objP)
            
             % sets the progressbar handle into the class object
-            obj.hGUI = hGUI;
-            setappdata(hGUI,'sObj',obj)                    
+            obj.objP = objP;               
         
         end
         

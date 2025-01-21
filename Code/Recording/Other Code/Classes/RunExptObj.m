@@ -981,11 +981,7 @@ classdef RunExptObj < handle
                             end
 
                             % attempt to trigger the camera.
-                            try
                             obj.triggerVideoInput();                            
-                            catch ME
-                                a = 1;
-                            end
                         end
                     end
 
@@ -997,7 +993,6 @@ classdef RunExptObj < handle
                 obj.tNew = toc(obj.tExpt);             
             end   
 
-            try
             
             % otherwise, update the summary figure (every second)
             if mod(iFrm,obj.rfRate) == 0
@@ -1064,20 +1059,19 @@ classdef RunExptObj < handle
                 end                        
 
                 % loops through all the information fields getting the 
-                for i = 1:obj.objP.nLvlI
+                for k = 1:obj.objP.nLvlI
                     % retrieves the current/total event counts
-                    k = obj.objP.nLvlI - (i-1);
                     jStim = str2double(get(hText{k,2},'string'));
                     nStim = str2double(get(hText{k,3},'string'));
 
                     % determines if the stimuli is current running
-                    if isRunning(i)
+                    if isRunning(k)
                         % if so then reset the time remaining for the event
                         tCol = 'r';
 
                         % determines the time remaining for the event
                         i0 = double(obj.hasIMAQ);
-                        tDiffR = floor(tSigSF(2,i-i0) - tCurr);
+                        tDiffR = floor(tSigSF(2,k-i0) - tCurr);
                         if tDiffR < 0
                             % if less than zero
                             nwStr = 'N/A';
@@ -1092,13 +1086,13 @@ classdef RunExptObj < handle
                     else 
                         % otherwise, sets the time until the next event is
                         % supposed to occur
-                        if (i == 1) && obj.hasIMAQ
+                        if (k == 1) && obj.hasIMAQ
                             % case is the video recordings
                             tDiffS = roundP(VV.Ts(jStim+1) - tCurr); 
                         else
                             % case is the stimuli events
                             i0 = double(obj.hasIMAQ);
-                            tDiffS = max(0,roundP(tSigSF(1,i-i0) - tCurr));
+                            tDiffS = max(0,roundP(tSigSF(1,k-i0) - tCurr));
                         end
 
                         % set the time to the next event
@@ -1117,11 +1111,7 @@ classdef RunExptObj < handle
                     % if there are no more events, then set the time to N/A
                     set(hText{k,4},'string',nwStr,'ForegroundColor',tCol)        
                 end   
-            end       
-            
-            catch ME
-                a = 1;
-            end            
+            end           
 
             % updates the timer function
             if obj.isWebCam && isDeviceRunning(obj)

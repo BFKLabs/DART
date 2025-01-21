@@ -75,6 +75,6 @@ switch stType
         % sets the stop/trigger functions for the stimuli devices
         XY = field2cell(exObj.ExptSig,'XY');
         objS = StimObj(hS,XY,dT,stType,sType,exObj.hasIMAQ);
-        objS.setProgressGUI(exObj.hProg)                 
+        objS.setProgressGUI(exObj.objP)                 
         
 end
