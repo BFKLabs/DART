@@ -752,7 +752,7 @@ classdef SaveExptFiles < handle
                             
                             % updates the explorer tree name and the table
                             obj.resetChooserFile(obj.iExp,fNameNw)
-                            saveFileNameChng([], fNameNw)
+                            obj.saveFileNameChng([], fNameNw)
                             
                         else
                             % updates the file name string

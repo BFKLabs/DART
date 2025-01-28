@@ -1028,7 +1028,7 @@ classdef SolnFileLoad < handle & dynamicprops
 
             % if there are no experiments left, then clear everything
             if ~any(iNw)
-                obj.buttonClearAll(handles.buttonClearAll,[]);
+                obj.buttonClearAll([],[]);
                 return
             else
                 % otherwise, recalculate the experiment count
