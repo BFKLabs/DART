@@ -107,7 +107,7 @@ classdef OpenSolnFilesObj < handle
         % -------------------------------------- %
         
         % --- initialises the class fields
-        function initSolnClassFields(obj)            
+        function initSolnClassFields(obj)
             
             % main dialog window field retrieval
             obj.iProg = getappdata(obj.hFigM,'iProg');            
