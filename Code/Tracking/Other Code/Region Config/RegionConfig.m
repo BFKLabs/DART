@@ -1239,6 +1239,9 @@ classdef RegionConfig < handle
                 if objCD.calcOK
                     % case is the detection was run successfully
                     iMovNw = objCD.iMov;
+                    if obj.isMTrk
+                        iMovNw.autoP.pPos = para2pos(iMovNw.autoP);                        
+                    end
                     
                 else
                     % case is the user cancelled or the detection failed

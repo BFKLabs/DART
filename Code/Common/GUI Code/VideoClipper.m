@@ -101,7 +101,8 @@ classdef VideoClipper < handle
         tStrB = 'Start Video Clipping';
         tStrBS = 'Cancel Video Output';
         figName = 'Video Clipping Program';
-        fMode = {'*.mp4','MPEG-4 Videos (*.mp4)'};
+        fMode = {'*.mp4','MPEG-4 Videos (*.mp4)';
+                 '*.avi','AVI Videos (*.avi)'};
         
     end
     
@@ -538,7 +539,12 @@ classdef VideoClipper < handle
             % sets up the temporary file name
             vFile0 = fullfile(obj.vDir,obj.vName);
             vFileT = fullfile(vDirT,obj.vName);
-            movefile(vFile0,vFileT);
+            
+            try
+                movefile(vFile0,vFileT,'f');
+            catch
+                copyfile(vFile0,vFileT,'f');                
+            end
 
             % disables the sub-panels
             obj.setSubPanelProps(0);  

@@ -916,7 +916,8 @@ classdef TrackFull < Track
                         obj.hProg.setVisibility('off')
                         
                         % prompts the user to restart/continue
-                        uChoice = promptContChoice(obj);
+                        qObj = promptContChoice(obj);
+                        uChoice = qObj.uChoice;
                     end   
                     
                     % prompts the user where they want to start from

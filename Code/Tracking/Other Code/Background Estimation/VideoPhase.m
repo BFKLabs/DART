@@ -610,7 +610,12 @@ classdef VideoPhase < handle
                         % detected, then perform a very fine search of
                         % the coarse phase (fills any large frame gaps)
                         obj.refSearch = true;
+                        
+                        try
                         iGrpC{i} = obj.refineCoarseSearch(iGrpT,frm0);
+                        catch
+                            a = 1;
+                        end
                     end
                 end
                 
@@ -1023,7 +1028,12 @@ classdef VideoPhase < handle
                 % if there is no major difference, then
                 [~,jmn] = min(abs(repmat(Davg,1,2) - Davg([1,end])'),[],2);
                 kGrp = getGroupIndex(jmn == 1);
-                iFrmD = iFrmG0(kGrp{1}(end) + [0,1]);
+                
+                if kGrp{1}(end) == length(iFrmG0)
+                    iFrmD = iFrmG0((end-1):end);
+                else
+                    iFrmD = iFrmG0(kGrp{1}(end) + [0,1]);
+                end
                 
                 % updates the progressbar
                 i0 = iFrm0(1):(iFrmD(1)-1);

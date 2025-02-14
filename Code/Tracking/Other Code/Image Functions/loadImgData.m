@@ -202,12 +202,12 @@ if hFig.cType > 0
     set(hFig,'iMov',iMov)   
     
 elseif (setMovie && ~isSolnLoad) && ~hFig.isBatch  
+    iData.Frm0 = NaN;
     objSR = SampleRate(iData); 
     [iMov.sRate,Frm0] = deal(objSR.sRate,objSR.iFrm0);
     set(hFig,'iMov',iMov)   
 end
 
-% sets the initial frame (if not set)
 if isnan(iData.Frm0)
     iData.Frm0 = Frm0;
 end
