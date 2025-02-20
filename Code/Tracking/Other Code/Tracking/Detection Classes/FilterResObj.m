@@ -687,6 +687,7 @@ classdef FilterResObj < handle
             
         end
         
+        % --- downsamples the image by the interpolation rate, nI
         function I = downsampleImage(obj,I)
             
             % interpolates the images (if large)
@@ -1185,7 +1186,7 @@ classdef FilterResObj < handle
     end
     
     % static class methods
-    methods (Static)        
+    methods (Static)
         
         % --- offsets the y-coordinates in fPos by yOfs
         function fPos = offsetYCoords(fPos,yOfs)

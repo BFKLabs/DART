@@ -2364,7 +2364,7 @@ classdef CalcBG < handle
                 % sub-image data struct
                 obj.iMov = imov;
                 obj.ok0 = imov.flyok;                              
-                obj.Ibg = cell(length(imov.vPhase),1);                     
+                obj.Ibg = cell(length(imov.vPhase),1);
                 obj.vPhase0 = obj.iMov.vPhase;
                 obj.indFrm = obj.trkObj.indFrm;                
                 

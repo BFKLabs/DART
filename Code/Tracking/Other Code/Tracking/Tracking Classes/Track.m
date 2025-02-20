@@ -171,7 +171,12 @@ classdef Track < matlab.mixin.SetGet
             % reads all the frames from the image stack
             for iFrmR = iFrmT(1):iFrmT(end)
                 try
-                    Inw = readFrame(obj.mObj,'native');
+                    if iFrmR/obj.mObj.FrameRate == obj.mObj.CurrentTime
+                        Inw = readFrame(obj.mObj,'native');
+                    else
+                        Inw = read(obj.mObj,iFrmR);
+                    end                        
+                        
                 catch ME
                     if strcmp(ME.identifier,'MATLAB:audiovideo:VideoReader:EndOfFile')
                         % if end of file, then reshape arrays and exit

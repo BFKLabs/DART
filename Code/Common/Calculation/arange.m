@@ -1,3 +1,8 @@
-function Yrng = arange(Y)
+function Yrng = arange(Y,dim)
 
-Yrng = max(Y,[],'omitnan') - min(Y,[],'omitnan');
+%
+if exist('dim','var')
+    Yrng = max(Y,[],dim,'omitnan') - min(Y,[],dim,'omitnan');
+else
+    Yrng = max(Y,[],'omitnan') - min(Y,[],'omitnan');
+end

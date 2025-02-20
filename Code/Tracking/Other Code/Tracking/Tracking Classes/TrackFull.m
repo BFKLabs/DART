@@ -304,10 +304,17 @@ classdef TrackFull < Track
             set(obj.fObj{iPhase},'iMov',obj.iMov,'wOfs',wOfsNw,...
                                  'hProg',obj.hProg,'iPh',iPhase,'vPh',vPh);
             if obj.isMulti
-                set(obj.fObj{iPhase},'calcInit',false);
+                DwR = cellfun(@(x)(bwdist(x)),obj.iMov.IbgR{iPhase},'un',0);                
+                
+                set(obj.fObj{iPhase},'calcInit',false);                
+                set(obj.fObj{iPhase},'DwR',DwR);
+                set(obj.fObj{iPhase},'nI',1);                
+                
+                obj.fObj{iPhase}.calcMinBlobArea();
+%                 obj.fObj{iPhase}.calcInterpRate();                
             end
             
-            % ------------------------------ %
+            % -------------------n----------- %
             % --- FLY LOCATION DETECTION --- %
             % ------------------------------ %            
             
@@ -357,7 +364,7 @@ classdef TrackFull < Track
                 end                
                                     
                 % runs the direct detection algorithm
-                obj.fObj{iPhase}.runDetectionAlgo();   
+                obj.fObj{iPhase}.runDetectionAlgo();
                 if ~obj.fObj{iPhase}.calcOK
                     % if the user cancelled, then exit the function
                     obj.calcOK = false;
@@ -1084,6 +1091,7 @@ classdef TrackFull < Track
             iPh0 = obj.iPhase0;            
             [pP,obj.fObj{iPh0}.pPara] = deal(obj.iMov.pPara{iPh0});
             [nRow,nCol] = deal(obj.iMov.pInfo.nRow,obj.iMov.pInfo.nCol);            
+            obj.fObj{iPh0}.calcMinBlobArea();
             
             % retrieves the previous image
             iOfs = obj.iMov.iPhase(iPh0,1);
@@ -1093,37 +1101,50 @@ classdef TrackFull < Track
             % sets up the binary mask/blob fly counts for all regions
             for j = 1:nCol    
                 % column field retrieval
-                [iC,iR] = deal(obj.iMov.iC{j},obj.iMov.iR{j});
-                
+                obj.fObj{iPh0}.nI = 1;
+                                
                 % sets the previous 
                 for i = 1:nRow
                     % global region index
                     iReg = (i-1)*nCol + j;
-                    nFlyR = obj.iMov.pInfo.nFly(i,j);
+                    obj.fObj{iPh0}.setupRegionIndices(i,j);
+
+                    %
+                    iC = obj.fObj{iPh0}.iC;
+                    iCL = obj.fObj{iPh0}.iCL;
+                    iRT = obj.fObj{iPh0}.iRT;                    
+                    iRTL = obj.fObj{iPh0}.iRTL;
+                    szL = [length(iRT),length(iC)];
                     
                     % sets up the binary mask
-                    IL = ImgPr(iR(obj.iMov.iRT{j}{i}),iC);
-                    IRL = max(0,obj.iMov.Ibg{iPh0}{iReg} - IL);
+                    Ibg = obj.iMov.Ibg{iPh0}{iReg}(iRTL,iCL);
+                    IL = ImgPr(iRT,iC);
+                    IRL = max(0,Ibg - IL);
+                    
+                    % sets the region binary mask
+                    if isfield(obj.iMov.autoP,'B')
+                        pOfs = (obj.iMov.iRT{j}{i}(1) - 1);
+                        Breg = obj.iMov.autoP.B{j}(iRTL+pOfs,iCL);
+                    else
+                        Breg = true(size(Ibg));
+                    end
                     
                     % calculates the image subtraction residual binary mask
-                    BR = obj.fObj{iPh0}.calcResidualBinary(IRL,pP.pTol);
-                    
-                    % calculates sauvola threshold/binary images
-                    PS = setupSauvolaBinary(IL,pP,1);
-                    BS = obj.fObj{iPh0}.calcSauvolaBinary(IL,PS);
-                    
-                    % retrieves the blob linear indices
-                    [BSF,iGrpL] = ...
-                        obj.fObj{iPh0}.calcBlobProps(BS,PS-IL,BR,nFlyR);
-                    
-                    % sets up the blob fly count
+                    BR = Breg & ...
+                        obj.fObj{iPh0}.calcResidualBinary(IRL,pP.pTol);
+                                        
+                    % determines the final residual blobs
                     fPosL = cell2mat(cellfun(@(x)(...
-                        x(iFrmPr,:)),obj.pData.fPosL{i,j},'un',0)');                    
-                    Imap = obj.fObj{iPh0}.setupMapMask(iGrpL,size(IL));
-                    ImapL = Imap(sub2ind(size(IL),fPosL(:,2),fPosL(:,1)));
+                        x(iFrmPr,:)),obj.pData.fPosL{i,j},'un',0)');                       
+                    fPosL = obj.fObj{iPh0}.downsampleCoords(fPosL);
+                    [iGrpL,BRL] = detGroupOverlap(BR,setGroup(fPosL,szL));
+                                        
+                    % sets up the blob mapping arrays
+                    Imap = obj.fObj{iPh0}.setupMapMask(iGrpL,szL);
+                    ImapL = Imap(sub2ind(szL,fPosL(:,2),fPosL(:,1)));
                     
                     % sets the previous frame data fields 
-                    obj.fObj{iPh0}.BPr{iReg} = BSF;                    
+                    obj.fObj{iPh0}.BPr{iReg} = BRL;                    
                     obj.fObj{iPh0}.nGrpPr{iReg} = ...
                         arrayfun(@(x)(sum(ImapL==x)),1:length(iGrpL))';
                 end
