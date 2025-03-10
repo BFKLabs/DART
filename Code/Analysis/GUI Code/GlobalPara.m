@@ -367,7 +367,10 @@ classdef GlobalPara < handle
             % closes the GUI
             setObjVisibility(obj.hFig,0);
             setObjVisibility(obj.hFigM,1);
-            obj.objP.setVisibility(1);
+            
+            if ~isempty(obj.objP)
+                obj.objP.setVisibility(1);
+            end
             
             % delete the dialog window
             delete(obj.hFig)            
