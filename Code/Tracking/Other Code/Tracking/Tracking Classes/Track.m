@@ -27,7 +27,7 @@ classdef Track < matlab.mixin.SetGet
         ivPhRej = 5;
         ivPhFeas = [1,2,4];
         fStepMax = 10;
-        nFrmMax = 10000;
+        nFrmMax = 100000;
         
         % boolean flags and other count variables
         is2D
@@ -160,7 +160,8 @@ classdef Track < matlab.mixin.SetGet
             sRate = obj.iMov.sRate;
             
             % calculates the total 
-            iFrmT = sRate*(iFrm-1) + (obj.iData.Frm0/sRate);
+%             iFrmT = sRate*(iFrm-1) + (obj.iData.Frm0*sRate);
+            iFrmT = sRate*(iFrm-1) + obj.iData.Frm0;
             
             % resets the video object current time (if not matching)
             t0 = iFrmT(1)/obj.mObj.FrameRate;

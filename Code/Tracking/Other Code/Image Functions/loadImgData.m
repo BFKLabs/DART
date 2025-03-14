@@ -215,7 +215,8 @@ end
 % determines the first feasible frame
 if isVidObj
     % sets the final frame
-    iFrm0 = max(1,iData.Frm0/iMov.sRate);
+%     iFrm0 = max(1,iData.Frm0/iMov.sRate);
+    iFrm0 = max(1,iData.Frm0);    
     iData.nFrm = length(iFrm0:iMov.sRate:iData.nFrmT);
 else
     % determines the first feasible frame
