@@ -600,7 +600,9 @@ classdef FuncDiagnostic < handle
             setObjEnable(obj.hButC{2},1);
             
             % makes the parameter GUI invisible
-            obj.objP.setVisibility(0);
+            if ~isempty(obj.objP)
+                obj.objP.setVisibility(0);
+            end
             
             % retrieves the currently selected functions
             obj.iScopeS = find(~cellfun(@isempty,obj.iSelS));
