@@ -644,7 +644,7 @@ switch typeStr
                 end
                 
                 % sets the orientation angle flag
-                if iMov.calcPhi
+                if pData.calcPhi
                     hasAngle = ~isnan(pData.Phi{j0}{i0}(iData.cFrm));
                     setObjEnable(handles.checkShowAngle,hasAngle) 
                     

@@ -922,8 +922,10 @@ classdef SolnFileLoad < handle & dynamicprops
                 % determines if new experiment name is valid
                 if checkNewExptName(obj.sInfo,nwStr,iRow+1)
                     % if so, then update the
-                    obj.cObj.expData(iRow+1,1,:) = {nwStr};
-                    
+                    if isprop(obj,'cObj')
+                        obj.cObj.expData(iRow+1,1,:) = {nwStr};
+                    end
+                        
                     % updates the experiment name and change flag
                     obj.isChange = true;
                     obj.sInfo{iRow+1}.expFile = nwStr;

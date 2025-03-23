@@ -292,7 +292,8 @@ classdef MetricIndivData < DataOutputArray
             
             % initialisations
             [a,b] = deal({''},'');
-            DataF0 = cell(max(obj.iiX),obj.nApp);
+%             DataF0 = cell(max(obj.iiX),obj.nApp);
+            DataF0 = cell(length(obj.iiX),obj.nApp);
            
             % ------------------------------------------ %
             % --- ARRAY CONCATENATION PRE-PROCESSING --- %
@@ -439,6 +440,7 @@ classdef MetricIndivData < DataOutputArray
                         % case is the bin/grouping separation
                         mStr0{iLvl} = arr2vec(getStructField...
                                (obj.plotD,obj.xDep{obj.iMet}{iLvl-iOfs}))';
+                           
                         if obj.numGrp
                             xiM = 1:length(mStr0{iLvl});
                             mStr0{iLvl} = arrayfun(@num2str,xiM,'un',0);

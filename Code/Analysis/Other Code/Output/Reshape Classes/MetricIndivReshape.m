@@ -50,7 +50,7 @@ classdef MetricIndivReshape < handle
 
             % ensures the group size is the same as the 
             if length(nGrp) ~= length(ind)
-                nGrp = nGrp*ones(length(ind),1); 
+                nGrp = nGrp(1).*ones(length(ind),1); 
             end
 
             % loops through each specified index reshaping the metrics

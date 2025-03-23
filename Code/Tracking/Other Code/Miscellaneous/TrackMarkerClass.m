@@ -220,13 +220,15 @@ classdef TrackMarkerClass < MarkerClass
                 % if the regions are not set, then exit
                 return
             end
-            
+                
             % other initialisations
             vStr = {'off','on'};
+            fok = obj.iMov.flyok(:,ind);
             pltLV = obj.objM.isLV;      
             cMov = obj.hFig.iData.cMov;               
-            cFrm0 = obj.hFig.iData.cFrm;         
+            cFrm0 = obj.objM.cFrm;     
             hasPhi = ~obj.hFig.isCalib && isfield(pData,'PhiF');            
+            pOfsG = [1,obj.iMov.iR{ind}(1)] - 1;
             
             % --------------------------------- %
             % --- SUB-REGION OUTLINE UPDATE --- %
@@ -258,29 +260,30 @@ classdef TrackMarkerClass < MarkerClass
             end
             
             for i = 1:getSRCount(obj.iMov,ind)
-%                 % determines if the local view is being plotted
-%                 if pltLV  
-%                     % sets the local fly coordinates'    
-%                     fPosT = fPosL{i};
-%                     xFly = fPosT(:,1) - obj.hFig.szDelX;
-%                     yFly = fPosT(:,2) - obj.hFig.szDelY;
-% 
-% %                     % sets the marker visibility string
-% %                     if cMov == ind(1)
-% %                         vStrNwM = vStr{(fok && obj.pltLocT) + 1};
-% %                         vStrNwA = vStr{(fok && obj.pltAngT) + 1};
-% %                     else
-% %                         [vStrNwM,vStrNwA] = deal('off');
-% %                     end
-%                 else
-%                     % sets the global fly coordinates
-%                     fPosT = fPos{i};
-%                     [xFly,yFly] = deal(fPosT(:,1),fPosT(:,2));                        
-% 
-% %                     % sets the marker visibility string
-% %                     vStrNwM = vStr{(fok && obj.pltLocT) + 1};
-% %                     vStrNwA = vStr{(fok && obj.pltAngT) + 1};
-%                 end
+                
+                % determines if the local view is being plotted
+                if pltLV  
+                    % sets the local fly coordinates'    
+                    fPosT = fPosL{i};
+                    xFly = fPosT(:,1) - obj.hFig.szDelX;
+                    yFly = fPosT(:,2) - obj.hFig.szDelY;
+
+%                     % sets the marker visibility string
+%                     if cMov == ind(1)
+%                         vStrNwM = vStr{(fok && obj.pltLocT) + 1};
+%                         vStrNwA = vStr{(fok && obj.pltAngT) + 1};
+%                     else
+%                         [vStrNwM,vStrNwA] = deal('off');
+%                     end
+                else
+                    % sets the global fly coordinates
+                    fPosT = pData.fPos{ind}{i}(cFrm0,:) + pOfsG;
+                    [xFly,yFly] = deal(fPosT(:,1),fPosT(:,2));                        
+
+                    % sets the marker visibility string                    
+                    vStrNwM = vStr{(fok(i) && obj.pltLocT) + 1};
+                    vStrNwA = vStr{(fok(i) && obj.pltAngT) + 1};
+                end
 
                 % otherwise, update the marker locations/visibility
                 if obj.objM.isManReseg
@@ -333,7 +336,7 @@ classdef TrackMarkerClass < MarkerClass
                             % if so, update the arrow head coordinates
                             obj.updateArrowHeadCoords(hDirS{i},...
                                                 [xFly,yFly],PhiNw,1,isF); 
-%                             setObjVisibility(hDirS{i},vStrNwA)
+                            setObjVisibility(hDirS{i},vStrNwA)
                             
                         else
                             % otherwise, make the marker invisible
@@ -648,8 +651,9 @@ classdef TrackMarkerClass < MarkerClass
             if isOn            
                 if isempty(obj.isVis)
                     % case is the visibility flags are not provided
-                    cellfun(@(x)(cellfun(@(y)...
-                                (setObjVisibility(y,isOn)),x)),hObj)
+%                     cellfun(@(x)(cellfun(@(y)...
+%                                 (setObjVisibility(y,isOn)),x)),hObj)
+                    cellfun(@(x)(setObjVisibility(x,isOn)),hObj)
                 else
                     % case is the visibility flags are set
                     cellfun(@(x,y)(cellfun(@(yy,zz)...
@@ -658,8 +662,12 @@ classdef TrackMarkerClass < MarkerClass
                 end            
             else
                 % case is the visibility flags are not provided
-                cellfun(@(x)(cellfun(@(y)...
-                    (setObjVisibility(y,0)),x)),hObj)
+                if iscell(hObj{1})                                        
+                    cellfun(@(x)(cellfun(@(y)...
+                        (setObjVisibility(y,0)),x)),hObj)
+                else
+                    setObjVisibility(hObj,0)
+                end
             end
                 
         end     

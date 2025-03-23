@@ -1,13 +1,17 @@
 % --- retrieves the sleep-intensity data from the solution file, snTot -- %
-function [Ycount,YcountR,Xbin,Ybin,ok] = getStimuliResponseData(snTot,cP,h,wOfs)
+function [pSR,ok] = getStimuliResponseData(snTot,cP,h,wOfs)
 
 % sets the default parameters
-ok = true;
 if nargin < 4; wOfs = 0; end
 if nargin < 3
     h = ProgBar({'Initialising'},'Retrieving Sleep Intensity Data');
 end
 
+% memory allocation
+ok = false;
+pSR = struct('Ycount',[],'YcountR',[],'tImmob',[],'tImmobF',[],...
+             'Xbin',[],'Ybin',[]);
+         
 % retrieves the other calculation parameters (if they exist)
 [devType,chType] = deal([]);
 if isfield(cP,'devType'); devType = cP.devType; end
@@ -27,14 +31,13 @@ else
     ok = false;
     eStr = 'Error! Must set nBin or nGrp as calculation parameters.';
     waitfor(errordlg(eStr,'Missing Parameter Error','modal')); 
-    [Ycount,YcountR,Ybin] = deal([]);
     return    
 end
 
 % intialisations
 nApp = length(snTot.iMov.flyok);
 [nGrp,T0] = deal(60/nBin,[0 snTot.iExpt(1).Timing.T0(4:end)]);
-xiG = num2cell(1:nGrp)';
+xiG = (1:nGrp)';
 
 % sets the stimuli times
 Ts = getMotorFiringTimes(snTot.stimP,devType,chType);
@@ -64,16 +67,16 @@ iTs(cellfun('isempty',iTs)) = {1};
 
 % resets the stimuli event/after times to account to remove any of the
 % empty index cells
-if nargout > 2  
+if nargout > 1  
     % if outputting the signals as well, then determine the end indices of
     % the after signal period
     if ~isfield(cP,'tBefore') && ~isfield(cP,'tAfter')
         % if the time before/after field is not set in parameter struct,
         % then exit with an error
+        ok = false;
         eStr = ['Error! For stimuli response, you must include the ',...
                 'tBefore or tAfter variables.'];
         waitfor(errordlg(eStr,'Missing Parameter Error','modal'));        
-        [Ycount,YcountR,Ybin] = deal([]);
         return
         
     elseif ~isfield(cP,'tBefore')
@@ -120,12 +123,14 @@ end
 % sets the index band array
 indB = num2cell([[1;(iTs(1:end-1)+1)],iTs],2);
 indG = detTimeGroupIndices(Ttot(iTs),[0 0 T0],1+cP.sepDN,cP.Tgrp0,true);
-nDay = size(indG, 1);
+[nDay,nGrpT] = deal(size(indG, 1), 24/(1 + cP.sepDN));
 
 % memory allocation
-A = cellfun(@(x)(repmat...
-                ({zeros(1+cP.sepDN,nGrp)},nDay,length(x))),flyok,'un',0);
-[Ycount,YcountR] = deal(A);
+tImmobF = cell(nApp,1);
+[Ycount,YcountR] = deal(cellfun(@(x)(repmat...
+                ({zeros(1+cP.sepDN,nGrp)},nDay,length(x))),flyok,'un',0));
+tImmob = cellfun(@(x)(repmat...
+                ({zeros(1+cP.sepDN,nGrpT)},nDay,length(x))),flyok,'un',0);            
 
 % sets the x/y bin arrays
 B = repmat({repmat({cell(nGrp,1)},nDay,1+cP.sepDN)},nApp,1);
@@ -138,8 +143,7 @@ for i = 1:nApp
     wStrNw = sprintf('Setting Binned Signals (Region %i of %i)',i,nApp);
     if h.Update(1+wOfs,wStrNw,0.5*(1+wOfs)*(i+1)/(2+nApp))
         % if the user cancelled, then exit the function
-        ok = false;
-        [Ycount,YcountR,Ybin] = deal([]);
+        [pSR,ok] = deal([],false);
         return
     end         
         
@@ -153,49 +157,59 @@ for i = 1:nApp
     
     % calculates the pre-stimuli immobility times over all flies for each
     % of the stimuli events
-    [tImmob,isReact] = calcFlyImmobilityTimes(Ttot,Px,Py,Ts,cP,indB);      
-
-%     [wMsg, wID] = lastwarn();
-%     if ~isempty(wMsg)
-%         a = 1;
-%     end
+    [tImmobF{i},isReact] = calcFlyImmobilityTimes(Ttot,Px,Py,Ts,cP,indB);
     
     % groups the immobile time/reaction flags
-    if ~isempty(tImmob)
-        tImmobG = cellfun(@(x)(tImmob(x,:)),indG,'un',0);
+    if ~isempty(tImmobF{i})
+        tImmobG = cellfun(@(x)(tImmobF{i}(x,:)),indG,'un',0);
         isReactG = cellfun(@(x)(isReact(x,:)),indG,'un',0);
 
-        %        
+        % sets the reaction counts (for each fly/grouping)
         iBinT = cellfun(@(x)(ceil(x/nBin)),tImmobG,'un',0);               
-        iBinTC = cellfun(@(y)(cell2mat(cellfun(@(x)(...
+        iBinTC = cellfun(@(y)(cell2mat(arrayfun(@(x)(...
                                 sum(y==x,1)),xiG,'un',0))),iBinT,'un',0);
 
-        % sets the bin indices
+        % sets the reaction proportion ratios (for each fly/grouping)
         iBinR = cellfun(@(x,y)(x.*y),iBinT,isReactG,'un',0);                            
-        iBinTR = cellfun(@(y)(cell2mat(cellfun(@(x)(...
-                                sum(y==x,1)),xiG,'un',0))),iBinR,'un',0);        
-
+        iBinTR = cellfun(@(y)(cell2mat(arrayfun(@(x)(...
+                                sum(y==x,1)),xiG,'un',0))),iBinR,'un',0);
+                            
         % sorts the stimuli events into their time groups 
         for iDay = 1:nDay
             for k = 1:size(indG,2)                                       
+                % reshapes the immobility times array
+                Atmp = NaN(nGrpT,length(iFly));
+                xiT = 1:size(tImmobG{iDay,k},1);
+                if ~isempty(tImmobG{iDay,k})
+                    % if the first day, offset the indices 
+                    if iDay == 1
+                        xiT = (nGrpT-length(xiT)) + xiT;
+                    end
+                    
+                    % stores the immobility times
+                    tImmobTmp = tImmobG{iDay,k};
+                    tImmobTmp(isnan(tImmobTmp)) = -1;
+                    Atmp(xiT,:) = tImmobTmp;                    
+                end
+                
                 for j = 1:length(iFly)
+                    % sets the reaction counts/proportions
                     Ycount{i}{iDay,iFly(j)}(k,:) = iBinTC{iDay,k}(:,j)';
-                    YcountR{i}{iDay,iFly(j)}(k,:) = iBinTR{iDay,k}(:,j)';
+                    YcountR{i}{iDay,iFly(j)}(k,:) = iBinTR{iDay,k}(:,j)';                 
+                    tImmob{i}{iDay,iFly(j)}(k,:) = Atmp(:,j)';
                 end                                 
             end            
         end    
         
-          
-
         % retrieves the signals and bins them into the time groups
-        if nargout > 2
+        if nargout > 1
             % determines the indices
             [Xnw,Ynw,iYnw,iRnw] = deal(cell(length(indB),1));
             for j = 1:length(indB)
-                jj = tImmob(j,:) > 0;
+                jj = tImmobF{i}(j,:) > 0;
                 if (any(jj))
                     indSnw = indS{j}(1):indS{j}(2);
-                    iYnw{j} = ceil(tImmob(j,jj)/nBin);
+                    iYnw{j} = ceil(tImmobF{i}(j,jj)/nBin);
                     iRnw{j} = double(isReact(j,jj));                
                     
                     % calculates the binned x-values (if they are present)
@@ -229,8 +243,8 @@ for i = 1:nApp
             % sets the x/y-values into each time bin over all days
             for j = 1:numel(iYnwT)
                 % determines the traces that belong to each time bin
-                if (~isempty(iYnwT{j}))
-                    ii = cellfun(@(x)(find(iYnwT{j} == x)),xiG,'un',0);
+                if ~isempty(iYnwT{j})
+                    ii = arrayfun(@(x)(find(iYnwT{j} == x)),xiG,'un',0);
 
                     % separates the x-values into each time bin (if present)
                     if ~isempty(Px)
@@ -261,6 +275,12 @@ for i = 1:nApp
         end                                    
     end
 end
+
+% sets the values
+ok = true;
+[pSR.Xbin,pSR.Ybin] = deal(Xbin,Ybin);
+[pSR.Ycount,pSR.YcountR] = deal(Ycount,YcountR);
+[pSR.tImmob,pSR.tImmobF] = deal(tImmob,tImmobF);
 
 % closes the waitbar (if created in the function)
 if nargin < 3
