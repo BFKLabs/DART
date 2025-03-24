@@ -1278,7 +1278,7 @@ Vplt = NaN(nFrm,1);
 
 % calculates the time point displacements between time points
 D = cellfun(@(x)([0;sqrt(sum(diff(x,[],1).^2,2))]),fPos,'un',0);
-Dmean = mean(cell2mat(D),2,'omitnan');
+Dmean = mean(cell2mat(D(:)'),2,'omitnan');
 
 % determines the valid time frames. if there are none then exit
 ii = ~isnan(Dmean);

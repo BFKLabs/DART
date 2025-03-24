@@ -2197,7 +2197,9 @@ else
     
     % makes the parameter figure invisible
     objP = getappdata(hFig,'objP');
-    objP.setVisibility(0);
+    if ~isempty(objP)
+        objP.setVisibility(0);
+    end
 end
 
 % determines if there is any previous stored plotting values

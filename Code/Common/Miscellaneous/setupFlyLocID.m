@@ -56,7 +56,7 @@ elseif iMov.is2D
     for i = 1:length(iC)
         % case is 2D single tracking
         [iy,ix] = find(iGrp==i);
-        cIDnw = [iy,ix,i*ones(length(ix),1)];        
+        cIDnw = [iy(:),ix(:),i*ones(length(ix),1)];        
         
         % appends the indices to the overall array
         cID{iC(i)} = [cID{iC(i)};cIDnw];
