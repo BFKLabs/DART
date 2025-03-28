@@ -537,6 +537,7 @@ classdef VideoClipper < handle
             end
             
             % sets up the temporary file name
+%             vNameTmp = sprintf('%s (Temp)%s',fName,fExtn);
             vFile0 = fullfile(obj.vDir,obj.vName);
             vFileT = fullfile(vDirT,obj.vName);
             
@@ -567,6 +568,7 @@ classdef VideoClipper < handle
             vObjR = VideoReader(vFileT);
             
             % sets up the video writer object
+            delete(vFile0);
             vObjW = VideoWriter(vFile0,obj.vProf);
             vObjW.FrameRate = obj.fRate;
             open(vObjW);
