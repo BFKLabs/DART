@@ -925,7 +925,7 @@ classdef SolnFileLoad < handle & dynamicprops
                     if isprop(obj,'cObj')
                         obj.cObj.expData(iRow+1,1,:) = {nwStr};
                     end
-                        
+                    
                     % updates the experiment name and change flag
                     obj.isChange = true;
                     obj.sInfo{iRow+1}.expFile = nwStr;

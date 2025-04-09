@@ -1010,7 +1010,7 @@ classdef TrackFull < Track
                         iVid = 1;
                     else                    
                         % retrieves the video file index
-                        [~,fName,~] = fileparts(obj.iData.fData.name);
+                        [fDir,fName,~] = fileparts(obj.iData.fData.name);
                         A = regexp(fName,'\D','split');
                         iVid = str2double(A{end});
                     end

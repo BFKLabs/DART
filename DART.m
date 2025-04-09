@@ -540,6 +540,7 @@ classdef DART < handle
             
             % removes the git directory environment variables
             gitEnvVarFunc('remove','GIT_DIR');
+            [~,~] = system('setx GIT_DIR ""');
             GF.gitCmd('rmv-origin');
             
             % sets the directory to the main

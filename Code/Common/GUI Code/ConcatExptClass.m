@@ -373,37 +373,37 @@ classdef ConcatExptClass < handle
                     case 'Yes'
                         % updates the main GUI  
                         obj.fObj.sInfo = obj.sInfo;
-                        obj.fObj.updateSolnFileGUI(true);
-                        obj.fObj.tableUpdate = true;
-                        jTableMod = obj.fObj.jTable.getModel();
+                        obj.fObj.objT.updateSolnFileGUI(true);
+                        obj.fObj.objT.tableUpdate = true;
+                        jTableMod = obj.fObj.objT.jTableD.getModel();
                         
                         % removes any excess rows
                         pause(0.05);
-                        nRow0 = obj.fObj.jTable.getRowCount;
-                        iRow0 = max(obj.fObj.nExp+1,obj.fObj.nExpMax+1);
+                        nRow0 = obj.fObj.objT.jTableD.getRowCount;
+                        iRow0 = max(obj.fObj.nExp+1,obj.fObj.objT.nExpMax+1);
                         for i = iRow0:nRow0
-                            rmvInd = obj.fObj.jTable.getRowCount-1;
+                            rmvInd = obj.fObj.objT.jTableD.getRowCount-1;
                             jTableMod.removeRow(rmvInd)
-                            obj.fObj.jTable.repaint()
+                            obj.fObj.objT.jTableD.repaint()
                         end
                         
                         % removes/clears the rows                        
-                        for i = (obj.fObj.nExp+1):obj.fObj.nExpMax
-                            obj.fObj.clearExptInfoTableRow(i) 
+                        for i = (obj.fObj.nExp+1):obj.fObj.objT.nExpMax
+                            obj.fObj.objT.clearExptInfoTableRow(i) 
                         end
 
                         % resets the column widths
                         pause(0.05);
-                        obj.fObj.resetExptTableBGColour(0);
-                        obj.fObj.resetColumnWidths()
+                        obj.fObj.objT.resetExptTableBGColour(0);
+                        obj.fObj.objT.resetColumnWidths()
 
                         % repaints the table
-                        obj.fObj.jPanel.repaint()
-                        obj.fObj.jTable.repaint()            
+                        obj.fObj.objT.jPanelD.repaint()
+                        obj.fObj.objT.jTableD.repaint()            
 
                         % resets the table update flag
                         pause(0.05);
-                        obj.fObj.tableUpdate = false;
+                        obj.fObj.objT.tableUpdate = false;
                         
                     case 'Cancel'
                         % if the user cancelled, then exit
@@ -493,7 +493,7 @@ classdef ConcatExptClass < handle
             sInfoNw.iTab = 2;
             sInfoNw.iID = length(i1) + 1;
             sInfoNw.expFile = obj.expFile;
-            sInfoNw.expInfo = obj.fObj.initExptInfo(sInfoNw);
+            sInfoNw.expInfo = obj.fObj.objT.initExptInfo(sInfoNw);
             
             % resets the ID flags for the subsequent experiments
             diID = length(indC);

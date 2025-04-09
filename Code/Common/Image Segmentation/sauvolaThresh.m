@@ -15,7 +15,7 @@ end
 % Mean value
 Imu = avgFilt(Img, szMu*[1,1]);
 Ivar = avgFilt(Img.^2, szMu*[1,1]);
-Isd = (Ivar - Imu.^2).^0.5;
+Isd = max(0,(Ivar - Imu.^2)).^0.5;
 R = max(Isd(:));
 
 % Sauvola thresholding

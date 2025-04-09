@@ -69,9 +69,22 @@ classdef DetectCircle < handle
         % --- initialises the class fields
         function initClassFields(obj,I0)
             
+            % parameters
+            szMu = 10:2:20;
+            kT = linspace(0.01,0.1,length(szMu));
+            
             % sets up the region estimate image
-            obj.I = setupRegionEstimateImage(obj.iMov,I0);
+            Iest = double(calcImageStackFcn(I0,'min'));
             obj.Imd = double(calcImageStackFcn(I0,'median'));
+%             obj.I = setupRegionEstimateImage(obj.iMov,I0);           
+            
+            % sets the image estimate
+            obj.I = zeros(size(Iest));            
+            for i = szMu
+                for j = kT
+                    obj.I = obj.I + sauvolaThresh(Iest,i,j);
+                end
+            end                                      
             
             % creates the waitbar figure
             wStr = 'Reading Estimation Image Stack';
@@ -169,15 +182,15 @@ classdef DetectCircle < handle
             % parameters
             sTol = 0.9975;            
             
-            % calculates the normalised image and mean/std dev
-            Itmp = 255*normImg(applyHMFilter(ImdG));
-            Imn = mean(Itmp(:),'omitnan');
-            Isd = std(Itmp(:),[],'omitnan');
+%             % calculates the normalised image and mean/std dev
+%             Itmp = 255*normImg(applyHMFilter(ImdG));
+%             Imn = mean(Itmp(:),'omitnan');
+%             Isd = std(Itmp(:),[],'omitnan');
             
-            % removes any outlier regions
-            ZI = normcdf(Itmp,Imn,Isd);
-            BZ = (ZI >= obj.pTolZ) & (ZI <= (1 - obj.pTolZ));
-            Itmp(~BZ) = median(Itmp(BZ),'omitnan');
+%             % removes any outlier regions
+%             ZI = normcdf(Itmp,Imn,Isd);
+%             BZ = (ZI >= obj.pTolZ) & (ZI <= (1 - obj.pTolZ));
+%             Itmp(~BZ) = median(Itmp(BZ),'omitnan');
             
             % calculate circle regions each object polarity type
             for i = 1:length(obj.Type)
@@ -188,7 +201,7 @@ classdef DetectCircle < handle
                 % is within tolerance, or B) iteration count is exceeded
                 while 1
                     % runs the circle finding function
-                    [pC0{i},R0{i},M0{i}] = imfindcircles(Itmp,R0s,...
+                    [pC0{i},R0{i},M0{i}] = imfindcircles(IG,R0s,...
                         'Method','TwoStage','Sensitivity',sTol,...
                         'ObjectPolarity',obj.Type{i});
                     

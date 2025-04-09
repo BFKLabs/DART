@@ -1418,8 +1418,9 @@ classdef RegionConfig < handle
             if ~isempty(hOut); delete(hOut); end
             
             % sets up the sub-regions
+            obj.iMov.isSet = true;
             obj.iMov.is2D = obj.iData.is2D;
-            [obj.iMov.isSet,obj.iMov.iR] = deal(true,[]);
+            [obj.iMov.iR,obj.iMov.phInfo] = deal([]);
             
             % creates the sub-regions configuration
             obj.iMov = obj.objRC.setupRegionConfig(obj.iMov);
