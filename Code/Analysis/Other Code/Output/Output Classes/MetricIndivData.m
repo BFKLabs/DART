@@ -104,7 +104,7 @@ classdef MetricIndivData < DataOutputArray
             if pInd == 3
                 % reduces the genotype groups to those that appear >= once
                 iOut = find(obj.appOut);
-                hasF = cellfun(@(x)(any(cell2mat(x(1,:))>0)),obj.nFly);
+                hasF = cellfun(@(x)(any(cell2mat(x(1,:))>0)),obj.nFly(:,1));                
                 appOutF = obj.appOut & setGroup(iOut(hasF),size(obj.appOut));
                 
                 obj.iFly = obj.iFly(hasF,:);
@@ -145,7 +145,7 @@ classdef MetricIndivData < DataOutputArray
             
             % initialisations
             [a,b,iOfs] = deal({''},'',1+(obj.nExp>1));
-            isKeep = [(obj.nGrp>1),obj.sepGrp2];
+            isKeep = [all(obj.nGrp>1),obj.sepGrp2];
             
             % retrieves the independent variables
             xDepT = strings(size(obj.xDep));
@@ -158,6 +158,7 @@ classdef MetricIndivData < DataOutputArray
             nxDepU = length(iGrpC);
             
             % sets up column headers for all regions/expts
+            obj.mStrD = cell(1,nxDepU);
             obj.mStrT = cell(obj.nApp,nxDepU);            
             for k = 1:nxDepU
                 % sets the metric index for the 
@@ -187,13 +188,16 @@ classdef MetricIndivData < DataOutputArray
                     if (obj.nExp > 1); mStrC{1,1} = 'Experiment'; end
                     mStrC{1,iOfs} = 'Fly Index';
                     
+                    % sets the metric headers for the metric group
+                    iSD = obj.mIndG(iGrpC{k});
+                    obj.mStrD{k} = string(arr2vec(obj.iData.fName(iSD))');
+                    
                     % sets the final data array
                     obj.mStrT{i,k} = mStrC;
                 end
             end
                         
-            % sets the metric header strings
-            obj.mStrD = string(arr2vec(obj.iData.fName(obj.mIndG))');
+            % sets the metric header strings          
             if obj.sepDay
                 % if separating by day, then split the header strings
                 szD = cellfun(@(x)(size(x,2)),obj.YR{1}{1}(1,:));
@@ -203,12 +207,16 @@ classdef MetricIndivData < DataOutputArray
                 mStrD0 = string(arrayfun(@(x)...
                                 (sprintf('Day #%i',x)),obj.xiD,'un',0));
                             
-                if iscell(obj.mStrD)
-                    obj.mStrD = cell2cell(cellfun(@(x)(combineCellArrays...
-                                    ({x},mStrD0,0,b)),obj.mStrD,'un',0),0);
-                else
-                    obj.mStrD = cell2cell(arrayfun(@(x)(combineCellArrays...
-                                    ({x},mStrD0,0,b)),obj.mStrD,'un',0),0);                    
+                for i = 1:length(obj.mStrD)
+                    if iscell(obj.mStrD{i})
+                        obj.mStrD{i} = cell2cell(cellfun(@(x)(...
+                            combineCellArrays({x},mStrD0,0,b)),...
+                            obj.mStrD{i},'un',0),0);
+                    else
+                        obj.mStrD{i} = cell2cell(arrayfun(@(x)(...
+                            combineCellArrays({x},mStrD0,0,b)),...
+                            obj.mStrD{i},'un',0),0);
+                    end
                 end
             end
             
@@ -292,8 +300,9 @@ classdef MetricIndivData < DataOutputArray
             
             % initialisations
             [a,b] = deal({''},'');
+            niiX = length(unique(obj.iiX));
 %             DataF0 = cell(max(obj.iiX),obj.nApp);
-            DataF0 = cell(length(obj.iiX),obj.nApp);
+            DataF0 = cell(niiX,obj.nApp);
            
             % ------------------------------------------ %
             % --- ARRAY CONCATENATION PRE-PROCESSING --- %
@@ -301,22 +310,21 @@ classdef MetricIndivData < DataOutputArray
             
             % concatenates the metric data for each genotype group type
             for i = 1:obj.nApp
-                % combines the vertical string array
-                mStrTF = obj.mStrT{i};
-                
-                % sets
                 for j = 1:size(DataF0,1)
                     % sets the combined metric/header strings
-                    mData0 = [obj.mStrD;obj.YM{i}{j}];
+                    mStrTF = obj.mStrT{i,j};
+                    mData0 = [obj.mStrD{j};obj.YM{i}{j}];
                     
                     % appends any rows (if there is a difference in height)
                     dnRow = size(mStrTF,1) - size(mData0,1);                    
                     if dnRow > 0
+                        nCol = size(mData0,2);
                         mData0 = combineCellArrays...
-                                            (strings(dnRow),mData0,0,b);
+                                    (mData0,strings(dnRow,nCol),0,b);
                     elseif dnRow < 0
+                        nCol = size(mStrTF,2);
                         mStrTF = combineCellArrays...
-                                            (strings(-dnRow),mStrTF,0,b);                        
+                                    (strings(-dnRow,nCol),mStrTF,0,b);
                     end
                     
                     % sets the final array
@@ -406,7 +414,7 @@ classdef MetricIndivData < DataOutputArray
             % ------------------------------ %            
                                 
             % determines the feasible
-            nP = [obj.nExp,obj.nFly{iApp}{1,iExp},obj.nGrp,obj.sepGrp2];
+            nP = [obj.nExp,obj.nFly{iApp}{1,iExp},min(obj.nGrp),obj.sepGrp2];
             isKeep = nP > [1,0,1,0];              
             
             % sets the header string based on the level

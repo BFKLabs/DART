@@ -529,7 +529,7 @@ end
 
 % updates the current sheet tab
 hP = [handles.panelStatTest,handles.panelMetricData,handles.panelMetricInfo];
-try; arrayfun(@(x,y)(setPanelProps(x,y)),hP,eInd); end
+try arrayfun(@(x,y)(setPanelProps(x,y)),hP,eInd); catch; end
 
 % updates the other gui properties
 setTimeUnitObjProps(handles,iSelT-1)
@@ -1181,6 +1181,7 @@ try
     DataE = get(handles.tableExptInc,'Data');
     DataE(:,2) = num2cell(iData.getExpOut());
     set(handles.tableExptInc,'Data',DataE)
+catch
 end
 
 % --------------------------------------- %
@@ -1925,8 +1926,7 @@ set(hTableI,'Data',[iData.appName,num2cell(appOutF)],'RowName',[]);
 % ----------------------------------- %
 
 % initialisations
-[sDN,dD] = deal(iData.fName(hasTest),cell(length(mInd)+1,1));
-nStrS = length(sDN);
+dD = cell(length(mInd)+1,1);
 
 % initialises the table data cell arrays
 for i = 1:length(dD)
@@ -1974,6 +1974,8 @@ guidata(hFig,handles);
 % % if not any statistical tests, then disable the radio button
 % if any(hasTest)
 %     % sets the stats sheet data
+%     sDN = iData.fName(hasTest);
+%     nStrS = length(sDN);
 %     sD = [sDN,num2cell(false(nStrS,1)),repmat({''},nStrS,1)];
 %     set(handles.tableStatTest,'Data',sD,'ColumnFormat',...
 %                 {'char','logical',[]},'CellEditCallback',eFcn);
@@ -2436,7 +2438,8 @@ if isempty(Data0)
 elseif iscell(Data0)
     hasData = ~isempty(find(~cellfun('isempty',Data0),1,'first'));
 else
-    hasData = size(char(Data0),2) > 1;
+%     hasData = size(char(Data0),2) > 1;
+    hasData = true;
 end
 
 % --- updates the checkbox properties

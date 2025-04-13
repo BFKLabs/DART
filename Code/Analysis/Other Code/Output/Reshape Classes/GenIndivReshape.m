@@ -48,7 +48,8 @@ classdef GenIndivReshape < handle
             % sets the data arrays for each metric
             for i = 1:length(pStr)
                 % initialisations
-                YY = obj.dataGroupSplit(field2cell(obj.plotD,pStr{i})); 
+                Y0 = field2cell(obj.plotD,pStr{i});
+                YY = obj.dataGroupSplit(Y0,pStr{i}); 
 
                 % sets the signals for each of the 
                 Y{i} = cell(nApp,1);
@@ -66,11 +67,19 @@ classdef GenIndivReshape < handle
     methods (Static)
         
         % --- splits the data
-        function Ygrp = dataGroupSplit(Y) 
+        function Ygrp = dataGroupSplit(Y,pStr) 
 
             % memory allocation
             nApp = length(Y);
             Ygrp = cell(1,nApp);
+            
+            switch pStr
+                case 'tImmobF'
+                    [lblX,lblY] = deal('Fly','Stimuli');
+                    
+                otherwise
+                    [lblX,lblY] = deal('Cell');
+            end
 
             % loops through each apparatus converting the 2D array data
             for i = 1:nApp
@@ -82,9 +91,9 @@ classdef GenIndivReshape < handle
                     % sets the x/y strings
                     [nGY,nGX] = size(Y{i}{j});
                     tStrY = arrayfun(@(x)...
-                                (sprintf('Cell #%i',x)),1:nGX,'un',0);
+                            (sprintf('%s #%i',lblX,x)),1:nGX,'un',0);
                     tStrX = arrayfun(@(x)...
-                                (sprintf('Cell #%i',x)),1:nGY,'un',0)';
+                            (sprintf('%s #%i',lblY,x)),1:nGY,'un',0)';
 
                     % memory allocation
                     Ygrp{i}{j} = cell(nGY+1,nGX+1);

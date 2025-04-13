@@ -58,7 +58,7 @@ classdef MetricIndivReshape < handle
                 % initialisations
                 i = ind(j);
                 Ytmp = field2cell(obj.plotD,pStr{i});
-                YY = obj.dataGroupSplit(iData,Ytmp,nGrp(j),obj.plotD);
+                YY = obj.dataGroupSplit(iData,pStr{i},Ytmp,nGrp(j));
 
                 % sets the metrics for each of the levels
                 for iLvl = 1:size(Y,2)       
@@ -88,7 +88,7 @@ classdef MetricIndivReshape < handle
 
         % --- splits the data (for each apparatus) to denote the separation
         %     of the data (i.e., by either day or experiment)
-        function Ygrp = dataGroupSplit(obj,iData,Y,nGrp,p)
+        function Ygrp = dataGroupSplit(obj,iData,pStr,Y,nGrp)
 
             % Ygrp Convention
             %
@@ -100,15 +100,22 @@ classdef MetricIndivReshape < handle
             % Dim 3 - Fly Group
 
             % memory allocation
+            p = obj.plotD;
             [nApp,nLvl] = deal(length(Y),2);
             Ygrp = cell(nLvl,nApp,1+iData.sepGrp);
             xiG = num2cell(1:nGrp)';
 
             % sets the metric combination type
-            if isfield(p(1),'indCombMet')
-                cType = p(1).indCombMet;
-            else
-                cType = 'mn';
+            switch pStr
+                case 'tImmob'
+                    cType = 'mn';
+                    
+                otherwise
+                    if isfield(p(1),'indCombMet')
+                        cType = p(1).indCombMet;
+                    else
+                        cType = 'mn';
+                    end
             end
             
             % loops through each apparatus, level and bin group
@@ -129,7 +136,7 @@ classdef MetricIndivReshape < handle
                     for j = 1:nLvl
                         for i = 1:nExp
                             Ygrp{j,k,iGrp}(:,:,i) = ...
-                                    obj.setLevelMetrics(Ynw,j,i,cType);                                       
+                                    obj.setLevelMetrics(Ynw,j,i,cType);
                         end                     
                     end
                 end

@@ -126,6 +126,7 @@ classdef DataOutputArray < handle
                 nColMx = max(szD(:,2));
                 obj.Data = strings(sum(szD(:,1))+(nGrp+1)+rOfs,nColMx+cOfs);                
             end
+            
             % sets the data into the final array
             for i = 1:numel(DataF0)
                 % sets the data for the current block

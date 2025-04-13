@@ -36,7 +36,7 @@ classdef GenIndivData < DataOutputArray
             obj.YR = cellfun(@(x)(x(obj.appOut)),obj.Y(obj.iOrder),'un',0); 
             
             % sets the main headers
-            mStrH0 = {'Genotype';'Metric';'Fly #';''};
+            mStrH0 = {'Metric';'Genotype';'';''};
             obj.mStrH = [mStrH0,repmat({''},4,1)];
             
             % sets the global metric indices
@@ -73,6 +73,14 @@ classdef GenIndivData < DataOutputArray
                 % memory allocation
                 DataT{i} = cell(1,obj.nApp);
                 obj.mStrH{1,2} = obj.mStrB{i};
+                
+                switch obj.mStrB{i}
+                    case 'Immobility Times'
+                        obj.mStrH{3,1} = 'Expt #';
+                        
+                    otherwise
+                        obj.mStrH{3,1} = 'Fly #';
+                end
 
                 % sets the individual data arrays
                 for j = 1:obj.nApp
