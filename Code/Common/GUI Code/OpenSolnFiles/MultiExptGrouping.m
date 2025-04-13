@@ -1040,7 +1040,7 @@ classdef MultiExptGrouping < handle & dynamicprops
             hTabG = get(obj.hTabGrpGL,'SelectedTab');
             if get(hTabG,'UserData') ~= iTabG
                 hTabG = findall(obj.hTabGrpGL,'UserData',iTabG);
-                set(obj.hTabGrpL,'SelectedTab',hTabG);
+                set(obj.hTabGrpGL,'SelectedTab',hTabG);
             end
             
             % updates the experiment list selection

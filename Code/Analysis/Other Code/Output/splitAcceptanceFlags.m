@@ -44,7 +44,7 @@ elseif snTot.iMov.is2D
 else    
     % memory allocation
     isCust = detIfCustomGrid(snTot.iMov);
-    nFlyMx = max(snTot.iMov.pInfo.nFly(:));
+    nFlyMx = max(cellfun('length',snTot.iMov.iRT(:)));
     sz = [nFlyMx,pInfo.nRow*pInfo.nCol];
     [fok,ok] = deal(false(sz),false(sz(2),1));
     
