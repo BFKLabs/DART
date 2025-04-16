@@ -100,6 +100,11 @@ end
 % --- runs the new version of the function
 function [dPx,dPy,Rad] = get2DCoordsBGNew(snTot,iApp)
 
+% parameters
+nBin = 360;
+pDTol = 0.9;
+pCover = 0.75;
+
 % field retrieval
 isMT = detMltTrkStatus(snTot.iMov);
 [cID,iMov] = deal(snTot.cID,snTot.iMov);
@@ -107,6 +112,7 @@ isMT = detMltTrkStatus(snTot.iMov);
 [X0,Y0] = getCircCentreCoords(iMov);
 
 % memory allocation
+szG = size(X0);
 nApp = max(1,length(snTot.Px));
 [dPx,dPy,Rad] = deal(cell(nApp,1));
 
@@ -116,34 +122,63 @@ if hasApp
 else
     [Px,Py,iApp] = deal(snTot.Px,snTot.Py,1);
 end
-    
-% reduces down the x/y-coordinates
-i0 = find(~cellfun('isempty',Px),1,'first');
-[szG,nFrm] = deal(size(X0),size(Px{i0},1)); 
 
 % calculates the relative x/y-coordinates
 for j = 1:length(iApp)  
     i = iApp(j);
     if isMT
+        % calculates the relative coordinates
         [xOfs,yOfs] = deal(X0(j),Y0(j)-iMov.iR{j}(1)+1);
         [dPx{i},dPy{i}] = deal(Px{i}/sFac-xOfs,Py{i}/sFac-yOfs);
+        
+        % sets the radii values for each sub-region in the group
+        if length(iMov.autoP.R) == 1
+            % case is there is a constant radii value
+            Rad{i} = (iMov.autoP.R-1)*ones(sum(fok{i}),1);z
+        else
+            % case is radii have been set for each sub-region
+            Rad{i} = iMov.autoP.R(indG)-1;
+        end        
     else
         % retrieves the indices of the grid locations
         indG = sub2ind(szG,cID{i}(fok{i},1),cID{i}(fok{i},2));
-
-        % calculates the x/y coordinates (wrt the circle centres)
-        dPx{i} = Px{i}(:,fok{i})/sFac - repmat(arr2vec(X0(indG))',nFrm,1);
-        dPy{i} = Py{i}(:,fok{i})/sFac - repmat(arr2vec(Y0(indG))',nFrm,1);
-    end
-        
-    % sets the radii values for each sub-region in the group
-    if length(iMov.autoP.R) == 1
-        % case is there is a constant radii value
-        Rad{i} = (iMov.autoP.R-1)*ones(sum(fok{i}),1);z
-    else
-        % case is radii have been set for each sub-region
         Rad{i} = iMov.autoP.R(indG)-1;
-    end
+        
+        % calculates the initial relative x/y coordinates
+        [Px{i},Py{i}] = deal(Px{i}(:,fok{i}),Py{i}(:,fok{i}));
+        dPx{i} = Px{i}/sFac - arr2vec(X0(indG))';
+        dPy{i} = Py{i}/sFac - arr2vec(Y0(indG))';   
+        
+        %
+        for k = 1:size(Px{i},2)
+            % determines the points in the outer region
+            D = sqrt(dPx{i}(:,k).^2 + dPy{i}(:,k).^2);
+            isOut = D > pDTol;
+            
+            % if there are no points in the outer region then continue
+            if ~any(isOut)
+                continue
+            end
+            
+            % determines outer region coverage proportion
+            phiP = calcPhaseAngle(dPx{i}(:,k),dPy{i}(:,k));
+            idxP = max(1,round(nBin*phiP/(2*pi)));
+            if length(unique(idxP)) > pCover*nBin
+                % determines the minimum enclosed circle
+                try
+                kk = convhull(dPx{1}(:,k),dPy{1}(:,k));
+                objM = MinEncloseCircle([dPx{i}(kk,k),dPy{i}(kk,k)]);
+                catch
+                    a = 1;
+                end
+                
+                %
+                Rad{i}(k) = objM.cP.R;                
+                dPx{i}(:,k) = Px{i}(:,k)/sFac-(X0(indG(k))+objM.cP.pC(1));
+                dPy{i}(:,k) = Py{i}(:,k)/sFac-(Y0(indG(k))+objM.cP.pC(2));                
+            end
+        end        
+    end        
 end
 
 % --- runs the old version of the function
@@ -259,3 +294,8 @@ if isempty(indR)
     pCFmn = cell2mat(cellfun(@(x)(mean(x,1)),pCF,'un',0));
     indR = argMin(pdist2(pCFmn,[xMn,yMn]));
 end
+
+% --- calculates the phase angle
+function phiP = calcPhaseAngle(X,Y)
+
+phiP = wrapTo2Pi(atan2(Y,X));

@@ -1257,12 +1257,14 @@ classdef RegionConfig < handle
         % --- rectangle detection menu item callback function 
         function menuDetectRect(obj, ~, ~)
         
-            % IF SINGLE TRACKING - ALGORITHM INCOMPLETE
-            if ~obj.isMTrk
-                eStr = 'This feature is still under construction...';
-                waitfor(msgbox(eStr,'Finish Me!','modal'))
+            % determines if there are multiple regions
+            if ~obj.multiRegionCheck()
+                % if not output an error and exit
+                eStr = ['Rectangle detection is only feasible ',...
+                        'for multi-region setups'];
+                waitfor(msgbox(eStr,'Region Detection Error','modal'))
                 return
-            end
+            end            
             
             % retrieves the automatic detection algorithm objects
             [iMovOrig,~] = obj.initAutoDetect();
@@ -1276,8 +1278,14 @@ classdef RegionConfig < handle
                 return
                 
             else
+                % runs the general region detection algorithm
+                if obj.isMTrk
+                    obj.objG = MultiGenRegionDetect(iMovOrig,I);
+                else
+                    obj.objG = SingleGenRegionDetect(iMovOrig,I);
+                end
+                
                 % runs the rectangle region detection algorithm
-                obj.objG = GenRegionDetect(iMovOrig,I);
                 if obj.objG.calcOK
                     % case is the calculations succeeded
                     iMovNw = obj.objG.iMov;
@@ -2958,7 +2966,14 @@ classdef RegionConfig < handle
             
             
         end
+
+        % --- determines if a 2D setup has multiple regions
+        function isMultiReg = multiRegionCheck(obj)
             
+            isMultiReg = obj.iMov.pInfo.nRow*obj.iMov.pInfo.nCol > 1;            
+            
+        end
+        
     end
     
 end

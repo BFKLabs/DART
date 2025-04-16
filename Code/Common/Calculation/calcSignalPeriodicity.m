@@ -16,7 +16,7 @@ end
 [yPk,tPk] = findpeaks(Pxx/max(Pxx),'MinPeakHeight',pTol);
 
 % rounds the value (if required)
-if nargin == 3
+if nargout == 2
     [Tp,Yp] = deal(2*pi./f(tPk),yPk);
 else
     Tp = roundP(2*pi/f(tPk(1)));    
