@@ -156,7 +156,6 @@ Y0 = cellfun(@(x)(getRegionDataValues(Y,x)),cID,'un',0);
 
 % clears the extraneous variables
 clear Y cID
-pause(0.05);
 
 try
     Ygrp = cell2mat(Y0(:)');

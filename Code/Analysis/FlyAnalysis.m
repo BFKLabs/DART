@@ -2500,8 +2500,17 @@ for i = 1:nExp
     end
 end
 
-% % retrieves the fieldname from each solution file
-% fName = cellfun(@(x)(fieldnames(x.snTot)),sInfo,'un',0)';
+% determines the candidate solution file
+pFld = cellfun(@(x)(fieldnames(x.snTot)),sInfo,'un',0);
+pFldI = cellfun(@(x)(intersect(x,pFld{1})),pFld,'un',0);
+nFldI = cellfun('length',pFldI);
+iMn = argMin(nFldI);
+
+% removes any fields not in the candidate solution file
+for i = find(nFldI(:)' > nFldI(iMn))
+    pFldRmv = setdiff(pFldI{i},pFldI{iMn});
+    sInfo{i}.snTot = rmfield(sInfo{i}.snTot,pFldRmv);
+end
 
 % separates the data struct (removes snTot from sInfo)
 for i = 1:nExp

@@ -31,14 +31,26 @@ end
 % --- retrieves the 2D coordinates for rectangular regions
 function [dPx,dPy,Rad] = get2DCoordsRect(snTot,iApp)
 
+% parameters
+pDTol = 0.5;
+pCoverTol = 0.75;
+
 % field retrieval
 iMov = snTot.iMov;
-pInfo = iMov.pInfo;
+sFac = snTot.sgP.sFac;
 isMT = detMltTrkStatus(iMov);
+[pInfo,cID] = deal(iMov.pInfo,snTot.cID);
 
 % memory allocation
 nApp = max(1,length(snTot.Px));
 [dPx,dPy,Rad] = deal(cell(nApp,1));
+[Px,Py] = deal(snTot.Px,snTot.Py);
+
+% single tracking field retrieval
+if ~isMT
+    reCalcR = cell(nApp,1);
+    [szG,fok] = deal(size(iMov.autoP.X0),iMov.flyok);
+end
 
 % calculates the relative x/y-coordinates
 for j = 1:length(iApp)  
@@ -48,15 +60,14 @@ for j = 1:length(iApp)
         % case is multi-tracking
         
         % separates the flies into their separate regions
-        cID = snTot.cID{i};
-        [~,~,iC] = unique(cID(:,1),'stable');
+        [~,~,iC] = unique(cID{i}(:,1),'stable');
         indC = arrayfun(@(x)(find(iC==x)),1:max(iC),'un',0);
         
         % retrieves the regions 
         [dPx0,dPy0,Rad0] = deal(cell(1,length(indC)));
         for k = 1:length(indC)
             % determines the row/column indices of the region
-            iReg = cID(indC{k}(1),1);
+            iReg = cID{i}(indC{k}(1),1);
             iCol = mod(iReg-1,pInfo.nCol) + 1;
             iRow = floor((iReg-1)/pInfo.nCol) + 1;
             nFly = pInfo.nFly(iRow,iCol);
@@ -67,8 +78,8 @@ for j = 1:length(iApp)
             yOfs = iMov.iR{iCol}(iMov.iRT{iCol}{iRow}(1)) - 1;            
             
             % calculates the x/y offsets
-            dPx0{k} = snTot.Px{i}(:,indC{k}) - (xOfs + szD(1)/2);
-            dPy0{k} = snTot.Py{i}(:,indC{k}) - (yOfs + szD(2)/2);
+            dPx0{k} = Px{i}(:,indC{k}) - (xOfs + szD(1)/2);
+            dPy0{k} = Py{i}(:,indC{k}) - (yOfs + szD(2)/2);
             
             % sets the region dimensions
             Rad0{k} = repmat(szD,1,nFly);
@@ -78,6 +89,72 @@ for j = 1:length(iApp)
         dPx{i} = cell2mat(dPx0);
         dPy{i} = cell2mat(dPy0);
         Rad{i} = cell2mat(Rad0);
+        
+    else
+        % retrieves the global indices
+        indG = sub2ind(szG,cID{i}(fok{i},1),cID{i}(fok{i},2));
+        [X0G,Y0G] = deal(iMov.autoP.X0(indG)',iMov.autoP.Y0(indG)');
+
+        % scales the coordinates
+        Rad{i} = [iMov.autoP.W(indG),iMov.autoP.H(indG)]';
+        dPx{i} = scaleCoords(Px{i}(:,indG),X0G+Rad{i}(1,:)/2,sFac);
+        dPy{i} = scaleCoords(Py{i}(:,indG),Y0G+Rad{i}(2,:)/2,sFac);
+        reCalcR{i} = true(1,size(Rad{i},2));
+        
+        %
+        for k = 1:size(dPx{i},2)
+            % determines the points in the outer region
+            pPx = abs(2*dPx{i}(:,k)./Rad{i}(1,k));
+            pPy = abs(2*dPy{i}(:,k)./Rad{i}(2,k));
+            isOut = (pPx > pDTol) | (pPy > pDTol);            
+
+            % if there are no points in the outer region then continue
+            if ~any(isOut)
+                continue
+            end            
+            
+            % determines outer region coverage proportion
+            pCover = calcRegionCover(dPx{i}(:,k),dPy{i}(:,k));
+            if pCover > pCoverTol
+                % calculates the max x/y-extent
+                reCalcR{i}(k) = false;                
+                Wmx = 2*max(abs(dPx{i}(:,k)));
+                Hmx = 2*max(abs(dPy{i}(:,k)));
+                
+                % rescales the coordinates based on region shape
+                if Rad{i}(1,k)/Rad{i}(2,k) == 1
+                    % case is a square
+                    Rad{i}(:,k) = [Wmx;Hmx];
+%                     Rad{i}(:,k) = max([Wmx,Hmx]);
+                else
+                    % case is a rectangle
+                    Rad{i}(:,k) = [Wmx;Hmx];
+                end
+                
+%                 % recalculates the x-coordinates
+%                 xOfs = X0G(k) + Rad{i}(1,k)/2;
+%                 dPx{i}(:,k) = scaleCoords(Px{i}(:,indG(k)),xOfs,sFac);
+%                 
+%                 % recalculates the y-coordinates
+%                 yOfs = Y0G(k) + Rad{i}(2,k)/2;
+%                 dPy{i}(:,k) = scaleCoords(Py{i}(:,indG(k)),yOfs,sFac);
+            end
+        end
+    end
+end
+
+% recalculates the region coordinates (single tracking only
+if ~isMT && any(cellfun(@any,reCalcR))
+    % determines the radii that have been rescaled (exit if none)
+    RadC = cell2mat(cellfun(@(x,y)(x(:,~y)),Rad,reCalcR,'un',0));
+    if isempty(RadC); return; end
+    
+    % resets the radii for each region that need recalculation
+    RadMx = max(RadC,[],2);
+    for i = 1:length(reCalcR)
+        if any(reCalcR{i})
+            Rad{i}(:,reCalcR{i}) = repmat(RadMx,1,sum(reCalcR{i}));
+        end
     end
 end
 
@@ -101,9 +178,8 @@ end
 function [dPx,dPy,Rad] = get2DCoordsBGNew(snTot,iApp)
 
 % parameters
-nBin = 360;
 pDTol = 0.9;
-pCover = 0.75;
+pCoverTol = 0.75;
 
 % field retrieval
 isMT = detMltTrkStatus(snTot.iMov);
@@ -121,6 +197,11 @@ if hasApp
     [Px,Py] = deal(snTot.Px,snTot.Py);        
 else
     [Px,Py,iApp] = deal(snTot.Px,snTot.Py,1);
+end
+
+% memory allocation (single tracking only)
+if ~isMT
+    [reCalcR,X0G,Y0G] = deal(cell(size(Px)));
 end
 
 % calculates the relative x/y-coordinates
@@ -143,13 +224,18 @@ for j = 1:length(iApp)
         % retrieves the indices of the grid locations
         indG = sub2ind(szG,cID{i}(fok{i},1),cID{i}(fok{i},2));
         Rad{i} = iMov.autoP.R(indG)-1;
+        reCalcR{i} = true(size(Rad{i}));
         
         % calculates the initial relative x/y coordinates
+        X0G{i} = arr2vec(X0(indG))';
+        Y0G{i} = arr2vec(Y0(indG))';
         [Px{i},Py{i}] = deal(Px{i}(:,fok{i}),Py{i}(:,fok{i}));
-        dPx{i} = Px{i}/sFac - arr2vec(X0(indG))';
-        dPy{i} = Py{i}/sFac - arr2vec(Y0(indG))';   
+
+        % scales the coordinates
+        dPx{i} = scaleCoords(Px{i},X0G{i},sFac);
+        dPy{i} = scaleCoords(Py{i},Y0G{i},sFac);
         
-        %
+        % 
         for k = 1:size(Px{i},2)
             % determines the points in the outer region
             D = sqrt(dPx{i}(:,k).^2 + dPy{i}(:,k).^2);
@@ -161,26 +247,46 @@ for j = 1:length(iApp)
             end
             
             % determines outer region coverage proportion
-            phiP = calcPhaseAngle(dPx{i}(:,k),dPy{i}(:,k));
-            idxP = max(1,round(nBin*phiP/(2*pi)));
-            if length(unique(idxP)) > pCover*nBin
+            pCover = calcRegionCover(dPx{i}(:,k),dPy{i}(:,k));
+            if pCover > pCoverTol
                 % determines the minimum enclosed circle
-                try
-                kk = convhull(dPx{1}(:,k),dPy{1}(:,k));
+                kk = convhull(dPx{i}(:,k),dPy{i}(:,k));
                 objM = MinEncloseCircle([dPx{i}(kk,k),dPy{i}(kk,k)]);
-                catch
-                    a = 1;
-                end
                 
-                %
-                Rad{i}(k) = objM.cP.R;                
-                dPx{i}(:,k) = Px{i}(:,k)/sFac-(X0(indG(k))+objM.cP.pC(1));
-                dPy{i}(:,k) = Py{i}(:,k)/sFac-(Y0(indG(k))+objM.cP.pC(2));                
+                % recalculates the x/y coordinates from the MEC
+                Rad{i}(k) = objM.cP.R;
+                reCalcR{i}(k) = false;
+                
+                % recalculates the x-coordinates
+                xOfs = X0G{i}(k) + objM.cP.pC(1);
+                dPx{i}(:,k) = scaleCoords(Px{i}(:,k),xOfs,sFac);
+                
+                % recalculates the y-coordinates
+                yOfs = Y0G{i}(k) + objM.cP.pC(2);
+                dPy{i}(:,k) = scaleCoords(Py{i}(:,k),yOfs,sFac);
             end
         end        
     end        
 end
 
+% recalculates the region coordinates (single tracking only
+if ~isMT && any(cellfun(@any,reCalcR))
+    % determines the radii that have been rescaled (exit if none)
+    RadC = cell2mat(cellfun(@(x,y)(x(~y)),Rad,reCalcR,'un',0));
+    if isempty(RadC); return; end
+    
+    % resets the radii for each region that need recalculation
+    RadMx = max(RadC);
+    for i = 1:length(reCalcR)
+        if any(reCalcR{i})
+            ii = reCalcR{i};
+            Rad{i}(ii) = RadMx;
+            dPx{i}(:,ii) = scaleCoords(Px{i}(:,ii),X0G{i}(ii),sFac);
+            dPy{i}(:,ii) = scaleCoords(Py{i}(:,ii),Y0G{i}(ii),sFac);
+        end
+    end
+end
+    
 % --- runs the old version of the function
 function [dPx,dPy,Rad] = get2DCoordsBGOld(snTot,iApp)
 
@@ -295,7 +401,18 @@ if isempty(indR)
     indR = argMin(pdist2(pCFmn,[xMn,yMn]));
 end
 
-% --- calculates the phase angle
-function phiP = calcPhaseAngle(X,Y)
+% --- calculates the region coverage
+function pCover = calcRegionCover(X,Y)
 
+% parameters
+nBin = 360;
+
+% calculates the region proportional coverage
 phiP = wrapTo2Pi(atan2(Y,X));
+idxP = max(1,round(nBin*phiP/(2*pi)));
+pCover = length(unique(idxP))/nBin;
+
+% --- scales the coordinates
+function Zs = scaleCoords(Z,zOfs,sFac)
+
+Zs = Z/sFac - zOfs;

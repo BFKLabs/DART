@@ -2382,7 +2382,7 @@ classdef SaveFigure < handle
                 end
             end
             
-        end                
+        end        
         
     end
     
