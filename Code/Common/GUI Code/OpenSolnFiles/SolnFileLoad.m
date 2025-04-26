@@ -1734,21 +1734,22 @@ classdef SolnFileLoad < handle & dynamicprops
 
             % initialisations
             mStr = [];
-            expFile = cellfun(@(x)(x.expFile),obj.sInfo,'un',0);
-
+            indR = detRepeatedExpts(obj.sInfo);
+            
             % determines the unique experiment file names
-            [expFileU,~,iC] = unique(expFile,'stable');
-            if length(expFileU) < length(expFile)
+            if any(indR > 0)
                 % case is there are repeated experiment names   
+                [indRU,~,iC] = unique(indR,'stable');
                 iGrp0 = arrayfun(@(x)(find(iC==x)),(1:max(iC))','un',0);
 
                 % determines the repeat experiment file names
-                ii = cellfun('length',iGrp0) == 1;
-                expFileR = expFileU(~ii);
+                ii = indRU == 0;                
+                expFile = cellfun(@(x)(x.expFile),obj.sInfo,'un',0);
+                expFileR = cellfun(@(x)(expFile{x(1)}),iGrp0(~ii),'un',0);
 
-                % sets the 
+                % sets the unique experiment file names
                 if any(ii)
-                    iGrpU = [cell2mat(iGrp0(ii));iGrp0(~ii)]; 
+                    iGrpU = [iGrp0{ii};iGrp0(~ii)]; 
                 else
                     iGrpU = [{[]};iGrp0(~ii)];
                 end

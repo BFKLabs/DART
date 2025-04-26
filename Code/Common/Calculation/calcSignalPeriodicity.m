@@ -19,5 +19,5 @@ end
 if nargout == 2
     [Tp,Yp] = deal(2*pi./f(tPk),yPk);
 else
-    Tp = roundP(2*pi/f(tPk(1)));    
+    Tp = roundP(2*pi/f(tPk(argMax(yPk))));    
 end

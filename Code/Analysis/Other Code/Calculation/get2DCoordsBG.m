@@ -97,8 +97,8 @@ for j = 1:length(iApp)
 
         % scales the coordinates
         Rad{i} = [iMov.autoP.W(indG),iMov.autoP.H(indG)]';
-        dPx{i} = scaleCoords(Px{i}(:,indG),X0G+Rad{i}(1,:)/2,sFac);
-        dPy{i} = scaleCoords(Py{i}(:,indG),Y0G+Rad{i}(2,:)/2,sFac);
+        dPx{i} = scaleCoords(Px{i}(:,fok{i}),X0G+Rad{i}(1,:)/2,sFac);
+        dPy{i} = scaleCoords(Py{i}(:,fok{i}),Y0G+Rad{i}(2,:)/2,sFac);
         reCalcR{i} = true(1,size(Rad{i},2));
         
         %
@@ -113,9 +113,9 @@ for j = 1:length(iApp)
                 continue
             end            
             
-            % determines outer region coverage proportion
-            pCover = calcRegionCover(dPx{i}(:,k),dPy{i}(:,k));
-            if pCover > pCoverTol
+%             % determines outer region coverage proportion
+%             pCover = calcRegionCover(dPx{i}(:,k),dPy{i}(:,k));
+%             if pCover > pCoverTol
                 % calculates the max x/y-extent
                 reCalcR{i}(k) = false;                
                 Wmx = 2*max(abs(dPx{i}(:,k)));
@@ -138,7 +138,7 @@ for j = 1:length(iApp)
 %                 % recalculates the y-coordinates
 %                 yOfs = Y0G(k) + Rad{i}(2,k)/2;
 %                 dPy{i}(:,k) = scaleCoords(Py{i}(:,indG(k)),yOfs,sFac);
-            end
+%             end
         end
     end
 end

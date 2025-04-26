@@ -379,14 +379,13 @@ classdef OpenSolnFilesObj < handle
                         
                         % retrieves the names of the loaded experiments
                         if isempty(sInfoF)
-                            expFileF = {'Dummy'};
+                            indR = 0;
                         else
-                            expFileF = cellfun(...
-                                @(x)(x.expFile),sInfoF,'un',0);
+                            indR = detRepeatedExpts(obj.sInfo);
                         end
                         
                         % determines if there are repeated experiment names
-                        if length(expFileF) > length(unique(expFileF))
+                        if any(indR > 0)
                             % if so, then output an error message to screen
                             mStr = sprintf(['There are repeated experiment names ',...
                                 'within the loaded data list.\nRemove ',...

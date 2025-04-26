@@ -285,6 +285,13 @@ classdef SingleGenRegionDetect < GenRegionDetect
                 obj.iMov.posO{j} = obj.iMov.pos{j};
             end
             
+            % sets the global region coordinates
+            L = min(cellfun(@(x)(x(1)),obj.iMov.posO));
+            B = min(cellfun(@(x)(x(2)),obj.iMov.posO));
+            R = max(cellfun(@(x)(sum(x([1,3]))),obj.iMov.posO));
+            T = max(cellfun(@(x)(sum(x([2,4]))),obj.iMov.posO));
+            obj.iMov.posG = [L,B,(R-L),(T-B)];
+            
             % sets up the automatic detection parameters
             obj.iMov.autoP = pos2para(obj.iMov,pPos);
             
@@ -338,6 +345,12 @@ classdef SingleGenRegionDetect < GenRegionDetect
             % sets the centred sub-image
             IsubF = NaN(2*delI+1);
             IsubF(ii,jj) = obj.IbgE(iRF(ii),iCF(jj));            
+            
+            % removes any NaN values (if present)
+            if any(~ii) || any(~jj)
+                Bnan = isnan(IsubF);
+                IsubF(Bnan) = median(IsubF(~Bnan));
+            end
             
             % sets the global x/y-coordinate offsets
             obj.xOfsF(indR) = iCF(1);
@@ -393,7 +406,20 @@ classdef SingleGenRegionDetect < GenRegionDetect
         % --- sets up the residual signal
         function [YmxS,Tp] = setupResidualSignal(Y0)
             
-            Tp = floor(calcSignalPeriodicity(Y0));
+            % calculates the signal periodicity
+            [Tp,~] = calcSignalPeriodicity(Y0);            
+            if length(Tp) > 1
+                % if there is more than one significant peak, then
+                % determine the period which matches the signal better
+                dY = arrayfun(@(x)(mean(abs(Y0-smooth(Y0,round(x/2))))),Tp);
+                Tp = round(Tp(argMin(dY)));
+                
+            else
+                % case is there is only one significant peak
+                Tp = round(Tp);
+            end
+                        
+            % calculates the smoothed signal
             Ymx = Y0(:) - imopen(Y0(:),ones(Tp,1));
             YmxS = smooth(Ymx,Tp/2);
             
