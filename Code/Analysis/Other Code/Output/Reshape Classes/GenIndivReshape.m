@@ -74,7 +74,7 @@ classdef GenIndivReshape < handle
             Ygrp = cell(1,nApp);
             
             switch pStr
-                case 'tImmobF'
+                case {'tImmobF','isReactF'}
                     [lblX,lblY] = deal('Fly','Stimuli');
                     
                 otherwise

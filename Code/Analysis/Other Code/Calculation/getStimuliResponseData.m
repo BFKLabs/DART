@@ -10,7 +10,7 @@ end
 % memory allocation
 ok = false;
 pSR = struct('Ycount',[],'YcountR',[],'tImmob',[],'tImmobF',[],...
-             'Xbin',[],'Ybin',[]);
+             'isReactF',[],'isReact',[],'Xbin',[],'Ybin',[]);
          
 % retrieves the other calculation parameters (if they exist)
 [devType,chType] = deal([]);
@@ -126,11 +126,11 @@ indG = detTimeGroupIndices(Ttot(iTs),[0 0 T0],1+cP.sepDN,cP.Tgrp0,true);
 [nDay,nGrpT] = deal(size(indG, 1), 24/(1 + cP.sepDN));
 
 % memory allocation
-tImmobF = cell(nApp,1);
+[tImmobF,isReactF] = deal(cell(nApp,1));
 [Ycount,YcountR] = deal(cellfun(@(x)(repmat...
                 ({zeros(1+cP.sepDN,nGrp)},nDay,length(x))),flyok,'un',0));
-tImmob = cellfun(@(x)(repmat...
-                ({zeros(1+cP.sepDN,nGrpT)},nDay,length(x))),flyok,'un',0);            
+[tImmob,isReact] = deal(cellfun(@(x)(repmat...
+                ({zeros(1+cP.sepDN,nGrpT)},nDay,length(x))),flyok,'un',0));
 
 % sets the x/y bin arrays
 B = repmat({repmat({cell(nGrp,1)},nDay,1+cP.sepDN)},nApp,1);
@@ -157,12 +157,12 @@ for i = 1:nApp
     
     % calculates the pre-stimuli immobility times over all flies for each
     % of the stimuli events
-    [tImmobF{i},isReact] = calcFlyImmobilityTimes(Ttot,Px,Py,Ts,cP,indB);
+    [tImmobF{i},isReactF{i}] = calcFlyImmobilityTimes(Ttot,Px,Py,Ts,cP,indB);
     
     % groups the immobile time/reaction flags
     if ~isempty(tImmobF{i})
         tImmobG = cellfun(@(x)(tImmobF{i}(x,:)),indG,'un',0);
-        isReactG = cellfun(@(x)(isReact(x,:)),indG,'un',0);
+        isReactG = cellfun(@(x)(isReactF{i}(x,:)),indG,'un',0);
 
         % sets the reaction counts (for each fly/grouping)
         iBinT = cellfun(@(x)(ceil(x/nBin)),tImmobG,'un',0);               
@@ -178,7 +178,7 @@ for i = 1:nApp
         for iDay = 1:nDay
             for k = 1:size(indG,2)                                       
                 % reshapes the immobility times array
-                Atmp = NaN(nGrpT,length(iFly));
+                [Atmp,Btmp] = deal(NaN(nGrpT,length(iFly)));
                 xiT = 1:size(tImmobG{iDay,k},1);
                 if ~isempty(tImmobG{iDay,k})
                     % if the first day, offset the indices 
@@ -189,7 +189,12 @@ for i = 1:nApp
                     % stores the immobility times
                     tImmobTmp = tImmobG{iDay,k};
                     tImmobTmp(isnan(tImmobTmp)) = -1;
-                    Atmp(xiT,:) = tImmobTmp;                    
+                    Atmp(xiT,:) = tImmobTmp;               
+                    
+                    % stores the immobility times
+                    isReactTmp = isReactG{iDay,k};
+                    isReactTmp(isnan(isReactTmp)) = -1;
+                    Btmp(xiT,:) = isReactTmp;                                   
                 end
                 
                 for j = 1:length(iFly)
@@ -197,6 +202,7 @@ for i = 1:nApp
                     Ycount{i}{iDay,iFly(j)}(k,:) = iBinTC{iDay,k}(:,j)';
                     YcountR{i}{iDay,iFly(j)}(k,:) = iBinTR{iDay,k}(:,j)';                 
                     tImmob{i}{iDay,iFly(j)}(k,:) = Atmp(:,j)';
+                    isReact{i}{iDay,iFly(j)}(k,:) = Btmp(:,j)';                    
                 end                                 
             end            
         end    
@@ -210,7 +216,7 @@ for i = 1:nApp
                 if (any(jj))
                     indSnw = indS{j}(1):indS{j}(2);
                     iYnw{j} = ceil(tImmobF{i}(j,jj)/nBin);
-                    iRnw{j} = double(isReact(j,jj));                
+                    iRnw{j} = double(isReactF{i}(j,jj));                
                     
                     % calculates the binned x-values (if they are present)
                     if ~isempty(Px)
@@ -281,6 +287,10 @@ ok = true;
 [pSR.Xbin,pSR.Ybin] = deal(Xbin,Ybin);
 [pSR.Ycount,pSR.YcountR] = deal(Ycount,YcountR);
 [pSR.tImmob,pSR.tImmobF] = deal(tImmob,tImmobF);
+
+% sets the reaction flags
+pSR.isReact = isReact;
+pSR.isReactF = cellfun(@double,isReactF,'un',0);
 
 % closes the waitbar (if created in the function)
 if nargin < 3
