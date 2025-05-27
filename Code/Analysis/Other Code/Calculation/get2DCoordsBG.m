@@ -146,7 +146,7 @@ end
 % recalculates the region coordinates (single tracking only
 if ~isMT && any(cellfun(@any,reCalcR))
     % determines the radii that have been rescaled (exit if none)
-    RadC = cell2mat(cellfun(@(x,y)(x(:,~y)),Rad,reCalcR,'un',0));
+    RadC = cell2mat(cellfun(@(x,y)(x(:,~y)),Rad(:)',reCalcR(:)','un',0));
     if isempty(RadC); return; end
     
     % resets the radii for each region that need recalculation
