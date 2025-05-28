@@ -18,7 +18,8 @@ indB = cell(ii(end),1);
 A = num2cell([[1;idBin],[(idBin-1);length(T)]],2);
 indB([1;ii]) = cellfun(@(x)(x(1):x(min(length(x),2))),A,'un',0);
 
-%
-if (diff(cellfun(@(x)(T(x(end))),indB(end-1:end))) < 3*tBin/4)
-    indB = indB(1:end-1);
+if length(indB) > 1
+    if (diff(cellfun(@(x)(T(x(end))),indB(end-1:end))) < 3*tBin/4)
+        indB = indB(1:end-1);
+    end
 end

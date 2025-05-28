@@ -28,15 +28,16 @@ else
             % memory allocation
             p.Value = struct('Lower',[],'Upper',[],'Name',[]);           
             T0 = floor(vec2sec([0,Value.iExpt(1).Timing.T0(4:end)]));
-            Tf = ceil(T0 + Value.T{end}(end));            
+            Tf = ceil(T0 + Value.T{end}(end));  
+            Tofs = 60*((Tf - T0) > 600);
             
             % sets the current lower limit values
-            p.Value.Lower = sec2vec(T0+60); p.Value.Lower(end) = 0;                        
+            p.Value.Lower = sec2vec(T0+Tofs); p.Value.Lower(end) = 0;                        
             p.Value.Lower(end) = (p.Value.Lower(2) >= 12);
             p.Value.Lower(2) = mod(p.Value.Lower(2),12);
                
             % sets the current upper limit values
-            p.Value.Upper = sec2vec(Tf-60); p.Value.Upper(end) = 0;
+            p.Value.Upper = sec2vec(Tf-Tofs); p.Value.Upper(end) = 0;
             p.Value.Upper(end) = (p.Value.Upper(2) >= 12);
             p.Value.Upper(2) = mod(p.Value.Upper(2),12);
             
