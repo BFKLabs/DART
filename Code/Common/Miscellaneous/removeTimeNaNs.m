@@ -8,7 +8,7 @@ if (nargin < 4)
 end
 
 % determines if all of the time values are NaN values
-if (all(nanT))
+if all(nanT)
     % if so, then you will need to set the entire time vector
     T = T0 + ((0:(length(T)-1))/FPS)';
 else

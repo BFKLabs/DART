@@ -78,26 +78,35 @@ if exist(smFile,'file')
     end    
         
     % retrieves the stimuli protocol/experiment information
-    [stimP,sTrainEx] = getExptStimInfo(smFile);         
+    [stimP,sTrainEx] = getExptStimInfo(smFile);
     
-    % determines if any of the videos are all NaNs
-    T0 = NaN(nFile,1);    
-    allNaN = cellfun(@(x)(all(isnan(x))),smData.tStampV(xi));
-    if any(allNaN)       
+    % makes sure all videos which have incorrect timestamps are reset
+    T0 = cellfun(@(x)(x(1)),smData.tStampV(xi));
+    Tf = cellfun(@(x)(x(end)),smData.tStampV(xi));
+    
+    % flag all infeasible time stamp array
+    isChk = isnan(T0);
+    isChk(find(T0(2:end) < Tf(1:end-1)) + 1) = true;
+    
+    % resets the time values
+    if any(isChk)       
         % sets the initial time of the video based on the other videos
-        for i = reshape(find(allNaN),1,sum(allNaN))
+        for i = find(isChk(:))'
             if i == 1
                 % case is the first video is all NaNs
                 T0(i) = 0;
                 
-            elseif allNaN(i-1)
+            elseif isnan(T0(i-1))
                 % case is the previous video is also all NaNs
                 T0(i) = T0(i-1) + ...
                         length(smData.tStampV{i-1})/iExpt.Video.FPS + Tp;
-                    
             else
                 % case is the previous video is not all NaNs
                 T0(i) = smData.tStampV{i-1}(end) + Tp;
+                if ~isnan(Tf(i))
+                    dtOfs = T0(i) - smData.tStampV{i}(1);
+                    smData.tStampV{i} = smData.tStampV{i} + dtOfs;
+                end
             end
         end
     end
