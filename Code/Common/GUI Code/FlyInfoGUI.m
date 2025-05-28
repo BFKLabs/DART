@@ -173,19 +173,25 @@ classdef FlyInfoGUI < handle
             end                                    
             
             % sets up the table column names
-            if obj.isTrans
+            if obj.iMov.is2D || obj.isMltTrk
+                % case is 2D experimental setup
+                if obj.isTrans
+                    xiH = 1:size(obj.Data,1);
+                    obj.cHdr = arrayfun(@(x)(...
+                        sprintf('Row #%i',x)),xiH,'un',0);                     
+                else
+                    xiH = 1:size(obj.Data,2);
+                    obj.cHdr = arrayfun(@(x)(...
+                        sprintf('Column #%i',x)),xiH,'un',0);                     
+                end
+                
+            elseif obj.isTrans
                 % case is transposed data
                 xiF = 1:size(obj.Data,1);
                 obj.cHdr = arrayfun(@(x)(...
                     sprintf('Fly #%i',x)),xiF,'un',0); 
                 
-            elseif obj.iMov.is2D || obj.isMltTrk
-                % case is 2D experimental setup
-                xiH = 1:size(obj.Data,2);
-                obj.cHdr = arrayfun(@(x)(...
-                    sprintf('Column #%i',x)),xiH,'un',0); 
-                
-            else
+            else                
                 % case is 1D experimental setup
                 obj.cHdr = setup1DRegionNames(obj.iMov.pInfo,3);
             end                        

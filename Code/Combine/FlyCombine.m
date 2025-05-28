@@ -584,7 +584,11 @@ if ~isempty(hGUIInfo) && isa(hGUIInfo,'FlyInfoGUI')
 
             % updates the colours
             for i = 1:length(iRow)
-                jT.SetBGColourCell(iRow(i)-1,iCol(i)-1,nwCol);
+                if hGUIInfo.isTrans
+                    jT.SetBGColourCell(iCol(i)-1,iRow(i)-1,nwCol);                    
+                else
+                    jT.SetBGColourCell(iRow(i)-1,iCol(i)-1,nwCol);
+                end
             end
 
         elseif detIfCustomGrid(pObj.sInfo.snTot.iMov)
