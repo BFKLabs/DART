@@ -313,14 +313,19 @@ classdef SigPopData < DataOutputArray
             % combines the metric data with the first order x-variable
             if isnan(obj.tMlt)
                 % combines the cell arrays into a numerical array
-                YTC = roundP(cell2mat(cell2cell(YT,0)),obj.pR);
-%                 YTC = roundP(combineNumericCells(YT),obj.pR);
-                
-                % combines the column data
-                if isnumeric(YR0{1}{1,1})
-                    YRT0 = [YR0{1}(:,1),YTC];
+                YTC0 = cell2cell(YT,0);
+                if iscell(YTC0)
+                    % case is cell array data
+                    YTC = roundP(cell2mat(YTC0),obj.pR);                    
+                    if isnumeric(YR0{1}{1,1})
+                        YRT0 = [YR0{1}(:,1),YTC];
+                    else
+                        YRT0 = [YR0{1}(:,1),num2cell(YTC)];
+                    end
                 else
-                    YRT0 = [YR0{1}(:,1),num2cell(YTC)];                    
+                    % case is numerical data
+                    YTC = roundP(YTC0,obj.pR);
+                    YRT0 = num2cell([YR0{1}(:,1),YTC]);                    
                 end
             else
                 % case is the time-multiplier is being used
