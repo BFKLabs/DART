@@ -21,7 +21,7 @@ end
 % sets the cell arrays as numerical arrays (if only one sub-region)
 nApp = max(1,length(iApp));
 if nApp == 1
-    [dPx,dPy,Rad] = deal(dPx{iApp(1)},dPy{iApp(1)},Rad{iApp(1)});
+    [dPx,dPy,Rad] = deal(dPx{1},dPy{1},Rad{1});
 end
 
 % ------------------------------------ %
@@ -39,17 +39,17 @@ pCoverTol = 0.75;
 iMov = snTot.iMov;
 sFac = snTot.sgP.sFac;
 isMT = detMltTrkStatus(iMov);
-[pInfo,cID] = deal(iMov.pInfo,snTot.cID);
+[pInfo,cID] = deal(iMov.pInfo,snTot.cID(iApp));
 
 % memory allocation
-nApp = max(1,length(snTot.Px));
+nApp = max(1,length(iApp));
 [dPx,dPy,Rad] = deal(cell(nApp,1));
-[Px,Py] = deal(snTot.Px,snTot.Py);
+[Px,Py] = deal(snTot.Px(iApp),snTot.Py(iApp));
 
 % single tracking field retrieval
 if ~isMT
     reCalcR = cell(nApp,1);
-    [szG,fok] = deal(size(iMov.autoP.X0),iMov.flyok);
+    [szG,fok] = deal(size(iMov.autoP.X0),iMov.flyok(iApp));
 end
 
 % calculates the relative x/y-coordinates
@@ -60,14 +60,14 @@ for j = 1:length(iApp)
         % case is multi-tracking
         
         % separates the flies into their separate regions
-        [~,~,iC] = unique(cID{i}(:,1),'stable');
+        [~,~,iC] = unique(cID{j}(:,1),'stable');
         indC = arrayfun(@(x)(find(iC==x)),1:max(iC),'un',0);
         
         % retrieves the regions 
         [dPx0,dPy0,Rad0] = deal(cell(1,length(indC)));
         for k = 1:length(indC)
             % determines the row/column indices of the region
-            iReg = cID{i}(indC{k}(1),1);
+            iReg = cID{j}(indC{k}(1),1);
             iCol = mod(iReg-1,pInfo.nCol) + 1;
             iRow = floor((iReg-1)/pInfo.nCol) + 1;
             nFly = pInfo.nFly(iRow,iCol);
@@ -78,34 +78,35 @@ for j = 1:length(iApp)
             yOfs = iMov.iR{iCol}(iMov.iRT{iCol}{iRow}(1)) - 1;            
             
             % calculates the x/y offsets
-            dPx0{k} = Px{i}(:,indC{k}) - (xOfs + szD(1)/2);
-            dPy0{k} = Py{i}(:,indC{k}) - (yOfs + szD(2)/2);
+            dPx0{k} = Px{j}(:,indC{k}) - (xOfs + szD(1)/2);
+            dPy0{k} = Py{j}(:,indC{k}) - (yOfs + szD(2)/2);
             
             % sets the region dimensions
             Rad0{k} = repmat(szD,1,nFly);
         end
         
         % combines the data from the regions into a cell single element
-        dPx{i} = cell2mat(dPx0);
-        dPy{i} = cell2mat(dPy0);
-        Rad{i} = cell2mat(Rad0);
+        dPx{j} = cell2mat(dPx0);
+        dPy{j} = cell2mat(dPy0);
+        Rad{j} = cell2mat(Rad0);
         
     else
         % retrieves the global indices
-        indG = sub2ind(szG,cID{i}(fok{i},1),cID{i}(fok{i},2));
-        [X0G,Y0G] = deal(iMov.autoP.X0(indG)',iMov.autoP.Y0(indG)');
+        indG = sub2ind(szG,cID{j}(fok{j},1),cID{j}(fok{j},2));
+        X0G = arr2vec(iMov.autoP.X0(indG))';
+        Y0G = arr2vec(iMov.autoP.Y0(indG))';        
 
         % scales the coordinates
-        Rad{i} = [iMov.autoP.W(indG),iMov.autoP.H(indG)]';
-        dPx{i} = scaleCoords(Px{i}(:,fok{i}),X0G+Rad{i}(1,:)/2,sFac);
-        dPy{i} = scaleCoords(Py{i}(:,fok{i}),Y0G+Rad{i}(2,:)/2,sFac);
-        reCalcR{i} = true(1,size(Rad{i},2));
+        Rad{j} = [arr2vec(iMov.autoP.W(indG)),arr2vec(iMov.autoP.H(indG))]';
+        dPx{j} = scaleCoords(Px{j}(:,fok{j}),X0G+Rad{j}(1,:)/2,sFac);
+        dPy{j} = scaleCoords(Py{j}(:,fok{j}),Y0G+Rad{j}(2,:)/2,sFac);
+        reCalcR{j} = true(1,size(Rad{j},2));
         
         %
-        for k = 1:size(dPx{i},2)
+        for k = 1:size(dPx{j},2)
             % determines the points in the outer region
-            pPx = abs(2*dPx{i}(:,k)./Rad{i}(1,k));
-            pPy = abs(2*dPy{i}(:,k)./Rad{i}(2,k));
+            pPx = abs(2*dPx{j}(:,k)./Rad{j}(1,k));
+            pPy = abs(2*dPy{j}(:,k)./Rad{j}(2,k));
             isOut = (pPx > pDTol) | (pPy > pDTol);            
 
             % if there are no points in the outer region then continue
@@ -117,18 +118,18 @@ for j = 1:length(iApp)
 %             pCover = calcRegionCover(dPx{i}(:,k),dPy{i}(:,k));
 %             if pCover > pCoverTol
                 % calculates the max x/y-extent
-                reCalcR{i}(k) = false;                
-                Wmx = 2*max(abs(dPx{i}(:,k)));
-                Hmx = 2*max(abs(dPy{i}(:,k)));
+                reCalcR{j}(k) = false;                
+                Wmx = 2*max(abs(dPx{j}(:,k)));
+                Hmx = 2*max(abs(dPy{j}(:,k)));
                 
                 % rescales the coordinates based on region shape
-                if Rad{i}(1,k)/Rad{i}(2,k) == 1
+                if Rad{j}(1,k)/Rad{j}(2,k) == 1
                     % case is a square
-                    Rad{i}(:,k) = [Wmx;Hmx];
+                    Rad{j}(:,k) = [Wmx;Hmx];
 %                     Rad{i}(:,k) = max([Wmx,Hmx]);
                 else
                     % case is a rectangle
-                    Rad{i}(:,k) = [Wmx;Hmx];
+                    Rad{j}(:,k) = [Wmx;Hmx];
                 end
                 
 %                 % recalculates the x-coordinates

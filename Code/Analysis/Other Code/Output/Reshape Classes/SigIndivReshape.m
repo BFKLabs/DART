@@ -362,16 +362,38 @@ classdef SigIndivReshape < handle
             end
             
             % array dimensions
+            isCellT = false;
             nRX = size(X,1);
             [nRT,nCT] = size(t);
             
             % if the arrays are not the same size, then append the time
             % array so that they do match
             if nRX > nRT
+                % calculates the time step
+                if iscell(t)
+                    % data is stored in a cell array
+                    [tt,tEnd] = deal(t(1:2,end),t{end,end});
+                    if ischar(tt{1})
+                        % converts strings to numerals
+                        isCellT = true;
+                        tEnd = str2double(tEnd);
+                        tt = cellfun(@str2double,tt,'un',0);
+                    end
+                    
+                    % calculates the time step
+                    dtNw = diff(cell2mat(tt));
+                else
+                    % data is stored in a numerical array
+                    dtNw = diff(t(1:2,end));
+                    tEnd = t(end,end);
+                end
+                
                 % appends the new time values
                 dnRow = nRX - nRT;
-                dtNw = diff(t(1:2,end));
-                tNw = t(end,end) + (1:dnRow)*dtNw;
+                tNw = tEnd + (1:dnRow)*dtNw;
+                if isCellT
+                    tNw = num2cell(tNw);
+                end
                 
                 % appends the new time values
                 if nCT == 1
