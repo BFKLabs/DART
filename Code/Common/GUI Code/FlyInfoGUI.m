@@ -383,11 +383,23 @@ classdef FlyInfoGUI < handle
             % removes any rejected groups from the table (1D only)
             if ~isempty(obj.snTot)
                 if ~obj.snTot.iMov.is2D
-                    xiR = 1:obj.jTable.getRowCount;
+                    if obj.isTrans
+                        xiR = 1:obj.jTable.getColumnCount;
+                    else
+                        xiR = 1:obj.jTable.getRowCount;
+                    end
+
                     for i = find(~obj.snTot.iMov.ok(:)')
                         % if the region is rejected, then remove the column
-                        arrayfun(@(x)(...
-                            obj.jTable.setValueAt([],x-1,i-1)),xiR)
+                        % if obj.isTrans
+                            arrayfun(@(x)(...
+                                obj.jTable.setValueAt([],i-1,x-1)),xiR)
+
+                        % else
+                        %     arrayfun(@(x)(...
+                        %         obj.jTable.setValueAt([],i-1,x-1)),xiR)
+                        % end
+
                         obj.jTable.repaint;
                     end
                 end
@@ -433,6 +445,11 @@ classdef FlyInfoGUI < handle
             % global variables
             global tableUpdating
             tableUpdating = true;
+
+            % starts the timer (if not initialised)
+            if isempty(obj.hTick)
+                obj.hTick = tic;
+            end
 
             % determines the timer difference between last update
             hTimeNw = toc(obj.hTick);

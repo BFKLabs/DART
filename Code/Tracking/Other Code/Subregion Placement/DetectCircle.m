@@ -182,15 +182,19 @@ classdef DetectCircle < handle
             % parameters
             sTol = 0.9975;            
             
-%             % calculates the normalised image and mean/std dev
-%             Itmp = 255*normImg(applyHMFilter(ImdG));
-%             Imn = mean(Itmp(:),'omitnan');
-%             Isd = std(Itmp(:),[],'omitnan');
+            %%% FIND BETTER IMAGE FOR I(TMP) 
             
-%             % removes any outlier regions
-%             ZI = normcdf(Itmp,Imn,Isd);
-%             BZ = (ZI >= obj.pTolZ) & (ZI <= (1 - obj.pTolZ));
-%             Itmp(~BZ) = median(Itmp(BZ),'omitnan');
+            % calculates the normalised image and mean/std dev
+            Itmp = 255*normImg(applyHMFilter(ImdG));
+            Imn = mean(Itmp(:),'omitnan');
+            Isd = std(Itmp(:),[],'omitnan');
+            
+            % removes any outlier regions
+            ZI = normcdf(Itmp,Imn,Isd);
+            BZ = (ZI >= obj.pTolZ) & (ZI <= (1 - obj.pTolZ));
+            Itmp(~BZ) = median(Itmp(BZ),'omitnan');
+            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             
             % calculate circle regions each object polarity type
             for i = 1:length(obj.Type)
@@ -606,7 +610,7 @@ classdef DetectCircle < handle
             P = [xC(:),yC(:)];
             Dc = pdist2(P,P);
             Dc(logical(eye(size(Dc)))) = NaN;
-            RadMx = round(min(Dc(:),[],'omitnan')/2);
+            RadMx = ceil(min(Dc(:),[],'omitnan')/2);
             
         end
         

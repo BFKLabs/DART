@@ -585,7 +585,15 @@ classdef FilterResObj < handle
             iRT = obj.iRM{iT};
             
             %
-            hCT = obj.downsampleImage(obj.hC{obj.iApp});
+            if all(obj.hC{obj.iApp}(:) == 0)
+                ii = find(cellfun(@(x)(sum(x(:))>0),obj.hC),1,'first');
+                hCT = obj.downsampleImage(obj.hC{ii});
+
+            else
+                hCT = obj.downsampleImage(obj.hC{obj.iApp});
+            end
+
+            % calculates the residual cross-corrleation
             IRL = cellfun(@(x)(imfiltersym(x(iRT,:),obj.hG)),obj.IRs,'un',0);
             IXC = cellfun(@(x)(calcXCorr(hCT,x)),IRL,'un',0);
 

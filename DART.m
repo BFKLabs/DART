@@ -4,21 +4,21 @@ classdef DART < handle
     properties (Hidden)
         
         % main properties
-        hFig        
+        hFig
         hProg
-        cData        
+        cData
         jFiles
         mainDir
         progDef
         hFigSub
         
-        % object handles        
+        % object handles
         hPanel
         hEdit
         hBut
         hTxt
         hMenuP
-        hTrack        
+        hTrack
         
         % menu item class fields
         mStrC
@@ -26,13 +26,13 @@ classdef DART < handle
         mSep
         mTagC
         mAccC
-        eStateM        
+        eStateM
         
         % dummy object handles
         hTableD
-        hListD        
+        hListD
         
-        % fixed object dimensions   
+        % fixed object dimensions
         dX = 10;
         dY = 70;
         dXH = 5;
@@ -40,18 +40,18 @@ classdef DART < handle
         widPanel = 500;
         hghtPanel = 365;
         widTxt = 415;
-        hghtTxt = 40;        
+        hghtTxt = 40;
         
-        % variable object dimensions   
+        % variable object dimensions
         widFig
         hghtFig
         szEdit
         
         % other fields
         uType
-        hasSep        
+        hasSep
         tSz = 30;
-        nMenu = 5;        
+        nMenu = 5;
         tagStr = 'figDART';
         fModeZ = {'*.zip;','Zip File (*.zip)'};
         fModeP = {'*.dpkg','DART Package (*.dpkg)'};
@@ -1289,7 +1289,7 @@ classdef DART < handle
                 end
             end
                 
-        end                      
+        end
         
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %
@@ -1324,7 +1324,7 @@ classdef DART < handle
                 rmpath(dList)
             end
             
-        end        
+        end
         
         % --- wrapper function for determining if a string has a pattern. 
         %     this is necessary because there are 2 different ways of 
@@ -1347,7 +1347,7 @@ classdef DART < handle
                 hasPat = ~isempty(strfind(str,pat));
             end
             
-        end           
+        end
         
         % --- retrieves the full name of a program directory or file
         function pFile = getProgFileName(obj,varargin)
@@ -1360,7 +1360,7 @@ classdef DART < handle
                 pFile = fullfile(pFile,varargin{i});
             end
             
-        end                
+        end
         
         % --- updates the menu item visibility fields
         function setMenuProp(obj,tStrM,pFld,pVal)
@@ -1400,7 +1400,7 @@ classdef DART < handle
         end         
         
         % checks the cell renderer is setup correctly
-        function coloredFieldCellRendererCheck(obj)        
+        function coloredFieldCellRendererCheck(obj)
             
             pName = 'ColoredFieldCellRenderer';
             pDir = obj.getProgFileName(...
@@ -1414,7 +1414,7 @@ classdef DART < handle
                 addpath(pDir);
             end
             
-        end             
+        end
         
     end
         
@@ -1446,7 +1446,7 @@ classdef DART < handle
             
             jDirP = fullfile(cDir,strjoin(jDirS,filesep));
             
-        end                        
+        end
    
         % --- creates the data directories (if not already created)
         function strComb = createDataDir(strData,dataDir)
@@ -1479,7 +1479,7 @@ classdef DART < handle
             % sets the combined struct
             strComb = strNw;
             
-        end          
+        end
         
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %
@@ -1490,7 +1490,7 @@ classdef DART < handle
             
             pStr = struct('pCol',pCol,'pMark',pMark,'mSz',mSz);
             
-        end        
+        end
         
         % --- sets the menu separator field
         function setMenuSeparatorField(hMenu,mSep)
