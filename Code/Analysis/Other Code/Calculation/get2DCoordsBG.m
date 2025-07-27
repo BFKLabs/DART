@@ -21,7 +21,11 @@ end
 % sets the cell arrays as numerical arrays (if only one sub-region)
 nApp = max(1,length(iApp));
 if nApp == 1
-    [dPx,dPy,Rad] = deal(dPx{1},dPy{1},Rad{1});
+    if isempty(iApp)
+        [dPx,dPy,Rad] = deal(dPx{1},dPy{1},Rad{1});        
+    else
+        [dPx,dPy,Rad] = deal(dPx{iApp},dPy{iApp},Rad{iApp});
+    end
 end
 
 % ------------------------------------ %
