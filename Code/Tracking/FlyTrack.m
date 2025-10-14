@@ -2523,8 +2523,8 @@ jToggle = findjobj(handles.toggleVideo);
 
 % loops through all the images frames in the movie displaying to screen
 while (iFrm + cStp) <= hFig.iData.nFrm
-    cState = jToggle.isSelected;    
-    if ~cState        
+    cState = jToggle.isSelected;
+    if ~cState
         % if the user paused the movie, then exit the function        
         stopMovie(handles)
         isComplete = false;

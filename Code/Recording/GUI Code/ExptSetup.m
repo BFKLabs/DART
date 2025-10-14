@@ -4210,7 +4210,7 @@ delete(h)
 
 % makes the GUI visible again
 if isInit
-%     feval('runExternPackage','RunStreamPix',handles);     
+    feval('runExternPackage','RunStreamPix',handles);
 else
     setObjVisibility(hFig,'on'); 
 end

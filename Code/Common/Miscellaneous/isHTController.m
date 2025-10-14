@@ -10,7 +10,8 @@ elseif isfield(iData.iExpt,'Device')
     Device = iData.iExpt.Device;
     isHT = any(strContains(Device.DAQ,'HTControllerV1')) || ...
            any(strContains(Device.DAQ,'HTControllerV2')) || ...
-           any(strContains(Device.IMAQ,'daA3840-45um'));
+           any(strContains(Device.IMAQ,'daA3840-45um')) || ...
+           any(strContains(Device.IMAQ,'UV155xLE-C'));
        
 else
     % otherwise, recording device is not HT

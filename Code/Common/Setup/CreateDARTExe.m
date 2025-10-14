@@ -1025,6 +1025,9 @@ classdef CreateDARTExe < handle
             % removes the invalid support package directory strings
             dName = arrayfun(@(x)(x.name),dir(bDir),'un',0);
             dName = dName(~(strcmp(dName,'.') | strcmp(dName,'..')));
+            
+%             % REMOVE ME
+%             dName = dName(~(strcmp(dName,'gige') | strcmp(dName,'gentl')));
 
             % sets the full support package directories
             if isempty(dName)
