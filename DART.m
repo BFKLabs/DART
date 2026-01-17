@@ -913,7 +913,7 @@ classdef DART < handle
                     
                     % exits the loop
                     break
-                catch
+                catch ME
                     % if it failed then pause and then retry
                     pause(0.1);
                 end

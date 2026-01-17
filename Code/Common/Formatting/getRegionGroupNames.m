@@ -49,7 +49,7 @@ else
         gName = gName0(:);
     else
         % otherwise, re-order the group names
-        gName = repmat({'* REJECTED *'},nReg,1);
+        gName = cell(nReg,1);
 
         % sets the group names (for each grouping)
         for i = 1:length(cID)
@@ -57,30 +57,39 @@ else
                 indM = unique(cID{i}(:,1:2),'rows');
                 iReg = (indM(:,1)-1)*pInfo.nCol + indM(:,2);
                 
+                % sets the group name (for each region)
                 for j = 1:length(iReg)
-                    iGrpNw = pInfo.iGrp(indM(j,1),indM(j,2));
-                    gName(iReg(j)) = gName0(iGrpNw);
+                    if isempty(gName{iReg(j)})
+                        gName(iReg(j)) = gName0(i);                        
+                    else
+                        gName{iReg(j)} = 'Multiple Groups';
+                    end
                 end
             end
         end    
+        
+        % fills in any empty regions
+        gName(cellfun('isempty',gName)) = {'* REJECTED *'};
+        
     end
     
     % determines if any groupings are missing from the configuration
     cIDT = cell2mat(cID(:));
     if detIfCustomGrid(snTot.iMov)
-        % case is a custom grid setup
-        gID = snTot.iMov.pInfo.gID;
-        gIDT = combineNumericCells(arr2vec(gID')');
-        isMiss = ~arrayfun(@(x)(any(gIDT(:)==x)),(1:length(gName))');
+%         % case is a custom grid setup
+%         gID = snTot.iMov.pInfo.gID;
+%         gIDT = combineNumericCells(arr2vec(gID')');
+%         isMiss = ~arrayfun(@(x)(any(gIDT(:)==x)),(1:length(gName))');
         
     else
         % case is a fixed grid setup
         szArr = size(snTot.iMov.flyok);
         iCol = (cIDT(:,1)-1)*snTot.iMov.pInfo.nCol + cIDT(:,2);
         isMiss = all(~setGroup(sub2ind(szArr,cIDT(:,3),iCol),szArr),1);  
+        
+        % removes the missing groups
+        gName(isMiss) = {'* REJECTED *'};            
     end
     
-    % removes the missing groups
-    gName(isMiss) = {'* REJECTED *'};    
 end
 

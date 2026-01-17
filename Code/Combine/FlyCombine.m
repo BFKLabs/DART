@@ -556,73 +556,103 @@ switch indNw(2)
 end
 
 % resets the table background colours
-bgCol = getTableBGColours(pObj.sInfo);
+bgCol = setupGroupTableColour(pObj.sInfo);
 set(hObject,'BackgroundColor',bgCol)
 
 % determines if the individual fly info gui is open            
 if ~isempty(hGUIInfo) && isa(hGUIInfo,'FlyInfoGUI')
-    % if so, then update the grouping colours
-    jT = hGUIInfo.jTable;
-    for j = 1:size(bgCol,1)
-        % sets the new background colour
-        nwCol = getJavaColour(bgCol(j,:));
+    % if so, then update the colours
+    jT = hGUIInfo.jTable;    
+    
+    if detIfCustomGrid(pObj.sInfo.snTot.iMov)
+        % case is a custom 1D grid
 
-        % updates the colours                
-        if detMltTrkStatus(pObj.sInfo.snTot.iMov)
-            % case is multi-tracking
-            [iRow,iCol] = hGUIInfo.getMultiTrackIndices(j);
-            jT.SetBGColourCell(iRow-1,iCol-1,nwCol);
+        % field retrieval
+        cID = pObj.sInfo.snTot.cID;
+        nCol = pObj.sInfo.snTot.iMov.pInfo.nCol;
+        gCol = getAllGroupColours(length(pObj.sInfo.snTot.iMov.pInfo.gName),1);
         
-        elseif pObj.sInfo.snTot.iMov.is2D
-            % case is a 2D experiment setup
-            if isfield(pObj.sInfo.snTot.iMov,'pInfo')
-                [iRow,iCol] = find(pObj.sInfo.snTot.iMov.pInfo.iGrp == j);
+        % sets the table cell colours
+        for i = 1:length(cID)
+            nwCol = getJavaColour(gCol(i,:));
+            for j = 1:size(cID{i},1)
+                iRow = cID{i}(j,end);
+                iCol = (cID{i}(j,1)-1)*nCol + cID{i}(j,2);
+                jT.SetBGColourCell(iCol-1,iRow-1,nwCol);
+            end
+        end
+        
+%         % retrieves the group index
+%         iGrp = pObj.sInfo.snTot.iMov.pInfo.iGrp;
+%         [iRow,iCol] = ind2sub(size(iGrp),j);
+%         if iGrp(iRow,iCol) == 0
+%             continue
+%         end
+% 
+%         % field retrieval
+%         cID = pObj.sInfo.snTot.cID{iGrp(iRow,iCol)};
+%         fOK = pObj.sInfo.snTot.iMov.flyok;
+%         nCol = pObj.sInfo.snTot.iMov.pInfo.nCol;
+% 
+%         % updates the background colour over all cells in the group
+%         for i = 1:size(cID,1)
+%             if iGrp(cID(i,1),cID(i,2)) == 0
+%                 continue
+%             end                
+% 
+%             % sets up the table row/column indices
+%             iRow = cID(i,end);
+%             iCol = (cID(i,1)-1)*nCol + cID(i,2);                
+% 
+%             % updates the current cell background
+%             if jT.getRowCount == size(fOK,1)
+%                 jT.SetBGColourCell(iRow-1,iCol-1,nwCol);
+%             else
+%                 jT.SetBGColourCell(iCol-1,iRow-1,nwCol);
+%             end
+%         end    
+        
+    else
+        % if so, then update the grouping colours
+        for j = 1:size(bgCol,1)
+            % sets the new background colour
+            nwCol = getJavaColour(bgCol(j,:));
+
+            % updates the colours                
+            if detMltTrkStatus(pObj.sInfo.snTot.iMov)
+                % case is multi-tracking
+                [iRow,iCol] = hGUIInfo.getMultiTrackIndices(j);
+                jT.SetBGColourCell(iRow-1,iCol-1,nwCol);
+
+            elseif pObj.sInfo.snTot.iMov.is2D
+                % case is a 2D experiment setup
+                if isfield(pObj.sInfo.snTot.iMov,'pInfo')
+                    [iRow,iCol] = find(pObj.sInfo.snTot.iMov.pInfo.iGrp == j);
+                else
+                    iRow = 1:size(pObj.sInfo.snTot.iMov.flyok);
+                    iCol = j*ones(size(iRow));
+                end
+
+                % updates the colours
+                for i = 1:length(iRow)
+                    if hGUIInfo.isTrans
+                        jT.SetBGColourCell(iCol(i)-1,iRow(i)-1,nwCol);                    
+                    else
+                        jT.SetBGColourCell(iRow(i)-1,iCol(i)-1,nwCol);
+                    end
+                end
+
             else
-                iRow = 1:size(pObj.sInfo.snTot.iMov.flyok);
-                iCol = j*ones(size(iRow));
-            end
+                % case is a 1D experiment setup (fixed grid)
 
-            % updates the colours
-            for i = 1:length(iRow)
-                if hGUIInfo.isTrans
-                    jT.SetBGColourCell(iCol(i)-1,iRow(i)-1,nwCol);                    
-                else
-                    jT.SetBGColourCell(iRow(i)-1,iCol(i)-1,nwCol);
-                end
-            end
-
-        elseif detIfCustomGrid(pObj.sInfo.snTot.iMov)
-            % case is a 1D experiment setup (custom grid)
-            
-            % field retrieval
-            cID = pObj.sInfo.snTot.cID{j};
-            fOK = pObj.sInfo.snTot.iMov.flyok;
-            nCol = pObj.sInfo.snTot.iMov.pInfo.nCol;
-
-            % updates the background colour over all cells in the group
-            for i = 1:size(cID,1)
-                % sets up the table row/column indices
-                iRow = cID(i,end);
-                iCol = (cID(i,1)-1)*nCol + cID(i,2);
-                
-                % updates the current cell background
-                if jT.getRowCount == size(fOK,1)
-                    jT.SetBGColourCell(iRow-1,iCol-1,nwCol);
-                else
-                    jT.SetBGColourCell(iCol-1,iRow-1,nwCol);
-                end
-            end
-            
-        else
-            % case is a 1D experiment setup (fixed grid)
-            
-            % updates the background colour over all cells in the group            
-            for i = find(pObj.sInfo.snTot.iMov.flyok(:,j))'                
-                % updates the current cell background                
-                if jT.getRowCount == size(pObj.sInfo.snTot.iMov.flyok,1)
-                    jT.SetBGColourCell(i-1,j-1,nwCol);
-                else
-                    jT.SetBGColourCell(j-1,i-1,nwCol);
+                % updates the background colour over all cells in the group            
+                for i = find(pObj.sInfo.snTot.iMov.flyok(:,j))'
+                    % updates the current cell background                
+                    if jT.getRowCount == size(pObj.sInfo.snTot.iMov.flyok,1)
+                        jT.SetBGColourCell(i-1,j-1,nwCol);
+                    else
+                        jT.SetBGColourCell(j-1,i-1,nwCol);
+                    end
                 end
             end
         end
@@ -1412,7 +1442,7 @@ pPosT = get(handles.panelAppInfo,'position');
 
 % updates the group name table information
 cHdr = {cHdr0,'Include?'};
-bgCol = getTableBGColours(sInfo);
+bgCol = setupGroupTableColour(sInfo);
 set(handles.tableAppInfo,'RowName',rowName,'ColumnName',cHdr,...
               'Data',Data,'BackgroundColor',bgCol,...
               'Enable',eStr{~isempty(snTot)+1})                                         
@@ -1485,19 +1515,6 @@ setappdata(hFig,'sInfo',sInfo0)
 % ------------------------------------------- %
 % --- GROUP NAME TABLE PROPERTY FUNCTIONS --- %
 % ------------------------------------------- %
-
-% --- retrieves the table background colours
-function [bgCol,iGrpNw] = getTableBGColours(sInfo)
-
-% retrieves the unique group names from the list
-grayCol = 0.81;
-[gName,~,iGrpNw] = unique(sInfo.gName,'stable');
-isOK = sInfo.snTot.iMov.ok & ~strcmp(sInfo.gName,'* REJECTED *');
-
-% sets the background colour based on the matches within the unique list
-tCol = getAllGroupColours(length(gName),1);
-bgCol = tCol(iGrpNw,:);
-bgCol(~isOK,:) = grayCol;
 
 % --- updates the table dimensions
 function tabPos = setTableDimensions(handles,nApp,isInit)

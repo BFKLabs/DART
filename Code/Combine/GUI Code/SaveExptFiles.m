@@ -1685,17 +1685,9 @@ classdef SaveExptFiles < handle
         function bgCol = getGroupNameTableColour(obj,iExp)
             
             % field retrieval
-            [sInfoS,gNameS] = deal(obj.sInfo{iExp},obj.gName{iExp});
-            
-            % retrieves the unique group names from the list
-            [gNameU,~,iGrpNw] = unique(gNameS,'stable');
-            isOK = sInfoS.snTot.iMov.ok & ~strcmp(gNameS,'* REJECTED *');
-            
-            % sets the background colour based on the matches within the unique list
-            tCol = getAllGroupColours(length(gNameU),1);
-            bgCol = tCol(iGrpNw,:);
-            bgCol(~isOK,:) = obj.grayCol;
-            
+            [sInfoS,gNameS] = deal(obj.sInfo{iExp},obj.gName{iExp});            
+            bgCol = setupGroupTableColour(sInfoS,gNameS);
+                        
         end
         
         % ------------------------------- %

@@ -61,6 +61,7 @@ for i = 1:length(pFld)
         elseif detIfCustomGrid(iMov)
             % case is the 1D custom grid experimental setup
             nFly = arr2vec(iMov.pInfo.nFly')';
+            nFly(isnan(nFly)) = 0;
             Zf = arrayfun(@(x)(NaN(nFrm,x)),nFly,'un',0);
             
             % splits the metric between regions

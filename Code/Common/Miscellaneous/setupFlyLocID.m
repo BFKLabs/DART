@@ -83,7 +83,7 @@ else
         if isCust
             % case is a custom grid setup
             gID = iMov.pInfo.gID{iRow(i),iCol(i)};
-            iGrp(iMov.flyok(:,i),i) = gID;
+            iGrp(iMov.flyok(:,i),i) = gID(iMov.flyok(:,i));
             
         else
             % case is a fixed grid setup
@@ -102,8 +102,7 @@ else
     end
     
     % determines the number of unique groupings
-    iGrpU = unique(iGrp(iGrp>0));
-    nGrp = length(iGrpU);
+    nGrp = iMov.pInfo.nGrp;
     
     % sets the configuration ID arrays based on the I/O type
     %  - Saving: data is combined for each specified group
@@ -114,7 +113,7 @@ else
 
         % loops through each group setting the row/column/fly indices
         for i = 1:nGrp
-            [iy,ix] = find(iGrp == iGrpU(i));
+            [iy,ix] = find(iGrp == i);
             cID{i} = [iRow(ix),iCol(ix),iy];
         end
     else
@@ -127,7 +126,7 @@ else
         
         for i = 1:nGrp
             % determines the matching group indices
-            [iy,ix] = find(iGrp == iGrpU(i));
+            [iy,ix] = find(iGrp == i);
             
             % sets the group 
             if isCust

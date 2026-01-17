@@ -5,7 +5,7 @@ function [axSz,lblSz,tSz] = detSolnViewFontSizes(handles)
 global regSz
 
 % determines the font ratio
-newSz = get(handles.panelImg,'position');
+newSz = getpixelposition(handles.panelImg);
 fR = min(newSz(3:4)./regSz(3:4))*get(0,'ScreenPixelsPerInch')/72;
 
 % sets the axis/label font sizes

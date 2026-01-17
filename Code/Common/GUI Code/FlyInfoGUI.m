@@ -138,7 +138,8 @@ classdef FlyInfoGUI < handle
                 % sets the group ID flags (1D sub-grouped setup)
                 if detIfCustomGrid(obj.iMov)
                     gID = arr2vec(obj.iMov.pInfo.gID')';
-                    colArr = getAllGroupColours(max(cellfun(@max,gID)));
+                    gIDC = cellfun(@max,gID(~cellfun('isempty',gID)));
+                    colArr = getAllGroupColours(max(gIDC));
                 end
                 
                 % retrieves the sub-region count for each region

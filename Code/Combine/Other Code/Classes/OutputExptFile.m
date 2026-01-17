@@ -126,7 +126,9 @@ classdef OutputExptFile < handle & dynamicprops
                 
                 % updates the experiment with the new groups names/fields
                 obj.snTotOut = sInfoO{i}.snTot;
-                obj.snTotOut.iMov.pInfo.gName = gNameO{i};
+                if ~detIfCustomGrid(obj.snTotOut.iMov)
+                    obj.snTotOut.iMov.pInfo.gName = gNameO{i};
+                end
                 
                 % sets the full output file/directory name
                 obj.fNameOut = fullfile(fDirO{i},fNameO{i});
@@ -137,7 +139,7 @@ classdef OutputExptFile < handle & dynamicprops
                 switch fExtnO{i}
                     case '.ssol'
                         % case is the DART Solution File
-                        obj.outputDARTSoln();
+                        obj.outputDARTSoln(i);
                         
                     case '.mat'
                         % case is the Matlab Mat File
@@ -173,7 +175,7 @@ classdef OutputExptFile < handle & dynamicprops
         end
         
         % --- outputs the DART single experiment solution file --- %
-        function outputDARTSoln(obj)
+        function outputDARTSoln(obj,iExp)
             
             % resets the progress bar strings
             obj.hProg.wStr(2:end) = ...
@@ -185,7 +187,8 @@ classdef OutputExptFile < handle & dynamicprops
             end
             
             % updates the region data struct
-            obj.snTotOut = obj.updateRegionInfo(obj.snTotOut);
+            obj.snTotOut = ...
+                obj.updateRegionInfo(obj.snTotOut,obj.gName{iExp});
             obj.snTotOut = reshapeExptSolnFile(obj.snTotOut);
             
             % removes the y-position data (if not required);
@@ -645,7 +648,7 @@ classdef OutputExptFile < handle & dynamicprops
     methods (Static)
                 
         % --- updates the region information data struct
-        function snTot = updateRegionInfo(snTot)
+        function snTot = updateRegionInfo(snTot,gNameO)
             
             % retrieves the region data struct fields
             iMov = snTot.iMov;
@@ -689,6 +692,43 @@ classdef OutputExptFile < handle & dynamicprops
                 
                 % resets the group counter
                 iMov.pInfo.nGrp = indG - 1;
+                
+            elseif detIfCustomGrid(iMov)
+                % field retrieval
+                gID = iMov.pInfo.gID;
+                cIDnw = cell(size(snTot.cID));
+                
+                % case is custom 1D grid
+                for i = 1:iMov.pInfo.nRow
+                    for j = 1:iMov.pInfo.nCol
+                        k = (i-1)*iMov.pInfo.nCol + j;                        
+                        if iMov.ok(k)
+                            % resets the group indices
+                            [iA,~,iC] = unique(gID{i,j},'stable');
+                            indG = arrayfun(...
+                                @(x)(find(iC==x)),1:max(iC),'un',0);                            
+                            for k = 1:length(iA)
+                                if iA(k) == 0
+                                    continue
+                                end
+                                
+                                gInfo = [repmat(...
+                                    [i,j],length(indG{k}),1),indG{k}];
+                                cIDnw{iA(k)} = [cIDnw{iA(k)};gInfo];
+                            end
+                            
+                        else
+                            % region is rejected
+                            iMov.pInfo.iGrp(i,j) = 0;
+                            iMov.pInfo.nFly(i,j) = NaN;
+                            iMov.pInfo.gID{i,j} = [];                            
+                            iMov.flyok(:,k) = false;  
+                        end
+                    end
+                end
+                
+                % resets the group mapping indices
+                snTot.cID = cIDnw;
                 
             else
                 % sets the group numbers and group indices

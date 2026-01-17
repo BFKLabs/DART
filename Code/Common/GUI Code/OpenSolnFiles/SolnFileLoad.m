@@ -1258,7 +1258,7 @@ classdef SolnFileLoad < handle & dynamicprops
             end
 
             % resets the table background colours
-            bgColT = obj.getTableBGColours(obj.sInfo{obj.iExp});
+            bgColT = setupGroupTableColour(obj.sInfo{obj.iExp});
             obj.hTableG.BackgroundColor = bgColT;
             
             % updates the group names on the other tabs
@@ -1588,7 +1588,7 @@ classdef SolnFileLoad < handle & dynamicprops
             setObjEnable(obj.hButC{2},sInfoNw.hasStim);
             
             % resets the table background colours
-            bgColG = obj.getTableBGColours(sInfoNw);
+            bgColG = setupGroupTableColour(sInfoNw);
             obj.hTableG.BackgroundColor = bgColG;
             
             % sets the table data/field property values
@@ -2143,24 +2143,6 @@ classdef SolnFileLoad < handle & dynamicprops
                 iIDnw = max(cellfun(@(x)(x.iID),sInfo)) + 1;
             end        
         
-        end        
-        
-        % --- retrieves the table background colours
-        function [bgCol,iGrpNw] = getTableBGColours(sInfo)
-            
-            % parameters
-            grayCol = 0.81;
-            
-            % retrieves the unique group names from the list
-            [gName,~,iGrpNw] = unique(sInfo.gName,'stable');
-            isOK = sInfo.snTot.iMov.ok & ...
-                ~strcmp(sInfo.gName,'* REJECTED *');
-            
-            % sets the background colour based on the unique matche list
-            tCol = getAllGroupColours(length(gName),1);
-            bgCol = tCol(iGrpNw,:);
-            bgCol(~isOK,:) = grayCol;
-            
         end                
         
         % --- resets the video/stimuli times

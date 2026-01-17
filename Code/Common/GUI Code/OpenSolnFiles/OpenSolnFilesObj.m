@@ -585,18 +585,26 @@ classdef OpenSolnFilesObj < handle
             
             % loops through each of the loaded
             for i = 1:length(sInfoF)
-                % sets the group to overall group linking indices
-                indL = cellfun(@(y)(...
-                    find(strcmp(gNameF{i},y))),grpName,'un',0);
-                
                 % removes any extraneous fields
                 snTotF = sInfoF{i}.snTot;
-                if detMltTrkStatus(snTotF.iMov)
+                if detIfCustomGrid(snTotF.iMov)
                     sInfoF{i}.snTot = ...
-                        reduceMultiTrackExptSolnFiles(snTotF,indL,grpName);
+                        reduceCustExptSolnFiles(snTotF,obj.gNameU{iTabG});
+                    
                 else
-                    sInfoF{i}.snTot = ...
-                        reduceExptSolnFiles(snTotF,indL,grpName);
+                    % sets the group to overall group linking indices                    
+                    indL = cellfun(@(y)(...
+                        find(strcmp(gNameF{i},y))),grpName,'un',0);                    
+                    
+                    % 
+                    if detMltTrkStatus(snTotF.iMov)
+                        sInfoF{i}.snTot = ...
+                            reduceMultiTrackExptSolnFiles(...
+                            snTotF,indL,grpName);
+                    else
+                        sInfoF{i}.snTot = ...
+                            reduceExptSolnFiles(snTotF,indL,grpName);
+                    end
                 end
             end
         

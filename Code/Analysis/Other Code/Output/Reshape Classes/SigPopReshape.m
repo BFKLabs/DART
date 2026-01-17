@@ -84,11 +84,18 @@ classdef SigPopReshape < handle
                             (cell2mat(x(:)')),num2cell(Ytmp,1),'un',0),0)];
                 else
                     % appends the array together
-                    if size(Y{k},1) == length(X{k})
+                    [mY,nY] = size(Y{k});
+                    if mY == length(X{k})
                         if iscell(X{k})
-                            Ygrp{k} = [X{k}(:),num2cell(Y{k})];                            
+                            Ygrp{k} = [X{k}(:),num2cell(Y{k})];
                         else
                             Ygrp{k} = [X{k}(:),Y{k}];
+                        end
+                    elseif nY == length(X{k})
+                        if iscell(X{k})
+                            Ygrp{k} = [X{k}(:),num2cell(Y{k}')];                            
+                        else
+                            Ygrp{k} = [X{k}(:),Y{k}'];                            
                         end
                     else
                         if iscell(X{k})

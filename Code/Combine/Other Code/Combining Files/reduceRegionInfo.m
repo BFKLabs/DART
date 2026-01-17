@@ -18,7 +18,7 @@ if iMov.is2D
 elseif detIfCustomGrid(iMov)
     % case is a 1D experiment setup (custom grid)
     gID = iMov.pInfo.gID;
-    iok = arrayfun(@(x)(any(cellfun(@(y)(any(y==x)),gID))),1:nApp);
+    iok = arrayfun(@(x)(any(arr2vec(cellfun(@(y)(any(y==x)),gID)))),1:nApp);
     
 else
     % case is a 1D experiment setup (fixed grid)

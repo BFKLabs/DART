@@ -16,6 +16,7 @@ if (nargin < 5); isDaySep = false; end
 % converts the time array/start time from seconds to hours
 T = T(~isnan(T));
 TT = convertTime(T,'sec','hrs');
+% T0 = floor(convertTime(vec2sec([0 Texpt0(4:end)]),'sec','hrs'));
 T0 = convertTime(vec2sec([0 Texpt0(4:end)]),'sec','hrs');
 
 % calculates the time groups that each time point belongs to

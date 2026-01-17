@@ -101,6 +101,7 @@ classdef MultiExptGrouping < handle & dynamicprops
         tHdrRL = 'ORIGINAL/FINAL GROUP NAME LINK';
         tHdrC = 'EXPERIMENT COMPATIBILITY';
         cStrTG = 'matlab.ui.container.TabGroup'; 
+        mgStr = 'Multiple Groups';
         
         % cell array class fields
         tabStr = {'Experiment Comparison','Group Naming'};
@@ -1293,9 +1294,12 @@ classdef MultiExptGrouping < handle & dynamicprops
             end
 
             % determines the unique group names
-            obj.gNameU = cellfun(@(x)(obj.rmvInfeasName(unique...
-                (cell2cell(obj.gName(x)),'stable'))),indG,'un',0);
-        
+            gName0 = cellfun(@(x)(cell2cell(cellfun(@(y)...
+                (y.snTot.iMov.pInfo.gName),obj.sInfo(x),'un',0))),...
+                indG,'un',0);
+            obj.gNameU = cellfun(@(x)(obj.rmvInfeasName(...
+                unique(x,'stable'))),gName0,'un',0);
+                                
         end             
         
         % --- updates the final/linking table group names
@@ -1346,11 +1350,18 @@ classdef MultiExptGrouping < handle & dynamicprops
             DataL = obj.expandCellArray([obj.gName0{obj.iExp}(:),...
                                          obj.gName{obj.iExp}(:)],obj.nRow);
 
+            % sets up the colour formatting fields
+            tColBG = obj.tCol;
+            cFormN = [{' '},obj.gNameU{iTabG}(:)']; 
+            if any(strcmp(DataL(:,2),obj.mgStr))
+                cFormN{end+1} = obj.mgStr;
+                tColBG = [tColBG;[0.9,0.1,0.1]];
+            end
+                                     
             % updates the group name link table data/properties
-            cFormN = [{' '},obj.gNameU{iTabG}(:)'];
             isRej = strcmp(DataL(:,1),rejStr);
             DataL(isRej,2) = {' '};
-            bgColL = cellfun(@(x)(obj.tCol...
+            bgColL = cellfun(@(x)(tColBG...
                         {strcmp(cFormN,x)}),DataL(:,2),'un',0);
             set(obj.hTableRL,'Data',DataL,'ColumnFormat',...
                 {'char',cFormN},'BackgroundColor',cell2mat(bgColL(:)));
@@ -1470,8 +1481,10 @@ classdef MultiExptGrouping < handle & dynamicprops
 
             % determines the flags of the group names that are infeasible
             rStr = '* REJECTED *';
+            mgStr = 'Multiple Groups';
             isRmv = strcmp(gName,' ') | ...
-                    strcmp(gName,rStr) | ...                    
+                    strcmp(gName,rStr) | ...
+                    strcmp(gName,mgStr) | ...
                     cellfun('isempty',gName);
 
             % removes any infeasible names
