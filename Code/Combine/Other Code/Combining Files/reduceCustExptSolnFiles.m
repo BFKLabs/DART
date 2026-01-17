@@ -11,7 +11,8 @@ nApp = size(cID,1);
 ok = ~cellfun('isempty',cID);
 
 % memory allocation
-[Px,Name,flyok] = deal(cell(nApp,1));
+[Px,Py,Name,flyok] = deal(cell(nApp,1));
+snTot.Py = [];
 
 % reduces down the arrays
 for i = 1:nApp
@@ -23,7 +24,7 @@ for i = 1:nApp
         
         % sets the fly x-locations
         Px{i} = [Px{i},getDataValues(snTot.Px,indD)]; 
-        
+                
         % reduces down the sub-region acceptance flags
         szOK = size(snTot.iMov.flyok);
         ii = cellfun(@(x)(sub2ind(szOK,x(1),x(2))),indD);
@@ -37,22 +38,26 @@ snTot.iMov.ok = logical(ok);
 snTot.iMov.flyok = cellfun(@(x)(logical(x)),flyok,'un',0);
 [snTot.iMov.pInfo.gName,snTot.Px] = deal(Name,Px);
 
+% sets the y-coordinate values (if required)
+if isfield(snTot,'Py') && ~isempty(snTot.Py)
+    snTot.Py = Py; 
+end
+
 % --- retrieves the data values from the array Y with indices, cID
 function Ygrp = getDataValues(Y,cID)
 
-% retrieves the regional data values
-Y0 = cellfun(@(x)(getRegionDataValues(Y,x)),cID,'un',0);
-
-% clears the extraneous variables
-clear Y cID
-
-try
-    Ygrp = cell2mat(Y0(:)');
-catch
-    Ygrp = NaN(length(Y0{1}),length(Y0));
-    for i = 1:length(Y0)
-        Ygrp(:,i) = Y0{i};
-        Y0{i} = [];
+for i = 1:length(cID)
+    if i == 1
+        % retrieves the data values
+        Y0 = getRegionDataValues(Y,cID{i});
+        
+        % memory allocation
+        Ygrp = NaN(length(Y0),length(cID));
+        Ygrp(:,i) = Y0;
+        clear Y0
+    else
+        % case is the other regions
+        Ygrp(:,i) = getRegionDataValues(Y,cID{i});        
     end
 end
 

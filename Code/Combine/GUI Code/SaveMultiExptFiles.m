@@ -459,16 +459,24 @@ classdef SaveMultiExptFiles < handle
                 % sets the experiment solution data struct
                 snTot = sInfo{i}.snTot;
                 
-                % sets the group to overall group linking indices
+                % field retrieval/update
                 ok = snTot.iMov.ok;
                 gName{i}(~ok) = {''};
-                indL = cellfun(@(y)(find(strcmp(gName{i},y))),grpName,'un',0);
                 
-                % reduces the arrays to remove any missing arrays
-                if detMltTrkStatus(snTot.iMov)
-                    snTot = reduceMultiTrackExptSolnFiles(snTot,indL,grpName);
+                if detIfCustomGrid(snTot.iMov)                
+                    snTot = reduceCustExptSolnFiles(snTot);                    
                 else
-                    snTot = reduceExptSolnFiles(snTot,indL,grpName);
+                    % sets the group to overall group linking indices                
+                    indL = cellfun(@(y)(...
+                        find(strcmp(gName{i},y))),grpName,'un',0);
+
+                    % reduces the arrays to remove any missing arrays
+                    if detMltTrkStatus(snTot.iMov)
+                        snTot = reduceMultiTrackExptSolnFiles(...
+                            snTot,indL,grpName);
+                    else
+                        snTot = reduceExptSolnFiles(snTot,indL,grpName);
+                    end
                 end
                 
                 % ---------------------------------- %

@@ -44,7 +44,7 @@ pause(0.05);
 h.Update(1+wOfs,'Saving Temporary File...',1/3);
 
 % saves the temporary file
-save(tmpFile,'snTot')
+save(tmpFile,'snTot','-v7.3')
 
 % updates the waitbar figure
 h.Update(1+wOfs,'Creating File Solution File...',2/3);
