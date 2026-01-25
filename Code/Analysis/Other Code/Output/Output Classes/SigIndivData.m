@@ -47,6 +47,7 @@ classdef SigIndivData < DataOutputArray
         
         % other fields
         nGrp
+        nGrpM
         nDay
         nFly
         nRow
@@ -258,7 +259,12 @@ classdef SigIndivData < DataOutputArray
             % sets the group string
             xVar = field2cell(obj.iData.xVar,'Var');
             jj = strcmp(xVar,obj.xDep{obj.iMet}{1});
-            obj.tSp{end} = obj.iData.xVar(jj).Name;            
+            obj.tSp{end} = obj.iData.xVar(jj).Name; 
+            
+            % 
+            nDayM = 1 + (obj.nDay - 1)*obj.sepDay;
+            grpMlt = 1/(length(obj.iFly{1}{1})*nDayM);
+            obj.nGrpM = grpMlt*(size(obj.YR{1}{1},2)-(2-obj.sepDay));
             
             % ------------------------------- %
             % --- MAIN GROUP HEADER SETUP --- %
@@ -313,11 +319,12 @@ classdef SigIndivData < DataOutputArray
             %
             %  * Level #1 - Fly
             %  * Level #2 - Day
-            %  * Level #3 - Bin/Grouping
-            %  * Level #4 - Sub-Bin/Grouping
+            %  * Level #3 - Metric Sub-Grouping (i.e., Stimuli Index)
+            %  * Level #4 - Bin/Grouping
+            %  * Level #5 - Sub-Bin/Grouping
             
             % memory allocation
-            nLvl = 4;
+            nLvl = 5;
             [a,b] = deal({''},'');
             mStr0 = cell(nLvl,1);
             
@@ -327,7 +334,7 @@ classdef SigIndivData < DataOutputArray
             
             % determines the feasible
             nDayT = obj.sepDay*(obj.nDay(iExp)-1) + 1;
-            nP = [nDayT,obj.nGrp,false];
+            nP = [nDayT,obj.nGrpM,obj.nGrp,false];
             isKeep = [true,nP>1];
             
             % sets the header string based on the level
@@ -347,7 +354,7 @@ classdef SigIndivData < DataOutputArray
                             mStr0{iLvl} = arrayfun(@(x)...
                                 (sprintf('Fly #%i',x)),xiE,'un',0);
                         end
-                        
+
                     case 2
                         % case is the day separation
                         xiD = 1:nP(1);
@@ -355,10 +362,20 @@ classdef SigIndivData < DataOutputArray
                             mStr0{iLvl} = arrayfun(@num2str,xiD,'un',0);
                         else
                             mStr0{iLvl} = arrayfun(@(x)...
-                                (sprintf('Day #%i',x)),1:nP(1),'un',0);
+                                (sprintf('Day #%i',x)),xiD,'un',0);
+                        end                        
+                        
+                    case 3
+                        % case is the metric sub-group separation
+                        xiM = 1:obj.nGrpM;
+                        if obj.numGrp
+                            mStr0{iLvl} = arrayfun(@num2str,xiM,'un',0);
+                        else
+                            mStr0{iLvl} = arrayfun(@(x)...
+                                (sprintf('Stimuli #%i',x)),xiM,'un',0);
                         end
                         
-                    case {3,4}
+                    otherwise
                         % case is the bin/grouping separation
                         mStrNw = arr2vec(getStructField...
                             (obj.plotD,obj.xDep{obj.iMet}{iLvl-1}))';

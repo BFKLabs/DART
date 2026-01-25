@@ -101,7 +101,7 @@ for i = 1:nApp
 
         % determines the flies which were immobile before the stimuli 
         tImmobGrp = cellfun(@(x)(tImmob(x,:)),indGrp,'un',0);
-        tReactGrp = cellfun(@(x)(cell2mat(tReact(x))),indGrp,'un',0);
+        tReactGrp = cellfun(@(x)(cell2mat(tReact(x))),indGrp,'un',0);        
 
         % sets the stimuli train reaction indices for each time group
         indReact0 = cellfun(@(x,y)(detStimReactGroup(...
@@ -111,19 +111,34 @@ for i = 1:nApp
         jj = cellfun(@isempty,indReact0);
         indReact0(jj) = {NaN(1,size(indReact0{1,1},2))};
         
+        % memory allocation
+        nFly = length(flyok{i});    
+        nGrpMax = max(cellfun(@(x)(size(x,1)),tImmobGrp(:)));
+        indReact{i} = repmat({NaN(nGrpMax,nGrp)},size(indGrp,1),nFly);
+        
         % rearranges the arrays so that they are ordered by day, rather
         % than by fly
-        indReact{i} = cell(size(indGrp,1),length(flyok{i}));
-        xiF = num2cell(1:sum(flyok{i}));
-        indReact{i}(:,flyok{i}) = cell2cell(cellfun(@(z)(cellfun(@(x)(...
-                combineNumericCells(cellfun(@(y)(y(:,x)),z,'un',0))),...
-                xiF,'un',0)),num2cell(indReact0,2),'un',0));
-            
-        % fills any rejected regions with NaN values
-        if any(~flyok{i})
-            i0 = find(flyok{i},1,'first');
-            indReact{i}(:,~flyok{i}) = {NaN(size(indReact{i}{i0}))};
+        for k = 1:size(indGrp,1)        
+            for j = find(flyok{i}(:)')
+                Ynw = combineNumericCells(...
+                    cellfun(@(x)(x(:,j)),indReact0(k,:),'un',0));                
+                indReact{i}{k,j}(1:size(Ynw,1),:) = Ynw;
+            end
         end
+        
+%         % rearranges the arrays so that they are ordered by day, rather
+%         % than by fly
+%         xiF = num2cell(1:sum(flyok{i}));
+%         indReact{i} = cell(size(indGrp,1),length(flyok{i}));
+%         indReact{i}(:,flyok{i}) = cell2cell(cellfun(@(z)(cellfun(@(x)(...
+%                 combineNumericCells(cellfun(@(y)(y(:,x)),z,'un',0))),...
+%                 xiF,'un',0)),num2cell(indReact0,2),'un',0));
+%             
+%         % fills any rejected regions with NaN values
+%         if any(~flyok{i})
+%             i0 = find(flyok{i},1,'first');
+%             indReact{i}(:,~flyok{i}) = {NaN(size(indReact{i}{i0}))};
+%         end
     end
 end
                 
