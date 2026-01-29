@@ -165,11 +165,11 @@ classdef QuestDlgMulti < handle
             
             % initialisations
             cbFcnB = @obj.buttonUserSelect;
-            widButC = (obj.widFig - (obj.nBut+1)*obj.dX)/obj.nBut;
+            widButC = (obj.widFig - 2*obj.dX)/obj.nBut;
             
             % creates the button objects
             for i = 1:obj.nBut
-                lPosB = i*obj.dX + (i-1)*widButC;
+                lPosB = obj.dX + (i-1)*widButC;
                 pPosB = [lPosB,obj.dX,widButC,obj.hghtBut];
                 obj.hButC{i} = createUIObj('pushbutton',obj.hFig,...
                     'Units','Pixels','Position',pPosB,...

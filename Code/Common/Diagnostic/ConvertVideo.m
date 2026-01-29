@@ -196,9 +196,9 @@ classdef ConvertVideo < handle
                 lPosL = obj.dX + (i-1)*(3*obj.dX + obj.widList);
                 pPosL = [lPosL,obj.dX-2,obj.widList,obj.hghtList];
                 obj.hListC{i} = createUIObj('listbox',obj.hPanelC,...
-                    'Position',pPosL,'Items',{},'Enable','off',...
-                    'Value',{},'MultiSelect','on','FontSize',obj.lSz,...
-                    'ValueChangedFcn',{@obj.listBoxSelect,i==1});
+                    'Position',pPosL,'Items',{},'Enable','off','Max',2,...
+                    'ValueChangedFcn',{@obj.listBoxSelect,i==1},...
+                    'Value',[],'FontSize',obj.lSz);
 
                 % creates the button objects
                 yPosD = 25 + (i-1)*(obj.dX/2 + obj.hghtButS);
@@ -243,7 +243,7 @@ classdef ConvertVideo < handle
             pPosE = [obj.dX,obj.dX-2,obj.widEditD,obj.hghtEditD];
             obj.hEditD = createUIObj('edit',obj.hPanelD,...
                 'Position',pPosE,'FontSize',obj.fSz,...
-                'Editable','off');
+                'Enable','Inactive');
             
             % creates the button object
             lPosD = sum(pPosE([1,3])) + obj.dX/2;
@@ -296,7 +296,7 @@ classdef ConvertVideo < handle
                     'String','N/A','FontSize',obj.fSz,'Position',pPosO,...
                     'HorizontalAlignment','Center','UserData',uData{i});
                 if strcmp(fTypeT{i},'edit')
-                    obj.hObjT{i}.ValueChangedFcn = @obj.editTempPara;
+                    obj.hObjT{i}.Callback = @obj.editTempPara;
                 end
             end
             
@@ -352,7 +352,7 @@ classdef ConvertVideo < handle
                     'String','N/A','FontSize',obj.fSz,'Position',pPosO,...
                     'HorizontalAlignment','Center','UserData',uData{i});
                 if strcmp(fTypeS{i},'edit')
-                    obj.hObjS{i}.ValueChangedFcn = @obj.editSpatPara;
+                    obj.hObjS{i}.Callback = @obj.editSpatPara;
                 end                
             end       
             

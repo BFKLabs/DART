@@ -277,7 +277,7 @@ classdef DefDeviceProps < handle
             createUIObj('text',obj.hPanelO,...
                 'Position',pPosTO,'String',txtStrO,...
                 'FontUnits','Pixels','FontWeight','Bold',...
-                'HorizontalAlignment','Right','FontSize',obj.fSz);
+                'HorizontalAlignment','Right','FontSize',obj.fSzT);
             
             % creates the parameter editbox object
             lEditTE = sum(pPosTO([1,3]));
@@ -711,38 +711,42 @@ classdef DefDeviceProps < handle
         function clearDefFiles(obj,~,~)
                         
             % initialisations
+            fWid = 300;
+            a = char(8226);
             tStr = 'Reset Default Files?';            
             hasFile = obj.hasFileField();
             
             % sets up the question dialog box message string
             if all(hasFile)
                 % case is both fields are set
-                mStr = ['Do you want to reset A) the property file, ',...
-                        'B) the preset file, or C) both default files?'];
-                bStr = {'Property File','Preset File','Both Files'};                    
+                fWid = 350;
+                mStr = sprintf(['Do you want to reset:\n\n %s the ',...
+                    'Default Property File,\n %s the Default ',...
+                    'Preset File, or\n %s both Default Files'],a,a,a);
+                bStr = {'Property File','Preset File','Both Files'};
                 
             elseif hasFile(1)
                 % case is the property file is set only
                 mStr = ['Are you sure you want to reset the ',...
-                        'default property file?'];
+                    'Default Property File?'];
                 bStr = {'Reset Property File'};
                 
             else
                 % case is the preset file is set only
                 mStr = ['Are you sure you want to reset the ',...
-                        'default preset file?'];                
-                bStr = {'Reset Preset File'};                
-            end            
-                
+                    'Default Preset File?'];
+                bStr = {'Reset Preset File'};
+            end
+            
             % prompts the user if they want to clear the fields
-            uChoice = QuestDlgMulti([bStr,{'Cancel'}],mStr,tStr);            
-            if strcmp(uChoice,'Cancel')
+            qDlg = QuestDlgMulti([bStr,{'Cancel'}],mStr,tStr,fWid);
+            if strcmp(qDlg.uChoice,'Cancel')
                 % if the user cancelled, then exit
                 return
             end            
             
             % updates the default device preset file (if chosen)
-            if any(strContains(uChoice,{'Preset','Both'}))
+            if any(strContains(qDlg.uChoice,{'Preset','Both'}))
                 % resets the parameter struct/object fields
                 obj.cProps.Preset = [];
                 obj.hEditP.String = '';                
@@ -755,7 +759,7 @@ classdef DefDeviceProps < handle
             end
             
             % updates the default property file (if chosen)
-            if any(strContains(uChoice,{'Property','Both'}))
+            if any(strContains(qDlg.uChoice,{'Property','Both'}))
                 % resets the file fields
                 obj.isChange = false;
                 [obj.dpFile,obj.hEditD.String] = deal('');
