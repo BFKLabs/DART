@@ -13,21 +13,36 @@ dy = [0.0 0.02 0.025 0.03 0.04 0.05 0.06 0.08 0.1 0.15 0.2 0.25,...
 % determines the exponent index
 if (isnan(Ymx(end)) || (Ymx(end) == 0)); Ymx(end) = 1; end
 Ymx(end) = Ymx(end) - yOfs;
-hOfs = floor(log10(Ymx(end)))+1;
+hOfs = floor(log10(abs(Ymx(end))));
 
 % calculates the new tick-markers
-YendM = Ymx(end)/((nTick-1)*10^hOfs);
+YendM = abs(Ymx(end)/((nTick-1)*10^hOfs));
 if (any(YendM == dy))
     ii = find(YendM == dy);
 else
     ii = find(YendM >= dy,1,'last') + 1;
 end
+
+% calculates the tick-marker locations
 yTick = yOfs + ((0:dy(ii):(nTick-1)*dy(ii)))*10^hOfs;
+if sign(Ymx) < 0
+    yTick = -flip(yTick);        
+end
+
+% updates the axis properties
+set(hAx,'ytick',yTick,'ylim',yTick([1,end]))    
 
 % resets the ticklabels
-set(hAx,'ytick',yTick,'ylim',yTick([1 end]))
 if (yOfs ~= 0)
     yTickLbl = cellfun(@(x)(num2str(x)),num2cell(yTick-yOfs),'un',0);
     set(hAx,'yticklabel',yTickLbl);
 end
-yMax = yTick(end);
+
+if nargout
+    if sign(Ymx) < 0
+        yMax = yTick(1);
+    else
+        yMax = yTick(end);
+    end
+end
+    

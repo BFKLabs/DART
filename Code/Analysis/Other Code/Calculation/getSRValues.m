@@ -30,24 +30,28 @@ switch (pStr)
             Ynw = max(0,field2cell(Ytmp,'adjrsquare',1));
         end
     case {'Yamp_mn','YampR_mn'} % case is the raw/fitted amplitudes
-        Ynw = abs(Ynw);
         if (pP.plotRaw)
             % sets the raw amplitude SEM
             Ysem = p.YampR_sem;
-            
-            % sets the overall y-axis limits
-            Ymx = max(cellfun(@(x,y)(max(x(:)+y(:))),...
-                      cell2cell(field2cell(pD,'YampR_mn')),...
-                      cell2cell(field2cell(pD,'YampR_sem'))));            
+            YmnC = cell2cell(field2cell(pD,'YampR_mn'));
+            YsemC = cell2cell(field2cell(pD,'YampR_sem'));                        
         else
             % sets the fitted amplitude SEM
             Ysem = p.Yamp_sem; 
-            
-            % sets the overall y-axis limits
-            Ymx = max(cellfun(@(x,y)(max(x(:)+y(:))),...
-                      cell2cell(field2cell(pD,'Yamp_mn')),...
-                      cell2cell(field2cell(pD,'Yamp_sem'))));            
+            YmnC = cell2cell(field2cell(pD,'Yamp_mn'));
+            YsemC = cell2cell(field2cell(pD,'Yamp_sem'));                                   
         end
+        
+        % sets the overall y-axis limits
+        Ymax = max(cellfun(@(x,y)(max(x(:)+y(:))),YmnC,YsemC));
+        Ymin = min(cellfun(@(x,y)(min(x(:)+y(:))),YmnC,YsemC));   
+        
+        if all(sign(Ynw) == -1) || (abs(Ymin) > Ymax)
+            Ymx = Ymin;
+        else
+            Ymx = Ymax;
+        end
+        
     case ('Y0_mn') % case is the pre-stimuli speed
         Ysem = p.Y0_sem;
     case ('Tmax') % case is the max response time
