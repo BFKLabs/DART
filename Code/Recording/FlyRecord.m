@@ -161,6 +161,7 @@ set(hObject,'CurrentAxes',handles.axesPreview)
 % turns on all warnings again
 try close(h); catch; end
 warning(wState);
+centerfig(hObject);
 
 % Update handles structure
 guidata(hObject, handles); 

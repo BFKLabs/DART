@@ -127,15 +127,16 @@ if ~stimOnly
 end
 
 % makes the gui visible
-setObjVisibility(hObject,'on')
 pause(0.05);
 
 % resets the full experiment panel titles (this fixes a weird bug
 % where the objects within the panels drop down by around 20 pixels?)
 resetFullExptPanels(handles)
+setObjVisibility(hObject,'on')
 isInit = false;
 
 % Update handles structure
+centerfig(hObject);
 guidata(hObject, handles);
 
 % UIWAIT makes ExptSetup wait for user response (see UIRESUME)
@@ -484,9 +485,27 @@ switch fExtn
                     
     case '.expp'
         %
-        resetStimTrain = false;   
+        resetStimTrain = false;           
+        
         if isfield(fData,'iExpt')
-            [iExpt,sTrain] = deal(fData.iExpt,fData.sTrain);
+            iExpt = fData.iExpt;
+            isRecordOnly = strcmp(iExpt.Info.Type,'RecordOnly');            
+        else
+            isRecordOnly = true;
+        end
+            
+        if isRecordOnly
+            if ~exist('iExpt','var')
+                iExpt = fData;
+            end
+            
+            % case is a recording only expt
+            sTrain = [];
+            [dType,nCh] = deal({'RecordOnly'},NaN);
+            iStim = initTotalStimParaStruct();            
+        else
+            % case is a stimuli based experiment
+            sTrain = fData.sTrain;                        
             dType = unique(fData.chInfo(:,3),'stable');            
             nCh = cellfun(@(x)(sum(strcmp(fData.chInfo(:,3),x))),dType);
 
@@ -498,10 +517,6 @@ switch fExtn
                 % otherwise, create a new struct
                 iStim = initTotalStimParaStruct();
             end
-        else
-            [iExpt,sTrain] = deal(fData,[]);
-            [dType,nCh] = deal({'RecordOnly'},NaN);
-            iStim = initTotalStimParaStruct();
         end
 
     otherwise
@@ -591,10 +606,14 @@ setappdata(hFig,'sTrain',sTrain)
 setappdata(hFig,'infoObj',infoObj)
 
 % initialises the object properties
-pType0 = getappdata(hFig,'pType');
 initObjProps(handles,dType(:)',nCh,false)
+pType0 = getappdata(hFig,'pType');
+if isempty(pType0)
+    pType0 = 'Experiment Information';
+end
 
 % resets the selected tab 
+set(handles.checkFixStart,'Value',iExpt.Timing.fixedT0)
 tabSelected(findall(hFig,'Title',pType0), [], handles)
 
 % -------------------------------------------------------------------------

@@ -445,7 +445,9 @@ classdef VideoClipper < handle
             if isInit
                 % field setup
                 tStr = 'Select Video File';
-                dDir = 'C:\Work\DART\Documents\Michael\Documentation\2.0 - Fly Tracking\Videos';
+                dDir = 'C:\Work\DART\Documents\Atsushi';  
+%                 dDir = 'C:\Work\DART\External Apps\Buridan\Documents\Screenshot Videos';
+%                 dDir = 'C:\Work\DART\Documents\Michael\Documentation\2.0 - Fly Tracking\Videos';
             
                 % user is manually selecting file to open            
                 [fName,fDir,fIndex] = uigetfile(obj.fMode,tStr,dDir);
@@ -528,7 +530,7 @@ classdef VideoClipper < handle
         end
         
         % --- video clipping function
-        function clipVideo(obj)            
+        function clipVideo(obj)
             
             % sets up the original sub-directory 
             vDirT = fullfile(obj.vDir,'Orig');
@@ -567,8 +569,12 @@ classdef VideoClipper < handle
             % creates the temporary video read object
             vObjR = VideoReader(vFileT);
             
+            % deletes any existing videos
+            if exist(vFile0,'file')
+                delete(vFile0);            
+            end
+            
             % sets up the video writer object
-            delete(vFile0);
             vObjW = VideoWriter(vFile0,obj.vProf);
             vObjW.FrameRate = obj.fRate;
             open(vObjW);
