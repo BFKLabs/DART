@@ -117,10 +117,11 @@ setappdata(hObject,'objDAQ0',objDAQ0);
 setappdata(hObject,'objDAQ',objDAQ);
 setappdata(hObject,'infoObj',infoObj)
 setappdata(hObject,'iStim',infoObj.iStim);
+setappdata(hObject,'vcObj',VideoCalibObj(hObject))
 
 % runs the external packages
 feval('runExternPackage','RTTrack',handles,'Init');
-feval('runExternPackage','VideoCalibObj',handles);
+% feval('runExternPackage','VideoCalibObj',handles);
 
 % ------------------------------------------ %
 % --- GUI OBJECT PROPERTY INITIALISATION --- %

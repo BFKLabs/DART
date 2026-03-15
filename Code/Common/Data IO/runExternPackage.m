@@ -151,7 +151,7 @@ if isOK
             
             % creates the class object and updates within the GUI            
             handles = varargin{1};
-            pkgObj = feval('VideoCalibObj',handles.figFlyRecord);                
+            pkgObj = feval('VideoCalibObj',handles.figFlyRecord);
             setappdata(handles.figFlyRecord,'vcObj',pkgObj)
 
         case 'ConvertH264'
