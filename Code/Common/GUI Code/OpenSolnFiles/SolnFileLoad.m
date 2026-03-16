@@ -1674,6 +1674,10 @@ classdef SolnFileLoad < handle & dynamicprops
             axis(obj.hAxS,'on');       
             hold(obj.hAxS,'on');
             axis('ij');
+            
+            % retrieves the stimuli start times
+            stimP = obj.sInfo{obj.iExp}.snTot.stimP;
+            Ts = getStimTimes(stimP,sTrainEx,'All');
 
             % calculates the scaled 
             for i = 1:length(sTrainEx.sTrain)
@@ -1690,6 +1694,11 @@ classdef SolnFileLoad < handle & dynamicprops
 
                 % plots the non-empty signals
                 for iCh = 1:length(xyData)
+                    % offsets markers for the actual stimuli time stamps
+                    tOfsEx = xyData{iCh}(1) - ...
+                        convertTime(Ts{i}{iCh}(1),'s','d');
+                    xyData{iCh}(:,1) = xyData{iCh}(:,1) - tOfsEx;
+                    
                     % plots the channel region markers
                     if iCh < length(xyData)
                         plot(obj.hAxS,tLim,iCh*[1,1],'k--','linewidth',1)
