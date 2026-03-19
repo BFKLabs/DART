@@ -203,6 +203,19 @@ classdef InteractObj < handle
             
         end
         
+        % --- sets the interactive object movement callback function
+        function setObjClickCallback(obj,cbFcn)
+        
+            if obj.isOld
+%                 % case is the old format objects
+%                 obj.hAPI.addNewPositionCallback(cbFcn);
+            else
+                % case is the new format objects                
+                addlistener(obj.hObj,'ROIClicked',cbFcn);
+            end
+            
+        end        
+        
         % --- sets the object's constraint region
         function setConstraintRegion(obj,xLim,yLim)
             

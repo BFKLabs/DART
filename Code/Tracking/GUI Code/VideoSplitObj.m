@@ -5,6 +5,7 @@ classdef VideoSplitObj < handle
         
         % main class fields
         hFigM
+        hMainG
         iDataM
         iData
         iMov        
@@ -13,12 +14,18 @@ classdef VideoSplitObj < handle
         vGrp
         hTimer
         hLine
+        tMove
+        
+        % temporary index fields
+        iRowT
+        iColT
+        iRowS = NaN;
         
         % class object fields
         hFig        
         hPanelP
         hPanelAx
-        hMenuX
+        hMenuC
         
         % plot axes objects
         hImg
@@ -26,6 +33,7 @@ classdef VideoSplitObj < handle
         hAxImg
         hPanelGrp
         hAxGrp
+        hGrpR
         
         % video group selection objects
         hPanelV
@@ -33,7 +41,8 @@ classdef VideoSplitObj < handle
         hButSV
         hEditSV
         hButLV
-        hEditLV
+        hTableV
+        jTableV
         
         % video group control button objects
         hPanelC
@@ -41,56 +50,67 @@ classdef VideoSplitObj < handle
         
         % frame selection objects
         hPanelF
-        hTxtF
         hButSF
         hEditSF
         
         % class object dimensions
         widFig
-        hghtFig
-        widPanelAll        
-        widAxAll 
-        hghtPanelGrp
+        hghtFig        
         hghtAxImg
-        hghtAxGrp        
-        widButLV
+        hghtAxGrp
+        hghtPanelGrp
+        hghtPanelV
+        hghtPanelC
+        hghtPanelF        
+        widPanelAll        
+        widAxAll
         widPanelS
         widPanelC
-        hghtPanelC
+        widButLV               
+        widEditS        
+        widButC 
+        hghtTableV
         y0PanelP
-        widButC                
         
         % fixed object dimensions
         dX = 10;
-        fSzH = 13;
-        fSzT = 12;
+        hghtHdr = 20;
         hghtBut = 25;
         hghtEdit = 22;
         hghtTxt = 16;
-        widEditS = 85;
+        hghtRow = 25;        
         widTxt = 90;
         widTxtL = 110;
         widTxtLV = 40;
-        hghtPanelV = 240;
-        hghtPanelF = 80;
         widEditLV = 55;
         widPanelP = 235;
         hghtPanelP = 350;        
         widPanelAx = 690;
         hghtPanelAx = 435;        
-        hghtPanelImg = 350;        
+        hghtPanelImg = 350;                        
         
-        % other class fields
-        tMove
-        isOld
+        % other static numerical fields        
         tP = 0.1;
+        fSzH = 13;
+        fSzT = 12;
+        fSz = 10 + 2/3;        
         fAlphaOn = 0.6;
         fAlphaOff = 0.1;
+        nFrmMin = 50;
+        yOfs = 0.1;
+        bgColS = [0.390,0.785,1.000];
+        
+        % boolean class fields
+        isOld
         ignoreMove = false;        
         updateFrm = false;
         updateGrp = false;
         pressCtrl = false;
         isChange = false;
+        isUpdating = false;
+        isInit = false;
+        
+        % static string fields
         tagFigStr = 'figVideoSplit';  
         bStr = {'<<','<','>','>>'};
         
@@ -126,6 +146,7 @@ classdef VideoSplitObj < handle
             % retrieves the program data/sub-region structs 
             obj.iDataM = get(obj.hFigM,'iData');
             obj.iMov = get(obj.hFigM,'iMov');            
+            obj.hMainG = guidata(obj.hFigM);
             
             % initialisation of the program data struct
             obj.iData = obj.initDataStruct(obj.iDataM,obj.iMov);
@@ -138,20 +159,44 @@ classdef VideoSplitObj < handle
             obj.widPanelAll = obj.widPanelAx - 2*obj.dX;
             obj.widAxAll = obj.widPanelAll - 2*obj.dX;                                    
             
-            % set the group panel height dimensions
+            % panel height dimension calculations
+            obj.hghtPanelP = obj.hghtFig - 2*obj.dX;
+            obj.hghtPanelF = obj.hghtHdr + obj.hghtRow + obj.dX;
+            obj.hghtPanelV = obj.hghtPanelP - ...
+                            (obj.hghtPanelF + 3*obj.dX);
             obj.hghtPanelGrp = obj.hghtPanelAx - ...
-                                    (obj.hghtPanelImg + 3*obj.dX);
-            
-            % sets the axes object height dimensions                    
+                            (obj.hghtPanelImg + 3*obj.dX);
             obj.hghtAxImg = obj.hghtPanelImg - 2*obj.dX;
-            obj.hghtAxGrp = obj.hghtPanelGrp - 2*obj.dX;            
-            obj.y0PanelP = obj.hghtFig - (obj.dX + obj.hghtPanelP);
-            obj.widPanelS = obj.widPanelP - 2*obj.dX;                        
-            obj.hghtPanelP = obj.hghtPanelF + obj.hghtPanelV + 3*obj.dX;            
-            obj.widPanelC = obj.widPanelS - 2*obj.dX;
-            obj.hghtPanelC = 2*obj.hghtBut + 2.5*obj.dX;
-            obj.widButC = obj.widPanelC - 2*obj.dX;            
+            obj.hghtAxGrp = obj.hghtPanelGrp - 2*obj.dX;                                                
+            obj.hghtPanelC = obj.hghtBut + obj.dX;
+            
+            obj.hghtTableV = obj.hghtPanelV - ...
+                            (obj.hghtHdr + obj.hghtPanelC + obj.dX);
+            
+            % panel width dimension calculations
+            obj.widPanelS = obj.widPanelP - 2*obj.dX;
+            obj.widPanelC = obj.widPanelS - obj.dX;            
+            
+            % other object dimension calculations
+            obj.widButC = (obj.widPanelC - obj.dX)/2;            
             obj.widButLV = (obj.widPanelS - 3*obj.dX)/2;
+            obj.widEditS = obj.widPanelS - (2*obj.dX + 4*obj.hghtBut + 1);
+            
+            % other coordinate calculations
+            obj.y0PanelP = obj.hghtFig - (obj.dX + obj.hghtPanelP);            
+            
+            % removes any previous timer object
+            hTimerPr = timerfind('tag','hTimerF');
+            if ~isempty(hTimerPr)
+                arrayfun(@(x)(stop(x)),hTimerPr)
+                delete(hTimerPr); 
+            end
+            
+            % creates and starts the frame timer function
+            timerCB = @obj.FrameTimerFcn;
+            obj.hTimer = timer('StartDelay',0.5, 'TimerFcn',timerCB,...
+                               'Period', 0.01, 'tag', 'hTimerF', ...
+                               'ExecutionMode', 'fixedrate');            
             
             % makes the main GUI invisible
             setObjVisibility(obj.hFigM,'off')
@@ -177,7 +222,6 @@ classdef VideoSplitObj < handle
                               'MenuBar','None','Toolbar','None',...
                               'Name','Video Split GUI','Resize','off',...
                               'NumberTitle','off','Visible','off',...
-                              'WindowButtonDownFcn',@obj.ButtonDownFcn,...
                               'WindowButtonUpFcn',@obj.ButtonUpFcn,...
                               'WindowKeyPressFcn',@obj.KeyPressFcn,...
                               'WindowKeyReleaseFcn',@obj.KeyReleaseFcn);                        
@@ -201,89 +245,46 @@ classdef VideoSplitObj < handle
             hMenuP = uimenu(obj.hFig,'Label','File');
             
             % creates the file menu items
-            obj.hMenuX = uimenu(hMenuP,'Label','Close Window',...
-                                       'Callback',@obj.menuExit);    
+            obj.hMenuC = uimenu(hMenuP,'Label','Clear Groups',...
+                          'Accelerator','C','Callback',@obj.menuClear);    
+            uimenu(hMenuP,'Label','Close Window','Accelerator','X',...
+                          'Separator','on','Callback',@obj.menuExit);    
             
             % ----------------------------------- %
             % --- VIDEO GROUP PARAMETER PANEL --- %
             % ----------------------------------- % 
             
-            % initialisations
-            bStrLV = {'Set Lower','Set Upper'};
-            eStrLV = {'Start: ','End: '};
-            cbFcnBLV = {@obj.SetLowerLimit,@obj.SetUpperLimit};
-            cbFcnELV = {@obj.EditGrpStart,@obj.EditGrpFinish};            
-            
             % creates the panel object
-            tStrV = 'VIDEO GROUP SELECTION'; 
+            tStrV = 'VIDEO GROUP INFORMATION'; 
             pPosV = [obj.dX*[1,1],obj.widPanelS,obj.hghtPanelV];
             obj.hPanelV = uipanel(obj.hPanelP,'Title',tStrV,'Units',...
                         'Pixels','Position',pPosV,'FontUnits','Pixels',...
-                        'FontSize',obj.fSzH,'FontWeight','bold');
-                    
-            % sets up the bottom position of the button objects
-            pPosC = [obj.dX*[1,1],obj.widPanelC,obj.hghtPanelC];
-            yPosBLV = sum(pPosC([2,4])) + obj.dX/2;                        
-            
-            % createst the button object
-            obj.hButLV = cell(length(bStrLV),1);            
-            for i = 1:length(bStrLV)
-                xPosLV = i*obj.dX + (i-1)*obj.widButLV;
-                bPosLV = [xPosLV,yPosBLV,obj.widButLV,obj.hghtBut];
-                obj.hButLV{i} = uicontrol(obj.hPanelV,'Style','Pushbutton',...
-                        'Position',bPosLV,'Callback',cbFcnBLV{i},'FontUnits',...
-                        'Pixels','FontSize',obj.fSzT,'FontWeight','Bold',...
-                        'String',bStrLV{i});
-            end
-            
-            % creates
-            obj.hEditLV = cell(length(eStrLV),1);
-            yPosELV = sum(bPosLV([2,4])) + obj.dX/2;
-            for i = 1:length(eStrLV)
-                % creates the text label object
-                xtPosLV = obj.dX + (i-1)*(obj.widTxtLV + obj.widEditLV);
-                tPosLV = [xtPosLV,yPosELV+2,obj.widTxtLV,obj.hghtTxt];
-                uicontrol(obj.hPanelV,'Style','Text','Position',tPosLV,...
-                        'FontUnits','Pixels','FontWeight','Bold',...
-                        'FontSize',obj.fSzT,'String',eStrLV{i},...
-                        'HorizontalAlignment','right');                
-                
-                % creates the editbox object
-                pVal = '1';
-                xePosLV = sum(tPosLV([1,3]));
-                ePosLV = [xePosLV,yPosELV,obj.widEditLV,obj.hghtEdit];
-                obj.hEditLV{i} = uicontrol(obj.hPanelV,'Style','Edit',...
-                            'Position',ePosLV,'Callback',cbFcnELV{i},...
-                            'String',pVal);                
-            end
-            
-            % sets up the selection objects
-            yPosSV = yPosELV + 3*obj.dX;
-            [obj.hButSV,obj.hEditSV] = ...
-                        obj.setupSelectionObj(obj.hPanelV,yPosSV,2);                    
-
-            % sets up the text/label objects
-            yPosTV = yPosSV + 3*obj.dX;
-            tStrTV = {'Total Groups: ','Selected Groups: '};            
-            obj.hTxtV = obj.setupTextLabels(obj.hPanelV,tStrTV,yPosTV);
+                        'FontSize',obj.fSzH,'FontWeight','bold');                    
             
             % ------------------------------------ %
             % --- CONTROL BUTTON PANEL OBJECTS --- %
-            % ------------------------------------ %                     
+            % ------------------------------------ %
                     
             % initialisations
-            bStrC = {'Merge Selected Groups','Split Current Group'};
-            cbFcnB = {@obj.buttonMerge,@obj.buttonSplit};
+            cWidV = {50,80,80};
+            cNameV = {'Group','Start','Finish'};            
+            bStrC = {'Merge Groups','Split Group'};            
             obj.hButC = cell(length(bStrC),1);            
             
-            % creates the experiment combining data panel            
+            % function handles
+            cbFcnVE = @obj.tableCellEdit;            
+            cbFcnVS = @obj.tableCellSelect;
+            cbFcnB = {@obj.buttonMerge,@obj.buttonSplit};                        
+            
+            % creates the control button panel   
+            pPosC = [obj.dX*[1,1]/2,obj.widPanelC,obj.hghtPanelC];
             obj.hPanelC = uipanel(obj.hPanelV,'Title','','Units',...
                                               'Pixels','Position',pPosC);                    
                     
             % creates the button objects
             for i = 1:length(bStrC)
-                yPos = obj.dX + (i-1)*(obj.hghtBut + obj.dX/2);
-                bPosC = [obj.dX,yPos,obj.widButC,obj.hghtBut];
+                xPos = obj.dX/2 + (i-1)*obj.widButC;
+                bPosC = [xPos,obj.dX/2,obj.widButC,obj.hghtBut];
                 obj.hButC{i} = uicontrol(obj.hPanelC,'Style','Pushbutton',...
                         'Position',bPosC,'Callback',cbFcnB{i},'FontUnits',...
                         'Pixels','FontSize',obj.fSzT,'FontWeight','Bold',...
@@ -291,8 +292,21 @@ classdef VideoSplitObj < handle
             end
             
             % disables the merge button
-            setObjEnable(obj.hButC{1},'off')
-                                          
+            setObjEnable(obj.hButC{1},'off')                                                  
+            
+            % creates the table object
+            yPosT = sum(pPosC([2,4])) + obj.dX/2;
+            tPosV = [obj.dX/2,yPosT,obj.widPanelC,obj.hghtTableV];
+            obj.hTableV = createUIObj('table',obj.hPanelV,...
+                'Data',[],'Position',tPosV,'FontSize',obj.fSz,...
+                'CellSelectionCallback',cbFcnVS,'ColumnName',cNameV,...
+                'CellEditCallback',cbFcnVE,'ColumnWidth',cWidV,...
+                'ColumnEditable',[false,true,true],'RowName',[]);            
+            
+            % other table property/field updates
+            obj.jTableV = getJavaTable(obj.hTableV);
+            autoResizeTableColumns(obj.hTableV)
+            
             % ----------------------------------- %
             % --- VIDEO FRAME SELECTION PANEL --- %
             % ----------------------------------- % 
@@ -307,12 +321,7 @@ classdef VideoSplitObj < handle
             
             % sets up the selection objects
             [obj.hButSF,obj.hEditSF] = ...
-                        obj.setupSelectionObj(obj.hPanelF,obj.dX,1);
-                                 
-            % sets up the text/label objects
-            yPosTV = 4*obj.dX;
-            tStrTV = {'Total Frames: '};            
-            obj.hTxtF = obj.setupTextLabels(obj.hPanelF,tStrTV,yPosTV);
+                        obj.setupSelectionObj(obj.hPanelF,obj.dX/2 + 1,1);                                 
             
             % ---------------------------------------- %
             % --- VIDEO GROUP SELECTION AXES PANEL --- %
@@ -345,27 +354,12 @@ classdef VideoSplitObj < handle
             pPosAxImg = [obj.dX*[1,1],obj.widAxAll,obj.hghtAxImg];
             set(obj.hAxImg,'parent',obj.hPanelImg,'tag','axesImg',...
                     'units','pixels','position',pPosAxImg,'box','on',...
-                    'xticklabel',[],'xtick',[],'yticklabel',[],'ytick',[]);                                         
-            
+                    'xticklabel',[],'xtick',[],'yticklabel',[],'ytick',[]);                                                     
+                
         end        
         
-        % initialises the class fields/objects
-        function initObjProps(obj)
-            
-            % field retrieval
-            hAxG = obj.hAxGrp;
-            [vG,nFrmS] = deal(obj.iData.vGrp,num2str(obj.iData.nFrm));            
-            
-            % initialises the edit box values
-            set(obj.hEditSV,'string','1');
-            set(obj.hTxtF{1},'string',nFrmS);
-            set(obj.hEditSF,'string',num2str(vG(1,1)));
-            set(obj.hEditLV{1},'string',num2str(vG(1,1)));
-            set(obj.hEditLV{2},'string',num2str(vG(1,2)));  
-            
-            % updates the selection properties
-            obj.updateSelectionEnable(1, [vG(1,1), obj.iData.nFrm])
-            obj.updateSelectionEnable(2, [1, size(vG,1)])
+        % --- resets the figure object dimensions
+        function resetFigureObjects(obj)
             
             % updates the image axes
             ImgNw = obj.updateImageAxes();
@@ -373,49 +367,60 @@ classdef VideoSplitObj < handle
             Wnw = roundP(pPos(4)*size(ImgNw,2)/size(ImgNw,1));
             dW = Wnw-pPos(3);
             
-            % resets the dimensiongs of the axes objects
+            % resets the dimensions of the axes objects
             resetObjPos(obj.hAxImg,'width',dW,1);
             resetObjPos(obj.hPanelImg,'width',dW,1);
-            resetObjPos(hAxG,'width',dW,1);
+            resetObjPos(obj.hAxGrp,'width',dW,1);
             resetObjPos(obj.hPanelGrp,'width',dW,1);
             resetObjPos(obj.hPanelAx,'width',dW,1);
-            resetObjPos(obj.hFig,'width',dW,1);
+            resetObjPos(obj.hFig,'width',dW,1);                        
+            
+        end
+        
+        % initialises the class fields/objects
+        function initObjProps(obj)
+            
+            % field retrieval
+            vG = obj.iData.vGrp;            
+            xLim = [1 obj.iData.nFrm] + 0.5*[-1 1];
+            
+            % updates the table properties
+            obj.resetTableData();            
+            obj.resetTableHightlight(1);            
+            
+            % initialises the edit box values
+            set(obj.hEditSF,'string',num2str(vG(1,1)));           
+            
+            % updates the selection properties
+            obj.updateSelectionEnable(1, [vG(1,1), obj.iData.nFrm])            
             
             % sets up the video group axes
-            cla(hAxG)
-            set(hAxG,'xlim',[1 obj.iData.nFrm] + 0.5*[-1 1],'yLim',[0 1]);
+            cla(obj.hAxGrp)
+            set(obj.hAxGrp,'xlim',xLim,'yLim',[0 1]);
             
             % initialises the frame/video group marker objects
             obj.initFrameMarker();
-            obj.initGroupMarkers();
+            obj.initGroupMarkers();            
             
-            % removes any previous timer object
-            hTimerPr = timerfind('tag','hTimerF');
-            if ~isempty(hTimerPr)
-                arrayfun(@(x)(stop(x)),hTimerPr)
-                delete(hTimerPr); 
-            end
-            
-            % creates and starts the frame timer function
-            timerCB = @obj.FrameTimerFcn;
-            obj.hTimer = timer('StartDelay',0.5, 'TimerFcn',timerCB,...
-                               'Period', 0.01, 'tag', 'hTimerF', ...
-                               'ExecutionMode', 'fixedrate');
-            start(obj.hTimer);
+            % resets the figure objects
+            obj.resetFigureObjects();  
+            setObjEnable(obj.hMenuC,size(vG,1)>1);
             
             % ------------------------------- %
             % --- HOUSE-KEEPING EXERCISES --- %
             % ------------------------------- %
             
-            % updates the GUI object properties
-            setGUIFontSize(obj)
-            centreFigPosition(obj.hFig);            
+            if ~obj.isInit
+                % updates the GUI object properties
+                obj.isInit = true;
+                centreFigPosition(obj.hFig);            
+
+                % makes the gui visible            
+                start(obj.hTimer);
+                setObjVisibility(obj.hFig,'on')
+            end
             
-            % makes the gui visible            
-            setObjVisibility(obj.hFig,'on')
-            uiwait(obj.hFig);
-            
-        end                       
+        end
 
         % ------------------------------ %
         % --- FRAME MARKER FUNCTIONS --- %
@@ -425,26 +430,24 @@ classdef VideoSplitObj < handle
         function initFrameMarker(obj)
 
             % axis initialisations
-            hAxG = obj.hAxGrp;
-            hold(hAxG,'on')
+            hold(obj.hAxGrp,'on')
 
             % creates the line object
-            lCol = 'g';
+            lCol = 'm';
             xL = [1 obj.iData.nFrm];
             pL = {obj.iData.vGrp(1,1)*[1 1],[0 1]};
 
             % creates the line object
-            obj.hLine = InteractObj('line',hAxG,pL);
-            obj.hLine.setFields('tag','hLine','UserData',0);
+            obj.hLine = InteractObj('line',obj.hAxGrp,pL);
+            obj.hLine.setFields('tag','hLine','UserData',0,...
+                                'LineWidth',2,'ContextMenu',[]);
 
             % updates the marker properties/callback function
             obj.hLine.setColour(lCol);
             obj.hLine.setObjMoveCallback(@obj.frmMove); 
             obj.hLine.setConstraintRegion(xL,[0 1]);    
 
-            if obj.hLine.isOld
-%                 set(findall(hRect,'tag','patch'),'facealpha',obj.fAlphaOff)
-            else
+            if ~obj.hLine.isOld
                 obj.hLine.setFields('InteractionsAllowed','translate')
             end            
             
@@ -473,37 +476,33 @@ classdef VideoSplitObj < handle
             obj.hLine.setFields('UserData',iFrm)
             cFrm = roundP(pPos(1,1));
 
-            % updates the frame index
+            % updates the corresponding editbox value
             set(obj.hEditSF,'string',num2str(cFrm));            
+            obj.updateSelectionEnable(1, [cFrm, obj.iData.nFrm])            
             
         end
         
         % ------------------------------ %
         % --- GROUP MARKER FUNCTIONS --- %
-        % ------------------------------ %
+        % ------------------------------ %        
         
-        % --- initialises the markers for each video index group
+        % --- initialises the markers for ea\ch video index group
         function initGroupMarkers(obj)
+            
+            % memory allocation
+            nGrp = size(obj.iData.vGrp,1);            
+            obj.hGrpR = cell(nGrp,1);
 
             % creates the group markers for each region
-            nGrp = size(obj.iData.vGrp,1);
             for i = 1:nGrp
-                hRect = obj.createGroupMarker(i,obj.iData.vGrp(i,:),true);
-                if i == 1
-                    if isOldIntObjVer
-                        hRectP = findall(hRect,'tag','patch');
-                        set(hRectP,'FaceAlpha',obj.fAlphaOn);                        
-                    else
-                        hRect.setFields('FaceAlpha',obj.fAlphaOn);
-                    end
-                end
+                obj.hGrpR{i} = ...
+                    obj.createGroupMarker(i,obj.iData.vGrp(i,:),true);
+                obj.setGroupFaceAlpha(obj.hGrpR{i},i==1);
             end
 
             % resets the groups markers into the correct order
             hAxG = obj.hAxGrp;
             set(hAxG, 'Children',flipud(get(hAxG, 'Children')))
-            set(obj.hTxtV{2},'string','1')
-            set(obj.hTxtV{1},'string',num2str(nGrp))
 
         end
         
@@ -514,38 +513,66 @@ classdef VideoSplitObj < handle
             grpCol = distinguishable_colors(size(obj.iData.vGrp,1));
 
             % axis initialisations
-            hAxG = obj.hAxGrp;
-            hold(hAxG,'on')            
+            hold(obj.hAxGrp,'on')            
             
             % creates the rectangle object
-            hRect = InteractObj('rect',hAxG,[fLim(1) 0 fLim(2)-fLim(1) 1]);
+            rPos = [fLim(1) -obj.yOfs fLim(2)-fLim(1) 1+2*obj.yOfs];
+            hRect = InteractObj('rect',obj.hAxGrp,rPos);
             
-            % if moveable, then set the position callback function
+            % sets the position callback function
             hRect.setColour(grpCol(cGrp,:));
-            hRect.setFields('tag','hGrp','UserData',cGrp);
+            hRect.setFields('tag','hGrp','UserData',cGrp,...
+                            'Rotatable',0,'ContextMenu',[]);
+            obj.setGroupFaceAlpha(hRect,0);
             hRect.setObjMoveCallback(@obj.grpMove);
+            hRect.setObjClickCallback(@obj.grpClicked);
             
-            if hRect.isOld
-                set(findall(hRect,'tag','patch'),'facealpha',obj.fAlphaOff)
-            else
-                hRect.setFields('FaceAlpha',obj.fAlphaOff);
-                hRect.setFields('InteractionsAllowed','none')
-            end
-                
             % removes the hold on the axes
-            hold(hAxG,'on')
+            hold(obj.hAxGrp,'on')
 
             % resets the order of the objects (frame marker on top then groups)
             if ~isInit
-                hGrpT = findall(hAxG, 'tag', 'hGrp');
-                hLineT = findall(hAxG, 'tag', 'hLine');
-                set(hAxG, 'Children', [hLineT;flipud(hGrpT)])
+                hGrpT = findall(obj.hAxGrp, 'tag', 'hGrp');
+                hLineT = findall(obj.hAxGrp, 'tag', 'hLine');
+                set(obj.hAxGrp, 'Children', [hLineT;flipud(hGrpT)])
             end
 
         end
+        
+        % --- group roi clicked callback function
+        function grpClicked(obj,hRect,evnt)
+            
+            % retrieves the currently selected group object
+            if exist('evnt','var')
+                % case is the newer format objects
+                cGrp = hRect.UserData;                
+            else
+                % case is the older format objects
+                cGrp = get(get(gco,'parent'),'UserData');                
+            end
+            
+            % if control is pressed, add/remove the selected group
+            if obj.pressCtrl
+                if any(obj.iRowS == cGrp)
+                    % removes the selection (if in the list)
+                    cGrp = setdiff(obj.iRowS,cGrp);
 
-        % --- frame marker line callback function
-        function grpMove(obj,varargin)
+                else
+                    % otherwise, add to the list
+                    cGrp = sort([obj.iRowS;cGrp]);
+                end
+            end
+            
+            % sets the group/table highlights
+            obj.switchSelectedGroup(cGrp)
+            obj.resetTableHightlight(cGrp);
+            obj.resetButtonProps(cGrp);
+            removeTableSelection(obj.hTableV);
+            
+        end        
+
+        % --- group roi moved callback function
+        function grpMove(obj,hRect,evnt)
             
             % global variables
             [obj.updateGrp,obj.tMove,obj.isChange] = deal(true,NaN,true);
@@ -554,27 +581,20 @@ classdef VideoSplitObj < handle
             if obj.ignoreMove; return; end
 
             % retrieves the currently selected group object
-            switch length(varargin)
-                case 1
-                    % case is the older format objects
-                    cGrp = get(get(gco,'parent'),'UserData');
-
-                case 2
-                    % case is the newer format objects
-                    cGrp = varargin{1}.UserData;
-            end
-
-            % ensures the correct group has been selected
-            cGrpPr = str2double(get(obj.hEditSF,'string'));
-            if cGrpPr ~= cGrp
-                obj.switchSelectedGroup(cGrp,cGrpPr)
+            if exist('evnt','var')
+                % case is the newer format objects
+                cGrp = hRect.UserData;                
+            else
+                % case is the older format objects
+                cGrp = get(get(gco,'parent'),'UserData');                
             end
 
             % updates the limits on the screen
+            pPos = getIntObjPos(hRect);
             fLim = roundP(pPos(1)+[0 pPos(3)])-[0 1];
 
             % updates the limits
-            obj.iData.vGrp(cGrp,:) = fLim;
+            obj.iData.vGrp(cGrp,:) = fLim;            
             if size(obj.iData.vGrp,1) > 1
                 % sets the default frame limit vector
                 nwLim = [1 obj.iData.nFrm];
@@ -589,7 +609,7 @@ classdef VideoSplitObj < handle
                     nwLim(2) = obj.iData.vGrp(cGrp+1,1)-1;
                 end
 
-                %
+                % resets the group marker position vector
                 if (fLim(1) < nwLim(1)) || (fLim(2) > nwLim(2))
                     fLim = [max(fLim(1),nwLim(1)),min(fLim(2),nwLim(2))];
                     obj.iData.vGrp(cGrp,:) = ...
@@ -598,68 +618,82 @@ classdef VideoSplitObj < handle
                     obj.resetGroupPosition(hRect,fLim)
                 end
             end
+            
+            % resets the bottom location (if moved)
+            if abs(pPos(2) + obj.yOfs) > 1e-6
+                obj.resetGroupPosition(hRect,fLim);
+            end
+            
+            % updates the table fields
+            obj.isUpdating = true;
+            obj.hTableV.Data(cGrp,2:3) = num2cell(fLim);
+            obj.isUpdating = false;
 
             % resets the video group object properties
-            set(obj.hEditLV{1},'string',num2str(fLim(1)))
-            set(obj.hEditLV{2},'string',num2str(fLim(2)))
-            setObjEnable(obj.hButC{2},diff(fLim)>50)            
+            setObjEnable(obj.hButC{2},diff(fLim)>obj.nFrmMin)            
             
         end
         
+        % --- sets the group face-alpha 
+        function setGroupFaceAlpha(obj,hRect,isOn)
+            
+            % sets the face alpha value based on type
+            if isOn
+                fAlpha = obj.fAlphaOn;
+            else
+                fAlpha = obj.fAlphaOff;
+            end
+           
+            % sets the group marker face alpha
+            if isOldIntObjVer
+                hRectP = findall(hRect,'tag','patch');
+                set(hRectP,'FaceAlpha',fAlpha);
+            else
+                hRect.setFields('FaceAlpha',fAlpha);
+            end
+            
+        end        
+        
         % --- switches the selected groups from cGrpC to cGrp
-        function switchSelectedGroup(obj,cGrp,cGrpC)
+        function switchSelectedGroup(obj,cGrp)
 
-            % updates and initialisations            
-            hAxG = obj.hAxGrp;
-            vG = obj.iData.vGrp;
-            obj.iData.cGrp = cGrp;            
+            % removes the current selections
+            cellfun(@(h)(obj.setGroupFaceAlpha(h,0)),obj.hGrpR(obj.iRowS))
+            
+            % sets the group highlights
+            if ~isempty(cGrp)            
+                cellfun(@(h)(obj.setGroupFaceAlpha(h,1)),obj.hGrpR(cGrp))
+            end
 
-            % if not, then update the group selection index
-            set(obj.hEditSV,'string',num2str(cGrp))
-            obj.updateSelectionEnable(2, [cGrp, size(vG,1)])
+        end        
+        
+        % --- resets the position of the video group object
+        function resetGroupPosition(obj,hRect,fLim)
 
-            % updates the patch colours
-            obj.updatePatchFaceAlpha(cGrpC, obj.fAlphaOff);
-            hPOn = obj.updatePatchFaceAlpha(cGrp, obj.fAlphaOn);
-
-            % updates the start/finish frames for the new group
-            set(obj.hEditLV{1},'string',num2str(vG(cGrp,1)))
-            set(obj.hEditLV{2},'string',num2str(vG(cGrp,2)))
-
-            % resets the order of the plot objects
-            hP = findall(hAxG, 'tag', 'hGrp');
-            hPOther = hP(hP ~= hPOn);
-            hLineT = findall(hAxG, 'tag', 'hLine');
-            set(hAxG, 'Children', [hLineT;hPOn;flipud(hPOther)])
+            % updates the group limits
+            fLimNw = [fLim(1) -obj.yOfs max(1,diff(fLim)) 1+2*obj.yOfs];
+            
+            % resets the position of the group rectangle 
+            obj.ignoreMove = true;
+            setIntObjPos(hRect,fLimNw);
+            obj.ignoreMove = false;
 
         end
         
         % --- updates the face alpha for a given group patch object
         function hP = updatePatchFaceAlpha(obj, cGrp, fAlpha)
 
-            hP = findall(obj.hAxGrp,'tag','hGrp','UserData',cGrp);
+            hP = arrayfun(@(x)(findall(...
+                obj.hAxGrp,'tag','hGrp','UserData',x)),cGrp);
             
             if obj.isOld
-                set(findall(hP,'tag','patch'),'facealpha',fAlpha);   
+                arrayfun(@(h)(set(findall(...
+                    h,'tag','patch'),'facealpha',fAlpha)),hP)
             else
-                set(hP,'facealpha',fAlpha);   
+                arrayfun(@(h)(set(h,'facealpha',fAlpha)),hP);
             end
 
-        end
-        
-        % --- resets the position of the video group object
-        function resetGroupPosition(obj,hRect,fLim)
-
-            % resets the position of the group rectangle 
-            obj.ignoreMove = true;
-            setIntObjPos(hRect,[fLim(1) 0 diff(fLim) 1]);
-            obj.ignoreMove = false;
-
-            % resets the group start/finish frame indices
-            set(obj.hEditLV{1},'string',num2str(fLim(1)))
-            set(obj.hEditLV{2},'string',num2str(fLim(2)))
-
-        end
+        end        
         
         % ------------------------------------------ %
         % --- SPLIT/MERGE GROUP MARKER FUNCTIONS --- %
@@ -668,19 +702,14 @@ classdef VideoSplitObj < handle
         % --- splits the group markers
         function splitGroupMarkers(obj)
             
-            % initialisations            
-            hAxG = obj.hAxGrp;
+            % initialisations        
+            cGrp = obj.iRowS;            
             vG = obj.iData.vGrp;
             obj.isChange = true;            
-            cGrp = str2double(get(obj.hEditSV,'string'));
-
-            % updates the other group properties
-            hGrp = findall(hAxG,'tag','hGrp');
-            hGrpS = findall(hGrp,'UserData',cGrp);
-            obj.resetOtherGroupProps(hGrp,cGrp,1);
-
+            hObjS = obj.hGrpR{cGrp}.hObj;           
+            
             % recalculates the new limits
-            fPos = getIntObjPos(hGrpS);
+            fPos = getIntObjPos(hObjS);
             fLim = roundP(fPos(1)+[0 fPos(3)]);
             vGrpNw = fLim(1) + [0 floor(fPos(3)/2)];
             vGrpNw = [vGrpNw;[(vGrpNw(1,2)+1) fLim(2)]];
@@ -688,59 +717,67 @@ classdef VideoSplitObj < handle
             % updates the video group index array            
             obj.iData.vGrp = [vG(1:(cGrp-1),:);vGrpNw;vG((cGrp+1):end,:)];
 
-            % resets the upper limit values
-            set(obj.hEditLV{2},'string',num2str(vGrpNw(1,2)))
-
-            % resets the position of the first group, and creates another
-            obj.resetGroupPosition(hGrpS,vGrpNw(1,:));
-            obj.createGroupMarker(cGrp+1,vGrpNw(2,:),false);
-            obj.updateSelectionEnable(2,[cGrp(1),size(obj.iData.vGrp,1)])
-
-            % updates the group selection/count
-            nGrpS = num2str(size(obj.iData.vGrp,1));
-            set(obj.hTxtV{1},'string',nGrpS)
-            set(obj.hTxtV{2},'string','1')            
+            % resets the table properties
+            obj.resetTableData();            
+            removeTableSelection(obj.hTableV);
+            obj.switchSelectedGroup([]);
+            obj.resetTableHightlight([]);
             
-        end
+            % sets the other object properties
+            cellfun(@(h)(setObjEnable(h,0)),obj.hButC);
+            setObjEnable(obj.hMenuC,1);
+            
+            % resets the position of the first group, and creates another
+            obj.resetGroupPosition(hObjS,vGrpNw(1,:));
+            
+            % creates the new group marker
+            obj.hGrpR = obj.expandArray(obj.hGrpR,cGrp+1);
+            obj.hGrpR{cGrp+1} = obj.createGroupMarker(cGrp+1,vGrpNw(2,:),0);             
+            
+        end        
         
         % --- merges the group markers given by the array, hPM
-        function mergeGroupMarkers(obj,hMerge)
+        function mergeGroupMarkers(obj)
             
             % initialisations
-            hAxG = obj.hAxGrp;
-            obj.isChange = true;            
-
-            % determines the groups which are currently selected
-            cGrp = arrayfun(@(x)(get(x,'UserData')),hMerge);
-            [cGrp,iSort] = sort(cGrp);
-            hMerge = hMerge(iSort);
+            cGrp = obj.iRowS; 
+            nGrp = length(obj.hGrpR);
+            obj.isChange = true;
 
             % removes the merged groups
             isOK = true(size(obj.iData.vGrp,1),1);
             isOK(cGrp(2:end)) = false;
             
             % merges the group indices
-            obj.iData.cGrp = cGrp(1);
             obj.iData.vGrp(cGrp(1),2) = obj.iData.vGrp(cGrp(end),2);
             [obj.iData.vGrp,vG] = deal(obj.iData.vGrp(isOK,:));
 
             % resets the position of the merged group and deletes the others
-            obj.resetGroupPosition(hMerge(1),obj.iData.vGrp(cGrp(1),:));
-            obj.updatePatchFaceAlpha(cGrp(1), obj.fAlphaOn);
-            for i = 2:length(hMerge); delete(hMerge(i)); end
-
-            % resets the other GUI object properties
-            set(obj.hEditLV{1},'string',num2str(vG(cGrp(1),1)))
-            set(obj.hEditLV{2},'string',num2str(vG(cGrp(1),2)))
-            set(obj.hEditSV,'string',num2str(cGrp(1)))
-            set(obj.hTxtV{1},'string',num2str(size(vG,1)))
-            set(obj.hTxtV{2},'string','1')
-            setObjEnable(obj.hButC{2},diff(vG(cGrp(1),:))>50)
+            isKeep = true(nGrp,1);
+            for i = cGrp(1):nGrp
+                if i <= (nGrp - (length(cGrp)-1))
+                    % resets the position of the group (if feasible)
+                    obj.resetGroupPosition(obj.hGrpR{i}.hObj,vG(i,:));
+                else
+                    % otherwise, delete the marker object
+                    obj.hGrpR{i}.deleteObj();
+                    isKeep(i) = false;
+                end
+            end            
             
-            % updates the properties of the other groups and the selection buttons
-            hGrp = findall(hAxG,'tag','hGrp');
-            obj.resetOtherGroupProps(hGrp,cGrp(end),-diff(cGrp([1 end])))
-            obj.updateSelectionEnable(2,[cGrp(1),size(vG,1)])            
+            % sets the group/table highlights
+            obj.resetTableData()
+            
+            % sets the group/table highlights
+            obj.switchSelectedGroup(cGrp(1));
+            obj.resetTableHightlight(cGrp(1));
+            obj.resetButtonProps(cGrp(1));
+            
+            % reduces the object handle array
+            obj.hGrpR = obj.hGrpR(isKeep);            
+            
+            % resets the other GUI object properties
+            setObjEnable(obj.hMenuC,size(vG,1)>1);
             
         end
         
@@ -796,10 +833,10 @@ classdef VideoSplitObj < handle
             end
             
             % other initialisations            
-            for i = 1:length(hBut)                
+            for i = 1:length(hBut)
                 % creates the button object
-                lBut = obj.dX + (i-1)*obj.hghtBut + ...
-                                            (i>2)*(obj.widEditS + obj.dX);
+                lBut = obj.dX/2 + (i-1)*obj.hghtBut + ...
+                                  (i>2)*(obj.widEditS + obj.dX);
                 bPos = [lBut,y0,obj.hghtBut*[1,1]];                
                 hBut{i} = uicontrol(hP,'Style','Pushbutton',...
                             'Position',bPos,'Callback',cbFcnB{i},...
@@ -809,8 +846,8 @@ classdef VideoSplitObj < handle
             end            
             
             % creates the count editbox object
-            lEdit = (3/2)*obj.dX + 2*obj.hghtBut;
-            ePos = [lEdit,y0+2,obj.widEditS,obj.hghtEdit];
+            lEdit = obj.dX + 2*obj.hghtBut;
+            ePos = [lEdit,y0+1,obj.widEditS,obj.hghtEdit];
             hEdit = uicontrol(hP,'Style','Edit',...
                         'Position',ePos,'Callback',cbFcnE,...
                         'UserData',uStr,'FontUnits','Pixels',...
@@ -832,183 +869,79 @@ classdef VideoSplitObj < handle
                     obj.updateImageAxes();
                     obj.updateFrm = false;
                 end
-            elseif obj.updateGrp
-                if ~isnan(obj.tMove)
-                    if toc(obj.tMove) > obj.tP
-                        obj.checkGroupFeas()
-                        obj.updateGrp = false;
-                    end    
-                end
             end
             
         end
-        
-        % --- checks the video group feasibility
-        function checkGroupFeas(obj)
-            
-            % initialisations
-            hAxG = obj.hAxGrp;
-            cGrp = str2double(get(obj.hEditSV,'string'));
-
-            % retrieves the data structs from the GUI
-            nwLim = obj.getGroupDomain(cGrp);
-
-            % determines the current location of the limits
-            hRect = findall(hAxG,'tag','hGrp','UserData',cGrp);
-            fPos = getIntObjPos(hRect);
-            fLim = roundP(fPos(1) + [0 fPos(3)])-[0 1];
-
-            % updates the group position (if outside of limits
-            if fLim(1) < nwLim(1) 
-                fLim(1) = nwLim(1); 
-                obj.resetGroupPosition(hRect,fLim)    
-            elseif fLim(2) > nwLim(2)
-                fLim(2) = nwLim(2); 
-                obj.resetGroupPosition(hRect,fLim)
-            end            
-            
-        end
-        
+                
         % --------------------------------- %
         % --- OBJECT CALLBACK FUNCTIONS --- %
         % --------------------------------- %        
         
         % --- first frame/group button selection callback function
-        function FirstButton(obj,hObj,~)
+        function FirstButton(obj,~,~)
             
-            % retrieves the image data struct
-            vG = obj.iData.vGrp;
-            isGrp = strcmp(get(hObj,'UserData'),'Group');
-
-            % updates the selection enabled properties
-            hObj = {obj.hEditSF,obj.hEditSV};
-            valLim = [obj.iData.nFrm,size(vG,1)];
-
             % updates the selection properties
-            j = 1 + isGrp;
-            set(hObj{j},'string','1')
-            obj.updateSelectionEnable(j,[1,valLim(j)])
+            set(obj.hEditSF,'string','1')
+            obj.updateSelectionEnable(1,[1,obj.iData.nFrm])
 
-            % updates the appropriate axes (based on the type)
-            if isGrp
-                % updates the video group selection axes
-                obj.switchSelectedGroup(1,obj.iData.cGrp)
-                obj.iData.cGrp = 1;
-            else
-                % updates the image axes
-                obj.iData.cFrm = 1;
-                obj.updateFrameMarkerPos()
-                obj.updateImageAxes();
-            end
+            % updates the image axes
+            obj.iData.cFrm = 1;
+            obj.updateFrameMarkerPos()
             
         end
         
         % --- previous frame/group button selection callback function
-        function PrevButton(obj,hObj,~)
-
-            % retrieves the image data struct
-            vG = obj.iData.vGrp;
-            isGrp = strcmp(get(hObj,'UserData'),'Group');
-
-            % updates the selection enabled properties
-            hObj = {obj.hEditSF,obj.hEditSV};
-            valLim = [obj.iData.nFrm,size(vG,1)];
+        function PrevButton(obj,~,~)
 
             % updates the corresponding editbox value
-            j = 1 + isGrp;
-            currVal = str2double(get(hObj{1+isGrp},'string'));
-            set(hObj{1+isGrp},'string',num2str(currVal-1))
-            obj.updateSelectionEnable(j, [currVal-1, valLim(j)])
+            currVal = str2double(get(obj.hEditSF,'string'));
+            set(obj.hEditSF,'string',num2str(currVal-1))
+            obj.updateSelectionEnable(1, [currVal-1, obj.iData.nFrm])
 
-            % updates the appropriate axes (based on the type)
-            if isGrp
-                % updates the video group selection axes
-                obj.switchSelectedGroup(obj.iData.cGrp-1,obj.iData.cGrp)
-                obj.iData.cGrp = obj.iData.cGrp - 1;
-            else
-                % updates the image axes
-                obj.iData.cFrm = obj.iData.cFrm - 1;
-                obj.updateFrameMarkerPos()
-                obj.updateImageAxes();
-            end           
+            % updates the image axes
+            obj.iData.cFrm = obj.iData.cFrm - 1;
+            obj.updateFrameMarkerPos()
             
         end
         
         % --- next frame/group button selection callback function
-        function NextButton(obj,hObj,~)
-            
-            % retrieves the image data struct
-            isGrp = strcmp(get(hObj,'UserData'),'Group');
-
-            % updates the selection enabled properties
-            vG = obj.iData.vGrp;
-            hObj = {obj.hEditSF,obj.hEditSV};
-            valLim = [obj.iData.nFrm,size(vG,1)];
+        function NextButton(obj,~,~)
 
             % updates the corresponding editbox value
-            j = 1 + isGrp;
-            currVal = str2double(get(hObj{j},'string'));
-            set(hObj{j},'string',num2str(currVal+1))
-            obj.updateSelectionEnable(j, [currVal+1, valLim(j)])
+            currVal = str2double(get(obj.hEditSF,'string'));
+            set(obj.hEditSF,'string',num2str(currVal+1))
+            obj.updateSelectionEnable(1, [currVal+1, obj.iData.nFrm])
 
-            % updates the appropriate axes (based on the type)
-            if isGrp
-                % updates the video group selection axes
-                obj.switchSelectedGroup(obj.iData.cGrp+1,obj.iData.cGrp)
-                obj.iData.cGrp = obj.iData.cGrp + 1;
-            else
-                % updates the image axes
-                obj.iData.cFrm = obj.iData.cFrm + 1;
-                obj.updateFrameMarkerPos()
-                obj.updateImageAxes();
-            end      
+            % updates the image axes
+            obj.iData.cFrm = obj.iData.cFrm + 1;
+            obj.updateFrameMarkerPos()
             
         end
         
         % --- last frame/group button selection callback function
-        function LastButton(obj,hObj,~)
-
-            % retrieves the image data struct
-            vG = obj.iData.vGrp;
-            isGrp = strcmp(get(hObj,'UserData'),'Group');
+        function LastButton(obj,~,~)
 
             % updates the selection enabled properties
-            hObj = {obj.hEditSF,obj.hEditSV};
-            valLim = [obj.iData.nFrm,size(vG,1)];
+            valLim = obj.iData.nFrm;
 
             % updates the selection properties
-            j = 1+isGrp;
-            set(hObj{j},'string',num2str(valLim(j)))
-            obj.updateSelectionEnable(j, [valLim(j), valLim(j)])
+            set(obj.hEditSF,'string',num2str(valLim))
+            obj.updateSelectionEnable(1, [valLim, valLim])
 
-            % updates the appropriate axes (based on the type)
-            if isGrp
-                % updates the video group selection axes
-                obj.switchSelectedGroup(size(vG,1),obj.iData.cGrp)
-                obj.iData.cGrp = size(vG,1);    
-            else
-                % updates the image axes
-                obj.iData.cFrm = obj.iData.nFrm;
-                obj.updateFrameMarkerPos()
-                obj.updateImageAxes();
-            end        
+            % updates the image axes
+            obj.iData.cFrm = obj.iData.nFrm;
+            obj.updateFrameMarkerPos()
             
         end
         
-        % --- frame/group index editbox callback function
+        % --- frame/group index editbox callba<ck function
         function CountEdit(obj,hObj,~)
             
             % retrieves the image data struct
             nwVal = str2double(get(hObj,'string'));
-            isGrp = strcmp(get(hObj,'UserData'),'Group');
             
             % updates the frame/sub-movie index
-            if isGrp
-                nwLim = [1 size(obj.iData.vGrp,1)];
-                [cGrp0,pStr] = deal(obj.iData.cGrp,'cGrp');                
-            else
-                [nwLim,pStr] = deal([1 obj.iData.nFrm],'cFrm');
-            end
+            [nwLim,pStr] = deal([1 obj.iData.nFrm],'cFrm');
 
             % checks to see if the new value is valid
             if chkEditValue(nwVal,nwLim,1)
@@ -1016,15 +949,8 @@ classdef VideoSplitObj < handle
                 obj.iData = setStructField(obj.iData,pStr,nwVal);
 
                 % updates the selection enabled properties
-                obj.updateSelectionEnable(1+isGrp, [nwVal, nwLim(2)])
-                if isGrp
-                    % updates the video group selection axes
-                    obj.switchSelectedGroup(nwVal,cGrp0)
-                else
-                    % updates the image axes
-                    obj.updateFrameMarkerPos()
-                    obj.updateImageAxes();
-                end
+                obj.updateSelectionEnable(1, [nwVal, nwLim(2)])
+                obj.updateFrameMarkerPos()
             else
                 % resets the edit box string to the last valid value
                 pStr0 = num2str(getStructField(obj.iData,pStr));
@@ -1037,122 +963,96 @@ classdef VideoSplitObj < handle
         % --- VIDEO GROUP FRAME OBJECT CALLBACKS --- %
         % ------------------------------------------ %        
         
-        % --- set group lower limit frame button callback function
-        function SetLowerLimit(obj,~,~)
-            
-            % initialisations
-            eStr = [];
-            cGrp = str2double(get(obj.hEditSV,'string'));
-            cFrm = str2double(get(obj.hEditSF,'string'));
+        % --- table cell edit callback function
+        function tableCellEdit(obj, ~, evnt)
 
-            % determines if the upper limit is valid
-            if cFrm >= obj.iData.vGrp(cGrp,2)
-                % if not, then exit after displaying an error
-                eStr = 'Error! Lower limit can''t be more than or equal to lower limit.';
-            else
-                nwLim = obj.getGroupDomain(cGrp);
-                if cFrm < nwLim(1)
-                    eStr = 'Error! Lower limit can''t overlap another group.';
-                end
-            end
-
-            % if there was an error, output the message and exit the function
-            if ~isempty(eStr)
-                waitfor(errordlg(eStr,'Invalid Lower Limit','modal'))
-                return 
-            end
-
-            % updates the data struct
-            [obj.iData.vGrp(cGrp,1),obj.isChange] = deal(cFrm,true);
-            set(obj.hEditLV{1},'string',num2str(cFrm))
-
-            % updates the group position
-            hRect = findall(obj.hAxGrp,'tag','hGrp','UserData',cGrp);
-            obj.resetGroupPosition(hRect,obj.iData.vGrp(cGrp,:))            
-            
-        end
-        
-        % --- set group upper limit frame button callback function
-        function SetUpperLimit(obj,~,~)
-            
-            % initialisations
-            eStr = [];
-            cGrp = str2double(get(obj.hEditSV,'string'));
-            cFrm = str2double(get(obj.hEditSF,'string'));
-
-            % determines if the upper limit is valid
-            if cFrm <= obj.iData.vGrp(cGrp,1)
-                eStr = 'Error! Upper limit can''t be less than or equal to lower limit.';
-            else
-                nwLim = obj.getGroupDomain(cGrp);
-                if cFrm > nwLim(2)
-                    eStr = 'Error! Upper limit can''t overlap another group.';
-                end
-            end
-
-            % if there was an error, output the message and exit the function
-            if ~isempty(eStr)
-                waitfor(errordlg(eStr,'Invalid Upper Limit','modal'))
-                return 
-            end
-
-            % updates the data struct
-            [obj.iData.vGrp(cGrp,2),obj.isChange] = deal(cFrm,true);
-            set(obj.hEditLV{2},'string',num2str(cFrm))
-
-            % updates the group position
-            hRect = findall(obj.hAxGrp,'tag','hGrp','UserData',cGrp);
-            obj.resetGroupPosition(hRect,obj.iData.vGrp(cGrp,:))            
-            
-        end
-        
-        % --- executes on updating the start frame index editbox
-        function EditGrpStart(obj,hObj,~)
-            
-            % initialisations
-            nwVal = str2double(get(hObj,'string'));
-            cGrp = str2double(get(obj.hEditSV,'string'));            
-
-            % checks to see if the new value is valid
-            nwLim = obj.getGroupLimits(cGrp,true);
-            if chkEditValue(nwVal,nwLim,1)
-                % if so, then update the data struct
-                obj.isChange = true;
-                obj.iData.vGrp(cGrp,1) = nwVal;
-
-                % resets the position of the group
-                hRect = findall(obj.hAxGrp,'tag','hGrp','UserData',cGrp);
-                obj.resetGroupPosition(hRect,obj.iData.vGrp(cGrp,:))
-            else
-                % if not, then revert the last value
-                set(hObj,'string',num2str(obj.iData.vGrp(cGrp,1)))
+            % if updating elsewhere or infeasible then exit
+            if obj.isUpdating || isempty(evnt.Indices)
+                return
             end            
             
+            % field retrieval
+            vG = obj.iData.vGrp;
+            nwVal = evnt.NewData;            
+            nwLim = [1,obj.iData.nFrm];            
+            [iRowNw,iColNw] = deal(evnt.Indices(1),evnt.Indices(2)); 
+            
+            % sets the lower/upper limits
+            if (iRowNw > 1); nwLim(1) = vG(iRowNw-1,2) + 1; end
+            if (iRowNw < size(vG,1)); nwLim(2) = vG(iRowNw+1,1) - 1; end
+            
+            % determines if the new value is valid
+            if chkEditValue(nwVal,nwLim,1)
+                % if so, then update video group limits/objects
+                obj.iData.vGrp(iRowNw,iColNw-1) = nwVal;
+                
+                % resets the group position
+                obj.resetGroupPosition(...
+                    obj.hGrpR{iRowNw}.hObj,obj.iData.vGrp(iRowNw,:));
+                obj.resetButtonProps()
+                
+            else
+                % otherwise, reset to the previous value
+                obj.hTableV.Data{iRowNw,iColNw} = evnt.PreviousData;
+            end
+            
         end
         
-        % --- executes on updating the finish frame index editbox
-        function EditGrpFinish(obj,hObj,~)
+        % --- table cell selection callback function        
+        function tableCellSelect(obj, ~, evnt)
+                        
+            % if updating elsewhere or infeasible then exit
+            if obj.isUpdating || isempty(evnt.Indices)
+                return
+            end
             
-            % initialisations
-            nwVal = str2double(get(hObj,'string'));
-            cGrp = str2double(get(obj.hEditSV,'string'));
-            nwLim = obj.getGroupLimits(cGrp,false);
+            % field retrieval
+            [iRowNw,iColNw] = deal(evnt.Indices(:,1),evnt.Indices(:,2));
+            
+            % appends/removes the selection
+            if obj.pressCtrl                
+                % resets the table update flag
+                obj.isUpdating = true;
+                removeTableSelection(obj.hTableV);
 
-            % checks to see if the new value is valid
-            if chkEditValue(nwVal,nwLim,1)
-                % if so, then update the data struct
-                obj.isChange = true;
-                obj.iData.vGrp(cGrp,2) = nwVal;
-
-                % resets the position of the group
-                hRect = findall(obj.hAxGrp,'tag','hGrp','UserData',cGrp);
-                obj.resetGroupPosition(hRect,obj.iData.vGrp(cGrp,:))
+                % for multi-selected cells, determine the last selection
+                if length(iRowNw) > 1
+                    iB = sum(abs(evnt.Indices-[obj.iRowT,obj.iColT]),2)>0;
+                    [iRowNw,iColNw] = deal(iRowNw(iB),iColNw(iB));
+                end                                
+                
+                % resets the table selection
+                setTableSelection(obj.hTableV,iRowNw-1,iColNw-1)                
+                [obj.iRowT,obj.iColT] = deal(iRowNw,iColNw); 
+                                
+                if any(obj.iRowS == iRowNw)
+                    % removes the selection (if in the list)
+                    iRowNw = setdiff(obj.iRowS,iRowNw);
+                    
+                else
+                    % otherwise, add to the list
+                    iRowNw = sort([obj.iRowS;iRowNw]);
+                end
+                
+                % resets the update flag
+                pause(0.05);
+                obj.isUpdating = false;
             else
-                % if not, then revert the last value
-                set(hObj,'string',num2str(obj.iData.vGrp(cGrp,2)))
-            end            
+                % updates the currently selected table indices
+                [obj.iRowT,obj.iColT] = deal(iRowNw,iColNw);                 
+            end                          
+                        
+            % resets the table highlight
+            if ~isequal(iRowNw,obj.iRowS)
+                obj.switchSelectedGroup(iRowNw);
+                obj.resetTableHightlight(iRowNw);
+                setObjEnable(obj.hButC{2},~isempty(iRowNw));
+            end 
             
-        end        
+            % resets the other object properties
+            obj.resetButtonProps()
+            
+        end
         
         % ------------------------------------------- %
         % --- VIDEO GROUP ACTION OBJECT CALLBACKS --- %
@@ -1164,7 +1064,7 @@ classdef VideoSplitObj < handle
             % prompts the user if they want to split the current group
             tStr = 'Split Current Video Group?';
             qStr = 'Are you sure you want to split the current group?';
-            uChoice = questdlg(qStr,tStr,'Yes','No','Yes');
+            uChoice = questdlg(qStr,tStr,'Yes','No','Yes');                        
             if strcmp(uChoice,'Yes')
                 % is so, then split the group into 2
                 obj.splitGroupMarkers()
@@ -1175,29 +1075,14 @@ classdef VideoSplitObj < handle
         % --- merge group button callback function
         function buttonMerge(obj,hObj,~)
             
-            % determines the currently selected groups
-            hP = findall(obj.hAxGrp,'tag','hGrp');
-            isOn = obj.getFaceAlpha(hP) == obj.fAlphaOn;
-                        
-            % if there are no matches, then exit
-            if ~any(isOn); return; end            
-            
-            % determines if the group selection is feasible for merging
-            indOn = arrayfun(@(x)(get(x,'UserData')),hP(isOn));            
-            if any(diff(sort(indOn)) > 1)
-                % if the selected blocks are not contiguous then output an error
-                eStr = 'Error! Only contiguously selected groups blocks can be merged.';
-                waitfor(errordlg(eStr,'Group Block Merge Error','modal'))
-            else
-                % otherwise, prompt the user if they want to merge 
-                tStr = 'Merge Selected Video Groups?';                
-                qStr = 'Are you sure you want to merge the selected groups?';
-                uChoice = questdlg(qStr,tStr,'Yes','No','Yes');    
-                if strcmp(uChoice,'Yes')
-                    % is so, then merges the selected groups
-                    obj.mergeGroupMarkers(hP(isOn))
-                    setObjEnable(hObj,'off')
-                end
+            % otherwise, prompt the user if they want to merge 
+            tStr = 'Merge Selected Video Groups?';                
+            qStr = 'Are you sure you want to merge the selected groups?';
+            uChoice = questdlg(qStr,tStr,'Yes','No','Yes');    
+            if strcmp(uChoice,'Yes')
+                % is so, then merges the selected groups
+                obj.mergeGroupMarkers()
+                setObjEnable(hObj,'off')
             end            
             
         end          
@@ -1218,7 +1103,34 @@ classdef VideoSplitObj < handle
         
         % --------------------------- %
         % --- MENU ITEM CALLBACKS --- %
-        % --------------------------- %                
+        % --------------------------- %       
+        
+        % --- group clearing menu item callback function
+        function menuClear(obj,~,~)
+            
+            % if so, prompt the user if they wish to update the changes
+            tStr = 'Clear Video Groups';
+            qStr = 'Do you wish to clear all the video groups?';
+            uChoice = questdlg(qStr,tStr,'Yes','No','Yes');                        
+            
+            % initialisation of the program data struct
+            if strcmp(uChoice,'Yes')
+                % resets the data struct
+                cFrm0 = obj.iData.cFrm;
+                obj.iData = obj.initDataStruct(obj.iDataM,obj.iMov,1);      
+                obj.iData.cFrm = cFrm0;
+                
+                % re-initialises the object properties
+                obj.initObjProps();
+                
+                % resets the other fields/object properties
+                obj.isChange = true;
+                setObjEnable(obj.hMenuC,0);
+                setObjEnable(obj.hButC{1},0);
+                setObjEnable(obj.hButC{2},1);
+            end
+            
+        end
         
         % --- closes GUI menu item callback function
         function menuExit(obj,~,~)
@@ -1265,82 +1177,7 @@ classdef VideoSplitObj < handle
         % --------------------------------------------- %
         % --- FIGURE INTERACTION CALLBACK FUNCTIONS --- %
         % --------------------------------------------- %        
-        
-        % --- executes on the mouse-button down click 
-        function ButtonDownFcn(obj,hObj,~)
-            
-            % if the mouse pointer is not correct, then exit
-            if ~strcmp(get(hObj,'Pointer'),'arrow')
-                return
-            end            
-        
-            % initialisations
-            hAxG = obj.hAxGrp;
-            vG = obj.iData.vGrp;
-            mPos = get(hAxG,'currentpoint');
-            
-            % retrieves the current point and group limits
-            axP = [roundP(mPos(1,1)), mPos(1,2)];
-            xL = [vG(1,1),vG(end,2)];
-            
-            % if the selected point is not within the limits 
-            % of groups then exit
-            isIn = (axP(2)>=0) && (axP(2)<=1) && ...
-                   (axP(1)>xL(1)) && (axP(1)<=xL(2));
-            if ~isIn; return; end
-            
-            % if a new group is selected then switch the selected groups
-            cGrp = find((axP(1) >= vG(:,1)) & (axP(1) <= vG(:,2)));
-            if ~isempty(cGrp)            
-                if obj.pressCtrl
-                    % 
-                    dfAlpha = 1;
-                    hP = findall(hAxG,'tag','hGrp');
-                    hPG = findall(hP,'UserData',cGrp);
-
-                    %
-                    fAlpha = obj.getFaceAlpha(hP(hP~=hPG));
-                    fOtherOn = fAlpha == obj.fAlphaOn;
                     
-                    % updates the selection groups facealpha values
-                    if obj.getFaceAlpha(hPG) == obj.fAlphaOn 
-                        % if the group is selected, then de-select 
-                        if any(fOtherOn)
-                            dfAlpha = 0;
-                            obj.updatePatchFaceAlpha(cGrp,obj.fAlphaOff);
-                        end
-                    else
-                        % if the group is de-selected, then re-select 
-                        obj.updatePatchFaceAlpha(cGrp,obj.fAlphaOn);
-                    end
-
-                    % updates the object properties
-                    canMerge = (sum(fOtherOn)+dfAlpha)>1;
-                    nGrpS = num2str(sum(fOtherOn)+dfAlpha);
-                    setObjEnable(obj.hButC{2},~canMerge)
-                    setObjEnable(obj.hButC{1},canMerge)                    
-                    set(obj.hTxtV{2},'string',nGrpS)
-                    
-                else
-                    %
-                    setObjEnable(obj.hButC{2},'on')
-                    setObjEnable(obj.hButC{1},'off')
-                    set(obj.hTxtV{2},'string','1')
-
-                    % removes the selection for the other groups
-                    fOff = obj.fAlphaOff;
-                    indOff = find((1:size(vG,1)) ~= cGrp);
-                    arrayfun(@(x)(obj.updatePatchFaceAlpha(x,fOff)),indOff,'un',0);
-
-                    cGrpC = str2double(get(obj.hEditSV,'string'));
-                    if cGrpC ~= cGrp
-                        obj.switchSelectedGroup(cGrp,cGrpC)
-                    end
-                end                
-            end
-            
-        end        
-            
         % --- executes on the mouse-button up events
         function ButtonUpFcn(obj,~,~)
             
@@ -1365,6 +1202,107 @@ classdef VideoSplitObj < handle
             obj.pressCtrl = false;
             
         end
+
+        % --------------------------------------- %
+        % --- TABLE PROPERTY UPDATE FUNCTIONS --- %
+        % --------------------------------------- %
+        
+        % --- resets the table highlight 
+        function resetTableHightlight(obj,iRowNw)
+            
+            % flag that manual updating is taking place
+            obj.isUpdating = true;
+            
+            % field updates
+            obj.iRowS = iRowNw;                        
+            
+            % table background colour reset
+            nRowT = size(obj.hTableV.Data,1);
+            if size(obj.hTableV.BackgroundColor,1) == nRowT
+                obj.hTableV.BackgroundColor(:) = 1;
+            else
+                obj.hTableV.BackgroundColor = ones(nRowT,3);
+            end
+                
+            % sets the table colour highlight
+            if ~isempty(iRowNw)
+                bgColNw = repmat(obj.bgColS,length(iRowNw),1); 
+                obj.hTableV.BackgroundColor(iRowNw,:) = bgColNw; 
+            end
+            
+            % flag that manual updating is taking place
+            pause(0.05);
+            obj.isUpdating = false;            
+            
+        end
+        
+        % --- resets the table data
+        function resetTableData(obj)
+                
+            vG = obj.iData.vGrp;                        
+            obj.hTableV.Data = num2cell([(1:size(vG,1))',vG]);
+            
+        end            
+        
+        % ------------------------------------- %
+        % --- OTHER OBJECT UPDATE FUNCTIONS --- %
+        % ------------------------------------- %        
+        
+        % --- updates the selection object enabled flags
+        function updateSelectionEnable(obj,Type,fLim)
+            
+            % sets the enabled flags
+            isEnable = [repmat(fLim(1)>1,1,2),repmat(fLim(1)<fLim(2),1,2)];
+            
+            % sets the selection button enabled properties
+            obj.resetFrameButtonProps('on',Type,find(isEnable));
+            obj.resetFrameButtonProps('off',Type,find(~isEnable));
+            
+        end
+        
+        % --- sets up the enabled properties
+        function resetFrameButtonProps(obj,State,Type,Index)
+            
+            % initialisations
+            hP = {obj.hPanelF,obj.hPanelV};
+            
+            % sets the button enabled properties
+            for i = Index(:)'
+                hB = findall(hP{Type},'tag','hButS','String',obj.bStr{i});
+                setObjEnable(hB,State)
+            end
+            
+        end
+        
+        % --- resets the control button properties
+        function resetButtonProps(obj,cGrp)
+            
+            % default input arguments
+            if ~exist('cGrp','var'); cGrp = obj.iRowS; end
+            
+            % field retrieval
+            vG = obj.iData.vGrp;
+            
+            % updates the control button properties
+            if length(cGrp) == 1
+                % case is only one group is selected
+                setObjEnable(obj.hButC{1},0);
+                setObjEnable(obj.hButC{2},diff(vG(cGrp,:)) > obj.nFrmMin);
+                
+            else
+                % case is a non-unique button was selected
+                setObjEnable(obj.hButC{2},0);
+                if length(cGrp) > 1
+                    % case is more than one group is selected
+                    setObjEnable(obj.hButC{1},all(diff(cGrp)==1));
+                    
+                else
+                    % case is no groups were selected
+                    setObjEnable(obj.hButC{1},0);
+                end
+            end
+            
+        end        
         
         % ------------------------------- %
         % --- MISCELLANEOUS FUNCTIONS --- %
@@ -1376,10 +1314,9 @@ classdef VideoSplitObj < handle
             % initialisations
             hAx = obj.hAxImg;
             cFrm = str2double(get(obj.hEditSF,'string'));
-            hMainG = guidata(obj.hFigM);
 
-            % retrieves the new image
-            ImgNw = getDispImage(obj.iDataM,obj.iMov,cFrm,false,hMainG);
+            % retrieves the image for the current frame
+            ImgNw = getDispImage(obj.iDataM,obj.iMov,cFrm,false,obj.hMainG);
 
             % updates the image axes with the new image            
             if isempty(obj.hImg)
@@ -1427,33 +1364,7 @@ classdef VideoSplitObj < handle
             if (cGrp > 1); nwLim(1) = obj.iData.vGrp(cGrp-1,2)+1; end
             if (cGrp < N); nwLim(2) = obj.iData.vGrp(cGrp+1,1)-1; end
 
-        end
-        
-        % --- updates the selection object enabled flags
-        function updateSelectionEnable(obj,Type,fLim)
-            
-            % sets the enabled flags
-            isEnable = [repmat(fLim(1)>1,1,2),repmat(fLim(1)<fLim(2),1,2)];
-           
-            % sets the selection button enabled properties
-            obj.setSelectButtonEnable('on',Type,find(isEnable));
-            obj.setSelectButtonEnable('off',Type,find(~isEnable));
-            
-        end
-        
-        % --- sets up the enabled properties
-        function setSelectButtonEnable(obj,State,Type,Index)
-            
-            % initialisations
-            hP = {obj.hPanelF,obj.hPanelV};
-            
-            % sets the button enabled properties
-            for i = Index(:)'
-                hB = findall(hP{Type},'tag','hButS','String',obj.bStr{i});
-                setObjEnable(hB,State)
-            end
-            
-        end   
+        end        
         
         % --- resets the groups lower/upper frame limits
         function nwLim = getGroupLimits(obj,cGrp,isLower)
@@ -1474,30 +1385,7 @@ classdef VideoSplitObj < handle
             end
             
         end
-        
-        % --- resets the properties of the other groups
-        function resetOtherGroupProps(obj,hGrp,cGrp,iOfs)
-
-            % re-orders the userdata flags of the other groups
-            grpCol = distinguishable_colors(size(obj.iData.vGrp,1)+1);
-            for i = 1:length(hGrp)
-                cGrpNw = get(hGrp(i),'UserData');
-                if cGrpNw > cGrp
-                    % updates the group index
-                    set(hGrp(i),'UserData',cGrpNw+iOfs)
-                    
-                    % updates the group facecolour
-                    if obj.isOld
-                        set(findall(hGrp(i),'tag','patch'),...
-                                    'facecolor',grpCol(cGrpNw+iOfs,:))
-                    else
-                        set(hGrp(i),'Color',grpCol(cGrpNw+iOfs,:))
-                    end
-                end
-            end
-
-        end
-        
+                
         % --- retrieves the face-alpha values
         function fAlpha = getFaceAlpha(obj,hP)
 
@@ -1508,7 +1396,7 @@ classdef VideoSplitObj < handle
                 fAlpha = arrayfun(@(x)(get(x,'FaceAlpha')),hP);
             end
 
-        end        
+        end                    
         
     end
     
@@ -1516,10 +1404,13 @@ classdef VideoSplitObj < handle
     methods (Static)
         
         % --- initialisation of the program data struct
-        function iData = initDataStruct(iDataM,iMov)
+        function iData = initDataStruct(iDataM,iMov,forceReset)
+            
+            % default input arguments
+            if ~exist('forceReset','var'); forceReset = false; end
 
             % sets the video group indices
-            if isfield(iMov,'vGrp')
+            if isfield(iMov,'vGrp') && ~forceReset
                 % if the video group indices exist,then retrieve them
                 if isempty(iMov.vGrp)
                     vGrp = [1,iDataM.nFrm];        
@@ -1533,9 +1424,17 @@ classdef VideoSplitObj < handle
             end
 
             % creates the gui data struct
-            iData = struct('cFrm',1,'nFrm',iDataM.nFrm,'cGrp',1,'vGrp',vGrp);
+            iData = struct('cFrm',1,'nFrm',iDataM.nFrm,'vGrp',vGrp);
             
         end
+        
+        % --- expands the array, h, and the location iExp
+        function h = expandArray(h,iExp)
+            
+            hGap = cell(1,size(h,2));
+            h = [h(1:iExp-1,:);hGap;h(iExp:end,:)];
+            
+        end        
         
     end
         

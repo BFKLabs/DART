@@ -671,12 +671,7 @@ classdef SingleTrackInit < SingleTrack
             % memory allocation
             iFrm = obj.indFrm{iPh};
             IL = cell(length(iFrm),obj.nApp);
-            
-            % REMOVE ME LATER
-            if isHiV
-                a = 1;
-            end            
-            
+                        
             % sets up the raw/residual image stacks
             for i = find(obj.iMov.ok(:)')
                 % update the waitbar figure
@@ -1745,8 +1740,9 @@ classdef SingleTrackInit < SingleTrack
             Iref0 = calcImageStackFcn(obj.hCQ,'mean');            
             if isempty(Iref0)
                 return;
-            else                
-                Iref = normImg(obj.frObj.downsampleImage(Iref0),1);
+            else         
+                Iref = normImg(Iref0,1);
+%                 Iref = normImg(obj.frObj.downsampleImage(Iref0),1);
                 if mod(size(Iref,1),2) == 0
                     Iref = min(1,max(0,imresize(Iref,size(Iref)+1)));
                 end
