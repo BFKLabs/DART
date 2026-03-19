@@ -42,15 +42,21 @@ classdef SampleRate < handle
         
         % main class fields
         iData
+        srInfo0
         sRate = 5;
-        iFrm0 = 1;
+        iFrm0 = 1;        
         
         % static scalar fields
+        nButC
         nTxtP = 2;
         nEditP = 2;
         nTxtI = 2;
         fSzL = 12;
         fSz = 10 + 2/3;
+        
+        % boolean class fields
+        isOpenMovie
+        isChange = false;
         
         % static string fields
         tagStr = 'figSampleRate';
@@ -62,7 +68,17 @@ classdef SampleRate < handle
     methods
     
         % --- class constructor
-        function obj = SampleRate(iData)
+        function obj = SampleRate(iData,srInfo)
+            
+            % sets the default input arguments
+            if exist('srInfo','var')
+                obj.srInfo0 = srInfo;                
+                obj.isOpenMovie = false;
+                [obj.sRate,obj.iFrm0] = deal(srInfo(1),srInfo(2));
+            else
+                obj.isOpenMovie = true; 
+                obj.srInfo0 = [obj.sRate,obj.iFrm0]; 
+            end
             
             % sets the input arguments
             obj.iData = iData;
@@ -83,6 +99,9 @@ classdef SampleRate < handle
         % --- initialises the class fields
         function initClassFields(obj)
             
+            % field initialisation
+            obj.nButC = 3 - 2*obj.isOpenMovie;
+            
             % ------------------------------------- %
             % --- OBJECT DIMENSION CALCULATIONS --- %
             % ------------------------------------- %
@@ -100,7 +119,7 @@ classdef SampleRate < handle
             
             % other object dimension calculations
             obj.widTxtTE = obj.widPanelPI - (2*obj.dX + obj.widTxtL);
-            obj.widButC = obj.widPanel - 2*obj.dX;
+            obj.widButC = (obj.widPanel - 2*obj.dX)/obj.nButC;
             
         end
         
@@ -135,8 +154,14 @@ classdef SampleRate < handle
             % ------------------------------ %
             
             % initialisations
-            bStrC = 'Open Movie';
-            cbFcnC = @obj.buttonOpenMovie;
+            if obj.isOpenMovie
+                bStrC = {'Open Movie'};
+                cbFcnC = {@obj.buttonClose};
+            else
+                bStrC = {'Reset','Update','Close'};
+                cbFcnC = {@obj.buttonReset,@obj.buttonUpdate,...
+                          @obj.buttonClose};                
+            end
             
             % creates the panel object
             pPosC = [obj.dX*[1,1],obj.widPanel,obj.hghtPanelC];
@@ -144,11 +169,20 @@ classdef SampleRate < handle
                 'Panel',obj.hFig,'Position',pPosC,'Title',''); 
                             
             % creates the button object
-            bPos = [obj.dX-[0,2],obj.widButC,obj.hghtBut];            
-            obj.hButC = createUIObj('Pushbutton',obj.hPanelC,...
-                'Position',bPos,'Callback',cbFcnC,...
-                'FontUnits','Pixels','FontSize',obj.fSzL,...
-                'FontWeight','Bold','String',bStrC);
+            obj.hButC = cell(obj.nButC,1);
+            for i = 1:obj.nButC
+                lPosB = obj.dX + (i-1)*obj.widButC;
+                bPos = [lPosB,obj.dX-2,obj.widButC,obj.hghtBut];
+                obj.hButC{i} = createUIObj('Pushbutton',obj.hPanelC,...
+                    'Position',bPos,'Callback',cbFcnC{i},...
+                    'FontUnits','Pixels','FontSize',obj.fSzL,...
+                    'FontWeight','Bold','String',bStrC{i});
+            end
+            
+            % sets the other object properties
+            if ~obj.isOpenMovie
+                cellfun(@(h)(setObjEnable(h,0)),obj.hButC(1:2));
+            end
             
             % --------------------------------- %
             % --- VIDEO INFORMATION OBJECTS --- %
@@ -290,12 +324,50 @@ classdef SampleRate < handle
         % --- OBJECT CALLBACK FUNCTIONS --- %
         %---------------------------------- %
         
-        % --- open movie pushbutton callback function
-        function buttonOpenMovie(obj, ~, ~)
+        % --- reset button callback function
+        function buttonReset(obj, ~, ~)
             
-            delete(obj.hFig);
+            % resets the parameter fields/editboxes
+            [obj.sRate,obj.iFrm0] = deal(obj.srInfo0(1),obj.srInfo0(2)); 
+            set(obj.hEditP{1},'String',num2str(obj.sRate));
+            set(obj.hEditP{2},'String',num2str(obj.iFrm0));
+            
+            % resets the control button properties
+            obj.isChange = false;
+            cellfun(@(h)(setObjEnable(h,0)),obj.hButC(1:2));
             
         end
+        
+        % --- reset button callback function
+        function buttonUpdate(obj, ~, ~)
+            
+            % resets the control button properties
+            obj.isChange = false;
+            obj.srInfo0 = [obj.sRate,obj.iFrm0]; 
+            cellfun(@(h)(setObjEnable(h,0)),obj.hButC(1:2));
+            
+        end        
+        
+        % --- close button callback function
+        function buttonClose(obj, ~, ~)
+            
+            if ~obj.isOpenMovie && obj.isChange
+                % prompts the user if they want to accept the changes
+                tStr = 'Update Changes?';
+                qStr = 'Do you want to update the parameter changes?';
+                uChoice = questdlg(qStr,tStr,'Yes','No','Yes');
+                
+                % resets the parameter if the user cancelled
+                if ~strcmp(uChoice,'Yes')
+                    obj.sRate = obj.srInfo0(1);
+                    obj.iFrm0 = obj.srInfo0(2);
+                end
+            end
+            
+            % deletes the figure
+            delete(obj.hFig);
+            
+        end                        
         
         % --- parameter update editbox callback function
         function editParaUpdate(obj, hEdit, ~)
@@ -321,6 +393,13 @@ classdef SampleRate < handle
                 % if so, update the parameter and information fields
                 obj.(pStr) = nwVal;
                 obj.setVideoInfoFields();
+                
+                % resets the update fields
+                obj.isChange = ~isequal(obj.srInfo0,[obj.sRate,obj.iFrm0]);
+                if ~obj.isOpenMovie
+                    cellfun(@(x)(...
+                        setObjEnable(x,obj.isChange)),obj.hButC(1:2))
+                end
                 
             else
                 % otherwise, reset to the previous valid value

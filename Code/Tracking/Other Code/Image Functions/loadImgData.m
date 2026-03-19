@@ -216,8 +216,9 @@ end
 if isVidObj
     % sets the final frame
 %     iFrm0 = max(1,iData.Frm0/iMov.sRate);
-    iFrm0 = max(1,iData.Frm0);    
-    iData.nFrm = length(iFrm0:iMov.sRate:iData.nFrmT);
+    iFrm0 = max(1,iData.Frm0); 
+    xiT = ((iFrm0-1)*iMov.sRate+1):iMov.sRate:iData.nFrmT;
+    iData.nFrm = length(xiT);
 else
     % determines the first feasible frame
     while 1
@@ -227,12 +228,14 @@ else
             break
         else
             % otherwise, increment the time by the frame rate
-            [T0,iData.Frm0] = deal(T0 + 1/iData.exP.FPS,iData.Frm0+1);
+            iData.Frm0 = iData.Frm0 + 1;
+            T0 = T0 + iMov.sRate/iData.exP.FPS;
         end
     end
     
     % determines the last feasible frame    
-    iData.nFrm = length(iData.Frm0:iMov.sRate:iData.nFrmT);
+    xiT = ((iData.Frm0-1)*iMov.sRate+1):iMov.sRate:iData.nFrmT;
+    iData.nFrm = length(xiT);
     while 1
         try
             I = getDispImage(iData,iMov,iData.nFrm,0,handles);

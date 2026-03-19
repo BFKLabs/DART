@@ -100,7 +100,13 @@ else
     end
         
     % expands the boxplot width
-    yLim = yLim + 0.025*diff(yLim)*[-1 1];
+    dyLim = diff(yLim);
+    if dyLim == 0
+        yLim = max(0,yLim + 0.5*[-1 1]);
+    else
+        yLim = yLim + 0.025*dyLim*[-1 1];
+    end
+        
     expandBoxPlot(hBox)
     
     % removes the x-tick marker strings and determines the overall limit

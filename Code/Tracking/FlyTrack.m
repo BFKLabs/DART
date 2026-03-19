@@ -1289,6 +1289,44 @@ function menuTrackOpt_Callback(~, ~, handles)
 % runs the tracking parameter dialog
 DetectParaDialog(handles.output);
 
+% -------------------------------------------------------------------------
+function menuSampleRate_Callback(~, ~, handles)
+
+% field retrieval
+hFig = handles.figFlyTrack;
+srInfo0 = [hFig.iMov.sRate,hFig.iData.Frm0];
+
+% prompts the user for the sample rate parameters
+objSR = SampleRate(hFig.iData,srInfo0);
+if isequal(srInfo0,[objSR.sRate,objSR.iFrm0])
+    % if there is no change, then exit
+    return
+elseif ~isempty(hFig.iMov.Ibg)
+    % if the background image is set, then prompt the user if they actually
+    % want to clear any progress
+    tStr = 'Confirm Change?';
+    qStr = ['The change in sample rate parameters will cause ',...
+            'all progress to be lost. Are you sure you want to continue?']; 
+    uChoice = questdlg(qStr,tStr,'Yes','No','Yes');
+    if ~strcmp(uChoice,'Yes')
+        % if the user cancelled, then exit
+        return
+    end
+end
+
+% resets the data struct fields
+[iData,iMov] = deal(hFig.iData,hFig.iMov);
+[iMov.sRate,iMov.vGrp] = deal(objSR.sRate,[]);
+[iData.Frm0,iData.cFrm] = deal(objSR.iFrm0,1);
+
+% resets the effective frame count
+xiT = ((iData.Frm0-1)*iMov.sRate+1):iMov.sRate:iData.nFrmT;
+iData.nFrm = length(xiT);
+
+% updates the gui object properties
+[hFig.iData,hFig.iMov] = deal(iData,iMov);
+setTrackGUIProps(handles,'PostSampleRateReset');
+
 % ----------------------- %
 % --- VIEW MENU ITEMS --- %
 % ----------------------- %

@@ -61,7 +61,8 @@ switch typeStr
             end            
             
             % deletes the handles
-            delete(hMenu);         
+            delete(hMenu);  
+        catch
         end        
         
         % sets up the h264 video file conversion object
@@ -134,11 +135,13 @@ switch typeStr
             
             delete(handles.menuProgPara)
             delete(handles.menuStimInfo)            
-            delete(handles.menuSplitVideo)   
+            delete(handles.menuSplitVideo)
+            delete(handles.menuSampleRate)
             delete(handles.menuBatchProcess)
             delete(handles.menuViewProgress)
             delete(handles.menuManualReseg)                        
             guidata(hFig);      
+        catch
         end
         
         % sets the menu item properties        
@@ -234,7 +237,8 @@ switch typeStr
         setTrackGUIProps(handles,'UpdateFrameSelection')
         setMenuEnable(handles,'on',8)
         setMenuEnable(handles,'off',7)
-        setMenuEnable(handles,eStr{1+iMov.isSet},2);
+        setMenuEnable(handles,eStr{~hFig.isCalib+1},12)
+        setMenuEnable(handles,eStr{iMov.isSet+1},2);
         updateHMMenu(handles,iData);
                 
         % resets the status flag 
@@ -536,6 +540,17 @@ switch typeStr
         setSubMovEnable(handles);          
         setMovEnable(handles,'on');
         set(handles.movCountEdit,'string','1')                    
+        
+    case 'PostSampleRateReset'
+        
+        % resets the sample rate fields
+        setSampleRateData(handles,iData,iMov);
+        
+        % resets the other object properties
+        if ~isempty(hFig.iMov.Ibg)
+            [hFig.iMov.pStats,hFig.iMov.Ibg,hFig.pData] = deal([]);
+            setTrackGUIProps(handles,'PostWindowSplit');
+        end
         
     % --- AXIS COORDINATES/GRIDLINE UPDATES --- %
     % ----------------------------------------- %                
@@ -896,10 +911,7 @@ end
 
 % sets the states for the frame buttons and index edit box
 for i = 1:length(ind)
-    % sets the new object handle
-    hObj = eval(sprintf('handles.%s',objStr{ind(i)}));
-    
-    % case is the first frame button
+    hObj = handles.(objStr{ind(i)});
     setObjEnable(hObj,state)
 end
 
@@ -917,10 +929,7 @@ end
 
 % sets the states for the frame buttons and index edit box
 for i = 1:length(ind)
-    % sets the new object handle
-    hObj = eval(sprintf('handles.%s',objStr{ind(i)}));
-    
-    % case is the first frame button
+    hObj = handles.(objStr{ind(i)});
     setObjEnable(hObj,state)
 end
 
@@ -984,13 +993,14 @@ for i = 1:length(ind)
         % case is the analysis buttons
         case {'buttonDetectBackground','buttonDetectFly'}
             % sets the new object handle
-            hObj = eval(sprintf('handles.%s',objStr{ind(i)}));
+            hObj = handles.(objStr{ind(i)});
             setObjEnable(hObj,state)
             
         % case is the parameter fields            
         otherwise
             for j = 1:length(a)
-                hObj = eval(sprintf('handles.%s%s',a{j},objStr{ind(i)}));
+                hStr = sprintf('%s%s',a{j},objStr{ind(i)});
+                hObj = handles.(hStr);
                 setObjEnable(hObj,state)
             end
     end
@@ -1011,7 +1021,7 @@ end
 % sets the states for the frame buttons and checkboxes     
 for i = 1:length(ind)
     % sets the new object handle
-    hObj = eval(sprintf('handles.%s',objStr{ind(i)}));
+    hObj = handles.(objStr{ind(i)});
     
     % case is the first frame button
     if ishandle(hObj)
@@ -1039,7 +1049,7 @@ end
 % sets the states for the checkboxes 
 for i = 1:length(ind)
     % sets the new object handle
-    hObj = eval(sprintf('handles.%s',objStr{ind(i)}));
+    hObj = handles.(objStr{ind(i)});
     
     % case is the first frame button
     setObjEnable(hObj,state)
@@ -1055,7 +1065,7 @@ function setMenuEnable(handles,state,ind)
 objStr = {'menuSaveMovie','menuSaveSoln','menuViewProgress',...
           'menuWinsplit','menuVideoFeed','menuBatchProcess',...
           'menuManualReseg','menuSplitVideo','menuCorrectTrans',...
-          'menuUseGray','menuHistMatch'};
+          'menuUseGray','menuHistMatch','menuSampleRate'};
 
 % sets all the indices (if none are provided)
 if (nargin == 2)
@@ -1067,13 +1077,14 @@ for i = 1:length(ind)
     % sets the object enabled properties
     if isfield(handles,objStr{ind(i)})
         try
-            hObj = eval(sprintf('handles.%s',objStr{ind(i)}));
+            hObj = handles.(objStr{ind(i)});
             setObjEnable(hObj,state);
 
             % removes the check (if disabling)
             if strcmp(state,'off')
                 set(hObj,'Checked','off')
             end
+        catch
         end
     end
 end
@@ -1092,20 +1103,27 @@ set(handles.textMovieFileS,'string',simpFileName(iData.fData.name),...
            'TooltipString',fullfile(iData.fData.dir,iData.fData.name));
 
 % sets the image size string
-if (nargin == 4)
-    tFrm = iMov.sRate/iData.exP.FPS;
-    [m,n] = deal(iData.sz(1),iData.sz(2));
-        
+if (nargin == 4)        
     % sets the duration string
-    s = seconds(iData.Tv(end)); 
-    s.Format = 'dd:hh:mm:ss';
+    [m,n] = deal(iData.sz(1),iData.sz(2));    
     
     % updates the text label strings
-    set(handles.textFrameCountS,'string',num2str(iData.nFrm));
-    set(handles.textTimeStepS,'string',sprintf('%.2f sec',tFrm));        
-    set(handles.textVidDurS,'string',char(s))
+    setSampleRateData(handles,iData,iMov);
     set(handles.textFrameSizeS,'string',sprintf('%i %s %i',m,char(215),n));    
 end
+
+% --- sets the sample rate data information
+function setSampleRateData(handles,iData,iMov)
+
+% pre-calculations
+tFrm = iMov.sRate/iData.exP.FPS;
+s = seconds(iData.Tv(end) - iData.Tv(iData.Frm0)); 
+s.Format = 'dd:hh:mm:ss';
+
+% text label updates
+set(handles.textFrameCountS,'string',num2str(iData.nFrm));
+set(handles.textTimeStepS,'string',sprintf('%.2f sec',tFrm));
+set(handles.textVidDurS,'string',char(s))
 
 % --- Sets the image axis properties --------------------------------------
 function setAxesProps(handles,axProp)

@@ -139,6 +139,11 @@ else
     uData0 = get(hAx,'UserData');
     col = num2cell(distinguishable_colors(nGrp,'w'),2); 
     
+    % hack if there is only one data point...
+    if size(Y,1) == 1
+        Y = repmat(Y,2,1);
+    end
+    
     % creates the box plot
     if pP.plotErr
         % outliers are included

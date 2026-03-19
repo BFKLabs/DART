@@ -338,6 +338,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
             iFrmS = find(isOK(:)'); 
             
             % determines the most likely object position over all frames
+            nGrp = zeros(length(Img),1);
             for i = iFrmS
 %                 % reduces the image (if required)
 %                 if (i > 1) && reduceImg
@@ -370,12 +371,12 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 % determines the binary groups which meet threshold
                 BB = Img{i} >= pTolB;
                 iGrp = getGroupIndex(BB);
-                nGrp = length(iGrp);                
+                nGrp(i) = length(iGrp);                
                 
                 % ensures the blob and maxima count are equal
-                if nGrp > 0
+                if nGrp(i) > 0
                     iiPmx = BB(iPmx);
-                    if sum(iiPmx) == nGrp
+                    if sum(iiPmx) == nGrp(i)
                         % case is the peak count matches
                         [iPmx,Pmx] = deal(iPmx(iiPmx),Pmx(iiPmx));
                     else
@@ -388,7 +389,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                 end
                 
                 % determines how many prominent objects are in the frame
-                if nGrp == 0
+                if nGrp(i) == 0
                     % case is there are no prominent objects
                     if isempty(obj.fPrNw)     
                         if length(Pmx) == 1
@@ -414,7 +415,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                         [fP(i,2),fP(i,1)] = ind2sub(szL,iPmx(iMx));
                     end
                     
-                elseif nGrp == 1
+                elseif nGrp(i) == 1
                     % case is there is only 1 prominent object
                     [xP,yP] = obj.calcCOM(Img{i},iGrp{1});
 
@@ -435,7 +436,16 @@ classdef PhaseTrack < matlab.mixin.SetGet
                             % calculates the inter-frame distance
                             if obj.iMov.is2D
                                 % case is a 2D setup
-                                pdPrNw = pdist2([xP,yP],fPrE)/obj.dTol;
+                                if (i > 1) && (nGrp(i-1) == 0)
+                                    % if there is uncertainty about the
+                                    % previous location, then use this new
+                                    % location (caused by large jump?!)
+                                    pdPrNw = 0;
+                                else
+                                    % otherwise, use distance tolerance to 
+                                    % determine if the new point is valid
+                                    pdPrNw = pdist2([xP,yP],fPrE)/obj.dTol;
+                                end
 
                             else
                                 % case is a 1D setup (more weight is given 
@@ -472,7 +482,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                     % case is there is not a prominient blob amoungst the
                     % candidates. performs a more through search of the
                     % candidates to determine the likely blob
-                    if nGrp > 1
+                    if nGrp(i) > 1
                         % 
                         pC = cell2mat(cellfun(@(x)(...
                             obj.calcCOM(Img{i},x)),iGrp,'un',0));

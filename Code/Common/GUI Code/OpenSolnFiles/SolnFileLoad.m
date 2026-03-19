@@ -1603,16 +1603,19 @@ classdef SolnFileLoad < handle & dynamicprops
                 % case is a 1D experiment
                 
                 % sets the row/column index information
-                pInfo = sInfoNw.snTot.iMov.pInfo;
-                
-                BGrp = arr2vec(pInfo.iGrp' > 0) | ...
-                       strcmp(sInfoNw.gName(:),'Multiple Groups');
+                nGrp = length(sInfoNw.gName);
+                pInfo = sInfoNw.snTot.iMov.pInfo;                   
                 Ar = meshgrid(1:pInfo.nRow,1:pInfo.nCol);
                 Ac = meshgrid(1:pInfo.nCol,1:pInfo.nRow)';
-                B = [Ar(BGrp),Ac(BGrp)];
+                B = [Ar(:),Ac(:)];
+                
+%                 %
+%                 BGrp = arr2vec(pInfo.iGrp' > 0) | ...
+%                     strcmp(sInfoNw.gName(:),'Multiple Groups');
+%                 B = [Ar(BGrp),Ac(BGrp)];
                 
                 % sets the final data/column headers
-                Data = [num2cell(B),sInfoNw.gName(:)];
+                Data = [num2cell(B(1:nGrp,:)),sInfoNw.gName(:)];
                 cHdr = {'Row','Col','Group Name'};
                 cWid = {35,35,150};
             end
