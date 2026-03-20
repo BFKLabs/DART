@@ -1327,6 +1327,11 @@ iData.nFrm = length(xiT);
 [hFig.iData,hFig.iMov] = deal(iData,iMov);
 setTrackGUIProps(handles,'PostSampleRateReset');
 
+% updates the image frame
+set(handles.frmCountEdit,'string',num2str(iData.cFrm))
+setTrackGUIProps(handles,'UpdateFrameSelection',iData.cFrm)  
+dispImage(handles)
+
 % ----------------------- %
 % --- VIEW MENU ITEMS --- %
 % ----------------------- %
