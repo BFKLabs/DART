@@ -263,6 +263,7 @@ classdef RunExptObj < handle
                 else
                     % case is external stimuli devices
                     obj.extnObj.setupExtnDeviceExpt(obj,find(~isS));
+                    obj.extnObj.objP = obj.objP;
                     obj.objDev{1} = obj.extnObj.objD;
                     
 %                     % case is external devices

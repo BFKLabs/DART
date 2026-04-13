@@ -329,8 +329,8 @@ end
 pInfo = propinfo(objIMAQ0.Source);
 pause(0.05);
 
-% % REMOVE ME LATER
-% infoObj.isWebCam = false;
+% REMOVE ME LATER
+infoObj.isWebCam = false;
 
 if infoObj.isWebCam    
     % creates the webcam object
