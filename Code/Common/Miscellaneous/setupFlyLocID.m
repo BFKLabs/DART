@@ -124,20 +124,24 @@ else
             cID = cell(size(iGrp,2),1);
         end
         
-        for i = 1:nGrp
+        indU = unique(nonzeros(iGrp));
+        for i = 1:length(indU)
             % determines the matching group indices
-            [iy,ix] = find(iGrp == i);
-            
-            % sets the group 
-            if isCust
-                % case is a custom grid setup
-                cID{i} = [iRow(ix),iCol(ix),iy];
-                
-            else
-                % case is a fixed grid setup
-                for iApp = unique(ix(:))'
-                    ii = ix == iApp;
-                    cID{iApp} = [iRow(ix(ii)),iCol(ix(ii)),iy(ii)];
+            isG = iGrp == indU(i);
+            if any(isG(:))
+                [iy,ix] = find(isG);
+
+                % sets the group 
+                if isCust
+                    % case is a custom grid setup
+                    cID{i} = [iRow(ix),iCol(ix),iy];
+
+                else
+                    % case is a fixed grid setup
+                    for iApp = unique(ix(:))'
+                        ii = ix == iApp;
+                        cID{iApp} = [iRow(ix(ii)),iCol(ix(ii)),iy(ii)];
+                    end
                 end
             end
         end
