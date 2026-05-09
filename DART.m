@@ -984,7 +984,7 @@ classdef DART < handle
         function copyDirFiles(obj,fDir0,fDirF)
                         
             % determines the files within the temporary directory
-            dList0 = dir(fullfile(fDir0, '**\*.*'));
+            dList0 = dir(fullfile(fDir0, sprintf('**%s*.*',filesep)));
             dList0 = dList0(obj.detFeasFiles(dList0));
             dNum0 = arrayfun(@(x)(x.datenum),dList0);
            
@@ -1302,7 +1302,7 @@ classdef DART < handle
             sepStr = sprintf('%s+',filesep);
             
             % determines the                    
-            dList0 = dir(fullfile(pDir, '**\*.*'));
+            dList0 = dir(fullfile(pDir, sprintf('**%s*.*',filesep)));
             dList0 = dList0([dList0.isdir]);
             dList = unique(arrayfun(@(x)(x.folder),dList0,'un',0));
             

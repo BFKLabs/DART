@@ -220,7 +220,7 @@ classdef SerialConfig < handle
         end
             
         % --- sets up the serial information panel
-        function setupDeviceInfoPanel(obj)                    
+        function setupDeviceInfoPanel(obj)
             
             % initialisations
             tStr = 'No Suitable Serial Devices Found Connected To Computer';

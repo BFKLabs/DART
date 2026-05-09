@@ -8,10 +8,23 @@ if nargin < 2; sStr = 'Default'; end
 utDir = getProgFileName('Code','Common','Utilities','Serial Builds');
 ufFile = fullfile(utDir,'devcon.exe');
 
+% deletes any previous serial port objects
+hSprev = serialportfind;
+if ~isempty(hSprev)
+    delete(hSprev)
+    pause(0.05)
+end
+
 % sets up the controller handle and boardname string
 hS = createSerialDevObject(pStr);              
              
-switch sStr        
+switch sStr       
+    case {'FTDI','Future Technology Devices International'}
+        % case is the HT2 version 2
+
+        % opens the controller and determines what type it is        
+        [~,sType] = detValidSerialContollerV3(hS);
+
     case {'STMicroelectronics Virtual COM Port', 'USB Serial Device'}
         % case is the V2 controller type
         

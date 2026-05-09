@@ -149,7 +149,9 @@ setappdata(hObject,'prObj',prObj);
 % ------------------------------------- %
 
 % initialises using full GUI setup
-setRecordGUIProps(handles,'InitOptoMenuItems');
+if ~infoObj.isTest
+    setRecordGUIProps(handles,'InitOptoMenuItems');
+end
 
 % turns on the camera for preview
 set(handles.toggleVideoPreview,'value',1)

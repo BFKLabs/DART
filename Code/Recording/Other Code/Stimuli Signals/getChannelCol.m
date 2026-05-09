@@ -10,8 +10,12 @@ devType = cellfun(@(x)(removeDeviceTypeNumbers(x)),devType0,'un',0);
 for i = 1:nDev
     j = nDev - (i-1);
     switch devType{i}
+        case 'HTControllerV3'
+            % case is the HTController V3 device
+            chCol{j} = {'y','b','g','r','k'};
+            
         case 'Opto' 
-            % case is/ the optogenetics device
+            % case is the optogenetics device
             chCol{j} = {'y','b','g','r'}';
 
         case 'Motor'

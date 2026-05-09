@@ -5,6 +5,9 @@ function [objDAQ,objDAQ0] = reduceDevInfo(objDAQ0,vSel)
 % retrieves the serial device strings from the parameter file
 A = load(getParaFileName('ProgPara.mat'));
 
+% field resetting (device dependent)
+A.sDev(strContains(A.sDev,'Future Technology')) = {'FTDI'};
+
 % initialisations
 objDAQ = objDAQ0;
 if isempty(objDAQ)
@@ -37,8 +40,8 @@ if ~isempty(objDAQ.vSelDAQ)
     isS = find(strcmp(objDAQ.dType,'Serial'));
     for i = 1:length(isS)
         % sets the device type (based on the associated info)
-        iType = cellfun(@(x)(strContains(...
-                    objDAQ.vStrDAQ{isS(i)},x)),A.sDev);
+        j = isS(i);
+        iType = cellfun(@(x)(strContains(objDAQ.vStrDAQ{j},x)),A.sDev);
         if any(iType)
             sType = find(iType);
         else
@@ -46,13 +49,20 @@ if ~isempty(objDAQ.vSelDAQ)
         end
 
         % resets user data (serial device ID flags)
-        set(objDAQ.Control{isS(i)},'UserData',sType)
-        set(objDAQ0.Control{isS(i)},'UserData',sType)
+        set(objDAQ.Control{j},'UserData',sType)
+        set(objDAQ0.Control{j},'UserData',sType)
 
-        % opens the device  
-        if ~isa(objDAQ.Control{isS(i)},'DummyDevice')
-            if strcmp(get(objDAQ.Control{isS(i)},'status'),'closed')
-                fopen(objDAQ.Control{isS(i)});  
+        if ~isa(objDAQ.Control{j},'DummyDevice')
+            if strcmp(get(objDAQ.Control{j},'status'),'closed')
+                % opens the device (if not already opened)
+                fopen(objDAQ.Control{j});  
+                
+                % device specific updates
+                switch sType
+                    case 5
+                        % case is the HTControllerV3 devices
+                        fprintf(objDAQ.Control{j},'1');
+                end
             end
         end
     end

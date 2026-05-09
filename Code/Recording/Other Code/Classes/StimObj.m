@@ -296,6 +296,16 @@ classdef StimObj < handle
                             for i = 1:length(iCh)
                                 sStr{i} = sprintf('1,%i,%f',iCh(i),Y(i));
                             end
+                            
+                        case 5
+                            % case is the V3 device types
+                            Y = roundP(Y);
+                            for i = 1:length(iCh)
+                                sStr{i} = setupArduinoString(iCh(i),Y(i));
+                            end
+                            
+                            % converts array into single cell array
+                            sStr = cell2cell(sStr);
                     end
                 end
 
@@ -323,8 +333,8 @@ classdef StimObj < handle
             end              
             
             % parameters and other initialisations  
-%             hasDev = ~isempty(obj.hS);
-            hasDev = ~isempty(obj.hS) && ~isa(obj.hS,'DummyDevice');
+            hasDev = ~isempty(obj.hS);
+%             hasDev = ~isempty(obj.hS) && ~isa(obj.hS,'DummyDevice');
 
             while 1
                 try 

@@ -47,7 +47,8 @@ classdef AdaptorInfoClass < handle
         vStr = {'Motor',...
                 'Opto',...
                 'HTControllerV1',...
-                'HTControllerV2'};        
+                'HTControllerV2',...
+                'HTControllerV3'};        
         
         % other scalar/boolean fields
         ok = true;
@@ -292,7 +293,7 @@ classdef AdaptorInfoClass < handle
                 end
 
                 % sets the exit button string
-                set(handles.buttonExit,'String','Exit Program')
+                set(handles.buttonExit,'String','Return To Main')
             else
                 % case is the gui is not being initialised
                 set(handles.buttonExit,'string','Cancel');        
@@ -446,9 +447,16 @@ classdef AdaptorInfoClass < handle
 
         % --- initialises the properties of the channel count editboxes
         function initChannelEdit(obj)
-
+            
+            % field retrieval
+            if obj.isTest
+                sTypeD = obj.objDAQTest.sType;                
+            else
+                sTypeD = obj.objDAQ.sType;
+            end
+            
             % initialises the editboxes
-            obj.setEditProp(1:obj.nDAQMax,'inactive')
+            obj.setEditProp(1:obj.nDAQMax,'inactive')            
 
             % loops through all of the edit boxes setting up callbacks
             for i = 1:obj.nDAQMax
@@ -456,14 +464,14 @@ classdef AdaptorInfoClass < handle
                 hObjNw = findobj('style','edit','userdata',i);
 
                 % if optogenetics serial device, then preset value to NaN
-                if i <= length(obj.objDAQ.sType)
-                    switch obj.objDAQ.sType{i}
+                if i <= length(sTypeD)
+                    switch sTypeD{i}
                         case 'Opto'
                             % case is the optogenetics device
                             set(hObjNw,'string','N/A')
                             obj.nCh(i) = NaN;
                             
-                        case {'HTControllerV1','HT ControllerV2'}
+                        case {'HTControllerV1','HTControllerV2','HTControllerV3'}
                             % case is the HT Controller device
                             set(hObjNw,'string','1')
                             obj.nCh(i) = 1;                                                              
@@ -710,12 +718,19 @@ classdef AdaptorInfoClass < handle
         
         % --- Executes when selected object is changed in panelExptType.
         function listDACObjCB(obj, hObject, ~)
+            
+            % retrieves serial device type
+            if obj.isTest
+                sTypeD = obj.objDAQTest.sType(:);
+            else
+                sTypeD = obj.objDAQ.sType(:);
+            end
 
             % sets the current user selection
             handles = obj.hGUI;
             obj.vSelDAQ = get(hObject,'Value');
-            isOpto = strcmp(obj.objDAQ.sType,'Opto');
-            isHT = strcmp(obj.objDAQ.sType,'HTControllerV1');
+            isOpto = strcmp(sTypeD,'Opto');
+            isHT = contains(sTypeD,'HTController');
             stimOnly = strcmp(obj.exType,'StimOnly');
 
             % sets the flags of the edit boxes that need to be updated
@@ -1022,7 +1037,8 @@ classdef AdaptorInfoClass < handle
             % sets the input information
             pStr = cell(length(comAvail),2);
             pStr(:,1) = num2cell(char(comAvail(:)),2);
-            pStr(:,2) = {'BFKLabs Serial Controller'};
+%             pStr(:,2) = {'BFKLabs Serial Controller'};
+            pStr(:,2) = {'FTDI'};
             
             % if there are any valid devices then retrieve their details
             obj.objDAQTest = ...
@@ -1055,7 +1071,7 @@ classdef AdaptorInfoClass < handle
             % -------------------------------------- %
             
             % closes and deletes any open serial ports
-            hh = instrfind();
+            hh = instrfindall;
             if ~isempty(hh)
                 fclose(hh);
                 delete(hh);

@@ -29,11 +29,24 @@ for i = 1:nStr
     % opens the controller and determines what type it is
     if isTest
         % case is running in testing mode
-        sType{i} = 'Motor';        
+        switch BoardNames{i}
+            case {'FTDI','Future Technology Devices International'}
+                sType{i} = 'HTControllerV3';            
+            otherwise
+                sType{i} = 'Motor';
+        end
         
     else
         % case is running in 
         switch BoardNames{i}
+            case {'FTDI','Future Technology Devices International'}
+                [isOK(i),sTypeNw] = ...
+                    detValidSerialContollerV3(Control{i},vStr);
+                if isOK(i)
+                    BoardNames{i} = 'FTDI';
+                    sType{i} = sTypeNw;
+                end
+
             case {'STMicroelectronics Virtual COM Port', 'USB Serial Device'}
                 [isOK(i),sTypeNw] = ...
                     detValidSerialContollerV2(Control{i},vStr);
@@ -52,11 +65,11 @@ end
 % if there are no valid serial controllers, then exit the loop
 if ~any(isOK)
     cellfun(@(x)(delete(instrfind({'Port'},x(1)))),num2cell(pStr(~isOK,:),2))
-    return; 
+    return
 end
 
 % appends the data to the overall data struct
-if ~isempty(A)
+if ~isempty(A)  
     % resets the serial count/name strings
     [nStrNw,pStr,sType] = deal(sum(isOK),pStr(isOK,:),sType(isOK));
     bName = cellfun(@(x,y)(sprintf('%s - %s',x,y)),BoardNames(isOK),sType,'un',0);

@@ -14,14 +14,22 @@ catch
     end
 end
 
-% sets the serial device registry query stings
-Skey = 'HKEY_LOCAL_MACHINE\HARDWARE\DEVICEMAP\SERIALCOMM'; 
+if isunix
+    % case is using unix operating system
+    isUSB = contains(comAvail, '/ttyUSB');
+    comDetect = comAvail(isUSB);
+    
+else
+    % sets the serial device registry query stings
+    Skey = 'HKEY_LOCAL_MACHINE\HARDWARE\DEVICEMAP\SERIALCOMM'; 
+    
+    % Find connected serial devices
+    [~, list] = dos(['REG QUERY ' Skey]);
+    list = textscan(list,'%s','delimiter',' ');
+    list = cat(1,list{:});
+    
+    % retrieves the detected COM ports
+    comDetect = list(cellfun(@(x)(~isempty(regexp(x,'COM[\d]','once'))),list));
+end
 
-% Find connected serial devices
-[~, list] = dos(['REG QUERY ' Skey]);
-list = textscan(list,'%s','delimiter',' ');
-list = cat(1,list{:});
-
-% retrieves the detected COM ports
-comDetect = list(cellfun(@(x)(~isempty(regexp(x,'COM[\d]','once'))),list));
 comDetect = sort(comDetect);

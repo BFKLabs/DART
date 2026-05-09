@@ -85,10 +85,18 @@ switch infoObj.exType
 
     case {'RecordStim','StimOnly'} 
         % case is a stimuli dependent experiment
+        
+        % field retrieval
+        nCh = infoObj.objDAQ.nChannel;        
+        devType = resetDevType(infoObj.objDAQ.sType);        
+
+        % resets the fields for test cases
+        if infoObj.isTest
+            isOK = find(nCh > 0);
+            [nCh,devType] = deal(nCh(isOK),devType(isOK));
+        end
 
         % retrives the device types from the device information struct
-        devType = resetDevType(infoObj.objDAQ.sType);
-        nCh = infoObj.objDAQ.nChannel;
         extnObj = feval('runExternPackage','ExtnDevices');
 
         % sets the device channel counts
@@ -3736,6 +3744,11 @@ calcAxesGlobalCoords(handles)
 chName = cell(1,nDev);
 for i = 1:nDev
     switch devType{i}
+        case 'HTControllerV3'
+            % case is the HTControllerV3
+            chName{i} = [{'Motors'},getOptoChannelNames()];
+            nCh(i) = length(chName{i});
+            
         case 'Opto' 
             % case is the optogenetic device
             chName{i} = getOptoChannelNames();
@@ -4500,9 +4513,16 @@ hText = zeros(nDev,1);
 
 % inserts the text label for each device
 for i = 1:nDev
-    % determines the match and new 
+    % determines the matching serial device index
     iMatch = find(sID==sIDU(i));
-    devType = chInfo{size(chInfo,1)-(iMatch(1)-1),3};
+    
+    % retrieves the device type string
+    devType = chInfo{size(chInfo,1)-(iMatch(1)-1),3};    
+    switch devType
+        case 'HTControllerV3'
+            devType = 'HT Controller (V3)';
+            
+    end
     
     % creates the text object
     hText(i) = text(hAx,xTxt,mean(yTick(iMatch)),devType,...
@@ -4523,7 +4543,7 @@ if strcmp(get(hAx,'tag'),'axesProtoS')
 end
 
 % creates the distance line objects for each channel
-for i = 1:nCh    
+for i = 1:nCh
     yL = (i+yGap/2)*[1,1];
     hDL{i+1,1} = createDistLine(hAx,[0,0.01],yL);
     hDL{i+1,2} = createDistLine(hAx,[0,0.01],yL);

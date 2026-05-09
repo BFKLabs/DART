@@ -12,7 +12,11 @@ if iscell(sStr)
         try
             % sends the signal to the device
             if hasDev
-                fprintf(hS,sStr{j},'async');
+                if isa(hS,'serial')
+                    fprintf(hS,sStr{j},'async');
+                elseif isa(hS,'internal.Serialport')                    
+                    hS.writeline(sStr{j})
+                end
             else
                 fprintf('%s\n',sStr{j});
             end                        
@@ -20,16 +24,19 @@ if iscell(sStr)
             % increments the counter
             java.lang.Thread.sleep(tw);
             j = j + 1;
-        catch
-            % if there was an error, then pause 
-            % for a short time         
+        catch 
+            % if there was an error, then pause for a short time   
             java.lang.Thread.sleep(tw);
         end
     end
 else
     % case is a single-string (motor device)
     if hasDev
-        fprintf(hS,sStr,'async');
+        if isa(hS,'serial')
+            fprintf(hS,sStr,'async');
+        elseif isa(hS,'internal.Serialport')
+            hS.writeline(sStr)
+        end
     else
         fprintf('%s\n',sStr); 
     end                     

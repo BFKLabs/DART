@@ -62,21 +62,21 @@ classdef DummyVideo < handle
                 case {'.mj2', '.mov','.mp4'}
                     % opens the video object and retrieves properties
                     obj.iData.mObj = VideoReader(obj.fName);
-                    obj.iData.exP.FPS = mObj.FrameRate;
-                    obj.nFrm = mObj.NumberOfFrames;
-                    obj.szImg = [mObj.Height mObj.Width]; 
+                    obj.iData.exP.FPS = obj.iData.mObj.FrameRate;
+                    obj.nFrm = obj.iData.mObj.NumberOfFrames;
+                    obj.szImg = [obj.iData.mObj.Height obj.iData.mObj.Width]; 
                     
                     % determines the final frame count (some frames at the
                     % end of videos sometimes are dodgy...)
                     while 1            
                         try 
                             % reads a new frame. 
-                            read(obj.iData.mObj,obj.iData.nFrm);
+                            read(obj.iData.mObj,obj.nFrm);
                             break
                             
                         catch
                             % if there was an error, reduce the frame count
-                            obj.iData.nFrm = obj.iData.nFrm - 1;
+                            obj.nFrm = obj.nFrm - 1;
                         end
                     end                    
                     
@@ -104,6 +104,9 @@ classdef DummyVideo < handle
                     obj.szImg = [V.height V.width];
                     
             end            
+            
+            % ensures consistency between frame values
+            obj.iData.nFrm = obj.nFrm;
                            
             
         end

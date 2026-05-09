@@ -77,14 +77,29 @@ switch (typeStr)
         if ~isempty(iDev)
             % IR string
             dType = dType(iDev);
-            hDev = objDAQ.Control(iDev);            
-            sStr = {sprintf('4,%f\n',100),'3,000,000,000,000,050\n'};
+            hDev = objDAQ.Control(iDev);    
+
+            switch objDAQ.sType{iDev}
+                case {'HTControllerV3'}
+                    % case is the HT2 (versison 2) controller
+                    sStr = setupArduinoString('ir',50);
+
+                case {'HTControllerV1', 'HTControllerV2'}
+                    % case is the other HT controller types
+                    sStr = {sprintf('4,%f\n',100),'3,000,000,000,000,050\n'};
+            end
 
             % loops through each opto device turning on the IR lights
             for i = 1:length(hDev)
                 % if the device is closed, then open it
                 if strcmp(get(hDev{i},'Status'),'closed')
                     fopen(hDev{i});
+
+                    % special case - must write 1 to HT3 to start loop
+                    if strcmp(objDAQ.sType, 'HTControllerV3')
+                        hDev{i}.UserData = 5;       % is this necessary?
+                        fprintf(hDev{i},'1');
+                    end
                 end
                 
                 % turns on the IR lights

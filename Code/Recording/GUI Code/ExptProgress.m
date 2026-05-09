@@ -374,7 +374,7 @@ classdef ExptProgress < dynamicprops & handle
         end
         
         % --- updates the status string and progressbar axes
-        function isCancel = updateBar(obj,ind,wStr,wProp)            
+        function isCancel = updateBar(obj,ind,wStr,wProp)
             
             % initialisation
             isCancel = false;
@@ -430,10 +430,23 @@ classdef ExptProgress < dynamicprops & handle
                 % case is a stimuli device
                 j = iRow - iOfs;
                 iID = obj.chID(j,3);
-                pStrR{1} = sprintf('%s (%s)',chInfo{iID,3},chInfo{iID,3});
+                
+                % sets the device type string
+                switch chInfo{iID,3}
+                    case 'HTControllerV3'
+                        % case is the HTControllerV3 device
+                        devType = sprintf(' (%s)','HTV3');
+                        
+                    otherwise
+                        % case is the other device types
+                        devType = sprintf(' (%s)',chInfo{iID,3});
+                end
+                
+                % sets the field cell strings
+                pStrR{1} = sprintf('%s%s',chInfo{iID,2},devType);
                 pStrR{4} = num2str(obj.nCount(j));
             end
-                
+            
         end
         
     end   

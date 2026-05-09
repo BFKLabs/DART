@@ -34,7 +34,8 @@ if (nDev > 0)
                 % case is a V1 serial controller
                 [diskStrNw,isOK(i)] = mapSerialDrives(pStr(i,1),iPathID);
                 diskStr{i} = diskStrNw{1};
-            case ('STMicroelectronics Virtual COM Port')
+            % case ('STMicroelectronics Virtual COM Port')
+            otherwise
                 % case is a V2 serial controller
                 diskStr{i} = 'N/A';
         end

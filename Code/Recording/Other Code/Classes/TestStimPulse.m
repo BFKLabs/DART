@@ -456,6 +456,7 @@ classdef TestStimPulse < handle
             % converts 'HT ControllerV1' to 'Motor'
             devType(strcmp(devType,'HTControllerV1')) = {'Motor'};
             devType(strcmp(devType,'HTControllerV2')) = {'Motor'};
+            devType(strcmp(devType,'HTControllerV3')) = {'Motor'};
 
         end
 
