@@ -303,9 +303,6 @@ classdef StimObj < handle
                             for i = 1:length(iCh)
                                 sStr{i} = setupArduinoString(iCh(i),Y(i));
                             end
-                            
-                            % converts array into single cell array
-                            sStr = cell2cell(sStr);
                     end
                 end
 
