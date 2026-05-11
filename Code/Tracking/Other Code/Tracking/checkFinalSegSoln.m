@@ -157,7 +157,7 @@ if isnan(iMov.Status{iApp}(iTube))
         iMov.flyok(iTube,iApp) = false;
     else
         % otherwise, calculate the status flags based on position range
-        Drng = sqrt(sum(range(fPosNw,1).^2));
+        Drng = sqrt(sum(rangewr(fPosNw,1).^2));
         iMov.Status{iApp}(iTube) = 1 + (Drng < Dtol);
     end
 end  
@@ -655,7 +655,7 @@ function y = setupExtrapSig(x,nPts)
 if ~exist('nPts','var'); nPts = 4; end
 
 % memory allocation
-if range(x) == 0
+if rangewr(x) == 0
     y = x; 
     return    
 end
@@ -673,7 +673,7 @@ y(ii) = x(ii);
 for i = 1:(length(x)-nPts)       
     % Now use the filter as an IIR to extrapolate
     xNw = x(ii+(i-1));
-    if range(xNw) == 0
+    if rangewr(xNw) == 0
         y(i+nPts) = xNw(1);
     else       
         jj = ~isN(ii+(i-1));

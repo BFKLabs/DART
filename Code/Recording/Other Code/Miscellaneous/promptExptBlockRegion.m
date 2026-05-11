@@ -24,7 +24,7 @@ hold(hAx,'on')
 % creates prompt blocks for each section limit
 for i = 1:size(tLimF,1)
     % sets the location of the new rectangle object
-    rPos = [tLimF(i,1),(iCh(1)-1)+yGap,diff(tLimF(i,:)),range(iCh)+1-yGap];
+    rPos = [tLimF(i,1),(iCh(1)-1)+yGap,diff(tLimF(i,:)),rangewr(iCh)+1-yGap];
     
     % creates the rectangle object
     hAx = get(hFig,'CurrentAxes');

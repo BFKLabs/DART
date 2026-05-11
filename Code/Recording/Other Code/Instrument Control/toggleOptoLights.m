@@ -20,47 +20,53 @@ else
     end
 end
 
-% sets the light properties based on the checked state of the menu item
+% field retrieval
+iDev = find(dType > 0);
+sType = objDAQ.sType(iDev);
+hDev = objDAQ.Control(iDev);
 isOn = strcmp(get(hObject,'Checked'),'off');
-if isOn
-    % turns on the lights
-    if isIR
-%         sStr = {sprintf('4,%f\n',2*str2double(yAmp)),...
-%                 sprintf('3,000,000,000,000,%s\n',yAmp)};
-        sStr = {sprintf('4,%f\n',100)};        
-    else
-        sStr = sprintf('4,000,000,000,%s\n,000',yAmp);
-    end
-        
-    set(hObject,'Checked','on')
-else
-    % turns off the lights
-    if isIR
-%         sStr = {sprintf('4,%f\n',0),...
-%                 sprintf('3,000,000,000,000,%s\n',yAmp)};
-        sStr = {sprintf('4,%f\n',0)};
-    else
-        sStr = '4,000,000,000,000,000\n';
-    end
-        
-    set(hObject,'Checked','off')
-end
+
+% toggles the menu checkmark
+toggleMenuCheck(hObject);
 
 % writes the serial string to each of the devices
-iDev = find(dType > 0);
-hDev = objDAQ.Control(iDev);
-if ~isempty(hDev)
-    for i = 1:length(hDev)
-        try        
-            writeSerialString(hDev{i},sStr{iDev(i)});
-        catch
-        end
+for i = 1:length(hDev)
+    try        
+        sStr = setupOptoString(sType{i},isIR,isOn);
+        writeSerialString(hDev{i},sStr);
+    catch
     end
 end
 
-% runs a test pulse (HT1 controllers only)
-isHT = dType == 1;            
-if any(isHT) && isOn
-    objHT1 = setupHT1TestPulse(objDAQ);
-    runOutputDevices(objHT1,1:length(objHT1));
+% % runs a test pulse (HT1 controllers only)
+% isHT = dType == 1;            
+% if any(isHT) && isOn
+%     objHT1 = setupHT1TestPulse(objDAQ);
+%     runOutputDevices(objHT1,1:length(objHT1));
+% end
+
+% --- sets up the opto serial device string
+function sStr = setupOptoString(sType,isIR,isOn)
+
+%
+if strcmp(sType,'HTControllerV3')
+    % case is the HTContollerV3 device
+    sStr = setupArduinoString(5+isIR,100*isOn);
+else
+    % case is other device types
+    if isOn
+        % turns on the lights
+        if isIR
+            sStr = {sprintf('4,%f\n',100)};        
+        else
+            sStr = {sprintf('4,000,000,000,%s\n,000','050')};
+        end
+    else
+        % turns off the lights
+        if isIR
+            sStr = {sprintf('4,%f\n',0)};
+        else
+            sStr = {'4,000,000,000,000,000\n'};
+        end
+    end
 end

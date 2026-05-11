@@ -111,7 +111,11 @@ classdef AdaptorInfoClass < handle
         function initClassFields(obj)
             
             % resets the image acquisition objects
-            try imaqreset; catch; end
+            try
+                imaqmex('feature','-limitPhysicalMemoryUsage',false)
+                imaqreset; 
+            catch
+            end
             
             % initialises the parameter file path
             obj.pFile = getParaFileName('ProgPara.mat');
@@ -1364,11 +1368,16 @@ classdef AdaptorInfoClass < handle
                     [WmaxF,HmaxF] = deal(800,600);
 
                 otherwise
-                    [WmaxF,HmaxF] = deal(1e10,1e10);
-
+                    scrSz = get(0,'ScreenSize');
+                    if isunix
+                        [WmaxF,HmaxF] = deal(scrSz(3)-1,scrSz(4)-1);
+                    else
+                        % check this for pc/mac?
+                        [WmaxF,HmaxF] = deal(scrSz(3),scrSz(4));
+                    end
             end
 
-        end        
+        end  
         
     end
     

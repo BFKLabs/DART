@@ -39,7 +39,7 @@ switch fType
         Ifcn = calcImageStackFcn(Ic,'sum');
         
     case 'range'
-        Ifcn = range(Ic,3);
+        Ifcn = rangewr(Ic,3);
 
     case 'any'
         Ifcn = any(Ic,3);        

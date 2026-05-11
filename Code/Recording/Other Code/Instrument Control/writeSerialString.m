@@ -34,7 +34,7 @@ else
     if hasDev
         if isa(hS,'serial')
             fprintf(hS,sStr,'async');
-        elseif isa(hS,'internal.Serialport')
+        else isa(hS,'internal.Serialport')
             hS.writeline(sStr)
         end
     else

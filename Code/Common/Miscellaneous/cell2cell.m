@@ -15,7 +15,7 @@ else
     [szA,B] = deal(cell2mat(cellfun(@size,A(:),'un',0)),[]);
     if (nargin == 1)
         try
-            isCol = range(szA(:,2)) == 0;
+            isCol = rangewr(szA(:,2)) == 0;
         catch
             isCol = (max(szA(:,2))-min(szA(:,2))) == 0;
         end

@@ -617,7 +617,7 @@ toggleOptoLights(handles,hObject,false)
 function menuStimTest_Callback(~, ~, handles)
 
 stimObj = getappdata(handles.figFlyRecord,'stimObj');
-stimObj.runDevice();
+runOutputDevices(stimObj,1:length(stimObj));
 
 %-------------------------------------------------------------------------%
 %                        FIGURE CALLBACK FUNCTIONS                        %

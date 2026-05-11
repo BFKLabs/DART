@@ -32,7 +32,7 @@ switch vName
     
     case ('rng') 
         % case is the range            
-        Ymet = cellfun(@(x)(range(x,1)),Y,'un',0);
+        Ymet = cellfun(@(x)(rangewr(x,1)),Y,'un',0);
     
     case ('ci') 
         % case is the 95% confidence interval            

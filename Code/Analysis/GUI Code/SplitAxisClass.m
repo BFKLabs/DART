@@ -563,7 +563,7 @@ classdef SplitAxisClass < handle
                 [Y,X] = ind2sub(sz+1,iGrp{i});
 
                 % sets the edge extensions for horizontal/vertical lines
-                if (range(X) < range(Y))
+                if (rangewr(X) < rangewr(Y))
                     % line is vertical
                     pX(i,:) = mode(X)*[1 1];
                     pY(i,:) = [min(Y) max(Y)] + 2*[-1 1];

@@ -368,7 +368,6 @@ classdef RunExptObj < handle
                 else
                     obj.isMemLog = 0;
                     obj.objIMAQ.LoggingMode = 'disk';
-                    imaqmex('feature','-limitPhysicalMemoryUsage',false)
                 end                
             end
 
@@ -916,13 +915,13 @@ classdef RunExptObj < handle
                 [obj.isUserStop,obj.userStop] = deal(true);
 
                 % stops the timer object and the camera
-                if ~obj.isWebCam && (get(obj.objIMAQ,'TriggersExecuted')>=1)
-                    % camera has been triggered, so remove stop function
-                    stopRecordingDevice(obj);
-
-                else
-                    % attempts to close the video file
-                    if obj.hasIMAQ
+                if obj.hasIMAQ
+                    if ~obj.isWebCam && (get(obj.objIMAQ,'TriggersExecuted')>=1)
+                        % camera has been triggered, so remove stop function
+                        stopRecordingDevice(obj);
+    
+                    else
+                        % attempts to close the video file
                         wState = warning('off','all');
                         close(getLogFile(obj.objIMAQ));
                         warning(wState)

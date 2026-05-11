@@ -52,18 +52,9 @@ if ~isempty(objDAQ.vSelDAQ)
         set(objDAQ.Control{j},'UserData',sType)
         set(objDAQ0.Control{j},'UserData',sType)
 
+        % opens the serial device (if not already opened)
         if ~isa(objDAQ.Control{j},'DummyDevice')
-            if strcmp(get(objDAQ.Control{j},'status'),'closed')
-                % opens the device (if not already opened)
-                fopen(objDAQ.Control{j});  
-                
-                % device specific updates
-                switch sType
-                    case 5
-                        % case is the HTControllerV3 devices
-                        fprintf(objDAQ.Control{j},'1');
-                end
-            end
+            openSerialDevice(objDAQ.Control{j},sType)
         end
     end
 end

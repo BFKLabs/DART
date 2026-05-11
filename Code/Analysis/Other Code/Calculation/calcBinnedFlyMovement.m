@@ -92,10 +92,10 @@ if isempty(Py)
     % case is for 1-dimension. calculate the range of the distance
     % travelled over the time bin
     if sum(flyok) == size(Px,2)
-        V = cellfun(@(x)(range(Px(x,:))),indB,'un',0);
+        V = cellfun(@(x)(rangewr(Px(x,:))),indB,'un',0);
 
     else
-        V = cellfun(@(x)(range(Px(x,flyok))),indB,'un',0);
+        V = cellfun(@(x)(rangewr(Px(x,flyok))),indB,'un',0);
     end
 else
     % case is for 2-dimensions. calculate the largest distance travelled

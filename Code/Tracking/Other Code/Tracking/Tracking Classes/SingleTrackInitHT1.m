@@ -829,7 +829,7 @@ classdef SingleTrackInitHT1 < handle
             fPosL = obj.trObj.fPosL{obj.iPh}(iApp,:)';
             
             % calculates the movement range
-            D = arrayfun(@(y)(max(range(...
+            D = arrayfun(@(y)(max(rangewr(...
                 cell2mat(cellfun(@(x)(x(y,:)),fPosL,'un',0)),1))),xiF');
             
         end

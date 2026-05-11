@@ -750,7 +750,7 @@ classdef BGCalibObj < handle
             if (obj.tStatus == 1) && (obj.iStp > 1)
                 % sets the indices of the time 
                 xiT = max(1,obj.iStp-obj.nAvgChk):obj.iStp;
-                if range(obj.Imu(xiT)) > obj.dTol
+                if rangewr(obj.Imu(xiT)) > obj.dTol
                     % resets the tracking fields
                     obj.resetTrackingFields(0); 
                     obj.clearPlotAxes(2);
@@ -830,8 +830,8 @@ classdef BGCalibObj < handle
                                  
                             % updates the range flag
                             if ~obj.isMove(j,i)
-                                if (range(obj.xLim{i}(j,:)) > obj.DTol) || ...
-                                   (range(obj.yLim{i}(j,:)) > obj.DTol)
+                                if (rangewr(obj.xLim{i}(j,:)) > obj.DTol) || ...
+                                   (rangewr(obj.yLim{i}(j,:)) > obj.DTol)
                                     obj.isMove(j,i) = true;                                                                    
                                 end
                             end

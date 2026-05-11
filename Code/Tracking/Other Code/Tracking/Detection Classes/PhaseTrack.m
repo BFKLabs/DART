@@ -703,7 +703,7 @@ classdef PhaseTrack < matlab.mixin.SetGet
                     % small distance of the estimate. in this
                     % case, use the previous/estimate position
                     if isempty(obj.fPrNw) || ...
-                            any(range(obj.fPrNw,1) > obj.dTol)
+                            any(rangewr(obj.fPrNw,1) > obj.dTol)
                         % if the step size is too large, or
                         % there is no prevsious data, then use
                         % the estimated values

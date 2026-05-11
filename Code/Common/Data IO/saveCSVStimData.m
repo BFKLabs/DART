@@ -209,7 +209,7 @@ DataHM(5,:) = {'Stimuli Count',length(Stim(1).sigPara)};
 DataHM(6,1) = {'Train Count'};
 
 % sets the stimuli train count
-if (range(cellfun('length',Stim(1).sigPara)) == 0)
+if (rangewr(cellfun('length',Stim(1).sigPara)) == 0)
     % stimuli train count is fixed
     [DataHM{6,2},nTrain] = deal(length(Stim(1).sigPara{1}));
 else
@@ -242,7 +242,7 @@ for i = 1:nCh
             DataT(3+j,ii) = cellfun(@(x)(x(1)),Y,'un',0); 
             DataT(3+j,~ii) = repmat({'Random'},1,sum(~ii)); 
         else
-            if (range(Y{1}) == 0) 
+            if (rangewr(Y{1}) == 0) 
                 DataT{3+j,1} = num2cell(Y{1}(1)); 
             else
                 DataT{3+j,1} = 'Random'; 

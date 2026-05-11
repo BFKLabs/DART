@@ -913,11 +913,15 @@ classdef DART < handle
                     
                     % exits the loop
                     break
-                catch ME
+                catch
                     % if it failed then pause and then retry
                     pause(0.1);
                 end
             end            
+            
+            % makes the dummy objects invisible
+            setObjVisibility(obj.hTableD,0)
+            setObjVisibility(obj.hListD,0)
             
         end        
         

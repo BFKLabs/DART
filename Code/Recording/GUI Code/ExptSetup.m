@@ -4733,7 +4733,8 @@ for i = 1:nTrain
     % creates the experiment object   
     tOfs = sP.tOfs*tMltOfs;
     tLimF = tOfs + [0,sP.tDur*tMltEx];
-    rPos = [tLimF(1),((iCh(1)-1)+yGap),tDurEx,(range(iCh)+1)-yGap];
+    iChRng = max(iCh) - min(iCh);
+    rPos = [tLimF(1),((iCh(1)-1)+yGap),tDurEx,(iChRng+1)-yGap];
     uData = setupUserDataArray(hFig,tLimF,sTrainS,sType,iCh([1,end]));
     
     % updates the experiment parameter struct with the incoming parameters
@@ -5736,7 +5737,7 @@ switch pType
         sbLim = [max(sbLim(iChS,1)),min(sbLim(iChS,2))];
         
         % sets up the position/userdata for the imrect object        
-        rPos = [x0,((iChMin-1)+yGap),tDurStim,(range(iChS)+1)-yGap];
+        rPos = [x0,((iChMin-1)+yGap),tDurStim,(rangewr(iChS)+1)-yGap];
         uData = setupUserDataArray(hFig,sbLim,sTrainS,sType,[iChMin,iChMax]);
         
         % creates the imrect object
@@ -8874,7 +8875,7 @@ tMlt = getTimeMultiplier(iExpt.Timing.TexpU,tDurExU);
 
 % calculates the block position vector and user data array
 sType = getappdata(hFig,'sType');
-rPos = [tLimF(1),((iCh(1)-1)+yGap),tDurEx,(range(iCh)+1)-yGap];
+rPos = [tLimF(1),((iCh(1)-1)+yGap),tDurEx,(rangewr(iCh)+1)-yGap];
 uData = setupUserDataArray(hFig,tLimF,sTrainS,sType,iCh([1,end]));
 
 % --- 

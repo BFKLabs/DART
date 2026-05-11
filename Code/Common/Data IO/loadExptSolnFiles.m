@@ -311,13 +311,14 @@ function isObs = checkIfSolnObsolete(snTot)
 
 % initialisations
 isObs = false;
+sFac = snTot.sgP.sFac;
 
 % obsolete files are only 2D experiments if > 1 row
 if isfield(snTot,'iMov')
     if (snTot.iMov.nRow > 1) && is2DCheck(snTot.iMov)    
         if ~iscell(snTot.iMov.iR{1})
             % determines the range in the y-mapping parameters/row indices
-            yRng = range(field2cell(snTot.pMapPy,'xMin',1)/snTot.sgP.sFac);   
+            yRng = rangewr(field2cell(snTot.pMapPy,'xMin',1)/sFac);   
             rMax = max(cellfun(@(x)(diff(x([1 end]))),snTot.iMov.iR(:))); 
 
             % is obsolete if the row index range is > y-value range

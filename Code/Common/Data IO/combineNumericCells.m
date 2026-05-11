@@ -15,7 +15,7 @@ if (nargin == 1)
     sz(~ii,:) = 0;
     
     %
-    dsz = range(sz(ii,:),1);    
+    dsz = rangewr(sz(ii,:),1);    
     if all(dsz == 0)
         imn = argMin(sz(find(ii,1,'first'),:));
     else

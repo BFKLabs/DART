@@ -877,7 +877,7 @@ classdef VideoPhase < handle
                         % otherwise, set the phase type (either low
                         % variance or short/high pixel variation)
                         isShort = diff(iGrpF(i,:)) <= obj.dnFrmMin;
-                        isHiDiff = any(range(DimgF{i},1) > 2*obj.Dtol);
+                        isHiDiff = any(rangewr(DimgF{i},1) > 2*obj.Dtol);
                         vPhaseF(i) = 1 + (isShort || isHiDiff);
                     end
                 end
@@ -944,7 +944,7 @@ classdef VideoPhase < handle
             if ~obj.hasF
                 % memory allocation
                 for i = 1:length(vPhaseF)
-                    if range(DimgFmu{i}) > 2*obj.Dtol && (vPhaseF(i) == 1)
+                    if rangewr(DimgFmu{i}) > 2*obj.Dtol && (vPhaseF(i) == 1)
                         vPhaseF(i) = 2;
                     end
                 end

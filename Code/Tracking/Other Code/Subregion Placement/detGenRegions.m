@@ -212,7 +212,7 @@ end
 
 % aligns the sub-region centroids
 [xC0,yC0] = getBinaryCoords(BC);
-dLim = min(0.1*[range(xC0),range(yC0)]);      
+dLim = min(0.1*[rangewr(xC0),rangewr(yC0)]);      
 [xP,yP] = realignSubRegions(iMov,Ixc,pMax,nRowT,dLim);
 
 % prompts the user for the final binary dilation

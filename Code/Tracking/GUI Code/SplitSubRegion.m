@@ -1106,7 +1106,7 @@ classdef SplitSubRegion < dynamicprops & handle
             if obj.isOld
                 hPatch = findall(hROI,'tag','patch');
                 [xP,yP] = deal(get(hPatch,'xData'),get(hPatch,'yData'));
-                pPos = [min(xP),min(yP),range(xP),range(yP)];
+                pPos = [min(xP),min(yP),rangewr(xP),rangewr(yP)];
             else
                 pPos = getIntObjPos(hROI,false);
             end                        

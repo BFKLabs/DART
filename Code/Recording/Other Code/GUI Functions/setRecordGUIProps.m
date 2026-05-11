@@ -77,30 +77,25 @@ switch (typeStr)
         if ~isempty(iDev)
             % IR string
             dType = dType(iDev);
+            sType = objDAQ.sType(iDev);
             hDev = objDAQ.Control(iDev);    
-
-            switch objDAQ.sType{iDev}
-                case {'HTControllerV3'}
-                    % case is the HT2 (versison 2) controller
-                    sStr = setupArduinoString('ir',50);
-
-                case {'HTControllerV1', 'HTControllerV2'}
-                    % case is the other HT controller types
-                    sStr = {sprintf('4,%f\n',100),'3,000,000,000,000,050\n'};
-            end
 
             % loops through each opto device turning on the IR lights
             for i = 1:length(hDev)
-                % if the device is closed, then open it
-                if strcmp(get(hDev{i},'Status'),'closed')
-                    fopen(hDev{i});
-
-                    % special case - must write 1 to HT3 to start loop
-                    if strcmp(objDAQ.sType, 'HTControllerV3')
-                        hDev{i}.UserData = 5;       % is this necessary?
-                        fprintf(hDev{i},'1');
-                    end
+                % sets up the serial string
+                switch sType{i}
+                    case {'HTControllerV3'}
+                        % case is the HT2 (versison 2) controller
+                        sStr = {setupArduinoString('ir',100)};
+    
+                    case {'HTControllerV1', 'HTControllerV2'}
+                        % case is the other HT controller types
+                        sStr = {sprintf('4,%f\n',100),...
+                                        '3,000,000,000,000,050\n'};
                 end
+
+                % if the device is closed, then open it
+                openSerialDevice(hDev{i},sType{i});
                 
                 % turns on the IR lights
                 writeSerialString(hDev{i},sStr{dType(i)});
@@ -123,9 +118,9 @@ switch (typeStr)
             % runs a test pulse (HT1 controllers only)
             isHT = dType == 1;            
             if any(isHT)
-%                 objHT1 = setupHT1TestPulse(objDAQ,iDev(isHT1));
-%                 runOutputDevices(objHT1,1:length(objHT1));
-                setappdata(hFig,'stimObj',TestStimPulse(infoObj,'StimOnly'))
+                stimObj = setupHT1TestPulse(objDAQ,iDev(isHT));
+                setappdata(hFig,'stimObj',stimObj)
+                % setappdata(hFig,'stimObj',TestStimPulse(infoObj,'StimOnly'))
             end
 
         else

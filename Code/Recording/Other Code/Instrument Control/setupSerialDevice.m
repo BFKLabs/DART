@@ -9,11 +9,7 @@ if ~isempty(objDAQ)
     % re=opens any closed devices
     for i = 1:length(hS)
         if isvalid(hS{i})
-            try
-                if strcmpi(get(hS{i},'Status'),'closed')
-                    fopen(hS{i})
-                end
-            end        
+            openSerialDevice(hS{i},objDAQ.sType{i})
         else
             comStr = regexp(objDAQ.vStrDAQ{i},'\(\w+\)','match','once');
             hS{i} = createSerialDevObject(comStr(2:end-1),1);

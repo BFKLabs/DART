@@ -297,7 +297,7 @@ classdef FlyInfoGUI < handle
 
                 % calculates the binned range values
                 Px = obj.snTot.Px{i};
-                Dtot0 = cellfun(@(x)(range(Px(x,:),1)),indB,'un',0);
+                Dtot0 = cellfun(@(x)(rangewr(Px(x,:),1)),indB,'un',0);
                 Dtot = cell2mat(Dtot0);
 
                 % calculates the number of NaN locations

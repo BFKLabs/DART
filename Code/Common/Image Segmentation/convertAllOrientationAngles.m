@@ -307,7 +307,7 @@ while (i < length(iTurn))
     kk = iTurn(i):iTurn(i+1);
     
     % calculates the distance range over the sub-sequence
-    Drng = sFac*sum(range(fPos(kk,:),1).^2).^0.5;    
+    Drng = sFac*sum(rangewr(fPos(kk,:),1).^2).^0.5;    
     if (Drng < DrngTol)
         % if the range is less than tolerance, then flip the angles
         i = i + 2;
@@ -446,7 +446,7 @@ function [Z,p] = setupSignalCDF(Y)
 [Y,sY] = deal(abs(Y),sign(Y));
 
 %
-if (range(Y) == 0)
+if (rangewr(Y) == 0)
     p = pchip([0 100],Y(1)*[1 1]);
 else
     [f,x] = ecdf(Y); 

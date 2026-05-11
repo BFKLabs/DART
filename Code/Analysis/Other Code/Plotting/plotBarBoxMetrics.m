@@ -57,7 +57,7 @@ else
                 Yc = {NaN};
             else
                 sz = cell2mat(cellfun(@size,Yc(:,1),'un',0));                
-                if range(sz(:,1)) == 0
+                if rangewr(sz(:,1)) == 0
                     Yc = cellfun(@(x)(cell2mat(x')),num2cell(Yc,1),'un',0);
                 else
                     Yc = cellfun(@(x)(cell2mat(x)),num2cell(Yc,1),'un',0);
@@ -129,7 +129,7 @@ end
 
 % sets the x/y-axis limits
 xLim = xi([1 end]) + 0.5*[-1 1];
-if all(isnan(Y(:))) || all(isnan(yL)) || (range(yL) == 0)
+if all(isnan(Y(:))) || all(isnan(yL)) || (rangewr(yL) == 0)
     set(hAx,'xlim',xLim,'ylim',[0 1],'xtick',xi)            
 else
     if (length(yL) == 1); yL = [0,yL]; end

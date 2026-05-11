@@ -109,7 +109,7 @@ fStr = cellfun(@(x)(fieldnames(x)),snTot,'un',0);
 nStr = cellfun('length',fStr);
 
 % determines if there are any missing fields
-if range(nStr) ~= 0
+if rangewr(nStr) ~= 0
     % if so, determine which solution files are missing fields
     fStrT = unique(cell2cell(fStr));
     i0 = nStr(:)' ~= length(fStrT);    

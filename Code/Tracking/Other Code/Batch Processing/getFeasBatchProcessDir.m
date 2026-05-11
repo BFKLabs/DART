@@ -149,7 +149,7 @@ end
 
 % determines if all of the fields have been set
 nF = cellfun(@(x)(length(fieldnames(x))),bpData);
-if range(nF) > 0
+if rangewr(nF) > 0
     % determines the field that contains all of the fields and retrieves
     % the names of these fields
     imx = find(nF == max(nF),1,'first');
