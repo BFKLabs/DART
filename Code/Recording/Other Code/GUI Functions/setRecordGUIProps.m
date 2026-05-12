@@ -88,7 +88,7 @@ switch (typeStr)
                         % case is the HT2 (versison 2) controller
                         sStr = {setupArduinoString('ir',100)};
     
-                    case {'HTControllerV1', 'HTControllerV2'}
+                    case {'HTControllerV1', 'HTControllerV2', 'Opto'}
                         % case is the other HT controller types
                         sStr = {sprintf('4,%f\n',100),...
                                         '3,000,000,000,000,050\n'};

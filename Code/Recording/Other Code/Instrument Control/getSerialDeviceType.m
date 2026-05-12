@@ -9,10 +9,13 @@ utDir = getProgFileName('Code','Common','Utilities','Serial Builds');
 ufFile = fullfile(utDir,'devcon.exe');
 
 % deletes any previous serial port objects
-hSprev = serialportfind;
-if ~isempty(hSprev)
-    delete(hSprev)
-    pause(0.05)
+try
+    hSprev = serialportfind;
+    if ~isempty(hSprev)
+        delete(hSprev)
+        pause(0.05)
+    end
+catch 
 end
 
 % sets up the controller handle and boardname string
