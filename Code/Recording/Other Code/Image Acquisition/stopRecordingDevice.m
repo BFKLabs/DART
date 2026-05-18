@@ -1,49 +1,58 @@
 % --- stop the recording device/timer (based on the camera type)
-function stopRecordingDevice(obj,saveStopFcn)
+function stopRecordingDevice(obj,saveStopFcn,relVidDev)
 
 % sets the default input argument
+isVidDev = isa(obj.objIMAQ,'imaq.VideoDevice');
 if ~exist('rmvCB','var'); saveStopFcn = false; end
+if ~exist('relVidDev','var'); relVidDev = true; end
 
 %
 if obj.isTest
     % case is running a test
     return
     
-elseif obj.isWebCam
+elseif obj.isWebCam || isVidDev
     % determines if the object is value
-    if isstruct(obj.objIMAQ.hTimer)
+    if isempty(obj.hTimer)
+        isV = false;
+    elseif isstruct(obj.hTimer)
         isV = true;
     else
-        isV = isvalid(obj.objIMAQ.hTimer);
+        isV = isvalid(obj.hTimer);
     end
     
+    % releases the video device
+    if isVidDev && relVidDev
+        release(obj.objIMAQ)
+    end    
+    
     % case is a webcam object
-    if ~isempty(obj.objIMAQ.hTimer) && isV         
+    if ~isempty(obj.hTimer) && isV         
         % stops the device
-        if isstruct(obj.objIMAQ.hTimer)
+        if isstruct(obj.hTimer)
             % turns off the running object
-            obj.objIMAQ.hTimer.Running = 'off';
+            obj.hTimer.Running = 'off';
 
             % resets the camera stop function
             if ~saveStopFcn
-                stopFcn = obj.objIMAQ.hTimer.StopFcn{1};
-                exObj = obj.objIMAQ.hTimer.StopFcn{2};
+                stopFcn = obj.hTimer.StopFcn{1};
+                exObj = obj.hTimer.StopFcn{2};
                 stopFcn(exObj.hTimerExpt,[],exObj);
             end
             
         else
             % stores the camera stop function (if required)
             if saveStopFcn
-                sFunc = obj.objIMAQ.hTimer.stopFcn;
-                obj.objIMAQ.hTimer.stopFcn = [];
+                sFunc = obj.hTimer.stopFcn;
+                obj.hTimer.stopFcn = [];
             end
             
             % stops the timer object
-            stop(obj.objIMAQ.hTimer)
+            stop(obj.hTimer)
             
             % resets the camera stop function
             if saveStopFcn
-                obj.objIMAQ.hTimer.StopFcn = sFunc;
+                obj.hTimer.StopFcn = sFunc;
             end
         end        
     end
@@ -56,6 +65,7 @@ else
     
     % stops the device
     stop(obj.objIMAQ)
+    pause(0.05);
     
     % resets the camera stop function
     if saveStopFcn

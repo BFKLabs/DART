@@ -1,21 +1,21 @@
 % --- stop the recording device/timer (based on the camera type)
 function startRecordingDevice(obj)
 
-if obj.isWebCam
+if obj.isWebCam || obj.isMemLog
     % case is a webcam object
-    if ~isempty(obj.objIMAQ.hTimer) 
-        if isstruct(obj.objIMAQ.hTimer)            
+    if ~isempty(obj.hTimer) 
+        if isstruct(obj.hTimer)            
             % sets the running flag
-            obj.objIMAQ.hTimer.Running = 'on';            
+            obj.hTimer.Running = 'on';            
             
             % runs the trigger function
-            trigFcn = obj.objIMAQ.hTimer.TriggerFcn{1};
-            exObj = obj.objIMAQ.hTimer.TriggerFcn{2};
+            trigFcn = obj.hTimer.TriggerFcn{1};
+            exObj = obj.hTimer.TriggerFcn{2};
             trigFcn(exObj.hTimerExpt,[],exObj);
             
-        elseif isvalid(obj.objIMAQ.hTimer)
+        elseif isvalid(obj.hTimer)
             % case is a timer object
-            start(obj.objIMAQ.hTimer)
+            start(obj.hTimer)
         end
     end
 else

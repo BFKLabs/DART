@@ -7,15 +7,22 @@ if obj.isTest
 
 elseif obj.isWebCam
     % case is a webcam object
-    if isempty(obj.objIMAQ.hTimer)
+    if isempty(obj.hTimer)
         isDevRun = false;
-    elseif isstruct(obj.objIMAQ.hTimer)
-        isDevRun = strcmp(obj.objIMAQ.hTimer.Running,'on');
-    elseif isvalid(obj.objIMAQ.hTimer)
-        isDevRun = strcmp(obj.objIMAQ.hTimer.Running,'on');        
+    elseif isstruct(obj.hTimer) || isvalid(obj.hTimer)
+        isDevRun = strcmp(obj.hTimer.Running,'on');
     else
         isDevRun = false;
     end
+    
+elseif isa(obj.objIMAQ,'imaq.VideoDevice')
+    % case is a imaq.VideoDevice
+    if isempty(obj.hTimer)
+        isDevRun = false;
+    elseif isstruct(obj.hTimer) || isvalid(obj.hTimer)
+        isDevRun = strcmp(obj.hTimer.Running,'on');
+    end
+    
 else
     % case is a videoinput object
     isDevRun = isrunning(obj.objIMAQ);

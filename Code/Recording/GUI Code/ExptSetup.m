@@ -876,10 +876,14 @@ exObj = getappdata(hFig,'exObj');
 infoObj = getappdata(hFig,'infoObj');
 hMainH = guidata(getappdata(hFig,'hMain'));
     
+% makes the main gui invisible
+setObjVisibility(exObj.hMain,'off')
+pause(0.01);
+
 % turns off the camera (if still running)
 if infoObj.hasIMAQ
-    if isDeviceRunning(infoObj)
-        stopRecordingDevice(infoObj)
+    if isDeviceRunning(exObj)
+        stopRecordingDevice(exObj)
     end
     
     % converts the videos (if required)
@@ -891,8 +895,13 @@ if infoObj.hasIMAQ
     setObjEnable(hMainH.menuCalibrate,'on')
 end
 
+% resets the image acquisition device (memory recording only)
+if exObj.isMemLog
+    exObj.isMemLog = false;
+    exObj.resetImageAcquisitionDevice();
+end
+
 % deletes the experiment object struct
-setObjVisibility(exObj.hMain,'off')
 setappdata(hFig,'exObj',[])
 
 % updates the experiment title string
@@ -1385,6 +1394,8 @@ else
     infoObj = getappdata(hFig,'infoObj');
     if infoObj.isWebCam
         eVal = infoObj.objIMAQ.pROI(3:4);
+    elseif isa(infoObj.objIMAQ,'imaq.VideoDevice')
+        eVal = infoObj.objIMAQ.ROI(3:4);
     else
         eVal = infoObj.objIMAQ.VideoResolution;
     end
@@ -8996,7 +9007,7 @@ infoObj = getappdata(hFig,'infoObj');
 
 % sets the video resolution data struct
 vRes = getRecordingResolution(infoObj);
-resInfo = struct('useCust',false,'W',vRes(1),'H',vRes(2));
+resInfo = struct('useCust',false,'W',vRes(1),'H',vRes(2),'bSz',1);
 setappdata(hFig,'resInfo',resInfo)
 
 % sets up the editboxes

@@ -371,13 +371,6 @@ triggerconfig(infoObj.objIMAQ,'manual')
 resetCameraROIPara(infoObj.objIMAQ)
 applyDefaultDeviceProps(infoObj,dName);
     
-% increases the amount of memory available to the camera
-try
-    a = imaqmem;
-    imaqmem(min(a.AvailVirtual,2*a.FrameMemoryLimit));
-catch
-end
-
 % --- updates the DAQ device information
 function infoObj = updateDAQDevice(infoObj)
 

@@ -17,7 +17,12 @@ else
     end
 end
 
-if infoObj.isWebCam
+if isa(infoObj.objIMAQ,'imaq.VideoDevice')
+    % case is a video device object
+    applyVideoDeviceProps(infoObj.objIMAQ,psData);
+    return
+
+elseif infoObj.isWebCam
     % case is using a webcam
     sObj = infoObj.objIMAQ;
     
@@ -36,4 +41,39 @@ for i = 1:length(psData.fldNames)
         end
     catch
     end
+end
+
+% --- applies the video device properties
+function applyVideoDeviceProps(objIMAQ,psData)
+
+% field retrieval
+devProps = objIMAQ.DeviceProperties;
+
+% attempts to set the parameter value (ignore any errors)
+for i = 1:length(psData.fldNames)
+    try        
+        % only update the field if they are not equal
+        pVal0 = devProps.(psData.fldNames{i});
+        pValS = convertParaValue(psData.pVal{i},psData.fldNames{i});
+        if ~isequal(pVal0,pValS)
+            objIMAQ.DeviceProperties.(psData.fldNames{i}) = pValS;
+        end        
+    catch
+    end
+end
+
+% --- parameter conversion function
+function pVal = convertParaValue(pVal,pStr)
+
+% initialisations
+eStr = {'off','on'};
+
+% converts the parameter based on type
+switch pStr
+    case 'BacklightCompensation'
+        % case is backlight compensation
+        if isnumeric(pVal)
+            pVal = eStr{1+pVal};
+        end
+        
 end

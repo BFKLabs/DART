@@ -3,6 +3,8 @@ function isDevLog = isDeviceLogging(obj)
 
 if obj.isWebCam
     isDevLog = isDeviceRunning(obj);
+elseif obj.isMemLog
+    isDevLog = obj.isLogging;
 else
     isDevLog = islogging(obj.objIMAQ);
 end

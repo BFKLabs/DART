@@ -537,8 +537,8 @@ end
 
 % starts the test object
 exObj.isStart = true;
-if exObj.isWebCam
-    start(exObj.objIMAQ.hTimer);
+if exObj.isWebCam || exObj.isMemLog
+    start(exObj.hTimer);
 else
     trigger(exObj.objIMAQ)
 end

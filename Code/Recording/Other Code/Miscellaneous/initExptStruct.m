@@ -7,7 +7,12 @@ tNow = datevec(now());
 tOfs = tNow(4) >= tStartH;
 
 % retrieves the device details
-if isa(varargin{1},'matlab.ui.Figure')
+if isa(varargin{1},'ExptSetupDlg')
+    exptType = obj.infoObj.exType;
+    objIMAQ = obj.infoObj.objIMAQ;
+    objDAQ = obj.infoObj.objDAQ;
+
+elseif isa(varargin{1},'matlab.ui.Figure')
     hFig = varargin{1};
     infoObj = getappdata(hFig,'infoObj');
 

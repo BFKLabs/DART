@@ -1,10 +1,20 @@
 % --- sets the gui properties given by the action given by typeStr
 function varargout = setRecordGUIProps(handles,typeStr,varargin)
 
+% initialisations
+isClassObj = isa(handles,'ExptSetupDlg');
+
 % class object retrieval
-hFig = handles.output;
-objDAQ = getappdata(hFig,'objDAQ');
-infoObj = getappdata(hFig,'infoObj');
+if isClassObj
+    hFig = handles.hFig;
+    objM = handles.objM;
+    objDAQ = handles.objDAQ;
+    infoObj = handles.infoObj;
+else
+    hFig = handles.output;
+    objDAQ = getappdata(hFig,'objDAQ');
+    infoObj = getappdata(hFig,'infoObj');
+end
 
 % sets the object properties based on the type string
 switch (typeStr)
@@ -101,31 +111,52 @@ switch (typeStr)
                 writeSerialString(hDev{i},sStr{dType(i)});
             end
             
-            % sets the toggle IR menu check
-            set(handles.menuToggleIR,'Checked','On'); 
-            setObjVisibility(handles.menuOpto,'on');            
-            
-            % sets the toggle white light menu item visibility
-            if isfield(handles,'menuToggleWhite')
-                setObjVisibility(handles.menuToggleWhite,any(dType==2))
-            end
+            % 
+            showWhiteL = any(dType==2);
+            if isClassObj
+                % sets the toggle IR menu check
+                objM.setMenuItemCheck('menuToggleIR','on');
+                objM.setMenuItemVisible('menuOpto','on');
+
+                % sets the toggle white light menu item visibility
+                if isprop(objM,'menuToggleWhite')
+                    objM.setMenuItemVisible('menuToggleWhite',showWhiteL)
+                end                               
                 
-            % sets the stimuli test menu item visibility            
-            if isfield(handles,'menuStimTest')            
-                setObjVisibility(handles.menuStimTest,any(dType==1))
+            else
+                % sets the toggle IR menu check
+                set(handles.menuToggleIR,'Checked','On'); 
+                setObjVisibility(handles.menuOpto,'on');            
+
+                % sets the toggle white light menu item visibility
+                if isfield(handles,'menuToggleWhite')
+                    setObjVisibility(handles.menuToggleWhite,showWhiteL)
+                end
+
+                % sets the stimuli test menu item visibility            
+                if isfield(handles,'menuStimTest')            
+                    setObjVisibility(handles.menuStimTest,any(dType==1))
+                end
             end
-                
+
             % runs a test pulse (HT1 controllers only)
             isHT = dType == 1;            
             if any(isHT)
                 stimObj = setupHT1TestPulse(objDAQ,iDev(isHT));
-                setappdata(hFig,'stimObj',stimObj)
-                % setappdata(hFig,'stimObj',TestStimPulse(infoObj,'StimOnly'))
+                if isClassObj
+                    handles.objS = stimObj;
+                else
+                    setappdata(hFig,'stimObj',stimObj)
+                end
             end
 
         else
             % makes the opto menu item invisible
-            setObjVisibility(handles.menuOpto,'off');
+            if isClassObj
+                objM.setMenuItemVisible('menuOpto','off')
+            else
+                setObjVisibility(handles.menuOpto,'off');
+            end
         end
         
     case 'InitGUITestOnly' % case is initialising the GUI for testing

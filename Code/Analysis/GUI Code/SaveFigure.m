@@ -137,6 +137,7 @@ classdef SaveFigure < handle
         rootStr = 'FIGURE OUTPUT LIST';
         wStr0 = 'Outputing Figures To File';
         sStr = {'Unchecked','Mixed','Checked'};
+        figName = 'Analysis Figure Output Options';
         
     end
     
@@ -244,15 +245,12 @@ classdef SaveFigure < handle
             
             % -------------------------- %
             % --- MAIN CLASS OBJECTS --- %
-            % -------------------------- %
-            
-            % initialisations
-            fStr = 'Analysis Figure Output Options';
+            % -------------------------- %           
             
             % creates the figure object
             fPos = [100*[1,1],obj.widFig,obj.hghtFig];
             obj.hFig = figure('Position',fPos,'tag',obj.tagStr,...
-                'MenuBar','None','Toolbar','None','Name',fStr,...
+                'MenuBar','None','Toolbar','None','Name',obj.figName,...
                 'NumberTitle','off','Visible','off','Resize','off',...
                 'CloseRequestFcn',[]);
             

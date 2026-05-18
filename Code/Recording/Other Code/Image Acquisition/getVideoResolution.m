@@ -20,15 +20,23 @@ else
     catch
         if vType
             % video object is the image acquisition object
-            try
+            if isprop(vObj,'ROIPosition')
                 rPos = get(vObj,'ROIPosition');
                 vRes = rPos(3:4);
-            catch
+            elseif isa(vObj,'imaq.VideoDevice')
+                rPos = get(vObj,'ROI');
+                vRes = rPos(3:4);                
+            else
                 vRes = get(vObj,'VideoResolution');
             end        
         else
             % case is retrieving the video resolution
-            vRes = get(vObj,'VideoResolution');
+            if isa(vObj,'imaq.VideoDevice')                
+                rPos = get(vObj,'ROI');
+                vRes = rPos(3:4);
+            else
+                vRes = get(vObj,'VideoResolution');
+            end
         end
     end
 

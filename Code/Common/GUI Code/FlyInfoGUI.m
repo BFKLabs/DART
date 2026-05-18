@@ -346,7 +346,7 @@ classdef FlyInfoGUI < handle
             % Create the base panel
             obj.hPanelT = createUIObj('panel',obj.hPanel,...
                          'BorderType','none','tag','hPanelView',...
-                         'Clipping','on','Units','Normalized');                        
+                         'Clipping','on','Units','Normalized');
 
             % creates the check table object
             obj.createCheckTable();                     
