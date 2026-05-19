@@ -93,18 +93,18 @@ switch exObj.vidType
         if exObj.isWebCam || exObj.isTest || exObj.isMemLog
 %             % deletes any previous timer objects
 %             hTimerPr = timerfindall('Tag','vObjW');
-%             if ~isempty(hTimerPr); delete(hTimerPr); end
-            
+%             if ~isempty(hTimerPr); delete(hTimerPr); end            
+
             % case is using a timer based recording object
             exObj.hTimer = struct(...
                 'TimerFcn',[],'StopFcn',[],'TriggerFcn',[],...
                 'UserData',0,'Tag','vObjW','iFrm',0,'Running','off',...
                 'FramesAcquired',0);
-
+            
             % sets the timer callback function
             exObj.hTimer.TimerFcn = {@timerFunc,exObj};
             exObj.hTimer.StopFcn = {@finishRecord,exObj};
-            exObj.hTimer.TriggerFcn = {@trigCamera,exObj};            
+            exObj.hTimer.TriggerFcn = {@trigCamera,exObj};
             exObj.isLogging = false;
             
         else
@@ -270,18 +270,13 @@ if exObj.isMemLog
 
     try
         % retrieves the read frames from the camera
+        [exObj.iFrmVid,iFrm] = deal(exObj.iFrmVid + 1);
         ImgNw = step(exObj.objIMAQ);
-
-%         % sets the preview image        
-%         [Img, tFrm] = getdata(exObj.objIMAQ,nFrm,'uint8','cell');   
-%         iFrm = zeros(length(Img),1);      
-%         ImgNw = Img{end};                                
 
         % adds the new frame to the log file
         ImgFrm = convertImageFrame(ImgNw,exObj.resInfo);
         writeVideo(exObj.logFile, ImgFrm);
-        iFrm = exObj.logFile.FrameCount;
-
+                
         if (iFrm == 1)
             % starts the log-file time
             exObj.tLogFile = tic;
@@ -303,7 +298,7 @@ if exObj.isMemLog
             [exObj.tStampV{exObj.nCountV}(iFrm),exObj.tNew] = ...
                                 deal(exObj.tVid);
         end
-    catch
+    catch ME
         % if there was an error, then exit the function
         return
     end
@@ -390,6 +385,12 @@ if frmUpdate
             axis(exObj.hAx,'image');
             set(exObj.hAx,'xtick',[],'xticklabel',[],'ytick',[],...
                           'yticklabel',[],'xLim',xL,'yLim',yL)               
+            
+            % sets the axes colourmap to grayscale (if single band)
+            if size(ImgNw,3) == 1
+                colormap(exObj.hAx,'gray');
+            end
+                      
             setappdata(exObj.hAx,'hImage',hImage)
         else
             % otherwise, update the axes preview image
@@ -426,10 +427,11 @@ waitfor(errordlg(eStr,'Experiment Recording Error','modal'))
 wState = warning('off','all');
 try            
     % closes and deletes the log file
+    exObj.isLogging = false;    
     logFile = getLogFile(exObj);
     close(logFile);
-    delete(get(logFile,'FileName'))
-    exObj.isLogging = false;
+    delete(get(logFile,'FileName'))    
+catch
 end
     
 % runs the finish recording function    
@@ -493,8 +495,9 @@ try
     % flushes the frame data already from the IMAQ object
     close(logFile); pause(0.05);
     exObj.isLogging = false;
-    if ~exObj.isWebCam; flushdata(exObj.objIMAQ); end
-catch
+    if ~(exObj.isWebCam || exObj.isMemLog)
+        flushdata(exObj.objIMAQ); 
+    end
 end
 
 % turns on all warnings again
@@ -504,6 +507,7 @@ warning(wState)
 % save the partial file
 if exObj.userStop && exObj.isStart
     % hides the progress window
+    exObj.isLogging = false;
     setObjVisibility(exObj.objP.hFig,0);
   
     % prompts the user if they want to 
@@ -520,8 +524,7 @@ if exObj.userStop && exObj.isStart
         clear logFile
     end
     
-    % exits the function
-    exObj.isLogging = false;
+    % exits the function    
     return
 else
     % clears the logfile
@@ -726,6 +729,7 @@ if ~exObj.isTest
     end
 
     % sets the other video parameters
+    exObj.iFrmVid = 0;
     if exObj.isWebCam || exObj.isMemLog
         % case is logging to memory
         exObj.logFile = logFile;
@@ -803,16 +807,13 @@ end
 % --- converts the frame image
 function Img = convertImageFrame(Img,resInfo)
 
-%
-resInfo.bSz = 4;    % REMOVE ME LATER
-
-if resInfo.bSz == 1
+if resInfo.rType == 3
     % resizes the image
     szR = [resInfo.H,resInfo.W];
     if ~isequal(szR,size(Img))
         Img = imresize(Img,szR);
     end
-else
+elseif (resInfo.rType == 2) && (resInfo.bSz > 1)
     % bins the image
     for i = 1:log2(resInfo.bSz)
         Img = Img(1:2:end, 1:2:end)/4 + Img(2:2:end, 1:2:end)/4 + ...

@@ -895,11 +895,11 @@ if infoObj.hasIMAQ
     setObjEnable(hMainH.menuCalibrate,'on')
 end
 
-% resets the image acquisition device (memory recording only)
-if exObj.isMemLog
-    exObj.isMemLog = false;
-    exObj.resetImageAcquisitionDevice();
-end
+% % resets the image acquisition device (memory recording only)
+% if exObj.isMemLog
+%     exObj.isMemLog = false;
+%     resetImageAcquisitionDevice(exObj);
+% end
 
 % deletes the experiment object struct
 setappdata(hFig,'exObj',[])
@@ -1367,25 +1367,33 @@ end
 %%%%    VIDEO RESOLUTION OBJECT CALLBACKS    %%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% --- Executes on button press in checkCustRes.
-function checkCustRes_Callback(hObject, ~, handles)
+% % --- Executes on button press in checkCustRes.
+% function checkCustRes_Callback(hObject, ~, handles)
+
+% --- Executes on selection change in popupCustRes.
+function popupCustRes_Callback(hObject, ~, handles)
 
 % field retrieval
 hFig = handles.figExptSetup;
 hText = findall(handles.panelVideoRes,'Style','Text');
 hEdit = findall(handles.panelVideoRes,'Style','Edit');
+resInfo = getappdata(hFig,'resInfo');
+
+% determines the bin-size text/edit objects
+isBT = arrayfun(@(x)(get(x,'UserData')),hText) == 2;
 
 % updates the struct field
-resInfo = getappdata(hFig,'resInfo');
-resInfo.useCust = get(hObject,'Value');
-setappdata(hFig,'resInfo',resInfo)
+resInfo.rType = hObject.Value;
+setappdata(hFig,'resInfo',resInfo);
 
 % updates the object enabled properties
-arrayfun(@(x)(setObjEnable(x,resInfo.useCust)),hText)
-arrayfun(@(x)(setObjEnable(x,resInfo.useCust)),hEdit)
+setObjEnable(handles.popupBinSize,resInfo.rType==2);
+arrayfun(@(x)(setObjEnable(x,resInfo.rType==2)),hText(isBT))
+arrayfun(@(x)(setObjEnable(x,resInfo.rType==3)),hText(~isBT))
+arrayfun(@(x)(setObjEnable(x,resInfo.rType==3)),hEdit)
 
 % retrieves the editbox value (based on the user choice type)
-if resInfo.useCust
+if resInfo.rType == 3
     % case is using the custom resolution
     resInfo = getappdata(hFig,'resInfo');
     eVal = getStructFields(resInfo,{'W','H'},1);
@@ -1394,7 +1402,7 @@ else
     infoObj = getappdata(hFig,'infoObj');
     if infoObj.isWebCam
         eVal = infoObj.objIMAQ.pROI(3:4);
-    elseif isa(infoObj.objIMAQ,'imaq.VideoDevice')
+    elseif isVidDev(infoObj.objIMAQ)
         eVal = infoObj.objIMAQ.ROI(3:4);
     else
         eVal = infoObj.objIMAQ.VideoResolution;
@@ -1402,7 +1410,18 @@ else
 end
 
 % updates the editbox values
-arrayfun(@(h,v)(set(h,'String',num2str(v))),hEdit(:),eVal(:));
+arrayfun(@(h,v)(set(h,'String',num2str(v))),hEdit,eVal(:));
+
+% --- Executes on selection change in popupBinSize.
+function popupBinSize_Callback(hObject, ~, handles)
+
+% field retrieval
+hFig = handles.figExptSetup;
+resInfo = getappdata(hFig,'resInfo');
+
+% updates the struct field
+resInfo.bSz = 2^hObject.Value;
+setappdata(hFig,'resInfo',resInfo);
 
 % --- Executes on editbox update
 function editResDim(hObject, ~, handles)
@@ -1416,15 +1435,28 @@ resInfo = getappdata(hFig,'resInfo');
 % retrieves the new value
 nwVal = str2double(get(hObject,'String'));
 vRes = getRecordingResolution(infoObj);
+nwLim = [20,vRes(strcmp({'W','H'},pStr))];
 
 % determines if the new value is valid
-if chkEditValue(nwVal,[20,vRes(strcmp({'W','H'},pStr))],1)
+if chkEditValue(nwVal,nwLim,1)
+    % ensures the bin size is a multiple of 2
+    if strcmp(pStr,'bSz') && (mod(log2(nwVal),1) ~= 0)
+        % if the bin size isn't a power of 2 then output an error
+        tStr = 'Invalid Parameter';
+        eStr = 'The image pixel binning size must be a power of 2.';
+        waitfor(msgbox(eStr,tStr,'modal'));
+        
+        % resets the editbox value and exits
+        set(hObject,'String',num2str(resInfo.bSz));
+        return
+    end
+    
     % if so, then update the data struct
     resInfo = setStructField(resInfo,pStr,nwVal);
     setappdata(hFig,'resInfo',resInfo)
 else
     % otherwise, reset to the last valid value
-    set(hObject,'String',num2str(getStructField(resInfo,pStr)));
+    set(hObject,'String',num2str(resInfo.(pStr)));    
 end
 
 %-------------------------------------------------------------------------%
@@ -5266,16 +5298,19 @@ Dmax = iExpt.Video.Dmax;
 % sets the frame rate box
 if infoObj.hasIMAQ
     % retrieves the camera frame rate
-    FPS = iExpt.Video.FPS;
+    [FPS,isVarFPS] = deal(iExpt.Video.FPS,false);
     if infoObj.isTest
         % case is running in testing mode
-        [isVarFPS,fRate] = deal(false,num2str(FPS));
+        fRate = num2str(FPS);
     elseif infoObj.isWebCam
-        % sets the frame rate values/selections
-        isVarFPS = false;
+        % case is running a webcam
         [~,fRate,~] = detWebcamFrameRate(infoObj.objIMAQ,FPS);
+    elseif isVidDev(infoObj.objIMAQ)
+        % case is running a video device object
+        FPStmp = str2double(infoObj.objIMAQ.DeviceProperties.FrameRate);
+        fRate = {num2str(FPStmp)};
     else
-        % sets the frame rate values/selections
+        % cae is a videoinput object
         isVarFPS = detIfFrameRateVariable(infoObj.objIMAQ);
         srcObj = getselectedsource(infoObj.objIMAQ);
         [~,fRate,~] = detCameraFrameRate(srcObj,FPS);
@@ -9007,7 +9042,7 @@ infoObj = getappdata(hFig,'infoObj');
 
 % sets the video resolution data struct
 vRes = getRecordingResolution(infoObj);
-resInfo = struct('useCust',false,'W',vRes(1),'H',vRes(2),'bSz',1);
+resInfo = struct('rType',1,'W',vRes(1),'H',vRes(2),'bSz',1);
 setappdata(hFig,'resInfo',resInfo)
 
 % sets up the editboxes
@@ -9030,6 +9065,8 @@ if infoObj.isTest
     vRes = [1,1,infoObj.objIMAQ.szImg];
 elseif infoObj.isWebCam
     vRes = infoObj.objIMAQ.pROI(3:4);
+elseif isVidDev(infoObj.objIMAQ)    
+    vRes = infoObj.objIMAQ.ROI(3:4);    
 else
     vRes = infoObj.objIMAQ.VideoResolution;
 end

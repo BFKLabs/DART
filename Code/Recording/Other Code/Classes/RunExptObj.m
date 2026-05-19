@@ -80,6 +80,7 @@ classdef RunExptObj < handle
         iFrmUpdate
         indOfs 
         indFrmNw         
+        iFrmVid
         
         % boolean class fields
         hasDAQ
@@ -370,7 +371,7 @@ classdef RunExptObj < handle
                 obj.isMemLog = 0;
             else
                 % case is using a videoinput object
-                if ~isempty(obj.resInfo) && obj.resInfo.useCust
+                if ~isempty(obj.resInfo) && (obj.resInfo.rType > 1)
                     obj.isMemLog = 1;
                     resetDev = ~isa(obj.objIMAQ,'imaq.VideoDevice');
                 else
@@ -380,7 +381,7 @@ classdef RunExptObj < handle
                 
                 if resetDev
                     % resets the image acquisition device 
-                    obj.resetImageAcquisitionDevice();
+                    resetImageAcquisitionDevice(obj);
                     
                 elseif obj.isMemLog
                     % otherwise, make sure the camera is available
@@ -413,43 +414,7 @@ classdef RunExptObj < handle
             setupVideoRecord(obj); 
             setappdata(obj.hAx,'hImage',[]);                    
         
-        end
-        
-        % --- resets the image acquisition device
-        function resetImageAcquisitionDevice(obj)
-            
-            % field retrieval
-            infoObj = getappdata(obj.hMain,'infoObj');
-            devInfo = infoObj.objIMAQDev{infoObj.vSelIMAQ};
-
-            if obj.isMemLog
-                % case is memory logging (imaq.VideoDevice)
-                obj.objIMAQ = eval(devInfo.VideoDeviceConstructor);
-
-                % sets the device properties
-                obj.objIMAQ.Device = devInfo.DeviceName;                
-                obj.objIMAQ.ReturnedDataType = 'uint8';
-            else
-                % case is disk logging (videoinput)
-                obj.objIMAQ = eval(devInfo.VideoInputConstructor);
-
-                % sets the trigger configuration flag
-                triggerconfig(obj.objIMAQ,'manual')                
-                
-                % sets the device properties                    
-                obj.objIMAQ.LoggingMode = 'disk';    
-                obj.objIMAQ.Name = devInfo.DeviceName;
-            end
-            
-            % sets the common device fields
-            obj.objIMAQ.ReturnedColorSpace = 'grayscale'; 
-            
-            % resets any ROI parameters
-            infoObj.objIMAQ = obj.objIMAQ;            
-            resetCameraROIPara(obj.objIMAQ)
-            applyDefaultDeviceProps(infoObj,devInfo.DeviceName);            
-
-        end        
+        end      
         
         % --- converts the recorded videos from uncompressed format to the
         %     original video compression format
@@ -711,7 +676,7 @@ classdef RunExptObj < handle
                 obj.saveSummaryFile()
             else
                 % waits until the camera stops logging (videoinput only)
-                if obj.hasIMAQ && ~obj.isWebCam
+                if obj.hasIMAQ && ~(obj.isWebCam || obj.isMemLog)
                     while isDeviceLogging(obj)
                         pause(0.1)
                     end
@@ -903,7 +868,7 @@ classdef RunExptObj < handle
                 end
 
                 % sets up the object time array
-                obj.FPS = roundP(1/obj.iExpt.Video.FPS,0.001); 
+                obj.FPS = obj.iExpt.Video.FPS; 
                 obj.setVideoEventArray();
             else
                 % case is a stimuli only experiment
@@ -911,7 +876,7 @@ classdef RunExptObj < handle
             end
 
             % sets the timer object properties
-            set(obj.hTimerExpt,'Period',obj.FPS,...
+            set(obj.hTimerExpt,'Period',roundP(1/obj.FPS,0.001),...
                 'ExecutionMode','FixedRate',...
                 'StartFcn',{@(h,e)obj.startExptFcn},...
                 'TimerFcn',{@(h,e)obj.timerExptFcn},...
@@ -948,8 +913,8 @@ classdef RunExptObj < handle
                 iFrm = get(obj.hTimerExpt,'TasksExecuted') + obj.indOfs;        
             catch
                 return
-            end                  
-            
+            end                     
+                        
             % sets the sub-structs            
             tTot = vec2sec(obj.iExpt.Timing.Texp);
             VV = obj.iExpt.Video;            
@@ -970,9 +935,10 @@ classdef RunExptObj < handle
     
                     else
                         % attempts to close the video file
-                        wState = warning('off','all');
-                        close(getLogFile(obj));
-                        warning(wState)
+                        stopRecordingDevice(obj);
+%                         wState = warning('off','all');
+%                         close(getLogFile(obj));
+%                         warning(wState)
                     end
                 end
 
@@ -1159,13 +1125,13 @@ classdef RunExptObj < handle
                     % if there are no more events, then set the time to N/A
                     set(hText{k,4},'string',nwStr,'ForegroundColor',tCol)        
                 end   
-            end           
+            end                    
 
             % updates the timer function
             if (obj.isWebCam || obj.isMemLog) && isDeviceRunning(obj)
                 tFcn = obj.hTimer.TimerFcn{1};
                 tFcn(obj.hTimerExpt,[],obj);
-            end
+            end           
             
             % sets the new frame index (the total number of task executed)
             try

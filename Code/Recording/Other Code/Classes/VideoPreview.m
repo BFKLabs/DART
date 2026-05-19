@@ -21,6 +21,7 @@ classdef VideoPreview < handle
         isOn
         isTest
         isWebCam
+        useVD = true;
         
         % other parameters
         szI
@@ -174,6 +175,11 @@ classdef VideoPreview < handle
                 obj.objIMAQ.hAx = obj.hGUI.axesPreview;
             else
                 cbFcn = @obj.previewRec;
+                if obj.useVD && ~isVidDev(obj.objIMAQ)
+                    resetImageAcquisitionDevice(obj,false)                    
+                elseif ~obj.useVD && isa(obj.objIMAQ,'imaq.VideoDevice')
+                    resetImageAcquisitionDevice(obj,false)
+                end
             end            
             
             % sets the video calibration start time
@@ -185,6 +191,8 @@ classdef VideoPreview < handle
                     rPos = [1,1,obj.objIMAQ.szImg];
                 elseif obj.isWebCam
                     rPos = obj.objIMAQ.pROI;                
+                elseif isprop(obj.objIMAQ,'ROI')
+                    rPos = get(obj.objIMAQ,'ROI');                    
                 else
                     rPos = get(obj.objIMAQ,'ROIPosition');
                 end
@@ -242,7 +250,7 @@ classdef VideoPreview < handle
                 % case is testing
                 obj.objIMAQ.stopVideo();
                 
-            elseif obj.isWebCam   
+            elseif obj.isWebCam || obj.useVD()  
                 % case is a webcam
                 if ~isempty(obj.hTimer) && isvalid(obj.hTimer)
                     if strcmp(obj.hTimer.Running,'on')
@@ -307,7 +315,7 @@ classdef VideoPreview < handle
                 % ensures the camera is not running 
                 if obj.isWebCam
                     obj.objIMAQ.Resolution = obj.objIMAQ.resTemp;
-                else
+                elseif ~obj.useVD()
                     if strcmp(get(obj.objIMAQ,'Running'),'on')
                         stop(obj.objIMAQ); pause(0.05);
                     end 
@@ -330,10 +338,17 @@ classdef VideoPreview < handle
             pause(0.05);
 
             % resets the image axis     
-            if obj.isWebCam
-                pR = obj.objIMAQ.pROI;                
-                vResS = obj.objIMAQ.Resolution;
-                obj.szI = cellfun(@str2double,strsplit(vResS,'x'));
+            if obj.isWebCam || obj.useVD()
+                if obj.isWebCam
+                    pR = obj.objIMAQ.pROI;                
+                    vResS = obj.objIMAQ.Resolution;
+                    obj.szI = cellfun(@str2double,strsplit(vResS,'x'));
+                else
+                    pR = obj.objIMAQ.ROI;
+                    vResS = strsplit(obj.objIMAQ.VideoFormat,'_');
+                    obj.szI = cellfun(...
+                        @str2double,strsplit(vResS{2},'x'));
+                end
                 
                 yOfs = obj.szI(2) - sum(pR([2,4]));
                 xL = (pR(1)+0.5)+[0,pR(3)];
@@ -390,7 +405,7 @@ classdef VideoPreview < handle
                     obj.objIMAQ.startVideo(~obj.isRecord);                    
                 else
                     % case is the camera object
-                    if obj.isWebCam
+                    if obj.isWebCam || obj.useVD()
                         % determines if the calibration needs update
                         obj.updateVC = ...
                             ~isempty(obj.vcObj) && obj.vcObj.isOpen;
@@ -452,10 +467,14 @@ classdef VideoPreview < handle
         function calibRec(obj, hObj, ~)
             
             % sets up the event struct object
-            Img = snapshot(obj.objIMAQ);
-            set(obj.hImage,'CData',Img);
+            if obj.useVD
+                Img = step(obj.objIMAQ);
+            else
+                Img = snapshot(obj.objIMAQ);
+            end
                                     
             % runs the frame calibration update function (if required)
+            set(obj.hImage,'CData',Img);
             if obj.updateVC               
                 % updates the calibration axes
                 p = struct('Timestamp',now,...
@@ -481,6 +500,6 @@ classdef VideoPreview < handle
             
         end
         
-    end
+    end    
     
 end

@@ -2,7 +2,7 @@
 function stopRecordingDevice(obj,saveStopFcn,relVidDev)
 
 % sets the default input argument
-isVidDev = isa(obj.objIMAQ,'imaq.VideoDevice');
+isVD = isVidDev(obj.objIMAQ);
 if ~exist('rmvCB','var'); saveStopFcn = false; end
 if ~exist('relVidDev','var'); relVidDev = true; end
 
@@ -11,7 +11,7 @@ if obj.isTest
     % case is running a test
     return
     
-elseif obj.isWebCam || isVidDev
+elseif obj.isWebCam || isVD
     % determines if the object is value
     if isempty(obj.hTimer)
         isV = false;
@@ -22,7 +22,7 @@ elseif obj.isWebCam || isVidDev
     end
     
     % releases the video device
-    if isVidDev && relVidDev
+    if isVD && relVidDev
         release(obj.objIMAQ)
     end    
     

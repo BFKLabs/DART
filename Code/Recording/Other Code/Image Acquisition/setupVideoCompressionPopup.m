@@ -20,6 +20,14 @@ elseif isa(vObj,'VideoReader')
         % removes the grayscale AVI compression type
         ii = ii & ~cellfun(@(x)(strcmp(x,'Grayscale AVI')),pStr);        
     end
+elseif isVidDev(vObj)
+    if strcmp(vObj.ReturnedColorSpace,'grayscale')
+        % removes the uncompressed AVI compression type
+        ii = ii & ~cellfun(@(x)(strcmp(x,'Uncompressed AVI')),pStr);
+    else
+        % removes the grayscale AVI compression type
+        ii = ii & ~cellfun(@(x)(strcmp(x,'Grayscale AVI')),pStr);
+    end
 else
     if vObj.NumberOfBands == 1
         % removes the uncompressed AVI compression type
