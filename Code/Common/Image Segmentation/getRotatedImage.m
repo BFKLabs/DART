@@ -1,6 +1,11 @@
 % rotates the image (if required)
 function Img = getRotatedImage(iMov,Img0,mlt)
 
+% applies the fisheye distortion
+if isfield(iMov,'fdPara')
+    Img0 = applyFishEyePara(Img0,iMov.fdPara);
+end
+
 if iMov.useRot && (iMov.rotPhi ~= 0)
     % sets the rotation direction multiplier
     frmSz0 = size(Img0);
@@ -25,3 +30,21 @@ else
     % case is there is no rotation
     Img = Img0;
 end
+
+% --- applies the fish eye undistortion parameters
+function Img = applyFishEyePara(Img,fdP)
+
+% if there are no parameters, or not being used, then exit the function
+if isempty(fdP) || ~fdP.useFD
+    return
+end
+
+% applies the image rotation
+if fdP.pPhi ~= 0
+    Img = imrotate(Img,fdP.pPhi,'crop');
+end
+
+% applies the image undistortion
+szImg = size(Img);
+Img = imresize(undistortFisheyeImage(...
+    Img,fdP.hInt,'OutputView','valid'),szImg(1:2));

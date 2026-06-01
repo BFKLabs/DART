@@ -17,7 +17,7 @@ else
     end
 end
 
-if isa(infoObj.objIMAQ,'imaq.VideoDevice')
+if isVidDev(infoObj.objIMAQ)
     % case is a video device object
     applyVideoDeviceProps(infoObj.objIMAQ,psData);
     return

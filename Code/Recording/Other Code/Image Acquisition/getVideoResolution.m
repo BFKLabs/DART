@@ -23,7 +23,7 @@ else
             if isprop(vObj,'ROIPosition')
                 rPos = get(vObj,'ROIPosition');
                 vRes = rPos(3:4);
-            elseif isa(vObj,'imaq.VideoDevice')
+            elseif isVidDev(vObj)
                 rPos = get(vObj,'ROI');
                 vRes = rPos(3:4);                
             else
@@ -31,7 +31,7 @@ else
             end        
         else
             % case is retrieving the video resolution
-            if isa(vObj,'imaq.VideoDevice')                
+            if isVidDev(vObj)
                 rPos = get(vObj,'ROI');
                 vRes = rPos(3:4);
             else

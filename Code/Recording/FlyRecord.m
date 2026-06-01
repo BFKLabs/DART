@@ -201,6 +201,11 @@ if ~infoObj0.isTest
         % case is a webcam device
         sObj = infoObj0.objIMAQ;
         fldNames = getWebCamProps(sObj);
+        
+    elseif isVidDev(infoObj0.objIMAQ)
+        % case is a video device
+        sObj = infoObj0.objIMAQ.DeviceProperties;
+        fldNames = fieldnames(sObj);
                 
     else
         % case is a videoinput device
@@ -304,7 +309,9 @@ setappdata(hFig,'sTrain',[]);
 
 % sets the GUI properties based on whether testing or not
 setRecordGUIProps(handles,'InitGUI',infoObj.exType);
-setRecordGUIProps(handles,propStr)
+if ~infoObj.isTest
+    setRecordGUIProps(handles,propStr)
+end
 
 % if there is no change in the camera type, then reset the camera to 
 % the original parameters (full program only)    

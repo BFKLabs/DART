@@ -40,6 +40,9 @@ classdef Track < matlab.mixin.SetGet
         nPhase  
         nFly
         
+        % static string class fields
+        errMsgEOF = 'MATLAB:audiovideo:VideoReader:EndOfFile';        
+        
     end
     
     % class methods
@@ -179,7 +182,7 @@ classdef Track < matlab.mixin.SetGet
                     end                        
                         
                 catch ME
-                    if strcmp(ME.identifier,'MATLAB:audiovideo:VideoReader:EndOfFile')
+                    if strcmp(ME.identifier,obj.errMsgEOF)
                         % if end of file, then reshape arrays and exit
                         Img = Img(1:(indF-1));
                         obj.iData.nFrm = iFrm(indF-1);

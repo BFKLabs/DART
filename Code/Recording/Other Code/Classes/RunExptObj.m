@@ -373,7 +373,7 @@ classdef RunExptObj < handle
                 % case is using a videoinput object
                 if ~isempty(obj.resInfo) && (obj.resInfo.rType > 1)
                     obj.isMemLog = 1;
-                    resetDev = ~isa(obj.objIMAQ,'imaq.VideoDevice');
+                    resetDev = ~isVidDev(obj.objIMAQ);
                 else
                     obj.isMemLog = 0;                               
                     resetDev = ~isa(obj.objIMAQ,'videoinput');

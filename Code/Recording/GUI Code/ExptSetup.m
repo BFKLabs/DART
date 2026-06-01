@@ -893,6 +893,11 @@ if infoObj.hasIMAQ
     setObjEnable(hMainH.toggleVideoPreview,'on')
     setObjEnable(hMainH.menuAdaptors,'on')
     setObjEnable(hMainH.menuCalibrate,'on')
+    
+    % stops the video device
+    if isVidDev(exObj.objIMAQ)
+        release(exObj.objIMAQ);
+    end
 end
 
 % % resets the image acquisition device (memory recording only)
@@ -1378,9 +1383,19 @@ hFig = handles.figExptSetup;
 hText = findall(handles.panelVideoRes,'Style','Text');
 hEdit = findall(handles.panelVideoRes,'Style','Edit');
 resInfo = getappdata(hFig,'resInfo');
+infoObj = getappdata(hFig,'infoObj');
 
 % determines the bin-size text/edit objects
 isBT = arrayfun(@(x)(get(x,'UserData')),hText) == 2;
+
+% if the video is large, then switch to pixel binning
+vRes = getRecordingResolution(infoObj);
+if (hObject.Value == 1) && isLargeVideo(vRes)
+    if ~largeVideoPrompt(vRes)
+        handles.popupCustRes.Value = resInfo.rType;
+        return
+    end
+end
 
 % updates the struct field
 resInfo.rType = hObject.Value;
@@ -1392,25 +1407,23 @@ arrayfun(@(x)(setObjEnable(x,resInfo.rType==2)),hText(isBT))
 arrayfun(@(x)(setObjEnable(x,resInfo.rType==3)),hText(~isBT))
 arrayfun(@(x)(setObjEnable(x,resInfo.rType==3)),hEdit)
 
-% retrieves the editbox value (based on the user choice type)
-if resInfo.rType == 3
-    % case is using the custom resolution
-    resInfo = getappdata(hFig,'resInfo');
-    eVal = getStructFields(resInfo,{'W','H'},1);
-else
-    % case is using the default resolution
-    infoObj = getappdata(hFig,'infoObj');
-    if infoObj.isWebCam
-        eVal = infoObj.objIMAQ.pROI(3:4);
-    elseif isVidDev(infoObj.objIMAQ)
-        eVal = infoObj.objIMAQ.ROI(3:4);
-    else
-        eVal = infoObj.objIMAQ.VideoResolution;
-    end
-end
-
-% updates the editbox values
-arrayfun(@(h,v)(set(h,'String',num2str(v))),hEdit,eVal(:));
+% % retrieves the editbox value (based on the user choice type)
+% if resInfo.rType == 3
+%     % case is using the custom resolution
+%     resInfo = getappdata(hFig,'resInfo');
+%     eVal = getStructFields(resInfo,{'W','H'},1);
+% else
+%     % case is using the default resolution
+%     if infoObj.isTest
+%         eVal = flip(infoObj.objIMAQ.szImg);
+%     elseif infoObj.isWebCam
+%         eVal = infoObj.objIMAQ.pROI(3:4);
+%     elseif isVidDev(infoObj.objIMAQ)
+%         eVal = infoObj.objIMAQ.ROI(3:4);
+%     else
+%         eVal = infoObj.objIMAQ.VideoResolution;
+%     end
+% end
 
 % --- Executes on selection change in popupBinSize.
 function popupBinSize_Callback(hObject, ~, handles)
@@ -1431,32 +1444,31 @@ hFig = handles.figExptSetup;
 pStr = get(hObject,'UserData');
 infoObj = getappdata(hFig,'infoObj');
 resInfo = getappdata(hFig,'resInfo');
+eVal = getStructFields(resInfo,{'W','H'},1);
 
 % retrieves the new value
-nwVal = str2double(get(hObject,'String'));
+iDim = strcmp({'W','H'},pStr);
 vRes = getRecordingResolution(infoObj);
-nwLim = [20,vRes(strcmp({'W','H'},pStr))];
+nwLim = [50,vRes(iDim)];
 
 % determines if the new value is valid
+nwVal = str2double(get(hObject,'String'));
 if chkEditValue(nwVal,nwLim,1)
-    % ensures the bin size is a multiple of 2
-    if strcmp(pStr,'bSz') && (mod(log2(nwVal),1) ~= 0)
-        % if the bin size isn't a power of 2 then output an error
-        tStr = 'Invalid Parameter';
-        eStr = 'The image pixel binning size must be a power of 2.';
-        waitfor(msgbox(eStr,tStr,'modal'));
-        
-        % resets the editbox value and exits
-        set(hObject,'String',num2str(resInfo.bSz));
+    % large video check
+    eVal(iDim) = nwVal;
+    if isLargeVideo(eVal) && ~largeVideoPrompt(eVal)
+        % if entered resolution is large, but the user rejects the change
+        % then reset the editbox value and exit the function
+        set(hObject,'String',num2str(resInfo.(pStr))); 
         return
-    end
+    end    
     
     % if so, then update the data struct
     resInfo = setStructField(resInfo,pStr,nwVal);
     setappdata(hFig,'resInfo',resInfo)
 else
     % otherwise, reset to the last valid value
-    set(hObject,'String',num2str(resInfo.(pStr)));    
+    set(hObject,'String',num2str(resInfo.(pStr)));     
 end
 
 %-------------------------------------------------------------------------%
@@ -9035,34 +9047,40 @@ devType(strcmp(devType,'HTControllerV2')) = {'Motor'};
 function setupCustResObjects(handles)
 
 % field retrieval
+rType0 = 1;
 hFig = handles.figExptSetup;
-hText = findall(handles.panelVideoRes,'Style','Text');
 hEdit = findall(handles.panelVideoRes,'Style','Edit');
 infoObj = getappdata(hFig,'infoObj');
 
 % sets the video resolution data struct
 vRes = getRecordingResolution(infoObj);
-resInfo = struct('rType',1,'W',vRes(1),'H',vRes(2),'bSz',1);
+
+% determine if the video resolution is very large
+if isLargeVideo(vRes)
+    % if so, then use pixel binning instead of the original
+    [handles.popupCustRes.Value,rType0] = deal(2);
+
+    % scales the video resolution until less than tolerance
+    while isLargeVideo(vRes)
+        vRes = round(vRes/2);
+    end
+end
+
+% updates the resolution data struct
+resInfo = struct('rType',rType0,'W',vRes(1),'H',vRes(2),'bSz',1);
 setappdata(hFig,'resInfo',resInfo)
 
-% sets up the editboxes
-for i = 1:length(hEdit)
-    % updates the editbox properties
-    pStr = get(hEdit(i),'UserData');
-    dimVal = num2str(getStructField(resInfo,pStr));
-    
-    % updates the object properties
-    set(hEdit(i),'Callback',{@editResDim,handles},...
-                 'Enable','off','String',dimVal);
-    set(hText(i),'Enable','Off');
-end
+% sets the callback functions and runs the popupmenu callback
+arrayfun(@(x,y)(set(x,'String',num2str(y),...
+    'Callback',{@editResDim,handles})),hEdit,vRes(:));
+popupCustRes_Callback(handles.popupCustRes, [], handles)
 
 % --- retrieves the current recording device resolution
 function vRes = getRecordingResolution(infoObj)
 
 % retrieves the camera resolution
 if infoObj.isTest
-    vRes = [1,1,infoObj.objIMAQ.szImg];
+    vRes = flip(infoObj.objIMAQ.szImg);
 elseif infoObj.isWebCam
     vRes = infoObj.objIMAQ.pROI(3:4);
 elseif isVidDev(infoObj.objIMAQ)    
@@ -9083,6 +9101,39 @@ if length(xS) > nLenMax
     xS = xS([1,end,end,1]);    
     yS = yL([1,1,end,end]);
 end
+
+% ---------------------------------------- %
+% --- LARGE VIDEO DIAGNOSTIC FUNCTIONS --- %
+% ---------------------------------------- %
+
+% --- large dimension value
+function dimLarge = largeDimValue()
+
+dimLarge = 2500;
+
+% --- determines if the current video resolution is "large"
+function isLarge = isLargeVideo(vRes)
+
+% large video flag
+isLarge = all(vRes > largeDimValue());
+
+% --- prompts the user if they still want to use a large video
+function useLarge = largeVideoPrompt(vRes)
+
+% if the video resolution is very large, then prompt the 
+tStr = 'Large Video Resolution Detected';
+vStr = sprintf('%i x %i',vRes(2),vRes(1));
+qStr = sprintf(['The video resolution (%s) is extremely large.\n\n',...
+            'It is strongly suggested that you use either ',...
+            'Pixel Binning or Custom Resolution (with dimensions ',...
+            'less than %ipx). If you do not, it is highly likely ',...
+            'that you will encounter memory issue.\n\nDo you still ',...
+            'want to continue using the large video dimensions?'],...
+            vStr,largeDimValue());
+uChoice = questdlg(qStr,tStr,'Yes','No','Yes');
+
+% set the flag based on user choise
+useLarge = strcmp(uChoice,'Yes');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%    UNUSED FUNCTIONS?    %%%%

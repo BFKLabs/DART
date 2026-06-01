@@ -237,7 +237,7 @@ switch typeStr
         setTrackGUIProps(handles,'UpdateFrameSelection')
         setMenuEnable(handles,'on',8)
         setMenuEnable(handles,'off',7)
-        setMenuEnable(handles,eStr{~hFig.isCalib+1},12)
+        setMenuEnable(handles,eStr{~hFig.isCalib+1},13)
         setMenuEnable(handles,eStr{iMov.isSet+1},2);
         updateHMMenu(handles,iData);
                 
@@ -1065,7 +1065,7 @@ function setMenuEnable(handles,state,ind)
 objStr = {'menuSaveMovie','menuSaveSoln','menuViewProgress',...
           'menuWinsplit','menuVideoFeed','menuBatchProcess',...
           'menuManualReseg','menuSplitVideo','menuCorrectTrans',...
-          'menuUseGray','menuHistMatch','menuSampleRate'};
+          'menuUseGray','menuUndistortImage','menuHistMatch','menuSampleRate'};
 
 % sets all the indices (if none are provided)
 if (nargin == 2)

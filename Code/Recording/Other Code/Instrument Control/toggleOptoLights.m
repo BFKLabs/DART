@@ -1,11 +1,15 @@
-function toggleOptoLights(handles,hObject,isIR,yAmp)
+function toggleOptoLights(obj,hObject,isIR,yAmp)
 
 % sets the light amplitude (if not provided)
 if nargin < 4; yAmp = '050'; end
 
 % initialisations
-hFig = handles.output;
-objDAQ = getappdata(hFig,'objDAQ');
+if isa(obj,'ExptSetupDlg')
+    objDAQ = obj.infoObj.objDAQ;
+else
+    hFig = obj.output;
+    objDAQ = getappdata(hFig,'objDAQ');    
+end
 
 if isempty(objDAQ)
     % if there are no connected devices, then exit

@@ -58,7 +58,7 @@ classdef VideoPreview < handle
             
         end
         
-        % ------------------------------------------------- %
+        % ----------------------------  --------------------- %
         % --- TRACKING VIDEO PREVIEW CALLBACK FUNCTIONS --- %
         % ------------------------------------------------- %      
         
@@ -175,9 +175,13 @@ classdef VideoPreview < handle
                 obj.objIMAQ.hAx = obj.hGUI.axesPreview;
             else
                 cbFcn = @obj.previewRec;
-                if obj.useVD && ~isVidDev(obj.objIMAQ)
-                    resetImageAcquisitionDevice(obj,false)                    
-                elseif ~obj.useVD && isa(obj.objIMAQ,'imaq.VideoDevice')
+                if obj.useVD 
+                    if ~isVidDev(obj.objIMAQ)
+                        resetImageAcquisitionDevice(obj,false)
+                    else
+                        step(obj.objIMAQ);
+                    end
+                elseif ~obj.useVD && isVidDev(obj.objIMAQ)
                     resetImageAcquisitionDevice(obj,false)
                 end
             end            
@@ -250,7 +254,7 @@ classdef VideoPreview < handle
                 % case is testing
                 obj.objIMAQ.stopVideo();
                 
-            elseif obj.isWebCam || obj.useVD()  
+            elseif obj.isWebCam || obj.useVD  
                 % case is a webcam
                 if ~isempty(obj.hTimer) && isvalid(obj.hTimer)
                     if strcmp(obj.hTimer.Running,'on')
@@ -258,6 +262,11 @@ classdef VideoPreview < handle
                         stop(obj.hTimer)
                         delete(obj.hTimer)
                     end
+                end
+                
+                % releases the video device
+                if obj.useVD
+                    release(obj.objIMAQ);
                 end
                 
 %                 % closes the preview object
@@ -315,7 +324,7 @@ classdef VideoPreview < handle
                 % ensures the camera is not running 
                 if obj.isWebCam
                     obj.objIMAQ.Resolution = obj.objIMAQ.resTemp;
-                elseif ~obj.useVD()
+                elseif ~obj.useVD
                     if strcmp(get(obj.objIMAQ,'Running'),'on')
                         stop(obj.objIMAQ); pause(0.05);
                     end 
@@ -338,7 +347,7 @@ classdef VideoPreview < handle
             pause(0.05);
 
             % resets the image axis     
-            if obj.isWebCam || obj.useVD()
+            if ~obj.isTest && (obj.isWebCam || obj.useVD)
                 if obj.isWebCam
                     pR = obj.objIMAQ.pROI;                
                     vResS = obj.objIMAQ.Resolution;
@@ -405,7 +414,7 @@ classdef VideoPreview < handle
                     obj.objIMAQ.startVideo(~obj.isRecord);                    
                 else
                     % case is the camera object
-                    if obj.isWebCam || obj.useVD()
+                    if obj.isWebCam || obj.useVD
                         % determines if the calibration needs update
                         obj.updateVC = ...
                             ~isempty(obj.vcObj) && obj.vcObj.isOpen;

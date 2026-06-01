@@ -5,7 +5,8 @@ function dCount = getMonthDayCount(iSel)
 switch (iSel)
     case (2) 
         % case is February
-        dCount = 28;
+        y = year(datetime('now'));
+        dCount = 28 + (mod(y,4) == 0);
     
     case {4,6,9,11} 
         % case is the 30 day months

@@ -176,6 +176,7 @@ addObjProps(hObject,'dispImage',@dispImage,...
             'menuAllowResize_Callback',@menuAllowResize_Callback,...
             'calcAxesGlobalCoords',@calcAxesGlobalCoords,...
             'figFlyTrack_ResizeFcn',@figFlyTrack_ResizeFcn,...
+            'menuUndistortImage',@menuUndistortImage_Callback,...
             'postTrackFunc',@postTrackFunc)
 
 % runs the fixed ratio callback function
@@ -973,6 +974,12 @@ function menuDownSample_Callback(~, ~, handles)
 ConvertVideo(handles.output);
 
 % -------------------------------------------------------------------------
+function menuFishEyeCorrect_Callback(~, ~, handles)
+
+% runs the fisheye distortion correction
+FishEyeDistort(handles.output);
+
+% -------------------------------------------------------------------------
 function menuProgPara_Callback(~, ~, handles)
 
 % runs the program default GUI
@@ -1371,6 +1378,23 @@ else
     % updates the image
     dispImage(handles)    
 end
+
+% -------------------------------------------------------------------------
+function menuUndistortImage_Callback(hObject, ~, handles)
+
+if ~exist('handles','var')
+    handles = guidata(hObject);
+end
+
+% toggles the check item
+toggleMenuCheck(hObject);
+
+% updates the RBG flag
+hFig = handles.output;
+hFig.iMov.fdPara.useFD = strcmp(get(hObject,'Checked'),'on');
+
+% updates the image
+dispImage(handles);
 
 % -------------------------------------------------------------------------
 function menuHistMatch_Callback(hObject, ~, handles)
@@ -2448,7 +2472,7 @@ switch nargin
     otherwise
         % case is a normal image update
         isSub = get(handles.checkLocalView,'value');
-        ImgNw = getDispImage(iData,iMov,cFrm,isSub,handles,1);        
+        ImgNw = getDispImage(iData,iMov,cFrm,isSub,handles,1);
 end
 
 % applies the image correction (if required)

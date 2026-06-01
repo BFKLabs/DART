@@ -54,8 +54,12 @@ if isOK
                 % creates the class object and updates within the GUI
                 pkgObj = feval('RunStreamPix');
                 if pkgObj.ok
-                    handles = varargin{1};
-                    setappdata(handles.figExptSetup,'spixObj',pkgObj);                
+                    objH = varargin{1};
+                    if isprop(objH,'spikObj')
+                        objH.spikObj = pkgObj;
+                    else
+                        setappdata(objH.figExptSetup,'spixObj',pkgObj);
+                    end
                 end
             end 
             

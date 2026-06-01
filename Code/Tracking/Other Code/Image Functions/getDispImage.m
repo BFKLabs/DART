@@ -47,7 +47,7 @@ if ~isempty(bufData)
 
         % sets the check flag to false again
         bufData.changeArray = false;
-    catch ME
+    catch
         bufData.changeArray = false;
         a = 1;
     end
@@ -133,7 +133,7 @@ if ~frameSet
                     end
                 end
                 
-            catch ME
+            catch
                 % if an error occured, then return an empty array
                 Img = [];
                 return
@@ -159,8 +159,9 @@ if isempty(Img)
     else
         Img = NaN(szImg);
     end
-else
-    Img = getRotatedImage(iMov,Img);
+else        
+    % rotates the image
+    Img = getRotatedImage(iMov,Img);    
 end
 
 % if iMov.rot90; Img = rot90(Img,-1); end

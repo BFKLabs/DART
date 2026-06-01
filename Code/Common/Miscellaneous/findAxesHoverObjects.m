@@ -3,7 +3,6 @@ function hHover = findAxesHoverObjects(hFig,mStr,hP)
 
 % retrieves the current axes handle
 
-
 % sets the parent object (if not provided)
 if exist('hP','var')
     %

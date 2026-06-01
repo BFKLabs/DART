@@ -380,22 +380,22 @@ classdef InteractObj < handle
                 % case is the old format objects
                 if exist('forceUpdate','var') && forceUpdate
                     % forces the update of the object manually (is required
-                    % when updating position within the callback function)                    
+                    % when updating position within the callback function)
                     switch obj.Type
                         case 'line'
                             % case is a line object
-                            obj.forceResetLinePos(pPos);                            
+                            obj.forceResetLinePos(pPos);
                     end
                 else
                     % otherwise, update position via the API
                     obj.hAPI.setPosition(pPos);
                 end
                 
-            else               
+            else
                 % retrieves the position based on the object type
                 switch obj.Type
-                    case 'ellipse'                
-                        % case is the ellipse objects                        
+                    case 'ellipse'
+                        % case is the ellipse objects
                         
                         % resets the ellipses axes
                         pAx = pPos(3:4)/2;
@@ -404,10 +404,10 @@ classdef InteractObj < handle
                         
                     otherwise
                         % case is the other object types
-                        set(obj.hObj,'Position',pPos);                                    
+                        set(obj.hObj,'Position',pPos);
                 end
-            end 
-                        
+            end
+            
         end
         
         % --- retrieves the field value(s) provided by fStr
@@ -434,7 +434,7 @@ classdef InteractObj < handle
             
         end
        
-        % --- 
+        % --- force resetting of the line position
         function forceResetLinePos(obj,pPos)
         
             set(obj.hM(obj.iEP),'xData',pPos(1,1),'yData',pPos(1,2));
@@ -442,7 +442,7 @@ classdef InteractObj < handle
             
         end
             
-        % --- 
+        % --- sets the object line properties
         function setLineProps(obj,varargin)
             
             % field retrieval

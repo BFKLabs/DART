@@ -8,6 +8,7 @@ tOfs = tNow(4) >= tStartH;
 
 % retrieves the device details
 if isa(varargin{1},'ExptSetupDlg')
+    obj = varargin{1};
     exptType = obj.infoObj.exType;
     objIMAQ = obj.infoObj.objIMAQ;
     objDAQ = obj.infoObj.objDAQ;

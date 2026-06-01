@@ -59,6 +59,11 @@ else
         mObjW = VideoWriter(vFileOut,vComp);   
         open(mObjW);
         
+        % resets the video to the first frame (Type 1 videos only)
+        if fType == 1
+            mObj.CurrentTime = 0;
+        end
+        
         % reads/writes the frames for the new video
         for iFrm = 1:nFrm
             % updates the progress bar
@@ -119,7 +124,7 @@ function Img = getNewFrame(mObj,fType,iFrm)
 switch fType
     case 1
         % case is either .mov, .mj2 or .mp4
-        Img = read(mObj,iFrm);
+        Img = readFrame(mObj);
         
     case 2
         % case is the .mkv values 
@@ -212,4 +217,7 @@ function closeVideoObjects(mObj,mObjW)
 close(mObjW);
 
 % closes the file object (if .mj2 format)
-try; delete(mObj); end
+try
+    delete(mObj);
+catch
+end

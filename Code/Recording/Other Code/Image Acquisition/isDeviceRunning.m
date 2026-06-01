@@ -15,7 +15,7 @@ elseif obj.isWebCam
         isDevRun = false;
     end
     
-elseif isa(obj.objIMAQ,'imaq.VideoDevice')
+elseif isVidDev(obj.objIMAQ)
     % case is a imaq.VideoDevice
     if isempty(obj.hTimer)
         isDevRun = false;

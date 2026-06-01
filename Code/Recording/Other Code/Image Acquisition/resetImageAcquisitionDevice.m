@@ -47,5 +47,4 @@ setappdata(hFigM,'infoObj',infoObj);
 if resetFlds
     resetCameraROIPara(obj.objIMAQ)
     applyDefaultDeviceProps(infoObj,devInfo.DeviceName);
-
 end

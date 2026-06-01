@@ -540,7 +540,7 @@ classdef ConvertVideo < handle
                 
                 % opens the video object
                 open(vObjW);
-                
+                                
                 % writes all frames within the video
                 nFrmF = length(indF);
                 for j = 1:nFrmF
@@ -553,7 +553,7 @@ classdef ConvertVideo < handle
                     end
                     
                     % reads the new frame from the video
-                    IfrmNw = read(vObjR,indF(j));
+                    IfrmNw = readFrame(vObjR);
                     if obj.hObjS{end}.Value
                         IfrmNw = imresize(IfrmNw,szD);
                     end

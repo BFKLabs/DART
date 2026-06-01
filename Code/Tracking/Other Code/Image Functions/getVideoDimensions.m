@@ -23,6 +23,7 @@ if exist(fStr,'file')
             otherwise
                 [V,~] = mmread(fStr,inf,[],false,true,'');
                 szImg = [V.height V.width];
-        end        
+        end      
+    catch ME
     end
 end
