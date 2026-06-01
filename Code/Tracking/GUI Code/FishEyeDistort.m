@@ -177,7 +177,7 @@ classdef FishEyeDistort < handle
             end
             
             % converts the RGB image to grayscale
-            obj.I = obj.hFigM.hImg.CData;
+            obj.I = read(obj.hFigM.mObj,obj.hFigM.iData.cFrm);
             if size(obj.I,3) == 3
                 obj.I = rgb2gray(obj.I);
             end
@@ -223,7 +223,7 @@ classdef FishEyeDistort < handle
 
             % axes panel height/width calculations
             obj.widPanelImg = 2*obj.dX + obj.widAx;
-            obj.hghtPanelImg = 2*obj.dX + obj.hghtAx;
+            obj.hghtPanelImg = 3.5*obj.dX + obj.hghtAx;
             
             % information panel calculations
             obj.hghtPanelM = hOfs + obj.nParaM*obj.hghtRow;
@@ -283,6 +283,8 @@ classdef FishEyeDistort < handle
             hMenuF = uimenu(obj.hFig,'Label','File','Tag','hMenuFile');            
             uimenu(hMenuF,'Label','Convert Video','Accelerator','C',...
                 'Callback',@obj.menuConvertVideo);
+            uimenu(hMenuF,'Label','Reset Default Parameters',...
+                'Accelerator','R','Callback',@obj.menuResetDefaultPara);            
             uimenu(hMenuF,'Label','Close Window','Accelerator','X',...
                 'Callback',@obj.menuCloseWindow,'Separator','on');            
             
@@ -469,7 +471,7 @@ classdef FishEyeDistort < handle
             % initialisations            
             pStrB = 'FITNESS SCORE';
             bTypeB = {'pushbutton','togglebutton'};
-            tStrB = {'Best Score: ','Current Score: '};            
+            tStrB = {'Current Score: ','Best Score: '};            
             bStrB = {'Reset Best Solution','Optimise Parameters'};            
             cbFcnB = {@obj.buttonResetPara,@obj.buttonOptPara};
             
@@ -549,6 +551,9 @@ classdef FishEyeDistort < handle
             % --- IMAGE AXES PANEL OBJECTS --- %
             % -------------------------------- %  
             
+            % axis titles
+            tStr = {'ORIGINAL IMAGE','CONVERTED IMAGE'};
+            
             % creates the otuer panel object
             xPosAx = sum(pPosO([1,3])) + obj.dX;
             pPosAx = [xPosAx,obj.dX,obj.widPanelAx,obj.hghtPanel];
@@ -561,7 +566,8 @@ classdef FishEyeDistort < handle
                 % creates the panel object
                 pPosImg = [obj.dX*[1,1]/2,obj.widPanelImg,obj.hghtPanelImg];
                 obj.hPanelImg{i} = createUIObj('panel',obj.hPanelAx,...
-                    'Title','','Units','Pixels','Position',pPosImg);                
+                    'Title',tStr{i},'Units','Pixels','Position',pPosImg,...
+                    'FontSize',obj.fSzH,'FontWeight','Bold');           
                 
                 % creates the panel image axes
                 obj.setupImageAxes(i);
@@ -677,6 +683,19 @@ classdef FishEyeDistort < handle
             
         end
 
+        % --- reset default parameter menu item callback function
+        function menuResetDefaultPara(obj,varargin)
+            
+            % resets the original default parameters
+            obj.getParaStructFields(true);
+            
+            % resets the parameter fields
+            obj.pBest.S = -1;
+            obj.updateImage();
+            obj.buttonResetPara();
+            
+        end
+        
         % --- close window menu item callback function
         function menuCloseWindow(obj,varargin)
 
@@ -888,7 +907,7 @@ classdef FishEyeDistort < handle
         end
         
         % --- fisheye distortion parameter optimisation callback function
-        function buttonOptPara(obj,hBut,~)            
+        function buttonOptPara(obj,hBut,~)
             
             if obj.isOptPara
                 % resets the optimisation parameters
@@ -1050,16 +1069,21 @@ classdef FishEyeDistort < handle
         % ------------------------------- %                
         
         % --- retrieves the fish-eye parameter struct fields
-        function getParaStructFields(obj)
+        function getParaStructFields(obj,useDef)
             
-            if isempty(obj.fdPara0)
+            % default input arguments
+            if ~exist('useDef','var')
+                useDef = false;
+            end
+            
+            if isempty(obj.fdPara0) || useDef
                 % fish-eye instrinsics parameters
                 obj.pPhi = 0;
                 obj.pDist = [obj.imgSz(2), obj.imgSz(1)]/2;
                 
                 % mapping coefficients
                 obj.mCoeff = zeros(1,4);
-                obj.mCoeff(1:2) = [round(obj.imgSz(1)/sqrt(2)),-2];
+                obj.mCoeff(1:2) = [round(obj.imgSz(1)/sqrt(2)),-1];
 
                 % recalculates the fish-eye intrinsics
                 obj.recalcIntrinsics();                
@@ -1115,7 +1139,7 @@ classdef FishEyeDistort < handle
             % calculates the fitness score
             sNw = obj.calcFitnessScore(obj.hImage{2}.CData,obj.nDS);
 
-            %
+            % updates the fitness score object fields
             obj.hTxtB{1}.String = num2str(sNw);
             if sNw > obj.pBest.S
                 % if solution is better, then update fields

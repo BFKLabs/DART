@@ -189,7 +189,8 @@ classdef CreateDARTExe < handle
             spkgStr = obj.getSupportPackageDir();
             toolStr0 = ['-N -p daq -p imaq -p images -p signal ',...
                         '-p instrument -p optim -p stats -p nnet ',...
-                        '-p curvefit -p shared -p wavelet -p vision'];
+                        '-p curvefit -p shared -p wavelet -p vision ',...
+                        '-p globaloptim'];
             obj.toolStr = sprintf('%s %s',toolStr0,spkgStr);            
             
             % warning string
