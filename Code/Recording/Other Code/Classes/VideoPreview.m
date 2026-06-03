@@ -22,12 +22,13 @@ classdef VideoPreview < handle
         isTest
         isWebCam
         useVD = true;
+        updateVC = false;
+        initMarkers = false;
+        isPauseTimer = false;
         
         % other parameters
         szI
         tPause = 1;
-        updateVC = false;
-        initMarkers = false;
         
     end
     
@@ -49,7 +50,7 @@ classdef VideoPreview < handle
             if isRecord
                 % case is the preview is run through the recording GUI
                 obj.hAx = obj.hGUI.axesPreview;   
-                obj.vcObj = getappdata(hFig,'vcObj');
+                obj.vcObj = getappdata(hFig,'vcObj');                
                 
             else
                 % case is the preview is run through the tracking GUI
@@ -155,7 +156,8 @@ classdef VideoPreview < handle
 
             % resets the running flag
             cbFcn = [];
-            obj.isOn = true; 
+            obj.isOn = true;
+            obj.isPauseTimer = false;
             
             % retrieves the image acquisition object
             infoObj = getappdata(obj.hFig,'infoObj');
@@ -477,8 +479,16 @@ classdef VideoPreview < handle
             
             % sets up the event struct object
             if obj.useVD
-                Img = step(obj.objIMAQ);
+                % case is imaq.VideoDevice
+                if obj.isPauseTimer
+                    % if pausing, then exit
+                    return
+                else
+                    % otherwise, get the next frame
+                    Img = step(obj.objIMAQ);
+                end
             else
+                % case is a webcam device
                 Img = snapshot(obj.objIMAQ);
             end
                                     

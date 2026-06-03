@@ -1083,6 +1083,7 @@ classdef AdaptorInfoClass < handle
 
             % if there are any valid devices then retrieve their details
             pStr = findSerialPort(sStr);
+            disp(pStr)
             if ~isempty(pStr)
                 pStrT = cellfun(@strjoin,num2cell(pStr,2),'un',0);
                 [~,iA,~] = unique(pStrT);

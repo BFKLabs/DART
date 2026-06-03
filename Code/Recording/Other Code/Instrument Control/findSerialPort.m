@@ -4,10 +4,16 @@ function pStr = findSerialPort(sStr,varargin)
 % retrieves the serial port information and connected devices
 comAvail = getSerialPortInfo();
 
+% case is windows
+psCmd = ['powershell -Command "Get-CimInstance Win32_PnPEntity | ',...
+         'Where-Object { $_.Caption -like """*COM*""" } | ',...
+         'Select-Object Name, DeviceID, Manufacturer"'];
+[~,usbStr] = system(psCmd); 
+
 % retrieves the serial device information
 [pStr,iPathID] = deal([]);
 for i = 1:length(sStr)
-    [pStrNw,iPathIDNw] = detValidSerialDeviceInfo(comAvail,sStr{i});
+    [pStrNw,iPathIDNw] = detValidSerialDeviceInfo(comAvail,sStr{i},usbStr);
     [pStr,iPathID] = deal([pStr;pStrNw],[iPathID;iPathIDNw]);
 end
     

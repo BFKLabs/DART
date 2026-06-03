@@ -637,6 +637,10 @@ runOutputDevices(stimObj,1:length(stimObj));
 % --- Executes on button press in toggleVideoPreview.
 function toggleVideoPreview_Callback(hObject, ~, handles)
 
+if ~exist('handles','var')
+    handles = guidata(hObject);
+end
+
 % sets the eventdata flag (if not specifically set)
 prObj = getappdata(handles.figFlyRecord,'prObj');
 isSel = get(hObject,'value');

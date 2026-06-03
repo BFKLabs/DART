@@ -4,14 +4,16 @@ classdef VideoPara < handle
     properties
         
         % external object handles
-        hMain
+        hMainM
         hFigM               
         
         % class objects/data structs
         iProg        
         srcObj
         infoObj
-        infoSrc        
+        infoSrc    
+        prObj
+        sObj
         
         % object handles
         hFig
@@ -44,21 +46,25 @@ classdef VideoPara < handle
         % array fields
         iR
         iC
-        isEnum
-        isNum
-        isFeas
         cVal0
         hasP
         igFld
         igName
+        dName
         nPara
         nRow
         pVal0
         sInfo
+        dProps
         widTxtMx
-        widObjMx
+        widObjMx        
+        
+        % boolean class fields
+        isVD
+        isNum
+        isEnum        
+        isFeas        
         isWebCam
-        sObj
         
         % scalar/string fields
         nCol
@@ -76,11 +82,11 @@ classdef VideoPara < handle
     methods
         
         % --- class constructor 
-        function obj = VideoPara(hMain)
+        function obj = VideoPara(hMainM)
             
             % sets the input arguments
-            obj.hMain = hMain;
-            obj.hFigM = hMain.figFlyRecord;            
+            obj.hMainM = hMainM;
+            obj.hFigM = hMainM.figFlyRecord;            
             
             % initialises the class fields/objects
             obj.initClassFields();            
@@ -90,26 +96,53 @@ classdef VideoPara < handle
             end
             
         end
-        
+                
         % --- initialises the class fields
         function initClassFields(obj)
             
             % retrieves the data struct/class objects
             obj.iProg = getappdata(obj.hFigM,'iProg');
             obj.infoObj = getappdata(obj.hFigM,'infoObj');
-            obj.isWebCam = isa(obj.infoObj.objIMAQ,'webcam');
+            obj.prObj = getappdata(obj.hFigM,'prObj');
             
+            % boolean class fields
+            obj.isVD = isVidDev(obj.infoObj.objIMAQ);            
+            obj.isWebCam = isa(obj.infoObj.objIMAQ,'webcam');
+                        
             % creates the loadbar object
             lStr = 'Retrieving Device Default Properties';
             obj.startLoadBar(lStr);
             
             % retrieves the source information fields
             if obj.isWebCam
+                % case is a webcam
+                
+                % field retrieval                
                 obj.sObj = obj.infoObj.objIMAQ;
                 obj.infoSrc = combineDataStruct(obj.sObj.pInfo);
+                obj.dName = obj.infoObj.objIMAQ.Name;
+
+            elseif obj.isVD
+                % case is an imaq.VideoDevice
+                
+                % field retrieval
+                obj.sObj = obj.infoObj.objIMAQ;                
+                obj.dProps = obj.sObj.DeviceProperties;
+                
+                % retrieves the video device source information
+                obj.getVideoDeviceSourceInfo();           
+                
+                % retrieves the device name
+                dNameSp = strsplit(obj.infoObj.objIMAQ.Device);
+                obj.dName = strjoin(dNameSp(1:end-1),' ');                
+                
             else
+                % case is videoinput
+                
+                % field retrieval                
                 obj.srcObj = getselectedsource(obj.infoObj.objIMAQ);
                 obj.infoSrc = combineDataStruct(propinfo(obj.srcObj));
+                obj.dName = obj.infoObj.objIMAQ.Name;
                 obj.sObj = obj.srcObj;
             end
             
@@ -128,7 +161,7 @@ classdef VideoPara < handle
                      
             % applies the default device properties
             obj.applyDefDeviceProps();
-                     
+            
             % if there are no valid parameters, then exit the function
             if ~any(obj.isEnum) && ~any(obj.isNum)                
                 % outputs a warning to screen
@@ -156,16 +189,24 @@ classdef VideoPara < handle
             
             % sets the source object handle and original parameter values 
             % into the GUI
-            if obj.isWebCam
+            if obj.isWebCam || obj.isVD
                 % case is a webcam object
-                fStr = field2cell(obj.infoSrc,'Name');
-                pStr0 = fieldnames(obj.infoObj.objIMAQ);                
+                
+                % retrieves the device property field names
+                if obj.isVD
+                    pStr0 = fieldnames(obj.dProps);
+                else
+                    pStr0 = fieldnames(obj.infoObj.objIMAQ);
+                end
+                
+                % determines the valid property fields
+                fStr = field2cell(obj.infoSrc,'Name'); 
                 [pStr,iA,~] = intersect(fStr,pStr0,'Stable');
                 
                 % reduces down the arrays
                 obj.isNum = obj.isNum(iA);
                 obj.isEnum = obj.isEnum(iA);
-                obj.infoSrc = obj.infoSrc(iA);               
+                obj.infoSrc = obj.infoSrc(iA);                 
                 
             else
                 % case is another camera type
@@ -179,7 +220,11 @@ classdef VideoPara < handle
             % retrieves the original parameter values
             for i = 1:length(okP)
                 try
-                    obj.pVal0(i,:) = {pStr{i},get(obj.sObj,pStr{i})};
+                    if obj.isVD
+                        obj.pVal0(i,:) = {pStr{i},obj.dProps.(pStr{i})};
+                    else
+                        obj.pVal0(i,:) = {pStr{i},get(obj.sObj,pStr{i})};
+                    end
                 catch
                     okP(i) = false;
                 end
@@ -214,7 +259,7 @@ classdef VideoPara < handle
         end
         
         % --- initialises the class fields
-        function initClassObjects(obj)            
+        function initClassObjects(obj)
             
             % deletes any previous objects
             hFigPr = findall(0,'tag',obj.tagStr);
@@ -350,9 +395,9 @@ classdef VideoPara < handle
             setObjEnable(obj.hButC{3},'off')
             
             % disables the real-time tracking menu item (if available)
-            if isfield(obj.hMain,'menuRTTrack')
-                obj.eStr0 = get(obj.hMain.menuRTTrack,'enable');
-                setObjEnable(obj.hMain.menuRTTrack,'off')
+            if isfield(obj.hMainM,'menuRTTrack')
+                obj.eStr0 = get(obj.hMainM.menuRTTrack,'enable');
+                setObjEnable(obj.hMainM.menuRTTrack,'off')
             end
             
             % stops the loadbar
@@ -418,10 +463,10 @@ classdef VideoPara < handle
             % field retrieval
             srcInfo = get(hObj,'UserData');
             nwVal = str2double(get(hObj,'string'));
-            prVal = get(obj.sObj,srcInfo.Name);
+            prVal = obj.getParaVal(srcInfo);
             
             % retrieves the source information struct for the parameter
-            if obj.isWebCam
+            if obj.isWebCam || obj.isVD
                 fName = field2cell(obj.infoSrc,'Name');
                 srcInfoNw = obj.infoSrc(strcmp(fName,srcInfo.Name));
             else                
@@ -430,13 +475,17 @@ classdef VideoPara < handle
             
             % retrieves the current parameters constraints values
             nwLim = srcInfoNw.ConstraintValue;
-%             isInt = all(mod(nwLim,1) == 0);
             
             % check to see if the new value is valid
             if chkEditValue(nwVal,nwLim,false)
                 try
                     % if so, then update the camera parameters
-                    set(obj.sObj,srcInfo.Name,nwVal)    
+                    if obj.isVD
+                        obj.updateVideoDevicePara(srcInfo.Name,nwVal);
+                    else
+                        set(obj.sObj,srcInfo.Name,nwVal)    
+                    end
+                        
                     obj.specialParaUpdate(srcInfo.Name,nwVal)
                     
                     % enables the reset button
@@ -463,11 +512,12 @@ classdef VideoPara < handle
             % retrieves the current property value
             lStr = get(hObj,'String');
             nwVal = lStr{get(hObj,'value')};
-            prVal = get(obj.sObj,srcInfo.Name);
+            prVal = obj.getParaVal(srcInfo);
             
             try
                 % updates the relevant field in the source object
                 if obj.isWebCam
+                    % case is a webcam device
                     switch srcInfo.Name
                         case 'BacklightCompensation'
                             % case is the backlight compensation
@@ -479,8 +529,12 @@ classdef VideoPara < handle
                             set(obj.sObj,srcInfo.Name,nwVal)
                     end
                     
+                elseif obj.isVD
+                    % case is imaq.VideoDevice
+                    obj.updateVideoDevicePara(srcInfo.Name,nwVal);
+                    
                 else
-                    % case is the other camer types
+                    % case is the other camera types
                     set(obj.sObj,srcInfo.Name,nwVal)
                 end                
                 
@@ -523,6 +577,26 @@ classdef VideoPara < handle
             
         end                        
         
+        % --- updates the video device parameter
+        function updateVideoDevicePara(obj,pFld,pVal)
+            
+            % pauses the preview timer (if running)
+            if obj.prObj.isOn
+                obj.prObj.isPauseTimer = true;
+                release(obj.sObj);
+            end
+            
+            % updates the parameter field value
+            obj.dProps.(pFld) = pVal;
+            
+            % restarts the preview timer (if running)
+            if obj.prObj.isOn
+                step(obj.sObj);
+                obj.prObj.isPauseTimer = false;
+            end
+            
+        end
+        
         % ----------------------------------------- %
         % --- CONTROL BUTTON CALLBACK FUNCTIONS --- %
         % ----------------------------------------- %          
@@ -564,8 +638,8 @@ classdef VideoPara < handle
         function buttonSave(obj, ~, ~)
             
             % sets the default file name
+            devName = obj.dName;            
             fDate = datestr(now,'dd-mmm-yyyy');            
-            devName = obj.infoObj.objIMAQ.Name;            
             defName = sprintf('%s (%s).vpr',devName,fDate);
             defFile = fullfile(obj.iProg.CamPara,defName);
             
@@ -621,6 +695,8 @@ classdef VideoPara < handle
                 % retrieves the current parameter values and field names
                 if obj.isWebCam
                     fldNames = getWebCamProps(obj.infoObj.objIMAQ);
+                elseif obj.isVD
+                    [~,fldNames] = obj.getVideoDeviceSourceInfo();
                 else
                     fldNames = fieldnames(obj.srcObj);
                 end
@@ -632,7 +708,11 @@ classdef VideoPara < handle
                 % retrieves the valid parameters
                 for i = 1:length(okP)
                     try
-                        pVal{i} = get(obj.sObj,fldNames{i});
+                        if obj.isVD
+                            pVal{i} = obj.dProps.(fldNames{i});
+                        else
+                            pVal{i} = get(obj.sObj,fldNames{i});
+                        end
                     catch
                         okP(i) = false;
                     end
@@ -658,12 +738,12 @@ classdef VideoPara < handle
             wState = warning('off','all');
             
             % determines if the video preview is running
-            vidOn = get(obj.hMain.toggleVideoPreview,'Value');
+            vidOn = get(obj.hMainM.toggleVideoPreview,'Value');
             if vidOn
                 % if so, then turn it off
                 toggleFcn = getappdata(obj.hFigM,'toggleVideoPreview');
-                set(obj.hMain.toggleVideoPreview,'Value',false)
-                toggleFcn(obj.hMain.toggleVideoPreview,[],obj.hMain);
+                set(obj.hMainM.toggleVideoPreview,'Value',false)
+                toggleFcn(obj.hMainM.toggleVideoPreview,[],obj.hMainM);
             end
 
             % sets up the device parameter struct
@@ -678,7 +758,7 @@ classdef VideoPara < handle
             
             % resets the camera ROI (if necessary)
             resetCameraROIPara(obj.infoObj.objIMAQ);                    
-            resetDeviceProps(obj.sObj,pValF,obj.hObj);            
+            resetDeviceProps(obj,pValF);
             obj.updateEnumParaDepObjects();                
             
             % resets the video properties (if calibrating)
@@ -689,8 +769,8 @@ classdef VideoPara < handle
             
             % turns the video preview back on (if already on)
             if vidOn
-                set(obj.hMain.toggleVideoPreview,'Value',true)
-                toggleFcn(obj.hMain.toggleVideoPreview,[],obj.hMain);
+                set(obj.hMainM.toggleVideoPreview,'Value',true)
+                toggleFcn(obj.hMainM.toggleVideoPreview,[],obj.hMainM);
             end
             
             % reverts the warning back to their original state
@@ -703,10 +783,10 @@ classdef VideoPara < handle
         function buttonClose(obj, ~, ~)
             
             % resets the real-time tracking menu item enabled properties
-            if isfield(obj.hMain,'menuRTTrack')
-                setObjEnable(obj.hMain.menuRTTrack,obj.eStr0)
+            if isfield(obj.hMainM,'menuRTTrack')
+                setObjEnable(obj.hMainM.menuRTTrack,obj.eStr0)
             end
-            
+                        
             % deletes the sub-GUI
             obj.stopLoadBar(1);
             delete(obj.hFig);
@@ -933,7 +1013,12 @@ classdef VideoPara < handle
                             eStr = {'off','on'};
                             pVal = eStr{1+pVal};
                     end
+                elseif obj.isVD
+                    % case is a imaq.VideoDevice
+                    pVal = obj.dProps.(sInfo.Name);
+                    
                 else
+                    % case is a video input device
                     pVal = get(obj.srcObj,sInfo.Name);
                 end
             catch
@@ -950,14 +1035,14 @@ classdef VideoPara < handle
         function specialParaUpdate(obj,pName,pVal)
                         
             % updates the video ROI (depending on camera type)
-            switch get(obj.infoObj.objIMAQ,'Name')
+            switch obj.dName
                 case 'Allied Vision 1800 U-501m NIR'
                     switch pName
                         case {'AutoModeRegionOffsetX',...
                               'AutoModeRegionOffsetY',...
                               'AutoModeRegionWidth',...
                               'AutoModeRegionHeight'}
-                            resetCameraROI(obj.hMain,obj.infoObj.objIMAQ)
+                            resetCameraROI(obj.hMainM,obj.infoObj.objIMAQ)
                     end
             end
             
@@ -973,9 +1058,9 @@ classdef VideoPara < handle
         function outputUpdateErrorMsg(obj)
             
             % field retrieval
-            if obj.isWebCam
+            if obj.isWebCam || obj.isVD
                 isPr = false;
-                pFldStr = obj.infoObj.objIMAQ.Name;
+                pFldStr = obj.dName;
             else
                 pFldStr = obj.infoSrc.Name;
                 isPr = strcmp(get(obj.infoObj.objIMAQ,'Previewing'),'on');
@@ -1004,7 +1089,11 @@ classdef VideoPara < handle
             
             % initialisations
             try
-                pROI = obj.infoObj.objIMAQ.pROI;                
+                if isprop(obj.infoObj.objIMAQ,'ROI')
+                    pROI = obj.infoObj.objIMAQ.ROI;                    
+                else
+                    pROI = obj.infoObj.objIMAQ.pROI;
+                end
             catch
                 pROI = get(obj.infoObj.objIMAQ,'ROIPosition');
             end
@@ -1022,9 +1111,8 @@ classdef VideoPara < handle
         % --- applies the default device properties
         function applyDefDeviceProps(obj)
             
-            % loads the default data fields
-            dName = obj.infoObj.objIMAQ.Name;
-            dpData = loadDefaultPresetData(dName);
+            % loads the default data fields            
+            dpData = loadDefaultPresetData(obj.dName);
             if isempty(dpData)
                 % if there is no default device properties, then exit
                 return
@@ -1046,6 +1134,38 @@ classdef VideoPara < handle
             end
             
         end
+
+        % --- retrieves the imaq.VideoDevice source information
+        function [infoSrcVD,fldNames] = getVideoDeviceSourceInfo(obj)
+            
+            % pauses the preview timer (if running)
+            if obj.prObj.isOn
+                obj.prObj.isPauseTimer = true;
+                release(obj.sObj);
+            end
+            
+            % sets up a temporary video input device
+            vInputCon = obj.getVideoInputConstructor();
+            objIMAQTmp = eval(vInputCon);
+            
+            % retrieves the source object and property information
+            srcObjVD = getselectedsource(objIMAQTmp);
+            [infoSrcVD,fldNames] = combineDataStruct(propinfo(srcObjVD));
+            delete(objIMAQTmp);
+            
+            % deletes the temporary video object device
+            if obj.prObj.isOn
+                % unpauses the preview timer (if running)
+                step(obj.sObj);
+                obj.prObj.isPauseTimer = false;
+            end
+            
+            % if no outputs, then sets the class fields            
+            if nargout == 0
+                [obj.srcObj,obj.infoSrc] = deal(srcObjVD,infoSrcVD);                
+            end
+            
+        end
         
         % --- determines the preset file feasibility
         function [missP,infoSrcNw,vprData] = ...
@@ -1056,9 +1176,16 @@ classdef VideoPara < handle
 
             % retrieves the source object information 
             if obj.isWebCam
+                % case is a webcam
                 [fldNames,infoSrcNw] = ...
                     getWebCamProps(obj.infoObj.objIMAQ);
+
+            elseif obj.isVD
+                % case is an imaq.VideoDevice object
+                [infoSrcNw,fldNames] = obj.getVideoDeviceSourceInfo();                
+
             else
+                % case is a video input device
                 pInfo = propinfo(obj.srcObj);
                 [infoSrcNw,fldNames] = combineDataStruct(pInfo);
             end
@@ -1073,6 +1200,15 @@ classdef VideoPara < handle
             end
 
         end                
+        
+        % --- retrieves the video input constructor
+        function vInputCon = getVideoInputConstructor(obj)
+            
+            vInfo = obj.infoObj.vIndIMAQ(obj.infoObj.vSelIMAQ,:);
+            devInfo = obj.infoObj.objIMAQDev{vInfo(1)}(vInfo(2));
+            vInputCon = devInfo.VideoInputConstructor;
+            
+        end
         
     end    
     

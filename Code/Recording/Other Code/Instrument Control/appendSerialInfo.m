@@ -30,7 +30,7 @@ for i = 1:nStr
     if isTest
         % case is running in testing mode
         switch BoardNames{i}
-            case {'FTDI','Future Technology Devices International'}
+            case {'FTDI','Future Technology Devices International','USB Serial Port'}
                 sType{i} = 'HTControllerV3';            
             otherwise
                 sType{i} = 'Motor';
@@ -39,7 +39,7 @@ for i = 1:nStr
     else
         % case is running in 
         switch BoardNames{i}
-            case {'FTDI','Future Technology Devices International'}
+            case {'FTDI','Future Technology Devices International','USB Serial Port'}
                 [isOK(i),sTypeNw] = ...
                     detValidSerialContollerV3(Control{i},vStr);
                 if isOK(i)

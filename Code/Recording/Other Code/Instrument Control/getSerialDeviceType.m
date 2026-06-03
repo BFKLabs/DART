@@ -22,11 +22,11 @@ end
 hS = createSerialDevObject(pStr);              
              
 switch sStr       
-    case {'FTDI','Future Technology Devices International'}
+    case {'FTDI','Future Technology Devices International','USB Serial Converter','USB Serial Port'}
         % case is the HT2 version 2
 
         % opens the controller and determines what type it is        
-        [~,sType] = detValidSerialContollerV3(hS);
+        [~,sType] = detValidSerialContollerV3(hS);        
 
     case {'STMicroelectronics Virtual COM Port', 'USB Serial Device'}
         % case is the V2 controller type

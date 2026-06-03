@@ -15,7 +15,8 @@ end
 
 % field retrieval
 infoObj = getappdata(hFigM,'infoObj');
-devInfo = infoObj.objIMAQDev{infoObj.vSelIMAQ};
+vInfo = infoObj.vIndIMAQ(infoObj.vSelIMAQ,:);
+devInfo = infoObj.objIMAQDev{vInfo(1)}(vInfo(2));
 
 if useVD
     % case is memory logging (imaq.VideoDevice)
@@ -39,7 +40,7 @@ end
 % sets the common device fields
 obj.objIMAQ.ReturnedColorSpace = 'grayscale';
 
-%
+% updates the object information struct in the main GUI
 infoObj.objIMAQ = obj.objIMAQ;
 setappdata(hFigM,'infoObj',infoObj);
 

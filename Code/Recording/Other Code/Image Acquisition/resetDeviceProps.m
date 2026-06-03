@@ -1,13 +1,28 @@
-% --- resets the device properties for the source object, sObj
-function resetDeviceProps(sObj,pValNw,hObj)
+% --- resets the device properties for the source object
+function resetDeviceProps(obj,pValNw)
 
 % initialisations
 sStr = {'auto'};
+isVD = isVidDev(obj.sObj);
 isF = false(size(pValNw,1),1);
-pVal0 = cellfun(@(x)(get(sObj,x)),pValNw(:,1),'un',0);
 
-% sets the default parameters
-if ~exist('hObj','var'); hObj = []; end
+% device property value retrieval
+if isVD
+    % case is an imaq.VideoDevice object
+    
+    % retrieves the original parameter values
+    dProps = obj.sObj.DeviceProperties;
+    pVal0 = cellfun(@(x)(dProps.(x)),pValNw(:,1),'un',0);
+    
+    % pauses the preview timer (if running
+    if obj.prObj.isOn
+        obj.prObj.isPauseTimer = true;
+        release(obj.sObj);        
+    end
+else
+    % case is another recording device
+    pVal0 = cellfun(@(x)(get(obj.sObj,x)),pValNw(:,1),'un',0);
+end
 
 % ---------------------------------------- %
 % --- ENUMERATION PARAMETER PROPERTIES --- %
@@ -21,7 +36,7 @@ for i = find(isE(:)')
     
     % updates the device property (if different from current)
     if ~isequal(pValNw{i,2},pVal0{i})
-        updateDeviceProps(sObj,hObj,pValNw{i,1},pValNw{i,2});
+        updateDeviceProps(obj,pValNw{i,1},pValNw{i,2},isVD);
     end
         
     % determines if there are any associated parameters
@@ -30,7 +45,7 @@ for i = find(isE(:)')
         % if so, determines if the enumertion parameter is auto
         isAuto = any(startsWith(sStr,pValNw{i,2}));
         if ~isAuto && ~isequal(pValNw{isM,2},pVal0{isM})
-            updateDeviceProps(sObj,hObj,pValNw{isM,1},pValNw{isM,2});
+            updateDeviceProps(obj,pValNw{isM,1},pValNw{isM,2},isVD);
         end
         
         % resets the update flag
@@ -46,25 +61,46 @@ end
 for i = find(~isM(:)')
     % updates the device property (if different from current)
     if ~isequal(pValNw{i,2},pVal0{i})
-        updateDeviceProps(sObj,hObj,pValNw{i,1},pValNw{i,2});
-    end        
+        updateDeviceProps(obj,pValNw{i,1},pValNw{i,2},isVD);
+    end
+end
+
+% ------------------------------- %
+% --- HOUSE-KEEPING EXERCISES --- %
+% ------------------------------- %
+
+% restarts the preview timer (if running)
+if obj.prObj.isOn
+    step(obj.sObj);
+    obj.prObj.isPauseTimer = false;
 end
 
 % --- updates the device properties
-function updateDeviceProps(sObj,hObj,fName,pVal)
+function updateDeviceProps(obj,fName,pVal,isVD)
 
 % field retrieval
 if isnumeric(pVal)    
     try
-        % resets the camera properties and editbox string
-        set(sObj,fName,pVal);
-        updateObjectProps(hObj,fName,num2str(pVal),0);
+        % resets the camera properties value
+        if isVD
+            obj.sObj.DeviceProperties.(fName) = pVal;
+        else
+            set(obj.sObj,fName,pVal);
+        end
+           
+        % resets the editbox value
+        updateObjectProps(obj.hObj,fName,num2str(pVal),0);
         
     catch        
         try
             % if there was an error, then revert back to the previous value
-            pValPr = get(sObj,fName);
-            updateObjectProps(hObj,fName,num2str(pValPr),0);
+            if isVD
+                pValPr = obj.sObj.DeviceProperties.(fName);
+            else
+                pValPr = get(obj.sObj,fName);
+            end
+                
+            updateObjectProps(obj.hObj,fName,num2str(pValPr),0);
         catch
             % if there was an error, then ignore...
         end
@@ -72,15 +108,27 @@ if isnumeric(pVal)
     
 else
     try
-        % resets the camera properties and editbox string
-        set(sObj,fName,pVal);
-        updateObjectProps(hObj,fName,pVal,1);
+        % resets the camera properties value
+        if isVD
+            obj.sObj.DeviceProperties.(fName) = pVal;
+        else
+            set(obj.sObj,fName,pVal);            
+        end
+        
+        % resets the object value        
+        updateObjectProps(obj.hObj,fName,pVal,1);
         
     catch
         try
             % if there was an error, then revert back to the previous value
-            pValPr = get(sObj,fName);
-            updateObjectProps(hObj,fName,pValPr,1);
+            if isVD
+                pValPr = obj.sObj.DeviceProperties.(fName);
+            else
+                pValPr = get(obj.sObj,fName);
+            end
+            
+            % resets the object value            
+            updateObjectProps(obj.hObj,fName,pValPr,1);
         catch
             % if there was an error, then ignore...            
         end

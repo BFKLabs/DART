@@ -1,5 +1,5 @@
 % --- determines the valid serial control device information
-function [pStr,iPathID] = detValidSerialDeviceInfo(comAvail,sStr)
+function [pStr,iPathID] = detValidSerialDeviceInfo(comAvail,sStr,usbStr)
 
 % initialisations
 [pStr,iPathID] = deal([]);
@@ -56,14 +56,10 @@ if isunix
 
     % removes non matching devices
     pStr = pStr(hasM,:);
-else
-    % case is windows
-    ufFile = which('devcon.exe');
-    [~,a] = system(sprintf('"%s" find "%s"',ufFile,'USB*'));
-
+else   
     % determines the match between the serial device name strings and the 
     % COM port name strings
-    b = splitStringRegExp(a,'\n');
+    b = splitStringRegExp(strtrim(usbStr),'\n');
     hasDev = cellfun(@(x)(strContains(x,sStr)),b);     
 
     % matches the device names to the available COM port
@@ -82,10 +78,10 @@ else
         d = b(ind(ii));
         [iPathID,vpStr,cName] = deal(cell(length(d),1));
         for i = 1:length(d)
-            dT = strsplit(d{i});
-            iPathID{i} = lower(getFinalDirString(dT{1}));
-            vpStr{i} = getFinalDirString(dT{1},1);
-            cName{i} = dT{end}(2:end-1);
+            dT = strsplit(strtrim(d{i}));
+            iPathID{i} = lower(getFinalDirString(dT{end}));
+            vpStr{i} = getFinalDirString(dT{end},1);
+            cName{i} = dT{end-1}(2:end-1);
         end    
         
         % sets the BFKLabs serial controller name string
