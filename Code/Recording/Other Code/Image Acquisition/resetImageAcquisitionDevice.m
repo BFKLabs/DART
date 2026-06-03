@@ -18,6 +18,18 @@ infoObj = getappdata(hFigM,'infoObj');
 vInfo = infoObj.vIndIMAQ(infoObj.vSelIMAQ,:);
 devInfo = infoObj.objIMAQDev{vInfo(1)}(vInfo(2));
 
+if isVidDev(obj.objIMAQ)
+    pROI0 = obj.objIMAQ.ROI;
+    if ~useVD
+        pROI0(1:2) = pROI0(1:2) - 1;
+    end
+else
+    pROI0 = get(obj.objIMAQ,'ROIPosition');
+    if useVD
+        pROI0(1:2) = pROI0(1:2) + 1;
+    end
+end
+
 if useVD
     % case is memory logging (imaq.VideoDevice)
     obj.objIMAQ = eval(devInfo.VideoDeviceConstructor);
@@ -25,6 +37,8 @@ if useVD
     % sets the device properties
     obj.objIMAQ.Device = devInfo.DeviceName;
     obj.objIMAQ.ReturnedDataType = 'uint8';
+    obj.objIMAQ.ROI = pROI0;
+    
 else
     % case is disk logging (videoinput)
     obj.objIMAQ = eval(devInfo.VideoInputConstructor);
@@ -35,6 +49,7 @@ else
     % sets the device properties
     obj.objIMAQ.LoggingMode = 'disk';
     obj.objIMAQ.Name = devInfo.DeviceName;
+    set(obj.objIMAQ,'ROIPosition',pROI0);
 end
 
 % sets the common device fields

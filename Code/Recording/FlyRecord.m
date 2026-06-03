@@ -688,6 +688,7 @@ hAx = handles.axesPreview;
 isReset = exist('rPos','var');
 vcObj = getappdata(hFig,'vcObj');
 infoObj = getappdata(hFig,'infoObj');
+isVD = isVidDev(infoObj.objIMAQ);
 
 % turns off all warnings
 wState = warning('off','all');
@@ -698,6 +699,9 @@ if isReset
     if infoObj.isWebCam        
         vResS = infoObj.objIMAQ.Resolution;
         vRes = cellfun(@str2double,strsplit(vResS,'x'));
+    elseif isVD
+        vResS = strsplit(infoObj.objIMAQ.VideoFormat,'_');
+        vRes = cellfun(@str2double,strsplit(vResS{2},'x'));
     else
         vRes = getVideoResolution(infoObj.objIMAQ);    
     end    
@@ -715,11 +719,15 @@ if isReset
             yL = yOfs + [0,rPos(4)];
             set(hAx,'xlim',xL,'ylim',yL)            
         else
-            % calculates the bottom location of the preview
-            rPos(2) = max(0,vRes(2) - sum(rPos([2,4])));
-
             % resets the videoinput ROI and axes limits
-            set(infoObj.objIMAQ,'ROIPosition',rPos);
+            rPos(2) = max(isVD,vRes(2) - sum(rPos([2,4])));            
+            if isVD
+                set(infoObj.objIMAQ,'ROI',rPos);                
+            else
+                set(infoObj.objIMAQ,'ROIPosition',rPos);
+            end
+                
+            % resets the axes limits            
             set(hAx,'xlim',[0,rPos(3)],'ylim',[0,rPos(4)])
         end           
     end
@@ -729,8 +737,8 @@ if isReset
     if ~prObj.isOn
         % retrieves the image resolution
         hImage = findall(hAx,'type','Image');
-        if infoObj.isWebCam
-            set(hImage,'CData',uint8(zeros(vRes([2,1]))));
+        if infoObj.isWebCam || isVD
+            set(hImage,'CData',uint8(zeros(flip(vRes))));
         else
             set(hImage,'CData',uint8(zeros(rPos([4,3]))));
         end
@@ -756,6 +764,7 @@ resetObjPos(hFig,'Bottom',-dH,1);
 resetObjPos(handles.panelVidPreview,'Height',dH,1);
 resetObjPos(handles.panelImg,'Height',dH,1);
 resetObjPos(hAx,'Height',dH,1);
+centerfig(hFig);
 pause(0.05);
 
 % resets the dimensions of the video calibration panel

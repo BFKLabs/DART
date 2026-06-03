@@ -6,6 +6,7 @@ classdef VideoROI < handle
         % main figure object handles
         hAxM
         hFigM
+        hButPrev
         
         % main class objects
         hFig
@@ -64,6 +65,7 @@ classdef VideoROI < handle
         vRes
         Hmax
         Wmax
+        rPosOrig
         
         % recording device class fields
         Img0
@@ -80,7 +82,9 @@ classdef VideoROI < handle
         
         % boolean class fields
         isLV
-        isWebCam
+        isVD
+        isPrev
+        isWebCam        
         manualUpdate = false;
         
         % parameters
@@ -102,7 +106,7 @@ classdef VideoROI < handle
         
     end
     
-    % class methods
+    % class methodiss
     methods
         
         % --- class constuctor
@@ -146,14 +150,24 @@ classdef VideoROI < handle
             obj.hTxtI = cell(obj.nLblI,1);
             obj.hEditD = cell(obj.nEditD,1);        
             
+            % main window object handles
+            obj.hAxM = findall(obj.hFigM,'tag','axesPreview');
+            obj.hButPrev = findall(obj.hFigM,'tag','toggleVideoPreview');            
+            
             % main window field retrieval
             obj.prObj = getappdata(obj.hFigM,'prObj');
             obj.infoObj = getappdata(obj.hFigM,'infoObj');
             obj.isWebCam = isa(obj.infoObj.objIMAQ,'webcam');
-            
-            % sets the main preview axes handle
-            obj.hAxM = findall(obj.hFigM,'tag','axesPreview');            
+            obj.isVD = isVidDev(obj.infoObj.objIMAQ);            
+            obj.isPrev = obj.hButPrev.Value;
 
+            % turns off the video preview (if currently running)
+            if obj.isPrev
+                obj.hButPrev.Value = 0;                
+                cbFcnPr = getappdata(obj.hFigM,'toggleVideoPreview');
+                cbFcnPr(obj.hButPrev);
+            end
+            
             % ---------------------------------- %
             % --- VIDEO RESOLUTION RETRIEVAL --- %
             % ---------------------------------- %           
@@ -163,10 +177,21 @@ classdef VideoROI < handle
                 vResS = get(obj.infoObj.objIMAQ,'Resolution');                
                 obj.rPos = obj.infoObj.objIMAQ.pROI;                
                 obj.vRes = cellfun(@str2double,strsplit(vResS,'x'));
+            elseif obj.isVD
+                vResS = strsplit(obj.infoObj.objIMAQ.VideoFormat,'_');
+                obj.vRes = cellfun(@str2double,strsplit(vResS{2},'x'));                
+                obj.rPos = obj.infoObj.objIMAQ.ROI;                                
             else
                 obj.rPos = get(obj.infoObj.objIMAQ,'ROIPosition');
-                obj.vRes = get(obj.infoObj.objIMAQ,'VideoResolution');
+                obj.vRes = getVideoResolution(obj.infoObj.objIMAQ);
             end   
+            
+            % retrieves the original camera ROI
+            obj.rPosOrig = obj.rPos;
+            if obj.isVD
+                % adjusts the "bottom" value for imaq.VideoDevices
+                obj.rPos(2) = max(1,obj.vRes(2) - sum(obj.rPos([2,4])));
+            end
             
             % retrieves the video preview callback function
             obj.resetFcn = getappdata(obj.hFigM,'resetVideoPreviewDim');
@@ -270,12 +295,18 @@ classdef VideoROI < handle
             
             % resets the roi position to full region
             if obj.isWebCam
-                % resets the axis limits
+                % case is a webcam
                 xL = [0,obj.vRes(1)] + 0.5;
                 yL = [0,obj.vRes(2)] + 0.5;                
                 set(obj.hAxM,'xLim',xL,'yLim',yL);
+                
+            elseif obj.isVD
+                % case is an imaq.VideoDevice
+                release(obj.infoObj.objIMAQ);
+                set(obj.infoObj.objIMAQ,'ROI',[1,1,obj.vRes])
+                
             else
-                % resets the roi position
+                % case is a videoinput device
                 set(obj.infoObj.objIMAQ,'ROIPosition',[0,0,obj.vRes])
             end
             
@@ -396,8 +427,8 @@ classdef VideoROI < handle
             resetObjPos(obj.hFig,'Width',wPos)
 
             % resets the axis limits
-            del = 10;
-            [xLim,yLim] = deal([0,obj.vRes(1)],[0,obj.vRes(2)]);
+            [del,p0] = deal(10,obj.isVD);
+            [xLim,yLim] = deal([p0,obj.vRes(1)],[p0,obj.vRes(2)]);
             set(obj.hAx,'xlim',xLim+del*[-1,1],'ylim',yLim+del*pAR*[-1,1])
                     
             % resets the camera to the original ROI position
@@ -405,9 +436,11 @@ classdef VideoROI < handle
                 yOfs = size(obj.Img0,1) - sum(obj.rPos([2,4]));
                 xL = (obj.rPos(1)+0.5) + [0,obj.rPos(3)];
                 yL = (obj.rPos(2)+yOfs+0.5) + [0,obj.rPos(4)];                 
-                set(obj.hAxM,'xLim',xL,'yLim',yL);                
+                set(obj.hAxM,'xLim',xL,'yLim',yL); 
+            elseif obj.isVD                
+                set(obj.infoObj.objIMAQ,'ROI',obj.rPosOrig)                
             else
-                set(obj.infoObj.objIMAQ,'ROIPosition',obj.rPos)
+                set(obj.infoObj.objIMAQ,'ROIPosition',obj.rPosOrig)
             end
             
             % resets the warnings
@@ -540,6 +573,7 @@ classdef VideoROI < handle
             pPosAx = [obj.dX*[1,1],obj.widAx,obj.hghtAx];
             obj.hAx = createUIObj('axes',obj.hPanelAx,...
                 'Units','Pixels','Position',pPosAx,'Box','on');            
+            colormap('gray')
             
         end
         
@@ -549,6 +583,13 @@ classdef VideoROI < handle
         
         % --- close window menu item callback function
         function closeWindow(obj, ~, ~)
+            
+            % turns on the video preview (if required)
+            if obj.isPrev
+                obj.hButPrev.Value = 1;                
+                cbFcnPr = getappdata(obj.hFigM,'toggleVideoPreview');
+                cbFcnPr(obj.hButPrev);
+            end            
             
             % resets the figure visibility flags
             setObjVisibility(obj.hFig,0);
@@ -567,7 +608,9 @@ classdef VideoROI < handle
         function buttonResetROI(obj,~,~)
             
             % updates all ROI markers
-            rPos0 = [0,0,obj.vRes];
+            rPos0 = [0,0,obj.vRes] + obj.isVD*[1,1,0,0];
+
+            % updates the 
             obj.updateAllROIMarkers(rPos0)
             
             % resets the dimension edit box values
@@ -587,7 +630,8 @@ classdef VideoROI < handle
         % --- update preview ROI editbox callback function
         function editUpdateROI(obj, hEdit, ~)
             
-            % parameters            
+            % parameters  
+            p0 = obj.isVD;
             uData = hEdit.UserData;
             
             % retrieves the current ROI dimensions
@@ -597,11 +641,11 @@ classdef VideoROI < handle
             switch uData
                 case 1 
                     % case is the ROI left location
-                    nwLim = [0,max(0,floor(obj.vRes(1)-rPos0(3)))];
+                    nwLim = [p0,max(p0,floor(obj.vRes(1)-rPos0(3)))];
 
                 case 2 
                     % case is the ROI bottom location
-                    nwLim = [0,max(0,floor(obj.vRes(2)-rPos0(4)))];
+                    nwLim = [p0,max(p0,floor(obj.vRes(2)-rPos0(4)))];
 
                 case 3 
                     % case is the ROI width
@@ -649,8 +693,8 @@ classdef VideoROI < handle
             
             % initialisations
             fCol = 0.75*[1,1,1];            
-            xLim = get(obj.hAx,'xlim');
-            yLim = get(obj.hAx,'ylim');
+            xLim = max(obj.isVD,get(obj.hAx,'xlim'));
+            yLim = max(obj.isVD,get(obj.hAx,'ylim'));
             uData = [isVert,ind];
 
             % sets the marker coordinates
@@ -718,6 +762,7 @@ classdef VideoROI < handle
                 end
                 
                 % sets the bottom coordinate
+                obj.rPos(3) = obj.rPos(3) + obj.isVD;
                 obj.rPos = obj.resetRectPos(obj.rPos,uData);
                 obj.hEditD{1}.String = num2str(obj.rPos(1));
                 obj.hEditD{3}.String = num2str(obj.rPos(3));
@@ -736,7 +781,8 @@ classdef VideoROI < handle
                     obj.rPos(4) = min(obj.vRes(2),roundP(pF(1,2)-p(1,2)));
                 end
                 
-                % sets the bottom coordinate   
+                % sets the bottom coordinate  
+                obj.rPos(4) = obj.rPos(4) + obj.isVD;                
                 obj.rPos = obj.resetRectPos(obj.rPos,uData);
                 obj.hEditD{2}.String = num2str(obj.rPos(2));
                 obj.hEditD{4}.String = num2str(obj.rPos(4));
@@ -908,6 +954,9 @@ classdef VideoROI < handle
             
             if obj.isWebCam
                 ImgNw = double(snapshot(obj.infoObj.objIMAQ));
+            elseif obj.isVD
+                ImgNw = double(step(obj.infoObj.objIMAQ));
+                release(obj.infoObj.objIMAQ);
             else
                 ImgNw = double(getsnapshot(obj.infoObj.objIMAQ));
             end

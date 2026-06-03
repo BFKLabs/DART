@@ -730,7 +730,7 @@ if ~exObj.isTest
 
     % sets the other video parameters
     exObj.iFrmVid = 0;
-    if exObj.isWebCam || exObj.isMemLog
+    if exObj.isWebCam || exObj.isMemLog || isVidDev(exObj.objIMAQ)
         % case is logging to memory
         exObj.logFile = logFile;
         open(logFile); 

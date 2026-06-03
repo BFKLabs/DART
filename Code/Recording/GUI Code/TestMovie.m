@@ -162,12 +162,20 @@ classdef TestMovie < handle
         % --- initialises the video parameter properties
         function initVideoParaProps(obj)
             
+            % initialisations
+            isVarFPS = false;            
+            
             % retrieves the camera frame rate
             if obj.infoObj.isWebCam
                 % sets the frame rate values/selections    
-                isVarFPS = false;
                 [fRateN,fRateS,iSel] = ...
-                    detWebcamFrameRate(obj.infoObj.objIMAQ,obj.vPara.FPS);                
+                    detWebcamFrameRate(obj.infoObj.objIMAQ,obj.vPara.FPS); 
+                
+            elseif isVidDev(obj.infoObj.objIMAQ)
+                % case is running a video device object
+                dProps = obj.infoObj.objIMAQ.DeviceProperties;
+                fRateN = str2double(dProps.FrameRate);
+                [fRateS,iSel] = deal({num2str(fRateN)},1);
                 
             else
                 % sets the frame rate values/selections

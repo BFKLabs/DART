@@ -349,7 +349,7 @@ classdef VideoPreview < handle
             pause(0.05);
 
             % resets the image axis     
-            if ~obj.isTest && (obj.isWebCam || obj.useVD)
+            if ~obj.isTest && obj.isWebCam
                 if obj.isWebCam
                     pR = obj.objIMAQ.pROI;                
                     vResS = obj.objIMAQ.Resolution;
