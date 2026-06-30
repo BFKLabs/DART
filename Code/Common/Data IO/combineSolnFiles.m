@@ -42,7 +42,8 @@ if exist(smFile,'file')
         baseName = iExpt.Info.BaseName;                        
         if isempty(baseName)
             % case is the base name has not been set?
-            hasBN = cellfun(@(x)(startsWith(x,' -')),sName);
+            sNameSp = strsplit(sName{1},'-');
+            hasBN = cellfun(@(x)(startsWith(x,sNameSp{1})),sName);
         else
             % otherwise, search for files which contain the base filename
             hasBN = cellfun(@(x)(strContains(x,baseName)),sName);
