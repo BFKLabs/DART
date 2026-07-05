@@ -1035,7 +1035,8 @@ classdef AdaptorInfoClass < handle
         function initTestDAQInfo(obj)
 
             % initialisations
-            comAvail = getSerialPortInfo();            
+            comAvail = getSerialPortInfo();          
+            comAvail = comAvail(1);
             obj.objDAQTest = obj.initDAQInfoStruct();
             
             % sets the input information
@@ -1083,7 +1084,6 @@ classdef AdaptorInfoClass < handle
 
             % if there are any valid devices then retrieve their details
             pStr = findSerialPort(sStr);
-            disp(pStr)
             if ~isempty(pStr)
                 pStrT = cellfun(@strjoin,num2cell(pStr,2),'un',0);
                 [~,iA,~] = unique(pStrT);
@@ -1226,7 +1226,7 @@ classdef AdaptorInfoClass < handle
                     % clears the fields
                     set(handles.listDACObj,'String',[],'value',[])
 
-                    %
+                    % disables the channel count editboxes
                     hEdit = findall(handles.panelDACObj,'Style','Edit');
                     set(hEdit,'enable','off','string','')
                     
@@ -1309,9 +1309,6 @@ classdef AdaptorInfoClass < handle
         % --- retrieves the original default device values
         function getDefDevicePropValues(obj,pInfo)
             
-            % retrieves the device parameter values
-            
-            
             % retrieves the field names and the original property values
             infoSrc = combineDataStruct(pInfo);  
             fStr = field2cell(infoSrc,'Name');
@@ -1358,6 +1355,7 @@ classdef AdaptorInfoClass < handle
 
             sType(strcmp(sType,'HTControllerV1')) = {'Motor'};
             sType(strcmp(sType,'HTControllerV2')) = {'Motor'};
+            sType(strcmp(sType,'HTControllerV3')) = {'Motor'};
 
         end
 

@@ -17,6 +17,10 @@ end
 infoObj = getappdata(hFigM,'infoObj');
 vInfo = infoObj.vIndIMAQ(infoObj.vSelIMAQ,:);
 devInfo = infoObj.objIMAQDev{vInfo(1)}(vInfo(2));
+vForm0 = obj.objIMAQ.VideoFormat;
+
+% % resets the video format
+% devInfo.DefaultFormat = obj.objIMAQ.VideoFormat;
 
 if isVidDev(obj.objIMAQ)
     pROI0 = obj.objIMAQ.ROI;
@@ -32,24 +36,26 @@ end
 
 if useVD
     % case is memory logging (imaq.VideoDevice)
-    obj.objIMAQ = eval(devInfo.VideoDeviceConstructor);
+    conStr = setupConstructorString(devInfo.VideoDeviceConstructor,vForm0);
+    obj.objIMAQ = eval(conStr);
     
     % sets the device properties
-    obj.objIMAQ.Device = devInfo.DeviceName;
-    obj.objIMAQ.ReturnedDataType = 'uint8';
+%     obj.objIMAQ.Device = devInfo.DeviceName;
+    obj.objIMAQ.ReturnedDataType = 'uint8';    
     obj.objIMAQ.ROI = pROI0;
     
 else
     % case is disk logging (videoinput)
-    obj.objIMAQ = eval(devInfo.VideoInputConstructor);
+    conStr = setupConstructorString(devInfo.VideoInputConstructor,vForm0);
+    obj.objIMAQ = eval(conStr);
     
     % sets the trigger configuration flag
     triggerconfig(obj.objIMAQ,'manual')
     
     % sets the device properties
     obj.objIMAQ.LoggingMode = 'disk';
-    obj.objIMAQ.Name = devInfo.DeviceName;
-    set(obj.objIMAQ,'ROIPosition',pROI0);
+    obj.objIMAQ.Name = devInfo.DeviceName;    
+    set(obj.objIMAQ,'ROIPosition',pROI0);    
 end
 
 % sets the common device fields
@@ -64,3 +70,8 @@ if resetFlds
     resetCameraROIPara(obj.objIMAQ)
     applyDefaultDeviceProps(infoObj,devInfo.DeviceName);
 end
+
+% --- sets up the video constructor string
+function conStr = setupConstructorString(conStr0,vForm0)
+
+conStr = sprintf('%s, ''%s'')',conStr0(1:(end-1)),vForm0);

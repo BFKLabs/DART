@@ -471,6 +471,7 @@ classdef DART < handle
             % sets the GUI properties based on how the program is being run
             if isdeployed
                 % case is DART is run through the executable version
+                
                 obj.setMenuProp('menuConfigSerial','Enable','on')
                 
             elseif ispc
@@ -486,6 +487,7 @@ classdef DART < handle
             obj.setMenuProp('menuOutputUpdate','Visible',obj.hasSep)
             obj.setMenuProp('menuDeployExe','Visible',obj.hasSep)
             obj.setMenuProp('menuRunInstaller','Visible',~isdeployed)
+            obj.setMenuProp('menuProgInstallInfo','Visibie',~isdeployed)
             
             % ----------------------------- %
             % --- VERSION CONTROL SETUP --- %

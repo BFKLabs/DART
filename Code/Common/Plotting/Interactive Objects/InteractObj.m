@@ -191,7 +191,7 @@ classdef InteractObj < handle
         % -------------------------- %
         
         % --- sets the interactive object movement callback function
-        function setObjMoveCallback(obj,cbFcn)
+        function setObjMoveCallback(obj,cbFcn,setCBFcn)            
         
             if obj.isOld
                 % case is the old format objects
@@ -199,6 +199,9 @@ classdef InteractObj < handle
             else
                 % case is the new format objects                
                 addlistener(obj.hObj,'MovingROI',cbFcn);
+                if exist('setCBFcn','var') && setCBFcn
+                    addlistener(obj.hObj,'ROIMoved',cbFcn);
+                end                                
             end
             
         end
@@ -338,6 +341,7 @@ classdef InteractObj < handle
             for i = 1:length(varargin)/2
                 try
                     set(obj.hObj,varargin{2*i-1},varargin{2*i})
+                catch
                 end
             end
             
@@ -404,7 +408,7 @@ classdef InteractObj < handle
                         
                     otherwise
                         % case is the other object types
-                        set(obj.hObj,'Position',pPos);
+                        obj.hObj.Position = pPos;
                 end
             end
             
