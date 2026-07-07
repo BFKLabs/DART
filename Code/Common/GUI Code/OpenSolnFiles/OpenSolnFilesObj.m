@@ -593,6 +593,7 @@ classdef OpenSolnFilesObj < handle
                     
                 else
                     % sets the group to overall group linking indices                    
+                    gNameFU = unique(gNameF{i},'stable');
                     indL = cellfun(@(y)(...
                         find(strcmp(gNameF{i},y))),grpName,'un',0);                    
                     
