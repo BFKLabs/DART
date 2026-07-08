@@ -795,7 +795,7 @@ classdef SolnFileLoad < handle & dynamicprops
 
                         % case is a group of experiment solution files
                         fFileS = fullfile(fDirS{i},fNameS{i});
-                        [snTotNw,ok] = loadExptSolnFiles(tDir,fFileS,1,hh);  
+                        [snTotNw,ok] = loadExptSolnFiles(tDir,fFileS,1,hh);
                         if ~ok
                             % if the user cancelled, then exit the function
                             obj.sInfo = sInfo0;

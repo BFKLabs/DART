@@ -392,14 +392,14 @@ classdef FlyInfoGUI < handle
 
                     for i = find(~obj.snTot.iMov.ok(:)')
                         % if the region is rejected, then remove the column
-                        % if obj.isTrans
+                        if obj.isTrans
                             arrayfun(@(x)(...
                                 obj.jTable.setValueAt([],i-1,x-1)),xiR)
 
-                        % else
-                        %     arrayfun(@(x)(...
-                        %         obj.jTable.setValueAt([],i-1,x-1)),xiR)
-                        % end
+                        else
+                            arrayfun(@(x)(...
+                                obj.jTable.setValueAt([],x-1,i-1)),xiR)
+                        end
 
                         obj.jTable.repaint;
                     end

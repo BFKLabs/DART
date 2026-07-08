@@ -48,6 +48,16 @@ else
     if length(gName0) == nReg
         % if so, then return the stored group names
         gName = gName0(:);
+        
+        % determines which region groups has data
+        hasD = ~cellfun('isempty',snTot.Px);
+        if ~isempty(snTot.Py)
+            hasD = hasD & ~cellfun('isempty',snTot.Py);
+        end
+        
+        % rejects any groups which doesn't have any data
+        gName(~hasD) = {'* REJECTED *'};
+        
     else
         % otherwise, re-order the group names
         gName = cell(nReg,1);

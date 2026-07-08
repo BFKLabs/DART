@@ -558,11 +558,14 @@ end
 % resets the table background colours
 bgCol = setupGroupTableColour(pObj.sInfo);
 set(hObject,'BackgroundColor',bgCol)
+% pause(0.01);
 
 % determines if the individual fly info gui is open            
 if ~isempty(hGUIInfo) && isa(hGUIInfo,'FlyInfoGUI')
     % if so, then update the colours
     jT = hGUIInfo.jTable;    
+    pause(0.05);
+    jT.repaint();    
     
     if detIfCustomGrid(pObj.sInfo.snTot.iMov)
         % case is a custom 1D grid
@@ -645,21 +648,24 @@ if ~isempty(hGUIInfo) && isa(hGUIInfo,'FlyInfoGUI')
             else
                 % case is a 1D experiment setup (fixed grid)
 
-                % updates the background colour over all cells in the group            
-                for i = find(pObj.sInfo.snTot.iMov.flyok(:,j))'
+                % updates the background colour over all cells in the group
+                for i = find(hGUIInfo.ok(:,j))'
                     % updates the current cell background                
-                    if jT.getRowCount == size(pObj.sInfo.snTot.iMov.flyok,1)
-                        jT.SetBGColourCell(i-1,j-1,nwCol);
-                    else
+                    if hGUIInfo.isTrans
                         jT.SetBGColourCell(j-1,i-1,nwCol);
+                    else
+                        jT.SetBGColourCell(i-1,j-1,nwCol);                        
                     end
                 end
-            end
+            end                       
         end
     end
+    
+    % resets the acceptance flags
+    pObj.sInfo.snTot.iMov.flyok = hGUIInfo.ok;    
 
     % updates the table
-    jT.repaint();
+    jT.repaint();    
 end
 
 % updates the location/speed plots
@@ -1634,7 +1640,7 @@ if ~isempty(hGUIInfo)
             chkVal = cell(size(flyok,1),1);
         end
 
-        % case is a 1D experiment setup
+        % case is a 1D experiment setup        
         cellfun(@(cv,ir)(jT.setValueAt(cv,ir-1,indNw(1)-1)),...
                             chkVal,num2cell(1:length(chkVal))')
     end                            
@@ -1647,6 +1653,10 @@ if ~isempty(hGUIInfo)
     % resets the ok flags
     hGUIInfo.ok = flyok;
     setappdata(hFig,'hGUIInfo',hGUIInfo);
+    
+    % updates the table
+    jT.repaint();
+    pause(0.05);
 end
 
 % ------------------------------------- %

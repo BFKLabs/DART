@@ -232,7 +232,6 @@ classdef DataCombPlotObj < handle
             obj.setCurrentExptInfo();
             
             % sets the time multiplier
-            iPara = obj.sInfo.iPara;
             snTot = obj.sInfo.snTot;
             obj.nApp = length(snTot.Px);
             obj.calcPhi = isfield(snTot,'Phi');
@@ -274,7 +273,8 @@ classdef DataCombPlotObj < handle
                 
             else
                 % case is a 1D setup
-                obj.isOK = ~strcmp(obj.sInfo.gName,'* REJECTED *');
+                isOKR = ~strcmp(obj.sInfo.gName(:)','* REJECTED *');
+                obj.isOK = any(obj.fOK,1) & isOKR;
             end
             
             % ---------------------------------------- %
@@ -587,14 +587,15 @@ classdef DataCombPlotObj < handle
                 else
                     aok = iMov.ok;
                 end
+                
+                aok = aok & ~cellfun('isempty',obj.Px(:));
             else
                 aok = iMov.ok;
             end
             
             % -------------------------------------- %
             % --- PLOTTING TRACE PROPERTY UPDATE --- %
-            % -------------------------------------- %
-            
+            % -------------------------------------- %            
             
             % retrieves the handles from the image panel
             hObjImg = findall(obj.hAx);
@@ -621,7 +622,8 @@ classdef DataCombPlotObj < handle
                 obj.setAxisObjVisibility(hObjImg,'on')
                 
                 % sets the trace plots for each fly within the apparatus
-                nFlyF = min([nFly,max([size(xPlt,2),size(yPlt,2)])]);
+%                 nFlyF = min([nFly,max([size(xPlt,2),size(yPlt,2)])]);
+                nFlyF = nFly;
                 for i = 1:nFlyF
                     % sets the acceptance flags
                     if avgPlot
@@ -636,6 +638,12 @@ classdef DataCombPlotObj < handle
                     else
                         % case is the single tracking
                         okNw = ok(i,iApp);
+                    end
+                    
+                    % if plot isn't feasible, then hide line and continue
+                    if ~okNw
+                        setObjVisibility(obj.hPos(i),'off');
+                        continue
                     end
                     
                     % updates the plot properties for the first trace type
