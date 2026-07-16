@@ -13,8 +13,8 @@ if isVD
     % retrieves the original parameter values
     dProps = obj.sObj.DeviceProperties;
     pFld = fieldnames(dProps);
-    [~,ii] = intersect(pFld,pValNw(:,1));
-    pVal0 = cellfun(@(x)(dProps.(x)),pValNw(ii,1),'un',0);
+    [~,~,i2] = intersect(pFld,pValNw(:,1));
+    pVal0 = cellfun(@(x)(dProps.(x)),pValNw(i2,1),'un',0);
     
     % pauses the preview timer (if running
     if obj.prObj.isOn
