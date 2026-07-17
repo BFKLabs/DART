@@ -2041,7 +2041,10 @@ classdef SingleTrackInit < SingleTrack
         function [Z,IsP] = calcZScores(IsS,pS,fP,iImg,ok)
             
             % calculates the linear indices for the coordinates
-            iP = sub2ind(size(IsS{1}),fP{iImg}(ok,2),fP{iImg}(ok,1));
+            szI = size(IsS{1});
+            yP = min(szI(1),max(1,fP{iImg}(ok,2)));
+            xP = min(szI(2),max(1,fP{iImg}(ok,1)));
+            iP = sub2ind(szI,yP,xP);
             
             % calculates the z-scores
             IsP = IsS{iImg}(iP);

@@ -644,10 +644,14 @@ switch typeStr
                 end
                 
                 %
-                hasPos = ~isnan(pData.fPos{j0}{i0}(cFrm,1));                
-                setObjEnable(handles.checkShowMark,hasPos)                                                                 
+                if isempty(i0) || isempty(j0)
+                    hasPos = false;
+                else
+                    hasPos = ~isnan(pData.fPos{j0}{i0}(cFrm,1));
+                end
                 
                 %
+                setObjEnable(handles.checkShowMark,hasPos)                
                 if hasPos
                     % turns off the manual segmentation menu item
                     setMenuEnable(handles,'off',7)     
