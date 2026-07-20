@@ -58,13 +58,17 @@ for i = find(iMov.ok(:)')
             otherwise
                 % otherwise, flag the region as rejected
                 pData.fPos{i}{j}(:) = NaN;
-                if ~isprop(obj,'isBatch') || ~obj.isBatch
-                    iMov.flyok(j,i) = false;
-                end
+                iMov.flyok(j,i) = false;
         end
 
         % if the user cancelled, then exit
         if ~ok; return; end
+    end
+end
+
+if isprop(obj,'isBatch') && obj.isBatch
+    if any(obj.iMov.flyok(:)) && ~any(iMov.flyok(:))
+        iMov = obj.iMov;
     end
 end
 
@@ -255,6 +259,7 @@ if any(ii ~= 0)
         nT = size(fPosNw,1);
         pData.fPos{iApp}{iTube} = fPosNw;              
         pData.fPosL{iApp}{iTube} = fPosNw - repmat([xOfs,yOfs],nT,1);
+        
     end
 end
 
