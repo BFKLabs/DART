@@ -64,12 +64,23 @@ classdef ExptSetupMenu < handle & dynamicprops
         end        
         
         % --- initialises the class fields
-        function initClassFields(obj)
-           
-            % ------------------------------------------- %
-            % --- CLASS OBJECT DIMENSION CALCULATIONS --- %
-            % ------------------------------------------- %            
-            
+        function initClassFields(obj)           
+                        
+            if strcmp(obj.iExpt.Info.Type,'RecordOnly')
+                % if recording only, remove the opto menu item
+                rmvFld = true;
+
+            else
+                % otherwise, if the serial device 
+                objDAQ = obj.infoObj.objDAQ;
+                sType = objDAQ.sType{objDAQ.vSelDAQ};
+                rmvFld = ~any(strcmp({'Opto','HTControllerV3'},sType));
+            end
+
+            % removes the opto menu item (if not feasible)
+            if rmvFld
+                obj.mTagP = obj.mTagP(1:end-1);
+            end
             
         end
         
@@ -124,16 +135,18 @@ classdef ExptSetupMenu < handle & dynamicprops
             % --- OPTOGENETICS MENU ITEMS --- %
             % ------------------------------- %
             
-            % field initialisations
-            accO = {'L','W'};
-            mLblO = {'IR Lights','White Lights'};
-            mTagO = {'menuToggleIR','menuToggleWhite'};
-            cbFcnO = {@obj.menuToggleIR,@obj.menuToggleWhite};
-            
-            % creates the experiment sub-menu items
-            for i = 1:length(mLblO)
-                uimenu(obj.hMenuO,'Label',mLblO{i},'Tag',mTagO{i},...
-                    'Callback',cbFcnO{i},'Accelerator',accO{i});
+            if ~isempty(obj.hMenuO)
+                % field initialisations
+                accO = {'L','W'};
+                mLblO = {'IR Lights','White Lights'};
+                mTagO = {'menuToggleIR','menuToggleWhite'};
+                cbFcnO = {@obj.menuToggleIR,@obj.menuToggleWhite};
+
+                % creates the experiment sub-menu items
+                for i = 1:length(mLblO)
+                    uimenu(obj.hMenuO,'Label',mLblO{i},'Tag',mTagO{i},...
+                        'Callback',cbFcnO{i},'Accelerator',accO{i});
+                end
             end
             
             % --------------------- %

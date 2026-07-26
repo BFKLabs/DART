@@ -266,7 +266,9 @@ classdef ExptSetupDlg < handle
             obj.objM = ExptSetupMenu(obj);
             
             % runs the custom signal package (if available)
-            obj.objCS = feval('runExternPackage','CustomSignalObj',obj);            
+            if ~strcmp(obj.iExpt.Info.Type,'RecordOnly')
+                obj.objCS = feval('runExternPackage','CustomSignalObj',obj);            
+            end
             
             % -------------------------- %
             % --- MAIN CLASS OBJECTS --- %
