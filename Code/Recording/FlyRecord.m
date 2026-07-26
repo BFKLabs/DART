@@ -149,9 +149,9 @@ setappdata(hObject,'prObj',prObj);
 % ------------------------------------- %
 
 % initialises using full GUI setup
-if ~infoObj.isTest
+% if ~infoObj.isTest
     setRecordGUIProps(handles,'InitOptoMenuItems');
-end
+% end
 
 % turns on the camera for preview
 set(handles.toggleVideoPreview,'value',1)
@@ -194,8 +194,8 @@ hFig = handles.figFlyRecord;
 infoObj0 = getappdata(hFig,'infoObj');
 setObjVisibility(hFig,'off'); pause(0.05);
 
-% retrieves the camera field names and property values
-if ~infoObj0.isTest
+% % retrieves the camera field names and property values
+% if ~infoObj0.isTest
     % retrives the device/property info field names    
     if infoObj0.isWebCam
         % case is a webcam device
@@ -215,7 +215,7 @@ if ~infoObj0.isTest
     
     % retrieves the initial property values
     pVal0 = arr2vec(get(sObj,fldNames));
-end
+% end
 
 % ensures the preview is off
 hToggle = handles.toggleVideoPreview;
@@ -309,13 +309,13 @@ setappdata(hFig,'sTrain',[]);
 
 % sets the GUI properties based on whether testing or not
 setRecordGUIProps(handles,'InitGUI',infoObj.exType);
-if ~infoObj.isTest
+% if ~infoObj.isTest
     setRecordGUIProps(handles,propStr)
-end
+% end
 
 % if there is no change in the camera type, then reset the camera to 
 % the original parameters (full program only)    
-if ~infoObj.isTest && ~infoObj0.isTest 
+% if ~infoObj.isTest && ~infoObj0.isTest 
     % retrieves the current camera properties and resets any class fields
     % that don't match
     if infoObj.isWebCam && infoObj0.isWebCam
@@ -351,7 +351,7 @@ if ~infoObj.isTest && ~infoObj0.isTest
             end
         end
     end
-end
+% end
     
 % turns on the camera/video for preview
 set(handles.toggleVideoPreview,'value',1)
@@ -587,7 +587,7 @@ setObjEnable(handles.menuOpto,'off')
 % setObjEnable(handles.menuRTTrack,'off')
 
 % otherwise, run the full stimuli experimental protocol GUI
-ExptSetup(hFig);   
+ExptSetupDlg(hFig);   
 
 % ------------------------------ %
 % --- CALIBRATION MENU ITEMS --- %
@@ -706,9 +706,10 @@ if isReset
         vRes = getVideoResolution(infoObj.objIMAQ);    
     end    
     
-    % resets the dimensions of the preview axes
-    if ~infoObj.isTest            
-        % inverts the bottom location of the ROI
+%     if ~infoObj.isTest            
+%         % inverts the bottom location of the ROI
+    
+        % resets the dimensions of the preview axes
         if infoObj.isWebCam            
             % sets the offset
             yOfs = vRes(2) - sum(rPos([2,4]));
@@ -730,7 +731,7 @@ if isReset
             % resets the axes limits            
             set(hAx,'xlim',[0,rPos(3)],'ylim',[0,rPos(4)])
         end           
-    end
+%     end
     
     % if the camera preview is off, then reset the axes image
     prObj = getappdata(hFig,'prObj');
@@ -1025,11 +1026,11 @@ caxis([0 255])
 % --- retrieves the video ROI position
 function rPos = getVideoROIPosition(infoObj)
 
-if infoObj.isTest
-    % video object is the test file
-    rPos = [1,1,flip(infoObj.objIMAQ.szImg)];
+% if infoObj.isTest
+%     % video object is the test file
+%     rPos = [1,1,flip(infoObj.objIMAQ.szImg)];
     
-elseif infoObj.isWebCam
+if infoObj.isWebCam
     % case is a webcam
     rPos = infoObj.objIMAQ.pROI;
 

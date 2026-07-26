@@ -105,7 +105,9 @@ switch (typeStr)
                 end
 
                 % if the device is closed, then open it
-                openSerialDevice(hDev{i},sType{i});
+                if ~isa(hDev{i},'DummyDevice')
+                    openSerialDevice(hDev{i},sType{i});
+                end
                 
                 % turns on the IR lights
                 writeSerialString(hDev{i},sStr{dType(i)});

@@ -155,7 +155,7 @@ switch infoObj.iType
         % case is initialising from DART
         switch infoObj.exType
             case 'StimOnly'
-                ExptSetup(infoObj,h);
+                ExptSetupDlg(infoObj,h);
             otherwise
                 FlyRecord(infoObj,h);
         end
@@ -259,7 +259,7 @@ end
 function infoObj = connectIMAQDevice(handles,infoObj,h)
 
 % exits if a stimuli only experiment
-if strcmp(infoObj.exType,'StimOnly') || infoObj.isTest
+if strcmp(infoObj.exType,'StimOnly') % || infoObj.isTest
     infoObj.objIMAQ = DummyVideo(infoObj.testFile);
     return
 end

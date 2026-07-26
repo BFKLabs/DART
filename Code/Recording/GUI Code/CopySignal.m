@@ -5,12 +5,17 @@ classdef CopySignal < handle
         
         % input arguments
         iCh
+        nCh 
+        tDurB
+        tFeas
         chName
-        tDur
         
         % stimuli blob object fields
         sBlk        
         tBlkL
+        tMltOfs
+        tMltDur
+        tDurTotU
         
         % stimuli copying parameters
         sPara
@@ -64,9 +69,9 @@ classdef CopySignal < handle
         
         % static class fields
         nChB
+        nRadioCh
         nRowW = 2;
-        nButC = 2;
-        nRadioCh = 2;        
+        nButC = 2;                
         fSzH = 13;
         fSzL = 12;
         fSz = 10 + 2/3;
@@ -81,17 +86,31 @@ classdef CopySignal < handle
     methods
         
         % --- class constuctor
-        function obj = CopySignal(iCh,chName,sBlk,tDur)
+        function obj = CopySignal(iCh,chName,sBlk,tFeas,tDurTotU)
             
             % sets the input arguments
             obj.iCh = iCh;
-            obj.chName = chName;
-            obj.tBlkL = calcSignalBlockLimits(sBlk);
-            obj.tDur = tDur;
+            obj.sBlk = sBlk;
+            obj.tFeas = tFeas;             
+            obj.tDurTotU = tDurTotU;
+            
+            % other field initialisations
+            obj.chName = chName(iCh);
+            obj.nCh = length(chName);
+            obj.tBlkL = calcSignalBlockLimits({sBlk.hRectS});
+            obj.tDurB = diff(obj.tBlkL);
+            
+            % calculates the temporal parameter multipliers
+            obj.tMltOfs = getTimeMultiplier(sBlk.sPara.tOfsU,tDurTotU);
+            obj.tMltDur = getTimeMultiplier(sBlk.sPara.tDurU,tDurTotU);
             
             % initialises the class fields/objects
             obj.initClassFields();
-            obj.initClassObjects();            
+            if obj.isCopy
+                obj.initClassObjects();
+            else
+                return
+            end
             
             % clears the output object (if not required)
             if (nargout == 0) && ~isdeployed
@@ -111,36 +130,45 @@ classdef CopySignal < handle
         function initClassFields(obj)
             
             % array dimensioning
-            obj.nChB = length(obj.chName);            
+            obj.nChB = length(obj.chName);                        
+            obj.canWCopy = obj.tFeas >= obj.tDurB;
+            obj.nRadioCh = double(obj.canWCopy) + (obj.nChB > 0);
+
+            % if there are no feasible locations then exit
+            if (obj.nChB == 0) && ~obj.canWCopy
+                % case there is no feasible position to copy the block
+                tStr = 'Infeasible Channel Copy';
+                eStr = ['It is not feasible to copy the ',...
+                    'selected block. Either select another stimuli ',...
+                    'block or make space around the selected block.'];
+                waitfor(msgbox(eStr,tStr,'modal'))
+
+                % closes the class object
+                obj.isCopy = false;
+                return
+            end            
             
             % memory allocation
             obj.hRadioCh = cell(obj.nRadioCh,1);
             obj.hEditW = cell(obj.nRowW,1);
-            obj.hButC = cell(obj.nButC,1);              
-            
+            obj.hButC = cell(obj.nButC,1);
+                        
             % ---------------------------------------- %            
             % --- STIMULI PARAMETER INITIALISATION --- %
             % ---------------------------------------- %
-            
+                                    
             % determines if the current signal block configuration allows 
             % for at least one more copy to be placed afterwards
-            tDurR = (obj.tDur-obj.tBlkL(2))/diff(obj.tBlkL);
-            if tDurR < 1
-                % if not, flag that copying within channel is infeasible
-                obj.canWCopy = false;
-                
-            else
-                % otherwise, determine the valid time offset
-                obj.tOfs = min(obj.tOfs,diff(obj.tBlkL)*(tDurR-1));
-            end
+            obj.tOfs = min(obj.tOfs,(obj.tFeas-obj.tDurB)*obj.tMltOfs);
             
             % ------------------------------------- %
             % --- OBJECT DIMENSION CALCULATIONS --- %
             % ------------------------------------- %            
             
             % other panel dimension calculations
-            obj.hghtPanelW = obj.nRowW*obj.hghtRow + obj.dX/2;
-            obj.hghtPanelB = obj.nChB*obj.hghtRow + obj.dX;
+            obj.hghtPanelW = obj.canWCopy*(...
+                obj.nRowW*obj.hghtRow + obj.dX/2);
+            obj.hghtPanelB = (obj.nChB*obj.hghtRow + obj.dX)*(obj.nChB>0);
             obj.hghtPanelCh = obj.dX/2 + ...
                 obj.hghtPanelB + obj.hghtPanelW + obj.nRadioCh*obj.hghtRow;
             obj.hghtPanelC = obj.dX + obj.hghtRow;
@@ -224,10 +252,13 @@ classdef CopySignal < handle
             
             % initialisations
             pStrW = {'nCount','tOfs'};
-            tStrW = {'Repetition Count','Offset Time (s)'};
+            tStrW = {'Repetition Count',''};
             tStrCh = {'Copy Within Channel','Copy Between Channels'};
             cbFcnW = @obj.editWithinUpdate;
             cbFcnB = @obj.checkBetweenUpdate;
+            
+            % sets the offset time field
+            tStrW{2} = sprintf('Offset Time (%s)',obj.sBlk.sPara.tOfsU);
             
             % creates the panel object
             yPos = sum(obj.hPanelC.Position([2,4])) + obj.dX;
@@ -236,69 +267,83 @@ classdef CopySignal < handle
                 obj.hFig,pPos,[],'pType','buttongroup');
             obj.hPanelCh.SelectionChangedFcn = @obj.panelSelectChange;
             
-            % copy between channel panel objects
-            pPosB = [obj.dX*[1,1]/2,obj.widPanelI,obj.hghtPanelB];
-            obj.hPanelB = createPanelObject(obj.hPanelCh,pPosB);
-                        
-            % creates all of the checkbox objects
-            for i = 1:obj.nChB
-                % sets up the position vector
-                yOfs = obj.dX/2 + (i-1)*obj.hghtRow;
-                pPosC = [obj.dX,yOfs,obj.widChkB,obj.hghtChk];                
-                
-                % creates the checkbox object
-                tStrC = sprintf('Channel #%i (%s)',...
-                    (obj.nChB+2)-obj.iCh(i),obj.chName{i});
-                createUIObj('checkbox',obj.hPanelB,...
-                    'Position',pPosC,'FontUnits','Pixels',...
-                    'FontWeight','Bold','FontSize',obj.fSzL,...
-                    'Callback',cbFcnB,'UserData',obj.iCh(i),...
-                    'String',tStrC,'Value',1);
+            % creates the between channel panel objects
+            if obj.nChB > 0
+                % copy between channel panel objects
+                pPosB = [obj.dX*[1,1]/2,obj.widPanelI,obj.hghtPanelB];
+                obj.hPanelB = createPanelObject(obj.hPanelCh,pPosB);
+
+                % creates all of the checkbox objects
+                for i = 1:obj.nChB
+                    % sets up the position vector
+                    yOfs = obj.dX/2 + (i-1)*obj.hghtRow;
+                    pPosC = [obj.dX,yOfs,obj.widChkB,obj.hghtChk];                
+
+                    % creates the checkbox object
+                    tStrC = sprintf('Channel #%i (%s)',...
+                        (obj.nCh+1)-obj.iCh(i),obj.chName{i});
+                    createUIObj('checkbox',obj.hPanelB,...
+                        'Position',pPosC,'FontUnits','Pixels',...
+                        'FontWeight','Bold','FontSize',obj.fSzL,...
+                        'Callback',cbFcnB,'UserData',obj.iCh(i),...
+                        'String',tStrC,'Value',1);
+                end
+            else
+                % case is there is no feasible between channel locations
+                pPosB = [0,obj.dX/2-obj.hghtRow,0,0];
             end
             
             % copy between channel panel objects
-            yPosW = sum(pPosB([2,4])) + obj.hghtRow;
-            pPosW = [obj.dX/2,yPosW,obj.widPanelI,obj.hghtPanelW];
-            obj.hPanelW = createPanelObject(obj.hPanelCh,pPosW);
+            if obj.canWCopy
+                yPosW = sum(pPosB([2,4])) + obj.hghtRow;
+                pPosW = [obj.dX/2,yPosW,obj.widPanelI,obj.hghtPanelW];
+                obj.hPanelW = createPanelObject(obj.hPanelCh,pPosW);
             
-            % creates the within channel copy editbox objects
-            for i = 1:obj.nRowW
-                % calculates the vertical offset
-                j = obj.nRowW - (i-1);
-                yOfs = obj.dX/2 + (j-1)*obj.hghtRow + 2;
-                pStrE = num2str(obj.(pStrW{i}));
-                
-                % sets up the editbox object                
-                obj.hEditW{i} = createObjectPair(obj.hPanelW,...
-                    tStrW{i},obj.widTxtW,'edit','yOfs',yOfs,...
-                    'hghtEdit',20,'fSzM',obj.fSz,'cbFcnM',cbFcnW);
-                set(obj.hEditW{i},'UserData',pStrW{i},'String',pStrE);
-            end            
-            
+                % creates the within channel copy editbox objects
+                for i = 1:obj.nRowW
+                    % calculates the vertical offset
+                    j = obj.nRowW - (i-1);
+                    yOfs = obj.dX/2 + (j-1)*obj.hghtRow + 2;
+                    pStrE = num2str(obj.(pStrW{i}));
+
+                    % sets up the editbox object                
+                    obj.hEditW{i} = createObjectPair(obj.hPanelW,...
+                        tStrW{i},obj.widTxtW,'edit','yOfs',yOfs,...
+                        'hghtEdit',20,'fSzM',obj.fSz,'cbFcnM',cbFcnW);
+                    set(obj.hEditW{i},'UserData',pStrW{i},'String',pStrE);
+                end            
+            end
+
             % creates the radio button objects
-            yOfs0 = obj.dX/2 + obj.hghtPanelB + 2;
+            yOfs0 = obj.dX/2 + obj.hghtPanelB*obj.canWCopy + 2;
             for i = 1:obj.nRadioCh
                 % sets the vertical offset
-                if i == 1
-                    % case is the 
-                    yPosR = yOfs0 + (obj.hghtPanelW + obj.hghtRow);
+                j = i;
+                if (obj.nChB == 0) || ~obj.canWCopy
+                    % case is there no feasible between channel locations
+                    j = 1 + (obj.nChB > 0);
+                    yPosR = yOfs0 + (obj.hghtPanelW + obj.hghtPanelB);
                 else
-                    yPosR = yOfs0;
+                    % case is the top radio button
+                    yPosR = yOfs0 + (i == 1)*(obj.hghtPanelW + obj.hghtRow);
                 end
-                
+
                 % creates the radio button object
                 pPosR = [obj.dX,yPosR,obj.widRadioCh,obj.hghtRadio];
                 obj.hRadioCh{i} = createUIObj('radiobutton',...
-                    obj.hPanelCh,'Position',pPosR,'String',tStrCh{i},...
+                    obj.hPanelCh,'Position',pPosR,'String',tStrCh{j},...
                     'FontUnits','Pixels','FontWeight','Bold',...
                     'FontSize',obj.fSzL,'Value',i==1);                
             end
             
-            % if not able to copying within channel, then disable objects
-            if ~obj.canWCopy
-                setObjEnable(obj.hRadioCh{1},0);                
-                obj.hPanelCh.SelectedObject = obj.hRadioCh{2};
-            end
+            % sets the radio button properties
+            setObjEnable(obj.hRadioCh{1},obj.nRadioCh > 1);
+            
+%             % if not able to copying within channel, then disable objects
+%             if ~obj.canWCopy
+%                 setObjEnable(obj.hRadioCh{1},0);                
+%                 obj.hPanelCh.SelectedObject = obj.hRadioCh{2};
+%             end
             
             % updates the panel properties
             obj.panelSelectChange([],[]);
@@ -313,15 +358,16 @@ classdef CopySignal < handle
         function panelSelectChange(obj, ~, ~)
             
             % field retrieval
-            isWC = obj.hRadioCh{1}.Value;
+            rStr = obj.hPanelCh.SelectedObject.String;
+            obj.isWCopy = strContains(rStr,'Within');
             
             % updates the within/between panel object properties
-            setPanelProps(obj.hPanelW,isWC)
-            setPanelProps(obj.hPanelB,~isWC)   
+            setPanelProps(obj.hPanelW,obj.isWCopy)
+            setPanelProps(obj.hPanelB,~obj.isWCopy)   
             
             % sets the continue button properties
             nSel = length(findall(obj.hPanelB,'Value',1));
-            setObjEnable(obj.hButC{1},isWC || (nSel > 0));
+            setObjEnable(obj.hButC{1},obj.isWCopy || (nSel > 0));
             
         end
         
@@ -340,7 +386,7 @@ classdef CopySignal < handle
                     
                 case 'tOfs'
                     % case is the offset time
-                    [nwLim,isInt] = deal([1,inf],1);
+                    [nwLim,isInt] = deal([0,inf],0);
             end
             
             % determines if the new value is valid
@@ -380,7 +426,6 @@ classdef CopySignal < handle
             
             % resets the copying flag
             obj.isCopy = true;                   
-            obj.isWCopy = obj.hRadioCh{1}.Value;
             obj.iChCopy = sort(uData); 
             
             % deletes the dialog window
@@ -409,14 +454,17 @@ classdef CopySignal < handle
         function isFeas = detIfParaFeas(obj)
                         
             % calculates the new 
-            tNw = obj.tBlkL(2) + obj.nCount*(obj.tOfs + diff(obj.tBlkL));
-            isFeas = tNw < obj.tDur;
+            dtNw = obj.nCount*(obj.tDurB*obj.tMltDur + ...
+                               obj.tOfs/obj.tMltOfs);
+            isFeas = dtNw < obj.tFeas;
             
             % if configuration is infeasible, then output an error msg
             if ~isFeas
                 eStr = sprintf(['The new parameter configuration is ',...
-                    'infeasible:\n\n * Stimuli Duration = %.2f\n',...
-                    ' * New Configuration End-Point = %.2f'],obj.tDur,tNw);
+                    'infeasible:\n\n * Feasible End-Point (%s) = %.4f\n',...
+                    ' * New Configuration End-Point (%s) = %.4f'],...
+                    obj.tDurTotU,obj.tFeas+obj.tBlkL(2),obj.tDurTotU,... 
+                    dtNw+obj.tBlkL(2));
                 waitfor(errordlg(eStr,'Infeasible Parameters','modal'))
             end
             

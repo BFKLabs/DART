@@ -173,9 +173,9 @@ classdef VideoPreview < handle
             set(obj.hGUI.toggleVideoPreview,'string','Stop Video Preview');             
             
             % sets the preview callback function
-            if obj.isTest
-                obj.objIMAQ.hAx = obj.hGUI.axesPreview;
-            else
+%             if obj.isTest
+%                 obj.objIMAQ.hAx = obj.hGUI.axesPreview;
+%             else
                 cbFcn = @obj.previewRec;
                 if obj.useVD 
                     if ~isVidDev(obj.objIMAQ)
@@ -186,16 +186,16 @@ classdef VideoPreview < handle
                 elseif ~obj.useVD && isVidDev(obj.objIMAQ)
                     resetImageAcquisitionDevice(obj,false)
                 end
-            end            
+%             end            
             
             % sets the video calibration start time
             if ~isempty(obj.vcObj)
                 obj.vcObj.resetTraceFields();
 
                 % retrieves the current/full video resolution
-                if obj.isTest
-                    rPos = [1,1,obj.objIMAQ.szImg];
-                elseif obj.isWebCam
+%                 if obj.isTest
+%                     rPos = [1,1,obj.objIMAQ.szImg];
+                if obj.isWebCam
                     rPos = obj.objIMAQ.pROI;                
                 elseif isprop(obj.objIMAQ,'ROI')
                     rPos = get(obj.objIMAQ,'ROI');                    
@@ -250,13 +250,13 @@ classdef VideoPreview < handle
                 % deletes the menu item
                 delete(hMenu);
             end
-
-            % stops the video preview
-            if obj.isTest
-                % case is testing
-                obj.objIMAQ.stopVideo();
+ 
+%             % stops the video preview
+%             if obj.isTest
+%                 % case is testing
+%                 obj.objIMAQ.stopVideo();
                 
-            elseif obj.isWebCam || obj.useVD  
+            if obj.isWebCam || obj.useVD  
                 % case is a webcam
                 if ~isempty(obj.hTimer) && isvalid(obj.hTimer)
                     if strcmp(obj.hTimer.Running,'on')
@@ -322,7 +322,7 @@ classdef VideoPreview < handle
         % --- initialises the preview image
         function ok = initPreviewImage(obj,cbFcn)
             
-            if ~obj.isTest
+%             if ~obj.isTest
                 % ensures the camera is not running 
                 if obj.isWebCam
                     obj.objIMAQ.Resolution = obj.objIMAQ.resTemp;
@@ -331,7 +331,7 @@ classdef VideoPreview < handle
                         stop(obj.objIMAQ); pause(0.05);
                     end 
                 end
-            end
+%             end
             
             % retrieves the position of the axes parent panel
             [dY,ok] = deal(10,true);
@@ -349,7 +349,7 @@ classdef VideoPreview < handle
             pause(0.05);
 
             % resets the image axis     
-            if ~obj.isTest && obj.isWebCam
+            if obj.isWebCam
                 if obj.isWebCam
                     pR = obj.objIMAQ.pROI;                
                     vResS = obj.objIMAQ.Resolution;
@@ -408,13 +408,13 @@ classdef VideoPreview < handle
             pause(0.05);
 
             try
-                % starts the video preview  
-                if obj.isTest
-                    % case is the test case
-                    obj.objIMAQ.iFrmT = 1;
-                    obj.objIMAQ.hImage = obj.hImage;
-                    obj.objIMAQ.startVideo(~obj.isRecord);                    
-                else
+%                 % starts the video preview  
+%                 if obj.isTest
+%                     % case is the test case
+%                     obj.objIMAQ.iFrmT = 1;
+%                     obj.objIMAQ.hImage = obj.hImage;
+%                     obj.objIMAQ.startVideo(~obj.isRecord);
+%                 else
                     % case is the camera object
                     if obj.isWebCam || obj.useVD
                         % determines if the calibration needs update
@@ -438,7 +438,7 @@ classdef VideoPreview < handle
                             (obj.hImage,'UpdatePreviewWindowFcn',cbFcn)
                         preview(obj.objIMAQ,obj.hImage)
                     end
-                end
+%                 end
 
             catch
                 % makes the loadbar invisible

@@ -39,13 +39,15 @@ if isOK
                 pkgObj = feval('ConvertOutputObj',tData);
             end
         
-        case 'CustomSignal' 
+        case 'CustomSignalObj' 
             % case is the custom signal object
             try
                 % creates the class object and updates within the GUI
-                handles = varargin{1};
-                pkgObj = feval('CustomSignalObj',handles);   
-                setappdata(handles.figExptSetup,'csObj',pkgObj);
+                objT = varargin{1};
+                pkgObj = feval('CustomSignalObj',objT);
+                if ~isempty(pkgObj)
+                    objT.objC = pkgObj;
+                end
             end
 
         case 'RunStreamPix' 

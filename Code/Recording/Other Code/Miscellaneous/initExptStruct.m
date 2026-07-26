@@ -58,17 +58,28 @@ Device = struct('IMAQ',[],'DAQ',[]);
 % sets the image acquisition related sub-struct fields
 if ~isempty(objIMAQ) && ~isa(objIMAQ,'DummyVideo')
     % sets the camera frame rate
-    if isWebCam
-        % case is for webcams
-        Video.FPS = str2double(objIMAQ.pInfo.FrameRate.DefaultValue);
+    if isa(varargin{1},'ExptSetupDlg')
+        Video.FPS = obj.objT{1}.getCameraFrameRate(1);
     else
-        % case is for the other camera types
-        [fRate,~,iSel] = detCameraFrameRate(getselectedsource(objIMAQ),[]);
-        Video.FPS = fRate(iSel); 
+        if isWebCam
+            % case is for webcams
+            Video.FPS = str2double(objIMAQ.pInfo.FrameRate.DefaultValue);
+        else
+            % case is for the other camera types
+            [fRate,~,iSel] = detCameraFrameRate(getselectedsource(objIMAQ),[]);
+            Video.FPS = fRate(iSel); 
+        end
     end
-    
+        
+    %
+    if isVidDev(objIMAQ)
+        xiN = 1:(strfind(objIMAQ.Device,' ('));
+        devName = strtrim(objIMAQ.Device(xiN));
+    else
+        devName = get(objIMAQ,'Name');        
+    end
+
     % sets the camera specific properties
-    devName = get(objIMAQ,'Name');
     if strContains(devName,'Basler GenICam Source')
         % case is a basler genicam type
         Timing.Tp = 10;
@@ -82,7 +93,7 @@ if ~isempty(objIMAQ) && ~isa(objIMAQ,'DummyVideo')
     end
     
     % loads the default property data
-    psData = loadDefPropData(objIMAQ.Name);
+    psData = loadDefPropData(devName);
     if ~isempty(psData)
         % case is there a default pause time value
         indP = strContains(psData.Other.Name,'Inter-Video Pause');
@@ -90,7 +101,7 @@ if ~isempty(objIMAQ) && ~isa(objIMAQ,'DummyVideo')
     end
     
     % sets the image acquisition device name
-    Device.IMAQ = objIMAQ.Name;    
+    Device.IMAQ = devName;    
 end 
 
 % sets the external stimuli related sub-struct fields

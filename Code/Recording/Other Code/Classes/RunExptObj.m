@@ -5,19 +5,17 @@ classdef RunExptObj < handle
         
         % other class objects
         objP
+        objE
 
         % object handles/arrays
         hMain
         hExpt
-        hExptF
         hProg
         hAx
         objIMAQ
         objDAQ
         objDev  
         objDRT
-        spixObj
-        extnObj
         logFile
                 
         % data structs/timers
@@ -101,7 +99,6 @@ classdef RunExptObj < handle
         isTrigger
         isUserStop
         isWebCam
-        isTest
         isLogging
         
     end
@@ -128,24 +125,22 @@ classdef RunExptObj < handle
             obj.hasIMAQ = infoObj.hasIMAQ;
             obj.objIMAQ = infoObj.objIMAQ;
             obj.isWebCam = infoObj.isWebCam;
-            obj.isTest = infoObj.isTest;
+%             obj.isTest = infoObj.isTest;
             
             %
             switch obj.vidType
                 case 'Expt'
                     % sets the input arguments
-                    hExptF = varargin{1};                    
+                    obj.objE = varargin{1};
                     isRTBatch = varargin{2};
                     isRTExpt = varargin{3};                     
             
                     % retrieves the stimuli/experiment data structs 
-                    obj.hExptF = hExptF;                                       
-                    obj.sTrain = getappdata(obj.hExptF,'sTrain');
-                    obj.extnObj = getappdata(obj.hExptF,'extnObj');
-                    obj.resInfo = getappdata(obj.hExptF,'resInfo');
+                    obj.sTrain = obj.objE.sTrainP;
+                    obj.resInfo = obj.objE.resInfo;
                     
                     % sets up the experiment data struct
-                    iExpt0 = obj.getExptDataStruct();
+                    iExpt0 = obj.objE.iExpt;
                     
                     % sets the other fields
                     obj.iStim = infoObj.iStim;
@@ -163,8 +158,7 @@ classdef RunExptObj < handle
                         obj.rfRate = roundP(obj.iExpt.Video.FPS);
                     else                        
                         % sets the streampix class object (if available)
-                        obj.rfRate = 1;                        
-                        obj.spixObj = getappdata(obj.hExptF,'spixObj');
+                        obj.rfRate = 1;
                     end                                        
                     
                     % initialises the experiment object
@@ -267,12 +261,12 @@ classdef RunExptObj < handle
                 if any(isS)     
                     % case is serial stimuli devices
                     obj.objDev{1} = setupSerialDevice(...
-                                obj.objDAQ,'Expt',obj,find(isS));                    
+                                obj.objDAQ,'Expt',obj,find(isS));
                 else
                     % case is external stimuli devices
-                    obj.extnObj.setupExtnDeviceExpt(obj,find(~isS));
-                    obj.extnObj.objP = obj.objP;
-                    obj.objDev{1} = obj.extnObj.objD;
+                    obj.objE.objED.setupExtnDeviceExpt(obj,find(~isS));
+                    obj.objE.objED.objP = obj.objP;
+                    obj.objDev{1} = obj.objE.objED.objD;
                     
 %                     % case is external devices
 %                     objDACT = createDACObjects(obj.objDAQ,50);        
@@ -351,9 +345,7 @@ classdef RunExptObj < handle
         function initCameraProperties(obj)
             
             % removes the timer object
-            if obj.isTest
-                obj.hTimer = [];            
-            elseif obj.isWebCam && ~isempty(obj.hTimer)
+            if obj.isWebCam && ~isempty(obj.hTimer)
                 obj.hTimer = [];
             end
             
@@ -366,7 +358,7 @@ classdef RunExptObj < handle
             obj.checkVideoCompression();              
             
             % sets the rotation flag and recording logging mode 
-            if obj.isWebCam || obj.isTest
+            if obj.isWebCam
                 % case is using a webcam
                 obj.isMemLog = 0;
             else
@@ -489,15 +481,7 @@ classdef RunExptObj < handle
                 obj.isConvert = strcmp(uChoice,'Yes');
             end     
             
-        end        
-        
-        % --- retrieves the experiment data struct
-        function iExpt = getExptDataStruct(obj)
-
-            % retrieve experiment data struct
-            iExpt = getappdata(obj.hExptF,'iExpt');              
-
-        end        
+        end
         
         % ----------------------------------------------- %        
         % ----    EXPERIMENT START/STOP FUNCTIONS    ---- %
@@ -509,7 +493,7 @@ classdef RunExptObj < handle
             if ~obj.isOK
                 % if there was an error during the setup phase, then make 
                 % the experiment setup GUI visible again
-                setObjVisibility(obj.hExptF,'on')
+                setObjVisibility(obj.objE.hFig,'on')
             else
                 % otherwise, start the experiment timer
                 start(obj.hTimerCDown)
@@ -530,7 +514,6 @@ classdef RunExptObj < handle
             end
 
             % retrieves the image/data acquisition objects
-            aFunc = getappdata(obj.hExptF,'afterExptFunc');
             if ishandle(obj.objP.hFig) 
                 set(obj.objP.hFig,'WindowStyle','normal'); 
             end
@@ -574,8 +557,8 @@ classdef RunExptObj < handle
 
             else
                 % force stops the streampix object (if available)
-                if ~isempty(obj.spixObj) && obj.isUserStop
-                    obj.spixObj.forceStop()
+                if ~isempty(obj.objE.spixObj) && obj.isUserStop
+                    obj.objE.spixObj.forceStop()
                 end                
             end
 
@@ -615,11 +598,10 @@ classdef RunExptObj < handle
                 end
 
                 % makes the info GUI visible again and sets focus
-                setObjVisibility(obj.hExptF,'on')
-%                 figure(obj.hExptF)    
+                setObjVisibility(obj.objE.hFig,'on')
 
                 % deletes the experimental GUI
-                aFunc(obj.hExptF)
+                obj.objE.afterExptRun();
                 return
                 
             else
@@ -714,7 +696,7 @@ classdef RunExptObj < handle
                 % house-keeping exercises
 
                 % makes the info GUI visible again and sets focus
-                setObjVisibility(obj.hExptF,'on')
+                setObjVisibility(obj.objE.hFig,'on')
 
                 % clears the camera callback functions (videoinput only)
                 if ~(obj.isWebCam || obj.isMemLog)
@@ -739,7 +721,7 @@ classdef RunExptObj < handle
             end          
 
             % runs the after experiment function
-            aFunc(obj.hExptF)           
+            obj.objE.afterExptRun();
             
         end                 
             
@@ -751,7 +733,6 @@ classdef RunExptObj < handle
         function obj = initCDownTimer(obj)
         
             % creates the timer object
-            obj.hExpt = guidata(obj.hExptF);
             obj.hTimerCDown = timer;
             obj.nPause = 5*(1 + ~obj.isError);
 
@@ -900,8 +881,8 @@ classdef RunExptObj < handle
             end
             
             % starts the streampix object (if available)
-            if ~isempty(obj.spixObj)
-                obj.spixObj.startRecord()
+            if ~isempty(obj.objE.spixObj)
+                obj.objE.spixObj.startRecord()
             end
         end
                
@@ -943,8 +924,8 @@ classdef RunExptObj < handle
                 end
 
                 % force stops the streampix object (if available)
-                if ~isempty(obj.spixObj)
-                    obj.spixObj.forceStop()
+                if ~isempty(obj.objE.spixObj)
+                    obj.objE.spixObj.forceStop()
                 end
                 
                 % stops/deletes the experiment timer
@@ -1216,23 +1197,19 @@ classdef RunExptObj < handle
             end
 
             % field retrival
-            chInfo = getappdata(obj.hExptF,'chInfo');
+            sTrainEx = cell2mat(obj.sTrain.Ex);
+            sTrainS = field2cell(sTrainEx,'sTrain',1);
+            sParaEx = field2cell(sTrainEx,'sParaEx',1);
             sRate = field2cell(obj.iStim.oPara,'sRate',1);
-            sTrainS = obj.sTrain.Ex.sTrain;
-            sParaEx = obj.sTrain.Ex.sParaEx;
-
+            
             % memory allocation
             nTrain = length(sTrainS);
             dT = 1/sRate(1);
 
-%             % calculates the signals for the current train
-%             xySigS = arrayfun(@(x)(setupDACSignal...
-%                                 (x,chInfo,1/sRate)),sTrainS,'un',0);
-
             % calculates the serial device signals (for each device)
             for i = 1:nTrain
                 % sets up the signals for the current train
-                xySigS = setupDACSignal(sTrainS(i),chInfo,dT);
+                xySigS = setupDACSignal(sTrainS(i),obj.objE.chInfo,dT);
                 
                 % memory allocation for the full x/y data values
                 if i == 1
@@ -1255,7 +1232,7 @@ classdef RunExptObj < handle
                         if strcmp(sType{k0},'Random')
                             % case is a random stimuli block
                             xySigSR = repeatRandBlocks(...
-                                    sTrainS(i),chInfo,sParaEx(i),dT,k);
+                                    sTrainS(i),obj.objE.chInfo,sParaEx(i),dT,k);
 
                         else
                             % case is another stimuli type

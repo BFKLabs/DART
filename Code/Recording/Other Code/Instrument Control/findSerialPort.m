@@ -27,6 +27,8 @@ if (nDev > 0)
         inUse(i) = isempty(sType{i});
     end
     
+    disp(sType)
+    
     % removes any controllers that are currently being used
     [pStr,sType] = deal(pStr(~inUse,:),sType(~inUse,:));
     if isempty(pStr); return; end

@@ -7,11 +7,7 @@ if ~exist('rmvCB','var'); saveStopFcn = false; end
 if ~exist('relVidDev','var'); relVidDev = true; end
 
 %
-if obj.isTest
-    % case is running a test
-    return
-    
-elseif obj.isWebCam || isVD
+if obj.isWebCam || isVD
     % determines if the object is value
     if isempty(obj.hTimer)
         isV = false;

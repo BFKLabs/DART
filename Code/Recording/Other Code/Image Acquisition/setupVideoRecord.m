@@ -90,7 +90,7 @@ switch exObj.vidType
         setupLogVideo(exObj,exObj.vPara(exObj.nCountV));        
                         
         % sets the image acquisition callback functions   
-        if exObj.isWebCam || exObj.isTest || exObj.isMemLog
+        if exObj.isWebCam || exObj.isMemLog
 %             % deletes any previous timer objects
 %             hTimerPr = timerfindall('Tag','vObjW');
 %             if ~isempty(hTimerPr); delete(hTimerPr); end            
@@ -117,7 +117,7 @@ switch exObj.vidType
 end
 
 % sets the videoinput specific fields
-if ~(exObj.isWebCam || exObj.isTest || exObj.isMemLog)
+if ~(exObj.isWebCam || exObj.isMemLog)
     % sets up the camera properties
     exObj.objIMAQ.FramesAcquiredFcnCount = 1;
     exObj.objIMAQ.TriggerRepeat = 0;    
@@ -164,7 +164,7 @@ if ~exObj.isTrigger
     % if the camera has not been triggered yet, then exit
     return
     
-elseif exObj.isWebCam || exObj.isTest || exObj.isMemLog
+elseif exObj.isWebCam || exObj.isMemLog
     % acquires the new frame
     frmAcquired([],[],exObj,exObj.hTimer.UserData);
     
@@ -234,7 +234,7 @@ function frmAcquired(hTimer,~,exObj,tOfs)
 
 % retrieves the time-stamp array
 [VV,isStop] = deal(exObj.vParaVV,false);
-if exObj.isWebCam || exObj.isTest || exObj.isMemLog
+if exObj.isWebCam || exObj.isMemLog
     % case is a webcam object
     if isstruct(exObj.hTimer)
         % case is an experiment recording
@@ -325,7 +325,7 @@ if exObj.tStampV{exObj.nCountV}(iFrm(end)) >= VV.Tf(exObj.nCountV)
 end
 
 % flushes the image acqusition object frame buffer
-if ~(exObj.isWebCam || exObj.isTest || exObj.isMemLog)
+if ~(exObj.isWebCam || exObj.isMemLog)
     flushdata(exObj.objIMAQ); 
 end
 
@@ -698,46 +698,43 @@ wState = warning('off','all');
 % exObj.isConvert = ~strcmp(vPara.vCompress,vCompressF);
 
 % flushes any frame data already in the IMAQ object
-if ~(exObj.isWebCam || exObj.isTest || exObj.isMemLog)
+if ~(exObj.isWebCam || exObj.isMemLog)
     flushdata(exObj.objIMAQ); 
 end
 
-% creates the log-file (non-test only)
-if ~exObj.isTest
-    % sets the log-file name
-    logName = fullfile(vPara.Dir,vPara.Name);    
-    logFile = VideoWriter(logName,vPara.vCompress); 
-    if isempty(vPara.FPS)
-        % sets the camera frame rate
-        if exObj.isWebCam
-            [fRate,~,iSel] = detWebcamFrameRate(exObj.objIMAQ,[]);
-        else
-            srcObj = getselectedsource(exObj.objIMAQ);
-            [fRate,~,iSel] = detCameraFrameRate(srcObj,[]);
-        end
-
-        % sets the log-file frame rate
-        logFile.FrameRate = fRate(iSel);            
+% sets the log-file name
+logName = fullfile(vPara.Dir,vPara.Name);    
+logFile = VideoWriter(logName,vPara.vCompress); 
+if isempty(vPara.FPS)
+    % sets the camera frame rate
+    if exObj.isWebCam
+        [fRate,~,iSel] = detWebcamFrameRate(exObj.objIMAQ,[]);
     else
-        % sets the log-file frame rate
-        logFile.FrameRate = vPara.FPS;
-    end
-    
-    % sets the colormap (for an index avi
-    if strcmp(vPara.vCompress,'Indexed AVI')
-        logFile.Colormap = repmat(linspace(0,1,256)',[1,3]);
+        srcObj = getselectedsource(exObj.objIMAQ);
+        [fRate,~,iSel] = detCameraFrameRate(srcObj,[]);
     end
 
-    % sets the other video parameters
-    exObj.iFrmVid = 0;
-    if exObj.isWebCam || exObj.isMemLog || isVidDev(exObj.objIMAQ)
-        % case is logging to memory
-        exObj.logFile = logFile;
-        open(logFile); 
-    else
-        % case is either a webcam or loging to disk
-        exObj.objIMAQ.DiskLogger = logFile;
-    end
+    % sets the log-file frame rate
+    logFile.FrameRate = fRate(iSel);            
+else
+    % sets the log-file frame rate
+    logFile.FrameRate = vPara.FPS;
+end
+
+% sets the colormap (for an index avi
+if strcmp(vPara.vCompress,'Indexed AVI')
+    logFile.Colormap = repmat(linspace(0,1,256)',[1,3]);
+end
+
+% sets the other video parameters
+exObj.iFrmVid = 0;
+if exObj.isWebCam || exObj.isMemLog || isVidDev(exObj.objIMAQ)
+    % case is logging to memory
+    exObj.logFile = logFile;
+    open(logFile); 
+else
+    % case is either a webcam or loging to disk
+    exObj.objIMAQ.DiskLogger = logFile;
 end
 
 % turns on all the warnings again

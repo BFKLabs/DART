@@ -81,8 +81,8 @@ switch lower(sType)
         T = sPara.tDur/sPara.nCount;
         
         % sets/calculates the final x/y-values
-        x0 = (0:dT:T)';
-        y0 = sPara.sAmp0 + dAmp*sPara.sObj.calcSignal(x0/x0(end));
+        x0 = linspace(0,T,201)';
+        y0 = sPara.sAmp0 + dAmp*setupCustomStimuliSignal(sPara.sObj,x0/T);
         
 end
 
@@ -130,8 +130,13 @@ if (yS(end) ~= 0); [xS,yS] = deal([xS;xS(end)],[yS;0]); end
 % --- sets up the random stimuli signal 
 function [xS,yS] = setupRandomStimuliSignal(sPara)
 
+if length(sPara.nCount) == 1
+    nCount = sPara.nCount;    
+else
+    nCount = sPara.nCount(2);
+end
+
 % field retrieval
-nCount = sPara.nCount(2);
 tMltOn = getTimeMultiplier(sPara.tDurU,sPara.tDurOnU);
 tMltOff = getTimeMultiplier(sPara.tDurU,sPara.tDurOffU);
 
@@ -143,7 +148,12 @@ tDurOff = tMltOff*getRandParaValue(sPara.tDurOff,nCount);
 % determines the first point which exceeds the signal duration
 tOnOff = [tDurOn,tDurOff];
 tTotS = cumsum(sum(tOnOff,2));
-iRow = find(tTotS >= sPara.tDur,1,'first');
+if tTotS(end) < sPara.tDur
+    iRow = length(tTotS);
+else
+    iRow = find(tTotS >= sPara.tDur,1,'first');
+end
+
 
 % sets up the initial stimuli signal points
 xS = cell2mat(arrayfun(@(t0,tOn)(t0+arr2vec([[0,0],tOn*[1,1]])),...
@@ -157,6 +167,27 @@ if xS(end) < sPara.tDur
 elseif xS(end) > sPara.tDur
     xS = min(xS,sPara.tDur);
 end
+
+% --- sets up the custom stimuli signal
+function yS = setupCustomStimuliSignal(sObj,t)
+
+% field retrieval
+codeStr = sObj.cStr;
+[pStr,pVal] = deal(sObj.pStr,sObj.pVal);
+
+% evaluates all the parameter values for the function
+for i = 1:length(pStr)
+    eval(sprintf('%s = %f;',pStr{i},pVal(i)));
+end
+
+% splits up the code and runs the code string
+codeStrSp = strsplit(codeStr,'\n');
+codeStrSpF = cellfun(@(x)(...
+    sprintf('%s;',strtrim(x))),codeStrSp,'un',0);
+eval(cell2cell(codeStrSpF,0));
+
+% sets the final output values
+yS = y;
 
 % --- retrieves the value from the random parameter field
 function pVal = getRandParaValue(pP,nCount)

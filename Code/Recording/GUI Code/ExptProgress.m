@@ -105,7 +105,7 @@ classdef ExptProgress < dynamicprops & handle
         function linkParentProps(obj)
             
             % parent fields strings
-            fldStr = {'iExpt','hExptF','ExptSig','hasIMAQ','hasDAQ'};
+            fldStr = {'iExpt','ExptSig','hasIMAQ','hasDAQ','objE'};
             
             % connects the base/child objects
             for propname = fldStr
@@ -218,7 +218,8 @@ classdef ExptProgress < dynamicprops & handle
                 case {'RecordStim','StimOnly'}
                     % case is a stimuli-dependent experiment
                     ID = field2cell(obj.ExptSig,'ID');
-                    chInfo = getappdata(obj.hExptF,'chInfo'); 
+                    chInfo = obj.objE.chInfo;
+%                     chInfo = getappdata(obj.hExptF,'chInfo'); 
                     iOfs = double(obj.hasIMAQ);
 
                     % sets the channel/device ID flags
@@ -417,8 +418,7 @@ classdef ExptProgress < dynamicprops & handle
             
             % initialisations
             iOfs = double(obj.hasIMAQ);
-            pStrR = {[],'0',[],[],'N/A'};
-            chInfo = getappdata(obj.hExptF,'chInfo');             
+            pStrR = {[],'0',[],[],'N/A'};             
             
             % sets the device string field
             if iOfs && (iRow == 1)
@@ -430,6 +430,7 @@ classdef ExptProgress < dynamicprops & handle
                 % case is a stimuli device
                 j = iRow - iOfs;
                 iID = obj.chID(j,3);
+                chInfo = obj.objE.chInfo;
                 
                 % sets the device type string
                 switch chInfo{iID,3}

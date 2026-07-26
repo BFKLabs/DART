@@ -8,7 +8,9 @@ if ~isempty(objDAQ)
 
     % re=opens any closed devices
     for i = 1:length(hS)
-        if isvalid(hS{i})
+        if isa(hS{i},'DummyDevice')
+            continue
+        elseif isvalid(hS{i})
             openSerialDevice(hS{i},objDAQ.sType{i})
         else
             comStr = regexp(objDAQ.vStrDAQ{i},'\(\w+\)','match','once');
@@ -52,7 +54,8 @@ switch stType
         hS = hS(isS);
         
         % retrieves the device type strings
-        chInfo = getappdata(exObj.hExptF,'chInfo');
+        chInfo = exObj.objE.chInfo;
+%         chInfo = getappdata(exObj.hExptF,'chInfo');
         sType = cellfun(@(x)(removeDeviceTypeNumbers(chInfo{find(...
                 cell2mat(chInfo(:,1))==x(1,1),1,'first'),3})),ID,'un',0);
         

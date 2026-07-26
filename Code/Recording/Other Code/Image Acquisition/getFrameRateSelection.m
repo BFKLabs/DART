@@ -3,15 +3,11 @@ function [fRate,iSel] = getFrameRateSelection(exObj,FPS)
 % default input arguments
 if ~exist('FPS','var'); FPS = []; end
 
-if exObj.isTest
-    % case is a test recording
-    [fRate,iSel] = deal(exObj.objIMAQ.FPS,1);
-
-elseif exObj.isWebCam
+if exObj.isWebCam
     % case is a webcam device
     [fRate,~,iSel] = detWebcamFrameRate(exObj.objIMAQ,FPS);
     
-elseif exObj.isMemLog
+elseif exObj.isMemLog || isVidDev(exObj.objIMAQ)
     % case is a Video Device
     dProps = exObj.objIMAQ.DeviceProperties;
     [fRate,iSel] = deal(str2double(dProps.FrameRate),1);

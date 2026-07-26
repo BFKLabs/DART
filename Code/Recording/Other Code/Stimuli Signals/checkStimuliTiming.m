@@ -9,7 +9,7 @@ tExpS = vec2sec(iExpt.Timing.Texp);
 
 % loops through all the stimuli struct fields checking the timing
 for i = 1:length(sFld)    
-    sT = getStructField(sTrain,sFld{i});
+    sT = sTrain.(sFld{i});
     if ~isempty(sT)
         % checks each field of the sub-struct (if not empty)
         for j = 1:length(sT)
@@ -36,10 +36,17 @@ for i = 1:length(sFld)
             if any(tBlk > tExpS)
                 % FINISH ME!
             end
+            
+            % ensures the parameter fields are set correctly (back-format)
+            for k = 1:length(sT{j}.blkInfo)
+                if ~isfield(sT{j}.blkInfo(k).sPara,'dType')
+                    sT{j}.blkInfo(k).sPara.dType = sT{j}.blkInfo(k).sType;
+                end
+            end
         end
         
         % updates the sub-struct within the main data struct
-        sTrain = setStructField(sTrain,sFld{i},sT);
+        sTrain.(sFld{i}) = sT;
     end
 end
 

@@ -1,6 +1,9 @@
 % --- retrieves the full experiment signal
 function [xyData,sPara] = setupFullExptSignal(sObj,sTrain,sPara)
 
+% global variables
+global yGap
+
 % retrieves the properties from the gui
 if isa(sObj,'OpenSolnFileTab') || isa(sObj,'SolnFileLoad')
     % object retrieval
@@ -13,25 +16,47 @@ if isa(sObj,'OpenSolnFileTab') || isa(sObj,'SolnFileLoad')
 else
     % retrieves the axes object/experiment data struct   
     useTOfs = 0;
-    hFig = sObj;
-    iExpt = getappdata(hFig,'iExpt');
+    if isprop(sObj,'iExpt') && isprop(sObj,'yGap')
+        % experiment info data struct
+        [iExpt,yGap] = deal(sObj.iExpt,sObj.yGap);
 
-    % sets the default input arguments (if not provided)
-    if ~exist('sPara','var')
-        % retrieves the experiment parameter struct (if not provided)
-        sType = getappdata(hFig,'sType');    
-        sParaEx = getappdata(hFig,'sParaEx');
-        sPara = getStructField(sParaEx,sType(1));         
+        % default input arguments (if not provided)
+        if ~exist('sPara','var')
+            % retrieves the experiment parameter struct (if not provided)
+            sPara = sObj.objR.copyRepParaValue();
 
-        % retrieves the selected signal train info (if not provided)
-        if ~exist('sTrain','var')
-            sTrain = getSelectedSignalTrainInfo(hFig);
+            % retrieves the selected signal train info (if not provided)
+            if ~exist('sTrain','var')
+                sTrain = sObj.getStimTrainInfo();
+            end            
         end
-    end    
+        
+    else
+        % experiment info data struct
+        hFig = sObj;
+        iExpt = getappdata(hFig,'iExpt');
+        
+        % default input arguments (if not provided)
+        if ~exist('sPara','var')
+            % retrieves the experiment parameter struct (if not provided)
+            sType = getappdata(hFig,'sType');    
+            sParaEx = getappdata(hFig,'sParaEx');
+            sPara = getStructField(sParaEx,sType(1));         
+
+            % retrieves the selected signal train info (if not provided)
+            if ~exist('sTrain','var')
+                sTrain = getSelectedSignalTrainInfo(hFig);
+            end
+        end            
+    end
 end
 
 % retrieves the current axes handle
-hAx = get(hFig,'CurrentAxes');
+if isa(sObj,'BlockObjManager') || isa(sObj,'TempBlockObj')
+    hAx = sObj.hAx;
+else
+    hAx = get(hFig,'CurrentAxes');
+end
 
 %
 if isfield(iExpt.Timing,'TexpU')
@@ -58,6 +83,7 @@ blkInfo = sTrain.blkInfo;
 nC = sPara.nCount;
 [nCh,nBlk,xiC] = deal(length(sTrain.chName),length(blkInfo),(1:nC)');
 [xyData,xyData0,sTypeT] = deal(cell(nCh,1));
+wS = zeros(nBlk,1);
 tUnitsS = lower(tUnits(1));
 
 % retrieves and separates the stimuli signal coordinates by channel
@@ -73,21 +99,23 @@ for i = 1:nBlk
     
     % stores the signal values for the given channel
     if strcmp(blkInfo(i).sType,'Random')
-        [xS,yS] = setupRandomStimuliSignal(...
+        [xS,yS,wS(i)] = setupRandomStimuliSignal(...
                 hAx,blkInfo(i).sPara,iCh,blkInfo(i).sType,useTOfs,nC);    
         xS = cellfun(@(x)(tMltDur*x+tOfs),xS,'un',0);                
         xyData0{iCh} = [xyData0{iCh};{[xS(:),yS(:)]}];
     else
-        [xS,yS] = setupScaledStimuliSignal(...
+        [xS,yS,wS(i)] = setupScaledStimuliSignal(...
                     hAx,blkInfo(i).sPara,iCh,blkInfo(i).sType,useTOfs);    
         xyData0{iCh} = [xyData0{iCh};{[tMltDur*xS(:)+tOfs,yS(:)]}];
     end
     
     % appends the signal protocol type to the channel
+    wS(i) = wS(i)*tMltDur;
     sTypeT{iCh} = [sTypeT{iCh};{blkInfo(i).sType}];
 end
 
 % repeats the signals for the necessary counta
+% tDurStim = tDurStim + max(wS);
 for i = find(~cellfun('isempty',xyData0(:)'))
     % memory allocation
     xyDataNw = cell(length(xyData0{i}),1);    
@@ -119,12 +147,14 @@ for i = find(~cellfun('isempty',xyData0(:)'))
 end
 
 % --- sets up the random stimuli experiment signal
-function [xS,yS] = setupRandomStimuliSignal(hAx,sPara,iCh,sType,useTOfs,nC)
+function [xS,yS,tS] = ...
+    setupRandomStimuliSignal(hAx,sPara,iCh,sType,useTOfs,nC)
 
 % memory allocation
-[xS,yS] = deal(cell(nC,1));
+[xS,yS,tS] = deal(cell(nC,1));
 
 % sets up the scale stimuli signals for each block
 for i = 1:nC
-    [xS{i},yS{i}] = setupScaledStimuliSignal(hAx,sPara,iCh,sType,useTOfs);        
+    [xS{i},yS{i},tS{i}] = ...
+        setupScaledStimuliSignal(hAx,sPara,iCh,sType,useTOfs);        
 end

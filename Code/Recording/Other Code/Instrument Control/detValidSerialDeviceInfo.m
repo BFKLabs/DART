@@ -79,10 +79,12 @@ else
         [iPathID,vpStr,cName] = deal(cell(length(d),1));
         for i = 1:length(d)
             dT = strsplit(strtrim(d{i}));
+            disp(dT)
+            
             iPathID{i} = lower(getFinalDirString(dT{end}));
             vpStr{i} = getFinalDirString(dT{end},1);
-            cName{i} = dT{end-1}(2:end-1);
-        end    
+            cName{i} = dT{end-1}(2:end-1);                        
+        end            
         
         % sets the BFKLabs serial controller name string
         if (strcmp(sStr,'STMicroelectronics STLink Virtual COM Port') || ...

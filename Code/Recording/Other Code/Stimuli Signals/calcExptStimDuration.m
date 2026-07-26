@@ -1,14 +1,14 @@
 % --- calculates the duration of the experiment stimuli train
 function [tDurEx,tDurExU,tBlkOfs,tBlkDur] = ...
-                         calcExptStimDuration(hFig,sTrainS,sPara,tDur)
+                         calcExptStimDuration(hObj,sTrainS,sPara,tDur)
 
 if nargin == 1
     % retrieves parameter information for the current protocol/signal
-    pType = getappdata(hFig,'pType');
-    sPara = getProtocolParaInfo(hFig,pType);                
+    pType = getappdata(hObj,'pType');
+    sPara = getProtocolParaInfo(hObj,pType);                
 
     % retrieves the stimuli train object for the protocol type
-    sTrainS = getSelectedSignalTrainInfo(hFig);    
+    sTrainS = getSelectedSignalTrainInfo(hObj);    
 end
 
 % initialisations
@@ -19,8 +19,8 @@ if isfield(sPara,'tOfs')
     sParaS = sPara;
     [~,tDurExU] = vec2time(tDur);
 else
-    sType = getappdata(hFig,'sType');
-    iExpt = getappdata(hFig,'iExpt');
+    sType = getappdata(hObj,'sType');
+    iExpt = getappdata(hObj,'iExpt');
     
     sParaS = getExptParaInfo(sPara,sType);
     [~,tDurExU] = vec2time(iExpt.Timing.Texp);

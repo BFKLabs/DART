@@ -7,37 +7,37 @@ stimWait = 15;
 
 % retrieves the required data structs
 mStr = [];
-rType = 'FixedDur';
-hFig = handles.figExptSetup;
-iExpt = getappdata(hFig,'iExpt');
-sTrain = getappdata(hFig,'sTrain');
-infoObj = getappdata(hFig,'infoObj');
+% rType = 'FixedDur';
+% hFig = handles.figExptSetup;
+% iExpt = getappdata(hFig,'iExpt');
+% sTrain = getappdata(hFig,'sTrain');
+% infoObj = getappdata(hFig,'infoObj');
 
-% if this is a stimuli only expt, then exit the function
-if strcmp(infoObj.exType,'StimOnly')
-    return
-end
+% % if this is a stimuli only expt, then exit the function
+% if strcmp(infoObj.exType,'StimOnly')
+%     return
+% end
 
-% derived parameters
-[isCheck,VV] = deal(true,iExpt.Video);
-szFrm = getVideoResolution(infoObj.objIMAQ);
+% % derived parameters
+% [isCheck,VV] = deal(true,iExpt.Video);
+% szFrm = getVideoResolution(infoObj.objIMAQ);
 
-% determines if there are any stimuli signals
-if isempty(sTrain)
-    hasStim = false;
-else
-    hasStim = ~isempty(sTrain.Ex);
-end
+% % determines if there are any stimuli signals
+% if isempty(sTrain)
+%     hasStim = false;
+% else
+%     hasStim = ~isempty(sTrain.Ex);
+% end
 
-% if the number of frames
-tExp = vec2sec(iExpt.Timing.Texp);
-tVid = vec2sec([0,iExpt.Video.Dmax]);
-if (tExp < tVid) && strcmp(iExpt.Info.Type,'RecordOnly')
-    [VV.nCount,VV.Ts,VV.Tf] = deal(1,1,nFrameTot);
-    iExpt.Video = VV;
-    setappdata(hFig,'iExpt',iExpt);
-    return
-end
+% % if the number of frames
+% tExp = vec2sec(iExpt.Timing.Texp);
+% tVid = vec2sec([0,iExpt.Video.Dmax]);
+% if (tExp < tVid) && strcmp(iExpt.Info.Type,'RecordOnly')
+%     [VV.nCount,VV.Ts,VV.Tf] = deal(1,1,nFrameTot);
+%     iExpt.Video = VV;
+%     setappdata(hFig,'iExpt',iExpt);
+%     return
+% end
 
 % calculates video recording start/stop times given the recording type
 switch rType
@@ -45,11 +45,11 @@ switch rType
         % case is recording between the stimuli
         iExpt = calcBtwnStimTimes(iExpt);
         
-    case 'OnStim' 
+    case 'OnStim'
         % case is recording on the stimuli
         iExpt = calcOnStimTimes(iExpt);
         
-    case 'FixedDur' 
+    case 'FixedDur'
         % case is recording fixed duration
         if isempty(varargin)
             % case is calculating the fixed duration times
@@ -57,7 +57,7 @@ switch rType
         else
             % case is optimising the fixed duration times
             iExpt = optFixedDurTimes(iExpt);
-        end          
+        end
         
         % check to see if the video parameters are feasible
         if ~hasStim
@@ -71,51 +71,51 @@ end
 % calculates the total number of video frames
 VV = iExpt.Video;
 
-% sets and updates the video frame count
-set(handles.textRecordDur,'string',num2str(ceil(max(VV.Tf-VV.Ts)*VV.FPS)))     
+% % sets and updates the video frame count
+% set(handles.textRecordDur,'string',num2str(ceil(max(VV.Tf-VV.Ts)*VV.FPS)))     
 
-% sets the video feasbility check box
-if isfield(handles,'checkVidFeas')
-    set(handles.checkVidFeas,'value',isCheck)
-end
+% % sets the video feasbility check box
+% if isfield(handles,'checkVidFeas')
+%     set(handles.checkVidFeas,'value',isCheck)
+% end
 % feval(getappdata(hFig,'setSaveRunEnable'),handles)
 
-% initialisations
-txtCol = 'kr';
-b2gb = 1/(1024^3);
-nFrmTot = sum(ceil((VV.Tf-VV.Ts)*VV.FPS));
-fSizeTot = b2gb*estTotalVideoSize(nFrmTot,szFrm,VV.vCompress);
+% % initialisations
+% txtCol = 'kr';          % use obj.uCol
+% b2gb = 1/(1024^3);
+% nFrmTot = sum(ceil((VV.Tf-VV.Ts)*VV.FPS));
+% fSizeTot = b2gb*estTotalVideoSize(nFrmTot,szFrm,VV.vCompress);
 
-% determines the currently selected volume (from the video file output)
-volInfo = getDiskVolumeInfo();
-iVol = cellfun(@(x)(startsWith(iExpt.Info.OutDir,x)),volInfo(:,1));
-isWarn = fSizeTot > volInfo{iVol,3};
+% % determines the currently selected volume (from the video file output)
+% volInfo = getDiskVolumeInfo();
+% iVol = cellfun(@(x)(startsWith(iExpt.Info.OutDir,x)),volInfo(:,1));
+% isWarn = fSizeTot > volInfo{iVol,3};
 
-% sets the total video/frame count strings
-set(handles.textFrmCount,'string',sprintf('%.2fGB',fSizeTot),...
-                         'foregroundcolor',txtCol(1+isWarn));
-set(handles.textVidCount,'string',num2str(VV.nCount));
-
-% determines if the estimated required disk space exceeds the free space
-if isWarn && ~initObj
-    % if so, then output a message to screen
-    mStr = sprintf(['Warning! The estimated total disk space required ',...
-                    'for the experiment exceeds the free space:\n\n',...
-                    ' * Estimated Required Space = %.2fGB\n',...
-                    ' * Free Space on %s = %.2fGB\n\n'],fSizeTot,...
-                    volInfo{iVol,1},volInfo{iVol,3});
-       
-    % outputs the message to screen (if not outputting to screen)
-    if nargout == 0
-        mStr = sprintf(['%sEither select another drive for video ',...
-                       'file output, select another video compression ',...
-                       'type, or reduce the experiment duration.'],mStr);        
-        waitfor(msgbox(mStr,'Disk Space Warning','modal'))   
-    end
-end
-
-% updates the stimulus data struct
-setappdata(hFig,'iExpt',iExpt);
+% % sets the total video/frame count strings
+% set(handles.textFrmCount,'string',sprintf('%.2fGB',fSizeTot),...
+%                          'foregroundcolor',txtCol(1+isWarn));
+% set(handles.textVidCount,'string',num2str(VV.nCount));
+% 
+% % determines if the estimated required disk space exceeds the free space
+% if isWarn && ~initObj
+%     % if so, then output a message to screen
+%     mStr = sprintf(['Warning! The estimated total disk space required ',...
+%                     'for the experiment exceeds the free space:\n\n',...
+%                     ' * Estimated Required Space = %.2fGB\n',...
+%                     ' * Free Space on %s = %.2fGB\n\n'],fSizeTot,...
+%                     volInfo{iVol,1},volInfo{iVol,3});
+%        
+%     % outputs the message to screen (if not outputting to screen)
+%     if nargout == 0
+%         mStr = sprintf(['%sEither select another drive for video ',...
+%                        'file output, select another video compression ',...
+%                        'type, or reduce the experiment duration.'],mStr);        
+%         waitfor(msgbox(mStr,'Disk Space Warning','modal'))   
+%     end
+% end
+% 
+% % updates the stimulus data struct
+% setappdata(hFig,'iExpt',iExpt);
 
 %-------------------------------------------------------------------------%
 %                             OTHER FUNCTIONS                             %
@@ -278,19 +278,19 @@ VV.nCount = length(Ts2);
 % updates the video parameter sub-struct into the experimental data struct
 iExpt.Video = VV;
 
-% --- function for calculating the fixed duration video files
-function iExpt = calcFixedDurTimes(iExpt)
-
-% --- The fixed duration video files assumes that:
-%      A) the videos start on the first frame
-%      B) the final video will be of variable length
-
-% retrieves the timing/video sub-structs
-[TT,VV] = deal(iExpt.Timing,iExpt.Video);
-
-% updates the video parameter sub-struct into the experimental data struct
-tFix = vec2sec([0,VV.Dmax]); 
-iExpt.Video = calcFixedDurIndices(VV,tFix,vec2sec(TT.Texp),TT.Tp);
+% % --- function for calculating the fixed duration video files
+% function iExpt = calcFixedDurTimes(iExpt)
+% 
+% % --- The fixed duration video files assumes that:
+% %      A) the videos start on the first frame
+% %      B) the final video will be of variable length
+% 
+% % retrieves the timing/video sub-structs
+% [TT,VV] = deal(iExpt.Timing,iExpt.Video);
+% 
+% % updates the video parameter sub-struct into the experimental data struct
+% tFix = vec2sec([0,VV.Dmax]); 
+% iExpt.Video = calcFixedDurIndices(VV,tFix,vec2sec(TT.Texp),TT.Tp);
 
 % --- function for optimising the fixed duration video files
 function iExpt = optFixedDurTimes(iExpt)
@@ -476,25 +476,25 @@ function [Ts,Tf] = retStimTimes(SS,Twait)
 Tf = cell2mat(field2cell(SS,'Tf')); 
 Tf = Tf(ii) + Twait;
 
-% --- calculates the indices of the fixed duration videos --- %
-function VV = calcFixedDurIndices(VV,tFix,tExp,tPause)
-
-% calculates the total number of videos, and allocated memory for the video
-% start/finish times
-VV.nCount = ceil(tExp/(tFix + tPause));
-[VV.Ts,VV.Tf] = deal(zeros(VV.nCount,1));
-
-% loops through all the videos setting the start/stop times
-for i = 1:VV.nCount
-    % sets the start time index (based on the video index)
-    if (i == 1)
-        % case if the first video
-        VV.Ts(i) = 0;        
-    else
-        % case is the other videos
-        VV.Ts(i) = VV.Tf(i-1) + tPause;
-    end
-    
-    % sets the finish time index (ensures the max index is nFrmTot)
-    VV.Tf(i) = min(VV.Ts(i) + tFix,tExp);    
-end
+% % --- calculates the indices of the fixed duration videos --- %
+% function VV = calcFixedDurIndices(VV,tFix,tExp,tPause)
+% 
+% % calculates the total number of videos, and allocated memory for the video
+% % start/finish times
+% VV.nCount = ceil(tExp/(tFix + tPause));
+% [VV.Ts,VV.Tf] = deal(zeros(VV.nCount,1));
+% 
+% % loops through all the videos setting the start/stop times
+% for i = 1:VV.nCount
+%     % sets the start time index (based on the video index)
+%     if (i == 1)
+%         % case if the first video
+%         VV.Ts(i) = 0;        
+%     else
+%         % case is the other videos
+%         VV.Ts(i) = VV.Tf(i-1) + tPause;
+%     end
+%     
+%     % sets the finish time index (ensures the max index is nFrmTot)
+%     VV.Tf(i) = min(VV.Ts(i) + tFix,tExp);    
+% end

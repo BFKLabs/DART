@@ -1,22 +1,30 @@
 % --- determines if there are any custom signals that are missing
 %     from the current signal parameter list
-function [sObjC,tStrC] = detCustomSignals(hFig,sTrain)
+function [sObjC,tStrC] = detCustomSignals(hObj,sTrain)
 
 % initialisations
 pType = {'S','L'};
 [tStrC,sObjC] = deal([]);
 
+% REMOVE ME LATER
+sTrain = [];
+
 % if there are no stimuli trains, then exit the function
 if isempty(sTrain); return; end
 
-% retrieves the current signal tab titles
-hTabS = getappdata(hFig,'hTabS');
-tStrS = cellfun(@(x)(x.Title),hTabS,'un',0);
+%
+if isa(hObj,'ExptSetupDlg')
+    hTabS = cellfun(@(x)(x.hTab),hObj.objT,'un',0);
+else
+    % retrieves the current signal tab titles
+    hTabS = getappdata(hObj,'hTabS');
+end
 
 %
+tStrS = cellfun(@(x)(x.Title),hTabS,'un',0);
 for i = 1:length(pType)
     % retrieves the protocol stimuli train
-    sTrainP = getStructField(sTrain,pType{i});
+    sTrainP = sTrain.(pType{i});    
     if ~isempty(sTrainP)
         % loops through each stimuli train determining if there
         % are any signal objects generated with custom signals
@@ -41,8 +49,8 @@ for i = 1:length(pType)
                 [tStrNw,iB] = unique(tStrNw(isNw));
                 
                 % updates the tab title/signal object arrays
-                tStrC = [tStrC;tStrNw];
-                sObjC = [sObjC;sObjNw(iB)];
+                tStrC{end+1} = tStrNw;
+                sObjC{end+1} = sObjNw(iB);
             end
         end
     end

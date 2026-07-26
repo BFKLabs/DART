@@ -559,40 +559,41 @@ classdef AdaptorInfoClass < handle
             try delete(obj.hLoad); catch; end            
             
         end
-        
-        % --------------------------------- %        
-        % --- OBJECT CALLBACK FUNCTIONS --- %
-        % --------------------------------- %  
+
+        % ------------------------------------ %
+        % --- MENU ITEM CALLBACK FUNCTIONS --- %
+        % ------------------------------------ %        
         
         % --- Executes when selecting menuEnableTest.
         function menuEnableTestCB(obj, hObject, ~)
         
-            % popup menu item handle
+            % main GUI object handle retrieval
             hPanelEx = obj.hGUI.panelExptType;            
-            hText = obj.hGUI.textVidResolution;
+%             hText = obj.hGUI.textVidResolution;
             hPopup = obj.hGUI.popupVidResolution;
             hRadioRec = obj.hGUI.radioRecordOnly;
             
-            obj.isTest = strcmp(get(hObject,'Checked'),'off');
+            % toggle menu item check            
             toggleMenuCheck(hObject);            
             
             % sets the test flag
+            obj.isTest = strcmp(get(hObject,'Checked'),'on');            
             if obj.isTest
                 % sets up the test daq information
                 if isempty(obj.objDAQTest)
                     obj.initTestDAQInfo();
                 end
                 
-                % disables the image acquisition panel 
-                setObjEnable(obj.hGUI.listIMAQObj,0)
-                set(obj.hGUI.listIMAQObj,'Value',[])
+%                 % disables the image acquisition panel 
+%                 setObjEnable(obj.hGUI.listIMAQObj,0)
+%                 set(obj.hGUI.listIMAQObj,'Value',[])
                 
-                % toggles the checkmark
-                set(hPopup,'ButtonDownFcn',{@obj.editVidResolutionCB},...
-                           'Style','Edit','HorizontalAlignment','left',...
-                           'String',obj.testFile,'Enable','Inactive',...
-                           'Callback',[],'Max',1);
-                set(hText,'String','Testing Video File: ');
+%                 % toggles the checkmark
+%                 set(hPopup,'ButtonDownFcn',{@obj.editVidResolutionCB},...
+%                            'Style','Edit','HorizontalAlignment','left',...
+%                            'String',obj.testFile,'Enable','Inactive',...
+%                            'Callback',[],'Max',1);
+%                 set(hText,'String','Testing Video File: ');
                     
             else
                 % sets the popup string/values
@@ -604,14 +605,14 @@ classdef AdaptorInfoClass < handle
                     set(obj.hGUI.listIMAQObj,'Value',1);
                 end
                        
-                % sets the other popup menu properties
-                set(hPopup,'Style','PopupMenu','ButtonDownFcn',[],...
-                           'Callback',{@obj.popupVidResolutionCB});                
-                set(hText,'String','Recording Format: ');
+%                 % sets the other popup menu properties
+%                 set(hPopup,'Style','PopupMenu','ButtonDownFcn',[],...
+%                            'Callback',{@obj.popupVidResolutionCB});                
+%                 set(hText,'String','Recording Format: ');
                        
-                % sets the object enabled properties
-                setObjEnable(obj.hGUI.listIMAQObj,1)
-                setObjEnable(hPopup,~isempty(obj.vSelIMAQ))
+%                 % sets the object enabled properties
+%                 setObjEnable(obj.hGUI.listIMAQObj,1)
+%                 setObjEnable(hPopup,~isempty(obj.vSelIMAQ))
                 
                 if isempty(obj.objDAQ.Control) && ~hRadioRec.Value
                     obj.hGUI.radioRecordOnly.Value = 1;
@@ -633,7 +634,11 @@ classdef AdaptorInfoClass < handle
             % updates the connection button enabled properties
             obj.updateConnectEnable();
             
-        end
+        end        
+        
+        % --------------------------------- %
+        % --- OBJECT CALLBACK FUNCTIONS --- %
+        % --------------------------------- %
             
         % --- Executes when selected object is changed in panelExptType.
         function listIMAQObjCB(obj, hObject, eventdata)
@@ -757,11 +762,11 @@ classdef AdaptorInfoClass < handle
                 notOK = isempty(obj.vSelDAQ);
                 if ~stimOnly
                     % case is a stimuli and recording expt
-                    if obj.isTest
-                        notOK = notOK || isempty(obj.testFile);
-                    else
+%                     if obj.isTest
+%                         notOK = notOK || isempty(obj.testFile);
+%                     else
                         notOK = notOK || isempty(obj.vSelIMAQ);
-                    end
+%                     end
                 end
                 
                 if notOK
@@ -852,13 +857,14 @@ classdef AdaptorInfoClass < handle
                     
                     % disables the DAQ panel
                     setPanelProps(handles.panelDACObj,'off')
+                    setPanelProps(handles.panelIMAQObj,'on',hPopup)
                     
-                    if obj.isTest
-                        hObj = [hPopup;hText];                        
-                        setPanelProps(handles.panelIMAQObj,'off',hObj) 
-                    else
-                        setPanelProps(handles.panelIMAQObj,'on',hPopup)
-                    end
+%                     if obj.isTest
+%                         hObj = [hPopup;hText];                        
+%                         setPanelProps(handles.panelIMAQObj,'off',hObj) 
+%                     else
+%                         setPanelProps(handles.panelIMAQObj,'on',hPopup)
+%                     end
 
                     % clears the DAQ listbox/device selection lists
                     set(handles.listDACObj,'value',[])
@@ -891,13 +897,14 @@ classdef AdaptorInfoClass < handle
                     
                     % otherwise, disable the panel
                     setPanelProps(handles.panelDACObj,'on') 
-
-                    if obj.isTest
-                        hObj = [hPopup;hText];
-                        setPanelProps(handles.panelIMAQObj,'off',hObj)
-                    else
-                        setPanelProps(handles.panelIMAQObj,'on',hPopup)
-                    end                    
+                    setPanelProps(handles.panelIMAQObj,'on',hPopup)
+                    
+%                     if obj.isTest
+%                         hObj = [hPopup;hText];
+%                         setPanelProps(handles.panelIMAQObj,'off',hObj)
+%                     else
+%                         setPanelProps(handles.panelIMAQObj,'on',hPopup)
+%                     end
 
                     % updates the camera/DAC object list properties
                     [obj.hasDAQ,obj.hasIMAQ] = deal(true);
@@ -1171,11 +1178,11 @@ classdef AdaptorInfoClass < handle
                 canConnect = true;
             else
                 % case is the experiment has recording
-                if obj.isTest
-                    canConnect = ~isempty(obj.testFile);
-                else
+%                 if obj.isTest
+%                     canConnect = ~isempty(obj.testFile);
+%                 else
                     canConnect = ~isempty(obj.vSelIMAQ);
-                end
+%                 end
             end
            
             % determines if it is feasible to connect 

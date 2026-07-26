@@ -1,11 +1,14 @@
 % --- determines if the currently set up devices are capable of handling
 %     the loaded experiment
-function ok = checkLoadedDeviceProps(hFig,sTrain)
+function ok = checkLoadedDeviceProps(hObj,sTrain)
 
 % initialisations
 ok = true;
-hMain = getappdata(hFig,'hMain');
-infoObj = getappdata(hFig,'infoObj');
+devStr = {'Motor','Opto'};
+
+% field retrieval
+hMain = hObj.hFigM;
+infoObj = hObj.infoObj;
                 
 % check to see if there is a valid experiment stimuli train
 if isempty(sTrain) || isempty(hMain)
@@ -14,7 +17,7 @@ if isempty(sTrain) || isempty(hMain)
 end
 
 % determines if there are any custom signals (and is valid to run)
-sObjC = detCustomSignals(hFig,sTrain);
+sObjC = detCustomSignals(hObj,sTrain);
 if ~isempty(sObjC) && ~exist('SignalObj','file')
     % if the stimuli train file contains custom signals, but the SignalObj
     % class object is missing, then output an error to screen
@@ -36,20 +39,16 @@ if isempty(sTrain.Ex)
 end
 
 % initialisations
-devStr = {'Motor','Opto'};
-switch infoObj.exType
+objDAQ = hObj.infoObj.objDAQ;
+switch hObj.infoObj.exType
     case 'StimOnly'
         % case is a stimuli only experiment
-        hFigUpdate = hFig;       
+        objDAQ0 = objDAQ;
         
     otherwise
         % case is a recording dependent experiment
-        hFigUpdate = hMain; 
+		objDAQ0 = getappdata(hObj.hFigM,'objDAQ0');
 end
-
-% retrieves the current/original data acquisition info objects
-objDAQ = getappdata(hFigUpdate,'objDAQ'); 
-objDAQ0 = getappdata(hFigUpdate,'objDAQ0'); 
 
 % determines the device names/channel counts from the currently loaded
 if isempty(objDAQ0)
@@ -62,6 +61,7 @@ else
     % special case - converting controllers to other types
     devType(strcmp(devType,'HTControllerV1')) = {'Motor'};
     devType(strcmp(devType,'HTControllerV2')) = {'Motor'};
+    devType(strcmp(devType,'HTControllerV3')) = {'Motor'};	
 
     % retrieves the channel/device counts
     nCh = objDAQ0.nChannel(1:length(devType));
@@ -69,7 +69,7 @@ else
 end
                     
 % determines the device names/channel counts from the loaded file      
-chInfo = [sTrain.Ex.sTrain(1).devType,sTrain.Ex.sTrain(1).chName];
+chInfo = [sTrain.Ex{1}.sTrain.devType,sTrain.Ex{1}.sTrain.chName];
 [devTypeL,~,iC] = unique(chInfo(:,1),'stable');
 nChL = arrayfun(@(x)(sum(iC==x)),(1:max(iC))');
 nDevL = cellfun(@(x)(sum(strContains(devTypeL,x))),devStr);
@@ -115,13 +115,15 @@ if updateDev
             
             % updates the object information data struct
             infoObj.objDAQ = objDAQNw;
-            setappdata(hFig,'infoObj',infoObj)
+            if ~isa(hObj,'ExptSetupDlg')
+                setappdata(hObj,'infoObj',infoObj)
+            end
         end
     end
 end
 
 % ensure that the stimuli train order matches the device order
-reduceDevInfoReload(hFigUpdate,devTypeL,nChL)
+reduceDevInfoReload(hObj,devTypeL,nChL)
 
 % --- prompts the user of the configuration requirements and whether they
 %     wish to continue with resets the device configuration
@@ -169,10 +171,20 @@ switch devType
 end
 
 % --- reduces down the fields of the device information object
-function reduceDevInfoReload(hMain,devTypeL,nChL)
+function reduceDevInfoReload(hObj,devTypeL,nChL)
 
 % initialisations
-objD = getappdata(hMain,'objDAQ0');
+switch hObj.infoObj.exType
+    case 'StimOnly'
+        % case is a stimuli only experiment
+        objD = hObj.infoObj.objDAQ;
+        
+    otherwise
+        % case is a recording dependent experiment
+		objD = getappdata(hObj.hFigM,'objDAQ0');
+end
+
+% initialisations
 nDev0 = length(objD.sType);
 [devTypeD,nChD] = deal(objD.sType(:),objD.nChannel(1:nDev0));
 nChD(isnan(nChD)) = 0;
@@ -206,8 +218,8 @@ end
 % reduces down the information even further
 objD = reduceDevInfo(objD,iDev);
 
-% updates the device data object 
-setappdata(hMain,'objDAQ',objD)
+% updates the device data object
+hObj.infoObj.objDAQ = objD;
 
 % --- sets up the required configuration data struct
 function reqdCFig = setupReqdConfigDataStuct(devTypeL,nChL)
