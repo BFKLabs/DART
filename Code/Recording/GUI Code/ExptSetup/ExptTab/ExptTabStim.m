@@ -1065,7 +1065,8 @@ classdef ExptTabStim < ExptTab
                     end
 
                     % if so, set up the serial controller devices
-                    objDev = {setupSerialDevice(objDAQ,'Test',xySig(iDev),sRate,iDev)};
+                    objDev = {setupSerialDevice(...
+                        objDAQ,'Test',xySig(iDev),sRate,iDev)};
 
                 else
                     % creates a loadbar

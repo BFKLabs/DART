@@ -168,22 +168,30 @@ classdef TestMovie < handle
             % retrieves the camera frame rate
             if obj.infoObj.isWebCam
                 % sets the frame rate values/selections    
-                [fRateN,fRateS,iSel] = ...
+                [fRateN0,fRateS,iSel] = ...
                     detWebcamFrameRate(obj.infoObj.objIMAQ,obj.vPara.FPS); 
-                
-            elseif isVidDev(obj.infoObj.objIMAQ)
-                % case is running a video device object
-                dProps = obj.infoObj.objIMAQ.DeviceProperties;
-                fRateN = str2double(dProps.FrameRate);
-                [fRateS,iSel] = deal({num2str(fRateN)},1);
+                fRateN = fRateN0(iSel);
                 
             else
-                % sets the frame rate values/selections
-                isVarFPS = ...
-                    detIfFrameRateVariable(obj.infoObj.objIMAQ);
-                srcObj = getselectedsource(obj.infoObj.objIMAQ);
-                [fRateN,fRateS,iSel] = ...
-                    detCameraFrameRate(srcObj,obj.vPara.FPS);                
+                % retrieves the frame rate list
+                fRateS = obj.infoObj.fRateS;
+
+                % sets the current frame rate/selected frame rate index
+                if isVidDev(obj.infoObj.objIMAQ)
+                    % case is running a video device object
+                    dProp = obj.infoObj.objIMAQ.DeviceProperties;
+                    fRateN = str2double(dProp.FrameRate);
+                    iSel = find(obj.infoObj.fRate == fRateN);
+                    
+                else
+                    % sets the frame rate values/selections
+                    isVarFPS = ...
+                        detIfFrameRateVariable(obj.infoObj.objIMAQ);
+                    srcObj = getselectedsource(obj.infoObj.objIMAQ);
+                    [fRateN0,~,iSel] = ...
+                        detCameraFrameRate(srcObj,obj.vPara.FPS);
+                    fRateN = fRateN0(iSel);
+                end                               
             end
             
             % sets the object visibility flags
@@ -199,11 +207,11 @@ classdef TestMovie < handle
 
             else
                 % updates the video frame rate
-                obj.vPara.FPS = fRateN(iSel);
+                obj.vPara.FPS = fRateN;
 
                 % initialises the frame rate listbox
                 set(obj.hPopupP,'String',fRateS,'Value',iSel);
-                setObjEnable(obj.hPopupP,length(fRateN) > 1);
+                setObjEnable(obj.hPopupP,length(fRateS) > 1);
                 obj.popupFrmRate([],[]);
             end            
             

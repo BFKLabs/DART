@@ -172,10 +172,7 @@ classdef ExptParaTabGroup < handle & dynamicprops
         % --------------------------------- %
         
         % --- parameter tab group selection changed callback function
-        function tabChangedPara(obj,varargin)
-                    
-%             % pause for button down callback function to complete
-%             pause(0.01);
+        function tabChangedPara(obj,varargin)                    
             
             % resets the stimuli selection state
             mType0 = obj.mType;

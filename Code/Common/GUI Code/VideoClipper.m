@@ -445,7 +445,8 @@ classdef VideoClipper < handle
             if isInit
                 % field setup
                 tStr = 'Select Video File';
-                dDir = 'C:\Work\DART\Documents\Atsushi';  
+%                 dDir = 'C:\Work\DART\Documents\Atsushi';  
+                dDir = 'C:\Work\Other Projects\EPhys Project\Screenshots\Google Doc\Videos';
 %                 dDir = 'C:\Work\DART\External Apps\Buridan\Documents\Screenshot Videos';
 %                 dDir = 'C:\Work\DART\Documents\Michael\Documentation\2.0 - Fly Tracking\Videos';
             

@@ -22,6 +22,10 @@ classdef AdaptorInfoClass < handle
         objIMAQDev
         exType
         
+        % frame rates
+        fRate
+        fRateS
+        
         % other data storage arrays
         vSelIMAQ
         vStrIMAQ
@@ -1340,8 +1344,23 @@ classdef AdaptorInfoClass < handle
             obj.pInfo0 = struct('fldNames',[],'pVal',[]);
             obj.pInfo0.fldNames = fStr;
             obj.pInfo0.pVal = dVal;
+
+            % gets the IMAQ frame rates
+            obj.getIMAQFrameRates();
             
-        end        
+        end   
+        
+        % --- retrieves the complete list of camera frame rates
+        function getIMAQFrameRates(obj)
+            
+            if obj.isWebCam
+                [obj.fRate,obj.fRateS] = detWebcamFrameRate(obj.objIMAQ,[]);
+            else
+                sObj = getselectedsource(obj.objIMAQ);
+                [obj.fRate,obj.fRateS] = detCameraFrameRate(sObj,[]);
+            end            
+                        
+        end
         
     end
     

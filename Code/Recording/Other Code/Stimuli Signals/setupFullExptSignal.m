@@ -151,10 +151,13 @@ function [xS,yS,tS] = ...
     setupRandomStimuliSignal(hAx,sPara,iCh,sType,useTOfs,nC)
 
 % memory allocation
-[xS,yS,tS] = deal(cell(nC,1));
+[xS,yS,tS0] = deal(cell(nC,1));
 
 % sets up the scale stimuli signals for each block
 for i = 1:nC
-    [xS{i},yS{i},tS{i}] = ...
+    [xS{i},yS{i},tS0{i}] = ...
         setupScaledStimuliSignal(hAx,sPara,iCh,sType,useTOfs);        
 end
+
+%
+tS = max(cell2mat(tS0));

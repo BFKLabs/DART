@@ -862,14 +862,15 @@ classdef ExptTabInfo < ExptTab
                 
             else
                 % case is a fixed frame rate camera
-                iSel = find(strcmp(fRate,num2str(obj.iExpt.Video.FPS)));
+                fRateS = arrayfun(@num2str,fRate,'un',0);                
+                iSel = find(fRate == obj.iExpt.Video.FPS);
                 if isempty(iSel)
                     % if there are no matches, use the first value instead
-                    set(obj.hPopupRF,'string',fRate,'value',1)
-                    obj.iExpt.Video.FPS = str2double(fRate{1});
+                    obj.iExpt.Video.FPS = fRate(1);                    
+                    set(obj.hPopupRF,'string',fRateS,'value',1)
                 else
                     % otherwise, set the popupmenu properties
-                    set(obj.hPopupRF,'string',fRate,'value',iSel)
+                    set(obj.hPopupRF,'string',fRateS,'value',iSel)
                 end
                 
                 % recalculates the video timing
@@ -1523,17 +1524,13 @@ classdef ExptTabInfo < ExptTab
                 % case is running a webcam
                 [~,fRate,iSel] = detWebcamFrameRate(obj.infoObj.objIMAQ,FPS);
 
-            elseif isVidDev(obj.infoObj.objIMAQ)
-                % case is running a video device object
-                devProps = obj.infoObj.objIMAQ.DeviceProperties;
-                fRate = {num2str(str2double(devProps.FrameRate))};
             else
-                % cae is a videoinput object
-                isVarFPS = detIfFrameRateVariable(obj.infoObj.objIMAQ);
-                srcObj = getselectedsource(obj.infoObj.objIMAQ);
-                [~,fRate,iSel] = detCameraFrameRate(srcObj,FPS);
-            end                        
-            
+                fRate = obj.infoObj.fRate;
+                if ~isVidDev(obj.infoObj.objIMAQ)
+                    isVarFPS = detIfFrameRateVariable(obj.infoObj.objIMAQ);                    
+                end
+            end
+                            
             %
             if exist('returnSel','var') && returnSel
                 fRate = str2double(fRate{iSel});
