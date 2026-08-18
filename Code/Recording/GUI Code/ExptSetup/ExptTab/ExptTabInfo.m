@@ -1021,7 +1021,7 @@ classdef ExptTabInfo < ExptTab
             end
             
             % updates the experimental protocol tab fields
-            if iSel <= 3 
+            if (iSel <= 3) && obj.infoObj.hasDAQ
                 obj.objT{4}.hPopupF{iSel-2}.Value = iVal;
                 obj.objT{4}.objAx.resetAxesTimeProps();
             end
@@ -1031,8 +1031,13 @@ classdef ExptTabInfo < ExptTab
         % --- fix experiment start checkbox callback function
         function checkFixStart(obj,varargin)
             
+            % updates the fixed start flag
+            obj.iExpt.Timing.fixedT0 = obj.hCheckS.Value;
+            
             % updates the experiment protocol tab properties
-            obj.objT{4}.checkFixStart(obj.hCheckS.Value);
+            if obj.infoObj.hasDAQ
+                obj.objT{4}.checkFixStart(obj.hCheckS.Value);
+            end
             
             % runs the time to start callback function
             obj.timeToStart()                        

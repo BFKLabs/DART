@@ -64,7 +64,7 @@ classdef ExptSetupMenu < handle & dynamicprops
         end        
         
         % --- initialises the class fields
-        function initClassFields(obj)           
+        function initClassFields(obj)
                         
             if strcmp(obj.iExpt.Info.Type,'RecordOnly')
                 % if recording only, remove the opto menu item
