@@ -1,8 +1,15 @@
 % --- determines the valid serial control device information
-function [pStr,iPathID] = detValidSerialDeviceInfo(comAvail,sStr,usbStr)
+function [pStr,iPathID] = detValidSerialDeviceInfo(comAvail,sStr)
 
 % initialisations
 [pStr,iPathID] = deal([]);
+
+% case is windows
+psCmd = ['powershell  -Command "Get-CimInstance Win32_PnPEntity | ',...
+         'Where-Object { $_.Caption -like """*COM*""" } | ',...
+         'Select-Object Name, DeviceID, Manufacturer | ',...
+         'Out-String -Width 4096"'];
+[~,usbStr] = system(psCmd); 
 
 % determines the attached usb devices
 if isunix
@@ -79,8 +86,6 @@ else
         [iPathID,vpStr,cName] = deal(cell(length(d),1));
         for i = 1:length(d)
             dT = strsplit(strtrim(d{i}));
-            disp(dT)
-            
             iPathID{i} = lower(getFinalDirString(dT{end}));
             vpStr{i} = getFinalDirString(dT{end},1);
             cName{i} = dT{end-1}(2:end-1);                        

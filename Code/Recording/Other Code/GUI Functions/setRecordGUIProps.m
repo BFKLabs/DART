@@ -111,6 +111,7 @@ switch (typeStr)
                 
                 % turns on the IR lights
                 writeSerialString(hDev{i},sStr{dType(i)});
+                setupIRLightTimer(hDev{i},handles.menuToggleIR)
             end
             
             % 

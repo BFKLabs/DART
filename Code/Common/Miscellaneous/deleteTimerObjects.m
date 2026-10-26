@@ -2,8 +2,10 @@ function deleteTimerObjects(hTimer)
 
 if isvalid(hTimer)
     % stops the timer objects
-    stop(hTimer)
-    pause(0.05);
+    if strcmp(get(hTimer,'Running'),'on')
+        stop(hTimer)
+        pause(0.05);
+    end
 
     % deletes the timer objects
     delete(hTimer);
